@@ -1,8 +1,11 @@
+#ifndef GRID
+#define GRID
 class grid
 {
   public:
     // functions
     grid();
+    ~grid();
 
     // variables
     int itot;
@@ -17,6 +20,14 @@ class grid
     int jgc;
     int kgc;
 
+    int ncells;
+    int istart;
+    int jstart;
+    int kstart;
+    int iend;
+    int jend;
+    int kend;
+
     double xsize;
     double ysize;
     double zsize;
@@ -26,7 +37,11 @@ class grid
     double *dz;
     double *dzh;
     
-    //double *x;
-    //double *y;
-    //double *z;
+    double *x;
+    double *y;
+    double *z;
+    double *xh;
+    double *yh;
+    double *zh;
 };
+#endif
