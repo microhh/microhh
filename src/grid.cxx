@@ -43,8 +43,9 @@ grid::grid()
   // create non-equidistant grid
   double alpha = 0.967;
   double eta;
-
   int k;
+
+  // create the height coordinates, has to be replaced by proper input
   for(k=kstart; k<kend; k++)
   {
     eta  = -1. + 2.*((k-kstart+1) - 0.5) / kmax;
@@ -52,22 +53,26 @@ grid::grid()
     //z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
   }
 
+  // calculate the height of the ghost cells
   for(k=0; k<kgc; k++)
   {
     z[kstart-k-1] = -1. * z[kstart+k];
     z[kend  +k  ] = -1. * z[kend-1-k] + 2.*zsize;
   }
 
-  //do k = 2-kgc, kmax+kgc
+  // assume the flux levels are exactly in between the cells
+  // compute the flux levels and the distance between them
   for(k=kstart-kgc+1; k<kend+kgc; k++)
   {
-    dzh[k] = z[k] - z[k-1];
     zh [k] = 0.5*(z[k] + z[k-1]);
+    dzh[k] = z[k] - z[k-1];
   }
 
+  // compute the heigth of the grid cells
   for(k=kstart; k<kend; k++)
     dz[k]  = 0.5*(z[k]-z[k-1]) + 0.5*(z[k+1]-z[k]);
 
+  // compute the height of the ghost cells
   for(k=0; k<kgc; k++)
   {
     dz[kstart-k-1] = dz[kstart+k];
