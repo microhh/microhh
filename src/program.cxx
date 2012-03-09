@@ -26,14 +26,15 @@ int main()
   // start the time loop
   while(dns.loop)
   {
-    dns.loop = false;
-  }
   // 1. boundary conditions
   // 2. advection
   // 3. diffusion
   // 4. gravity
   // 5. large scale forcings
   // 6. pressure
+    
+    dns.timestep();
+  }
 
   // END DNS
   
