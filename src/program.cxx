@@ -1,5 +1,6 @@
 #include "grid.h"
 #include "fields.h"
+#include "dns.h"
 
 int main()
 {
@@ -20,8 +21,13 @@ int main()
 
   // DNS
   // create the model
+  cdns dns(&grid, &fields);
   
   // start the time loop
+  while(dns.loop)
+  {
+    dns.loop = false;
+  }
   // 1. boundary conditions
   // 2. advection
   // 3. diffusion
