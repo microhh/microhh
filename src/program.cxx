@@ -6,10 +6,10 @@ int main()
   // INIT
   // initialize the MPI interface
   // create the grid
-  grid dnsgrid;
+  cgrid grid;
 
   // create the fields
-  fields dnsfields(&dnsgrid);
+  cfields fields(&grid);
   // END INIT
 
   // DNS

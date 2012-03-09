@@ -1,12 +1,11 @@
-#include <iostream>
 #include <cstdio>
 #include <cmath>
 #include "grid.h"
 
 // build the grid
-grid::grid()
+cgrid::cgrid()
 {
-  std::cout << "Creating grid" << std::endl;
+  std::printf("Creating grid\n");
   xsize = 6.28;
   ysize = 3.14;
   zsize = 2.;
@@ -24,10 +23,15 @@ grid::grid()
   kmax  = ktot;
 
   // convenience variables
+  icells = (imax+2*igc);
+  jcells = (jmax+2*jgc);
+  kcells = (kmax+2*kgc);
   ncells = (imax+2*igc)*(jmax+2*jgc)*(kmax+2*kgc);
+
   istart = igc;
   jstart = jgc;
   kstart = kgc;
+
   iend   = imax + igc;
   jend   = jmax + jgc;
   kend   = kmax + kgc;
@@ -45,13 +49,14 @@ grid::grid()
   double eta;
   int k;
 
-  // create the height coordinates, has to be replaced by proper input
+  // heights are set according to Moser180 case
   for(k=kstart; k<kend; k++)
   {
     eta  = -1. + 2.*((k-kstart+1) - 0.5) / kmax;
     z[k] = zsize / (2.*alpha) * std::tanh(eta*0.5*(std::log(1.+alpha) - std::log(1.-alpha))) + 0.5*zsize;
     //z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
   }
+  // end Moser180 setup
 
   // calculate the height of the ghost cells
   for(k=0; k<kgc; k++)
@@ -62,7 +67,7 @@ grid::grid()
 
   // assume the flux levels are exactly in between the cells
   // compute the flux levels and the distance between them
-  for(k=kstart-kgc+1; k<kend+kgc; k++)
+  for(k=1; k<kcells; k++)
   {
     zh [k] = 0.5*(z[k] + z[k-1]);
     dzh[k] = z[k] - z[k-1];
@@ -83,9 +88,9 @@ grid::grid()
   //  std::printf("%4d %9.6f %9.6f %9.6f %9.6f \n", k-kstart+1, z[k], zh[k], dz[k], dzh[k]);
 }
 
-grid::~grid()
+cgrid::~cgrid()
 {
-  std::cout << "Deleting grid" << std::endl;
+  std::printf("Deleting grid\n");
   delete[] dz;
   delete[] dzh;
 }

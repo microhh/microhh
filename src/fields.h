@@ -3,12 +3,13 @@
 
 #include "grid.h"
 
-class fields
+class cfields
 {
   public:
     // functions
-    fields(grid*);
-    ~fields();
+    cfields(cgrid*);
+    ~cfields();
+    int resettend();
 
     // variables
     double *u;
@@ -20,6 +21,8 @@ class fields
     double *wt;
   private:
     // variables
+    cgrid *grid;
     double *flow;
+    double *flowt;
 };
 #endif

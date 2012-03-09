@@ -1,11 +1,11 @@
 #ifndef GRID
 #define GRID
-class grid
+class cgrid
 {
   public:
     // functions
-    grid();
-    ~grid();
+    cgrid();
+    ~cgrid();
 
     // variables
     int itot;
@@ -20,6 +20,9 @@ class grid
     int jgc;
     int kgc;
 
+    int icells;
+    int jcells;
+    int kcells;
     int ncells;
     int istart;
     int jstart;
