@@ -6,6 +6,8 @@ class cgrid
     // functions
     cgrid();
     ~cgrid();
+    int initgrid();
+    int creategrid();
 
     // variables
     int itot;

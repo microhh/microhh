@@ -5,11 +5,17 @@ int main()
 {
   // INIT
   // initialize the MPI interface
-  // create the grid
+  // create the objects, read the inputdata
   cgrid grid;
-
-  // create the fields
   cfields fields(&grid);
+
+  // initialize the objects, allocate the required memory
+  grid.initgrid();
+  fields.initfields();
+
+  // create the objects, fill the fields with data
+  grid.creategrid();
+  fields.createfields();
   // END INIT
 
   // DNS

@@ -3,11 +3,12 @@
 
 #include "grid.h"
 
-class cfield
+class cfield3d
 {
   public:
     // functions
-    cfield(cgrid *, double *);
+    cfield3d(cgrid *, double *);
+    ~cfield3d();
     int index(int, int, int);
     int boundary_bottop(int);
     int boundary_cyclic();
@@ -25,16 +26,19 @@ class cfields
     // functions
     cfields(cgrid *);
     ~cfields();
+    int initfields();
+    int createfields();
+
     int resettend();
 
     // variables
-    cfield *u;
-    cfield *v;
-    cfield *w;
+    cfield3d *u;
+    cfield3d *v;
+    cfield3d *w;
 
-    cfield *ut;
-    cfield *vt;
-    cfield *wt;
+    cfield3d *ut;
+    cfield3d *vt;
+    cfield3d *wt;
   private:
     // variables
     cgrid *grid;
@@ -42,3 +46,4 @@ class cfields
     double *flowt;
 };
 #endif
+

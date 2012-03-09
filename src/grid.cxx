@@ -5,7 +5,7 @@
 // build the grid
 cgrid::cgrid()
 {
-  std::printf("Creating grid\n");
+  std::printf("Creating instance of object grid\n");
   xsize = 6.28;
   ysize = 3.14;
   zsize = 2.;
@@ -17,12 +17,21 @@ cgrid::cgrid()
   igc   = 1;
   jgc   = 1;
   kgc   = 1;
+}
 
+cgrid::~cgrid()
+{
+  delete[] dz;
+  delete[] dzh;
+  std::printf("Destroying instance of object grid\n");
+}
+
+int cgrid::initgrid()
+{
   imax  = itot;
   jmax  = jtot;
   kmax  = ktot;
 
-  // convenience variables
   icells = (imax+2*igc);
   jcells = (jmax+2*jgc);
   kcells = (kmax+2*kgc);
@@ -44,11 +53,15 @@ cgrid::cgrid()
   dx    = xsize / itot;
   dy    = ysize / jtot;
 
+  return 0;
+}
+
+int cgrid::creategrid()
+{
   // create non-equidistant grid
   double alpha = 0.967;
   double eta;
   int k;
-
   // heights are set according to Moser180 case
   for(k=kstart; k<kend; k++)
   {
@@ -84,14 +97,5 @@ cgrid::cgrid()
     dz[kend+k]     = dz[kend-k-1];
   }
 
-  //for(int k=kstart-kgc; k<kend+kgc; k++)
-  //  std::printf("%4d %9.6f %9.6f %9.6f %9.6f \n", k-kstart+1, z[k], zh[k], dz[k], dzh[k]);
+  return 0;
 }
-
-cgrid::~cgrid()
-{
-  std::printf("Deleting grid\n");
-  delete[] dz;
-  delete[] dzh;
-}
-
