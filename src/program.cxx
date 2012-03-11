@@ -1,6 +1,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "dns.h"
+#include "advec.h"
 
 int main()
 {
@@ -21,13 +22,15 @@ int main()
 
   // DNS
   // create the model
-  cdns dns(&grid, &fields);
+  cdns   dns  (&grid, &fields);
+  cadvec advec(&grid, &fields);
   
   // start the time loop
   while(dns.loop)
   {
   // 1. boundary conditions
   // 2. advection
+    advec.exec();
   // 3. diffusion
   // 4. gravity
   // 5. large scale forcings
