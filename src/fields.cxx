@@ -102,8 +102,9 @@ cfield3d::~cfield3d()
 
 int cfield3d::index(int i, int j, int k)
 {
-  int n = i + j*grid->icells + k*grid->icells*grid->jcells;
-  return n;
+  // int n = i + j*grid->icells + k*grid->icells*grid->jcells;
+  // return n;
+  return i + j*grid->icells + k*grid->icells*grid->jcells;
 }
 
 int cfield3d::boundary_bottop(int sw)
