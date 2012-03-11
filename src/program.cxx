@@ -31,7 +31,7 @@ int main()
     // 1. boundary conditions
     fields.boundary_bottop();
     // 2. advection
-    advec.exec();
+    advec.exec(dns.dt);
     // 3. diffusion
     // 4. gravity
     // 5. large scale forcings

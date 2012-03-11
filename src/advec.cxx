@@ -1,4 +1,6 @@
 #include <cstdio>
+#include <cmath>
+#include <algorithm>
 #include "grid.h"
 #include "fields.h"
 #include "advec.h"
@@ -15,16 +17,53 @@ cadvec::~cadvec()
   std::printf("Destroying instance of object advec\n");
 }
 
-int cadvec::exec()
+int cadvec::exec(double dt)
 {
+  double c;
+  // compute the courant number
+  c = courant((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+  // std::printf("CFL = %f\n", c);
+
   // advect the flow
   advecu_2nd((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
   advecv_2nd((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
   advecw_2nd((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
+
   return 0;
 }
 
-// high performance routine, restrict specifies that arrays are not aliased
+double cadvec::courant(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi, double dt)
+{
+  int    ijk,icells,ijcells,ii,jj,kk;
+  double dxi, dyi;
+
+  icells  = grid->icells;
+  ijcells = grid->icells*grid->jcells;
+
+  ii = 1;
+  jj = 1*icells;
+  kk = 1*ijcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  double courant;
+
+  courant = 0;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*icells + k*ijcells;
+        courant = std::max(courant, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
+      }
+
+  courant = courant/dt;
+
+  return courant;
+}
+
 int cadvec::advecu_2nd(double * __restrict__ ut, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
 {
   int    ijk,icells,ijcells,ii,jj,kk;

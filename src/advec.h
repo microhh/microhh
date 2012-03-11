@@ -10,12 +10,13 @@ class cadvec
     cadvec(cgrid *, cfields *);
     ~cadvec();
 
-    int exec();
+    int exec(double);
 
   private:
     cgrid *grid;
     cfields *fields;
 
+    double courant(double *, double *, double *, double *, double);
     int advecu_2nd(double *, double *, double *, double *, double *);
     int advecv_2nd(double *, double *, double *, double *, double *);
     int advecw_2nd(double *, double *, double *, double *, double *);
