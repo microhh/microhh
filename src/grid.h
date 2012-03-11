@@ -41,6 +41,8 @@ class cgrid
     double dy;
     double *dz;
     double *dzh;
+    double *dzi;
+    double *dzhi;
     
     double *x;
     double *y;

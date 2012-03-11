@@ -30,6 +30,7 @@ class cfields
     int createfields();
 
     int resettend();
+    int boundary_bottop();
 
     // variables
     cfield3d *u;
@@ -39,6 +40,7 @@ class cfields
     cfield3d *ut;
     cfield3d *vt;
     cfield3d *wt;
+
   private:
     // variables
     cgrid *grid;

@@ -9,6 +9,19 @@ cfields::cfields(cgrid *gridin)
   grid = gridin;
 }
 
+cfields::~cfields()
+{
+  delete u;
+  delete v;
+  delete w;
+  delete ut;
+  delete vt;
+  delete wt;
+  delete[] flow;
+  delete[] flowt;
+  std::printf("Destroying instance of object fields\n");
+}
+
 int cfields::initfields()
 {
   std::printf("Initializing fields\n");
@@ -68,24 +81,20 @@ int cfields::createfields()
   return 0;
 }
 
+int cfields::boundary_bottop()
+{
+  u->boundary_bottop(0);
+  v->boundary_bottop(0);
+  w->boundary_bottop(0);
+
+  return 0;
+}
+
 int cfields::resettend()
 {
   for(int n=0; n<grid->ncells*3; n++)
     flowt[n] = 0.;
   return 0;
-}
-
-cfields::~cfields()
-{
-  delete u;
-  delete v;
-  delete w;
-  delete ut;
-  delete vt;
-  delete wt;
-  delete[] flow;
-  delete[] flowt;
-  std::printf("Destroying instance of object fields\n");
 }
 
 cfield3d::cfield3d(cgrid *gridin, double *dataref)

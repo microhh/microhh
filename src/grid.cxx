@@ -23,6 +23,8 @@ cgrid::~cgrid()
 {
   delete[] dz;
   delete[] dzh;
+  delete[] dzi;
+  delete[] dzhi;
   std::printf("Destroying instance of object grid\n");
 }
 
@@ -49,6 +51,8 @@ int cgrid::initgrid()
   zh    = new double[kmax+2*kgc];
   dz    = new double[kmax+2*kgc];
   dzh   = new double[kmax+2*kgc];
+  dzi   = new double[kmax+2*kgc];
+  dzhi  = new double[kmax+2*kgc];
 
   dx    = xsize / itot;
   dy    = ysize / jtot;
@@ -82,13 +86,17 @@ int cgrid::creategrid()
   // compute the flux levels and the distance between them
   for(k=1; k<kcells; k++)
   {
-    zh [k] = 0.5*(z[k] + z[k-1]);
-    dzh[k] = z[k] - z[k-1];
+    zh  [k] = 0.5*(z[k] + z[k-1]);
+    dzh [k] = z[k] - z[k-1];
+    dzhi[k] = 1./dzh[k];
   }
 
   // compute the heigth of the grid cells
   for(k=kstart; k<kend; k++)
-    dz[k]  = 0.5*(z[k]-z[k-1]) + 0.5*(z[k+1]-z[k]);
+  {
+    dz [k] = 0.5*(z[k]-z[k-1]) + 0.5*(z[k+1]-z[k]);
+    dzi[k] = 1./dz[k];
+  }
 
   // compute the height of the ghost cells
   for(k=0; k<kgc; k++)
