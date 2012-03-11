@@ -114,8 +114,8 @@ int cadvec::advecw_2nd(double * __restrict__ wt, double * __restrict__ u, double
       {
         ijk = i + j*icells + k*ijcells;
         wt[ijk] += 
-              - (  interp2(u[ijk+ii-kk] , u[ijk+ii]) * interp2(w[ijk   ], w[ijk+ii])
-                 - interp2(u[ijk   -kk] , u[ijk   ]) * interp2(w[ijk-ii], w[ijk   ]) ) / dx
+              - (  interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk   ], w[ijk+ii])
+                 - interp2(u[ijk   -kk], u[ijk   ]) * interp2(w[ijk-ii], w[ijk   ]) ) / dx
 
               - (  interp2(v[ijk   -kk], v[ijk+jj]) * interp2(w[ijk   ], w[ijk+jj])
                  - interp2(v[ijk-jj-kk], v[ijk   ]) * interp2(w[ijk-jj], w[ijk   ]) ) / dy

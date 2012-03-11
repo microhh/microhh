@@ -102,8 +102,6 @@ cfield3d::~cfield3d()
 
 int cfield3d::index(int i, int j, int k)
 {
-  // int n = i + j*grid->icells + k*grid->icells*grid->jcells;
-  // return n;
   return i + j*grid->icells + k*grid->icells*grid->jcells;
 }
 
