@@ -28,8 +28,11 @@ cdns::~cdns()
   std::printf("Destroying instance of object dns\n");
 }
 
-int cdns::timestep()
+int cdns::timestep(int substep)
 {
+  if(substep != 0)
+    return 1;
+
   time  += dt;
   itime += idt;
 

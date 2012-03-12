@@ -37,6 +37,9 @@ class cfields
     inline double interp2(const double, const double);
 
     // variables
+    double *flow;
+    double *flowt;
+
     cfield3d *u;
     cfield3d *v;
     cfield3d *w;
@@ -49,8 +52,6 @@ class cfields
   private:
     // variables
     cgrid *grid;
-    double *flow;
-    double *flowt;
 };
 #endif
 

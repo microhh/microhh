@@ -17,12 +17,11 @@ cadvec::~cadvec()
   std::printf("Destroying instance of object advec\n");
 }
 
-int cadvec::exec(double dt)
+int cadvec::exec()
 {
-  double c;
+  // double c;
   // compute the courant number
-  c = courant((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
-  // std::printf("CFL = %f\n", c);
+  // c = courant((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
 
   // advect the flow
   advecu_2nd((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );

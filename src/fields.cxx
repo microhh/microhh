@@ -104,7 +104,7 @@ int cfields::check()
 
   mom = momentum(u->data, v->data, w->data, grid->dz);
 
-  std::printf("Total momentum = %12.8f\n", mom);
+  std::printf("Total momentum = %24.14f\n", mom);
 
   return 0;
 }

@@ -10,7 +10,7 @@ class cadvec
     cadvec(cgrid *, cfields *);
     ~cadvec();
 
-    int exec(double);
+    int exec();
 
   private:
     cgrid *grid;

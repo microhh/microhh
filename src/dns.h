@@ -10,7 +10,7 @@ class cdns
     cdns(cgrid *, cfields *);
     ~cdns();
 
-    int timestep();
+    int timestep(int);
 
     bool loop;
     double time;

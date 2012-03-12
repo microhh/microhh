@@ -3,6 +3,7 @@
 #include "dns.h"
 #include "advec.h"
 #include "diff.h"
+#include "timeint.h"
 
 int main()
 {
@@ -23,24 +24,26 @@ int main()
 
   // DNS
   // create the model and the operators
-  cdns   dns  (&grid, &fields);
-  cadvec advec(&grid, &fields);
-  cdiff  diff (&grid, &fields);
+  cdns     dns    (&grid, &fields);
+  cadvec   advec  (&grid, &fields);
+  cdiff    diff   (&grid, &fields);
+  ctimeint timeint(&grid, &fields);
   
   // start the time loop
   while(dns.loop)
   {
+    // 0. determine the time step
     // 1. boundary conditions
     fields.boundary_bottop();
     // 2. advection
-    advec.exec(dns.dt);
+    advec.exec();
     // 3. diffusion
-    diff.exec();
+    // diff.exec();
     // 4. gravity
     // 5. large scale forcings
     // 6. pressure
-    dns.timestep();
-    fields.resettend();
+    // 7. perform the timestepping substep
+    dns.timestep(timeint.exec(dns.dt));
     fields.check();
   }
 
