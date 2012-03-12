@@ -32,6 +32,10 @@ class cfields
     int resettend();
     int boundary_bottop();
 
+    int check();
+    double momentum(double *, double *, double *, double *);
+    inline double interp2(const double, const double);
+
     // variables
     cfield3d *u;
     cfield3d *v;

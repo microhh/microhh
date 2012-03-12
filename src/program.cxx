@@ -41,6 +41,7 @@ int main()
     // 6. pressure
     dns.timestep();
     fields.resettend();
+    fields.check();
   }
 
   // END DNS

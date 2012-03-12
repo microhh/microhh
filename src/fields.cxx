@@ -98,6 +98,50 @@ int cfields::resettend()
   return 0;
 }
 
+int cfields::check()
+{
+  double mom;
+
+  mom = momentum(u->data, v->data, w->data, grid->dz);
+
+  std::printf("Total momentum = %12.8f\n", mom);
+
+  return 0;
+}
+
+double cfields::momentum(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dz)
+{
+  int    ijk,icells,ijcells,ii,jj,kk;
+
+  icells  = grid->icells;
+  ijcells = grid->icells*grid->jcells;
+
+  ii = 1;
+  jj = 1*icells;
+  kk = 1*ijcells;
+
+  double momentum;
+  momentum = 0;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*icells + k*ijcells;
+        momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
+      }
+
+  momentum /= (grid->imax*grid->jmax*grid->zsize);
+
+  return momentum;
+}
+
+inline double cfields::interp2(const double a, const double b)
+{
+  return 0.5*(a + b);
+}
+
+// FIELDS3D CLASS
 cfield3d::cfield3d(cgrid *gridin, double *dataref)
 {
   std::printf("Creating instance of object field3d\n");
