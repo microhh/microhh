@@ -2,6 +2,7 @@
 #include "fields.h"
 #include "dns.h"
 #include "advec.h"
+#include "diff.h"
 
 int main()
 {
@@ -21,9 +22,10 @@ int main()
   // END INIT
 
   // DNS
-  // create the model
+  // create the model and the operators
   cdns   dns  (&grid, &fields);
   cadvec advec(&grid, &fields);
+  cdiff  diff (&grid, &fields);
   
   // start the time loop
   while(dns.loop)
@@ -33,6 +35,7 @@ int main()
     // 2. advection
     advec.exec(dns.dt);
     // 3. diffusion
+    diff.exec();
     // 4. gravity
     // 5. large scale forcings
     // 6. pressure

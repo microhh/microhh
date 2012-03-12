@@ -41,6 +41,7 @@ class cfields
     cfield3d *vt;
     cfield3d *wt;
 
+    double visc;
   private:
     // variables
     cgrid *grid;

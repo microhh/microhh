@@ -54,8 +54,9 @@ int cfields::createfields()
 {
   std::printf("Creating fields\n");
   // set Moser180 as a default setup
+  visc = 1.0e-5;
+
   double dpdxls = -1.5e-6;
-  double visc   =  1.0e-5;
   double rndamp =  1.e-5;
   int k;
 
