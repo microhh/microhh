@@ -34,7 +34,7 @@ int main()
   {
     // 0. determine the time step
     // 1. boundary conditions
-    fields.boundary_bottop();
+    fields.boundary();
     // 2. advection
     advec.exec();
     // 3. diffusion

@@ -82,11 +82,15 @@ int cfields::createfields()
   return 0;
 }
 
-int cfields::boundary_bottop()
+int cfields::boundary()
 {
   u->boundary_bottop(0);
   v->boundary_bottop(0);
   w->boundary_bottop(0);
+
+  u->boundary_cyclic();
+  v->boundary_cyclic();
+  w->boundary_cyclic();
 
   return 0;
 }
@@ -189,3 +193,17 @@ int cfield3d::boundary_bottop(int sw)
   return 0;
 }
 
+int cfield3d::boundary_cyclic()
+{ 
+  for(int k=0; k<grid->kgc; k++)
+    for(int j=0; j<grid->jcells; j++)
+      for(int i=0; i<grid->icells; i++)
+        data[index(i,j,grid->kstart-k-1)] = -1.*data[index(i,j,grid->kstart+k)];
+
+  for(int k=0; k<grid->kgc; k++)
+    for(int j=0; j<grid->jcells; j++)
+      for(int i=0; i<grid->icells; i++)
+        data[index(i,j,grid->kend+k)] = -1.*data[index(i,j,grid->kend-k-1)];
+
+  return 0;
+}

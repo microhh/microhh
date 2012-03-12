@@ -30,7 +30,7 @@ class cfields
     int createfields();
 
     int resettend();
-    int boundary_bottop();
+    int boundary();
 
     int check();
     double momentum(double *, double *, double *, double *);
