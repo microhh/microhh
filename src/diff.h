@@ -17,6 +17,6 @@ class cdiff
     cfields *fields;
 
     int diffc_2nd(double *, double *, double *, double *);
-    int diffh_2nd(double *, double *, double *, double *);
+    int diffw_2nd(double *, double *, double *, double *);
 };
 #endif

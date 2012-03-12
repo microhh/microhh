@@ -22,7 +22,7 @@ int cdiff::exec()
   // diffuse the flow
   diffc_2nd((*fields->ut).data, (*fields->u).data, grid->dzi, grid->dzhi);
   diffc_2nd((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi);
-  diffh_2nd((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi);
+  diffw_2nd((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi);
 
   return 0;
 }
@@ -62,7 +62,7 @@ int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double *
   return 0;
 }
 
-int cdiff::diffh_2nd(double * __restrict__ at, double * __restrict__ a, double * __restrict__ dzi, double * __restrict__ dzhi)
+int cdiff::diffw_2nd(double * __restrict__ wt, double * __restrict__ w, double * __restrict__ dzi, double * __restrict__ dzhi)
 {
   int    ijk,icells,ijcells,ii,jj,kk;
   double dxidxi, dyidyi;
@@ -85,13 +85,13 @@ int cdiff::diffh_2nd(double * __restrict__ at, double * __restrict__ a, double *
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*icells + k*ijcells;
-        at[ijk] += visc * (
-              + (  (a[ijk+ii] - a[ijk   ]) 
-                 - (a[ijk   ] - a[ijk-ii]) ) * dxidxi 
-              + (  (a[ijk+jj] - a[ijk   ]) 
-                 - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
-              + (  (a[ijk+kk] - a[ijk   ]) * dzi[k]
-                 - (a[ijk   ] - a[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
+        wt[ijk] += visc * (
+              + (  (w[ijk+ii] - w[ijk   ]) 
+                 - (w[ijk   ] - w[ijk-ii]) ) * dxidxi 
+              + (  (w[ijk+jj] - w[ijk   ]) 
+                 - (w[ijk   ] - w[ijk-jj]) ) * dyidyi
+              + (  (w[ijk+kk] - w[ijk   ]) * dzi[k]
+                 - (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
       }
 
   return 0;
