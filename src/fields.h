@@ -2,23 +2,7 @@
 #define FIELDS
 
 #include "grid.h"
-
-class cfield3d
-{
-  public:
-    // functions
-    cfield3d(cgrid *, double *);
-    ~cfield3d();
-    int index(int, int, int);
-    int boundary_bottop(int);
-    int boundary_cyclic();
-
-    // variables
-    double *data;
-
-  private:
-    cgrid *grid;
-};
+#include "field3d.h"
 
 class cfields
 {
