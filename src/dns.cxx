@@ -10,11 +10,13 @@ cdns::cdns(cgrid *gridin, cfields *fieldsin)
   fields = fieldsin;
 
   loop = true;
+  adaptivestep = true;
 
   time      = 0.;
   runtime   = 1000.;
   dt        = 1.;
   iteration = 0;
+  cflmax    = 0.8;
 
   const int ifactor = 1000;
 
@@ -28,11 +30,8 @@ cdns::~cdns()
   std::printf("Destroying instance of object dns\n");
 }
 
-int cdns::timestep(int substep)
+int cdns::timestep()
 {
-  if(substep != 0)
-    return 1;
-
   time  += dt;
   itime += idt;
 
@@ -46,3 +45,13 @@ int cdns::timestep(int substep)
 
   return 0;
 }
+
+int cdns::settimestep(double cfl)
+{
+  dt = dt * cflmax/cfl;
+
+  std::printf("CFL = %f, dt = %f\n", cfl, dt);
+
+  return 0;
+}
+

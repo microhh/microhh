@@ -40,3 +40,12 @@ int ctimeint::rk3(double * __restrict__ a, double * __restrict__ at, double dt)
 
   return substep;
 }
+
+bool ctimeint::insubstep()
+{
+  if(substep > 0)
+    return true;
+  else
+    return false;
+}
+

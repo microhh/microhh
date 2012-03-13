@@ -13,6 +13,7 @@ class ctimeint
 
     int exec(double);
     int rk3(double *, double *, double);
+    bool insubstep();
 
     // variables
     int substep;

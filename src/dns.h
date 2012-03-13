@@ -10,12 +10,16 @@ class cdns
     cdns(cgrid *, cfields *);
     ~cdns();
 
-    int timestep(int);
+    int timestep();
+    int settimestep(double);
 
     bool loop;
+    bool adaptivestep;
+
     double time;
     double runtime;
     double dt;
+    double cflmax;
 
     int iteration;
     int itime;

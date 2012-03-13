@@ -1,3 +1,4 @@
+#include <cstdio>
 #include "grid.h"
 #include "fields.h"
 #include "dns.h"
@@ -33,18 +34,25 @@ int main()
   while(dns.loop)
   {
     // 0. determine the time step
+    if(not timeint.insubstep())
+      dns.settimestep(advec.getcfl(dns.dt));
     // 1. boundary conditions
     fields.boundary();
     // 2. advection
     advec.exec();
     // 3. diffusion
-    // diff.exec();
+    diff.exec();
     // 4. gravity
     // 5. large scale forcings
     // 6. pressure
     // 7. perform the timestepping substep
-    dns.timestep(timeint.exec(dns.dt));
-    fields.check();
+    timeint.exec(dns.dt);
+
+    if(not timeint.insubstep())
+    {
+      dns.timestep();
+      fields.check();
+    }
   }
 
   // END DNS

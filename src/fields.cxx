@@ -57,7 +57,7 @@ int cfields::createfields()
   visc = 1.0e-5;
 
   double dpdxls = -1.5e-6;
-  double rndamp =  1.e-5;
+  double rndamp =  1.e-3;
   int k;
 
   // put initial perturbation in u, v and w

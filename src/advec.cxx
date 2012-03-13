@@ -31,7 +31,15 @@ int cadvec::exec()
   return 0;
 }
 
-double cadvec::courant(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi, double dt)
+double cadvec::getcfl(double dt)
+{
+  double cfl;
+  cfl = calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+
+  return cfl;
+}
+
+double cadvec::calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi, double dt)
 {
   int    ijk,icells,ijcells,ii,jj,kk;
   double dxi, dyi;
@@ -46,21 +54,21 @@ double cadvec::courant(double * __restrict__ u, double * __restrict__ v, double 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  double courant;
+  double cfl;
 
-  courant = 0;
+  cfl = 0;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*icells + k*ijcells;
-        courant = std::max(courant, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
+        cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
       }
 
-  courant = courant/dt;
+  cfl = cfl*dt;
 
-  return courant;
+  return cfl;
 }
 
 int cadvec::advecu_2nd(double * __restrict__ ut, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
