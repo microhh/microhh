@@ -10,7 +10,7 @@ cdns::cdns(cgrid *gridin, cfields *fieldsin)
   fields = fieldsin;
 
   loop = true;
-  adaptivestep = true;
+  adaptivestep = false;
 
   time      = 0.;
   runtime   = 1000.;
@@ -48,7 +48,8 @@ int cdns::timestep()
 
 int cdns::settimestep(double cfl)
 {
-  dt = dt * cflmax/cfl;
+  if(adaptivestep)
+    dt = dt * cflmax/cfl;
 
   std::printf("CFL = %f, dt = %f\n", cfl, dt);
 
