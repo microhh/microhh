@@ -22,10 +22,12 @@ class cfields
     // variables
     double *flow;
     double *flowt;
+    double *pres;
 
     cfield3d *u;
     cfield3d *v;
     cfield3d *w;
+    cfield3d *p;
 
     cfield3d *ut;
     cfield3d *vt;

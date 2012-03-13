@@ -19,6 +19,7 @@ cfields::~cfields()
   delete wt;
   delete[] flow;
   delete[] flowt;
+  delete[] pres;
   std::printf("Destroying instance of object fields\n");
 }
 
@@ -30,11 +31,14 @@ int cfields::initfields()
   flow  = new double[grid->ncells*3];
   std::printf("Allocating %d bytes of memory for flowt\n", grid->ncells*3*(int)sizeof(double));
   flowt = new double[grid->ncells*3];
+  std::printf("Allocating %d bytes of memory for pres\n", grid->ncells*(int)sizeof(double));
+  pres  = new double[grid->ncells];
 
   // set pointers to correct location
   u  = new cfield3d(grid, &flow[grid->ncells*0]);
   v  = new cfield3d(grid, &flow[grid->ncells*1]);
   w  = new cfield3d(grid, &flow[grid->ncells*2]);
+  p  = new cfield3d(grid, &pres[0]);
 
   ut = new cfield3d(grid, &flowt[grid->ncells*0]);
   vt = new cfield3d(grid, &flowt[grid->ncells*1]);
