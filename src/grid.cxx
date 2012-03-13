@@ -6,6 +6,7 @@
 cgrid::cgrid()
 {
   std::printf("Creating instance of object grid\n");
+  // setup Moser case
   xsize = 6.28;
   ysize = 3.14;
   zsize = 2.;
@@ -13,10 +14,11 @@ cgrid::cgrid()
   itot  = 32;
   jtot  = 32;
   ktot  = 32;
-
-  igc   = 3;
-  jgc   = 3;
-  kgc   = 3;
+  // end setup Moser case
+  
+  igc   = 1;
+  jgc   = 1;
+  kgc   = 1;
 }
 
 cgrid::~cgrid()

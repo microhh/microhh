@@ -82,7 +82,7 @@ int cfields::boundary()
 {
   u->boundary_bottop(0);
   v->boundary_bottop(0);
-  w->boundary_bottop(0);
+  // w->boundary_bottop(1);
 
   u->boundary_cyclic();
   v->boundary_cyclic();
