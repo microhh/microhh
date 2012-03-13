@@ -10,10 +10,15 @@ class cpres
     cpres(cgrid *, cfields *);
     ~cpres();
 
-    int exec();
+    int exec(double);
 
   private:
     cgrid *grid;
     cfields *fields;
+
+    int pres_2nd_in(double *, 
+                    double *, double *, double *,
+                    double *, double *, double *,
+                    double *, double);
 };
 #endif
