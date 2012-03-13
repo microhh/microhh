@@ -72,8 +72,17 @@ int cfields::createfields()
   }
   // end Moser180 setup
 
+  // set w equal to zero at the boundaries
+  int nbot = grid->kstart*grid->icells*grid->jcells;
+  int ntop = grid->kend  *grid->icells*grid->jcells;
+  for(int n=0; n<grid->icells*grid->jcells; n++)
+  {
+    w->data[nbot + n] = 0.;
+    w->data[ntop + n] = 0.;
+  }
+
   for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
-    std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f %9.6f\n", k-grid->kstart+1, grid->z[k], grid->zh[k], grid->dz[k], grid->dzh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells]);
+    std::printf("%4d %9.6f %9.6f %9.6f %9.6f\n", k-grid->kstart+1, grid->z[k], grid->zh[k], grid->dz[k], grid->dzh[k]);
 
   return 0;
 }
@@ -88,6 +97,8 @@ int cfields::boundary()
   v->boundary_cyclic();
   w->boundary_cyclic();
 
+  for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
+    std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k-grid->kstart+1, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
   return 0;
 }
 
