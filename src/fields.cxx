@@ -70,10 +70,6 @@ int cfields::createfields()
     k           = n / (grid->icells*grid->jcells);
     u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
   }
-
-  // u.boundary_bottop(0);
-  // v.boundary_bottop(0);
-  //w.boundary_bottop(0);
   // end Moser180 setup
 
   for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)

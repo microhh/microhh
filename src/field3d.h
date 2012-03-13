@@ -9,7 +9,6 @@ class cfield3d
     // functions
     cfield3d(cgrid *, double *);
     ~cfield3d();
-    int index(int, int, int);
     int boundary_bottop(int);
     int boundary_cyclic();
 

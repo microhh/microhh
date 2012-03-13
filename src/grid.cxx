@@ -14,9 +14,9 @@ cgrid::cgrid()
   jtot  = 32;
   ktot  = 32;
 
-  igc   = 1;
-  jgc   = 1;
-  kgc   = 1;
+  igc   = 3;
+  jgc   = 3;
+  kgc   = 3;
 }
 
 cgrid::~cgrid()
