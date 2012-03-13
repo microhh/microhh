@@ -37,6 +37,9 @@ int ctimeint::rk3(double * __restrict__ a, double * __restrict__ at, double dt)
   if(substep < 3)
     for(n=0; n<grid->ncells; n++)
       at[n] = cA[substep]*at[n];
+  else
+    for(n=0; n<grid->ncells; n++)
+      at[n] = 0.;
 
   return substep;
 }
