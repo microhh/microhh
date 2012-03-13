@@ -4,6 +4,7 @@
 #include "dns.h"
 #include "advec.h"
 #include "diff.h"
+#include "pres.h"
 #include "timeint.h"
 
 int main()
@@ -28,6 +29,7 @@ int main()
   cdns     dns    (&grid, &fields);
   cadvec   advec  (&grid, &fields);
   cdiff    diff   (&grid, &fields);
+  cpres    pres   (&grid, &fields);
   ctimeint timeint(&grid, &fields);
   
   // start the time loop
@@ -45,6 +47,7 @@ int main()
     // 4. gravity
     // 5. large scale forcings
     // 6. pressure
+    pres.exec();
     // 7. perform the timestepping substep
     timeint.exec(dns.dt);
 
