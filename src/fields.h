@@ -17,7 +17,6 @@ class cfields
     int boundary();
 
     int check();
-    double momentum(double *, double *, double *, double *);
     inline double interp2(const double, const double);
 
     // variables
@@ -36,6 +35,10 @@ class cfields
   private:
     // variables
     cgrid *grid;
+
+    // functions
+    double calcmom(double *, double *, double *, double *);
+    double calctke(double *, double *, double *, double *);
 };
 #endif
 
