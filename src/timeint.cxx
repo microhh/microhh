@@ -26,7 +26,8 @@ int ctimeint::rk3(double * __restrict__ a, double * __restrict__ at, double dt)
 {
   const double cA [] = {0., -5./9., -153./128.};
   const double cB [] = {1./3., 15./16., 8./15.};
-  const double cdt[] = {0., 1./3., 3./4.};
+  // const double cdt[] = {0., 1./3., 3./4.};
+  
   int n;
 
   for(n=0; n<grid->ncells; n++)
@@ -34,12 +35,12 @@ int ctimeint::rk3(double * __restrict__ a, double * __restrict__ at, double dt)
 
   substep = (substep+1) % 3;
 
+  // substep 0 resets the tendencies, because cA[0] == 0
   if(substep < 3)
+  {
     for(n=0; n<grid->ncells; n++)
       at[n] = cA[substep]*at[n];
-  else
-    for(n=0; n<grid->ncells; n++)
-      at[n] = 0.;
+  }
 
   return substep;
 }
