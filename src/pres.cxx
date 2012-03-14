@@ -81,7 +81,7 @@ int cpres::pres_2nd_init()
   jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_PATIENT);
 
   bmati = new double[itot];
-  bmatj = new double[itot];
+  bmatj = new double[jtot];
   
   // compute the modified wave numbers of the 2nd order scheme
   double dxidxi = 1./(grid->dx*grid->dx);
