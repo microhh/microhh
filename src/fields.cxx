@@ -120,7 +120,7 @@ int cfields::check()
   mom = calcmom(u->data, v->data, w->data, grid->dz);
   tke = calctke(u->data, v->data, w->data, grid->dz);
 
-  std::printf("momentum = %24.14f, TKE = %24.14f\n", mom, tke);
+  std::printf("momentum = %24.14E, TKE = %24.14E\n", mom, tke);
 
   return 0;
 }
