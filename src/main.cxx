@@ -32,6 +32,7 @@ int main()
   cpres    pres   (&grid, &fields);
   ctimeint timeint(&grid, &fields);
 
+  // initialize the pressure solver
   pres.init();
   
   // start the time loop
@@ -43,15 +44,17 @@ int main()
     // 1. boundary conditions
     fields.boundary();
     // 2. advection
-    advec.exec();
+    // advec.exec();
     // 3. diffusion
-    diff.exec();
+    // diff.exec();
     // 4. gravity
     // 5. large scale forcings
     // 6. pressure
     pres.exec(dns.dt);
     // 7. perform the timestepping substep
     timeint.exec(dns.dt);
+
+    pres.divergence();
 
     if(not timeint.insubstep())
     {

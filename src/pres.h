@@ -13,6 +13,7 @@ class cpres
 
     int init();
     int exec(double);
+    int divergence();
 
   private:
     // variables
@@ -42,5 +43,6 @@ class cpres
     int tdma(double *, double *, double *, double *, 
              double * ,double *, 
              int, int, int, int);
+    double calcdivergence(double *, double *, double *, double *);
 };
 #endif

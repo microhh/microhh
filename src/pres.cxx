@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cmath>
+#include <algorithm>
 #include <fftw3.h>
 #include "grid.h"
 #include "fields.h"
@@ -47,6 +48,16 @@ int cpres::exec(double dt)
 int cpres::init()
 {
   pres_2nd_init();
+
+  return 0;
+}
+
+int cpres::divergence()
+{
+  double divmax;
+  divmax = calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
+
+  std::printf("divmax = %24.14f\n", divmax);
 
   return 0;
 }
@@ -339,5 +350,37 @@ int cpres::tdma(double * __restrict__ a,   double * __restrict__ b,    double * 
     xout[k] = xout[k] - gam[k+1]*xout[k+1];
 
   return 0;
+}
+
+double cpres::calcdivergence(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
+{
+  int    ijk,icells,ijcells,ii,jj,kk;
+  double dxi, dyi;
+
+  icells  = grid->icells;
+  ijcells = grid->icells*grid->jcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  ii = 1;
+  jj = 1*icells;
+  kk = 1*ijcells;
+
+  double div, divmax;
+  div    = 0;
+  divmax = 0;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*icells + k*ijcells;
+        div = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
+
+        divmax = std::max(divmax, std::abs(div));
+      }
+
+  return divmax;
 }
 
