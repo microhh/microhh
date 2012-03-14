@@ -72,7 +72,7 @@ int cfields::createfields()
   for(int n=0; n<grid->ncells; n++)
   {
     k           = n / (grid->icells*grid->jcells);
-    u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
+    // u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
   }
   // end Moser180 setup
 
@@ -102,7 +102,8 @@ int cfields::boundary()
   w->boundary_cyclic();
 
   for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
-    std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k-grid->kstart+1, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
+    std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
+
   return 0;
 }
 

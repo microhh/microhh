@@ -89,15 +89,16 @@ int cpres::pres_2nd_init()
   double dyidyi = 1./(grid->dy*grid->dy);
 
   const double pi = std::acos(-1.);
+  std::printf("%24.20f\n", pi);
 
   for(int j=0; j<jtot/2+1; j++)
-    bmatj[j] = 2. * (std::cos(2.*pi*j/jtot)-1.) * dyidyi;
+    bmatj[j] = 2. * (std::cos(2.*pi*(double)j/(double)jtot)-1.) * dyidyi;
 
   for(int j=jtot/2+1; j<jtot; j++)
     bmatj[j] = bmatj[jtot-j];
 
   for(int i=0; i<itot/2+1; i++)
-    bmati[i] = 2. * (std::cos(2.*pi*i/itot)-1.) * dxidxi;
+    bmati[i] = 2. * (std::cos(2.*pi*(double)i/(double)itot)-1.) * dxidxi;
 
   for(int i=itot/2+1; i<itot; i++)
     bmati[i] = bmati[itot-i];
@@ -232,12 +233,12 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
       for(k=0; k<ktot; k++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        b  [k] = dz[k+kgc] * dz[k+kgc] * (bmati[iindex] + bmatj[jindex]) - (a[k] + c[k]);
-        xin[k] = dz[k+kgc] * dz[k+kgc] * p[ijk];
+        b  [k] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+        xin[k] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
       // substitute BC's
-      b[0] = b[0] + a[0];
+      b[0] += a[0];
 
       // for wave number 0, which contains average, set pressure at top to zero
       if(iindex == 0 && jindex == 0)
