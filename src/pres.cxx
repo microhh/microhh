@@ -22,10 +22,15 @@ int cpres::exec(double dt)
   (*fields->vt).boundary_cyclic();
   (*fields->wt).boundary_cyclic();
 
+  // create the input for the pressure solver
   pres_2nd_in((*fields->p ).data,
               (*fields->u ).data, (*fields->v ).data, (*fields->w ).data,
               (*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
               grid->dzi, dt);
+
+  // get the pressure tendencies from the pressure field
+  pres_2nd_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
+               (*fields->p ).data, grid->dzhi);
 
   return 0;
 }
@@ -58,6 +63,35 @@ int cpres::pres_2nd_in(double * __restrict__ p,
                + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
                + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k];
            
+      }
+
+  return 0;
+}
+
+int cpres::pres_2nd_out(double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt, 
+                        double * __restrict__ p , double * __restrict__ dzhi)
+{
+  int    ijk,icells,ijcells,ii,jj,kk;
+  double dxi, dyi;
+
+  icells  = grid->icells;
+  ijcells = grid->icells*grid->jcells;
+
+  ii = 1;
+  jj = 1*icells;
+  kk = 1*ijcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*icells + k*ijcells;
+        ut[ijk] = ut[ijk] - (p[ijk] - p[ijk-ii]) * dxi;
+        vt[ijk] = vt[ijk] - (p[ijk] - p[ijk-jj]) * dyi;
+        wt[ijk] = wt[ijk] - (p[ijk] - p[ijk-kk]) * dzhi[k];
       }
 
   return 0;
