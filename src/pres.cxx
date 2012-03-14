@@ -216,6 +216,8 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
       }
     }
 
+  // TRANSPOSE
+
   // solve the tridiagonal system
 
   for(j=0; j<jmax; j++)
@@ -227,7 +229,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
       jindex = j;
 
       // create vectors that go into the tridiagonal matrix solver
-      for(k=0; k<kmax; k++)
+      for(k=0; k<ktot; k++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         b  [k] = dz[k+kgc] * dz[k+kgc] * (bmati[iindex] + bmatj[jindex]) - (a[k] + c[k]);
@@ -238,11 +240,11 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
       b[0] = b[0] + a[0];
 
       // for wave number 0, which contains average, set pressure at top to zero
-      if(iindex == 1 && jindex == 1)
-        b[kmax] = b[kmax] - c[kmax];
+      if(iindex == 0 && jindex == 0)
+        b[ktot] = b[ktot] - c[ktot];
       // set dp/dz at top to zero
       else
-        b[kmax] = b[kmax] + c[kmax];
+        b[ktot] = b[ktot] + c[ktot];
 
       // call tdma solver
       tdma(a, b, c, xin, xout, d, ktot);
