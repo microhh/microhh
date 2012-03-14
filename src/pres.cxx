@@ -279,26 +279,26 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
       }
     }
 
-    // TRANSPOSE
+  // TRANSPOSE
     
-    // transform the first transform back
-    for(int k=0; k<kmax; k++)
-      for(int j=0; j<jmax; j++)
-      {
-        for(int i=0;i<itot;i++)
-        { 
-          ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-          fftini[i] = p[ijk];
-        }
-
-        fftw_execute_r2r(iplanb, fftini, fftouti);
-
-        for(int i=0;i<itot;i++)
-        {
-          ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-          p[ijk] = fftouti[i];
-        }
+  // transform the first transform back
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+    {
+      for(int i=0;i<itot;i++)
+      { 
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        fftini[i] = p[ijk];
       }
+
+      fftw_execute_r2r(iplanb, fftini, fftouti);
+
+      for(int i=0;i<itot;i++)
+      {
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        p[ijk] = fftouti[i];
+      }
+    }
 
   return 0;
 }
@@ -344,19 +344,15 @@ int cpres::tdma(double * __restrict__ a,   double * __restrict__ b,    double * 
 
   xout[0] = xin[0] / tmp;
 
-  for(k=1; k<size-1; k++)
+  for(k=1; k<size; k++)
   {
     gam[k]  = c[k-1] / tmp;
     tmp     = b[k] - a[k]*gam[k];
-    xout[k] = (xin[k] - a[k] * xout[k-1]) / tmp;
+    xout[k] = (xin[k] - a[k]*xout[k-1]) / tmp;
   }
 
-  gam[k]  = c[k-1] / tmp;
-  tmp     = b[k] - a[k]*gam[k];
-  xout[k] = (xin[k] - a[k]*xout[k-1]) / tmp;
-
   for(k=size-2; k>=0; k--)
-    xout[k] = xout[k] - gam[k+1]*xout[k+1];
+    xout[k] -= gam[k+1]*xout[k+1];
 
   return 0;
 }
@@ -387,8 +383,8 @@ double cpres::calcdivergence(double * __restrict__ u, double * __restrict__ v, d
         ijk = i + j*icells + k*ijcells;
         div = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
 
-        // if(k==1 && j==1)
-        //  std::printf("%d, %24.14E\n", i, div);
+        if(k==1 && j==1)
+          std::printf("%d, %24.14E\n", i, div);
 
         divmax = std::max(divmax, std::abs(div));
       }
