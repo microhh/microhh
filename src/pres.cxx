@@ -242,10 +242,10 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
 
       // for wave number 0, which contains average, set pressure at top to zero
       if(iindex == 0 && jindex == 0)
-        b[ktot] = b[ktot] - c[ktot];
+        b[ktot-1] = b[ktot-1] - c[ktot-1];
       // set dp/dz at top to zero
       else
-        b[ktot] = b[ktot] + c[ktot];
+        b[ktot-1] = b[ktot-1] + c[ktot-1];
 
       // call tdma solver
       tdma(a, b, c, xin, xout, d, ktot);
