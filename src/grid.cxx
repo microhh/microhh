@@ -11,9 +11,9 @@ cgrid::cgrid()
   ysize = 3.14;
   zsize = 2.;
 
-  itot  = 4;
-  jtot  = 4;
-  ktot  = 4;
+  itot  = 32;
+  jtot  = 32;
+  ktot  = 32;
   // end setup Moser case
   
   igc   = 1;

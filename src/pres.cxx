@@ -71,10 +71,10 @@ int cpres::pres_2nd_init()
   ktot = grid->ktot;
   kgc  = grid->kgc;
 
-  fftini  = new double[itot];
-  fftouti = new double[itot];
-  fftinj  = new double[jtot];
-  fftoutj = new double[jtot];
+  fftini  = fftw_alloc_real(itot);
+  fftouti = fftw_alloc_real(itot);
+  fftinj  = fftw_alloc_real(jtot);
+  fftoutj = fftw_alloc_real(jtot);
 
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_PATIENT);
   iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_PATIENT);
