@@ -1,4 +1,5 @@
 #include_directories(${MICROHH_INCLUDE_DIRS})
 FILE(GLOB sourcefiles "*.cxx")
+include_directories(${INCLUDE_DIRS})
 add_executable(${PROJECT_NAME} ${sourcefiles})
-#target_link_libraries(${PROJECT_NAME} ${MICROHH_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} fftw3 m)

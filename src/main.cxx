@@ -31,6 +31,8 @@ int main()
   cdiff    diff   (&grid, &fields);
   cpres    pres   (&grid, &fields);
   ctimeint timeint(&grid, &fields);
+
+  pres.init();
   
   // start the time loop
   while(dns.loop)
