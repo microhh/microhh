@@ -43,6 +43,7 @@ int main()
       dns.settimestep(advec.getcfl(dns.dt));
     // 1. boundary conditions
     fields.boundary();
+    pres.divergence();
     // 2. advection
     // advec.exec();
     // 3. diffusion
@@ -53,8 +54,6 @@ int main()
     pres.exec(dns.dt);
     // 7. perform the timestepping substep
     timeint.exec(dns.dt);
-
-    pres.divergence();
 
     if(not timeint.insubstep())
     {

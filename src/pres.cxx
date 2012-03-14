@@ -64,11 +64,12 @@ int cpres::divergence()
 
 int cpres::pres_2nd_init()
 {
-  int itot, jtot, ktot;
+  int itot, jtot, ktot, kgc;
 
   itot = grid->itot;
   jtot = grid->jtot;
   ktot = grid->ktot;
+  kgc  = grid->kgc;
 
   fftini  = new double[itot];
   fftouti = new double[itot];
@@ -113,8 +114,8 @@ int cpres::pres_2nd_init()
   // create vectors that go into the tridiagonal matrix solver
   for(int k=0; k<ktot; k++)
   {
-    a[k] = grid->dz[k] * grid->dzhi[k  ];
-    c[k] = grid->dz[k] * grid->dzhi[k+1];
+    a[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc  ];
+    c[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc+1];
   }
 
   return 0;
@@ -156,7 +157,9 @@ int cpres::pres_2nd_in(double * __restrict__ p,
 int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
 {
   int i,j,k,ii,jj,kk,ijk;
-  int imax, jmax, kmax, itot, jtot, ktot;
+  int imax, jmax, kmax;
+  int itot, jtot, ktot;
+  int igc, jgc, kgc;
   int iindex, jindex;
 
   imax = grid->imax;
@@ -165,6 +168,9 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
   itot = grid->itot;
   jtot = grid->jtot;
   ktot = grid->ktot;
+  igc  = grid->igc;
+  jgc  = grid->jgc;
+  kgc  = grid->kgc;
 
   ii = 1;
   jj = grid->icells;
@@ -176,7 +182,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
     {
       for(int i=0;i<itot;i++)
       { 
-        ijk = i + j*jj + k*kk;
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         fftini[i] = p[ijk];
       }
 
@@ -184,7 +190,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
 
       for(int i=0;i<itot;i++)
       {
-        ijk = i + j*jj+ k*kk;
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = fftouti[i];
       }
     }
@@ -197,7 +203,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
     {
       for(int j=0;j<jtot;j++)
       { 
-        ijk = i + j*jj + k*kk;
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         fftinj[j] = p[ijk];
       }
 
@@ -205,7 +211,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
 
       for(int j=0;j<jtot;j++)
       {
-        ijk = i + j*jj+ k*kk;
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = fftoutj[j];
       }
     }
@@ -223,9 +229,9 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
       // create vectors that go into the tridiagonal matrix solver
       for(k=0; k<kmax; k++)
       {
-        ijk = i + j*jj + k*kk;
-        b[k]   = dz[k] * dz[k] * (bmati[iindex] + bmatj[jindex]) - (a[k] + c[k]);
-        xin[k] = dz[k] * dz[k] * p[ijk];
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        b  [k] = dz[k+kgc] * dz[k+kgc] * (bmati[iindex] + bmatj[jindex]) - (a[k] + c[k]);
+        xin[k] = dz[k+kgc] * dz[k+kgc] * p[ijk];
       }
 
       // substitute BC's
@@ -239,12 +245,12 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
         b[kmax] = b[kmax] + c[kmax];
 
       // call tdma solver
-      tdma(a, b, c, xin, xout, d, 0, ktot, 0, ktot);
+      tdma(a, b, c, xin, xout, d, ktot);
         
       // update the pressure (in fourier space, still)
       for(int k=0;k<ktot;k++)
       {
-        ijk = i + j*jj + k*kk;
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = xout[k];
       }
     }
@@ -257,7 +263,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
     {
       for(int j=0;j<jtot;j++)
       { 
-        ijk = i + j*jj + k*kk;
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         fftinj[j] = p[ijk];
       }
 
@@ -265,7 +271,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
 
       for(int j=0;j<jtot;j++)
       {
-        ijk = i + j*jj+ k*kk;
+        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = fftoutj[j];
       }
     }
@@ -278,7 +284,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
       {
         for(int i=0;i<itot;i++)
         { 
-          ijk = i + j*jj + k*kk;
+          ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
           fftini[i] = p[ijk];
         }
 
@@ -286,7 +292,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
 
         for(int i=0;i<itot;i++)
         {
-          ijk = i + j*jj+ k*kk;
+          ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
           p[ijk] = fftouti[i];
         }
       }
@@ -326,27 +332,27 @@ int cpres::pres_2nd_out(double * __restrict__ ut, double * __restrict__ vt, doub
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
 int cpres::tdma(double * __restrict__ a,   double * __restrict__ b,    double * __restrict__ c, 
                 double * __restrict__ xin, double * __restrict__ xout, double * __restrict__ gam, 
-                int kstart, int kend, int kloopstart, int kloopend)
+                int size)
 {
   int k;
   double tmp;
 
-  tmp = b[kloopstart];
+  tmp = b[0];
 
-  xout[kloopstart] = xin[kloopstart] / tmp;
+  xout[0] = xin[0] / tmp;
 
-  for(k=kloopstart+1; k<kloopend-1; k++)
+  for(k=1; k<size-1; k++)
   {
     gam[k]  = c[k-1] / tmp;
     tmp     = b[k] - a[k]*gam[k];
     xout[k] = (xin[k] - a[k] * xout[k-1]) / tmp;
   }
 
-  gam[kloopend]  = c[kloopend-1] / tmp;
-  tmp            = b[kloopend] - a[kloopend]*gam[kloopend];
-  xout[kloopend] = (xin[kloopend] - a[kloopend]*xout[kloopend-1]) / tmp;
+  gam[k]  = c[k-1] / tmp;
+  tmp     = b[k] - a[k]*gam[k];
+  xout[k] = (xin[k] - a[k]*xout[k-1]) / tmp;
 
-  for(k=kloopend-1; k>=kloopstart; k--)
+  for(k=size-2; k>=0; k--)
     xout[k] = xout[k] - gam[k+1]*xout[k+1];
 
   return 0;
@@ -377,6 +383,9 @@ double cpres::calcdivergence(double * __restrict__ u, double * __restrict__ v, d
       {
         ijk = i + j*icells + k*ijcells;
         div = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
+
+        // if(k==1 && j==1)
+        //  std::printf("%d, %24.14E\n", i, div);
 
         divmax = std::max(divmax, std::abs(div));
       }
