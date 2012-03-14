@@ -27,14 +27,20 @@ class cpres
 
     double *bmati, *bmatj;
 
+    double *a, *b, *c, *d;
+    double *xin, *xout;
+
     // functions
     int pres_2nd_init();
     int pres_2nd_in(double *, 
                     double *, double *, double *,
                     double *, double *, double *,
                     double *, double);
-    int pres_2nd_solve(double *);
+    int pres_2nd_solve(double *, double *);
     int pres_2nd_out(double *, double *, double *,
                      double *, double *);
+    int tdma(double *, double *, double *, double *, 
+             double * ,double *, 
+             int, int, int, int);
 };
 #endif

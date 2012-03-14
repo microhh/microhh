@@ -31,7 +31,11 @@ int cpres::exec(double dt)
               grid->dzi, dt);
 
   // solve the system
-  pres_2nd_solve((*fields->p).data);
+  pres_2nd_solve((*fields->p).data, grid->dz);
+
+  // set the boundary conditions
+  (*fields->p).boundary_cyclic();
+  (*fields->p).boundary_bottop(1);
   
   // get the pressure tendencies from the pressure field
   pres_2nd_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
@@ -49,9 +53,11 @@ int cpres::init()
 
 int cpres::pres_2nd_init()
 {
-  int itot, jtot;
+  int itot, jtot, ktot;
+
   itot = grid->itot;
   jtot = grid->jtot;
+  ktot = grid->ktot;
 
   fftini  = new double[itot];
   fftouti = new double[itot];
@@ -84,75 +90,24 @@ int cpres::pres_2nd_init()
   for(int i=itot/2+1; i<itot; i++)
     bmati[i] = bmati[itot-i];
 
-  // for(int i=0; i<itot; i++)
-  //  std::printf("%d, %f\n", i, bmatj[i]);
+  // allocate help variables for the matrix solver
+  a  = new double[ktot];
+  b  = new double[ktot];
+  c  = new double[ktot];
+  d  = new double[ktot];
+
+  xin  = new double[ktot];
+  xout = new double[ktot];
+
+  // create vectors that go into the tridiagonal matrix solver
+  for(int k=0; k<ktot; k++)
+  {
+    a[k] = grid->dz[k] * grid->dzhi[k  ];
+    c[k] = grid->dz[k] * grid->dzhi[k+1];
+  }
 
   return 0;
 }
-
-/*  subroutine initpres_2nd
-    use modgriddata,  only : kmax, itot, jtot, dxi, dyi, dz, dzhi
-    use modconstants, only : pi
-
-    integer :: i, j, k
-
-    ! prepare FFTs
-    allocate(fftini(itot))
-    allocate(fftouti(itot))
-    allocate(fftinj(jtot))
-    allocate(fftoutj(jtot))
-
-    iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, fftw_r2hc, fftw_patient)
-    iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, fftw_hc2r, fftw_patient)
-    jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, fftw_r2hc, fftw_patient)
-    jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, fftw_hc2r, fftw_patient)
-
-    ! allocate matrix coefficients
-    allocate(bmati(itot))
-    allocate(bmatj(jtot))
-
-    allocate(a  (1:kmax+1))
-    allocate(b  (0:kmax+1))
-    allocate(c  (0:kmax))
-    allocate(blp(1:kmax))
-
-    allocate(x    (1:kmax  ))
-    allocate(alp  (2:kmax  ))
-    allocate(clp  (1:kmax-1))
-
-    a(:) = 0.
-    b(:) = 0.
-    c(:) = 0.
-    x(:) = 0.
-
-    ! Create coefficients for b-vector in tridiagonal solver
-    do j = 1, jtot/2+1
-      bmatj(j) = 2. * (cos(2. * pi * (j-1) / jtot) - 1.) * dyi * dyi
-    end do
-    do j = jtot/2+2, jtot
-      bmatj(j) = bmatj(jtot - j + 2)
-    end do
-
-    do i = 1, itot/2+1
-      bmati(i) = 2. * (cos(2. * pi * (i-1) / itot) - 1.) * dxi * dxi
-    end do
-
-    do i = itot/2+2, itot
-      bmati(i) = bmati(itot - i + 2)
-    end do
-
-    ! create vectors that go into the tridiagonal matrix solver
-    do k = 1, kmax
-      a(k)   = dz(k) * dzhi(k)
-      c(k)   = dz(k) * dzhi(k+1)
-    end do
-
-    ! fill in boundary conditions in matrix, no pressure gradient on top and
-    ! bottom
-    c(0)      = dz(1) * dzhi(1)
-    a(kmax+1) = -dz(kmax) * dzhi(kmax+1)
-  end subroutine initpres_2nd
-*/
 
 int cpres::pres_2nd_in(double * __restrict__ p, 
                        double * __restrict__ u , double * __restrict__ v , double * __restrict__ w , 
@@ -187,10 +142,11 @@ int cpres::pres_2nd_in(double * __restrict__ p,
   return 0;
 }
 
-int cpres::pres_2nd_solve(double * __restrict__ p)
+int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
 {
   int i,j,k,ii,jj,kk,ijk;
   int imax, jmax, kmax, itot, jtot, ktot;
+  int iindex, jindex;
 
   imax = grid->imax;
   jmax = grid->jmax;
@@ -245,6 +201,43 @@ int cpres::pres_2nd_solve(double * __restrict__ p)
 
   // solve the tridiagonal system
 
+  for(j=0; j<jmax; j++)
+    for(i=0; i<imax; i++)
+    {
+      // iindex = mpicoordx * imax + i
+      // jindex = mpicoordy * jmax + j
+      iindex = i;
+      jindex = j;
+
+      // create vectors that go into the tridiagonal matrix solver
+      for(k=0; k<kmax; k++)
+      {
+        ijk = i + j*jj + k*kk;
+        b[k]   = dz[k] * dz[k] * (bmati[iindex] + bmatj[jindex]) - (a[k] + c[k]);
+        xin[k] = dz[k] * dz[k] * p[ijk];
+      }
+
+      // substitute BC's
+      b[0] = b[0] + a[0];
+
+      // for wave number 0, which contains average, set pressure at top to zero
+      if(iindex == 1 && jindex == 1)
+        b[kmax] = b[kmax] - c[kmax];
+      // set dp/dz at top to zero
+      else
+        b[kmax] = b[kmax] + c[kmax];
+
+      // call tdma solver
+      tdma(a, b, c, xin, xout, d, 0, ktot, 0, ktot);
+        
+      // update the pressure (in fourier space, still)
+      for(int k=0;k<ktot;k++)
+      {
+        ijk = i + j*jj + k*kk;
+        p[ijk] = xout[k];
+      }
+    }
+
   // TRANSPOSE
   
   // transform the second transform back
@@ -287,51 +280,6 @@ int cpres::pres_2nd_solve(double * __restrict__ p)
         }
       }
 
-
-  /*!! Solve the poisson equation per wave number
-    do j = 1, jmax
-      do i = 1, imax ! rest of array is filled with zeros
-        iindex = mpicoordx * imax + i
-        jindex = mpicoordy * jmax + j
-
-        ! create vectors that go into the tridiagonal matrix solver
-        do k = 1, kmax
-          b(k) = dz(k) * dz(k) * (bmati(iindex) + bmatj(jindex)) - (a(k) + c(k))
-          x(k) = dz(k) * dz(k) * p(k,i,j)
-        end do
-
-        ! and now.... solve the matrix!
-        blp(:) = b(1:kmax)
-
-        ! substitute BC's
-        blp(1)    = blp(1) + a(1)
-
-        if(iindex == 1 .and. jindex == 1) then
-          ! for wave number 0, which contains average, set pressure at top to zero
-          blp(kmax) = blp(kmax) - c(kmax)
-        else
-          ! set dp/dz = 0
-          blp(kmax) = blp(kmax) + c(kmax)
-        end if
-
-        ! LAPACK band storage
-        alp(:) = a(2:kmax)
-        clp(:) = c(1:kmax-1)
-
-        ! call LAPACK tridiagonal matrix solver
-        call dgtsv(kmax, 1, alp, blp, clp, x, kmax, info)
-        
-        ! update the pressure (in fourier space, still)
-        p(1:kmax,i,j) = x(1:kmax)
-      end do
-    end do
-
-    ! recompute the tendencies
-    call boundary_cyclic(p)
-
-    ! no pressure gradient at the surface
-    p(0,:,:) = p(1,:,:) */
-
   return 0;
 }
 
@@ -360,6 +308,35 @@ int cpres::pres_2nd_out(double * __restrict__ ut, double * __restrict__ vt, doub
         vt[ijk] = vt[ijk] - (p[ijk] - p[ijk-jj]) * dyi;
         wt[ijk] = wt[ijk] - (p[ijk] - p[ijk-kk]) * dzhi[k];
       }
+
+  return 0;
+}
+
+// tridiagonal matrix solver, taken from Numerical Recipes, Press
+int cpres::tdma(double * __restrict__ a,   double * __restrict__ b,    double * __restrict__ c, 
+                double * __restrict__ xin, double * __restrict__ xout, double * __restrict__ gam, 
+                int kstart, int kend, int kloopstart, int kloopend)
+{
+  int k;
+  double tmp;
+
+  tmp = b[kloopstart];
+
+  xout[kloopstart] = xin[kloopstart] / tmp;
+
+  for(k=kloopstart+1; k<kloopend-1; k++)
+  {
+    gam[k]  = c[k-1] / tmp;
+    tmp     = b[k] - a[k]*gam[k];
+    xout[k] = (xin[k] - a[k] * xout[k-1]) / tmp;
+  }
+
+  gam[kloopend]  = c[kloopend-1] / tmp;
+  tmp            = b[kloopend] - a[kloopend]*gam[kloopend];
+  xout[kloopend] = (xin[kloopend] - a[kloopend]*xout[kloopend-1]) / tmp;
+
+  for(k=kloopend-1; k>=kloopstart; k--)
+    xout[k] = xout[k] - gam[k+1]*xout[k+1];
 
   return 0;
 }
