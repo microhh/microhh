@@ -324,9 +324,9 @@ int cpres::pres_2nd_out(double * __restrict__ ut, double * __restrict__ vt, doub
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*icells + k*ijcells;
-        ut[ijk] = ut[ijk] - (p[ijk] - p[ijk-ii]) * dxi;
-        vt[ijk] = vt[ijk] - (p[ijk] - p[ijk-jj]) * dyi;
-        wt[ijk] = wt[ijk] - (p[ijk] - p[ijk-kk]) * dzhi[k];
+        ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
+        vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
+        wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
       }
 
   return 0;
