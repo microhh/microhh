@@ -103,8 +103,10 @@ int cgrid::creategrid()
   // compute the height of the ghost cells
   for(k=0; k<kgc; k++)
   {
-    dz[kstart-k-1] = dz[kstart+k];
-    dz[kend+k]     = dz[kend-k-1];
+    dz[kstart-k-1]  = dz[kstart+k];
+    dz[kend+k]      = dz[kend-k-1];
+    dzi[kstart-k-1] = 1./dz[kstart-k-1];
+    dzi[kend+k]     = 1./dz[kend+k];
   }
 
   return 0;
