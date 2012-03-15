@@ -88,7 +88,7 @@ int cpres::pres_2nd_init()
   double dxidxi = 1./(grid->dx*grid->dx);
   double dyidyi = 1./(grid->dy*grid->dy);
 
-  const double pi = std::acos(-1.);
+  const double pi = std::acos((double)-1.);
   std::printf("%24.20f\n", pi);
 
   for(int j=0; j<jtot/2+1; j++)
@@ -128,15 +128,12 @@ int cpres::pres_2nd_in(double * __restrict__ p,
                        double * __restrict__ dzi,
                        double dt)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
-  double dxi, dyi;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int    ijk,ii,jj,kk;
+  double dxi,dyi;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -145,7 +142,7 @@ int cpres::pres_2nd_in(double * __restrict__ p,
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         p[ijk] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
                + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
                + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k];
@@ -306,15 +303,12 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
 int cpres::pres_2nd_out(double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt, 
                         double * __restrict__ p , double * __restrict__ dzhi)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
-  double dxi, dyi;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int    ijk,ii,jj,kk;
+  double dxi,dyi;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -323,7 +317,7 @@ int cpres::pres_2nd_out(double * __restrict__ ut, double * __restrict__ vt, doub
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
         vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
         wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
@@ -360,17 +354,14 @@ int cpres::tdma(double * __restrict__ a,   double * __restrict__ b,    double * 
 double cpres::calcdivergence(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
 {
   int    ijk,icells,ijcells,ii,jj,kk;
-  double dxi, dyi;
+  double dxi,dyi;
 
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
-
-  ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
 
   double div, divmax;
   div    = 0;
@@ -380,7 +371,7 @@ double cpres::calcdivergence(double * __restrict__ u, double * __restrict__ v, d
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         div = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
 
         if(k==1 && j==1)
