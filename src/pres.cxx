@@ -181,15 +181,15 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
     {
-      for(int i=0;i<itot;i++)
+      for(int i=0; i<itot; i++)
       { 
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         fftini[i] = p[ijk];
       }
 
-      fftw_execute_r2r(iplanf, fftini, fftouti);
+      fftw_execute(iplanf);
 
-      for(int i=0;i<itot;i++)
+      for(int i=0; i<itot; i++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = fftouti[i];
@@ -202,15 +202,15 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
   for(int k=0; k<kmax; k++)
     for(int i=0; i<imax; i++)
     {
-      for(int j=0;j<jtot;j++)
+      for(int j=0; j<jtot; j++)
       { 
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         fftinj[j] = p[ijk];
       }
 
-      fftw_execute_r2r(jplanf, fftinj, fftoutj);
+      fftw_execute(jplanf);
 
-      for(int j=0;j<jtot;j++)
+      for(int j=0; j<jtot; j++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = fftoutj[j];
@@ -251,7 +251,7 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
       tdma(a, b, c, xin, xout, d, ktot);
         
       // update the pressure (in fourier space, still)
-      for(int k=0;k<ktot;k++)
+      for(int k=0; k<ktot; k++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = xout[k];
@@ -264,15 +264,15 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
   for(int k=0; k<kmax; k++)
     for(int i=0; i<imax; i++)
     {
-      for(int j=0;j<jtot;j++)
+      for(int j=0; j<jtot; j++)
       { 
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         fftinj[j] = p[ijk];
       }
 
-      fftw_execute_r2r(jplanb, fftinj, fftoutj);
+      fftw_execute(jplanb);
 
-      for(int j=0;j<jtot;j++)
+      for(int j=0; j<jtot; j++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = fftoutj[j] / jtot;
@@ -285,15 +285,15 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
     {
-      for(int i=0;i<itot;i++)
+      for(int i=0; i<itot; i++)
       { 
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         fftini[i] = p[ijk];
       }
 
-      fftw_execute_r2r(iplanb, fftini, fftouti);
+      fftw_execute(iplanb);
 
-      for(int i=0;i<itot;i++)
+      for(int i=0; i<itot; i++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         p[ijk] = fftouti[i] / itot;
