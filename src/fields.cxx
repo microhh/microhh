@@ -35,14 +35,14 @@ int cfields::initfields()
   pres  = new double[grid->ncells];
 
   // set pointers to correct location
-  u  = new cfield3d(grid, &flow[grid->ncells*0]);
-  v  = new cfield3d(grid, &flow[grid->ncells*1]);
-  w  = new cfield3d(grid, &flow[grid->ncells*2]);
-  p  = new cfield3d(grid, &pres[0]);
+  u  = new cfield3d(grid, &flow[grid->ncells*0], "u");
+  v  = new cfield3d(grid, &flow[grid->ncells*1], "v");
+  w  = new cfield3d(grid, &flow[grid->ncells*2], "w");
+  p  = new cfield3d(grid, &pres[0], "p");
 
-  ut = new cfield3d(grid, &flowt[grid->ncells*0]);
-  vt = new cfield3d(grid, &flowt[grid->ncells*1]);
-  wt = new cfield3d(grid, &flowt[grid->ncells*2]);
+  ut = new cfield3d(grid, &flowt[grid->ncells*0], "ut");
+  vt = new cfield3d(grid, &flowt[grid->ncells*1], "vt");
+  wt = new cfield3d(grid, &flowt[grid->ncells*2], "wt");
 
   // set all values to 0
   for(int n=0; n<grid->ncells*3; n++)
