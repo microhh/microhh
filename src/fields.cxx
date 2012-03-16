@@ -72,7 +72,7 @@ int cfields::createfields()
   for(int n=0; n<grid->ncells; n++)
   {
     k           = n / (grid->icells*grid->jcells);
-    // u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
+    u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
   }
   // end Moser180 setup
 
