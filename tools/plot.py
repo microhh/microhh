@@ -20,7 +20,7 @@ raw = fin.read(n*8)
 tmp = array(unpack('{}d'.format(n), raw))
 w   = tmp.reshape((nz, ny, nx))
 
-fin = open("w","rb")
+fin = open("p","rb")
 raw = fin.read(n*8)
 tmp = array(unpack('{}d'.format(n), raw))
 p   = tmp.reshape((nz, ny, nx))
