@@ -6,15 +6,22 @@
 cgrid::cgrid()
 {
   std::printf("Creating instance of object grid\n");
-  // setup Moser case
+
+  // setup Taylor-Green vortex
+  xsize = 1.;
+  ysize = 1.;
+  zsize = 0.5;
+  // end setup Taylor-Green vortex
+
+  /*// setup Moser 180 case
   xsize = 6.28;
   ysize = 3.14;
   zsize = 2.;
+  // end setup Moser case*/
 
   itot  = 32;
   jtot  = 32;
   ktot  = 32;
-  // end setup Moser case
   
   igc   = 1;
   jgc   = 1;
@@ -68,14 +75,19 @@ int cgrid::creategrid()
   double alpha = 0.967;
   double eta;
   int k;
-  // heights are set according to Moser180 case
+
+  /*// heights are set according to Moser180 case
   for(k=kstart; k<kend; k++)
   {
     eta  = -1. + 2.*((k-kstart+1) - 0.5) / kmax;
     z[k] = zsize / (2.*alpha) * std::tanh(eta*0.5*(std::log(1.+alpha) - std::log(1.-alpha))) + 0.5*zsize;
-    //z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
   }
-  // end Moser180 setup
+  // end Moser180 setup */
+  
+  // uniform height setup
+  for(k=kstart; k<kend; k++)
+    z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
+  // end uniform height setup
 
   // calculate the height of the ghost cells
   for(k=0; k<kgc; k++)

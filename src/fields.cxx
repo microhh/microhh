@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <cstdio>
+#include <cmath>
 #include "grid.h"
 #include "fields.h"
 
@@ -57,7 +58,27 @@ int cfields::initfields()
 int cfields::createfields()
 {
   std::printf("Creating fields\n");
-  // set Moser180 as a default setup
+  
+  // set Taylor-Green vortex as default setup
+  int ijk,ii,jj,kk;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  const double pi = std::acos((double)-1.);
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        u->data[ijk] =  std::sin(2.*pi*grid->dx*(i-grid->istart)/grid->itot)*std::cos(2.*pi*grid->z[k]);
+        w->data[ijk] = -std::cos(2.*pi*grid->dx*(i-grid->istart)/grid->itot)*std::sin(2.*pi*grid->z[k]);
+      }
+  // end Taylor-Green vortex setup
+
+  /*// set Moser180 as a default setup
   visc = 1.0e-5;
 
   double dpdxls = -1.5e-6;
@@ -74,7 +95,7 @@ int cfields::createfields()
     k           = n / (grid->icells*grid->jcells);
     u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
   }
-  // end Moser180 setup
+  // end Moser180 setup */
 
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;
