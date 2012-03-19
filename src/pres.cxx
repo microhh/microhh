@@ -37,15 +37,18 @@ int cpres::exec(double dt)
   // set the boundary conditions
   (*fields->p).boundary_cyclic();
   (*fields->p).boundary_bottop(1);
-  
+
   // get the pressure tendencies from the pressure field
   pres_2nd_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
                (*fields->p ).data, grid->dzhi);
-
-  (*fields->u).dump();
-  (*fields->v).dump();
-  (*fields->w).dump();
-  (*fields->p).dump();
+  
+  (*fields->u) .dump();
+  (*fields->v) .dump();
+  (*fields->w) .dump();
+  (*fields->ut).dump();
+  (*fields->vt).dump();
+  (*fields->wt).dump();
+  (*fields->p) .dump();
 
   return 0;
 }
@@ -62,7 +65,7 @@ int cpres::divergence()
   double divmax;
   divmax = calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
 
-  std::printf("divmax = %24.14f\n", divmax);
+  std::printf("divmax = %24.14E\n", divmax);
 
   return 0;
 }
@@ -151,7 +154,6 @@ int cpres::pres_2nd_in(double * __restrict__ p,
         p[ijk] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
                + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
                + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k];
-           
       }
 
   return 0;

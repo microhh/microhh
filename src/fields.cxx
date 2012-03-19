@@ -62,7 +62,7 @@ int cfields::createfields()
   // set Taylor-Green vortex as default setup
   const double pi = std::acos((double)-1.);
 
-  visc = 1. / (8.*pi*pi/100.);
+  visc = 1. / (8.*pi*pi*100.);
 
   int ijk,ii,jj,kk;
 
@@ -75,8 +75,8 @@ int cfields::createfields()
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        u->data[ijk] =  std::sin(2.*pi*(i-grid->istart)/grid->itot)*std::cos(2.*pi*grid->z[k]);
-        w->data[ijk] = -std::cos(2.*pi*(i-grid->istart)/grid->itot)*std::sin(2.*pi*grid->z[k]);
+        u->data[ijk] =  std::sin(2.*pi*(i-grid->istart)/grid->itot) *std::cos(2.*pi*grid->z [k]);
+        w->data[ijk] = -std::cos(2.*pi*(0.5*grid->dx+(i-grid->istart)*grid->dx))*std::sin(2.*pi*grid->zh[k]);
       }
   // end Taylor-Green vortex setup
 

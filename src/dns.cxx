@@ -14,7 +14,7 @@ cdns::cdns(cgrid *gridin, cfields *fieldsin)
 
   time      = 0.;
   runtime   = 1.;
-  dt        = 1.;
+  dt        = 0.01;
   iteration = 0;
   cflmax    = 0.8;
 

@@ -11,17 +11,21 @@ cgrid::cgrid()
   xsize = 1.;
   ysize = 1.;
   zsize = 0.5;
+
+  itot  = 64;
+  jtot  = 8;
+  ktot  = 32;
   // end setup Taylor-Green vortex
 
   /*// setup Moser 180 case
   xsize = 6.28;
   ysize = 3.14;
   zsize = 2.;
-  // end setup Moser case*/
 
   itot  = 32;
   jtot  = 32;
   ktot  = 32;
+  // end setup Moser case*/
   
   igc   = 1;
   jgc   = 1;
