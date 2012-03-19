@@ -60,21 +60,23 @@ int cfields::createfields()
   std::printf("Creating fields\n");
   
   // set Taylor-Green vortex as default setup
+  const double pi = std::acos((double)-1.);
+
+  visc = 1. / (8.*pi*pi/100.);
+
   int ijk,ii,jj,kk;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  const double pi = std::acos((double)-1.);
-
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        u->data[ijk] =  std::sin(2.*pi*grid->dx*(i-grid->istart)/grid->itot)*std::cos(2.*pi*grid->z[k]);
-        w->data[ijk] = -std::cos(2.*pi*grid->dx*(i-grid->istart)/grid->itot)*std::sin(2.*pi*grid->z[k]);
+        u->data[ijk] =  std::sin(2.*pi*(i-grid->istart)/grid->itot)*std::cos(2.*pi*grid->z[k]);
+        w->data[ijk] = -std::cos(2.*pi*(i-grid->istart)/grid->itot)*std::sin(2.*pi*grid->z[k]);
       }
   // end Taylor-Green vortex setup
 
@@ -114,8 +116,8 @@ int cfields::createfields()
 
 int cfields::boundary()
 {
-  u->boundary_bottop(0);
-  v->boundary_bottop(0);
+  u->boundary_bottop(1);
+  v->boundary_bottop(1);
   // w->boundary_bottop(1);
 
   u->boundary_cyclic();

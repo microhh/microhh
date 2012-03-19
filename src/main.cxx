@@ -45,9 +45,9 @@ int main()
     fields.boundary();
     pres.divergence();
     // 2. advection
-    // advec.exec();
+    advec.exec();
     // 3. diffusion
-    // diff.exec();
+    diff.exec();
     // 4. gravity
     // 5. large scale forcings
     // 6. pressure
