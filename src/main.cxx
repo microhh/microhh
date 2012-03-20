@@ -4,6 +4,7 @@
 #include "dns.h"
 #include "advec.h"
 #include "diff.h"
+#include "force.h"
 #include "pres.h"
 #include "timeint.h"
 
@@ -30,6 +31,7 @@ int main()
   cadvec   advec  (&grid, &fields);
   cdiff    diff   (&grid, &fields);
   cpres    pres   (&grid, &fields);
+  cforce   force  (&grid, &fields);
   ctimeint timeint(&grid, &fields);
 
   // initialize the pressure solver
@@ -50,6 +52,7 @@ int main()
     diff.exec();
     // 4. gravity
     // 5. large scale forcings
+    force.exec();
     // 6. pressure
     pres.exec(timeint.subdt(dns.dt));
     // 7. perform the timestepping substep
