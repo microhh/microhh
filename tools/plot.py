@@ -1,8 +1,18 @@
 from pylab import *
 from struct import *
-nx = 34
-ny = 34
-nz = 34
+
+itot = 32
+jtot = 32
+ktot = 32
+
+igc  = 1
+jgc  = 1
+kgc  = 1
+
+nx = itot+2*igc
+ny = jtot+2*jgc
+nz = ktot+2*kgc
+
 n  = nx*ny*nz
 
 fin = open("u","rb")
