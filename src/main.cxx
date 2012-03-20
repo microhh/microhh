@@ -52,7 +52,7 @@ int main()
     diff.exec();
     // 4. gravity
     // 5. large scale forcings
-    force.exec();
+    force.exec(timeint.subdt(dns.dt));
     // 6. pressure
     pres.exec(timeint.subdt(dns.dt));
     // 7. perform the timestepping substep

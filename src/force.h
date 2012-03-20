@@ -10,11 +10,12 @@ class cforce
     cforce(cgrid *, cfields *);
     ~cforce();
 
-    int exec();
+    int exec(double);
 
   private:
     cgrid *grid;
     cfields *fields;
+    int flux(double *, double *, double *, double);
 
 };
 #endif
