@@ -49,10 +49,10 @@ int main()
     // 2. advection
     advec.exec();
     // 3. diffusion
-    diff.exec();
+    // diff.exec();
     // 4. gravity
     // 5. large scale forcings
-    force.exec(timeint.subdt(dns.dt));
+    // force.exec(timeint.subdt(dns.dt));
     // 6. pressure
     pres.exec(timeint.subdt(dns.dt));
     // 7. perform the timestepping substep

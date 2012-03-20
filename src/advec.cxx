@@ -19,11 +19,6 @@ cadvec::~cadvec()
 
 int cadvec::exec()
 {
-  // double c;
-  // compute the courant number
-  // c = courant((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
-
-  // advect the flow
   advecu_2nd((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
   advecv_2nd((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
   advecw_2nd((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
@@ -41,15 +36,12 @@ double cadvec::getcfl(double dt)
 
 double cadvec::calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi, double dt)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
-  double dxi, dyi;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int    ijk,ii,jj,kk;
+  double dxi,dyi;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -62,7 +54,7 @@ double cadvec::calccfl(double * __restrict__ u, double * __restrict__ v, double 
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
       }
 
@@ -73,15 +65,12 @@ double cadvec::calccfl(double * __restrict__ u, double * __restrict__ v, double 
 
 int cadvec::advecu_2nd(double * __restrict__ ut, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
-  double dxi, dyi;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int    ijk,ii,jj,kk;
+  double dxi,dyi;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -90,7 +79,7 @@ int cadvec::advecu_2nd(double * __restrict__ ut, double * __restrict__ u, double
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         ut[ijk] += 
               - (  interp2(u[ijk   ], u[ijk+ii]) * interp2(u[ijk   ], u[ijk+ii])
                  - interp2(u[ijk-ii], u[ijk   ]) * interp2(u[ijk-ii], u[ijk   ]) ) * dxi
@@ -107,15 +96,12 @@ int cadvec::advecu_2nd(double * __restrict__ ut, double * __restrict__ u, double
 
 int cadvec::advecv_2nd(double * __restrict__ vt, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
-  double dxi, dyi;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int    ijk,ii,jj,kk;
+  double dxi,dyi;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -124,7 +110,7 @@ int cadvec::advecv_2nd(double * __restrict__ vt, double * __restrict__ u, double
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         vt[ijk] += 
               - (  interp2(u[ijk+ii-jj], u[ijk+ii]) * interp2(v[ijk   ], v[ijk+ii])
                  - interp2(u[ijk   -jj], u[ijk   ]) * interp2(v[ijk-ii], v[ijk   ]) ) * dxi
@@ -141,15 +127,12 @@ int cadvec::advecv_2nd(double * __restrict__ vt, double * __restrict__ u, double
 
 int cadvec::advecw_2nd(double * __restrict__ wt, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzhi)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
-  double dxi, dyi;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int    ijk,ii,jj,kk;
+  double dxi,dyi;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -158,7 +141,7 @@ int cadvec::advecw_2nd(double * __restrict__ wt, double * __restrict__ u, double
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         wt[ijk] += 
               - (  interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk   ], w[ijk+ii])
                  - interp2(u[ijk   -kk], u[ijk   ]) * interp2(w[ijk-ii], w[ijk   ]) ) * dxi
