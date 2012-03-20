@@ -59,7 +59,7 @@ int cfields::createfields()
 {
   std::printf("Creating fields\n");
   
-  // set Taylor-Green vortex as default setup
+  /*// set Taylor-Green vortex as default setup
   const double pi = std::acos((double)-1.);
 
   visc = 1. / (8.*pi*pi*100.);
@@ -78,9 +78,9 @@ int cfields::createfields()
         u->data[ijk] =  std::sin(2.*pi*(i-grid->istart)/grid->itot) *std::cos(2.*pi*grid->z [k]);
         w->data[ijk] = -std::cos(2.*pi*(0.5*grid->dx+(i-grid->istart)*grid->dx))*std::sin(2.*pi*grid->zh[k]);
       }
-  // end Taylor-Green vortex setup
+  // end Taylor-Green vortex setup */
 
-  /*// set Moser180 as a default setup
+  // set Moser180 as a default setup
   visc = 1.0e-5;
 
   double dpdxls = -1.5e-6;
@@ -97,7 +97,7 @@ int cfields::createfields()
     k           = n / (grid->icells*grid->jcells);
     u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
   }
-  // end Moser180 setup */
+  // end Moser180 setup 
 
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;

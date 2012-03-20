@@ -10,11 +10,11 @@ cdns::cdns(cgrid *gridin, cfields *fieldsin)
   fields = fieldsin;
 
   loop = true;
-  adaptivestep = false;
+  adaptivestep = true;
 
   time      = 0.;
   runtime   = 5000.;
-  dt        = 0.01;
+  dt        = 0.1;
   iteration = 0;
   cflmax    = 0.8;
 
