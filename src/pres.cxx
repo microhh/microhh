@@ -42,13 +42,13 @@ int cpres::exec(double dt)
   pres_2nd_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
                (*fields->p ).data, grid->dzhi);
   
-  (*fields->u) .dump();
-  (*fields->v) .dump();
-  (*fields->w) .dump();
-  (*fields->ut).dump();
-  (*fields->vt).dump();
-  (*fields->wt).dump();
-  (*fields->p) .dump();
+  // (*fields->u) .dump();
+  // (*fields->v) .dump();
+  // (*fields->w) .dump();
+  // (*fields->ut).dump();
+  // (*fields->vt).dump();
+  // (*fields->wt).dump();
+  // (*fields->p) .dump();
 
   return 0;
 }
@@ -96,8 +96,7 @@ int cpres::pres_2nd_init()
   double dxidxi = 1./(grid->dx*grid->dx);
   double dyidyi = 1./(grid->dy*grid->dy);
 
-  const double pi = std::acos((double)-1.);
-  std::printf("%24.20f\n", pi);
+  const double pi = std::acos(-1.);
 
   for(int j=0; j<jtot/2+1; j++)
     bmatj[j] = 2. * (std::cos(2.*pi*(double)j/(double)jtot)-1.) * dyidyi;
@@ -380,9 +379,6 @@ double cpres::calcdivergence(double * __restrict__ u, double * __restrict__ v, d
       {
         ijk = i + j*jj + k*kk;
         div = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
-
-        if(k==1 && j==1)
-          std::printf("%d, %24.14E\n", i, div);
 
         divmax = std::max(divmax, std::abs(div));
       }

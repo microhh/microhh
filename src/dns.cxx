@@ -13,7 +13,7 @@ cdns::cdns(cgrid *gridin, cfields *fieldsin)
   adaptivestep = false;
 
   time      = 0.;
-  runtime   = 1.;
+  runtime   = 5000.;
   dt        = 0.01;
   iteration = 0;
   cflmax    = 0.8;
