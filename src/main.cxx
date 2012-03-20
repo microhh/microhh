@@ -51,7 +51,7 @@ int main()
     // 4. gravity
     // 5. large scale forcings
     // 6. pressure
-    pres.exec(dns.dt);
+    pres.exec(timeint.subdt(dns.dt));
     // 7. perform the timestepping substep
     timeint.exec(dns.dt);
 

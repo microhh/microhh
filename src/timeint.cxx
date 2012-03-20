@@ -22,6 +22,12 @@ int ctimeint::exec(double dt)
   return rk3(fields->flow, fields->flowt, dt);
 }
 
+double ctimeint::subdt(double dt)
+{
+  const double cB [] = {1./3., 15./16., 8./15.};
+  return cB[substep]*dt;
+}
+
 int ctimeint::rk3(double * __restrict__ a, double * __restrict__ at, double dt)
 {
   const double cA [] = {0., -5./9., -153./128.};
@@ -36,11 +42,8 @@ int ctimeint::rk3(double * __restrict__ a, double * __restrict__ at, double dt)
   substep = (substep+1) % 3;
 
   // substep 0 resets the tendencies, because cA[0] == 0
-  if(substep < 3)
-  {
-    for(n=0; n<grid->ncells*3; n++)
-      at[n] = cA[substep]*at[n];
-  }
+  for(n=0; n<grid->ncells*3; n++)
+    at[n] = cA[substep]*at[n];
 
   return substep;
 }
