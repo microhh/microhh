@@ -45,26 +45,32 @@ int main()
       dns.settimestep(advec.getcfl(dns.dt));
     // 1. boundary conditions
     fields.boundary();
-    pres.divergence();
+
+    if(not timeint.insubstep())
+    {
+      fields.check();
+      pres.divergence();
+    }
     // 2. advection
     advec.exec();
     // 3. diffusion
-    // diff.exec();
+    diff.exec();
     // 4. gravity
     // 5. large scale forcings
-    // force.exec(timeint.subdt(dns.dt));
+    force.exec(timeint.subdt(dns.dt));
     // 6. pressure
     pres.exec(timeint.subdt(dns.dt));
     // 7. perform the timestepping substep
     timeint.exec(dns.dt);
 
     if(not timeint.insubstep())
-    {
       dns.timestep();
-      fields.check();
-    }
   }
 
+  fields.u->dump();
+  fields.v->dump();
+  fields.w->dump();
+  fields.p->dump();
   // END DNS
   
   return 0;

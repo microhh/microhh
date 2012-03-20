@@ -83,7 +83,7 @@ int cfields::createfields()
   // set Moser180 as a default setup
   visc = 1.0e-5;
 
-  double dpdxls = -1.5e-6;
+  double dpdxls = -1.e-6;
   double rndamp =  1.e-3;
   int k;
 
@@ -113,8 +113,8 @@ int cfields::createfields()
 
 int cfields::boundary()
 {
-  u->boundary_bottop(1);
-  v->boundary_bottop(1);
+  u->boundary_bottop(0);
+  v->boundary_bottop(0);
   // w->boundary_bottop(1);
 
   u->boundary_cyclic();

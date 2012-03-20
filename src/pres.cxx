@@ -41,14 +41,6 @@ int cpres::exec(double dt)
   // get the pressure tendencies from the pressure field
   pres_2nd_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
                (*fields->p ).data, grid->dzhi);
-  
-  // (*fields->u) .dump();
-  // (*fields->v) .dump();
-  // (*fields->w) .dump();
-  // (*fields->ut).dump();
-  // (*fields->vt).dump();
-  // (*fields->wt).dump();
-  // (*fields->p) .dump();
 
   return 0;
 }
