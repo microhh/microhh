@@ -80,18 +80,18 @@ int cgrid::creategrid()
   double eta;
   int k;
 
-  /*// heights are set according to Moser180 case
+  // heights are set according to Moser180 case
   for(k=kstart; k<kend; k++)
   {
     eta  = -1. + 2.*((k-kstart+1) - 0.5) / kmax;
     z[k] = zsize / (2.*alpha) * std::tanh(eta*0.5*(std::log(1.+alpha) - std::log(1.-alpha))) + 0.5*zsize;
   }
-  // end Moser180 setup */
+  // end Moser180 setup 
   
-  // uniform height setup
+  /*// uniform height setup
   for(k=kstart; k<kend; k++)
     z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
-  // end uniform height setup
+  // end uniform height setup*/
 
   // calculate the height of the ghost cells
   for(k=0; k<kgc; k++)

@@ -55,6 +55,8 @@ int cforce::flux(double * __restrict__ ut, double * __restrict__ u, double * __r
   for(int n=0; n<grid->ncells; n++)
     ut[n] += fbody;
 
+  std::printf("force: %E\n", fbody);
+
   return 0;
 }
 
