@@ -108,9 +108,6 @@ int cfields::createfields()
     w->data[ntop + n] = 0.;
   }
 
-  for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
-    std::printf("%4d %9.6f %9.6f %9.6f %9.6f\n", k-grid->kstart+1, grid->z[k], grid->zh[k], grid->dz[k], grid->dzh[k]);
-
   return 0;
 }
 
