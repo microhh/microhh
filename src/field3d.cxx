@@ -2,17 +2,18 @@
 #include "grid.h"
 #include "field3d.h"
 
-cfield3d::cfield3d(cgrid *gridin, double *dataref, std::string namein)
+cfield3d::cfield3d(cgrid *gridin, double *dataref, char *namein)
 {
   std::printf("Creating instance of object field3d\n");
   grid = gridin;
   data = dataref;
-  name = new std::string(namein);
+  name = new char[8];
+  std::sprintf(name, "%s", namein);
 }
 
 cfield3d::~cfield3d()
 {
-  delete name;
+  delete[] name;
   std::printf("Destroying instance of object field3d\n");
 }
 
@@ -161,10 +162,12 @@ int cfield3d::boundary_cyclic()
   return 0;
 }
 
-int cfield3d::dump()
+int cfield3d::dump(int n)
 {
   FILE *pFile;
-  pFile = fopen(name->c_str(), "wb");
+  char filename[256];
+  std::sprintf(filename, "%s.%06d", name, n);
+  pFile = fopen(filename, "wb");
   fwrite(data, sizeof(double), grid->ncells, pFile);
   fclose(pFile);
 

@@ -66,11 +66,6 @@ int main()
     if(not timeint.insubstep())
       dns.timestep();
   }
-
-  fields.u->dump();
-  fields.v->dump();
-  fields.w->dump();
-  fields.p->dump();
   // END DNS
   
   return 0;

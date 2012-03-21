@@ -13,7 +13,7 @@ cdns::cdns(cgrid *gridin, cfields *fieldsin)
   adaptivestep = true;
 
   time      = 0.;
-  runtime   = 1000.;
+  runtime   = 5000.;
   dt        = 0.1;
   iteration = 0;
   cflmax    = 0.3;
@@ -42,6 +42,14 @@ int cdns::timestep()
 
   if(iteration % 100 == 0) 
     std::printf("Iteration = %6d, time = %7.1f\n", iteration, time);
+
+  if(iteration % 500 == 0) 
+  {
+    (*fields->u).dump(iteration);
+    (*fields->v).dump(iteration);
+    (*fields->w).dump(iteration);
+    (*fields->p).dump(iteration);
+  }
 
   return 0;
 }
