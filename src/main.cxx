@@ -23,6 +23,13 @@ int main()
   // create the objects, fill the fields with data
   grid.creategrid();
   fields.createfields();
+
+  // store the data
+  grid.dump();
+  fields.u->dump(0);
+  fields.v->dump(0);
+  fields.w->dump(0);
+  fields.p->dump(0);
   // END INIT
 
   // DNS

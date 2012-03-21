@@ -144,3 +144,20 @@ int cgrid::creategrid()
 
   return 0;
 }
+
+int cgrid::dump()
+{
+  FILE *pFile;
+  char filename[256];
+  std::sprintf(filename, "%s.%06d", "grid", 0);
+  pFile = fopen(filename, "wb");
+  fwrite(x , sizeof(double), icells, pFile);
+  fwrite(xh, sizeof(double), icells, pFile);
+  fwrite(y , sizeof(double), jcells, pFile);
+  fwrite(yh, sizeof(double), jcells, pFile);
+  fwrite(z , sizeof(double), kcells, pFile);
+  fwrite(zh, sizeof(double), kcells, pFile);
+  fclose(pFile);
+
+  return 0;
+}

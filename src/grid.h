@@ -8,6 +8,7 @@ class cgrid
     ~cgrid();
     int initgrid();
     int creategrid();
+    int dump();
 
     // variables
     int itot;
