@@ -60,15 +60,16 @@ int cgrid::initgrid()
   jend   = jmax + jgc;
   kend   = kmax + kgc;
 
-  z     = new double[kmax+2*kgc];
-  zh    = new double[kmax+2*kgc];
-  dz    = new double[kmax+2*kgc];
-  dzh   = new double[kmax+2*kgc];
-  dzi   = new double[kmax+2*kgc];
-  dzhi  = new double[kmax+2*kgc];
-
-  dx    = xsize / itot;
-  dy    = ysize / jtot;
+  x    = new double[imax+2*igc];
+  xh   = new double[imax+2*igc];
+  y    = new double[jmax+2*jgc];
+  yh   = new double[jmax+2*jgc];
+  z    = new double[kmax+2*kgc];
+  zh   = new double[kmax+2*kgc];
+  dz   = new double[kmax+2*kgc];
+  dzh  = new double[kmax+2*kgc];
+  dzi  = new double[kmax+2*kgc];
+  dzhi = new double[kmax+2*kgc];
 
   return 0;
 }
@@ -78,7 +79,7 @@ int cgrid::creategrid()
   // create non-equidistant grid
   double alpha = 0.967;
   double eta;
-  int k;
+  int i,j,k;
 
   // heights are set according to Moser180 case
   for(k=kstart; k<kend; k++)
@@ -92,6 +93,22 @@ int cgrid::creategrid()
   for(k=kstart; k<kend; k++)
     z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
   // end uniform height setup*/
+  
+  dx = xsize / itot;
+  dy = ysize / jtot;
+
+  // calculate the x and y coordinates
+  for(i=0; i<icells; i++)
+  {
+    x [i] = 0.5*dx + (i-igc)*dx;
+    xh[i] = (i-igc)*dx;
+  }
+
+  for(j=0; j<jcells; j++)
+  {
+    y [j] = 0.5*dy + (j-jgc)*dy;
+    yh[j] = (j-jgc)*dy;
+  }
 
   // calculate the height of the ghost cells
   for(k=0; k<kgc; k++)
