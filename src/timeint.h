@@ -12,7 +12,6 @@ class ctimeint
     ~ctimeint();
 
     int exec(double);
-    int rk3(double *, double *, double);
     bool insubstep();
     double subdt(double);
 
@@ -22,5 +21,8 @@ class ctimeint
   private:
     cgrid *grid;
     cfields *fields;
+
+    int rk3(double *, double *, double);
+    int rk4(double *, double *, double);
 };
 #endif

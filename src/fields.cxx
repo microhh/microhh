@@ -83,8 +83,8 @@ int cfields::createfields()
   // set Moser180 as a default setup
   visc = 1.0e-5;
 
-  double dpdxls = -1.e-6;
-  double rndamp =  1.e-3;
+  double dpdxls = -8.e-7;
+  double rndamp =  1.e-2;
   int k;
 
   // put initial perturbation in u, v and w
@@ -121,8 +121,8 @@ int cfields::boundary()
   v->boundary_cyclic();
   w->boundary_cyclic();
 
-  for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
-    std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
+  // for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
+  //   std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
 
   return 0;
 }
