@@ -29,16 +29,13 @@ int cdiff::exec()
 
 int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double * __restrict__ dzi, double * __restrict__ dzhi)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
-  double dxidxi, dyidyi;
+  int    ijk,ii,jj,kk;
+  double dxidxi,dyidyi;
   double visc;
 
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
-
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   dxidxi = 1./(grid->dx * grid->dx);
   dyidyi = 1./(grid->dy * grid->dy);
@@ -49,7 +46,7 @@ int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double *
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         at[ijk] += visc * (
               + (  (a[ijk+ii] - a[ijk   ]) 
                  - (a[ijk   ] - a[ijk-ii]) ) * dxidxi 
@@ -64,19 +61,16 @@ int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double *
 
 int cdiff::diffw_2nd(double * __restrict__ wt, double * __restrict__ w, double * __restrict__ dzi, double * __restrict__ dzhi)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
-  double dxidxi, dyidyi;
+  int    ijk,ii,jj,kk;
+  double dxidxi,dyidyi;
   double visc;
 
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
-
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
-  dxidxi = 1./(grid->dx * grid->dx);
-  dyidyi = 1./(grid->dy * grid->dy);
+  dxidxi = 1./(grid->dx*grid->dx);
+  dyidyi = 1./(grid->dy*grid->dy);
 
   visc = fields->visc;
 
@@ -84,7 +78,7 @@ int cdiff::diffw_2nd(double * __restrict__ wt, double * __restrict__ w, double *
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         wt[ijk] += visc * (
               + (  (w[ijk+ii] - w[ijk   ]) 
                  - (w[ijk   ] - w[ijk-ii]) ) * dxidxi 
