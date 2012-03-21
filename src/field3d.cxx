@@ -2,7 +2,7 @@
 #include "grid.h"
 #include "field3d.h"
 
-cfield3d::cfield3d(cgrid *gridin, double *dataref, char *namein)
+cfield3d::cfield3d(cgrid *gridin, double *dataref, const char *namein)
 {
   std::printf("Creating instance of object field3d\n");
   grid = gridin;

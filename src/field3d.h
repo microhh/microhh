@@ -7,7 +7,7 @@ class cfield3d
 {
   public:
     // functions
-    cfield3d(cgrid *, double *, char *);
+    cfield3d(cgrid *, double *, const char *);
     ~cfield3d();
     int boundary_bottop(int);
     int boundary_cyclic();
