@@ -25,6 +25,7 @@ int main()
   fields.createfields();
 
   // store the data
+  fields.boundary();
   grid.dump();
   fields.u->dump(0);
   fields.v->dump(0);
