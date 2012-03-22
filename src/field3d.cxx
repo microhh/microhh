@@ -87,11 +87,7 @@ int cfield3d::boundary_bottop(int sw)
 
 int cfield3d::boundary_cyclic()
 { 
-  int ijk0,ijk1,icells,jcells,ijcells,ii,jj,kk,istart,iend,jstart,jend,igc,jgc;
-
-  icells  = grid->icells;
-  jcells  = grid->jcells;
-  ijcells = grid->icells*grid->jcells;
+  int ijk0,ijk1,ii,jj,kk,istart,iend,jstart,jend,igc,jgc;
 
   istart = grid->istart;
   iend   = grid->iend;
@@ -101,16 +97,16 @@ int cfield3d::boundary_cyclic()
   jgc    = grid->jgc;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   // east west boundaries
   for(int k=0; k<grid->kcells; k++)
     for(int j=0; j<grid->jcells; j++)
       for(int i=0; i<grid->igc; i++)
       {
-        ijk0 = i          + j*icells + k*ijcells;
-        ijk1 = iend-igc+i + j*icells + k*ijcells;
+        ijk0 = i          + j*jj + k*kk;
+        ijk1 = iend-igc+i + j*jj + k*kk;
         data[ijk0] = data[ijk1];
       }
 
@@ -118,8 +114,8 @@ int cfield3d::boundary_cyclic()
     for(int j=0; j<grid->jcells; j++)
       for(int i=0; i<grid->igc; i++)
       {
-        ijk0 = i+iend   + j*icells + k*ijcells;
-        ijk1 = i+istart + j*icells + k*ijcells;
+        ijk0 = i+iend   + j*jj + k*kk;
+        ijk1 = i+istart + j*jj + k*kk;
         data[ijk0] = data[ijk1];
       }
 
@@ -128,8 +124,8 @@ int cfield3d::boundary_cyclic()
     for(int j=0; j<grid->jgc; j++)
       for(int i=0; i<grid->icells; i++)
       {
-        ijk0 = i + j           *icells + k*ijcells;
-        ijk1 = i + (jend-jgc+j)*icells + k*ijcells;
+        ijk0 = i + j           *jj + k*kk;
+        ijk1 = i + (jend-jgc+j)*jj + k*kk;
         data[ijk0] = data[ijk1];
       }
 
@@ -137,27 +133,10 @@ int cfield3d::boundary_cyclic()
     for(int j=0; j<grid->jgc; j++)
       for(int i=0; i<grid->icells; i++)
       {
-        ijk0 = i + (j+jend  )*icells + k*ijcells;
-        ijk1 = i + (j+jstart)*icells + k*ijcells;
+        ijk0 = i + (j+jend  )*jj + k*kk;
+        ijk1 = i + (j+jstart)*jj + k*kk;
         data[ijk0] = data[ijk1];
       }
-
-  // check loop
-  // int k = 10;
-  // int i = istart;
-
-  // for(int j=0; j<jcells; j++)
-  // {
-  //   ijk0 = i + j*icells + k*ijcells;
-  //   std::printf("j : %d, %f\n", j, data[ijk0]);
-  // }
-
-  // int j = jstart;
-  // for(int i=0; i<icells; i++)
-  // {
-  //   ijk0 = i + j*icells + k*ijcells;
-  //   std::printf("i : %d, %f\n", i, data[ijk0]);
-  // }
 
   return 0;
 }
