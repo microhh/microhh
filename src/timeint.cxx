@@ -19,19 +19,19 @@ ctimeint::~ctimeint()
 
 int ctimeint::exec(double dt)
 {
-  // return rk3(fields->flow, fields->flowt, dt);
-  return rk4(fields->flow, fields->flowt, fields->scal, fields->scalt, dt);
+  return rk3(fields->flow, fields->flowt, fields->scal, fields->scalt, dt);
+  // return rk4(fields->flow, fields->flowt, fields->scal, fields->scalt, dt);
 }
 
 double ctimeint::subdt(double dt)
 {
-  // const double cB [] = {1./3., 15./16., 8./15.};
-  const double cB [] = {
-    1432997174477./ 9575080441755.,
-    5161836677717./13612068292357.,
-    1720146321549./ 2090206949498.,
-    3134564353537./ 4481467310338.,
-    2277821191437./14882151754819.};
+  const double cB [] = {1./3., 15./16., 8./15.};
+  // const double cB [] = {
+  //   1432997174477./ 9575080441755.,
+  //   5161836677717./13612068292357.,
+  //   1720146321549./ 2090206949498.,
+  //   3134564353537./ 4481467310338.,
+  //   2277821191437./14882151754819.};
   return cB[substep]*dt;
 }
 
