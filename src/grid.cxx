@@ -145,7 +145,7 @@ int cgrid::creategrid()
   return 0;
 }
 
-int cgrid::dump()
+int cgrid::save()
 {
   FILE *pFile;
   char filename[256];

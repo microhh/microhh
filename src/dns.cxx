@@ -45,10 +45,10 @@ int cdns::timestep()
 
   if(iteration % 500 == 0) 
   {
-    (*fields->u).dump(iteration);
-    (*fields->v).dump(iteration);
-    (*fields->w).dump(iteration);
-    (*fields->p).dump(iteration);
+    (*fields->u).save(iteration);
+    (*fields->v).save(iteration);
+    (*fields->w).save(iteration);
+    (*fields->p).save(iteration);
   }
 
   return 0;

@@ -162,13 +162,25 @@ int cfield3d::boundary_cyclic()
   return 0;
 }
 
-int cfield3d::dump(int n)
+int cfield3d::save(int n)
 {
   FILE *pFile;
   char filename[256];
   std::sprintf(filename, "%s.%06d", name, n);
   pFile = fopen(filename, "wb");
   fwrite(data, sizeof(double), grid->ncells, pFile);
+  fclose(pFile);
+
+  return 0;
+}
+
+int cfield3d::load(int n)
+{
+  FILE *pFile;
+  char filename[256];
+  std::sprintf(filename, "%s.%06d", name, n);
+  pFile = fopen(filename, "rb");
+  fread(data, sizeof(double), grid->ncells, pFile);
   fclose(pFile);
 
   return 0;

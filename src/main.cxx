@@ -26,14 +26,15 @@ int main()
 
   // store the data
   fields.boundary();
-  grid.dump();
-  fields.u->dump(0);
-  fields.v->dump(0);
-  fields.w->dump(0);
-  fields.p->dump(0);
+  grid.save();
+  fields.u->save(0);
+  fields.v->save(0);
+  fields.w->save(0);
+  fields.p->save(0);
   // END INIT
 
   // DNS
+
   // create the model and the operators
   cdns     dns    (&grid, &fields);
   cadvec   advec  (&grid, &fields);
@@ -44,6 +45,12 @@ int main()
 
   // initialize the pressure solver
   pres.init();
+
+  // restart the model at a later time
+  // dns.iteration = 500;
+  // fields.u->load(dns.iteration);
+  // fields.v->load(dns.iteration);
+  // fields.w->load(dns.iteration);
   
   // start the time loop
   while(dns.loop)
