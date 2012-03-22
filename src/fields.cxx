@@ -97,7 +97,8 @@ int cfields::createfields()
   // end Taylor-Green vortex setup */
 
   // set Moser180 as a default setup
-  visc = 1.0e-5;
+  visc  = 1.0e-5;
+  viscs = 1.0e-5;
 
   double dpdxls = -8.e-7;
   double rndamp =  1.e-2;

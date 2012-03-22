@@ -20,19 +20,18 @@ cdiff::~cdiff()
 int cdiff::exec()
 {
   // diffuse the flow
-  diffc_2nd((*fields->ut).data, (*fields->u).data, grid->dzi, grid->dzhi);
-  diffc_2nd((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi);
-  diffw_2nd((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi);
+  diffc_2nd((*fields->ut).data, (*fields->u).data, grid->dzi, grid->dzhi, fields->visc);
+  diffc_2nd((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi, fields->visc);
+  diffw_2nd((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
-  diffc_2nd((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi);
+  diffc_2nd((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, fields->viscs);
   return 0;
 }
 
-int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double * __restrict__ dzi, double * __restrict__ dzhi)
+int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double * __restrict__ dzi, double * __restrict__ dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
-  double visc;
 
   ii = 1;
   jj = grid->icells;
@@ -40,8 +39,6 @@ int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double *
 
   dxidxi = 1./(grid->dx * grid->dx);
   dyidyi = 1./(grid->dy * grid->dy);
-
-  visc = fields->visc;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -60,11 +57,10 @@ int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double *
   return 0;
 }
 
-int cdiff::diffw_2nd(double * __restrict__ wt, double * __restrict__ w, double * __restrict__ dzi, double * __restrict__ dzhi)
+int cdiff::diffw_2nd(double * __restrict__ wt, double * __restrict__ w, double * __restrict__ dzi, double * __restrict__ dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
-  double visc;
 
   ii = 1;
   jj = grid->icells;
@@ -72,8 +68,6 @@ int cdiff::diffw_2nd(double * __restrict__ wt, double * __restrict__ w, double *
 
   dxidxi = 1./(grid->dx*grid->dx);
   dyidyi = 1./(grid->dy*grid->dy);
-
-  visc = fields->visc;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)

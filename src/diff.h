@@ -16,7 +16,7 @@ class cdiff
     cgrid *grid;
     cfields *fields;
 
-    int diffc_2nd(double *, double *, double *, double *);
-    int diffw_2nd(double *, double *, double *, double *);
+    int diffc_2nd(double *, double *, double *, double *, double);
+    int diffw_2nd(double *, double *, double *, double *, double);
 };
 #endif
