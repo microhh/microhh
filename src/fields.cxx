@@ -133,11 +133,13 @@ int cfields::boundary()
 {
   u->boundary_bottop(0);
   v->boundary_bottop(0);
-  // w->boundary_bottop(1);
+  // w->boundary_bottop(0);
+  s->boundary_bottop(1);
 
   u->boundary_cyclic();
   v->boundary_cyclic();
   w->boundary_cyclic();
+  s->boundary_cyclic();
 
   // for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
   //   std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);

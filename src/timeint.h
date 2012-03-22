@@ -22,7 +22,7 @@ class ctimeint
     cgrid *grid;
     cfields *fields;
 
-    int rk3(double *, double *, double);
-    int rk4(double *, double *, double);
+    int rk3(double *, double *, double *, double *, double);
+    int rk4(double *, double *, double *, double *, double);
 };
 #endif

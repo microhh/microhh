@@ -20,7 +20,7 @@ ctimeint::~ctimeint()
 int ctimeint::exec(double dt)
 {
   // return rk3(fields->flow, fields->flowt, dt);
-  return rk4(fields->flow, fields->flowt, dt);
+  return rk4(fields->flow, fields->flowt, fields->scal, fields->scalt, dt);
 }
 
 double ctimeint::subdt(double dt)
@@ -35,7 +35,7 @@ double ctimeint::subdt(double dt)
   return cB[substep]*dt;
 }
 
-int ctimeint::rk3(double * __restrict__ a, double * __restrict__ at, double dt)
+int ctimeint::rk3(double * __restrict__ flow, double * __restrict__ flowt, double * __restrict__ scal, double * __restrict__ scalt, double dt)
 {
   const double cA [] = {0., -5./9., -153./128.};
   const double cB [] = {1./3., 15./16., 8./15.};
@@ -44,18 +44,24 @@ int ctimeint::rk3(double * __restrict__ a, double * __restrict__ at, double dt)
   int n;
 
   for(n=0; n<grid->ncells*3; n++)
-    a[n] = a[n] + cB[substep]*dt*at[n];
+    flow[n] = flow[n] + cB[substep]*dt*flowt[n];
+
+  for(n=0; n<grid->ncells; n++)
+    scal[n] = scal[n] + cB[substep]*dt*scalt[n];
 
   substep = (substep+1) % 3;
 
   // substep 0 resets the tendencies, because cA[0] == 0
   for(n=0; n<grid->ncells*3; n++)
-    at[n] = cA[substep]*at[n];
+    flowt[n] = cA[substep]*flowt[n];
+
+  for(n=0; n<grid->ncells; n++)
+    scalt[n] = cA[substep]*scalt[n];
 
   return substep;
 }
 
-int ctimeint::rk4(double * __restrict__ a, double * __restrict__ at, double dt)
+int ctimeint::rk4(double * __restrict__ flow, double * __restrict__ flowt, double * __restrict__ scal, double * __restrict__ scalt, double dt)
 {
   const double cA [] = {
       0.,
@@ -74,13 +80,19 @@ int ctimeint::rk4(double * __restrict__ a, double * __restrict__ at, double dt)
   int n;
 
   for(n=0; n<grid->ncells*3; n++)
-    a[n] = a[n] + cB[substep]*dt*at[n];
+    flow[n] = flow[n] + cB[substep]*dt*flowt[n];
+
+  for(n=0; n<grid->ncells; n++)
+    scal[n] = scal[n] + cB[substep]*dt*scalt[n];
 
   substep = (substep+1) % 5;
 
   // substep 0 resets the tendencies, because cA[0] == 0
   for(n=0; n<grid->ncells*3; n++)
-    at[n] = cA[substep]*at[n];
+    flowt[n] = cA[substep]*flowt[n];
+
+  for(n=0; n<grid->ncells; n++)
+    scalt[n] = cA[substep]*scalt[n];
 
   return substep;
 }
