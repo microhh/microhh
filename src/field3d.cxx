@@ -19,17 +19,14 @@ cfield3d::~cfield3d()
 
 int cfield3d::boundary_bottop(int sw)
 { 
-  int ijk0,ijk1,icells,ijcells,ii,jj,kk,kstart,kend;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int ijk0,ijk1,ii,jj,kk,kstart,kend;
 
   kstart = grid->kstart;
   kend   = grid->kend;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   if(sw == 0)
   {
@@ -37,8 +34,8 @@ int cfield3d::boundary_bottop(int sw)
       for(int j=0; j<grid->jcells; j++)
         for(int i=0; i<grid->icells; i++)
         {
-          ijk0 = i + j*icells + (kstart-k-1)*ijcells;
-          ijk1 = i + j*icells + (kstart+k  )*ijcells;
+          ijk0 = i + j*jj + (kstart-k-1)*kk;
+          ijk1 = i + j*jj + (kstart+k  )*kk;
           data[ijk0] = -1.*data[ijk1];
         }
 
@@ -46,8 +43,8 @@ int cfield3d::boundary_bottop(int sw)
       for(int j=0; j<grid->jcells; j++)
         for(int i=0; i<grid->icells; i++)
         {
-          ijk0 = i + j*icells + (kend+k  )*ijcells;
-          ijk1 = i + j*icells + (kend-k-1)*ijcells;
+          ijk0 = i + j*jj + (kend+k  )*kk;
+          ijk1 = i + j*jj + (kend-k-1)*kk;
           data[ijk0] = -1.*data[ijk1];
         }
   }
@@ -57,8 +54,8 @@ int cfield3d::boundary_bottop(int sw)
       for(int j=0; j<grid->jcells; j++)
         for(int i=0; i<grid->icells; i++)
         {
-          ijk0 = i + j*icells + (kstart-k-1)*ijcells;
-          ijk1 = i + j*icells + (kstart+k  )*ijcells;
+          ijk0 = i + j*jj + (kstart-k-1)*kk;
+          ijk1 = i + j*jj + (kstart+k  )*kk;
           data[ijk0] = data[ijk1];
         }
 
@@ -66,8 +63,8 @@ int cfield3d::boundary_bottop(int sw)
       for(int j=0; j<grid->jcells; j++)
         for(int i=0; i<grid->icells; i++)
         {
-          ijk0 = i + j*icells + (kend+k  )*ijcells;
-          ijk1 = i + j*icells + (kend-k-1)*ijcells;
+          ijk0 = i + j*jj + (kend+k  )*kk;
+          ijk1 = i + j*jj + (kend-k-1)*kk;
           data[ijk0] = data[ijk1];
         }
   }
