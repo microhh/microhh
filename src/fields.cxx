@@ -61,12 +61,15 @@ int cfields::initfields()
   for(int n=0; n<grid->ncells; n++)
     scal[n] = 0.;
 
-  // set all tendencies to 0
+  // set all tendencies and pressure to 0
   for(int n=0; n<grid->ncells*3; n++)
     flowt[n] = 0.;
 
   for(int n=0; n<grid->ncells; n++)
     scalt[n] = 0.;
+
+  for(int n=0; n<grid->ncells; n++)
+    pres[n] = 0.;
 
   return 0;
 }

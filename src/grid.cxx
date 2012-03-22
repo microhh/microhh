@@ -126,6 +126,11 @@ int cgrid::creategrid()
     dzhi[k] = 1./dzh[k];
   }
 
+  // set the non-initialized values to large values
+  zh  [0] = -999.;
+  dzh [0] = -999.;
+  dzhi[0] = -999.;
+
   // compute the heigth of the grid cells
   for(k=kstart; k<kend; k++)
   {
