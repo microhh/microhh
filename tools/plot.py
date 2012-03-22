@@ -58,3 +58,9 @@ tmp = array(unpack('{}d'.format(n), raw))
 p   = tmp.reshape((nz, ny, nx))
 fin.close()
 
+fin = open("s.{:06d}".format(iter),"rb")
+raw = fin.read(n*8)
+tmp = array(unpack('{}d'.format(n), raw))
+s   = tmp.reshape((nz, ny, nx))
+fin.close()
+

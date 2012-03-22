@@ -48,3 +48,9 @@ class microhh:
     self.p = tmp.reshape((nz, ny, nx))
     fin.close()
 
+    fin = open("s.{:06d}".format(iter),"rb")
+    raw = fin.read(n*8)
+    tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
+    self.s = tmp.reshape((nz, ny, nx))
+    fin.close()
+
