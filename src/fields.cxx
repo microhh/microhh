@@ -12,15 +12,26 @@ cfields::cfields(cgrid *gridin)
 
 cfields::~cfields()
 {
+  delete[] flow;
+  delete[] flowt;
+
+  delete[] scal;
+  delete[] scalt;
+
+  delete[] pres;
+
   delete u;
   delete v;
   delete w;
+  delete p;
+
   delete ut;
   delete vt;
   delete wt;
-  delete[] flow;
-  delete[] flowt;
-  delete[] pres;
+
+  delete s;
+  delete st;
+
   std::printf("Destroying instance of object fields\n");
 }
 

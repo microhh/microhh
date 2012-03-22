@@ -15,6 +15,27 @@ cpres::cpres(cgrid *gridin, cfields *fieldsin)
 
 cpres::~cpres()
 {
+  fftw_destroy_plan(iplanf);
+  fftw_destroy_plan(iplanb);
+  fftw_destroy_plan(jplanf);
+  fftw_destroy_plan(jplanb);
+
+  fftw_free(fftini);
+  fftw_free(fftouti);
+  fftw_free(fftinj);
+  fftw_free(fftoutj);
+
+  delete[] a;
+  delete[] b;
+  delete[] c;
+  delete[] d;
+
+  delete[] xin;
+  delete[] xout;
+
+  delete[] bmati;
+  delete[] bmatj;
+
   std::printf("Destroying instance of object pres\n");
 }
 

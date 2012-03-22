@@ -34,6 +34,12 @@ cgrid::cgrid()
 
 cgrid::~cgrid()
 {
+  delete[] x;
+  delete[] xh;
+  delete[] y;
+  delete[] yh;
+  delete[] z;
+  delete[] zh;
   delete[] dz;
   delete[] dzh;
   delete[] dzi;
