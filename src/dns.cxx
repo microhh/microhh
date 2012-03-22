@@ -49,6 +49,7 @@ int cdns::timestep()
     (*fields->v).save(iteration);
     (*fields->w).save(iteration);
     (*fields->p).save(iteration);
+    (*fields->s).save(iteration);
   }
 
   return 0;

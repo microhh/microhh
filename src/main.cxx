@@ -31,6 +31,7 @@ int main()
   fields.v->save(0);
   fields.w->save(0);
   fields.p->save(0);
+  fields.s->save(0);
   // END INIT
 
   // DNS

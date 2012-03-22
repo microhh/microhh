@@ -35,6 +35,11 @@ int cfields::initfields()
   std::printf("Allocating %d bytes of memory for pres\n", grid->ncells*(int)sizeof(double));
   pres  = new double[grid->ncells];
 
+  std::printf("Allocating %d bytes of memory for scal\n", grid->ncells*(int)sizeof(double));
+  scal  = new double[grid->ncells];
+  std::printf("Allocating %d bytes of memory for scalt\n", grid->ncells*(int)sizeof(double));
+  scalt = new double[grid->ncells];
+
   // set pointers to correct location
   u  = new cfield3d(grid, &flow[grid->ncells*0], "u");
   v  = new cfield3d(grid, &flow[grid->ncells*1], "v");
@@ -45,12 +50,23 @@ int cfields::initfields()
   vt = new cfield3d(grid, &flowt[grid->ncells*1], "vt");
   wt = new cfield3d(grid, &flowt[grid->ncells*2], "wt");
 
+  s  = new cfield3d(grid, &scal[grid->ncells*0], "s");
+
+  st = new cfield3d(grid, &scalt[grid->ncells*0], "st");
+
   // set all values to 0
   for(int n=0; n<grid->ncells*3; n++)
     flow[n] = 0.;
 
+  for(int n=0; n<grid->ncells; n++)
+    scal[n] = 0.;
+
   // set all tendencies to 0
-  resettend();
+  for(int n=0; n<grid->ncells*3; n++)
+    flowt[n] = 0.;
+
+  for(int n=0; n<grid->ncells; n++)
+    scalt[n] = 0.;
 
   return 0;
 }
@@ -96,6 +112,8 @@ int cfields::createfields()
   {
     k           = n / (grid->icells*grid->jcells);
     u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
+    s->data[n] += (double)(k+1-grid->kgc) * grid->zsize / (double)(grid->ktot+1);
+    // s1 = arange(1., kmax+1., 1.) * zsize/(kmax+1)
   }
   // end Moser180 setup 
 
@@ -127,24 +145,50 @@ int cfields::boundary()
   return 0;
 }
 
-int cfields::resettend()
-{
-  for(int n=0; n<grid->ncells*3; n++)
-    flowt[n] = 0.;
-  return 0;
-}
+// int cfields::resettend()
+// {
+//   for(int n=0; n<grid->ncells*3; n++)
+//     flowt[n] = 0.;
+//   return 0;
+// }
 
 int cfields::check()
 {
-  double mom,tke;
+  double mom,tke,mass;
 
-  mom = calcmom(u->data, v->data, w->data, grid->dz);
-  tke = calctke(u->data, v->data, w->data, grid->dz);
+  mom  = calcmom (u->data, v->data, w->data, grid->dz);
+  tke  = calctke (u->data, v->data, w->data, grid->dz);
+  mass = calcmass(s->data, u->data, v->data, w->data, grid->dz);
 
-  std::printf("momentum = %24.14E, TKE = %24.14E\n", mom, tke);
+  std::printf("momentum = %24.14E, TKE = %24.14E, mass = %24.14E\n", mom, tke, mass);
 
   return 0;
 }
+
+double cfields::calcmass(double * __restrict__ s, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dz)
+{
+  int    ijk,ii,jj,kk;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  double mass;
+  mass = 0;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        mass += s[ijk]*dz[k];
+      }
+
+  mass /= (grid->imax*grid->jmax*grid->zsize);
+
+  return mass;
+}
+
 
 double cfields::calcmom(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dz)
 {

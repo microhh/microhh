@@ -23,6 +23,7 @@ int cadvec::exec()
   advecv_2nd((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
   advecw_2nd((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
 
+  advecs_2nd((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
   return 0;
 }
 
@@ -151,6 +152,37 @@ int cadvec::advecw_2nd(double * __restrict__ wt, double * __restrict__ u, double
 
               - (  interp2(w[ijk   ], w[ijk+kk]) * interp2(w[ijk   ], w[ijk+kk])
                  - interp2(w[ijk-kk], w[ijk   ]) * interp2(w[ijk-kk], w[ijk   ]) ) * dzhi[k];
+      }
+
+  return 0;
+}
+
+int cadvec::advecs_2nd(double * __restrict__ st, double * __restrict__ s, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
+{
+  int    ijk,ii,jj,kk;
+  double dxi,dyi;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        st[ijk] += 
+              - (  u[ijk+ii] * interp2(s[ijk   ], s[ijk+ii])
+                 - u[ijk   ] * interp2(s[ijk-ii], s[ijk   ]) ) * dxi
+
+              - (  v[ijk+jj] * interp2(s[ijk   ], s[ijk+jj])
+                 - v[ijk   ] * interp2(s[ijk-jj], s[ijk   ]) ) * dyi 
+
+              - (  w[ijk+kk] * interp2(s[ijk   ], s[ijk+kk])
+                 - w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) * dzi[k];
       }
 
   return 0;

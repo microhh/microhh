@@ -24,6 +24,7 @@ int cdiff::exec()
   diffc_2nd((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi);
   diffw_2nd((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi);
 
+  diffc_2nd((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi);
   return 0;
 }
 
