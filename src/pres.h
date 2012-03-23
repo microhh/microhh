@@ -28,8 +28,8 @@ class cpres
 
     double *bmati, *bmatj;
 
-    double *a, *b, *c, *d;
-    double *x;
+    double *a, *b, *c;
+    double *work2d, *work3d;
 
     // functions
     int pres_2nd_init();
@@ -41,8 +41,7 @@ class cpres
     int pres_2nd_out(double *, double *, double *,
                      double *, double *);
     int tdma(double *, double *, double *, double *, 
-             double * ,
-             int);
+             double *, double *);
     double calcdivergence(double *, double *, double *, double *);
 };
 #endif

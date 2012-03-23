@@ -30,9 +30,8 @@ cpres::~cpres()
   delete[] a;
   delete[] b;
   delete[] c;
-  delete[] d;
-
-  delete[] x;
+  delete[] work2d;
+  delete[] work3d;
 
   delete[] bmati;
   delete[] bmatj;
@@ -126,11 +125,10 @@ int cpres::pres_2nd_init()
 
   // allocate help variables for the matrix solver
   a = new double[ktot];
-  b = new double[ktot];
+  b = new double[itot*jtot*ktot];
   c = new double[ktot];
-  d = new double[ktot];
-
-  x = new double[ktot];
+  work2d = new double[itot*jtot];
+  work3d = new double[itot*jtot*ktot];
 
   // create vectors that go into the tridiagonal matrix solver
   for(int k=0; k<ktot; k++)
@@ -246,34 +244,30 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz)
       jindex = j;
 
       // create vectors that go into the tridiagonal matrix solver
+      int ijkb;
+
       for(k=0; k<ktot; k++)
       {
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        b[k] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
-        x[k] = dz[k+kgc]*dz[k+kgc] * p[ijk];
+        ijkb = i + j*itot + k*itot*jtot;
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        b[ijkb] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+        p[ijk]  = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
       // substitute BC's
-      b[0] += a[0];
+      b[i+j*itot] += a[0];
 
       // for wave number 0, which contains average, set pressure at top to zero
       if(iindex == 0 && jindex == 0)
-        b[ktot-1] -= c[ktot-1];
+        b[i + j*itot + (ktot-1)*itot*jtot] -= c[ktot-1];
       // set dp/dz at top to zero
       else
-        b[ktot-1] += c[ktot-1];
-
-      // call tdma solver
-      tdma(a, b, c, x, d, ktot);
-        
-      // update the pressure (in fourier space, still)
-      for(int k=0; k<ktot; k++)
-      {
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        p[ijk] = x[k];
-      }
+        b[i + j*itot + (ktot-1)*itot*jtot] += c[ktot-1];
     }
 
+  // call tdma solver
+  tdma(a, b, c, p, work2d, work3d);
+        
   // TRANSPOSE
   
   // transform the second transform back
@@ -347,25 +341,75 @@ int cpres::pres_2nd_out(double * restrict ut, double * restrict vt, double * res
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
 int cpres::tdma(double * restrict a, double * restrict b, double * restrict c, 
-                double * restrict x, double * restrict gam, 
-                int size)
+                double * restrict p, double * restrict work2d, double * restrict work3d)
+                
 {
-  int k;
-  double tmp;
+  int i,j,k,jj,kk,ijk,ijkp,ij,jjp,kkp;
+  int itot,jtot,ktot,igc,jgc,kgc;
 
-  tmp = b[0];
+  itot = grid->itot;
+  jtot = grid->jtot;
+  ktot = grid->ktot;
 
-  x[0] = x[0] / tmp;
+  igc = grid->igc;
+  jgc = grid->jgc;
+  kgc = grid->kgc;
 
-  for(k=1; k<size; k++)
+  jj = itot;
+  kk = itot*jtot;
+
+  jjp = grid->icells;
+  kkp = grid->icells*grid->jcells;
+
+  for(j=0;j<jtot;j++)
+    for(i=0;i<itot;i++)
+    {
+      ij = i + j*jj;
+      work2d[ijk] = b[ij];
+    }
+
+  for(j=0;j<jtot;j++)
+    for(i=0;i<itot;i++)
+    {
+      ij   = i + j*jj;
+      ijkp = i+igc + (j+jgc)*jjp + kgc*kkp;
+      p[ijkp] = p[ijkp] / work2d[ij];
+    }
+
+  for(k=1; k<ktot; k++)
   {
-    gam[k] = c[k-1] / tmp;
-    tmp    = b[k] - a[k]*gam[k];
-    x[k]   = (x[k] - a[k]*x[k-1]) / tmp;
+    for(j=0;j<jtot;j++)
+      for(i=0;i<itot;i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + k*kk;
+        work3d[ijk] = c[k-1] / work2d[ij];
+      }
+    for(j=0;j<jtot;j++)
+      for(i=0;i<itot;i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + k*kk;
+        work2d[ij] = b[ijk] - a[k]*work3d[ijk];
+      }
+    for(j=0;j<jtot;j++)
+      for(i=0;i<itot;i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + k*kk;
+        ijkp = i+igc + (j+jgc)*jjp + kgc*kkp;
+        p[ijkp] = (p[ijkp] - a[k]*p[ijkp-kkp]) / work2d[ij];
+      }
   }
 
-  for(k=size-2; k>=0; k--)
-    x[k] -= gam[k+1]*x[k+1];
+  for(k=ktot-2; k>=0; k--)
+    for(j=0;j<jtot;j++)
+      for(i=0;i<itot;i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        ijkp = i+igc + (j+jgc)*jjp + kgc*kkp;
+        p[ijkp] -= work3d[ijk+kk]*p[ijkp+kkp];
+      }
 
   return 0;
 }
