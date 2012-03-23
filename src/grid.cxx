@@ -132,8 +132,8 @@ int cgrid::creategrid()
     dzhi[k] = 1./dzh[k];
   }
 
-  // set the non-initialized values to large values
-  zh  [0] = -999.;
+  // set the non-initialized values
+  zh  [0] = -zh[2];
   dzh [0] = -999.;
   dzhi[0] = -999.;
 
