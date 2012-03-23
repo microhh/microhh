@@ -171,11 +171,11 @@ int cpres::pres_2nd_in(double * restrict p,
 
 int cpres::pres_2nd_solve(double * restrict p, double * restrict dz)
 {
-  int i,j,k,ii,jj,kk,ijk;
-  int imax, jmax, kmax;
-  int itot, jtot, ktot;
-  int igc, jgc, kgc;
-  int iindex, jindex;
+  int i,j,k,ii,jj,kk,ijk,ijkb;
+  int imax,jmax,kmax;
+  int itot,jtot,ktot;
+  int igc,jgc,kgc;
+  int iindex,jindex;
 
   imax = grid->imax;
   jmax = grid->jmax;
@@ -234,26 +234,26 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz)
   // TRANSPOSE
 
   // solve the tridiagonal system
-
-  for(j=0; j<jmax; j++)
-    for(i=0; i<imax; i++)
-    {
-      // iindex = mpicoordx * imax + i
-      // jindex = mpicoordy * jmax + j
-      iindex = i;
-      jindex = j;
-
-      // create vectors that go into the tridiagonal matrix solver
-      int ijkb;
-
-      for(k=0; k<ktot; k++)
+  
+  // create vectors that go into the tridiagonal matrix solver
+  for(k=0; k<ktot; k++)
+    for(j=0; j<jmax; j++)
+      for(i=0; i<imax; i++)
       {
+        // iindex = mpicoordx * imax + i
+        // jindex = mpicoordy * jmax + j
+        iindex = i;
+        jindex = j;
+
         ijkb = i + j*itot + k*itot*jtot;
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         b[ijkb] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
         p[ijk]  = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
+  for(j=0; j<jmax; j++)
+    for(i=0; i<imax; i++)
+    {
       // substitute BC's
       b[i+j*itot] += a[0];
 
