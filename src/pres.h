@@ -29,7 +29,7 @@ class cpres
     double *bmati, *bmatj;
 
     double *a, *b, *c, *d;
-    double *xin, *xout;
+    double *x;
 
     // functions
     int pres_2nd_init();
@@ -41,7 +41,7 @@ class cpres
     int pres_2nd_out(double *, double *, double *,
                      double *, double *);
     int tdma(double *, double *, double *, double *, 
-             double * ,double *, 
+             double * ,
              int);
     double calcdivergence(double *, double *, double *, double *);
 };

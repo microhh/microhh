@@ -32,8 +32,7 @@ cpres::~cpres()
   delete[] c;
   delete[] d;
 
-  delete[] xin;
-  delete[] xout;
+  delete[] x;
 
   delete[] bmati;
   delete[] bmatj;
@@ -126,13 +125,12 @@ int cpres::pres_2nd_init()
     bmati[i] = bmati[itot-i];
 
   // allocate help variables for the matrix solver
-  a  = new double[ktot];
-  b  = new double[ktot];
-  c  = new double[ktot];
-  d  = new double[ktot];
+  a = new double[ktot];
+  b = new double[ktot];
+  c = new double[ktot];
+  d = new double[ktot];
 
-  xin  = new double[ktot];
-  xout = new double[ktot];
+  x = new double[ktot];
 
   // create vectors that go into the tridiagonal matrix solver
   for(int k=0; k<ktot; k++)
@@ -251,8 +249,8 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz)
       for(k=0; k<ktot; k++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        b  [k] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
-        xin[k] = dz[k+kgc]*dz[k+kgc] * p[ijk];
+        b[k] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+        x[k] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
       // substitute BC's
@@ -266,13 +264,13 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz)
         b[ktot-1] += c[ktot-1];
 
       // call tdma solver
-      tdma(a, b, c, xin, xout, d, ktot);
+      tdma(a, b, c, x, d, ktot);
         
       // update the pressure (in fourier space, still)
       for(int k=0; k<ktot; k++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        p[ijk] = xout[k];
+        p[ijk] = x[k];
       }
     }
 
@@ -348,8 +346,8 @@ int cpres::pres_2nd_out(double * restrict ut, double * restrict vt, double * res
 }
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
-int cpres::tdma(double * restrict a,   double * restrict b,    double * restrict c, 
-                double * restrict xin, double * restrict xout, double * restrict gam, 
+int cpres::tdma(double * restrict a, double * restrict b, double * restrict c, 
+                double * restrict x, double * restrict gam, 
                 int size)
 {
   int k;
@@ -357,17 +355,17 @@ int cpres::tdma(double * restrict a,   double * restrict b,    double * restrict
 
   tmp = b[0];
 
-  xout[0] = xin[0] / tmp;
+  x[0] = x[0] / tmp;
 
   for(k=1; k<size; k++)
   {
-    gam[k]  = c[k-1] / tmp;
-    tmp     = b[k] - a[k]*gam[k];
-    xout[k] = (xin[k] - a[k]*xout[k-1]) / tmp;
+    gam[k] = c[k-1] / tmp;
+    tmp    = b[k] - a[k]*gam[k];
+    x[k]   = (x[k] - a[k]*x[k-1]) / tmp;
   }
 
   for(k=size-2; k>=0; k--)
-    xout[k] -= gam[k+1]*xout[k+1];
+    x[k] -= gam[k+1]*x[k+1];
 
   return 0;
 }
