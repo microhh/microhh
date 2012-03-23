@@ -23,6 +23,8 @@ cdns::cdns(cgrid *gridin, cfields *fieldsin)
   itime    = (int)(ifactor * time);
   iruntime = (int)(ifactor * runtime);
   idt      = (int)(ifactor * dt);
+
+  clock_gettime(CLOCK_REALTIME, &start);
 }
 
 cdns::~cdns()
@@ -41,7 +43,17 @@ int cdns::timestep()
     loop = false;
 
   if(iteration % 100 == 0) 
-    std::printf("Iteration = %6d, time = %7.1f\n", iteration, time);
+  {
+    clock_gettime(CLOCK_REALTIME, &end);
+
+    double timeelapsed;
+
+    timeelapsed = (double)(end.tv_sec-start.tv_sec) + (double)(end.tv_nsec-start.tv_nsec) * 1.e-9;
+
+    std::printf("Iteration = %6d, runtime = %7.1f, cputime = %10.7f\n", iteration, time, timeelapsed);
+
+    start = end;
+  }
 
   if(iteration % 500 == 0) 
   {

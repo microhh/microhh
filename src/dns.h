@@ -1,6 +1,7 @@
 #ifndef DNS
 #define DNS
 
+#include <time.h>
 #include "grid.h"
 #include "fields.h"
 
@@ -30,5 +31,8 @@ class cdns
   private:
     cgrid *grid;
     cfields *fields;
+
+    timespec start;
+    timespec end;
 };
 #endif
