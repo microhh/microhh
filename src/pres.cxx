@@ -365,7 +365,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
     for(i=0;i<itot;i++)
     {
       ij = i + j*jj;
-      work2d[ijk] = b[ij];
+      work2d[ij] = b[ij];
     }
 
   for(j=0;j<jtot;j++)
@@ -373,7 +373,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
     {
       ij   = i + j*jj;
       ijkp = i+igc + (j+jgc)*jjp + kgc*kkp;
-      p[ijkp] = p[ijkp] / work2d[ij];
+      p[ijkp] /= work2d[ij];
     }
 
   for(k=1; k<ktot; k++)
@@ -397,8 +397,9 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
-        ijkp = i+igc + (j+jgc)*jjp + kgc*kkp;
-        p[ijkp] = (p[ijkp] - a[k]*p[ijkp-kkp]) / work2d[ij];
+        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
+        p[ijkp] -= a[k]*p[ijkp-kkp];
+        p[ijkp] /= work2d[ij];
       }
   }
 
@@ -407,7 +408,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
       for(i=0;i<itot;i++)
       {
         ijk  = i + j*jj + k*kk;
-        ijkp = i+igc + (j+jgc)*jjp + kgc*kkp;
+        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
         p[ijkp] -= work3d[ijk+kk]*p[ijkp+kkp];
       }
 
