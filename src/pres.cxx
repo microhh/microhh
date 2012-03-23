@@ -6,6 +6,8 @@
 #include "fields.h"
 #include "pres.h"
 
+#define restrict __restrict__
+
 cpres::cpres(cgrid *gridin, cfields *fieldsin)
 {
   std::printf("Creating instance of object pres\n");
@@ -142,10 +144,10 @@ int cpres::pres_2nd_init()
   return 0;
 }
 
-int cpres::pres_2nd_in(double * __restrict__ p, 
-                       double * __restrict__ u , double * __restrict__ v , double * __restrict__ w , 
-                       double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt, 
-                       double * __restrict__ dzi,
+int cpres::pres_2nd_in(double * restrict p, 
+                       double * restrict u , double * restrict v , double * restrict w , 
+                       double * restrict ut, double * restrict vt, double * restrict wt, 
+                       double * restrict dzi,
                        double dt)
 {
   int    ijk,ii,jj,kk;
@@ -171,7 +173,7 @@ int cpres::pres_2nd_in(double * __restrict__ p,
   return 0;
 }
 
-int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
+int cpres::pres_2nd_solve(double * restrict p, double * restrict dz)
 {
   int i,j,k,ii,jj,kk,ijk;
   int imax, jmax, kmax;
@@ -319,8 +321,8 @@ int cpres::pres_2nd_solve(double * __restrict__ p, double * __restrict__ dz)
   return 0;
 }
 
-int cpres::pres_2nd_out(double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt, 
-                        double * __restrict__ p , double * __restrict__ dzhi)
+int cpres::pres_2nd_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+                        double * restrict p , double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -346,8 +348,8 @@ int cpres::pres_2nd_out(double * __restrict__ ut, double * __restrict__ vt, doub
 }
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
-int cpres::tdma(double * __restrict__ a,   double * __restrict__ b,    double * __restrict__ c, 
-                double * __restrict__ xin, double * __restrict__ xout, double * __restrict__ gam, 
+int cpres::tdma(double * restrict a,   double * restrict b,    double * restrict c, 
+                double * restrict xin, double * restrict xout, double * restrict gam, 
                 int size)
 {
   int k;
@@ -370,7 +372,7 @@ int cpres::tdma(double * __restrict__ a,   double * __restrict__ b,    double * 
   return 0;
 }
 
-double cpres::calcdivergence(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
+double cpres::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,icells,ijcells,ii,jj,kk;
   double dxi,dyi;

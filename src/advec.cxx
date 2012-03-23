@@ -5,6 +5,8 @@
 #include "fields.h"
 #include "advec.h"
 
+#define restrict __restrict__
+
 cadvec::cadvec(cgrid *gridin, cfields *fieldsin)
 {
   std::printf("Creating instance of object advec\n");
@@ -35,7 +37,7 @@ double cadvec::getcfl(double dt)
   return cfl;
 }
 
-double cadvec::calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi, double dt)
+double cadvec::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -64,7 +66,7 @@ double cadvec::calccfl(double * __restrict__ u, double * __restrict__ v, double 
   return cfl;
 }
 
-int cadvec::advecu_2nd(double * __restrict__ ut, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
+int cadvec::advecu_2nd(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -95,7 +97,7 @@ int cadvec::advecu_2nd(double * __restrict__ ut, double * __restrict__ u, double
   return 0;
 }
 
-int cadvec::advecv_2nd(double * __restrict__ vt, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
+int cadvec::advecv_2nd(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -126,7 +128,7 @@ int cadvec::advecv_2nd(double * __restrict__ vt, double * __restrict__ u, double
   return 0;
 }
 
-int cadvec::advecw_2nd(double * __restrict__ wt, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzhi)
+int cadvec::advecw_2nd(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -157,7 +159,7 @@ int cadvec::advecw_2nd(double * __restrict__ wt, double * __restrict__ u, double
   return 0;
 }
 
-int cadvec::advecs_2nd(double * __restrict__ st, double * __restrict__ s, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dzi)
+int cadvec::advecs_2nd(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;

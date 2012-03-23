@@ -4,6 +4,8 @@
 #include "grid.h"
 #include "fields.h"
 
+#define restrict __restrict__
+
 cfields::cfields(cgrid *gridin)
 {
   std::printf("Creating instance of object fields\n");
@@ -182,7 +184,7 @@ int cfields::check()
   return 0;
 }
 
-double cfields::calcmass(double * __restrict__ s, double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dz)
+double cfields::calcmass(double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   int    ijk,ii,jj,kk;
 
@@ -207,7 +209,7 @@ double cfields::calcmass(double * __restrict__ s, double * __restrict__ u, doubl
 }
 
 
-double cfields::calcmom(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dz)
+double cfields::calcmom(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   int    ijk,icells,ijcells,ii,jj,kk;
 
@@ -234,7 +236,7 @@ double cfields::calcmom(double * __restrict__ u, double * __restrict__ v, double
   return momentum;
 }
 
-double cfields::calctke(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, double * __restrict__ dz)
+double cfields::calctke(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   int    ijk,icells,ijcells,ii,jj,kk;
 

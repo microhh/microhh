@@ -3,6 +3,8 @@
 #include "fields.h"
 #include "timeint.h"
 
+#define restrict __restrict__
+
 ctimeint::ctimeint(cgrid *gridin, cfields *fieldsin)
 {
   std::printf("Creating instance of object timeint\n");
@@ -35,7 +37,7 @@ double ctimeint::subdt(double dt)
   return cB[substep]*dt;
 }
 
-int ctimeint::rk3(double * __restrict__ flow, double * __restrict__ flowt, double * __restrict__ scal, double * __restrict__ scalt, double dt)
+int ctimeint::rk3(double * restrict flow, double * restrict flowt, double * restrict scal, double * restrict scalt, double dt)
 {
   const double cA [] = {0., -5./9., -153./128.};
   const double cB [] = {1./3., 15./16., 8./15.};
@@ -61,7 +63,7 @@ int ctimeint::rk3(double * __restrict__ flow, double * __restrict__ flowt, doubl
   return substep;
 }
 
-int ctimeint::rk4(double * __restrict__ flow, double * __restrict__ flowt, double * __restrict__ scal, double * __restrict__ scalt, double dt)
+int ctimeint::rk4(double * restrict flow, double * restrict flowt, double * restrict scal, double * restrict scalt, double dt)
 {
   const double cA [] = {
       0.,

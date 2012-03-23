@@ -5,6 +5,8 @@
 #include "fields.h"
 #include "diff.h"
 
+#define restrict __restrict__
+
 cdiff::cdiff(cgrid *gridin, cfields *fieldsin)
 {
   std::printf("Creating instance of object diff\n");
@@ -28,7 +30,7 @@ int cdiff::exec()
   return 0;
 }
 
-int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double * __restrict__ dzi, double * __restrict__ dzhi, double visc)
+int cdiff::diffc_2nd(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
@@ -57,7 +59,7 @@ int cdiff::diffc_2nd(double * __restrict__ at, double * __restrict__ a, double *
   return 0;
 }
 
-int cdiff::diffw_2nd(double * __restrict__ wt, double * __restrict__ w, double * __restrict__ dzi, double * __restrict__ dzhi, double visc)
+int cdiff::diffw_2nd(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;

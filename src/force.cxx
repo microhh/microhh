@@ -3,6 +3,8 @@
 #include "fields.h"
 #include "force.h"
 
+#define restrict __restrict__
+
 cforce::cforce(cgrid *gridin, cfields *fieldsin)
 {
   std::printf("Creating instance of object force\n");
@@ -22,7 +24,7 @@ int cforce::exec(double dt)
   return 0;
 }
 
-int cforce::flux(double * __restrict__ ut, double * __restrict__ u, double * __restrict__ dz, double dt)
+int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz, double dt)
 {
   int ijk,ii,jj,kk;
 
