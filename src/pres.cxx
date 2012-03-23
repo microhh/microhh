@@ -137,6 +137,39 @@ int cpres::pres_2nd_init()
     c[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc+1];
   }
 
+  // prepare matrices for tdma solver
+  int imax,jmax;
+  imax = grid->imax;
+  jmax = grid->jmax;
+  int iindex,jindex,ijkb;
+
+  for(int k=0; k<ktot; k++)
+    for(int j=0; j<jmax; j++)
+      for(int i=0; i<imax; i++)
+      {
+        // iindex = mpicoordx * imax + i
+        // jindex = mpicoordy * jmax + j
+        iindex = i;
+        jindex = j;
+
+        ijkb = i + j*itot + k*itot*jtot;
+        b[ijkb] = grid->dz[k+kgc]*grid->dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+      }
+
+  for(int j=0; j<jmax; j++)
+    for(int i=0; i<imax; i++)
+    {
+      // substitute BC's
+      b[i+j*itot] += a[0];
+
+      // for wave number 0, which contains average, set pressure at top to zero
+      if(iindex == 0 && jindex == 0)
+        b[i + j*itot + (ktot-1)*itot*jtot] -= c[ktot-1];
+      // set dp/dz at top to zero
+      else
+        b[i + j*itot + (ktot-1)*itot*jtot] += c[ktot-1];
+    }
+
   return 0;
 }
 
@@ -240,30 +273,30 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz)
     for(j=0; j<jmax; j++)
       for(i=0; i<imax; i++)
       {
-        // iindex = mpicoordx * imax + i
-        // jindex = mpicoordy * jmax + j
-        iindex = i;
-        jindex = j;
+        // // iindex = mpicoordx * imax + i
+        // // jindex = mpicoordy * jmax + j
+        // iindex = i;
+        // jindex = j;
 
-        ijkb = i + j*itot + k*itot*jtot;
+        // ijkb = i + j*itot + k*itot*jtot;
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        b[ijkb] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+        // b[ijkb] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
         p[ijk]  = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
-  for(j=0; j<jmax; j++)
-    for(i=0; i<imax; i++)
-    {
-      // substitute BC's
-      b[i+j*itot] += a[0];
+  // for(j=0; j<jmax; j++)
+  //   for(i=0; i<imax; i++)
+  //   {
+  //     // substitute BC's
+  //     b[i+j*itot] += a[0];
 
-      // for wave number 0, which contains average, set pressure at top to zero
-      if(iindex == 0 && jindex == 0)
-        b[i + j*itot + (ktot-1)*itot*jtot] -= c[ktot-1];
-      // set dp/dz at top to zero
-      else
-        b[i + j*itot + (ktot-1)*itot*jtot] += c[ktot-1];
-    }
+  //     // for wave number 0, which contains average, set pressure at top to zero
+  //     if(iindex == 0 && jindex == 0)
+  //       b[i + j*itot + (ktot-1)*itot*jtot] -= c[ktot-1];
+  //     // set dp/dz at top to zero
+  //     else
+  //       b[i + j*itot + (ktot-1)*itot*jtot] += c[ktot-1];
+  //   }
 
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);
