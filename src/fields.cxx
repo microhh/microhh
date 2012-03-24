@@ -117,13 +117,13 @@ int cfields::createfields()
   viscs = 1.0e-5;
 
   double dpdxls = -8.e-7;
-  double rndamp =  1.e-2;
+  double rndamp =  5.e-3;
   int k;
 
   // put initial perturbation in u, v and w
   std::srand(0);
   for(int n=0; n<grid->ncells*3; n++)
-    flow[n] = rndamp * (double)(std::rand() % 10000) / 10000.;
+    flow[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
 
   for(int n=0; n<grid->ncells; n++)
   {
