@@ -85,7 +85,7 @@ int cgrid::creategrid()
   // create non-equidistant grid
   double alpha = 0.967;
   double eta;
-  int i,j,k;
+  int k;
 
   // heights are set according to Moser180 case
   for(k=kstart; k<kend; k++)
@@ -99,7 +99,16 @@ int cgrid::creategrid()
   for(k=kstart; k<kend; k++)
     z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
   // end uniform height setup*/
-  
+
+  calculate();
+
+  return 0;
+}
+
+int cgrid::calculate()
+{
+  int i,j,k;
+
   dx = xsize / itot;
   dy = ysize / jtot;
 
@@ -169,6 +178,25 @@ int cgrid::save()
   fwrite(z , sizeof(double), kcells, pFile);
   fwrite(zh, sizeof(double), kcells, pFile);
   fclose(pFile);
+
+  return 0;
+}
+
+int cgrid::load()
+{
+  FILE *pFile;
+  char filename[256];
+  std::sprintf(filename, "%s.%06d", "grid", 0);
+  pFile = fopen(filename, "rb");
+  fread(x , sizeof(double), icells, pFile);
+  fread(xh, sizeof(double), icells, pFile);
+  fread(y , sizeof(double), jcells, pFile);
+  fread(yh, sizeof(double), jcells, pFile);
+  fread(z , sizeof(double), kcells, pFile);
+  fread(zh, sizeof(double), kcells, pFile);
+  fclose(pFile);
+
+  calculate();
 
   return 0;
 }

@@ -21,21 +21,13 @@ int main()
   fields.initfields();
 
   // create the objects, fill the fields with data
-  grid.creategrid();
-  fields.createfields();
-
-  // store the data
-  fields.boundary();
-  grid.save();
-  fields.u->save(0);
-  fields.v->save(0);
-  fields.w->save(0);
-  fields.p->save(0);
-  fields.s->save(0);
+  // grid.creategrid();
+  grid.load();
+  // fields.createfields();
+  fields.load(0);
   // END INIT
 
   // DNS
-
   // create the model and the operators
   ctimeloop timeloop(&grid, &fields);
   cadvec    advec   (&grid, &fields);
@@ -47,12 +39,6 @@ int main()
   // initialize the pressure solver
   pres.init();
 
-  // restart the model at a later time
-  // timeloop.iteration = 500;
-  // fields.u->load(timeloop.iteration);
-  // fields.v->load(timeloop.iteration);
-  // fields.w->load(timeloop.iteration);
-  
   // start the time loop
   while(timeloop.loop)
   {
