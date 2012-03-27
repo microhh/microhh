@@ -10,8 +10,10 @@ class cfields
     // functions
     cfields(cgrid *);
     ~cfields();
+
     int initfields();
     int createfields();
+    int load(int);
 
     // int resettend();
     int boundary();

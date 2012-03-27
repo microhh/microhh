@@ -146,6 +146,20 @@ int cfields::createfields()
   return 0;
 }
 
+int cfields::load(int n)
+{
+  // remove this later and read from input
+  visc  = 1.0e-5;
+  viscs = 1.0e-5;
+
+  u->load(n);
+  v->load(n);
+  w->load(n);
+  s->load(n);
+
+  return 0;
+}
+
 int cfields::boundary()
 {
   u->boundary_bottop(0);

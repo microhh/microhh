@@ -8,7 +8,9 @@ class cgrid
     ~cgrid();
     int initgrid();
     int creategrid();
+    int calculate();
     int save();
+    int load();
 
     // variables
     int itot;
