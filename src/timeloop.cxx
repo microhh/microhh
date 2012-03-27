@@ -1,9 +1,9 @@
 #include <cstdio>
 #include "grid.h"
 #include "fields.h"
-#include "dns.h"
+#include "timeloop.h"
 
-cdns::cdns(cgrid *gridin, cfields *fieldsin)
+ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin)
 {
   std::printf("Creating instance of object dns\n");
   grid   = gridin;
@@ -27,12 +27,12 @@ cdns::cdns(cgrid *gridin, cfields *fieldsin)
   gettimeofday(&start, NULL);
 }
 
-cdns::~cdns()
+ctimeloop::~ctimeloop()
 {
   std::printf("Destroying instance of object dns\n");
 }
 
-int cdns::timestep()
+int ctimeloop::timestep()
 {
   time  += dt;
   itime += idt;
@@ -67,7 +67,7 @@ int cdns::timestep()
   return 0;
 }
 
-int cdns::settimestep(double cfl)
+int ctimeloop::settimestep(double cfl)
 {
   if(adaptivestep)
     dt = dt * cflmax/cfl;

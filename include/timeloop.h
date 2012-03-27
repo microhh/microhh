@@ -1,15 +1,15 @@
-#ifndef DNS
-#define DNS
+#ifndef TIMELOOP
+#define TIMELOOP
 
 #include <sys/time.h>
 #include "grid.h"
 #include "fields.h"
 
-class cdns
+class ctimeloop
 {
   public:
-    cdns(cgrid *, cfields *);
-    ~cdns();
+    ctimeloop(cgrid *, cfields *);
+    ~ctimeloop();
 
     int timestep();
     int settimestep(double);
