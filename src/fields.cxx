@@ -160,6 +160,17 @@ int cfields::load(int n)
   return 0;
 }
 
+int cfields::save(int n)
+{
+  u->save(n);
+  v->save(n);
+  w->save(n);
+  p->save(n);
+  s->save(n);
+
+  return 0;
+}
+
 int cfields::boundary()
 {
   u->boundary_bottop(0);

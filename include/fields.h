@@ -13,6 +13,7 @@ class cfields
 
     int initfields();
     int createfields();
+    int save(int);
     int load(int);
 
     // int resettend();

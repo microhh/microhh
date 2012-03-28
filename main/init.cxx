@@ -27,11 +27,11 @@ int main()
   // store the data
   fields.boundary();
   grid.save();
-  fields.u->save(0);
-  fields.v->save(0);
-  fields.w->save(0);
-  fields.p->save(0);
-  fields.s->save(0);
+  fields.save(0);
+  fields.save(0);
+  fields.save(0);
+  fields.save(0);
+  fields.save(0);
   // END INIT
   return 0;
 }
