@@ -43,22 +43,52 @@ int ctimeint::rk3(double * restrict flow, double * restrict flowt, double * rest
   const double cB [] = {1./3., 15./16., 8./15.};
   // const double cdt[] = {0., 1./3., 3./4.};
   
-  int n;
+  int i,j,k,n;
+  int ijkn,ii,jj,kk,nn;
 
-  for(n=0; n<grid->ncells*3; n++)
-    flow[n] = flow[n] + cB[substep]*dt*flowt[n];
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  nn = grid->ncells;
 
-  for(n=0; n<grid->ncells; n++)
-    scal[n] = scal[n] + cB[substep]*dt*scalt[n];
+  for(n=0; n<3; n++)
+    for(k=grid->kstart; k<grid->kend; k++)
+      for(j=grid->jstart; j<grid->jend; j++)
+        for(i=grid->istart; i<grid->iend; i++)
+        {
+          ijkn = i + j*jj + k*kk + n*nn;
+          flow[ijkn] = flow[ijkn] + cB[substep]*dt*flowt[ijkn];
+        }
+
+  for(n=0; n<1; n++)
+    for(k=grid->kstart; k<grid->kend; k++)
+      for(j=grid->jstart; j<grid->jend; j++)
+        for(i=grid->istart; i<grid->iend; i++)
+        {
+          ijkn = i + j*jj + k*kk + n*nn;
+          scal[ijkn] = scal[ijkn] + cB[substep]*dt*scalt[ijkn];
+        }
 
   substep = (substep+1) % 3;
 
   // substep 0 resets the tendencies, because cA[0] == 0
-  for(n=0; n<grid->ncells*3; n++)
-    flowt[n] = cA[substep]*flowt[n];
+  for(n=0; n<3; n++)
+    for(k=grid->kstart; k<grid->kend; k++)
+      for(j=grid->jstart; j<grid->jend; j++)
+        for(i=grid->istart; i<grid->iend; i++)
+        {
+          ijkn = i + j*jj + k*kk + n*nn;
+          flowt[ijkn] = cA[substep]*flowt[ijkn];
+        }
 
-  for(n=0; n<grid->ncells; n++)
-    scalt[n] = cA[substep]*scalt[n];
+  for(n=0; n<1; n++)
+    for(k=grid->kstart; k<grid->kend; k++)
+      for(j=grid->jstart; j<grid->jend; j++)
+        for(i=grid->istart; i<grid->iend; i++)
+        {
+          ijkn = i + j*jj + k*kk + n*nn;
+          scalt[ijkn] = cA[substep]*scalt[ijkn];
+        }
 
   return substep;
 }
