@@ -53,7 +53,7 @@ int cpres::exec(double dt)
               grid->dzi, dt);
 
   // solve the system
-  pres_2nd_solve((*fields->p).data, grid->dz);
+  pres_2nd_solve((*fields->p).data, grid->dz, fftini, fftouti, fftinj, fftoutj);
 
   // set the boundary conditions
   (*fields->p).boundary_cyclic();
@@ -169,7 +169,10 @@ int cpres::pres_2nd_in(double * restrict p,
   return 0;
 }
 
-int cpres::pres_2nd_solve(double * restrict p, double * restrict dz)
+int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
+                          double * restrict fftini, double * restrict fftouti, 
+                          double * restrict fftinj, double * restrict fftoutj)
+
 {
   int i,j,k,ii,jj,kk,ijk,ijkb;
   int imax,jmax,kmax;
