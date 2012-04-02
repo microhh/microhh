@@ -2,13 +2,14 @@
 #define TIMELOOP
 
 #include <sys/time.h>
+#include "input.h"
 #include "grid.h"
 #include "fields.h"
 
 class ctimeloop
 {
   public:
-    ctimeloop(cgrid *, cfields *);
+    ctimeloop(cgrid *, cfields *, cinput *);
     ~ctimeloop();
 
     int timestep();

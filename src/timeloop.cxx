@@ -1,17 +1,19 @@
 #include <cstdio>
+#include "input.h"
 #include "grid.h"
 #include "fields.h"
 #include "timeloop.h"
 
-ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin)
+ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cinput *inputin)
 {
   std::printf("Creating instance of object dns\n");
   grid   = gridin;
   fields = fieldsin;
 
   // input parameters
-  adaptivestep = true;
-  runtime      = 10000.;
+  inputin->getItem(&adaptivestep, "time", "adaptivestep");
+  inputin->getItem(&runtime     , "time", "runtime");
+  inputin->getItem(&cflmax      , "time", "cflmax");
 
   // initializations
   loop      = true;

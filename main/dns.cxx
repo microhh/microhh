@@ -32,7 +32,7 @@ int main()
 
   // DNS
   // create the model and the operators
-  ctimeloop timeloop(&grid, &fields);
+  ctimeloop timeloop(&grid, &fields, &input);
   cadvec    advec   (&grid, &fields);
   cdiff     diff    (&grid, &fields);
   cpres     pres    (&grid, &fields);

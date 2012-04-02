@@ -18,8 +18,9 @@ cinput::cinput()
   inputlist["grid"]["zsize"] = "2.";
 
   // set the time properties
-  inputlist["time"]["runtime"] = "10000";
+  inputlist["time"]["runtime"] = "10000.";
   inputlist["time"]["cflmax" ] = "0.8";
+  inputlist["time"]["adaptivestep" ] = "true";
   // end setup Moser case
 }
 
@@ -38,6 +39,14 @@ int cinput::getItem(int *value, std::string cat, std::string item)
 }
 
 int cinput::getItem(double *value, std::string cat, std::string item)
+{
+  std::stringstream ss(std::string(inputlist[cat][item]));
+  ss >> *value;
+
+  return 0;
+}
+
+int cinput::getItem(bool *value, std::string cat, std::string item)
 {
   std::stringstream ss(std::string(inputlist[cat][item]));
   ss >> *value;
