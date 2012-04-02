@@ -1,10 +1,13 @@
 #ifndef GRID
 #define GRID
+
+#include "input.h"
+
 class cgrid
 {
   public:
     // functions
-    cgrid();
+    cgrid(cinput *);
     ~cgrid();
     int initgrid();
     int creategrid();

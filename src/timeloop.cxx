@@ -9,11 +9,13 @@ ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin)
   grid   = gridin;
   fields = fieldsin;
 
-  loop = true;
+  // input parameters
   adaptivestep = true;
+  runtime      = 10000.;
 
+  // initializations
+  loop      = true;
   time      = 0.;
-  runtime   = 10000.;
   dt        = 0.1;
   iteration = 0;
   cflmax    = 1.5;

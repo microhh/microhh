@@ -1,9 +1,10 @@
 #include <cstdio>
 #include <cmath>
 #include "grid.h"
+#include "input.h"
 
 // build the grid
-cgrid::cgrid()
+cgrid::cgrid(cinput *inputin)
 {
   std::printf("Creating instance of object grid\n");
 
@@ -18,18 +19,18 @@ cgrid::cgrid()
   // end setup Taylor-Green vortex*/
 
   // setup Moser 180 case
-  xsize = 6.28;
-  ysize = 3.14;
-  zsize = 2.;
+  inputin->getItem(&xsize, "grid", "xsize");
+  inputin->getItem(&ysize, "grid", "ysize");
+  inputin->getItem(&zsize, "grid", "zsize");
 
-  itot  = 64;
-  jtot  = 64;
-  ktot  = 64;
+  inputin->getItem(&itot, "grid", "itot");
+  inputin->getItem(&jtot, "grid", "jtot");
+  inputin->getItem(&ktot, "grid", "ktot");
   // end setup Moser case
   
-  igc   = 1;
-  jgc   = 1;
-  kgc   = 1;
+  igc = 1;
+  jgc = 1;
+  kgc = 1;
 }
 
 cgrid::~cgrid()

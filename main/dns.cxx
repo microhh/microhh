@@ -11,9 +11,12 @@
 int main()
 {
   // INIT
+  // read the input data
+  cinput input;
+  
   // initialize the MPI interface
   // create the objects, read the inputdata
-  cgrid grid;
+  cgrid grid(&input);
   cfields fields(&grid);
 
   // initialize the objects, allocate the required memory
