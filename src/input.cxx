@@ -77,6 +77,11 @@ int cinput::getItem(int *value, std::string cat, std::string item)
   std::istringstream ss(std::string(inputlist[cat][item]));
   ss >> *value;
 
+  std::ostringstream sscheck;
+  sscheck << *value;
+  if(ss.str() != sscheck.str())
+    printf("ERROR: Value %s of item %s is not of type int\n", inputlist[cat][item].c_str(), item.c_str());
+
   return 0;
 }
 
@@ -84,6 +89,11 @@ int cinput::getItem(double *value, std::string cat, std::string item)
 {
   std::istringstream ss(std::string(inputlist[cat][item]));
   ss >> *value;
+
+  std::ostringstream sscheck;
+  sscheck << *value;
+  if(ss.str() != sscheck.str())
+    printf("ERROR: Value %s of item %s is not of type double (%s,%s)\n", inputlist[cat][item].c_str(), item.c_str(), ss.str().c_str(), sscheck.str().c_str());
 
   return 0;
 }
@@ -97,7 +107,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item)
   else if(itemvalue == "1" || itemvalue == "0")
     ss >> std::noboolalpha >> *value;
   else
-    return 1;
+    printf("ERROR: Value %s of item %s is not of type bool\n", inputlist[cat][item].c_str(), item.c_str());
 
   return 0;
 }
