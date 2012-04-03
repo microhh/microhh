@@ -48,8 +48,14 @@ int cinput::getItem(double *value, std::string cat, std::string item)
 
 int cinput::getItem(bool *value, std::string cat, std::string item)
 {
-  std::stringstream ss(std::string(inputlist[cat][item]));
-  ss >> *value;
+  std::string itemvalue = inputlist[cat][item];
+  std::stringstream ss(itemvalue);
+  if(itemvalue == "true" || itemvalue == "false")
+    ss >> std::boolalpha >> *value;
+  else if(itemvalue == "1" || itemvalue == "0")
+    ss >> std::noboolalpha >> *value;
+  else
+    return 1;
 
   return 0;
 }
