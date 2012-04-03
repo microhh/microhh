@@ -24,46 +24,42 @@ cinput::cinput()
   inputlist["time"]["cflmax" ] = "0.8";
   inputlist["time"]["adaptivestep" ] = "true";*/
   // end setup Moser case
-  
+ 
+  char inputline[256], cat[256], item[256], lhs[256], rhs[256];
+
   // read the input file
-  std::ifstream inputfile("microhh.ini");
-  std::string inputline;
-  std::string blockstring, itemstring, valuestring;
-  size_t left, right, equal;
-
-  while(!inputfile.eof())
+  FILE *inputfile;
+  inputfile = fopen("microhh.ini", "r");
+  int n;
+  
+  // check the three cases: block, value, rubbish
+  while(!feof(inputfile))
   {
-    std::getline(inputfile, inputline);
-    // check the three cases: block, value, rubbish
-    // check for block, find [ and find ] and parse the string in between
-    //
-    left  = inputline.find_first_of("[");
-    right = inputline.find_last_of("]");
-    equal = inputline.find_first_of("=");
-    if(left != std::string::npos && right != std::string::npos)
+    std::fgets(inputline, 256, inputfile);
+    std::printf("line: %s", inputline);
+    n = sscanf(inputline, "[%256[^]]]", cat);
+    if(n == 1)
+      std::printf("block %s, n = %d\n", cat, n);
+    else
     {
-      blockstring = inputline.substr(left+1, right-1);
-    }
-    else if(equal != std::string::npos)
-    {
-      itemstring  = inputline.substr(0, equal);
-      valuestring = inputline.substr(equal+1, std::string::npos);
-
-      // insert item in map
-      if(!blockstring.empty())
+      n = sscanf(inputline, "%256[^=]=%s", lhs, rhs);
+      if(n == 2)
       {
-        std::printf("Insert %s = %s in [%s]\n", itemstring.c_str(), valuestring.c_str(), blockstring.c_str());
+        std::printf("item %s = %s, n = %d\n", lhs, rhs, n);
+        std::string blockstring(cat);
+        std::string itemstring(lhs);
+        std::string valuestring(rhs);
         inputlist[blockstring][itemstring] = valuestring;
       }
     }
-    else
-      std::printf("Illegal input line: %s\n", inputline.c_str());
-    
-
-    // if no block extract a value
-    // if no block and value report rubbish
-    // std::printf("%s\n", inputline.c_str());
   }
+
+  // check for block, find [ and find ] and parse the string in between
+  //
+  // std::printf("Insert %s = %s in [%s]\n", itemstring.c_str(), valuestring.c_str(), blockstring.c_str());
+  // inputlist[blockstring][itemstring] = valuestring;
+  // std::printf("Illegal input line: %s\n", inputline.c_str());
+  fclose(inputfile);
 }
 
 cinput::~cinput()
