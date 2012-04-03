@@ -74,7 +74,16 @@ cinput::~cinput()
 // overloaded return functions
 int cinput::getItem(int *value, std::string cat, std::string item)
 {
-  std::istringstream ss(std::string(inputlist[cat][item]));
+  std::string inputstring = inputlist[cat][item];
+
+  // trim from both sides
+  size_t left, right;
+  left  = inputstring.find_first_of("123456789");
+  right = inputstring.find_last_of ("0123456789");
+
+  std::string inputproc = inputstring.substr(left, right-left+1);
+
+  std::istringstream ss(inputproc);
   ss >> *value;
 
   std::ostringstream sscheck;
@@ -87,7 +96,19 @@ int cinput::getItem(int *value, std::string cat, std::string item)
 
 int cinput::getItem(double *value, std::string cat, std::string item)
 {
-  std::istringstream ss(std::string(inputlist[cat][item]));
+  std::string inputstring = inputlist[cat][item];
+
+  // trim from both sides
+  size_t left, right;
+  left  = inputstring.find_first_of("0123456789.");
+  right = inputstring.find_last_of ("0123456789.");
+
+  while(inputstring.substr(right,1) == "." || inputstring.substr(right,1) == "0")
+    right--;
+
+  std::string inputproc = inputstring.substr(left, right-left+1);
+
+  std::istringstream ss(inputproc);
   ss >> *value;
 
   std::ostringstream sscheck;
