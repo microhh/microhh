@@ -46,10 +46,8 @@ int cinput::readinifile()
   std::printf("Processing ini file\n");
 
   // check the cases: comments, empty line, block, value, rubbish
-  while(!feof(inputfile))
+  while(std::fgets(inputline, 256, inputfile) != NULL)
   {
-    std::fgets(inputline, 256, inputfile);
-
     // check for empty line
     n = sscanf(inputline, " %s ", temp1);
     if(n == 0) 
