@@ -49,19 +49,19 @@ int cinput::readinifile()
   while(std::fgets(inputline, 256, inputfile) != NULL)
   {
     // check for empty line
-    n = sscanf(inputline, " %s ", temp1);
+    n = std::sscanf(inputline, " %s ", temp1);
     if(n == 0) 
       continue; 
 
     // check for comments
-    n = sscanf(inputline, " #%[^\n]", temp1);
+    n = std::sscanf(inputline, " #%[^\n]", temp1);
     if(n > 0)
       continue;
 
-    n = sscanf(inputline, " [%[^]]] ", temp1);
+    n = std::sscanf(inputline, " [%[^]]] ", temp1);
     if(n == 1)
     {
-      n = sscanf(temp1, "%s %s", block);
+      n = std::sscanf(temp1, "%s %s", block);
       if(n == 1)
       {
         std::printf("Found block [%s]\n", block);
@@ -75,10 +75,10 @@ int cinput::readinifile()
       continue;
     }
     // read items
-    n = sscanf(inputline, "%[^=] = %[^\n]", temp1, rhs);
+    n = std::sscanf(inputline, "%[^=] = %[^\n]", temp1, rhs);
     if(n == 2)
     {
-      n = sscanf(temp1, " %[a-zA-Z0-9_] %s", lhs);
+      n = std::sscanf(temp1, " %[a-zA-Z0-9_] %s", lhs);
       if(n == 1)
       {
         if(!blockset)
@@ -96,7 +96,7 @@ int cinput::readinifile()
       }
       else
       {
-        n = sscanf(inputline, "%[^=]", temp1);
+        n = std::sscanf(inputline, "%[^=]", temp1);
         std::printf("ERROR item  [%s][%s]\n", block, temp1);
         nerrors++;
       }
@@ -105,7 +105,7 @@ int cinput::readinifile()
     // throw exception
     else
     {
-      n = sscanf(inputline, "%[^\n]", temp1);
+      n = std::sscanf(inputline, "%[^\n]", temp1);
       if(n > 0)
       {
         std::printf("ERROR \"%s\" is illegal input\n", temp1);
