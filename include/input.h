@@ -9,6 +9,7 @@ class cinput
   public:
     cinput();
     ~cinput();
+    int readinifile();
     int getItem(int *, std::string, std::string);
     int getItem(double *, std::string, std::string);
     int getItem(bool *, std::string, std::string);

@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 #include <map>
 #include <string>
 #include <sstream>
@@ -8,7 +9,15 @@
 cinput::cinput()
 {
   std::printf("Creating instance of object input\n");
+}
 
+cinput::~cinput()
+{
+  std::printf("Destroying instance of object input\n");
+}
+
+int cinput::readinifile()
+{
   // construct input list before implementing file reading
   /*// setup Moser 180 case
   inputlist["grid"]["itot"] = "64";
@@ -25,69 +34,91 @@ cinput::cinput()
   inputlist["time"]["adaptivestep" ] = "true";*/
   // end setup Moser case
  
-  char inputline[256], temp1[256], temp2[256], cat[256], item[256], lhs[256], rhs[256];
+  char inputline[256], temp1[256], block[256], item[256], lhs[256], rhs[256];
 
   // read the input file
   FILE *inputfile;
   inputfile = fopen("microhh.ini", "r");
-  int n, m;
-  
-  // check the three cases: block, value, rubbish
+  int n;
+  bool blockset = false;
+  int  nerrors  = 0;
+ 
+  std::printf("Processing ini file\n");
+
+  // check the cases: comments, empty line, block, value, rubbish
   while(!feof(inputfile))
   {
     std::fgets(inputline, 256, inputfile);
-    std::printf("line: %s", inputline);
 
-    n = sscanf(inputline, "[%[^]]]", temp1);
+    // check for empty line
+    n = sscanf(inputline, " %s ", temp1);
+    if(n == 0) 
+      continue; 
+
+    // check for comments
+    n = sscanf(inputline, " #%[^\n]", temp1);
+    if(n > 0)
+      continue;
+
+    n = sscanf(inputline, " [%[^]]] ", temp1);
     if(n == 1)
     {
-      n = sscanf(temp1, "%s %s", cat);
+      n = sscanf(temp1, "%s %s", block);
       if(n == 1)
-        std::printf("block %s, n = %d\n", cat, n);
-      else
-        std::printf("[%s] is illegal block specification\n", temp1);
-    }
-    else
-    {
-      n = sscanf(inputline, "%[^=]=%[^\n]", temp1, temp2);
-      if(n == 2)
       {
-        n = sscanf(temp1, "%s %s", lhs);
-        m = sscanf(temp2, "%s %s", rhs);
-        if(n == 1 && m == 1)
-        {
-          std::printf("item %s = %s, n = %d\n", lhs, rhs, n);
-          std::string blockstring(cat);
-          std::string itemstring(lhs);
-          std::string valuestring(rhs);
-          inputlist[blockstring][itemstring] = valuestring;
-        }
-        else
-        {
-          n = sscanf(inputline, "%[^\n]", temp1);
-          std::printf("%s is illegal input\n", temp1);
-        }
+        std::printf("Found block [%s]\n", block);
+        blockset = true;
       }
       else
       {
-        n = sscanf(inputline, "%[^\n]", temp1);
-        std::printf("%s is illegal input\n", temp1);
+        std::printf("ERROR in block specification [%s]\n", temp1);
+        nerrors++;
+      }
+      continue;
+    }
+    // read items
+    n = sscanf(inputline, "%[^=] = %[^\n]", temp1, rhs);
+    if(n == 2)
+    {
+      n = sscanf(temp1, " %[a-zA-Z0-9_] %s", lhs);
+      if(n == 1)
+      {
+        if(!blockset)
+        {
+          std::printf("ERROR item [?][%s] = \"%s\"\n", lhs, rhs);
+          nerrors++;
+          continue;
+        }
+
+        std::printf("Found item  [%s][%s] = \"%s\"\n", block, lhs, rhs);
+        std::string blockstring(block);
+        std::string itemstring(lhs);
+        std::string valuestring(rhs);
+        inputlist[blockstring][itemstring] = valuestring;
+      }
+      else
+      {
+        n = sscanf(inputline, "%[^=]", temp1);
+        std::printf("ERROR item  [%s][%s]\n", block, temp1);
+        nerrors++;
+      }
+    }
+
+    // throw exception
+    else
+    {
+      n = sscanf(inputline, "%[^\n]", temp1);
+      if(n > 0)
+      {
+        std::printf("ERROR \"%s\" is illegal input\n", temp1);
+        nerrors++;
       }
     }
   }
-
   fclose(inputfile);
 
-  // check for block, find [ and find ] and parse the string in between
-  //
-  // std::printf("Insert %s = %s in [%s]\n", itemstring.c_str(), valuestring.c_str(), blockstring.c_str());
-  // inputlist[blockstring][itemstring] = valuestring;
-  // std::printf("Illegal input line: %s\n", inputline.c_str());
-}
-
-cinput::~cinput()
-{
-  std::printf("Destroying instance of object input\n");
+  std::printf("Ini file has been processed with %d errors\n", nerrors);
+  return nerrors;
 }
 
 // overloaded return functions

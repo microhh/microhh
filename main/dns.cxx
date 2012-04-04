@@ -13,6 +13,8 @@ int main()
   // INIT
   // read the input data
   cinput input;
+  if(input.readinifile())
+    return 1;
   
   // initialize the MPI interface
   // create the objects, read the inputdata
