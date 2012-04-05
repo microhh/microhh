@@ -1,9 +1,6 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
-#include <string>
-#include <sstream>
-#include <fstream>
 #include "input.h"
 
 cinput::cinput()
@@ -131,29 +128,64 @@ int cinput::getItem(int *value, std::string cat, std::string item)
   if(n == 1)
     *value = inputint;
   else
+  {
     std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
+    return 1;
+  }
 
   return 0;
 }
 
 int cinput::getItem(double *value, std::string cat, std::string item)
 {
-  std::string inputstring = inputlist[cat][item];
+  char inputstring[256], temp[256];
+  std::strcpy(inputstring, inputlist[cat][item].c_str());
 
-  std::istringstream ss(inputstring);
-  ss >> *value;
+  double inputdouble;
+  int n = std::sscanf(inputstring, " %lf %[^\n] ", &inputdouble, temp);
+
+  // catch the situation where a double is closed with a ".", which is not read by sscanf's %f
+  if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
+    *value = inputdouble;
+  else
+  {
+    std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
+    return 1;
+  }
 
   return 0;
 }
 
 int cinput::getItem(bool *value, std::string cat, std::string item)
 {
-  std::string itemvalue = inputlist[cat][item];
-  std::istringstream ss(itemvalue);
-  if(itemvalue == "true" || itemvalue == "false")
-    ss >> std::boolalpha >> *value;
-  else if(itemvalue == "1" || itemvalue == "0")
-    ss >> std::noboolalpha >> *value;
+  char inputstring[256], inputbool[256], temp[256];
+  std::strcpy(inputstring, inputlist[cat][item].c_str());
+
+  int n = std::sscanf(inputstring, " %s %[^\n] ", inputbool, temp);
+
+  bool boolerror = false;
+
+  if(n == 1)
+  {
+    if(std::strcmp("true", inputbool) == 0 || 
+       std::strcmp("True", inputbool) == 0 || 
+       std::strcmp("TRUE", inputbool) == 0 || 
+       std::strcmp("1"   , inputbool) == 0 )
+      *value = true;
+    else if(std::strcmp("false", inputbool) == 0 ||
+            std::strcmp("False", inputbool) == 0 || 
+            std::strcmp("FALSE", inputbool) == 0 || 
+            std::strcmp("0    ", inputbool) == 0 )
+      *value = false;
+    else 
+      boolerror = true;
+  }
+  
+  if(n != 1 || boolerror)
+  {
+    std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
+    return 1;
+  }
 
   return 0;
 }
