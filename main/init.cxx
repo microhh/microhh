@@ -5,29 +5,26 @@
 
 int main()
 {
-  // INIT
-  // read the input data
-  cinput input;
+  // create the class objects
+  cinput  input;
+  cgrid   grid;
+  cfields fields(&grid);
+  
+  // read the input data and terminate on error
   if(input.readinifile())
     return 1;
-
-  // initialize the MPI interface
-  // create the objects, read the inputdata
-  cgrid grid;
   if(grid.readinifile(&input))
     return 1;
   
-  cfields fields(&grid);
-
   // initialize the objects, allocate the required memory
   grid.initgrid();
   fields.initfields();
 
-  // create the objects, fill the fields with data
+  // fill the fields with data
   grid.creategrid();
   fields.createfields();
 
-  // store the data
+  // store the data on disk
   fields.boundary();
   grid.save();
   fields.save(0);
@@ -35,7 +32,7 @@ int main()
   fields.save(0);
   fields.save(0);
   fields.save(0);
-  // END INIT
+
   return 0;
 }
 
