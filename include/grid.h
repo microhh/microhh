@@ -7,8 +7,9 @@ class cgrid
 {
   public:
     // functions
-    cgrid(cinput *);
+    cgrid();
     ~cgrid();
+    int readinifile(cinput *);
     int initgrid();
     int creategrid();
     int calculate();

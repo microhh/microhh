@@ -4,33 +4,9 @@
 #include "input.h"
 
 // build the grid
-cgrid::cgrid(cinput *inputin)
+cgrid::cgrid()
 {
   std::printf("Creating instance of object grid\n");
-
-  /*// setup Taylor-Green vortex
-  xsize = 1.;
-  ysize = 1.;
-  zsize = 0.5;
-
-  itot  = 64;
-  jtot  = 8;
-  ktot  = 32;
-  // end setup Taylor-Green vortex*/
-
-  // setup Moser 180 case
-  inputin->getItem(&xsize, "grid", "xsize");
-  inputin->getItem(&ysize, "grid", "ysize");
-  inputin->getItem(&zsize, "grid", "zsize");
-
-  inputin->getItem(&itot, "grid", "itot");
-  inputin->getItem(&jtot, "grid", "jtot");
-  inputin->getItem(&ktot, "grid", "ktot");
-  // end setup Moser case
-  
-  igc = 1;
-  jgc = 1;
-  kgc = 1;
 }
 
 cgrid::~cgrid()
@@ -46,6 +22,38 @@ cgrid::~cgrid()
   delete[] dzi;
   delete[] dzhi;
   std::printf("Destroying instance of object grid\n");
+}
+
+int cgrid::readinifile(cinput *inputin)
+{
+  /*// setup Taylor-Green vortex
+  xsize = 1.;
+  ysize = 1.;
+  zsize = 0.5;
+
+  itot  = 64;
+  jtot  = 8;
+  ktot  = 32;
+  // end setup Taylor-Green vortex*/
+
+  int n = 0;
+
+  n += inputin->getItem(&xsize, "grid", "xsize");
+  n += inputin->getItem(&ysize, "grid", "ysize");
+  n += inputin->getItem(&zsize, "grid", "zsize");
+
+  n += inputin->getItem(&itot, "grid", "itot");
+  n += inputin->getItem(&jtot, "grid", "jtot");
+  n += inputin->getItem(&ktot, "grid", "ktot");
+
+  if(n > 0)
+    return 1;
+  
+  igc = 1;
+  jgc = 1;
+  kgc = 1;
+
+  return 0;
 }
 
 int cgrid::initgrid()

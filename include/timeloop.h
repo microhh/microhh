@@ -9,9 +9,10 @@
 class ctimeloop
 {
   public:
-    ctimeloop(cgrid *, cfields *, cinput *);
+    ctimeloop(cgrid *, cfields *);
     ~ctimeloop();
 
+    int readinifile(cinput *);
     int timestep();
     int settimestep(double);
 

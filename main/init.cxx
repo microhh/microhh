@@ -2,12 +2,6 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "timeloop.h"
-#include "advec.h"
-#include "diff.h"
-#include "force.h"
-#include "pres.h"
-#include "timeint.h"
 
 int main()
 {
@@ -19,7 +13,10 @@ int main()
 
   // initialize the MPI interface
   // create the objects, read the inputdata
-  cgrid grid(&input);
+  cgrid grid;
+  if(grid.readinifile(&input))
+    return 1;
+  
   cfields fields(&grid);
 
   // initialize the objects, allocate the required memory

@@ -4,16 +4,29 @@
 #include "fields.h"
 #include "timeloop.h"
 
-ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cinput *inputin)
+ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin)
 {
-  std::printf("Creating instance of object dns\n");
+  std::printf("Creating instance of object timeloop\n");
   grid   = gridin;
   fields = fieldsin;
+}
 
+ctimeloop::~ctimeloop()
+{
+  std::printf("Destroying instance of object timeloop\n");
+}
+
+int ctimeloop::readinifile(cinput *inputin)
+{
   // input parameters
-  inputin->getItem(&adaptivestep, "time", "adaptivestep");
-  inputin->getItem(&runtime     , "time", "runtime");
-  inputin->getItem(&cflmax      , "time", "cflmax");
+  int n = 0;
+
+  n += inputin->getItem(&adaptivestep, "time", "adaptivestep");
+  n += inputin->getItem(&runtime     , "time", "runtime");
+  n += inputin->getItem(&cflmax      , "time", "cflmax");
+
+  if(n > 0)
+    return 1;
 
   // initializations
   loop      = true;
@@ -29,11 +42,8 @@ ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cinput *inputin)
   idt      = (int)(ifactor * dt);
 
   gettimeofday(&start, NULL);
-}
 
-ctimeloop::~ctimeloop()
-{
-  std::printf("Destroying instance of object dns\n");
+  return 0;
 }
 
 int ctimeloop::timestep()

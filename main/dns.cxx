@@ -18,7 +18,10 @@ int main()
   
   // initialize the MPI interface
   // create the objects, read the inputdata
-  cgrid grid(&input);
+  cgrid grid;
+  if(grid.readinifile(&input))
+    return 1;
+
   cfields fields(&grid);
 
   // initialize the objects, allocate the required memory
@@ -34,12 +37,16 @@ int main()
 
   // DNS
   // create the model and the operators
-  ctimeloop timeloop(&grid, &fields, &input);
+  ctimeloop timeloop(&grid, &fields);
   cadvec    advec   (&grid, &fields);
   cdiff     diff    (&grid, &fields);
   cpres     pres    (&grid, &fields);
   cforce    force   (&grid, &fields);
   ctimeint  timeint (&grid, &fields);
+
+  // read the inputdata
+  if(timeloop.readinifile(&input))
+    return 1;
 
   // initialize the pressure solver
   pres.init();
