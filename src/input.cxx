@@ -122,10 +122,16 @@ int cinput::readinifile()
 // overloaded return functions
 int cinput::getItem(int *value, std::string cat, std::string item)
 {
-  std::string inputstring = inputlist[cat][item];
+  char inputstring[256], temp[256];
+  std::strcpy(inputstring, inputlist[cat][item].c_str());
 
-  std::istringstream ss(inputstring);
-  ss >> *value;
+  int inputint;
+  int n = std::sscanf(inputstring, " %d %[^\n] ", &inputint, temp);
+
+  if(n == 1)
+    *value = inputint;
+  else
+    std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
 
   return 0;
 }
