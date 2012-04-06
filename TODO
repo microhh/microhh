@@ -1,0 +1,21 @@
+[performance]
+implement fftw_many
+
+[structure]
+make logical distinction between time loop and time integration
+clean up dns.cxx and catch errors properly
+handle field registration properly
+
+[extensions]
+create input system for fields
+create more options for initial perturbations
+compute basic statistics
+
+[dynamical core]
+implement buoyancy
+implement Smagorinsky scheme
+loop on time or on iterations
+
+[multiprocessing]
+implement CUDA
+implement MPI
