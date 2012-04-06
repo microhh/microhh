@@ -1,13 +1,14 @@
 #ifndef FIELD3D
 #define FIELD3D
 
+#include <string>
 #include "grid.h"
 
 class cfield3d
 {
   public:
     // functions
-    cfield3d(cgrid *, double *, const char *);
+    cfield3d(cgrid *, double *, std::string);
     ~cfield3d();
     int boundary_bottop(int);
     int boundary_cyclic();
@@ -16,7 +17,7 @@ class cfield3d
 
     // variables
     double *data;
-    char *name;
+    std::string name;
 
   private:
     cgrid *grid;

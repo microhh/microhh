@@ -2,18 +2,16 @@
 #include "grid.h"
 #include "field3d.h"
 
-cfield3d::cfield3d(cgrid *gridin, double *dataref, const char *namein)
+cfield3d::cfield3d(cgrid *gridin, double *dataref, std::string namein)
 {
   std::printf("Creating instance of object field3d\n");
   grid = gridin;
   data = dataref;
-  name = new char[8];
-  std::sprintf(name, "%s", namein);
+  name = namein;
 }
 
 cfield3d::~cfield3d()
 {
-  delete[] name;
   std::printf("Destroying instance of object field3d\n");
 }
 
@@ -142,7 +140,7 @@ int cfield3d::save(int n)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%06d", name, n);
+  std::sprintf(filename, "%s.%06d", name.c_str(), n);
   pFile = fopen(filename, "wb");
   fwrite(data, sizeof(double), grid->ncells, pFile);
   fclose(pFile);
@@ -154,7 +152,7 @@ int cfield3d::load(int n)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%06d", name, n);
+  std::sprintf(filename, "%s.%06d", name.c_str(), n);
   pFile = fopen(filename, "rb");
   fread(data, sizeof(double), grid->ncells, pFile);
   fclose(pFile);
