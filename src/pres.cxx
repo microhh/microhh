@@ -13,28 +13,33 @@ cpres::cpres(cgrid *gridin, cfields *fieldsin)
   std::printf("Creating instance of object pres\n");
   grid   = gridin;
   fields = fieldsin;
+
+  allocated = false;
 }
 
 cpres::~cpres()
 {
-  fftw_destroy_plan(iplanf);
-  fftw_destroy_plan(iplanb);
-  fftw_destroy_plan(jplanf);
-  fftw_destroy_plan(jplanb);
+  if(allocated)
+  {
+    fftw_destroy_plan(iplanf);
+    fftw_destroy_plan(iplanb);
+    fftw_destroy_plan(jplanf);
+    fftw_destroy_plan(jplanb);
 
-  fftw_free(fftini);
-  fftw_free(fftouti);
-  fftw_free(fftinj);
-  fftw_free(fftoutj);
+    fftw_free(fftini);
+    fftw_free(fftouti);
+    fftw_free(fftinj);
+    fftw_free(fftoutj);
 
-  delete[] a;
-  delete[] b;
-  delete[] c;
-  delete[] work2d;
-  delete[] work3d;
+    delete[] a;
+    delete[] b;
+    delete[] c;
+    delete[] work2d;
+    delete[] work3d;
 
-  delete[] bmati;
-  delete[] bmatj;
+    delete[] bmati;
+    delete[] bmatj;
+  }
 
   std::printf("Destroying instance of object pres\n");
 }
@@ -69,6 +74,8 @@ int cpres::exec(double dt)
 int cpres::init()
 {
   pres_2nd_init();
+
+  allocated = true;
 
   return 0;
 }

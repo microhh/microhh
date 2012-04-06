@@ -20,6 +20,8 @@ class cpres
     cgrid *grid;
     cfields *fields;
 
+    bool allocated;
+
     double *fftini, *fftouti;
     double *fftinj, *fftoutj;
 

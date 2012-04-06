@@ -15,6 +15,9 @@ class cinput
     int getItem(bool *, std::string, std::string);
 
   private:
-    std::map<std::string, std::map<std::string, std::string> > inputlist;
+    int checkItemExists(std::string, std::string);
+    typedef std::map<std::string, std::string> inputmapinner;
+    typedef std::map<std::string, inputmapinner> inputmap;
+    inputmap inputlist;
 };
 #endif

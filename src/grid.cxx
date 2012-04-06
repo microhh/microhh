@@ -7,20 +7,25 @@
 cgrid::cgrid()
 {
   std::printf("Creating instance of object grid\n");
+  allocated = false;
 }
 
 cgrid::~cgrid()
 {
-  delete[] x;
-  delete[] xh;
-  delete[] y;
-  delete[] yh;
-  delete[] z;
-  delete[] zh;
-  delete[] dz;
-  delete[] dzh;
-  delete[] dzi;
-  delete[] dzhi;
+  if(allocated)
+  { 
+    delete[] x;
+    delete[] xh;
+    delete[] y;
+    delete[] yh;
+    delete[] z;
+    delete[] zh;
+    delete[] dz;
+    delete[] dzh;
+    delete[] dzi;
+    delete[] dzhi;
+  }
+
   std::printf("Destroying instance of object grid\n");
 }
 

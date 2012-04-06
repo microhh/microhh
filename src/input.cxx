@@ -40,7 +40,7 @@ int cinput::readinifile()
   bool blockset = false;
   int  nerrors  = 0;
  
-  std::printf("Processing ini file\n");
+  std::printf("Processing inifile\n");
 
   // check the cases: comments, empty line, block, value, rubbish
   while(std::fgets(inputline, 256, inputfile) != NULL)
@@ -116,9 +116,37 @@ int cinput::readinifile()
   return nerrors;
 }
 
+int cinput::checkItemExists(std::string cat, std::string item)
+{  
+  inputmap::const_iterator it1 = inputlist.find(cat);
+
+  bool readerror = false;
+
+  if(it1 != inputlist.end())
+  {
+    inputmapinner::const_iterator it2 = it1->second.find(item);
+
+    if(it2 == it1->second.end())
+      readerror = true;
+  }
+  else
+    readerror = true;
+
+  if(readerror)
+  {
+    std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+    return 1;
+  }
+  else
+    return 0;
+}
+
 // overloaded return functions
 int cinput::getItem(int *value, std::string cat, std::string item)
 {
+  if(checkItemExists(cat, item))
+    return 1;
+
   char inputstring[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item].c_str());
 
@@ -138,6 +166,9 @@ int cinput::getItem(int *value, std::string cat, std::string item)
 
 int cinput::getItem(double *value, std::string cat, std::string item)
 {
+  if(checkItemExists(cat, item) != 0)
+    return 1;
+  
   char inputstring[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item].c_str());
 
@@ -158,6 +189,9 @@ int cinput::getItem(double *value, std::string cat, std::string item)
 
 int cinput::getItem(bool *value, std::string cat, std::string item)
 {
+  if(checkItemExists(cat, item))
+    return 1;
+  
   char inputstring[256], inputbool[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item].c_str());
 

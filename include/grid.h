@@ -57,5 +57,8 @@ class cgrid
     double *xh;
     double *yh;
     double *zh;
+
+  private:
+    bool allocated;
 };
 #endif

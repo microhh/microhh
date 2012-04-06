@@ -10,29 +10,34 @@ cfields::cfields(cgrid *gridin)
 {
   std::printf("Creating instance of object fields\n");
   grid = gridin;
+
+  allocated = false;
 }
 
 cfields::~cfields()
 {
-  delete[] flow;
-  delete[] flowt;
+  if(allocated)
+  {
+    delete[] flow;
+    delete[] flowt;
 
-  delete[] scal;
-  delete[] scalt;
+    delete[] scal;
+    delete[] scalt;
 
-  delete[] pres;
+    delete[] pres;
 
-  delete u;
-  delete v;
-  delete w;
-  delete p;
+    delete u;
+    delete v;
+    delete w;
+    delete p;
 
-  delete ut;
-  delete vt;
-  delete wt;
+    delete ut;
+    delete vt;
+    delete wt;
 
-  delete s;
-  delete st;
+    delete s;
+    delete st;
+  }
 
   std::printf("Destroying instance of object fields\n");
 }
@@ -83,6 +88,8 @@ int cfields::initfields()
 
   for(int n=0; n<grid->ncells; n++)
     pres[n] = 0.;
+
+  allocated = true;
 
   return 0;
 }

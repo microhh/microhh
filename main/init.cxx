@@ -11,9 +11,9 @@ int main()
   cfields fields(&grid);
   
   // read the input data and terminate on error
-  if(input.readinifile())
+  if(input.readinifile() != 0)
     return 1;
-  if(grid.readinifile(&input))
+  if(grid.readinifile(&input) != 0)
     return 1;
   
   // initialize the objects, allocate the required memory
@@ -27,10 +27,6 @@ int main()
   // store the data on disk
   fields.boundary();
   grid.save();
-  fields.save(0);
-  fields.save(0);
-  fields.save(0);
-  fields.save(0);
   fields.save(0);
 
   return 0;

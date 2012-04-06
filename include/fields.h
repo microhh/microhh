@@ -46,6 +46,7 @@ class cfields
   private:
     // variables
     cgrid *grid;
+    bool allocated;
 
     // functions
     double calcmom (double *, double *, double *, double *);
