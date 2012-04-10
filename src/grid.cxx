@@ -91,6 +91,8 @@ int cgrid::initgrid()
   dzi  = new double[kmax+2*kgc];
   dzhi = new double[kmax+2*kgc];
 
+  allocated = true;
+
   return 0;
 }
 
