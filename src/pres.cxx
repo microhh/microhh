@@ -90,6 +90,70 @@ int cpres::divergence()
   return 0;
 }
 
+int cpres::load()
+{ 
+  int itot, jtot;
+
+  itot = grid->itot;
+  jtot = grid->jtot;
+
+  fftini  = fftw_alloc_real(itot);
+  fftouti = fftw_alloc_real(itot);
+  fftinj  = fftw_alloc_real(jtot);
+  fftoutj = fftw_alloc_real(jtot);
+
+  char filename[256];
+  std::sprintf(filename, "%s.%06d", "fftwplan", 0);
+  int n = fftw_import_wisdom_from_filename(filename);
+  if(n == 0)
+  {
+    std::printf("ERROR \"%s\" does not exist\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Loading \"%s\"\n", filename);
+
+  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
+  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
+  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_EXHAUSTIVE);
+  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
+
+  fftw_forget_wisdom();
+
+  return 0;
+}
+
+int cpres::save()
+{
+  int itot, jtot;
+
+  itot = grid->itot;
+  jtot = grid->jtot;
+
+  fftini  = fftw_alloc_real(itot);
+  fftouti = fftw_alloc_real(itot);
+  fftinj  = fftw_alloc_real(jtot);
+  fftoutj = fftw_alloc_real(jtot);
+
+  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
+  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
+  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_EXHAUSTIVE);
+  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
+
+  char filename[256];
+  std::sprintf(filename, "%s.%06d", "fftwplan", 0);
+  int n = fftw_export_wisdom_to_filename(filename);
+  if(n == 0)
+  {
+    std::printf("ERROR \"%s\" cannot be saved\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Saving \"%s\"\n", filename);
+
+  return 0;
+}
+
 int cpres::pres_2nd_init()
 {
   int itot, jtot, ktot, kgc;
@@ -98,16 +162,6 @@ int cpres::pres_2nd_init()
   jtot = grid->jtot;
   ktot = grid->ktot;
   kgc  = grid->kgc;
-
-  fftini  = fftw_alloc_real(itot);
-  fftouti = fftw_alloc_real(itot);
-  fftinj  = fftw_alloc_real(jtot);
-  fftoutj = fftw_alloc_real(jtot);
-
-  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_PATIENT);
-  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_PATIENT);
-  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_PATIENT);
-  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_PATIENT);
 
   bmati = new double[itot];
   bmatj = new double[jtot];

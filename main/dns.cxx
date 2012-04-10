@@ -45,6 +45,8 @@ int main()
     return 1;
   if(fields.load(timeloop.iteration))
     return 1;
+  if(pres.load())
+    return 1;
 
   // initialize the diffusion to get the time step requirement
   diff.init();

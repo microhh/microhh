@@ -12,6 +12,8 @@ class cpres
     ~cpres();
 
     int init();
+    int save();
+    int load();
     int exec(double);
     int divergence();
 

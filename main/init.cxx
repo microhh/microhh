@@ -2,6 +2,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
+#include "pres.h"
 
 int main()
 {
@@ -9,6 +10,7 @@ int main()
   cinput  input;
   cgrid   grid;
   cfields fields(&grid);
+  cpres   pres  (&grid, &fields);
   
   // read the input data and terminate on error
   if(input.readinifile() != 0)
@@ -25,9 +27,12 @@ int main()
   fields.createfields();
 
   // store the data on disk
-  fields.boundary();
-  grid.save();
-  fields.save(0);
+  if(grid.save())
+    return 1;
+  if(fields.save(0))
+    return 1;
+  if(pres.save())
+    return 1;
 
   return 0;
 }
