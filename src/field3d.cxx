@@ -142,7 +142,20 @@ int cfield3d::save(int n)
   char filename[256];
   std::sprintf(filename, "%s.%06d", name.c_str(), n);
   pFile = fopen(filename, "wb");
-  fwrite(data, sizeof(double), grid->ncells, pFile);
+
+  int ijk,istart,jj,kk;
+
+  istart = grid->istart;
+  jj     = grid->icells;
+  kk     = grid->icells*grid->jcells;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      {
+        ijk = istart + j*jj + k*kk;
+        fwrite(&data[ijk], sizeof(double), grid->imax, pFile);
+      }
+
   fclose(pFile);
 
   return 0;
@@ -154,7 +167,20 @@ int cfield3d::load(int n)
   char filename[256];
   std::sprintf(filename, "%s.%06d", name.c_str(), n);
   pFile = fopen(filename, "rb");
-  fread(data, sizeof(double), grid->ncells, pFile);
+
+  int ijk,istart,jj,kk;
+
+  istart = grid->istart;
+  jj     = grid->icells;
+  kk     = grid->icells*grid->jcells;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      {
+        ijk = istart + j*jj + k*kk;
+        fread(&data[ijk], sizeof(double), grid->imax, pFile);
+      }
+
   fclose(pFile);
 
   return 0;
