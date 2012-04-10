@@ -185,6 +185,15 @@ int cgrid::save()
   char filename[256];
   std::sprintf(filename, "%s.%06d", "grid", 0);
   pFile = fopen(filename, "wb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" cannot be written\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Saving \"%s\"\n", filename);
+
   fwrite(x , sizeof(double), icells, pFile);
   fwrite(xh, sizeof(double), icells, pFile);
   fwrite(y , sizeof(double), jcells, pFile);
@@ -202,6 +211,15 @@ int cgrid::load()
   char filename[256];
   std::sprintf(filename, "%s.%06d", "grid", 0);
   pFile = fopen(filename, "rb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" does not exist\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Loading \"%s\"\n", filename);
+
   fread(x , sizeof(double), icells, pFile);
   fread(xh, sizeof(double), icells, pFile);
   fread(y , sizeof(double), jcells, pFile);

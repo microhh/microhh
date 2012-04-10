@@ -15,27 +15,18 @@ cinput::~cinput()
 
 int cinput::readinifile()
 {
-  // construct input list before implementing file reading
-  /*// setup Moser 180 case
-  inputlist["grid"]["itot"] = "64";
-  inputlist["grid"]["jtot"] = "64";
-  inputlist["grid"]["ktot"] = "64";
-
-  inputlist["grid"]["xsize"] = "6.28";
-  inputlist["grid"]["ysize"] = "3.14";
-  inputlist["grid"]["zsize"] = "2.";
-
-  // set the time properties
-  inputlist["time"]["runtime"] = "10000.";
-  inputlist["time"]["cflmax" ] = "0.8";
-  inputlist["time"]["adaptivestep" ] = "true";*/
-  // end setup Moser case
- 
   char inputline[256], temp1[256], block[256], item[256], lhs[256], rhs[256];
 
   // read the input file
   FILE *inputfile;
   inputfile = fopen("microhh.ini", "r");
+
+  if(inputfile == NULL)
+  {
+    std::printf("ERROR \"microhh.ini\" does not exist\n");
+    return 1;
+  }
+
   int n;
   bool blockset = false;
   int  nerrors  = 0;
@@ -112,7 +103,7 @@ int cinput::readinifile()
   }
   fclose(inputfile);
 
-  std::printf("Ini file has been processed with %d errors\n", nerrors);
+  std::printf("Inifile has been processed with %d errors\n", nerrors);
   return nerrors;
 }
 

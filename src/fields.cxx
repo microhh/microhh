@@ -137,7 +137,6 @@ int cfields::createfields()
     k           = n / (grid->icells*grid->jcells);
     u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
     s->data[n] += (double)(k+1-grid->kgc) * grid->zsize / (double)(grid->ktot+1);
-    // s1 = arange(1., kmax+1., 1.) * zsize/(kmax+1)
   }
   // end Moser180 setup 
 
@@ -159,10 +158,15 @@ int cfields::load(int n)
   visc  = 1.0e-5;
   viscs = 1.0e-5;
 
-  u->load(n);
-  v->load(n);
-  w->load(n);
-  s->load(n);
+  // check them all before returning error
+  int nerror = 0;
+  nerror += u->load(n);
+  nerror += v->load(n);
+  nerror += w->load(n);
+  nerror += s->load(n);
+
+  if(nerror > 0)
+    return 1;
 
   return 0;
 }

@@ -21,6 +21,7 @@ int ctimeloop::readinifile(cinput *inputin)
   // input parameters
   int n = 0;
 
+  // obligatory parameters
   n += inputin->getItem(&adaptivestep, "time", "adaptivestep");
   n += inputin->getItem(&runtime     , "time", "runtime");
   n += inputin->getItem(&cflmax      , "time", "cflmax");
@@ -28,11 +29,15 @@ int ctimeloop::readinifile(cinput *inputin)
   if(n > 0)
     return 1;
 
+  // optional parameters
+  n = inputin->getItem(&iteration, "time", "iteration");
+  if(n > 0)
+    iteration = 0;
+
   // initializations
   loop      = true;
   time      = 0.;
   dt        = 0.1;
-  iteration = 0;
   cflmax    = 1.5;
 
   const int ifactor = 1000;

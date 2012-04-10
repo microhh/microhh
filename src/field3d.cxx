@@ -143,6 +143,14 @@ int cfield3d::save(int n)
   std::sprintf(filename, "%s.%06d", name.c_str(), n);
   pFile = fopen(filename, "wb");
 
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" cannot be written", filename);
+    return 1;
+  }
+  else
+    std::printf("Saving \"%s\"\n", filename);
+
   int ijk,istart,jj,kk;
 
   istart = grid->istart;
@@ -167,6 +175,14 @@ int cfield3d::load(int n)
   char filename[256];
   std::sprintf(filename, "%s.%06d", name.c_str(), n);
   pFile = fopen(filename, "rb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" does not exist\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Loading \"%s\"\n", filename);
 
   int ijk,istart,jj,kk;
 

@@ -28,14 +28,6 @@ int main()
   grid.initgrid();
   fields.initfields();
 
-  // create the objects, fill the fields with data
-  // grid.creategrid();
-  grid.load();
-  // fields.createfields();
-  fields.load(0);
-  // END INIT
-
-  // DNS
   // create the model and the operators
   ctimeloop timeloop(&grid, &fields);
   cadvec    advec   (&grid, &fields);
@@ -46,6 +38,12 @@ int main()
 
   // read the inputdata
   if(timeloop.readinifile(&input))
+    return 1;
+
+  // fill the fields with data
+  if(grid.load())
+    return 1;
+  if(fields.load(timeloop.iteration))
     return 1;
 
   // initialize the diffusion to get the time step requirement
