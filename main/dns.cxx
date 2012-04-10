@@ -48,6 +48,9 @@ int main()
   if(timeloop.readinifile(&input))
     return 1;
 
+  // initialize the diffusion to get the time step requirement
+  diff.init();
+
   // initialize the pressure solver
   pres.init();
 

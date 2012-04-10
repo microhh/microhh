@@ -10,6 +10,7 @@ class cdiff
     cdiff(cgrid *, cfields *);
     ~cdiff();
 
+    int init();
     int exec();
 
   private:

@@ -19,6 +19,13 @@ cdiff::~cdiff()
   std::printf("Destroying instance of object diff\n");
 }
 
+int cdiff::init()
+{
+  // get the maximum time step for diffusion
+
+  return 0;
+}
+
 int cdiff::exec()
 {
   // diffuse the flow
