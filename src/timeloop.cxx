@@ -22,15 +22,15 @@ int ctimeloop::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&adaptivestep, "time", "adaptivestep");
-  n += inputin->getItem(&runtime     , "time", "runtime");
-  n += inputin->getItem(&cflmax      , "time", "cflmax");
+  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true);
+  n += inputin->getItem(&runtime     , "time", "runtime"     , true);
+  n += inputin->getItem(&cflmax      , "time", "cflmax"      , true);
 
   if(n > 0)
     return 1;
 
   // optional parameters
-  n = inputin->getItem(&iteration, "time", "iteration");
+  n = inputin->getItem(&iteration, "time", "iteration", false);
   if(n > 0)
     iteration = 0;
 
