@@ -8,8 +8,9 @@ class cfield3d
 {
   public:
     // functions
-    cfield3d(cgrid *, double *, std::string);
+    cfield3d(cgrid *, std::string);
     ~cfield3d();
+    int init();
     int boundary_bottop(int);
     int boundary_cyclic();
     int save(int);
@@ -21,6 +22,7 @@ class cfield3d
 
   private:
     cgrid *grid;
+    bool allocated;
 };
 #endif
 

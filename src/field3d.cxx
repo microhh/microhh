@@ -2,17 +2,34 @@
 #include "grid.h"
 #include "field3d.h"
 
-cfield3d::cfield3d(cgrid *gridin, double *dataref, std::string namein)
+cfield3d::cfield3d(cgrid *gridin, std::string namein)
 {
   std::printf("Creating instance of object field3d\n");
   grid = gridin;
-  data = dataref;
   name = namein;
 }
 
 cfield3d::~cfield3d()
 {
+  if(allocated)
+    delete[] data;
+
   std::printf("Destroying instance of object field3d\n");
+}
+
+int cfield3d::init()
+{
+  // allocate the memory
+  std::printf("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
+  data = new double[grid->ncells];
+
+  allocated = true;
+
+  // set all values to zero
+  for(int n=0; n<grid->ncells; n++)
+    data[n] = 0;
+
+  return 0;
 }
 
 int cfield3d::boundary_bottop(int sw)
@@ -66,16 +83,6 @@ int cfield3d::boundary_bottop(int sw)
           data[ijk0] = data[ijk1];
         }
   }
-
-  // check loop
-  // int j = grid->jstart+17;
-  // int i = grid->istart+11;
-
-  // for(int k=0; k<grid->kcells; k++)
-  // {
-  //   ijk0 = i + j*icells + k*ijcells;
-  //   std::printf("k : %d, %f\n", k, data[ijk0]);
-  // }
 
   return 0;
 }

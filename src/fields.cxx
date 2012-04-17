@@ -18,14 +18,6 @@ cfields::~cfields()
 {
   if(allocated)
   {
-    delete[] flow;
-    delete[] flowt;
-
-    delete[] scal;
-    delete[] scalt;
-
-    delete[] pres;
-
     delete u;
     delete v;
     delete w;
@@ -45,49 +37,33 @@ cfields::~cfields()
 int cfields::initfields()
 {
   std::printf("Initializing fields\n");
-  // allocate memory for 3d arrays
-  std::printf("Allocating %d bytes of memory for flow\n", grid->ncells*3*(int)sizeof(double));
-  flow  = new double[grid->ncells*3];
-  std::printf("Allocating %d bytes of memory for flowt\n", grid->ncells*3*(int)sizeof(double));
-  flowt = new double[grid->ncells*3];
-  std::printf("Allocating %d bytes of memory for pres\n", grid->ncells*(int)sizeof(double));
-  pres  = new double[grid->ncells];
-
-  std::printf("Allocating %d bytes of memory for scal\n", grid->ncells*(int)sizeof(double));
-  scal  = new double[grid->ncells];
-  std::printf("Allocating %d bytes of memory for scalt\n", grid->ncells*(int)sizeof(double));
-  scalt = new double[grid->ncells];
 
   // set pointers to correct location
-  u  = new cfield3d(grid, &flow[grid->ncells*0], "u");
-  v  = new cfield3d(grid, &flow[grid->ncells*1], "v");
-  w  = new cfield3d(grid, &flow[grid->ncells*2], "w");
-  p  = new cfield3d(grid, &pres[0], "p");
+  u  = new cfield3d(grid, "u" );
+  v  = new cfield3d(grid, "v" );
+  w  = new cfield3d(grid, "w" );
+  p  = new cfield3d(grid, "p" );
 
-  ut = new cfield3d(grid, &flowt[grid->ncells*0], "ut");
-  vt = new cfield3d(grid, &flowt[grid->ncells*1], "vt");
-  wt = new cfield3d(grid, &flowt[grid->ncells*2], "wt");
+  ut = new cfield3d(grid, "ut");
+  vt = new cfield3d(grid, "vt");
+  wt = new cfield3d(grid, "wt");
 
-  s  = new cfield3d(grid, &scal[grid->ncells*0], "s");
+  s  = new cfield3d(grid, "s" );
 
-  st = new cfield3d(grid, &scalt[grid->ncells*0], "st");
+  st = new cfield3d(grid, "st");
 
-  // set all values to 0
-  for(int n=0; n<grid->ncells*3; n++)
-    flow[n] = 0.;
+  u->init();
+  v->init();
+  w->init();
+  p->init();
 
-  for(int n=0; n<grid->ncells; n++)
-    scal[n] = 0.;
+  ut->init();
+  vt->init();
+  wt->init();
 
-  // set all tendencies and pressure to 0
-  for(int n=0; n<grid->ncells*3; n++)
-    flowt[n] = 0.;
+  s->init();
 
-  for(int n=0; n<grid->ncells; n++)
-    scalt[n] = 0.;
-
-  for(int n=0; n<grid->ncells; n++)
-    pres[n] = 0.;
+  st->init();
 
   allocated = true;
 
@@ -129,8 +105,13 @@ int cfields::createfields()
 
   // put initial perturbation in u, v and w
   std::srand(0);
-  for(int n=0; n<grid->ncells*3; n++)
-    flow[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+
+  for(int n=0; n<grid->ncells; n++)
+    u->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+  for(int n=0; n<grid->ncells; n++)
+    v->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+  for(int n=0; n<grid->ncells; n++)
+    w->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
 
   for(int n=0; n<grid->ncells; n++)
   {
@@ -199,13 +180,6 @@ int cfields::boundary()
 
   return 0;
 }
-
-// int cfields::resettend()
-// {
-//   for(int n=0; n<grid->ncells*3; n++)
-//     flowt[n] = 0.;
-//   return 0;
-// }
 
 int cfields::check()
 {

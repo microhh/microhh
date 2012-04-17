@@ -23,12 +23,6 @@ class cfields
     inline double interp2(const double, const double);
 
     // variables
-    double *flow;
-    double *flowt;
-    double *pres;
-    double *scal;
-    double *scalt;
-
     cfield3d *u;
     cfield3d *v;
     cfield3d *w;

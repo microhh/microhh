@@ -21,79 +21,82 @@ ctimeint::~ctimeint()
 
 int ctimeint::exec(double dt)
 {
-  // return rk3(fields->flow, fields->flowt, fields->scal, fields->scalt, dt);
-  return rk4(fields->flow, fields->flowt, fields->scal, fields->scalt, dt);
+  // rk3((*fields->u).data, (*fields->ut).data, dt);
+  // rk3((*fields->v).data, (*fields->vt).data, dt);
+  // rk3((*fields->w).data, (*fields->wt).data, dt);
+  // rk3((*fields->s).data, (*fields->st).data, dt);
+  // substep = (substep+1) % 3;
+
+  rk4((*fields->u).data, (*fields->ut).data, dt);
+  rk4((*fields->v).data, (*fields->vt).data, dt);
+  rk4((*fields->w).data, (*fields->wt).data, dt);
+  rk4((*fields->s).data, (*fields->st).data, dt);
+  substep = (substep+1) % 5;
+
+  return substep;
 }
 
-double ctimeint::subdt(double dt)
+double ctimeint::getsubdt(double dt)
 {
-  // const double cB [] = {1./3., 15./16., 8./15.};
+  double subdt;
+  // subdt = rk3subdt(dt);
+  subdt = rk4subdt(dt);
+  return subdt;
+}
+
+double ctimeint::rk3subdt(double dt)
+{
+  const double cB [] = {1./3., 15./16., 8./15.};
+  return cB[substep]*dt;
+}
+
+double ctimeint::rk4subdt(double dt)
+{
   const double cB [] = {
     1432997174477./ 9575080441755.,
     5161836677717./13612068292357.,
     1720146321549./ 2090206949498.,
     3134564353537./ 4481467310338.,
     2277821191437./14882151754819.};
+
   return cB[substep]*dt;
 }
 
-int ctimeint::rk3(double * restrict flow, double * restrict flowt, double * restrict scal, double * restrict scalt, double dt)
+int ctimeint::rk3(double * restrict a, double * restrict at, double dt)
 {
   const double cA [] = {0., -5./9., -153./128.};
   const double cB [] = {1./3., 15./16., 8./15.};
-  // const double cdt[] = {0., 1./3., 3./4.};
   
-  int i,j,k,n;
-  int ijkn,ii,jj,kk,nn;
+  int i,j,k;
+  int ijk,ii,jj,kk;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-  nn = grid->ncells;
 
-  for(n=0; n<3; n++)
-    for(k=grid->kstart; k<grid->kend; k++)
-      for(j=grid->jstart; j<grid->jend; j++)
-        for(i=grid->istart; i<grid->iend; i++)
-        {
-          ijkn = i + j*jj + k*kk + n*nn;
-          flow[ijkn] = flow[ijkn] + cB[substep]*dt*flowt[ijkn];
-        }
+  for(k=grid->kstart; k<grid->kend; k++)
+    for(j=grid->jstart; j<grid->jend; j++)
+      for(i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
+      }
 
-  for(n=0; n<1; n++)
-    for(k=grid->kstart; k<grid->kend; k++)
-      for(j=grid->jstart; j<grid->jend; j++)
-        for(i=grid->istart; i<grid->iend; i++)
-        {
-          ijkn = i + j*jj + k*kk + n*nn;
-          scal[ijkn] = scal[ijkn] + cB[substep]*dt*scalt[ijkn];
-        }
-
-  substep = (substep+1) % 3;
+  int substepn = (substep+1) % 3;
 
   // substep 0 resets the tendencies, because cA[0] == 0
-  for(n=0; n<3; n++)
-    for(k=grid->kstart; k<grid->kend; k++)
-      for(j=grid->jstart; j<grid->jend; j++)
-        for(i=grid->istart; i<grid->iend; i++)
-        {
-          ijkn = i + j*jj + k*kk + n*nn;
-          flowt[ijkn] = cA[substep]*flowt[ijkn];
-        }
+  for(k=grid->kstart; k<grid->kend; k++)
+    for(j=grid->jstart; j<grid->jend; j++)
+      for(i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        at[ijk] = cA[substep]*at[ijk];
+      }
 
-  for(n=0; n<1; n++)
-    for(k=grid->kstart; k<grid->kend; k++)
-      for(j=grid->jstart; j<grid->jend; j++)
-        for(i=grid->istart; i<grid->iend; i++)
-        {
-          ijkn = i + j*jj + k*kk + n*nn;
-          scalt[ijkn] = cA[substep]*scalt[ijkn];
-        }
-
-  return substep;
+  return 0;
 }
 
-int ctimeint::rk4(double * restrict flow, double * restrict flowt, double * restrict scal, double * restrict scalt, double dt)
+int ctimeint::rk4(double * restrict a, double * restrict at, double dt)
 {
   const double cA [] = {
       0.,
@@ -109,24 +112,33 @@ int ctimeint::rk4(double * restrict flow, double * restrict flowt, double * rest
     3134564353537./ 4481467310338.,
     2277821191437./14882151754819.};
 
-  int n;
+  int i,j,k;
+  int ijk,ii,jj,kk;
 
-  for(n=0; n<grid->ncells*3; n++)
-    flow[n] = flow[n] + cB[substep]*dt*flowt[n];
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
-  for(n=0; n<grid->ncells; n++)
-    scal[n] = scal[n] + cB[substep]*dt*scalt[n];
+  for(k=grid->kstart; k<grid->kend; k++)
+    for(j=grid->jstart; j<grid->jend; j++)
+      for(i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
+      }
 
-  substep = (substep+1) % 5;
+  int substepn = (substep+1) % 5;
 
   // substep 0 resets the tendencies, because cA[0] == 0
-  for(n=0; n<grid->ncells*3; n++)
-    flowt[n] = cA[substep]*flowt[n];
+  for(k=grid->kstart; k<grid->kend; k++)
+    for(j=grid->jstart; j<grid->jend; j++)
+      for(i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        at[ijk] = cA[substepn]*at[ijk];
+      }
 
-  for(n=0; n<grid->ncells; n++)
-    scalt[n] = cA[substep]*scalt[n];
-
-  return substep;
+  return 0;
 }
 
 bool ctimeint::insubstep()

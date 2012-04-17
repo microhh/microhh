@@ -74,9 +74,9 @@ int main()
     diff.exec();
     // 4. gravity
     // 5. large scale forcings
-    force.exec(timeint.subdt(timeloop.dt));
+    force.exec(timeint.getsubdt(timeloop.dt));
     // 6. pressure
-    pres.exec(timeint.subdt(timeloop.dt));
+    pres.exec(timeint.getsubdt(timeloop.dt));
     // 7. perform the timestepping substep
     timeint.exec(timeloop.dt);
 
