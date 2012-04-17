@@ -2,10 +2,10 @@ import numpy
 import struct
 
 class microhh:
-  def __init__(self, iter, itot, jtot, ktot, igc, jgc, kgc):
-    nx = itot+2*igc
-    ny = jtot+2*jgc
-    nz = ktot+2*kgc
+  def __init__(self, iter, itot, jtot, ktot):
+    nx = itot
+    ny = jtot
+    nz = ktot
     
     n  = nx*ny*nz
     

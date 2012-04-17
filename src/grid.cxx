@@ -196,12 +196,12 @@ int cgrid::save()
   else
     std::printf("Saving \"%s\"\n", filename);
 
-  fwrite(x , sizeof(double), icells, pFile);
-  fwrite(xh, sizeof(double), icells, pFile);
-  fwrite(y , sizeof(double), jcells, pFile);
-  fwrite(yh, sizeof(double), jcells, pFile);
-  fwrite(z , sizeof(double), kcells, pFile);
-  fwrite(zh, sizeof(double), kcells, pFile);
+  fwrite(&x [istart], sizeof(double), itot, pFile);
+  fwrite(&xh[istart], sizeof(double), itot, pFile);
+  fwrite(&y [jstart], sizeof(double), jtot, pFile);
+  fwrite(&yh[jstart], sizeof(double), jtot, pFile);
+  fwrite(&z [kstart], sizeof(double), ktot, pFile);
+  fwrite(&zh[kstart], sizeof(double), ktot, pFile);
   fclose(pFile);
 
   return 0;
@@ -222,12 +222,12 @@ int cgrid::load()
   else
     std::printf("Loading \"%s\"\n", filename);
 
-  fread(x , sizeof(double), icells, pFile);
-  fread(xh, sizeof(double), icells, pFile);
-  fread(y , sizeof(double), jcells, pFile);
-  fread(yh, sizeof(double), jcells, pFile);
-  fread(z , sizeof(double), kcells, pFile);
-  fread(zh, sizeof(double), kcells, pFile);
+  fread(&x [istart], sizeof(double), itot, pFile);
+  fread(&xh[istart], sizeof(double), itot, pFile);
+  fread(&y [jstart], sizeof(double), jtot, pFile);
+  fread(&yh[jstart], sizeof(double), jtot, pFile);
+  fread(&z [kstart], sizeof(double), ktot, pFile);
+  fread(&zh[kstart], sizeof(double), ktot, pFile);
   fclose(pFile);
 
   calculate();
