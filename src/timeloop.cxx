@@ -147,9 +147,8 @@ int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
   const double cB [] = {1./3., 15./16., 8./15.};
   
   int i,j,k;
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
@@ -169,7 +168,7 @@ int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
       for(i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        at[ijk] = cA[substep]*at[ijk];
+        at[ijk] = cA[substepn]*at[ijk];
       }
 
   return 0;
@@ -192,9 +191,8 @@ int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
     2277821191437./14882151754819.};
 
   int i,j,k;
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 

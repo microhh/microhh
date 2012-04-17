@@ -235,7 +235,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
                           double * restrict fftinj, double * restrict fftoutj)
 
 {
-  int i,j,k,ii,jj,kk,ijk,ijkb;
+  int i,j,k,jj,kk,ijk,ijkb;
   int imax,jmax,kmax;
   int itot,jtot,ktot;
   int igc,jgc,kgc;
@@ -251,7 +251,6 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
   jgc  = grid->jgc;
   kgc  = grid->kgc;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
@@ -318,6 +317,9 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
   for(j=0; j<jmax; j++)
     for(i=0; i<imax; i++)
     {
+      iindex = i;
+      jindex = j;
+
       // substitute BC's
       b[i+j*itot] += a[0];
 
@@ -481,7 +483,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
 
 double cpres::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
+  int    ijk,ii,jj,kk;
   double dxi,dyi;
 
   ii = 1;

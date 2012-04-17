@@ -196,9 +196,8 @@ int cfields::check()
 
 double cfields::calcmass(double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 

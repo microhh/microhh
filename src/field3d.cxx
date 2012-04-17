@@ -34,12 +34,11 @@ int cfield3d::init()
 
 int cfield3d::boundary_bottop(int sw)
 { 
-  int ijk0,ijk1,ii,jj,kk,kstart,kend;
+  int ijk0,ijk1,jj,kk,kstart,kend;
 
   kstart = grid->kstart;
   kend   = grid->kend;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
@@ -89,7 +88,7 @@ int cfield3d::boundary_bottop(int sw)
 
 int cfield3d::boundary_cyclic()
 { 
-  int ijk0,ijk1,ii,jj,kk,istart,iend,jstart,jend,igc,jgc;
+  int ijk0,ijk1,jj,kk,istart,iend,jstart,jend,igc,jgc;
 
   istart = grid->istart;
   iend   = grid->iend;
@@ -98,7 +97,6 @@ int cfield3d::boundary_cyclic()
   jend   = grid->jend;
   jgc    = grid->jgc;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 

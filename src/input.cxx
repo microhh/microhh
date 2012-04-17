@@ -15,7 +15,7 @@ cinput::~cinput()
 
 int cinput::readinifile()
 {
-  char inputline[256], temp1[256], block[256], item[256], lhs[256], rhs[256];
+  char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256];
 
   // read the input file
   FILE *inputfile;
@@ -49,7 +49,7 @@ int cinput::readinifile()
     n = std::sscanf(inputline, " [%[^]]] ", temp1);
     if(n == 1)
     {
-      n = std::sscanf(temp1, "%s %s", block);
+      n = std::sscanf(temp1, "%s %s", block, dummy);
       if(n == 1)
       {
         std::printf("Found block [%s]\n", block);
@@ -66,7 +66,7 @@ int cinput::readinifile()
     n = std::sscanf(inputline, "%[^=] = %[^\n]", temp1, rhs);
     if(n == 2)
     {
-      n = std::sscanf(temp1, " %[a-zA-Z0-9_] %s", lhs);
+      n = std::sscanf(temp1, " %[a-zA-Z0-9_] %s", lhs, dummy);
       if(n == 1)
       {
         if(!blockset)
@@ -133,8 +133,8 @@ int cinput::checkItemExists(std::string cat, std::string item, bool obligatory)
     else
       std::printf("WARNING [%s][%s] does not exist, default value used\n", cat.c_str(), item.c_str());
   }
-  else
-    return 0;
+
+  return 0;
 }
 
 // overloaded return functions

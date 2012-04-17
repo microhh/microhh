@@ -26,9 +26,8 @@ int cforce::exec(double dt)
 
 int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz, double dt)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
