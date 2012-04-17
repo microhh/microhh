@@ -13,9 +13,9 @@ int main()
   cpres   pres  (&grid, &fields);
   
   // read the input data and terminate on error
-  if(input.readinifile() != 0)
+  if(input.readinifile())
     return 1;
-  if(grid.readinifile(&input) != 0)
+  if(grid.readinifile(&input))
     return 1;
   
   // initialize the objects, allocate the required memory

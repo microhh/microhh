@@ -6,17 +6,14 @@
 #include "diff.h"
 #include "force.h"
 #include "pres.h"
-#include "timeint.h"
 
 int main()
 {
-  // INIT
   // read the input data
   cinput input;
   if(input.readinifile())
     return 1;
   
-  // initialize the MPI interface
   // create the objects, read the inputdata
   cgrid grid;
   if(grid.readinifile(&input))
@@ -34,7 +31,6 @@ int main()
   cdiff     diff    (&grid, &fields);
   cpres     pres    (&grid, &fields);
   cforce    force   (&grid, &fields);
-  ctimeint  timeint (&grid, &fields);
 
   // read the inputdata
   if(timeloop.readinifile(&input))
@@ -57,33 +53,35 @@ int main()
   // start the time loop
   while(timeloop.loop)
   {
-    // 0. determine the time step
-    if(not timeint.insubstep())
-      timeloop.settimestep(advec.getcfl(timeloop.dt));
-    // 1. boundary conditions
+    // determine the time step
+    if(!timeloop.insubstep())
+    {
+      double cfl = advec.getcfl(timeloop.dt);
+      timeloop.settimestep(cfl);
+    }
+
+    // boundary conditions
     fields.boundary();
 
-    if(not timeint.insubstep())
+    if(!timeloop.insubstep())
     {
       fields.check();
       pres.divergence();
     }
-    // 2. advection
+    // advection
     advec.exec();
-    // 3. diffusion
+    // diffusion
     diff.exec();
-    // 4. gravity
-    // 5. large scale forcings
-    force.exec(timeint.getsubdt(timeloop.dt));
-    // 6. pressure
-    pres.exec(timeint.getsubdt(timeloop.dt));
-    // 7. perform the timestepping substep
-    timeint.exec(timeloop.dt);
+    // large scale forcings
+    force.exec(timeloop.getsubdt());
+    // pressure
+    pres.exec(timeloop.getsubdt());
+    // perform the timestepping substep
+    timeloop.exec();
 
-    if(not timeint.insubstep())
+    if(!timeloop.insubstep())
       timeloop.timestep();
   }
-  // END DNS
   
   return 0;
 }

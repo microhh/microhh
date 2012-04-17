@@ -6,6 +6,8 @@
 #include "grid.h"
 #include "fields.h"
 
+#define restrict __restrict__
+
 class ctimeloop
 {
   public:
@@ -16,6 +18,12 @@ class ctimeloop
     int timestep();
     int settimestep(double);
 
+    int exec();
+    bool insubstep();
+    double getsubdt();
+
+    // variables
+    int substep;
     bool loop;
     bool adaptivestep;
 
@@ -29,12 +37,16 @@ class ctimeloop
     int iruntime;
     int idt;
 
-
   private:
     cgrid *grid;
     cfields *fields;
 
     timeval start;
     timeval end;
+
+    int rk3(double *, double *, double);
+    int rk4(double *, double *, double);
+    double rk3subdt(double);
+    double rk4subdt(double);
 };
 #endif
