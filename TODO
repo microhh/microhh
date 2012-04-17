@@ -2,13 +2,10 @@
 implement fftw_many
 
 [structure]
-make logical distinction between time loop and time integration
 clean up dns.cxx and catch errors properly
 handle field registration properly
 
 [extensions]
-add start iteration to inifile
-save the fftw-plan for a bitwise identical restart
 create input system for fields
 create more options for initial perturbations
 compute basic statistics
