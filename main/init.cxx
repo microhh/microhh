@@ -17,6 +17,8 @@ int main()
     return 1;
   if(grid.readinifile(&input))
     return 1;
+  if(fields.readinifile(&input))
+    return 1;
   
   // initialize the objects, allocate the required memory
   grid.initgrid();

@@ -20,6 +20,8 @@ int main()
     return 1;
 
   cfields fields(&grid);
+  if(fields.readinifile(&input))
+    return 1;
 
   // initialize the objects, allocate the required memory
   grid.initgrid();

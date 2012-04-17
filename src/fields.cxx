@@ -34,6 +34,21 @@ cfields::~cfields()
   std::printf("Destroying instance of object fields\n");
 }
 
+int cfields::readinifile(cinput *inputin)
+{
+  // input parameters
+  int n = 0;
+
+  // obligatory parameters
+  n += inputin->getItem(&visc , "fields", "visc" , true);
+  n += inputin->getItem(&viscs, "fields", "viscs", true);
+
+  if(n > 0)
+    return 1;
+
+  return 0;
+}
+
 int cfields::initfields()
 {
   std::printf("Initializing fields\n");
@@ -96,9 +111,6 @@ int cfields::createfields()
   // end Taylor-Green vortex setup */
 
   // set Moser180 as a default setup
-  visc  = 1.0e-5;
-  viscs = 1.0e-5;
-
   double dpdxls = -8.e-7;
   double rndamp =  5.e-3;
   int k;
@@ -135,10 +147,6 @@ int cfields::createfields()
 
 int cfields::load(int n)
 {
-  // remove this later and read from input
-  visc  = 1.0e-5;
-  viscs = 1.0e-5;
-
   // check them all before returning error
   int nerror = 0;
   nerror += u->load(n);

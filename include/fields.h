@@ -11,6 +11,7 @@ class cfields
     cfields(cgrid *);
     ~cfields();
 
+    int readinifile(cinput *);
     int initfields();
     int createfields();
     int save(int);
