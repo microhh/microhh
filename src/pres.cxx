@@ -5,8 +5,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "pres.h"
-
-#define restrict __restrict__
+#include "defines.h"
 
 cpres::cpres(cgrid *gridin, cfields *fieldsin)
 {

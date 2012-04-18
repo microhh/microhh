@@ -2,8 +2,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "force.h"
-
-#define restrict __restrict__
+#include "defines.h"
 
 cforce::cforce(cgrid *gridin, cfields *fieldsin)
 {

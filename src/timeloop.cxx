@@ -3,6 +3,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "timeloop.h"
+#include "defines.h"
 
 ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin)
 {

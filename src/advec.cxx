@@ -4,8 +4,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "advec.h"
-
-#define restrict __restrict__
+#include "defines.h"
 
 cadvec::cadvec(cgrid *gridin, cfields *fieldsin)
 {

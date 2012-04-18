@@ -4,8 +4,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "diff.h"
-
-#define restrict __restrict__
+#include "defines.h"
 
 cdiff::cdiff(cgrid *gridin, cfields *fieldsin)
 {

@@ -6,8 +6,6 @@
 #include "grid.h"
 #include "fields.h"
 
-#define restrict __restrict__
-
 class ctimeloop
 {
   public:

@@ -3,8 +3,7 @@
 #include <cmath>
 #include "grid.h"
 #include "fields.h"
-
-#define restrict __restrict__
+#include "defines.h"
 
 cfields::cfields(cgrid *gridin)
 {
