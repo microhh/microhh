@@ -1,0 +1,5 @@
+# gcc flags
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -ftree-vectorizer-verbose=1 -march=native -mtune=native
+
+# intel flags
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -xHOST -fno-alias -restrict -vec-report1 -axSSE4.2 -opt-prefetch -prof-use
