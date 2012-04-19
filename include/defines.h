@@ -1,1 +1,1 @@
-#define restrict restrict
+#define restrict __restrict__
