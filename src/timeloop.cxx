@@ -33,9 +33,15 @@ int ctimeloop::readinifile(cinput *inputin)
     return 1;
 
   // optional parameters
+  n = inputin->getItem(&maxiter, "time", "maxiter", false);
+  if(n > 0)
+    maxiter = 1e9;
+
   n = inputin->getItem(&iteration, "time", "iteration", false);
   if(n > 0)
     iteration = 0;
+  else
+    maxiter += iteration;
 
   n = inputin->getItem(&rkorder, "time", "rkorder", false);
   if(n > 0)
@@ -71,7 +77,7 @@ int ctimeloop::timestep()
 
   iteration++;
 
-  if(time >= runtime)
+  if(time >= runtime || iteration >= maxiter)
     loop = false;
 
   if(iteration % 100 == 0) 

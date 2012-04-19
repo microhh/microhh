@@ -26,14 +26,15 @@ class ctimeloop
     bool adaptivestep;
 
     double time;
-    double runtime;
     double dt;
     double cflmax;
+    double runtime;
 
     int iteration;
     int itime;
     int iruntime;
     int idt;
+    int maxiter;
 
   private:
     cgrid *grid;
