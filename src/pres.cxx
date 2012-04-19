@@ -218,6 +218,7 @@ int cpres::pres_2nd_in(double * restrict p,
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -257,6 +258,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
     {
+#pragma ivdep
       for(int i=0; i<itot; i++)
       { 
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
@@ -265,6 +267,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
 
       fftw_execute(iplanf);
 
+#pragma ivdep
       for(int i=0; i<itot; i++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
@@ -300,6 +303,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
   // create vectors that go into the tridiagonal matrix solver
   for(k=0; k<ktot; k++)
     for(j=0; j<jmax; j++)
+#pragma ivdep
       for(i=0; i<imax; i++)
       {
         // iindex = mpicoordx * imax + i
@@ -314,6 +318,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
       }
 
   for(j=0; j<jmax; j++)
+#pragma ivdep
     for(i=0; i<imax; i++)
     {
       iindex = i;
@@ -360,6 +365,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
     {
+#pragma ivdep
       for(int i=0; i<itot; i++)
       { 
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
@@ -368,6 +374,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
 
       fftw_execute(iplanb);
 
+#pragma ivdep
       for(int i=0; i<itot; i++)
       {
         ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
@@ -393,6 +400,7 @@ int cpres::pres_2nd_out(double * restrict ut, double * restrict vt, double * res
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -427,6 +435,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
   kkp = grid->icells*grid->jcells;
 
   for(j=0;j<jtot;j++)
+#pragma ivdep
     for(i=0;i<itot;i++)
     {
       ij = i + j*jj;
@@ -434,6 +443,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
     }
 
   for(j=0;j<jtot;j++)
+#pragma ivdep
     for(i=0;i<itot;i++)
     {
       ij   = i + j*jj;
@@ -444,6 +454,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
   for(k=1; k<ktot; k++)
   {
     for(j=0;j<jtot;j++)
+#pragma ivdep
       for(i=0;i<itot;i++)
       {
         ij  = i + j*jj;
@@ -451,6 +462,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
         work3d[ijk] = c[k-1] / work2d[ij];
       }
     for(j=0;j<jtot;j++)
+#pragma ivdep
       for(i=0;i<itot;i++)
       {
         ij  = i + j*jj;
@@ -458,6 +470,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
         work2d[ij] = b[ijk] - a[k]*work3d[ijk];
       }
     for(j=0;j<jtot;j++)
+#pragma ivdep
       for(i=0;i<itot;i++)
       {
         ij  = i + j*jj;
@@ -470,6 +483,7 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
 
   for(k=ktot-2; k>=0; k--)
     for(j=0;j<jtot;j++)
+#pragma ivdep
       for(i=0;i<itot;i++)
       {
         ijk  = i + j*jj + k*kk;
@@ -498,6 +512,7 @@ double cpres::calcdivergence(double * restrict u, double * restrict v, double * 
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;

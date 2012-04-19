@@ -54,6 +54,7 @@ double cadvec::calccfl(double * restrict u, double * restrict v, double * restri
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -79,6 +80,7 @@ int cadvec::advecu_2nd(double * restrict ut, double * restrict u, double * restr
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -110,6 +112,7 @@ int cadvec::advecv_2nd(double * restrict vt, double * restrict u, double * restr
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -141,6 +144,7 @@ int cadvec::advecw_2nd(double * restrict wt, double * restrict u, double * restr
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -172,6 +176,7 @@ int cadvec::advecs_2nd(double * restrict st, double * restrict s, double * restr
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;

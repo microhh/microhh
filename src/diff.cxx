@@ -50,6 +50,7 @@ int cdiff::diffc_2nd(double * restrict at, double * restrict a, double * restric
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -79,6 +80,7 @@ int cdiff::diffw_2nd(double * restrict wt, double * restrict w, double * restric
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;

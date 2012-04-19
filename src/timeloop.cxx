@@ -155,6 +155,7 @@ int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
 
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -166,6 +167,7 @@ int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
   // substep 0 resets the tendencies, because cA[0] == 0
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -199,6 +201,7 @@ int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
 
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -210,6 +213,7 @@ int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
   // substep 0 resets the tendencies, because cA[0] == 0
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;

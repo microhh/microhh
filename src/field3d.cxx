@@ -46,6 +46,7 @@ int cfield3d::boundary_bottop(int sw)
   {
     for(int k=0; k<grid->kgc; k++)
       for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
         for(int i=0; i<grid->icells; i++)
         {
           ijk0 = i + j*jj + (kstart-k-1)*kk;
@@ -55,6 +56,7 @@ int cfield3d::boundary_bottop(int sw)
 
     for(int k=0; k<grid->kgc; k++)
       for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
         for(int i=0; i<grid->icells; i++)
         {
           ijk0 = i + j*jj + (kend+k  )*kk;
@@ -66,6 +68,7 @@ int cfield3d::boundary_bottop(int sw)
   {
     for(int k=0; k<grid->kgc; k++)
       for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
         for(int i=0; i<grid->icells; i++)
         {
           ijk0 = i + j*jj + (kstart-k-1)*kk;
@@ -75,6 +78,7 @@ int cfield3d::boundary_bottop(int sw)
 
     for(int k=0; k<grid->kgc; k++)
       for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
         for(int i=0; i<grid->icells; i++)
         {
           ijk0 = i + j*jj + (kend+k  )*kk;
@@ -103,6 +107,7 @@ int cfield3d::boundary_cyclic()
   // east west boundaries
   for(int k=0; k<grid->kcells; k++)
     for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
       for(int i=0; i<grid->igc; i++)
       {
         ijk0 = i          + j*jj + k*kk;
@@ -112,6 +117,7 @@ int cfield3d::boundary_cyclic()
 
   for(int k=0; k<grid->kcells; k++)
     for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
       for(int i=0; i<grid->igc; i++)
       {
         ijk0 = i+iend   + j*jj + k*kk;
@@ -122,6 +128,7 @@ int cfield3d::boundary_cyclic()
   // north south boundaries
   for(int k=0; k<grid->kcells; k++)
     for(int j=0; j<grid->jgc; j++)
+#pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
         ijk0 = i + j           *jj + k*kk;
@@ -131,6 +138,7 @@ int cfield3d::boundary_cyclic()
 
   for(int k=0; k<grid->kcells; k++)
     for(int j=0; j<grid->jgc; j++)
+#pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
         ijk0 = i + (j+jend  )*jj + k*kk;

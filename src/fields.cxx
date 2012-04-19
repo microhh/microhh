@@ -213,6 +213,7 @@ double cfields::calcmass(double * restrict s, double * restrict u, double * rest
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -241,6 +242,7 @@ double cfields::calcmom(double * restrict u, double * restrict v, double * restr
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*icells + k*ijcells;
@@ -268,6 +270,7 @@ double cfields::calctke(double * restrict u, double * restrict v, double * restr
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*icells + k*ijcells;

@@ -37,6 +37,7 @@ int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
