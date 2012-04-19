@@ -37,6 +37,16 @@ int ctimeloop::readinifile(cinput *inputin)
   if(n > 0)
     iteration = 0;
 
+  n = inputin->getItem(&rkorder, "time", "rkorder", false);
+  if(n > 0)
+    rkorder = 4;
+  else
+    if(!(rkorder == 3 || rkorder == 4))
+    {
+      std::printf("ERROR \"%d\" is an illegal value for rkorder\n", rkorder);
+      return 1;
+    }
+
   // initializations
   loop      = true;
   time      = 0.;
@@ -101,17 +111,23 @@ int ctimeloop::settimestep(double cfl)
 
 int ctimeloop::exec()
 {
-  // rk3((*fields->u).data, (*fields->ut).data, dt);
-  // rk3((*fields->v).data, (*fields->vt).data, dt);
-  // rk3((*fields->w).data, (*fields->wt).data, dt);
-  // rk3((*fields->s).data, (*fields->st).data, dt);
-  // substep = (substep+1) % 3;
+  if(rkorder == 3)
+  {
+    rk3((*fields->u).data, (*fields->ut).data, dt);
+    rk3((*fields->v).data, (*fields->vt).data, dt);
+    rk3((*fields->w).data, (*fields->wt).data, dt);
+    rk3((*fields->s).data, (*fields->st).data, dt);
+    substep = (substep+1) % 3;
+  }
 
-  rk4((*fields->u).data, (*fields->ut).data, dt);
-  rk4((*fields->v).data, (*fields->vt).data, dt);
-  rk4((*fields->w).data, (*fields->wt).data, dt);
-  rk4((*fields->s).data, (*fields->st).data, dt);
-  substep = (substep+1) % 5;
+  if(rkorder == 4)
+  {
+    rk4((*fields->u).data, (*fields->ut).data, dt);
+    rk4((*fields->v).data, (*fields->vt).data, dt);
+    rk4((*fields->w).data, (*fields->wt).data, dt);
+    rk4((*fields->s).data, (*fields->st).data, dt);
+    substep = (substep+1) % 5;
+  }
 
   return substep;
 }
@@ -119,8 +135,11 @@ int ctimeloop::exec()
 double ctimeloop::getsubdt()
 {
   double subdt;
-  // subdt = rk3subdt(dt);
-  subdt = rk4subdt(dt);
+  if(rkorder == 3)
+    subdt = rk3subdt(dt);
+  else if(rkorder == 4)
+    subdt = rk4subdt(dt);
+
   return subdt;
 }
 

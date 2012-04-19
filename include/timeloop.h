@@ -42,6 +42,8 @@ class ctimeloop
     timeval start;
     timeval end;
 
+    int rkorder;
+
     int rk3(double *, double *, double);
     int rk4(double *, double *, double);
     double rk3subdt(double);
