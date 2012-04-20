@@ -12,6 +12,7 @@ ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin)
   fields = fieldsin;
 
   substep = 0;
+  ifactor = 1000.;
 }
 
 ctimeloop::~ctimeloop()
@@ -54,8 +55,6 @@ int ctimeloop::readinifile(cinput *inputin)
   dt        = 0.1;
   cflmax    = 1.5;
 
-  const int ifactor = 1000;
-
   itime    = (int)(ifactor * time);
   iruntime = (int)(ifactor * runtime);
   idt      = (int)(ifactor * dt);
@@ -90,6 +89,10 @@ int ctimeloop::timestep()
 
   if(iteration % 500 == 0) 
   {
+    // save the time information
+    save(iteration);
+
+    // save the fields
     (*fields->u).save(iteration);
     (*fields->v).save(iteration);
     (*fields->w).save(iteration);
@@ -103,7 +106,10 @@ int ctimeloop::timestep()
 int ctimeloop::settimestep(double cfl)
 {
   if(adaptivestep)
-    dt = dt * cflmax/cfl;
+  {
+    idt = (int)((double)idt * cflmax/cfl);
+    dt  = (double)idt / ifactor;
+  }
 
   std::printf("CFL = %f, dt = %f\n", cfl, dt);
 
@@ -249,4 +255,51 @@ bool ctimeloop::insubstep()
     return true;
   else
     return false;
+}
+
+int ctimeloop::save(int n)
+{
+  FILE *pFile;
+  char filename[256];
+  std::sprintf(filename, "time.%06d", n);
+  pFile = fopen(filename, "wb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" cannot be written", filename);
+    return 1;
+  }
+  else
+    std::printf("Saving \"%s\"\n", filename);
+
+  fwrite(&itime, sizeof(int), 1, pFile);
+
+  fclose(pFile);
+
+  return 0;
+}
+
+int ctimeloop::load(int n)
+{
+  FILE *pFile;
+  char filename[256];
+  std::sprintf(filename, "time.%06d", n);
+  pFile = fopen(filename, "rb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" does not exist\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Loading \"%s\"\n", filename);
+
+  fread(&itime, sizeof(int), 1, pFile);
+
+  fclose(pFile);
+
+  // calculate the double precision time from the integer time
+  time = (double)itime / ifactor;
+
+  return 0;
 }

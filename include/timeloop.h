@@ -20,6 +20,9 @@ class ctimeloop
     bool insubstep();
     double getsubdt();
 
+    int save(int);
+    int load(int);
+
     // variables
     int substep;
     bool loop;
@@ -39,6 +42,8 @@ class ctimeloop
   private:
     cgrid *grid;
     cfields *fields;
+
+    double ifactor;
 
     timeval start;
     timeval end;
