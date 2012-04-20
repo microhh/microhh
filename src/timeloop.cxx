@@ -12,7 +12,7 @@ ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin)
   fields = fieldsin;
 
   substep = 0;
-  ifactor = 1000.;
+  ifactor = 10000.;
 }
 
 ctimeloop::~ctimeloop()
@@ -55,9 +55,9 @@ int ctimeloop::readinifile(cinput *inputin)
   dt        = 0.1;
   cflmax    = 1.5;
 
-  itime    = (int)(ifactor * time);
-  iruntime = (int)(ifactor * runtime);
-  idt      = (int)(ifactor * dt);
+  itime    = (long)(ifactor * time);
+  iruntime = (long)(ifactor * runtime);
+  idt      = (long)(ifactor * dt);
 
   gettimeofday(&start, NULL);
 
@@ -71,7 +71,7 @@ int ctimeloop::timestep()
 
   iteration++;
 
-  if(time >= runtime || iteration >= maxiter)
+  if(itime >= iruntime || iteration >= maxiter)
     loop = false;
 
   if(iteration % 100 == 0) 
@@ -107,7 +107,7 @@ int ctimeloop::settimestep(double cfl)
 {
   if(adaptivestep)
   {
-    idt = (int)((double)idt * cflmax/cfl);
+    idt = (long)((double)idt * cflmax/cfl);
     dt  = (double)idt / ifactor;
   }
 
@@ -261,7 +261,7 @@ int ctimeloop::save(int n)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "time.%06d", n);
+  std::sprintf(filename, "time.%07d", n);
   pFile = fopen(filename, "wb");
 
   if(pFile == NULL)
@@ -272,7 +272,7 @@ int ctimeloop::save(int n)
   else
     std::printf("Saving \"%s\"\n", filename);
 
-  fwrite(&itime, sizeof(int), 1, pFile);
+  fwrite(&itime, sizeof(long), 1, pFile);
 
   fclose(pFile);
 
@@ -283,7 +283,7 @@ int ctimeloop::load(int n)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "time.%06d", n);
+  std::sprintf(filename, "time.%07d", n);
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)
@@ -294,7 +294,7 @@ int ctimeloop::load(int n)
   else
     std::printf("Loading \"%s\"\n", filename);
 
-  fread(&itime, sizeof(int), 1, pFile);
+  fread(&itime, sizeof(long), 1, pFile);
 
   fclose(pFile);
 

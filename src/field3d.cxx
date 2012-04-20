@@ -153,7 +153,7 @@ int cfield3d::save(int n)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%06d", name.c_str(), n);
+  std::sprintf(filename, "%s.%07d", name.c_str(), n);
   pFile = fopen(filename, "wb");
 
   if(pFile == NULL)
@@ -186,7 +186,7 @@ int cfield3d::load(int n)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%06d", name.c_str(), n);
+  std::sprintf(filename, "%s.%07d", name.c_str(), n);
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)

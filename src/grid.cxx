@@ -185,7 +185,7 @@ int cgrid::save()
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%06d", "grid", 0);
+  std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "wb");
 
   if(pFile == NULL)
@@ -211,7 +211,7 @@ int cgrid::load()
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%06d", "grid", 0);
+  std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)

@@ -102,7 +102,7 @@ int cpres::load()
   fftoutj = fftw_alloc_real(jtot);
 
   char filename[256];
-  std::sprintf(filename, "%s.%06d", "fftwplan", 0);
+  std::sprintf(filename, "%s.%07d", "fftwplan", 0);
   int n = fftw_import_wisdom_from_filename(filename);
   if(n == 0)
   {
@@ -140,7 +140,7 @@ int cpres::save()
   jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
 
   char filename[256];
-  std::sprintf(filename, "%s.%06d", "fftwplan", 0);
+  std::sprintf(filename, "%s.%07d", "fftwplan", 0);
   int n = fftw_export_wisdom_to_filename(filename);
   if(n == 0)
   {

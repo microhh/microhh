@@ -34,9 +34,6 @@ class ctimeloop
     double runtime;
 
     int iteration;
-    int itime;
-    int iruntime;
-    int idt;
     int maxiter;
 
   private:
@@ -49,6 +46,10 @@ class ctimeloop
     timeval end;
 
     int rkorder;
+
+    unsigned long itime;
+    unsigned long iruntime;
+    unsigned long idt;
 
     int rk3(double *, double *, double);
     int rk4(double *, double *, double);
