@@ -66,7 +66,7 @@ int cinput::readinifile()
     n = std::sscanf(inputline, "%[^=] = %[^\n]", temp1, rhs);
     if(n == 2)
     {
-      n = std::sscanf(temp1, " %[a-zA-Z0-9_] %s", lhs, dummy);
+      n = std::sscanf(temp1, " %[a-zA-Z0-9_()] %s", lhs, dummy);
       if(n == 1)
       {
         if(!blockset)
