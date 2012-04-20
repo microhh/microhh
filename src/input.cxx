@@ -153,8 +153,11 @@ int cinput::getItem(int *value, std::string cat, std::string item, bool obligato
     *value = inputint;
   else
   {
-    std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
-    return 1;
+    if(std::strcmp(inputstring,""))
+    {
+      std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
+      return 1;
+    }
   }
 
   return 0;
@@ -176,8 +179,11 @@ int cinput::getItem(double *value, std::string cat, std::string item, bool oblig
     *value = inputdouble;
   else
   {
-    std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
-    return 1;
+    if(std::strcmp(inputstring,""))
+    {
+      std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
+      return 1;
+    }
   }
 
   return 0;
@@ -213,8 +219,11 @@ int cinput::getItem(bool *value, std::string cat, std::string item, bool obligat
   
   if(n != 1 || boolerror)
   {
-    std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
-    return 1;
+    if(std::strcmp(inputstring,""))
+    {
+      std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
+      return 1;
+    }
   }
 
   return 0;
