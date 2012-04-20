@@ -31,9 +31,11 @@ int ctimeloop::readinifile(cinput *inputin)
   n += inputin->getItem(&cflmax      , "time", "cflmax"      );
 
   // optional parameters
-  n += inputin->getItem(&maxiter  , "time", "maxiter"  , 1e9);
-  n += inputin->getItem(&iteration, "time", "iteration", 0  );
-  n += inputin->getItem(&rkorder  , "time", "rkorder"  , 4  );
+  n += inputin->getItem(&maxiter   , "time", "maxiter"    , 1e9);
+  n += inputin->getItem(&iteration , "time", "iteration"  , 0  );
+  n += inputin->getItem(&rkorder   , "time", "rkorder"    , 4  );
+  n += inputin->getItem(&outputiter, "time", "outputiter" , 100);
+  n += inputin->getItem(&saveiter  , "time", "saveiter"   , 500);
 
   // if one argument fails, then crash
   if(n > 0)
@@ -74,7 +76,7 @@ int ctimeloop::timestep()
   if(itime >= iruntime || iteration >= maxiter)
     loop = false;
 
-  if(iteration % 100 == 0) 
+  if(iteration % outputiter == 0) 
   {
     gettimeofday(&end, NULL);
 
@@ -87,7 +89,7 @@ int ctimeloop::timestep()
     start = end;
   }
 
-  if(iteration % 500 == 0) 
+  if(iteration % saveiter == 0) 
   {
     // save the time information
     save(iteration);

@@ -34,7 +34,6 @@ class ctimeloop
     double runtime;
 
     int iteration;
-    int maxiter;
 
   private:
     cgrid *grid;
@@ -50,6 +49,10 @@ class ctimeloop
     unsigned long itime;
     unsigned long iruntime;
     unsigned long idt;
+
+    int outputiter;
+    int saveiter;
+    int maxiter;
 
     int rk3(double *, double *, double);
     int rk4(double *, double *, double);
