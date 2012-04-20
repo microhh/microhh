@@ -107,7 +107,7 @@ int cinput::readinifile()
   return nerrors;
 }
 
-int cinput::checkItemExists(std::string cat, std::string item, bool obligatory)
+int cinput::checkItemExists(std::string cat, std::string item)
 {  
   inputmap::const_iterator it1 = inputlist.find(cat);
 
@@ -124,25 +124,43 @@ int cinput::checkItemExists(std::string cat, std::string item, bool obligatory)
     readerror = true;
 
   if(readerror)
-  {
-    if(obligatory)
-    {
-      std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-      return 1;
-    }
-    else
-      std::printf("WARNING [%s][%s] does not exist, default value used\n", cat.c_str(), item.c_str());
-  }
+    return 1;
 
   return 0;
 }
 
 // overloaded return functions
-int cinput::getItem(int *value, std::string cat, std::string item, bool obligatory)
+int cinput::getItem(int *value, std::string cat, std::string item)
 {
-  if(checkItemExists(cat, item, obligatory))
+  if(checkItemExists(cat, item))
+  {
+    std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
     return 1;
+  }
+  else
+    if(checkItem(value, cat, item))
+      return 1;
+  
+  return 0;
+}
 
+int cinput::getItem(int *value, std::string cat, std::string item, int def)
+{
+  if(checkItemExists(cat, item))
+  {
+    std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
+    *value = def;
+    return 0;
+  }
+  else
+    if(checkItem(value, cat, item))
+      return 1;
+  
+  return 0;
+}
+
+int cinput::checkItem(int *value, std::string cat, std::string item)
+{
   char inputstring[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item].c_str());
 
@@ -163,11 +181,37 @@ int cinput::getItem(int *value, std::string cat, std::string item, bool obligato
   return 0;
 }
 
-int cinput::getItem(double *value, std::string cat, std::string item, bool obligatory)
+int cinput::getItem(double *value, std::string cat, std::string item)
 {
-  if(checkItemExists(cat, item, obligatory))
+  if(checkItemExists(cat, item))
+  {
+    std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
     return 1;
+  }
+  else
+    if(checkItem(value, cat, item))
+      return 1;
   
+  return 0;
+}
+
+int cinput::getItem(double *value, std::string cat, std::string item, double def)
+{
+  if(checkItemExists(cat, item))
+  {
+    std::printf("WARNING [%s][%s] does not exist, default value of %f used\n", cat.c_str(), item.c_str(), def);
+    *value = def;
+    return 0;
+  }
+  else
+    if(checkItem(value, cat, item))
+      return 1;
+  
+  return 0;
+}
+
+int cinput::checkItem(double *value, std::string cat, std::string item)
+{
   char inputstring[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item].c_str());
 
@@ -189,11 +233,37 @@ int cinput::getItem(double *value, std::string cat, std::string item, bool oblig
   return 0;
 }
 
-int cinput::getItem(bool *value, std::string cat, std::string item, bool obligatory)
+int cinput::getItem(bool *value, std::string cat, std::string item)
 {
-  if(checkItemExists(cat, item, obligatory))
+  if(checkItemExists(cat, item))
+  {
+    std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
     return 1;
+  }
+  else
+    if(checkItem(value, cat, item))
+      return 1;
   
+  return 0;
+}
+
+int cinput::getItem(bool *value, std::string cat, std::string item, bool def)
+{
+  if(checkItemExists(cat, item))
+  {
+    std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
+    *value = def;
+    return 0;
+  }
+  else
+    if(checkItem(value, cat, item))
+      return 1;
+  
+  return 0;
+}
+
+int cinput::checkItem(bool *value, std::string cat, std::string item)
+{
   char inputstring[256], inputbool[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item].c_str());
 

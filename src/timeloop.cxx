@@ -25,33 +25,28 @@ int ctimeloop::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true);
-  n += inputin->getItem(&runtime     , "time", "runtime"     , true);
-  n += inputin->getItem(&cflmax      , "time", "cflmax"      , true);
+  n += inputin->getItem(&adaptivestep, "time", "adaptivestep");
+  n += inputin->getItem(&runtime     , "time", "runtime"     );
+  n += inputin->getItem(&cflmax      , "time", "cflmax"      );
 
+  // optional parameters
+  n += inputin->getItem(&maxiter  , "time", "maxiter"  , 1e9);
+  n += inputin->getItem(&iteration, "time", "iteration", 0  );
+  n += inputin->getItem(&rkorder  , "time", "rkorder"  , 4  );
+
+  // if one argument fails, then crash
   if(n > 0)
     return 1;
 
-  // optional parameters
-  n = inputin->getItem(&maxiter, "time", "maxiter", false);
-  if(n > 0)
-    maxiter = 1e9;
+  // the maximum iteration is relative to the start iteration
+  maxiter += iteration;
 
-  n = inputin->getItem(&iteration, "time", "iteration", false);
-  if(n > 0)
-    iteration = 0;
-  else
-    maxiter += iteration;
-
-  n = inputin->getItem(&rkorder, "time", "rkorder", false);
-  if(n > 0)
-    rkorder = 4;
-  else
-    if(!(rkorder == 3 || rkorder == 4))
-    {
-      std::printf("ERROR \"%d\" is an illegal value for rkorder\n", rkorder);
-      return 1;
-    }
+  // 3 and 4 are the only valid values for the rkorder
+  if(!(rkorder == 3 || rkorder == 4))
+  {
+    std::printf("ERROR \"%d\" is an illegal value for rkorder\n", rkorder);
+    return 1;
+  }
 
   // initializations
   loop      = true;

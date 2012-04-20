@@ -39,8 +39,8 @@ int cfields::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&visc , "fields", "visc" , true);
-  n += inputin->getItem(&viscs, "fields", "viscs", true);
+  n += inputin->getItem(&visc , "fields", "visc" );
+  n += inputin->getItem(&viscs, "fields", "viscs");
 
   if(n > 0)
     return 1;
