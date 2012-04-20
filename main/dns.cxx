@@ -54,24 +54,44 @@ int main()
   // initialize the pressure solver
   pres.init();
 
+  // initialize the check variables
+  int    iter;
+  double time, dt, cputime;
+  double mom, tke, mass;
+  double div;
+  double cfl;
+  
+  std::printf("%8s  %12s  %10s  %10s  %8s  %13s  %13s  %13s  %13s\n", 
+    "ITER", "TIME", "CPUDT", "DT", "CFL", "DIV", "MOM", "TKE", "MASS");
+
   // start the time loop
   while(timeloop.loop)
   {
     // determine the time step
     if(!timeloop.insubstep())
     {
-      double cfl = advec.getcfl(timeloop.dt);
+      cfl = advec.getcfl(timeloop.dt);
       timeloop.settimestep(cfl);
     }
 
     // boundary conditions
     fields.boundary();
 
-    if(!timeloop.insubstep())
+    if(timeloop.docheck() && !timeloop.insubstep())
     {
-      fields.check();
-      pres.divergence();
+      iter    = timeloop.iteration;
+      time    = timeloop.time;
+      dt      = timeloop.dt;
+      cputime = timeloop.check();
+      div     = pres.check();
+      mom     = fields.check(0);
+      tke     = fields.check(1);
+      mass    = fields.check(2);
+
+      std::printf("%8d  %12.3f  %10.4f  %10.4f  %8.4f  %13.5E  %13.5E  %13.5E  %13.5E\n", 
+          iter, time, cputime, dt, cfl, div, mom, tke, mass);
     }
+
     // advection
     advec.exec();
     // diffusion

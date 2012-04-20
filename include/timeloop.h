@@ -23,6 +23,9 @@ class ctimeloop
     int save(int);
     int load(int);
 
+    int docheck();
+    double check();
+
     // variables
     int substep;
     bool loop;

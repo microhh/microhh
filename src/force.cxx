@@ -56,34 +56,6 @@ int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz
   for(int n=0; n<grid->ncells; n++)
     ut[n] += fbody;
 
-  std::printf("force: %E\n", fbody);
-
   return 0;
 }
 
-/*
-real    :: umavg, utavg, Umean, Pbody
-integer :: i, j, k
-
-umavg = 0.
-utavg = 0.
-
-do j = 1,jmax
-  do i = 1,imax
-    do k = 1,kmax
-      umavg = umavg + um(k,i,j)*dz(k)
-      utavg = utavg + ut(k,i,j)*dz(k)
-    end do
-  end do
-end do
-
-umavg = umavg / (imax*jmax*zsize)
-utavg = utavg / (imax*jmax*zsize)
-
-!CvH for now, set Umean to 0.115 m/s
-Umean = 0.115
-
-Pbody = (Umean - umavg) / rk3coef - utavg
-
-ut(1:kmax,1:imax,1:jmax) = ut(1:kmax,1:imax,1:jmax) + Pbody
-*/

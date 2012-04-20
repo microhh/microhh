@@ -79,14 +79,12 @@ int cpres::init()
   return 0;
 }
 
-int cpres::divergence()
+double cpres::check()
 {
   double divmax;
   divmax = calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
 
-  std::printf("divmax = %24.14E\n", divmax);
-
-  return 0;
+  return divmax;
 }
 
 int cpres::load()

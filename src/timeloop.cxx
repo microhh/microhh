@@ -76,19 +76,6 @@ int ctimeloop::timestep()
   if(itime >= iruntime || iteration >= maxiter)
     loop = false;
 
-  if(iteration % outputiter == 0) 
-  {
-    gettimeofday(&end, NULL);
-
-    double timeelapsed;
-
-    timeelapsed = (double)(end.tv_sec-start.tv_sec) + (double)(end.tv_usec-start.tv_usec) * 1.e-6;
-
-    std::printf("Iteration = %6d, runtime = %7.1f, cputime = %10.5f\n", iteration, time, timeelapsed);
-
-    start = end;
-  }
-
   if(iteration % saveiter == 0) 
   {
     // save the time information
@@ -105,6 +92,24 @@ int ctimeloop::timestep()
   return 0;
 }
 
+int ctimeloop::docheck()
+{
+  if(iteration % outputiter == 0)
+    return 1;
+
+  return 0;
+}
+
+double ctimeloop::check()
+{
+  gettimeofday(&end, NULL);
+
+  double timeelapsed = (double)(end.tv_sec-start.tv_sec) + (double)(end.tv_usec-start.tv_usec) * 1.e-6;
+  start = end;
+
+  return timeelapsed;
+}
+
 int ctimeloop::settimestep(double cfl)
 {
   if(adaptivestep)
@@ -112,8 +117,6 @@ int ctimeloop::settimestep(double cfl)
     idt = (long)((double)idt * cflmax/cfl);
     dt  = (double)idt / ifactor;
   }
-
-  std::printf("CFL = %f, dt = %f\n", cfl, dt);
 
   return 0;
 }

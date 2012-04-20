@@ -20,7 +20,7 @@ class cfields
     // int resettend();
     int boundary();
 
-    int check();
+    double check(int);
     inline double interp2(const double, const double);
 
     // variables

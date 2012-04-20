@@ -188,17 +188,18 @@ int cfields::boundary()
   return 0;
 }
 
-int cfields::check()
+double cfields::check(int n)
 {
-  double mom,tke,mass;
+  double checkval = 0.;
 
-  mom  = calcmom (u->data, v->data, w->data, grid->dz);
-  tke  = calctke (u->data, v->data, w->data, grid->dz);
-  mass = calcmass(s->data, u->data, v->data, w->data, grid->dz);
+  if(n == 0)
+    checkval = calcmom (u->data, v->data, w->data, grid->dz);
+  else if(n == 1)
+    checkval = calctke (u->data, v->data, w->data, grid->dz);
+  else if(n == 2)
+    checkval = calcmass(s->data, u->data, v->data, w->data, grid->dz);
 
-  std::printf("momentum = %24.14E, TKE = %24.14E, mass = %24.14E\n", mom, tke, mass);
-
-  return 0;
+  return checkval;
 }
 
 double cfields::calcmass(double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dz)

@@ -15,7 +15,7 @@ class cpres
     int save();
     int load();
     int exec(double);
-    int divergence();
+    double check();
 
   private:
     // variables
