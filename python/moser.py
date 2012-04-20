@@ -1,7 +1,7 @@
 from pylab import *
 from microhh import *
 
-t = 3000
+t = 4500
 
 itot = 96
 jtot = 64
@@ -25,6 +25,7 @@ ylim(min(data.z), max(data.z))
 xlabel('x')
 ylabel('z')
 title('spanwise velocity')
+colorbar()
 
 figure(3)
 pcolormesh(data.x, data.zh, data.w[:,1,:])
@@ -33,6 +34,7 @@ ylim(min(data.zh), max(data.zh))
 xlabel('x')
 ylabel('z')
 title('vertical velocity')
+colorbar()
 
 figure(4)
 pcolormesh(data.x, data.z, data.p[:,1,:])
@@ -41,6 +43,7 @@ ylim(min(data.z), max(data.z))
 xlabel('x')
 ylabel('z')
 title('pressure')
+colorbar()
 
 figure(5)
 pcolormesh(data.x, data.z, data.s[:,1,:])
@@ -49,6 +52,7 @@ ylim(min(data.z), max(data.z))
 xlabel('x')
 ylabel('z')
 title('scalar')
+colorbar()
 
 ##### some means ######
 umean = average(average(data.u,1),1)

@@ -9,7 +9,7 @@ class microhh:
     
     n  = nx*ny*nz
     
-    fin = open("grid.{:06d}".format(0),"rb")
+    fin = open("grid.{:07d}".format(0),"rb")
     raw = fin.read(nx*8)
     self.x = numpy.array(struct.unpack('{}d'.format(nx), raw))
     raw = fin.read(nx*8)
@@ -24,31 +24,31 @@ class microhh:
     self.zh = numpy.array(struct.unpack('{}d'.format(nz), raw))
     fin.close()
     
-    fin = open("u.{:06d}".format(iter),"rb")
+    fin = open("u.{:07d}".format(iter),"rb")
     raw = fin.read(n*8)
     tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
     self.u = tmp.reshape((nz, ny, nx))
     fin.close()
     
-    fin = open("v.{:06d}".format(iter),"rb")
+    fin = open("v.{:07d}".format(iter),"rb")
     raw = fin.read(n*8)
     tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
     self.v = tmp.reshape((nz, ny, nx))
     fin.close()
     
-    fin = open("w.{:06d}".format(iter),"rb")
+    fin = open("w.{:07d}".format(iter),"rb")
     raw = fin.read(n*8)
     tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
     self.w = tmp.reshape((nz, ny, nx))
     fin.close()
     
-    fin = open("p.{:06d}".format(iter),"rb")
+    fin = open("p.{:07d}".format(iter),"rb")
     raw = fin.read(n*8)
     tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
     self.p = tmp.reshape((nz, ny, nx))
     fin.close()
 
-    fin = open("s.{:06d}".format(iter),"rb")
+    fin = open("s.{:07d}".format(iter),"rb")
     raw = fin.read(n*8)
     tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
     self.s = tmp.reshape((nz, ny, nx))
