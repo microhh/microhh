@@ -28,9 +28,9 @@ int ctimeloop::readinifile(cinput *inputin)
   // obligatory parameters
   n += inputin->getItem(&adaptivestep, "time", "adaptivestep");
   n += inputin->getItem(&runtime     , "time", "runtime"     );
-  n += inputin->getItem(&cflmax      , "time", "cflmax"      );
 
   // optional parameters
+  n += inputin->getItem(&cflmax    , "time", "cflmax"     , 1. );
   n += inputin->getItem(&maxiter   , "time", "maxiter"    , 1e9);
   n += inputin->getItem(&iteration , "time", "iteration"  , 0  );
   n += inputin->getItem(&rkorder   , "time", "rkorder"    , 4  );
@@ -55,7 +55,6 @@ int ctimeloop::readinifile(cinput *inputin)
   loop      = true;
   time      = 0.;
   dt        = 0.1;
-  cflmax    = 1.5;
 
   itime    = (long)(ifactor * time);
   iruntime = (long)(ifactor * runtime);
@@ -76,25 +75,20 @@ int ctimeloop::timestep()
   if(itime >= iruntime || iteration >= maxiter)
     loop = false;
 
-  if(iteration % saveiter == 0) 
-  {
-    // save the time information
-    save(iteration);
-
-    // save the fields
-    (*fields->u).save(iteration);
-    (*fields->v).save(iteration);
-    (*fields->w).save(iteration);
-    (*fields->p).save(iteration);
-    (*fields->s).save(iteration);
-  }
-
   return 0;
 }
 
 int ctimeloop::docheck()
 {
   if(iteration % outputiter == 0)
+    return 1;
+
+  return 0;
+}
+
+int ctimeloop::dosave()
+{
+  if(iteration % saveiter == 0)
     return 1;
 
   return 0;

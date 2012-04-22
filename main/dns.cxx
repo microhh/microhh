@@ -43,9 +43,9 @@ int main()
     return 1;
   if(pres.load())
     return 1;
-  if(fields.load(timeloop.iteration))
-    return 1;
   if(timeloop.load(timeloop.iteration))
+    return 1;
+  if(fields.load(timeloop.iteration))
     return 1;
 
   // initialize the diffusion to get the time step requirement
@@ -64,6 +64,9 @@ int main()
   std::printf("%8s  %12s  %10s  %10s  %8s  %13s  %13s  %13s  %13s\n", 
     "ITER", "TIME", "CPUDT", "DT", "CFL", "DIV", "MOM", "TKE", "MASS");
 
+  // set the boundary conditions
+  fields.boundary();
+
   // start the time loop
   while(timeloop.loop)
   {
@@ -74,8 +77,22 @@ int main()
       timeloop.settimestep(cfl);
     }
 
+    // advection
+    advec.exec();
+    // diffusion
+    diff.exec();
+    // large scale forcings
+    force.exec(timeloop.getsubdt());
+    // pressure
+    pres.exec(timeloop.getsubdt());
+    // perform the timestepping substep
+    timeloop.exec();
+
     // boundary conditions
     fields.boundary();
+
+    if(!timeloop.insubstep())
+      timeloop.timestep();
 
     if(timeloop.docheck() && !timeloop.insubstep())
     {
@@ -92,19 +109,11 @@ int main()
           iter, time, cputime, dt, cfl, div, mom, tke, mass);
     }
 
-    // advection
-    advec.exec();
-    // diffusion
-    diff.exec();
-    // large scale forcings
-    force.exec(timeloop.getsubdt());
-    // pressure
-    pres.exec(timeloop.getsubdt());
-    // perform the timestepping substep
-    timeloop.exec();
-
-    if(!timeloop.insubstep())
-      timeloop.timestep();
+    if(timeloop.dosave() && !timeloop.insubstep())
+    {
+      timeloop.save(timeloop.iteration);
+      fields.save(timeloop.iteration);
+    }
   }
   
   return 0;

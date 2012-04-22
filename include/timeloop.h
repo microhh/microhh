@@ -26,6 +26,8 @@ class ctimeloop
     int docheck();
     double check();
 
+    int dosave();
+
     // variables
     int substep;
     bool loop;
