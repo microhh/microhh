@@ -10,21 +10,19 @@
 
 int main()
 {
+  // create the instances of the objects
+  cmpi    mpi;
+  cinput  input;
+  cgrid   grid;
+  cfields fields(&grid);
+
   // read the input data
-  cinput input;
   if(input.readinifile())
     return 1;
-
-  cmpi mpi;
   if(mpi.readinifile(&input))
     return 1;
-  
-  // create the objects, read the inputdata
-  cgrid grid;
   if(grid.readinifile(&input))
     return 1;
-
-  cfields fields(&grid);
   if(fields.readinifile(&input))
     return 1;
 
@@ -35,7 +33,7 @@ int main()
     return 1;
   fields.initfields();
 
-  // create the model and the operators
+  // create the instances of the model operations
   ctimeloop timeloop(&grid, &fields);
   cadvec    advec   (&grid, &fields);
   cdiff     diff    (&grid, &fields);

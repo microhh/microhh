@@ -2,14 +2,11 @@
 #define MPIINTERFACE
 
 #include <mpi.h>
-// #include "grid.h"
-// #include "fields.h"
 #include "input.h"
 
 class cmpi
 {
   public:
-    // cmpi(cgrid *, cfields *);
     cmpi();
     ~cmpi();
 

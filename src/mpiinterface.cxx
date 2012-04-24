@@ -5,12 +5,9 @@
 #include "defines.h"
 #include "mpiinterface.h"
 
-// cmpi::cmpi(cgrid *gridin, cfields *fieldsin)
 cmpi::cmpi()
 {
   std::printf("Creating instance of object mpi\n");
-  // grid   = gridin;
-  // fields = fieldsin;
 }
 
 cmpi::~cmpi()
