@@ -15,3 +15,4 @@ set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR})
 set(LIBS ${FFTW_LIB})
 
 add_subdirectory(main)
+add_subdirectory(test)
