@@ -10,8 +10,8 @@ class cgrid
     cgrid();
     ~cgrid();
     int readinifile(cinput *);
-    int initgrid();
-    int creategrid();
+    int init(int, int);
+    int create();
     int calculate();
     int save();
     int load();
@@ -24,6 +24,9 @@ class cgrid
     int imax;
     int jmax;
     int kmax;
+
+    int iblock;
+    int kblock;
 
     int igc;
     int jgc;

@@ -23,8 +23,8 @@ int cmpi::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&npx, "grid", "npx");
-  n += inputin->getItem(&npy, "grid", "npy");
+  n += inputin->getItem(&npx, "grid", "npx", 1);
+  n += inputin->getItem(&npy, "grid", "npy", 1);
 
   if(n > 0)
     return 1;
@@ -38,15 +38,27 @@ int cmpi::init()
   MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
+  if(nprocs != npx*npy)
+  {
+    std::printf("ERROR nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
+    return 1;
+  }
+
   int dims    [2] = {npy, npx};
   int periodic[2] = {true, true};
 
-  MPI_Dims_create(nprocs, 2, dims);
-  MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true, &commxy);
-  MPI_Comm_rank(commxy, &mpiid);
+  int n;
+
+  if(MPI_Dims_create(nprocs, 2, dims))
+    return 1;
+
+  if(MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true, &commxy))
+    return 1;
+  if(MPI_Comm_rank(commxy, &mpiid))
+    return 1;
 
   int mpicoords[2];
-  MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
+  n = MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
 
   mpicoordx = mpicoords[1];
   mpicoordy = mpicoords[0];
@@ -57,8 +69,10 @@ int cmpi::init()
   // MPI_Cart_sub(commxy, dimx, &commx);
   // MPI_Cart_sub(commxy, dimy, &commy);
 
-  MPI_Cart_shift(commxy, 1, 1, &nwest , &neast );
-  MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth);
+  if(MPI_Cart_shift(commxy, 1, 1, &nwest , &neast ))
+    return 1;
+  if(MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth))
+    return 1;
 
   std::printf("MPI id, mpicoordx, mpicoordy, neast, nwest, nnorth, nsouth, nprocs: %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d\n", mpiid, mpicoordx, mpicoordy, neast, nwest, nnorth, nsouth, nprocs);
 
