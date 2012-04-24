@@ -1,6 +1,7 @@
 #include <cstdio>
 #include "grid.h"
 #include "fields.h"
+#include "mpiinterface.h"
 #include "timeloop.h"
 #include "advec.h"
 #include "diff.h"
@@ -11,6 +12,10 @@ int main()
 {
   // read the input data
   cinput input;
+  if(input.readinifile())
+    return 1;
+
+  cmpi mpi;
   if(input.readinifile())
     return 1;
   
@@ -24,6 +29,7 @@ int main()
     return 1;
 
   // initialize the objects, allocate the required memory
+  mpi.init();
   grid.initgrid();
   fields.initfields();
 
