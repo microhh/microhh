@@ -25,11 +25,11 @@ int main()
     return 1;
   
   // initialize the objects, allocate the required memory
-  grid.initgrid();
+  grid.init(1,1);
   fields.initfields();
 
   // fill the fields with data
-  grid.creategrid();
+  grid.create();
   fields.createfields();
 
   // store the data on disk

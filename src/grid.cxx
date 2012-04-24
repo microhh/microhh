@@ -61,11 +61,35 @@ int cgrid::readinifile(cinput *inputin)
   return 0;
 }
 
-int cgrid::initgrid()
+int cgrid::init(int npx, int npy)
 {
-  imax  = itot;
-  jmax  = jtot;
-  kmax  = ktot;
+  if(itot % npx != 0)
+  {
+    std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, npx);
+    return 1;
+  }
+  if(jtot % npy != 0)
+  {
+    std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, npy);
+    return 1;
+  }
+  if(ktot % npx != 0)
+  {
+    std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, npx);
+    return 1;
+  }
+  if(itot % npy != 0)
+  {
+    std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, npy);
+    return 1;
+  }
+
+  imax   = itot / npx;
+  jmax   = jtot / npy;
+  kmax   = ktot;
+
+  kblock = ktot / npx;
+  iblock = itot / npy;
 
   icells = (imax+2*igc);
   jcells = (jmax+2*jgc);
@@ -96,7 +120,7 @@ int cgrid::initgrid()
   return 0;
 }
 
-int cgrid::creategrid()
+int cgrid::create()
 {
   // create non-equidistant grid
   double alpha = 0.967;

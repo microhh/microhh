@@ -15,10 +15,10 @@ class cmpi
 
     int readinifile(cinput *);
     int init();
-
-  private:
     int npx;
     int npy;
+
+  private:
     int nprocs;
     int mpiid;
     int mpicoordx;

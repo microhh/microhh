@@ -16,7 +16,7 @@ int main()
     return 1;
 
   cmpi mpi;
-  if(input.readinifile())
+  if(mpi.readinifile(&input))
     return 1;
   
   // create the objects, read the inputdata
@@ -29,8 +29,10 @@ int main()
     return 1;
 
   // initialize the objects, allocate the required memory
-  mpi.init();
-  grid.initgrid();
+  if(mpi.init())
+    return 1;
+  if(grid.init(mpi.npx, mpi.npy))
+    return 1;
   fields.initfields();
 
   // create the model and the operators
