@@ -52,13 +52,21 @@ int cmpicheck::showLine()
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  for(k=0; k<grid->kcells; k++)
-    for(j=0; j<grid->jcells; j++)
-      for(i=0; i<grid->icells; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        std::printf("MPI id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, s->data[ijk]);
-      }
+  k = grid->kstart;
+  j = grid->jstart;
+  for(i=0; i<grid->icells; i++)
+  {
+    ijk = i + j*jj + k*kk;
+    std::printf("MPI i-line id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, s->data[ijk]);
+  }
+
+  k = grid->kstart;
+  i = grid->istart;
+  for(j=0; j<grid->jcells; j++)
+  {
+    ijk = i + j*jj + k*kk;
+    std::printf("MPI j-line id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, s->data[ijk]);
+  }
 
   return 0;
 }
