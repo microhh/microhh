@@ -20,10 +20,12 @@ int main()
     return 1;
 
   // initialize the objects, allocate the required memory
-  if(mpi.init(&grid))
+  if(mpi.init())
     return 1;
   if(grid.init(mpi.npx, mpi.npy))
     return 1;
+
+  mpi.initTypes(&grid);
 
   // CHECK the layout
   mpicheck.showLayout();

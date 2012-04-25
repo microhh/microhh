@@ -28,7 +28,7 @@ int cmpi::readinifile(cinput *inputin)
   return 0;
 }
 
-int cmpi::init(cgrid *gridin)
+int cmpi::init()
 {
   MPI_Init(NULL, NULL);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
@@ -70,6 +70,11 @@ int cmpi::init(cgrid *gridin)
   if(MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth))
     return 1;
 
+  return 0;
+}
+
+int cmpi::initTypes(cgrid *gridin)
+{
   // create the MPI types for the cyclic boundary conditions
   int datacount, datablock, datastride;
 
@@ -94,31 +99,36 @@ int cmpi::init(cgrid *gridin)
 
 int cmpi::boundary_cyclic(double * restrict data, cgrid *gridin)
 {
+  int n;
   int ncount = 1;
-  MPI_Status status;
 
-  int eastout = gridin->iend - gridin->igc;
+  // communicate east-west edges
+  int eastout = gridin->iend-gridin->igc;
   int westin  = 0;
   int westout = gridin->istart;
   int eastin  = gridin->iend;
 
-  // communicate east-west edges
-  MPI_Sendrecv(&data[eastout], ncount, eastwestedge, neast, 1,
-               &data[westin ], ncount, eastwestedge, nwest, 1,
-               commxy, &status);
+  n = MPI_Sendrecv(&data[eastout], ncount, eastwestedge, neast, 1,
+                   &data[westin ], ncount, eastwestedge, nwest, 1,
+                   commxy, MPI_STATUS_IGNORE);
 
-  MPI_Sendrecv(&data[westout], ncount, eastwestedge, nwest, 2,
-               &data[eastin ], ncount, eastwestedge, neast, 2,
-               commxy, &status);
-/*
+  n = MPI_Sendrecv(&data[westout], ncount, eastwestedge, nwest, 2,
+                   &data[eastin ], ncount, eastwestedge, neast, 2,
+                   commxy, MPI_STATUS_IGNORE);
+
   // communicate north-south edges
-  call MPI_SENDRECV(var(1-kgc, 1-igc, 1     ), ncount, northsouthedge, nsouth, 3, &
-                    var(1-kgc, 1-igc, jmax+1), ncount, northsouthedge, nnorth, 3, &
-                    comm2d, mpistatus, mpierr)
+  int northout = (gridin->jend-gridin->jgc)*gridin->icells;
+  int southin  = 0;
+  int southout = gridin->jstart*gridin->icells;
+  int northin  = gridin->jend  *gridin->icells;
 
-  call MPI_SENDRECV(var(1-kgc, 1-igc, jmax-jgc+1), ncount, northsouthedge, nnorth, 4, &
-                    var(1-kgc, 1-igc, 1-jgc     ), ncount, northsouthedge, nsouth, 4, &
-                    comm2d, mpistatus, mpierr)*/
+  n = MPI_Sendrecv(&data[northout], ncount, northsouthedge, nnorth, 1,
+                   &data[southin ], ncount, northsouthedge, nsouth, 1,
+                   commxy, MPI_STATUS_IGNORE);
+
+  n = MPI_Sendrecv(&data[southout], ncount, northsouthedge, nsouth, 2,
+                   &data[northin ], ncount, northsouthedge, nnorth, 2,
+                   commxy, MPI_STATUS_IGNORE);
 
   return 0;
 }

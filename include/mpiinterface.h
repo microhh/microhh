@@ -11,7 +11,8 @@ class cmpi
     ~cmpi();
 
     int readinifile(cinput *);
-    int init(cgrid *);
+    int init();
+    int initTypes(cgrid *);
 
     int boundary_cyclic(double *, cgrid *);
 
