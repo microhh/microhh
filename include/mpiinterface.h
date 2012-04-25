@@ -11,7 +11,9 @@ class cmpi
     ~cmpi();
 
     int readinifile(cinput *);
-    int init();
+    int init(cgrid *);
+
+    int boundary_cyclic(double *, cgrid *);
 
     int nprocs;
     int npx;
@@ -29,5 +31,8 @@ class cmpi
     MPI_Comm commxy;
     MPI_Comm commx;
     MPI_Comm commy;
+
+    MPI_Datatype eastwestedge;
+    MPI_Datatype northsouthedge;
 };
 #endif

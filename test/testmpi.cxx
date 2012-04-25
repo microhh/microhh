@@ -20,7 +20,7 @@ int main()
     return 1;
 
   // initialize the objects, allocate the required memory
-  if(mpi.init())
+  if(mpi.init(&grid))
     return 1;
   if(grid.init(mpi.npx, mpi.npy))
     return 1;
@@ -35,11 +35,10 @@ int main()
   // fill the fields with the test data
   mpicheck.create();
 
+  // trigger the boundary conditions
+  mpicheck.boundary();
+
   mpicheck.showLine();
-
-  // set the boundary conditions
-  // fields.boundary();
-
   return 0;
 }
 

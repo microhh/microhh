@@ -37,24 +37,28 @@ int cmpicheck::create()
   return 0;
 }
 
+int cmpicheck::boundary()
+{
+  mpi->boundary_cyclic(s->data, grid);
+
+  return 0;
+}
+
 int cmpicheck::showLine()
 {
-  s->boundary_cyclic();
-
   int i,j,k;
   int ijk,ii,jj,kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  k = grid->kstart;
-  j = grid->jstart;
-
-  for(i=0; i<grid->icells; i++)
-  {
-    ijk = i + j*jj + k*kk;
-    std::printf("MPI id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, s->data[ijk]);
-  }
+  for(k=0; k<grid->kcells; k++)
+    for(j=0; j<grid->jcells; j++)
+      for(i=0; i<grid->icells; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        std::printf("MPI id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, s->data[ijk]);
+      }
 
   return 0;
 }
