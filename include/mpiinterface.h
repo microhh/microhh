@@ -30,6 +30,8 @@ class cmpi
 
   private:
     cgrid    *grid;
+    bool initialized;
+
     MPI_Comm commxy;
     MPI_Comm commx;
     MPI_Comm commy;

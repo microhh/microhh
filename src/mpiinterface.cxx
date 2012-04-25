@@ -8,11 +8,15 @@ cmpi::cmpi(cgrid *gridin)
 {
   std::printf("Creating instance of object mpi\n");
   grid = gridin;
+
+  initialized = false;
 }
 
 cmpi::~cmpi()
 {
-  MPI_Finalize();
+  if(initialized)
+    MPI_Finalize();
+
   std::printf("Destroying instance of object mpi\n");
 }
 
@@ -32,6 +36,8 @@ int cmpi::readinifile(cinput *inputin)
 int cmpi::init()
 {
   MPI_Init(NULL, NULL);
+  initialized = true;
+
   MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
