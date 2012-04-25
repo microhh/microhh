@@ -27,7 +27,7 @@ int main()
     return 1;
 
   // initialize the objects, allocate the required memory
-  if(mpi.init())
+  if(mpi.init(&grid))
     return 1;
   if(grid.init(mpi.npx, mpi.npy))
     return 1;

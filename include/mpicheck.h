@@ -12,6 +12,7 @@ class cmpicheck
     ~cmpicheck();
     
     int create();
+    int boundary();
 
     int showLayout();
     int showLine();
