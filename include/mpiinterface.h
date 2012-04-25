@@ -3,18 +3,18 @@
 
 #include <mpi.h>
 #include "input.h"
+#include "grid.h"
 
 class cmpi
 {
   public:
-    cmpi();
+    cmpi(cgrid *);
     ~cmpi();
 
     int readinifile(cinput *);
     int init();
-    int initTypes(cgrid *);
 
-    int boundary_cyclic(double *, cgrid *);
+    int boundary_cyclic(double *);
 
     int nprocs;
     int npx;
@@ -29,6 +29,7 @@ class cmpi
     int nwest;
 
   private:
+    cgrid    *grid;
     MPI_Comm commxy;
     MPI_Comm commx;
     MPI_Comm commy;
