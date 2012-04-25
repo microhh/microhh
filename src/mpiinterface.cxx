@@ -4,9 +4,10 @@
 #include "defines.h"
 #include "mpiinterface.h"
 
-cmpi::cmpi()
+cmpi::cmpi(cgrid *gridin)
 {
   std::printf("Creating instance of object mpi\n");
+  grid = gridin;
 }
 
 cmpi::~cmpi()
@@ -70,26 +71,21 @@ int cmpi::init()
   if(MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth))
     return 1;
 
-  return 0;
-}
-
-int cmpi::initTypes(cgrid *gridin)
-{
   // create the MPI types for the cyclic boundary conditions
   int datacount, datablock, datastride;
 
   // east west
-  datacount  = gridin->jcells*gridin->kcells;
-  datablock  = gridin->igc;
-  datastride = gridin->icells;
+  datacount  = grid->jcells*grid->kcells;
+  datablock  = grid->igc;
+  datastride = grid->icells;
     
   MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE_PRECISION, &eastwestedge);
   MPI_Type_commit(&eastwestedge);
 
   // north south
-  datacount  = gridin->kcells;
-  datablock  = gridin->icells*gridin->jgc;
-  datastride = gridin->icells*gridin->jcells;
+  datacount  = grid->kcells;
+  datablock  = grid->icells*grid->jgc;
+  datastride = grid->icells*grid->jcells;
     
   MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE_PRECISION, &northsouthedge);
   MPI_Type_commit(&northsouthedge);
@@ -97,16 +93,16 @@ int cmpi::initTypes(cgrid *gridin)
   return 0;
 } 
 
-int cmpi::boundary_cyclic(double * restrict data, cgrid *gridin)
+int cmpi::boundary_cyclic(double * restrict data)
 {
   int n;
   int ncount = 1;
 
   // communicate east-west edges
-  int eastout = gridin->iend-gridin->igc;
+  int eastout = grid->iend-grid->igc;
   int westin  = 0;
-  int westout = gridin->istart;
-  int eastin  = gridin->iend;
+  int westout = grid->istart;
+  int eastin  = grid->iend;
 
   n = MPI_Sendrecv(&data[eastout], ncount, eastwestedge, neast, 1,
                    &data[westin ], ncount, eastwestedge, nwest, 1,
@@ -117,10 +113,10 @@ int cmpi::boundary_cyclic(double * restrict data, cgrid *gridin)
                    commxy, MPI_STATUS_IGNORE);
 
   // communicate north-south edges
-  int northout = (gridin->jend-gridin->jgc)*gridin->icells;
+  int northout = (grid->jend-grid->jgc)*grid->icells;
   int southin  = 0;
-  int southout = gridin->jstart*gridin->icells;
-  int northin  = gridin->jend  *gridin->icells;
+  int southout = grid->jstart*grid->icells;
+  int northin  = grid->jend  *grid->icells;
 
   n = MPI_Sendrecv(&data[northout], ncount, northsouthedge, nnorth, 1,
                    &data[southin ], ncount, northsouthedge, nsouth, 1,

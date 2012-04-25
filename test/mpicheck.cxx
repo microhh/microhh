@@ -27,7 +27,7 @@ int cmpicheck::showLayout()
 
 int cmpicheck::create()
 {
-  s = new cfield3d(grid, "s" );
+  s = new cfield3d(grid, "s");
 
   s->init();
 
@@ -39,7 +39,7 @@ int cmpicheck::create()
 
 int cmpicheck::boundary()
 {
-  mpi->boundary_cyclic(s->data, grid);
+  mpi->boundary_cyclic(s->data);
 
   return 0;
 }
