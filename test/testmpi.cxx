@@ -1,6 +1,5 @@
 #include <cstdio>
 #include "grid.h"
-#include "fields.h"
 #include "mpiinterface.h"
 #include "mpicheck.h"
 
@@ -10,8 +9,7 @@ int main()
   cmpi      mpi;
   cinput    input;
   cgrid     grid;
-  cfields   fields(&grid);
-  cmpicheck mpicheck(&grid, &fields);
+  cmpicheck mpicheck(&grid, &mpi);
 
   // read the input data
   if(input.readinifile())
@@ -20,15 +18,15 @@ int main()
     return 1;
   if(grid.readinifile(&input))
     return 1;
-  if(fields.readinifile(&input))
-    return 1;
 
   // initialize the objects, allocate the required memory
   if(mpi.init())
     return 1;
   if(grid.init(mpi.npx, mpi.npy))
     return 1;
-  fields.initfields();
+
+  // CHECK the layout
+  mpicheck.showLayout();
 
   // fill the fields with data
   if(grid.create())
@@ -36,6 +34,8 @@ int main()
 
   // fill the fields with the test data
   mpicheck.create();
+
+  mpicheck.showLine();
 
   // set the boundary conditions
   // fields.boundary();

@@ -2,18 +2,24 @@
 #define MPICHECK
 
 #include "grid.h"
-#include "fields.h"
+#include "field3d.h"
+#include "mpiinterface.h"
 
 class cmpicheck
 {
   public:
-    cmpicheck(cgrid *, cfields *);
+    cmpicheck(cgrid *, cmpi *);
     ~cmpicheck();
     
     int create();
 
+    int showLayout();
+    int showLine();
+
   private:
-    cgrid *grid;
-    cfields *fields;
+    cgrid   *grid;
+    cmpi    *mpi;
+
+    cfield3d *s;
 };
 #endif
