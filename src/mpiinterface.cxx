@@ -171,29 +171,5 @@ int cmpi::transposezx(double * restrict as, double * restrict ar)
                  commxy, MPI_STATUS_IGNORE);
   }
 
-  /*
-  real, dimension(1:kmax  , 1:imax, 1:jmax), intent(in)  :: varin
-  real, dimension(1:kblock, 1:itot, 1:jmax), intent(out) :: varout
-  integer                           :: nblock, k, startk, starti
-  integer                           :: ncount
-
-  do k = 1, npx
-    ! first determine what to send
-    startk = 1 + (k-1) * kblock
-
-    ! second, determine where to send it to
-    nblock = mpiid - mod(mpiid, npx) + (k-1)
-
-    ! third, determine where to store the received information
-    starti = 1 + (k-1) * imax
-
-    ncount = 1
-
-    call MPI_SENDRECV(varin (startk,1,1), ncount, transposez, nblock, 1, &
-                      varout(1,starti,1), ncount, transposex, nblock, 1, &
-                      comm2d, mpistatus, mpierr)
-  end do
-  */
-
   return 0;
 }

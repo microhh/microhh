@@ -74,18 +74,22 @@ int cmpicheck::checkTranspose()
 {
   int i,j,k,ijk,ijkw;
   int jj,kk,jjw,kkw;
+  int igc,jgc,kgc;
 
   jj  = grid->icells;
   kk  = grid->icells*grid->jcells;
   jjw = grid->imax;
   kkw = grid->imax*grid->jmax;
+  igc = grid->igc;
+  jgc = grid->jgc;
+  kgc = grid->kgc;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj  + k*kk;
-        ijkw = i + j*jjw + k*kkw;
+        ijkw = (i-igc) + (j-jgc)*jjw + (k-kgc)*kkw;
 
         temp1->data[ijkw] = s->data[ijk];
       }
