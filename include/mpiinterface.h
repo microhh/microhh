@@ -15,6 +15,7 @@ class cmpi
     int init();
 
     int boundary_cyclic(double *);
+    int transposezx(double *, double *);
 
     int nprocs;
     int npx;
@@ -29,7 +30,8 @@ class cmpi
     int nwest;
 
   private:
-    cgrid    *grid;
+    cgrid *grid;
+
     bool initialized;
 
     MPI_Comm commxy;
@@ -38,5 +40,7 @@ class cmpi
 
     MPI_Datatype eastwestedge;
     MPI_Datatype northsouthedge;
+    MPI_Datatype transposez;
+    MPI_Datatype transposex;
 };
 #endif

@@ -12,15 +12,16 @@ class cmpicheck
     ~cmpicheck();
     
     int create();
-    int boundary();
-
-    int showLayout();
-    int showLine();
+    int checkLayout();
+    int checkBoundary();
+    int checkTranspose();
 
   private:
     cgrid   *grid;
     cmpi    *mpi;
 
     cfield3d *s;
+    cfield3d *temp1;
+    cfield3d *temp2;
 };
 #endif

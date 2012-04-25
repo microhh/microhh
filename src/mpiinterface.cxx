@@ -84,7 +84,6 @@ int cmpi::init()
   datacount  = grid->jcells*grid->kcells;
   datablock  = grid->igc;
   datastride = grid->icells;
-    
   MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE_PRECISION, &eastwestedge);
   MPI_Type_commit(&eastwestedge);
 
@@ -92,9 +91,20 @@ int cmpi::init()
   datacount  = grid->kcells;
   datablock  = grid->icells*grid->jgc;
   datastride = grid->icells*grid->jcells;
-    
   MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE_PRECISION, &northsouthedge);
   MPI_Type_commit(&northsouthedge);
+
+  // transposez
+  datacount = grid->imax*grid->jmax*grid->kblock;
+  MPI_Type_contiguous(datacount, MPI_DOUBLE_PRECISION, &transposez);
+  MPI_Type_commit(&transposez);
+
+  // transposex
+  datacount  = grid->jmax*grid->kblock;
+  datablock  = grid->imax;
+  datastride = grid->itot;
+  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE_PRECISION, &transposex);
+  MPI_Type_commit(&transposex);
 
   return 0;
 } 
@@ -131,6 +141,59 @@ int cmpi::boundary_cyclic(double * restrict data)
   n = MPI_Sendrecv(&data[southout], ncount, northsouthedge, nsouth, 2,
                    &data[northin ], ncount, northsouthedge, nnorth, 2,
                    commxy, MPI_STATUS_IGNORE);
+
+  return 0;
+}
+
+int cmpi::transposezx(double * restrict as, double * restrict ar)
+{
+  int startk, nblock;
+  int ncount = 1;
+
+  int jj = grid->imax;
+  int kk = grid->imax*grid->jmax;
+
+  int kblock = grid->kblock;
+
+  for(int k=0; k<npx; k++)
+  {
+    // first, determine what to send
+    startk = k*kblock;
+
+    // second, determine where to send it to
+    nblock = mpiid - mpiid % npx + k;
+
+    int ijks = k*kk;
+    int ijkr = k*jj;
+
+    MPI_Sendrecv(&as[ijks], ncount, transposez, nblock, 1,
+                 &ar[ijkr], ncount, transposex, nblock, 1,
+                 commxy, MPI_STATUS_IGNORE);
+  }
+
+  /*
+  real, dimension(1:kmax  , 1:imax, 1:jmax), intent(in)  :: varin
+  real, dimension(1:kblock, 1:itot, 1:jmax), intent(out) :: varout
+  integer                           :: nblock, k, startk, starti
+  integer                           :: ncount
+
+  do k = 1, npx
+    ! first determine what to send
+    startk = 1 + (k-1) * kblock
+
+    ! second, determine where to send it to
+    nblock = mpiid - mod(mpiid, npx) + (k-1)
+
+    ! third, determine where to store the received information
+    starti = 1 + (k-1) * imax
+
+    ncount = 1
+
+    call MPI_SENDRECV(varin (startk,1,1), ncount, transposez, nblock, 1, &
+                      varout(1,starti,1), ncount, transposex, nblock, 1, &
+                      comm2d, mpistatus, mpierr)
+  end do
+  */
 
   return 0;
 }
