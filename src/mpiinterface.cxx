@@ -71,7 +71,5 @@ int cmpi::init()
   if(MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth))
     return 1;
 
-  std::printf("MPI id, mpicoordx, mpicoordy, neast, nwest, nnorth, nsouth, nprocs: %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d\n", mpiid, mpicoordx, mpicoordy, neast, nwest, nnorth, nsouth, nprocs);
-
   return 0;
 }

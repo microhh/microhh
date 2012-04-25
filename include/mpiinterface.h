@@ -12,11 +12,10 @@ class cmpi
 
     int readinifile(cinput *);
     int init();
+
+    int nprocs;
     int npx;
     int npy;
-
-  private:
-    int nprocs;
     int mpiid;
     int mpicoordx;
     int mpicoordy;
@@ -26,6 +25,7 @@ class cmpi
     int neast;
     int nwest;
 
+  private:
     MPI_Comm commxy;
     MPI_Comm commx;
     MPI_Comm commy;
