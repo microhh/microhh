@@ -25,8 +25,8 @@ int main()
   if(mpi.init())
     return 1;
 
-  // CHECK the layout
-  mpicheck.showLayout();
+  // check the layout
+  mpicheck.checkLayout();
 
   // fill the fields with data
   if(grid.create())
@@ -36,9 +36,10 @@ int main()
   mpicheck.create();
 
   // trigger the boundary conditions
-  mpicheck.boundary();
+  mpicheck.checkBoundary();
 
-  mpicheck.showLine();
+  mpicheck.checkTranspose();
+
   return 0;
 }
 
