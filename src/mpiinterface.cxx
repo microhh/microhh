@@ -98,6 +98,7 @@ int cmpi::init()
   datacount = grid->imax*grid->jmax*grid->kblock;
   MPI_Type_contiguous(datacount, MPI_DOUBLE_PRECISION, &transposez);
   MPI_Type_commit(&transposez);
+  std::printf("CvH: %d, %d, %d\n", datacount, datablock, datastride);
 
   // transposex
   datacount  = grid->jmax*grid->kblock;
@@ -105,6 +106,11 @@ int cmpi::init()
   datastride = grid->itot;
   MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE_PRECISION, &transposex);
   MPI_Type_commit(&transposex);
+
+
+  // create the requests arrays for the nonblocking sends
+  reqsx = new MPI_Request[npx*2];
+  reqsy = new MPI_Request[npy*2];
 
   return 0;
 } 
@@ -147,7 +153,8 @@ int cmpi::boundary_cyclic(double * restrict data)
 
 int cmpi::transposezx(double * restrict ar, double * restrict as)
 {
-  int startk, nblock;
+  int startk;
+  int nblock;
   int ncount = 1;
 
   int jj = grid->imax;
@@ -155,23 +162,31 @@ int cmpi::transposezx(double * restrict ar, double * restrict as)
 
   int kblock = grid->kblock;
 
+  int reqidx = 0;
+
   for(int k=0; k<npx; k++)
   {
     // determine where to send it to
     nblock = mpiid - mpiid % npx + k;
 
-    // determine what to send
+    // determine where to fetch the send data
     int ijks = k*kblock*kk;
 
-    // determine what to receive
+    // determine where to store the receive data
     int ijkr = k*jj;
 
-    // std::printf("MPI send id %d, %d, %d, %d\n", mpiid, nblock, k*kblock, k*jj);
-
-    MPI_Sendrecv(&as[ijks], ncount, transposez, nblock, 1,
-                 &ar[ijkr], ncount, transposex, nblock, 1,
-                 commxy, MPI_STATUS_IGNORE);
+    // send the block, tag it with the height (in kblocks) where it should come
+    int sendtag = k;
+    MPI_Isend(&as[ijks], ncount, transposez, nblock, sendtag, commxy, &reqsx[reqidx]);
+    reqidx++;
+    // and determine what has to be delivered at height k (in kblocks)
+    int recvtag = mpiid % npx;
+    MPI_Irecv(&ar[ijkr], ncount, transposex, nblock, recvtag, commxy, &reqsx[reqidx]);
+    reqidx++;
+    std::printf("MPI isend id %d, %d, send: %d, recv: %d\n", mpiid, nblock, sendtag, recvtag);
   }
+
+  MPI_Waitall(reqidx, reqsx, MPI_STATUSES_IGNORE);
 
   return 0;
 }
