@@ -98,7 +98,6 @@ int cmpi::init()
   datacount = grid->imax*grid->jmax*grid->kblock;
   MPI_Type_contiguous(datacount, MPI_DOUBLE_PRECISION, &transposez);
   MPI_Type_commit(&transposez);
-  std::printf("CvH: %d, %d, %d\n", datacount, datablock, datastride);
 
   // transposex
   datacount  = grid->jmax*grid->kblock;
