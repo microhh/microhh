@@ -145,7 +145,7 @@ int cmpi::boundary_cyclic(double * restrict data)
   return 0;
 }
 
-int cmpi::transposezx(double * restrict as, double * restrict ar)
+int cmpi::transposezx(double * restrict ar, double * restrict as)
 {
   int startk, nblock;
   int ncount = 1;
@@ -153,16 +153,20 @@ int cmpi::transposezx(double * restrict as, double * restrict ar)
   int jj = grid->imax;
   int kk = grid->imax*grid->jmax;
 
+  int kblock = grid->kblock;
+
   for(int k=0; k<npx; k++)
   {
     // determine where to send it to
     nblock = mpiid - mpiid % npx + k;
 
     // determine what to send
-    int ijks = k*kk;
+    int ijks = k*kblock*kk;
 
     // determine what to receive
     int ijkr = k*jj;
+
+    std::printf("MPI send id %d, %d, %d, %d\n", mpiid, nblock, k*kblock, k*jj);
 
     MPI_Sendrecv(&as[ijks], ncount, transposez, nblock, 1,
                  &ar[ijkr], ncount, transposex, nblock, 1,
@@ -172,7 +176,7 @@ int cmpi::transposezx(double * restrict as, double * restrict ar)
   return 0;
 }
 
-int cmpi::transposexz(double * restrict as, double * restrict ar)
+int cmpi::transposexz(double * restrict ar, double * restrict as)
 {
   int starti, nblock;
   int ncount = 1;
