@@ -153,21 +153,46 @@ int cmpi::transposezx(double * restrict as, double * restrict ar)
   int jj = grid->imax;
   int kk = grid->imax*grid->jmax;
 
-  int kblock = grid->kblock;
-
   for(int k=0; k<npx; k++)
   {
-    // first, determine what to send
-    startk = k*kblock;
-
-    // second, determine where to send it to
+    // determine where to send it to
     nblock = mpiid - mpiid % npx + k;
 
+    // determine what to send
     int ijks = k*kk;
+
+    // determine what to receive
     int ijkr = k*jj;
 
     MPI_Sendrecv(&as[ijks], ncount, transposez, nblock, 1,
                  &ar[ijkr], ncount, transposex, nblock, 1,
+                 commxy, MPI_STATUS_IGNORE);
+  }
+
+  return 0;
+}
+
+int cmpi::transposexz(double * restrict as, double * restrict ar)
+{
+  int starti, nblock;
+  int ncount = 1;
+
+  int jj = grid->imax;
+  int kk = grid->imax*grid->jmax;
+
+  for(int i=0; i<npx; i++)
+  {
+    // determine where to send it to
+    nblock = mpiid - mpiid % npx + i;
+
+    // determine what to send
+    int ijks = i*jj;
+
+    // determine what to receive 
+    int ijkr = i*kk;
+
+    MPI_Sendrecv(&as[ijks], ncount, transposex, nblock, 1,
+                 &ar[ijkr], ncount, transposez, nblock, 1,
                  commxy, MPI_STATUS_IGNORE);
   }
 

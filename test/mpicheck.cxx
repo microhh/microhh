@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cmath>
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
@@ -35,8 +36,14 @@ int cmpicheck::create()
   temp1->init();
   temp2->init();
 
-  for(int n=0; n<grid->ncells; n++)
-    s->data[n] = (double)mpi->mpiid;
+  int n, k;
+
+  for(n=0; n<grid->ncells; n++)
+  {
+    k          = n / (grid->icells*grid->jcells);
+    k          = k / mpi->npx;
+    s->data[n] = (double)mpi->mpiid * std::pow(10,k);
+  }
   
   return 0;
 }
@@ -99,13 +106,24 @@ int cmpicheck::checkTranspose()
   jj = grid->imax;
   kk = grid->imax*grid->jmax;
 
-  k = 0;
-  j = 0;
+  j = grid->jstart;
+  k = grid->kstart;
 
   for(i=0; i<grid->itot; i++)
   {
     ijk = i + j*jj + k*kk;
-    std::printf("MPI transx id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk]);
+    std::printf("MPI transzx id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk]);
+  }
+
+  mpi->transposexz(temp2->data, temp1->data);
+
+  i = grid->istart;
+  j = grid->jstart;
+
+  for(k=0; k<grid->ktot; k++)
+  {
+    ijk = i + j*jj + k*kk;
+    std::printf("MPI transxz id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk]);
   }
 
   return 0;

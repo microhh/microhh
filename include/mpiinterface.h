@@ -16,6 +16,7 @@ class cmpi
 
     int boundary_cyclic(double *);
     int transposezx(double *, double *);
+    int transposexz(double *, double *);
 
     int nprocs;
     int npx;
