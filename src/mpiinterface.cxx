@@ -166,7 +166,7 @@ int cmpi::transposezx(double * restrict ar, double * restrict as)
     // determine what to receive
     int ijkr = k*jj;
 
-    std::printf("MPI send id %d, %d, %d, %d\n", mpiid, nblock, k*kblock, k*jj);
+    // std::printf("MPI send id %d, %d, %d, %d\n", mpiid, nblock, k*kblock, k*jj);
 
     MPI_Sendrecv(&as[ijks], ncount, transposez, nblock, 1,
                  &ar[ijkr], ncount, transposex, nblock, 1,
