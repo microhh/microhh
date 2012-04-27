@@ -123,7 +123,7 @@ int cmpicheck::checkTranspose()
       for(int i=0; i<grid->imax; i++)
       {
         ijk = i + j*jj + k*kk;
-        std::printf("MPI transzx id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp1->data[ijk]);
+        std::printf("MPI transxz id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp1->data[ijk]);
       }
 
   return 0;
