@@ -17,6 +17,8 @@ class cmpi
     int boundary_cyclic(double *);
     int transposezx(double *, double *);
     int transposexz(double *, double *);
+    int transposexy(double *, double *);
+    int transposeyx(double *, double *);
 
     int nprocs;
     int npx;
@@ -43,6 +45,7 @@ class cmpi
     MPI_Datatype northsouthedge;
     MPI_Datatype transposez;
     MPI_Datatype transposex;
+    MPI_Datatype transposey;
 
     MPI_Request *reqsx;
     MPI_Request *reqsy;

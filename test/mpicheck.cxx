@@ -126,6 +126,20 @@ int cmpicheck::checkTranspose()
         std::printf("MPI transxz id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp1->data[ijk]);
       }
 
+  mpi->transposezx(temp2->data, temp1->data);
+  mpi->transposexy(temp1->data, temp2->data);
+
+  jj = grid->iblock;
+  kk = grid->iblock*grid->jtot;
+
+  for(int k=0; k<grid->kblock; k++)
+    for(int j=0; j<grid->jtot; j++)
+      for(int i=0; i<grid->iblock; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        std::printf("MPI transxy id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp1->data[ijk]);
+      }
+
   return 0;
 }
 
