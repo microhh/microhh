@@ -94,7 +94,7 @@ int cmpicheck::checkTranspose()
         ijk  = i + j*jj + k*kk;
         ijkw = (i-igc) + (j-jgc)*jjw + (k-kgc)*kkw;
 
-        temp1->data[ijkw] = s->data[ijk];
+        temp1->data[ijkw] = k - kgc + 100*mpi->mpiid;// s->data[ijk];
       }
 
   for(int k=0; k<grid->kmax; k++)
@@ -107,8 +107,8 @@ int cmpicheck::checkTranspose()
 
   mpi->transposezx(temp2->data, temp1->data);
 
-  jj = grid->imax;
-  kk = grid->imax*grid->jmax;
+  jj = grid->itot;
+  kk = grid->itot*grid->jmax;
 
   // j = 0;
   // k = 0;
@@ -118,19 +118,22 @@ int cmpicheck::checkTranspose()
       for(int i=0; i<grid->itot; i++)
       {
         ijk = i + j*jj + k*kk;
-        std::printf("MPI transzx id %d, s(%d,%d,%d) = %4.0f, %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk], temp1->data[ijk]);
+        std::printf("MPI transzx id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk]);
       }
 
-  // mpi->transposexz(temp1->data, temp2->data);
+  mpi->transposexz(temp1->data, temp2->data);
 
-  // i = grid->istart;
-  // j = grid->jstart;
+  jj = grid->itot;
+  kk = grid->itot*grid->jmax;
 
-  // for(k=0; k<grid->ktot; k++)
-  // {
-  //   ijk = i + j*jj + k*kk;
-  //   std::printf("MPI transxz id %d, s(%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk]);
-  // }
+  for(int k=0; k<grid->kmax; k++)
+    for(int j=0; j<grid->jmax; j++)
+      for(int i=0; i<grid->imax; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        std::printf("MPI transzx id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk]);
+      }
+
 
   return 0;
 }
