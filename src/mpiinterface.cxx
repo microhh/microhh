@@ -178,11 +178,11 @@ int cmpi::transposezx(double * restrict ar, double * restrict as)
     int sendtag = k;
     MPI_Isend(&as[ijks], ncount, transposez, nblock, sendtag, commxy, &reqsx[reqidx]);
     reqidx++;
+
     // and determine what has to be delivered at height k (in kblocks)
     int recvtag = mpiid % npx;
     MPI_Irecv(&ar[ijkr], ncount, transposex, nblock, recvtag, commxy, &reqsx[reqidx]);
     reqidx++;
-    std::printf("MPI isend id %d, %d, send: %d, recv: %d\n", mpiid, nblock, sendtag, recvtag);
   }
 
   MPI_Waitall(reqidx, reqsx, MPI_STATUSES_IGNORE);
@@ -192,27 +192,40 @@ int cmpi::transposezx(double * restrict ar, double * restrict as)
 
 int cmpi::transposexz(double * restrict ar, double * restrict as)
 {
-  int starti, nblock;
+  int startk;
+  int nblock;
   int ncount = 1;
 
   int jj = grid->imax;
   int kk = grid->imax*grid->jmax;
+
+  int kblock = grid->kblock;
+
+  int reqidx = 0;
 
   for(int i=0; i<npx; i++)
   {
     // determine where to send it to
     nblock = mpiid - mpiid % npx + i;
 
-    // determine what to send
+    // determine where to fetch the send data
     int ijks = i*jj;
 
-    // determine what to receive 
-    int ijkr = i*kk;
+    // determine where to store the receive data
+    int ijkr = i*kblock*kk;
 
-    MPI_Sendrecv(&as[ijks], ncount, transposex, nblock, 1,
-                 &ar[ijkr], ncount, transposez, nblock, 1,
-                 commxy, MPI_STATUS_IGNORE);
+    // send the block, tag it with the height (in kblocks) where it should come
+    int sendtag = mpiid % npx;
+    MPI_Isend(&as[ijks], ncount, transposex, nblock, sendtag, commxy, &reqsx[reqidx]);
+    reqidx++;
+
+    // and determine what has to be delivered at height i (in kblocks)
+    int recvtag = i;
+    MPI_Irecv(&ar[ijkr], ncount, transposez, nblock, recvtag, commxy, &reqsx[reqidx]);
+    reqidx++;
   }
+
+  MPI_Waitall(reqidx, reqsx, MPI_STATUSES_IGNORE);
 
   return 0;
 }
