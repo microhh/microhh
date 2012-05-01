@@ -1,3 +1,9 @@
+[MPI]
+implement MPI-IO for the file reading
+put all the horizontal information exchange in own class to be able to compile serial and parallel
+optimize the transposes in the pressure solver
+save the fftw plan
+
 [performance]
 implement fftw_many
 
@@ -17,4 +23,3 @@ loop on time or on iterations
 
 [multiprocessing]
 implement CUDA
-implement MPI
