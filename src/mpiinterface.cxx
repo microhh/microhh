@@ -129,7 +129,6 @@ int cmpi::init()
 
 int cmpi::boundary_cyclic(double * restrict data)
 {
-  int n;
   int ncount = 1;
 
   // communicate east-west edges
@@ -138,13 +137,16 @@ int cmpi::boundary_cyclic(double * restrict data)
   int westout = grid->istart;
   int eastin  = grid->iend;
 
-  n = MPI_Sendrecv(&data[eastout], ncount, eastwestedge, neast, 1,
-                   &data[westin ], ncount, eastwestedge, nwest, 1,
-                   commxy, MPI_STATUS_IGNORE);
-
-  n = MPI_Sendrecv(&data[westout], ncount, eastwestedge, nwest, 2,
-                   &data[eastin ], ncount, eastwestedge, neast, 2,
-                   commxy, MPI_STATUS_IGNORE);
+  int reqidx = 0;
+  MPI_Isend(&data[eastout], ncount, eastwestedge, neast, 1, commxy, &reqsx[reqidx]);
+  reqidx++;
+  MPI_Irecv(&data[westin ], ncount, eastwestedge, nwest, 1, commxy, &reqsx[reqidx]);
+  reqidx++;
+               
+  MPI_Isend(&data[westout], ncount, eastwestedge, nwest, 2, commxy, &reqsx[reqidx]);
+  reqidx++;
+  MPI_Irecv(&data[eastin ], ncount, eastwestedge, neast, 2, commxy, &reqsx[reqidx]);
+  reqidx++;
 
   // communicate north-south edges
   int northout = (grid->jend-grid->jgc)*grid->icells;
@@ -152,13 +154,17 @@ int cmpi::boundary_cyclic(double * restrict data)
   int southout = grid->jstart*grid->icells;
   int northin  = grid->jend  *grid->icells;
 
-  n = MPI_Sendrecv(&data[northout], ncount, northsouthedge, nnorth, 1,
-                   &data[southin ], ncount, northsouthedge, nsouth, 1,
-                   commxy, MPI_STATUS_IGNORE);
+  MPI_Isend(&data[northout], ncount, northsouthedge, nnorth, 1, commxy, &reqsx[reqidx]);
+  reqidx++;
+  MPI_Irecv(&data[southin ], ncount, northsouthedge, nsouth, 1, commxy, &reqsx[reqidx]);
+  reqidx++;
 
-  n = MPI_Sendrecv(&data[southout], ncount, northsouthedge, nsouth, 2,
-                   &data[northin ], ncount, northsouthedge, nnorth, 2,
-                   commxy, MPI_STATUS_IGNORE);
+  MPI_Isend(&data[southout], ncount, northsouthedge, nsouth, 2, commxy, &reqsx[reqidx]);
+  reqidx++;
+  MPI_Irecv(&data[northin ], ncount, northsouthedge, nnorth, 2, commxy, &reqsx[reqidx]);
+  reqidx++;
+
+  MPI_Waitall(reqidx, reqsx, MPI_STATUSES_IGNORE);
 
   return 0;
 }
