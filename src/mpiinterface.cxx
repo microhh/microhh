@@ -99,12 +99,19 @@ int cmpi::init()
   MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez);
   MPI_Type_commit(&transposez);
 
-  // transposex
+  // transposex imax
   datacount  = grid->jmax*grid->kblock;
   datablock  = grid->imax;
   datastride = grid->itot;
   MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposex);
   MPI_Type_commit(&transposex);
+
+  // transposex iblock
+  datacount  = grid->jmax*grid->kblock;
+  datablock  = grid->iblock;
+  datastride = grid->itot;
+  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposex2);
+  MPI_Type_commit(&transposex2);
 
   // transposey
   datacount  = grid->kblock;
@@ -245,7 +252,7 @@ int cmpi::transposexy(double * restrict ar, double * restrict as)
   int jj = grid->iblock;
   int kk = grid->iblock*grid->jmax;
 
-  int reqidx = 0;
+  int reqidy = 0;
 
   for(int i=0; i<npy; i++)
   {
@@ -258,18 +265,18 @@ int cmpi::transposexy(double * restrict ar, double * restrict as)
     // determine where to store the receive data
     int ijkr = i*kk;
 
-    // send the block, tag it with the eastwest location
+    // send the block, tag it with the east west location
     int sendtag = i;
-    MPI_Isend(&as[ijks], ncount, transposex, nblock, sendtag, commxy, &reqsx[reqidx]);
-    reqidx++;
+    MPI_Isend(&as[ijks], ncount, transposex2, nblock, sendtag, commxy, &reqsy[reqidy]);
+    reqidy++;
 
-    // and determine what has to be delivered at height i (in kblocks)
-    int recvtag = mpiid % i;
-    MPI_Irecv(&ar[ijkr], ncount, transposey, nblock, recvtag, commxy, &reqsx[reqidx]);
-    reqidx++;
+    // and determine what has to be delivered at depth i (in iblocks)
+    int recvtag = mpiid / npx;
+    MPI_Irecv(&ar[ijkr], ncount, transposey, nblock, recvtag, commxy, &reqsy[reqidy]);
+    reqidy++;
   }
 
-  MPI_Waitall(reqidx, reqsx, MPI_STATUSES_IGNORE);
+  MPI_Waitall(reqidy, reqsy, MPI_STATUSES_IGNORE);
 
   return 0;
 }

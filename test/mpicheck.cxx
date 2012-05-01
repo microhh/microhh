@@ -94,16 +94,13 @@ int cmpicheck::checkTranspose()
         ijk  = i + j*jj + k*kk;
         ijkw = (i-igc) + (j-jgc)*jjw + (k-kgc)*kkw;
 
-        temp1->data[ijkw] = k - kgc + 100*mpi->mpiid;
+        temp1->data[ijkw] = mpi->mpiid; //k - kgc + 100*mpi->mpiid;
       }
 
   mpi->transposezx(temp2->data, temp1->data);
 
   jj = grid->itot;
   kk = grid->itot*grid->jmax;
-
-  // j = 0;
-  // k = 0;
 
   for(int k=0; k<grid->kblock; k++)
     for(int j=0; j<grid->jmax; j++)
