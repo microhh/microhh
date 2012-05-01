@@ -45,6 +45,7 @@ class cmpi
     MPI_Datatype northsouthedge;
     MPI_Datatype transposez;
     MPI_Datatype transposex;
+    MPI_Datatype transposex2;
     MPI_Datatype transposey;
 
     MPI_Request *reqsx;
