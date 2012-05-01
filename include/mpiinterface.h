@@ -37,6 +37,7 @@ class cmpi
     cgrid *grid;
 
     bool initialized;
+    bool allocated;
 
     MPI_Comm commxy;
     MPI_Comm commx;
@@ -49,7 +50,6 @@ class cmpi
     MPI_Datatype transposex2;
     MPI_Datatype transposey;
 
-    MPI_Request *reqsx;
-    MPI_Request *reqsy;
+    MPI_Request *reqs;
 };
 #endif
