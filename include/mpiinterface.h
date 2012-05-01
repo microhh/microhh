@@ -19,6 +19,7 @@ class cmpi
     int transposexz(double *, double *);
     int transposexy(double *, double *);
     int transposeyx(double *, double *);
+    int transposeyz(double *, double *);
 
     int nprocs;
     int npx;
