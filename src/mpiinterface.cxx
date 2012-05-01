@@ -283,6 +283,38 @@ int cmpi::transposexy(double * restrict ar, double * restrict as)
 
 int cmpi::transposeyx(double * restrict ar, double * restrict as)
 {
+  int startk;
+  int nblock;
+  int ncount = 1;
+
+  int jj = grid->iblock;
+  int kk = grid->iblock*grid->jmax;
+
+  int reqidy = 0;
+
+  for(int i=0; i<npy; i++)
+  {
+    // determine where to send it to
+    nblock = mpiid % npx + i * npx;
+
+    // determine where to fetch the send data
+    int ijks = i*kk;
+
+    // determine where to store the receive data
+    int ijkr = i*jj;
+
+    // send the block, tag it with the east west location
+    int sendtag = mpiid / npx;
+    MPI_Isend(&as[ijks], ncount, transposey, nblock, sendtag, commxy, &reqsy[reqidy]);
+    reqidy++;
+
+    // and determine what has to be delivered at depth i (in iblocks)
+    int recvtag = i;
+    MPI_Irecv(&ar[ijkr], ncount, transposex2, nblock, recvtag, commxy, &reqsy[reqidy]);
+    reqidy++;
+  }
+
+  MPI_Waitall(reqidy, reqsy, MPI_STATUSES_IGNORE);
   return 0;
 }
 
