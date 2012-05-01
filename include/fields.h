@@ -46,7 +46,7 @@ class cfields
     // functions
     double calcmom (double *, double *, double *, double *);
     double calctke (double *, double *, double *, double *);
-    double calcmass(double *, double *, double *, double *, double *);
+    double calcmass(double *, double *);
 };
 #endif
 

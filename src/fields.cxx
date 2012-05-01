@@ -197,12 +197,12 @@ double cfields::check(int n)
   else if(n == 1)
     checkval = calctke (u->data, v->data, w->data, grid->dz);
   else if(n == 2)
-    checkval = calcmass(s->data, u->data, v->data, w->data, grid->dz);
+    checkval = calcmass(s->data, grid->dz);
 
   return checkval;
 }
 
-double cfields::calcmass(double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double cfields::calcmass(double * restrict s, double * restrict dz)
 {
   int    ijk,jj,kk;
 
