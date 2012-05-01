@@ -149,11 +149,11 @@ int cfield3d::boundary_cyclic()
   return 0;
 }
 
-int cfield3d::save(int n)
+int cfield3d::save(int n, int mpiid)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%07d", name.c_str(), n);
+  std::sprintf(filename, "%s.%07d.%07d", name.c_str(), n, mpiid);
   pFile = fopen(filename, "wb");
 
   if(pFile == NULL)
@@ -182,11 +182,11 @@ int cfield3d::save(int n)
   return 0;
 }
 
-int cfield3d::load(int n)
+int cfield3d::load(int n, int mpiid)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%07d", name.c_str(), n);
+  std::sprintf(filename, "%s.%07d.%07d", name.c_str(), n, mpiid);
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)

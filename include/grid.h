@@ -13,8 +13,8 @@ class cgrid
     int init(int, int);
     int create();
     int calculate();
-    int save();
-    int load();
+    int save(int);
+    int load(int);
 
     // variables
     int itot;

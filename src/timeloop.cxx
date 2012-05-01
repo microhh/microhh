@@ -256,11 +256,11 @@ bool ctimeloop::insubstep()
     return false;
 }
 
-int ctimeloop::save(int n)
+int ctimeloop::save(int n, int mpiid)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "time.%07d", n);
+  std::sprintf(filename, "time.%07d.%07d", n, mpiid);
   pFile = fopen(filename, "wb");
 
   if(pFile == NULL)
@@ -278,11 +278,11 @@ int ctimeloop::save(int n)
   return 0;
 }
 
-int ctimeloop::load(int n)
+int ctimeloop::load(int n, int mpiid)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "time.%07d", n);
+  std::sprintf(filename, "time.%07d.%07d", n, mpiid);
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)

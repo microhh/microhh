@@ -12,8 +12,8 @@ class cpres
     ~cpres();
 
     int init();
-    int save();
-    int load();
+    int save(int);
+    int load(int);
     int exec(double);
     double check();
 

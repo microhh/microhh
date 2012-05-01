@@ -20,8 +20,8 @@ class ctimeloop
     bool insubstep();
     double getsubdt();
 
-    int save(int);
-    int load(int);
+    int save(int, int);
+    int load(int, int);
 
     int docheck();
     double check();

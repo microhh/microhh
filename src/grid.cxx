@@ -205,11 +205,11 @@ int cgrid::calculate()
   return 0;
 }
 
-int cgrid::save()
+int cgrid::save(int mpiid)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%07d", "grid", 0);
+  std::sprintf(filename, "%s.%07d.%07d", "grid", 0, mpiid);
   pFile = fopen(filename, "wb");
 
   if(pFile == NULL)
@@ -231,11 +231,11 @@ int cgrid::save()
   return 0;
 }
 
-int cgrid::load()
+int cgrid::load(int mpiid)
 {
   FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%07d", "grid", 0);
+  std::sprintf(filename, "%s.%07d.%07d", "grid", 0, mpiid);
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)

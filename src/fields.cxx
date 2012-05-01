@@ -5,10 +5,11 @@
 #include "fields.h"
 #include "defines.h"
 
-cfields::cfields(cgrid *gridin)
+cfields::cfields(cgrid *gridin, cmpi *mpiin)
 {
   std::printf("Creating instance of object fields\n");
   grid = gridin;
+  mpi  = mpiin;
 
   allocated = false;
 }
@@ -144,14 +145,14 @@ int cfields::createfields()
   return 0;
 }
 
-int cfields::load(int n)
+int cfields::load(int n, int mpiid)
 {
   // check them all before returning error
   int nerror = 0;
-  nerror += u->load(n);
-  nerror += v->load(n);
-  nerror += w->load(n);
-  nerror += s->load(n);
+  nerror += u->load(n, mpiid);
+  nerror += v->load(n, mpiid);
+  nerror += w->load(n, mpiid);
+  nerror += s->load(n, mpiid);
 
   if(nerror > 0)
     return 1;
@@ -159,13 +160,13 @@ int cfields::load(int n)
   return 0;
 }
 
-int cfields::save(int n)
+int cfields::save(int n, int mpiid)
 {
-  u->save(n);
-  v->save(n);
-  w->save(n);
-  p->save(n);
-  s->save(n);
+  u->save(n, mpiid);
+  v->save(n, mpiid);
+  w->save(n, mpiid);
+  p->save(n, mpiid);
+  s->save(n, mpiid);
 
   return 0;
 }

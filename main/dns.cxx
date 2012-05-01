@@ -14,7 +14,7 @@ int main()
   cinput  input;
   cgrid   grid;
   cmpi    mpi(&grid);
-  cfields fields(&grid);
+  cfields fields(&grid, &mpi);
 
   // read the input data
   if(input.readinifile())
@@ -46,13 +46,13 @@ int main()
     return 1;
 
   // fill the fields with data
-  if(grid.load())
+  if(grid.load(mpi.mpiid))
     return 1;
-  if(pres.load())
+  if(pres.load(mpi.mpiid))
     return 1;
-  if(timeloop.load(timeloop.iteration))
+  if(timeloop.load(timeloop.iteration, mpi.mpiid))
     return 1;
-  if(fields.load(timeloop.iteration))
+  if(fields.load(timeloop.iteration, mpi.mpiid))
     return 1;
 
   // initialize the diffusion to get the time step requirement
@@ -67,9 +67,11 @@ int main()
   double mom, tke, mass;
   double div;
   double cfl;
-  
-  std::printf("%8s  %12s  %10s  %10s  %8s  %13s  %13s  %13s  %13s\n", 
-    "ITER", "TIME", "CPUDT", "DT", "CFL", "DIV", "MOM", "TKE", "MASS");
+
+  // output information only for the main processor
+  if(mpi.mpiid == 0)
+    std::printf("%8s  %12s  %10s  %10s  %8s  %13s  %13s  %13s  %13s\n", 
+      "ITER", "TIME", "CPUDT", "DT", "CFL", "DIV", "MOM", "TKE", "MASS");
 
   // set the boundary conditions
   fields.boundary();
@@ -112,14 +114,15 @@ int main()
       tke     = fields.check(1);
       mass    = fields.check(2);
 
-      std::printf("%8d  %12.3f  %10.4f  %10.4f  %8.4f  %13.5E  %13.5E  %13.5E  %13.5E\n", 
+      if(mpi.mpiid == 0)
+        std::printf("%8d  %12.3f  %10.4f  %10.4f  %8.4f  %13.5E  %13.5E  %13.5E  %13.5E\n", 
           iter, time, cputime, dt, cfl, div, mom, tke, mass);
     }
 
     if(timeloop.dosave() && !timeloop.insubstep())
     {
-      timeloop.save(timeloop.iteration);
-      fields.save(timeloop.iteration);
+      timeloop.save(timeloop.iteration, mpi.mpiid);
+      fields.save(timeloop.iteration, mpi.mpiid);
     }
   }
   

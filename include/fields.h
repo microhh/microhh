@@ -2,20 +2,21 @@
 #define FIELDS
 
 #include "grid.h"
+#include "mpiinterface.h"
 #include "field3d.h"
 
 class cfields
 {
   public:
     // functions
-    cfields(cgrid *);
+    cfields(cgrid *, cmpi *);
     ~cfields();
 
     int readinifile(cinput *);
     int initfields();
     int createfields();
-    int save(int);
-    int load(int);
+    int save(int, int);
+    int load(int, int);
 
     // int resettend();
     int boundary();
@@ -41,6 +42,7 @@ class cfields
   private:
     // variables
     cgrid *grid;
+    cmpi  *mpi;
     bool allocated;
 
     // functions
