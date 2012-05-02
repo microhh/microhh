@@ -36,7 +36,7 @@ int main()
 
   // create the instances of the model operations
   ctimeloop timeloop(&grid, &fields);
-  cadvec    advec   (&grid, &fields);
+  cadvec    advec   (&grid, &fields, &mpi);
   cdiff     diff    (&grid, &fields);
   cpres     pres    (&grid, &fields);
   cforce    force   (&grid, &fields);

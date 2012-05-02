@@ -366,3 +366,9 @@ int cmpi::transposeyz(double * restrict ar, double * restrict as)
   return 0;
 }
 
+int cmpi::getmax(double *out, double *in)
+{
+  MPI_Allreduce(&in, &out, 1, MPI_DOUBLE, MPI_MAX, commxy);
+
+  return 0;
+}

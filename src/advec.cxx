@@ -6,11 +6,12 @@
 #include "advec.h"
 #include "defines.h"
 
-cadvec::cadvec(cgrid *gridin, cfields *fieldsin)
+cadvec::cadvec(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   std::printf("Creating instance of object advec\n");
   grid   = gridin;
   fields = fieldsin;
+  mpi    = mpiin;
 }
 
 cadvec::~cadvec()
@@ -48,18 +49,20 @@ double cadvec::calccfl(double * restrict u, double * restrict v, double * restri
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  double cfl;
+  double cfll, cfl;
 
-  cfl = 0;
+  cfll = 0;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj + k*kk;
-        cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
+        ijk  = i + j*jj + k*kk;
+        cfll = std::max(cfll, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
       }
+
+  mpi->getmax(&cfl, &cfll);
 
   cfl = cfl*dt;
 

@@ -3,19 +3,21 @@
 
 #include "grid.h"
 #include "fields.h"
+#include "mpiinterface.h"
 
 class cadvec
 {
   public:
-    cadvec(cgrid *, cfields *);
+    cadvec(cgrid *, cfields *, cmpi *);
     ~cadvec();
 
     int exec();
     double getcfl(double);
 
   private:
-    cgrid *grid;
+    cgrid   *grid;
     cfields *fields;
+    cmpi    *mpi;
 
     double calccfl(double *, double *, double *, double *, double);
     int advecu_2nd(double *, double *, double *, double *, double *);
