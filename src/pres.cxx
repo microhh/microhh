@@ -430,10 +430,10 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
   jjp = grid->icells;
   kkp = grid->icells*grid->jcells;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=0; k<grid->kmax; k++)
+    for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=0; i<grid->imax; i++)
       {
         ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
         ijk  = i + j*jj + k*kk;
@@ -475,78 +475,72 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
                 double * restrict p, double * restrict work2d, double * restrict work3d)
                 
 {
-  int i,j,k,jj,kk,ijk,ijkp,ij,jjp,kkp;
-  int itot,jtot,ktot,igc,jgc,kgc;
+  int i,j,k,jj,kk,ijk,ij;
+  int imax,jmax,kmax,igc,jgc,kgc;
 
-  itot = grid->itot;
-  jtot = grid->jtot;
-  ktot = grid->ktot;
+  imax = grid->imax;
+  jmax = grid->jmax;
+  kmax = grid->kmax;
 
   igc = grid->igc;
   jgc = grid->jgc;
   kgc = grid->kgc;
 
-  jj = itot;
-  kk = itot*jtot;
+  jj = imax;
+  kk = imax*jmax;
 
-  jjp = grid->icells;
-  kkp = grid->icells*grid->jcells;
-
-  for(j=0;j<jtot;j++)
+  for(j=0;j<jmax;j++)
 #pragma ivdep
-    for(i=0;i<itot;i++)
+    for(i=0;i<imax;i++)
     {
       ij = i + j*jj;
       work2d[ij] = b[ij];
     }
 
-  for(j=0;j<jtot;j++)
+  for(j=0;j<jmax;j++)
 #pragma ivdep
-    for(i=0;i<itot;i++)
+    for(i=0;i<imax;i++)
     {
-      ij   = i + j*jj;
-      ijkp = i+igc + (j+jgc)*jjp + kgc*kkp;
-      p[ijkp] /= work2d[ij];
+      ij = i + j*jj;
+      p[ij] /= work2d[ij];
     }
 
-  for(k=1; k<ktot; k++)
+  for(k=1; k<kmax; k++)
   {
-    for(j=0;j<jtot;j++)
+    for(j=0;j<jmax;j++)
 #pragma ivdep
-      for(i=0;i<itot;i++)
+      for(i=0;i<imax;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         work3d[ijk] = c[k-1] / work2d[ij];
       }
-    for(j=0;j<jtot;j++)
+    for(j=0;j<jmax;j++)
 #pragma ivdep
-      for(i=0;i<itot;i++)
+      for(i=0;i<imax;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         work2d[ij] = b[ijk] - a[k]*work3d[ijk];
       }
-    for(j=0;j<jtot;j++)
+    for(j=0;j<jmax;j++)
 #pragma ivdep
-      for(i=0;i<itot;i++)
+      for(i=0;i<imax;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
-        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
-        p[ijkp] -= a[k]*p[ijkp-kkp];
-        p[ijkp] /= work2d[ij];
+        p[ijk] -= a[k]*p[ijk-kk];
+        p[ijk] /= work2d[ij];
       }
   }
 
-  for(k=ktot-2; k>=0; k--)
-    for(j=0;j<jtot;j++)
+  for(k=kmax-2; k>=0; k--)
+    for(j=0;j<jmax;j++)
 #pragma ivdep
-      for(i=0;i<itot;i++)
+      for(i=0;i<imax;i++)
       {
-        ijk  = i + j*jj + k*kk;
-        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
-        p[ijkp] -= work3d[ijk+kk]*p[ijkp+kkp];
+        ijk = i + j*jj + k*kk;
+        p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
       }
 
   return 0;
