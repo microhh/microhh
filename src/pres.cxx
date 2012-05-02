@@ -7,11 +7,12 @@
 #include "pres.h"
 #include "defines.h"
 
-cpres::cpres(cgrid *gridin, cfields *fieldsin)
+cpres::cpres(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   std::printf("Creating instance of object pres\n");
   grid   = gridin;
   fields = fieldsin;
+  mpi    = mpiin;
 
   allocated = false;
 }
@@ -46,9 +47,12 @@ cpres::~cpres()
 int cpres::exec(double dt)
 {
   // cyclic boundaries for tendencies 
-  (*fields->ut).boundary_cyclic();
-  (*fields->vt).boundary_cyclic();
-  (*fields->wt).boundary_cyclic();
+  // (*fields->ut).boundary_cyclic();
+  // (*fields->vt).boundary_cyclic();
+  // (*fields->wt).boundary_cyclic();
+  mpi->boundary_cyclic((*fields->ut).data);
+  mpi->boundary_cyclic((*fields->vt).data);
+  mpi->boundary_cyclic((*fields->wt).data);
 
   // create the input for the pressure solver
   pres_2nd_in((*fields->p ).data,
@@ -60,7 +64,8 @@ int cpres::exec(double dt)
   pres_2nd_solve((*fields->p).data, grid->dz, fftini, fftouti, fftinj, fftoutj);
 
   // set the boundary conditions
-  (*fields->p).boundary_cyclic();
+  // (*fields->p).boundary_cyclic();
+  mpi->boundary_cyclic((*fields->p).data);
   (*fields->p).boundary_bottop(1);
 
   // get the pressure tendencies from the pressure field

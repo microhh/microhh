@@ -38,8 +38,8 @@ int main()
   ctimeloop timeloop(&grid, &fields);
   cadvec    advec   (&grid, &fields, &mpi);
   cdiff     diff    (&grid, &fields);
-  cpres     pres    (&grid, &fields);
-  cforce    force   (&grid, &fields);
+  cpres     pres    (&grid, &fields, &mpi);
+  cforce    force   (&grid, &fields, &mpi);
 
   // read the inputdata
   if(timeloop.readinifile(&input))

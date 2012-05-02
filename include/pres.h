@@ -4,11 +4,12 @@
 #include <fftw3.h>
 #include "grid.h"
 #include "fields.h"
+#include "mpiinterface.h"
 
 class cpres
 {
   public:
-    cpres(cgrid *, cfields *);
+    cpres(cgrid *, cfields *, cmpi *);
     ~cpres();
 
     int init();
@@ -19,8 +20,9 @@ class cpres
 
   private:
     // variables
-    cgrid *grid;
+    cgrid   *grid;
     cfields *fields;
+    cmpi    *mpi;
 
     bool allocated;
 

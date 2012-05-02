@@ -12,7 +12,7 @@ int main()
   cgrid     grid;
   cmpi      mpi     (&grid);
   cfields   fields  (&grid, &mpi);
-  cpres     pres    (&grid, &fields);
+  cpres     pres    (&grid, &fields, &mpi);
   ctimeloop timeloop(&grid, &fields);
   
   // read the input data and terminate on error

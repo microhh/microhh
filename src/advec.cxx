@@ -49,9 +49,8 @@ double cadvec::calccfl(double * restrict u, double * restrict v, double * restri
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  double cfll, cfl;
 
-  cfll = 0;
+  double cfl = 0;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -59,10 +58,10 @@ double cadvec::calccfl(double * restrict u, double * restrict v, double * restri
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        cfll = std::max(cfll, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
+        cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
       }
 
-  mpi->getmax(&cfl, &cfll);
+  mpi->getmax(&cfl);
 
   cfl = cfl*dt;
 

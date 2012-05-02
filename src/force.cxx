@@ -4,11 +4,12 @@
 #include "force.h"
 #include "defines.h"
 
-cforce::cforce(cgrid *gridin, cfields *fieldsin)
+cforce::cforce(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   std::printf("Creating instance of object force\n");
   grid   = gridin;
   fields = fieldsin;
+  mpi    = mpiin;
 }
 
 cforce::~cforce()
@@ -47,6 +48,9 @@ int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz
 
   uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
   utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
+
+  mpi->getavg(&uavg);
+  mpi->getavg(&utavg);
 
   const double uflux = 0.0282;
 
