@@ -158,11 +158,14 @@ int cpres::save(int mpiid)
 
 int cpres::pres_2nd_init()
 {
-  int itot, jtot, ktot, kgc;
+  int imax, jmax, kmax;
+  int itot, jtot, kgc;
 
   itot = grid->itot;
   jtot = grid->jtot;
-  ktot = grid->ktot;
+  imax = grid->imax;
+  jmax = grid->jmax;
+  kmax = grid->kmax;
   kgc  = grid->kgc;
 
   bmati = new double[itot];
@@ -187,14 +190,14 @@ int cpres::pres_2nd_init()
     bmati[i] = bmati[itot-i];
 
   // allocate help variables for the matrix solver
-  a = new double[ktot];
-  b = new double[itot*jtot*ktot];
-  c = new double[ktot];
-  work2d = new double[itot*jtot];
-  work3d = new double[itot*jtot*ktot];
+  a = new double[kmax];
+  b = new double[imax*jmax*kmax];
+  c = new double[kmax];
+  work2d = new double[imax*jmax];
+  work3d = new double[imax*jmax*kmax];
 
   // create vectors that go into the tridiagonal matrix solver
-  for(int k=0; k<ktot; k++)
+  for(int k=0; k<kmax; k++)
   {
     a[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc  ];
     c[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc+1];
@@ -209,25 +212,35 @@ int cpres::pres_2nd_in(double * restrict p,
                        double * restrict dzi,
                        double dt)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,ii,jj,kk,ijkp,jjp,kkp;
+  int    igc,jgc,kgc;
   double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
+  jjp = grid->imax;
+  kkp = grid->imax*grid->jmax;
+
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  igc = grid->igc;
+  jgc = grid->jgc;
+  kgc = grid->kgc;
+
+  // write pressure as a 3d array without ghost cells
+  for(int k=0; k<grid->kmax; k++)
+    for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=0; i<grid->imax; i++)
       {
-        ijk = i + j*jj + k*kk;
-        p[ijk] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
-               + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
-               + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k];
+        ijkp = i + j*jjp + k*kkp;
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
+                + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
+                + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k];
       }
 
   return 0;
@@ -238,34 +251,39 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
                           double * restrict fftinj, double * restrict fftoutj)
 
 {
-  int i,j,k,jj,kk,ijk,ijkb;
+  int i,j,k,jj,kk,ijk;
   int imax,jmax,kmax;
-  int itot,jtot,ktot;
+  int itot,jtot;
+  int iblock,kblock;
   int igc,jgc,kgc;
   int iindex,jindex;
 
-  imax = grid->imax;
-  jmax = grid->jmax;
-  kmax = grid->kmax;
-  itot = grid->itot;
-  jtot = grid->jtot;
-  ktot = grid->ktot;
-  igc  = grid->igc;
-  jgc  = grid->jgc;
-  kgc  = grid->kgc;
+  imax   = grid->imax;
+  jmax   = grid->jmax;
+  kmax   = grid->kmax;
+  itot   = grid->itot;
+  jtot   = grid->jtot;
+  iblock = grid->iblock;
+  kblock = grid->kblock;
+  igc    = grid->igc;
+  jgc    = grid->jgc;
+  kgc    = grid->kgc;
 
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  // transpose the pressure field
+  mpi->transposezx(work3d,p);
+
+  jj = itot;
+  kk = itot*jmax;
 
   // do the first fourier transform
-  for(int k=0; k<kmax; k++)
+  for(int k=0; k<kblock; k++)
     for(int j=0; j<jmax; j++)
     {
 #pragma ivdep
       for(int i=0; i<itot; i++)
       { 
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        fftini[i] = p[ijk];
+        ijk = i + j*jj + k*kk;
+        fftini[i] = work3d[ijk];
       }
 
       fftw_execute(iplanf);
@@ -273,20 +291,24 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
 #pragma ivdep
       for(int i=0; i<itot; i++)
       {
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        p[ijk] = fftouti[i];
+        ijk = i + j*jj + k*kk;
+        work3d[ijk] = fftouti[i];
       }
     }
 
-  // TRANSPOSE
+  // transpose again
+  mpi->transposexy(p,work3d);
+
+  jj = iblock;
+  kk = iblock*jtot;
 
   // do the second fourier transform
-  for(int k=0; k<kmax; k++)
-    for(int i=0; i<imax; i++)
+  for(int k=0; k<kblock; k++)
+    for(int i=0; i<iblock; i++)
     {
       for(int j=0; j<jtot; j++)
       { 
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijk = i + j*jj + k*kk;
         fftinj[j] = p[ijk];
       }
 
@@ -294,62 +316,70 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
 
       for(int j=0; j<jtot; j++)
       {
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijk = i + j*jj + k*kk;
         p[ijk] = fftoutj[j];
       }
     }
 
-  // TRANSPOSE
+  // transpose back to original orientation
+  mpi->transposeyx(work3d,p);
+  mpi->transposexz(p,work3d);
+
+  jj = imax;
+  kk = imax*jmax;
 
   // solve the tridiagonal system
-  
   // create vectors that go into the tridiagonal matrix solver
-  for(k=0; k<ktot; k++)
+  for(k=0; k<kmax; k++)
     for(j=0; j<jmax; j++)
 #pragma ivdep
       for(i=0; i<imax; i++)
       {
-        // iindex = mpicoordx * imax + i
-        // jindex = mpicoordy * jmax + j
-        iindex = i;
-        jindex = j;
+        iindex = mpi->mpicoordx * imax + i;
+        jindex = mpi->mpicoordy * jmax + j;
 
-        ijkb = i + j*itot + k*itot*jtot;
-        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        b[ijkb] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
-        p[ijk]  = dz[k+kgc]*dz[k+kgc] * p[ijk];
+        ijk  = i + j*jj + k*kk;
+        b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+        p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
   for(j=0; j<jmax; j++)
 #pragma ivdep
     for(i=0; i<imax; i++)
     {
-      iindex = i;
-      jindex = j;
+      iindex = mpi->mpicoordx * imax + i;
+      jindex = mpi->mpicoordy * jmax + j;
 
       // substitute BC's
-      b[i+j*itot] += a[0];
+      ijk = i + j*jj;
+      b[ijk] += a[0];
 
       // for wave number 0, which contains average, set pressure at top to zero
+      ijk  = i + j*jj + (kmax-1)*kk;
       if(iindex == 0 && jindex == 0)
-        b[i + j*itot + (ktot-1)*itot*jtot] -= c[ktot-1];
+        b[ijk] -= c[kmax-1];
       // set dp/dz at top to zero
       else
-        b[i + j*itot + (ktot-1)*itot*jtot] += c[ktot-1];
+        b[ijk] += c[kmax-1];
     }
 
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);
         
-  // TRANSPOSE
+  // transpose back to y
+  mpi->transposezx(work3d, p);
+  mpi->transposexy(p, work3d);
   
+  jj = iblock;
+  kk = iblock*jtot;
+
   // transform the second transform back
-  for(int k=0; k<kmax; k++)
-    for(int i=0; i<imax; i++)
+  for(int k=0; k<kblock; k++)
+    for(int i=0; i<iblock; i++)
     {
       for(int j=0; j<jtot; j++)
       { 
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijk = i + j*jj + k*kk;
         fftinj[j] = p[ijk];
       }
 
@@ -357,22 +387,26 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
 
       for(int j=0; j<jtot; j++)
       {
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijk = i + j*jj + k*kk;
         p[ijk] = fftoutj[j] / jtot;
       }
     }
 
-  // TRANSPOSE
+  // transpose back to x
+  mpi->transposeyx(work3d, p);
     
+  jj = itot;
+  kk = itot*jmax;
+
   // transform the first transform back
-  for(int k=0; k<kmax; k++)
+  for(int k=0; k<kblock; k++)
     for(int j=0; j<jmax; j++)
     {
 #pragma ivdep
       for(int i=0; i<itot; i++)
       { 
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        fftini[i] = p[ijk];
+        ijk = i + j*jj + k*kk;
+        fftini[i] = work3d[ijk];
       }
 
       fftw_execute(iplanb);
@@ -380,10 +414,31 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict dz,
 #pragma ivdep
       for(int i=0; i<itot; i++)
       {
-        ijk = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijk = i + j*jj + k*kk;
+        // swap array here to avoid unncessary 3d loop
         p[ijk] = fftouti[i] / itot;
       }
     }
+
+  // and transpose back...
+  mpi->transposexz(work3d, p);
+
+  jj = imax;
+  kk = imax*jmax;
+
+  int ijkp,jjp,kkp;
+  jjp = grid->icells;
+  kkp = grid->icells*grid->jcells;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
+        ijk  = i + j*jj + k*kk;
+        p[ijkp] = work3d[ijk];
+      }
 
   return 0;
 }
@@ -523,6 +578,8 @@ double cpres::calcdivergence(double * restrict u, double * restrict v, double * 
 
         divmax = std::max(divmax, std::abs(div));
       }
+
+  mpi->getmax(&divmax);
 
   return divmax;
 }
