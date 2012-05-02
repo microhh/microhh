@@ -210,7 +210,7 @@ double cfields::check(int n)
 
 double cfields::calcmass(double * restrict s, double * restrict dz)
 {
-  int    ijk,jj,kk;
+  int ijk,jj,kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
@@ -237,7 +237,7 @@ double cfields::calcmass(double * restrict s, double * restrict dz)
 
 double cfields::calcmom(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
+  int ijk,icells,ijcells,ii,jj,kk;
 
   icells  = grid->icells;
   ijcells = grid->icells*grid->jcells;
@@ -267,7 +267,7 @@ double cfields::calcmom(double * restrict u, double * restrict v, double * restr
 
 double cfields::calctke(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
-  int    ijk,icells,ijcells,ii,jj,kk;
+  int ijk,icells,ijcells,ii,jj,kk;
 
   icells  = grid->icells;
   ijcells = grid->icells*grid->jcells;
@@ -292,7 +292,7 @@ double cfields::calctke(double * restrict u, double * restrict v, double * restr
 
   mpi->getsum(&tke);
 
-  tke /= (grid->imax*grid->jmax*grid->zsize);
+  tke /= (grid->itot*grid->jtot*grid->zsize);
   tke *= 0.5;
 
   return tke;
