@@ -382,3 +382,11 @@ int cmpi::getmax(double *var)
 
   return 0;
 }
+
+int cmpi::getsum(double *var)
+{
+  double varl = *var;
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, commxy);
+
+  return 0;
+}

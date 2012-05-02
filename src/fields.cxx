@@ -227,7 +227,9 @@ double cfields::calcmass(double * restrict s, double * restrict dz)
         mass += s[ijk]*dz[k];
       }
 
-  mass /= (grid->imax*grid->jmax*grid->zsize);
+  mpi->getsum(&mass);
+
+  mass /= (grid->itot*grid->jtot*grid->zsize);
 
   return mass;
 }
@@ -256,7 +258,9 @@ double cfields::calcmom(double * restrict u, double * restrict v, double * restr
         momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
       }
 
-  momentum /= (grid->imax*grid->jmax*grid->zsize);
+  mpi->getsum(&momentum);
+
+  momentum /= (grid->itot*grid->jtot*grid->zsize);
 
   return momentum;
 }
@@ -285,6 +289,8 @@ double cfields::calctke(double * restrict u, double * restrict v, double * restr
                + interp2(v[ijk]*v[ijk], v[ijk+jj]*v[ijk+jj]) 
                + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
       }
+
+  mpi->getsum(&tke);
 
   tke /= (grid->imax*grid->jmax*grid->zsize);
   tke *= 0.5;

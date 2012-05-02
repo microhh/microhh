@@ -93,7 +93,7 @@ int main()
     // large scale forcings
     force.exec(timeloop.getsubdt());
     // pressure
-    pres.exec(timeloop.getsubdt());
+    // pres.exec(timeloop.getsubdt());
     // perform the timestepping substep
     timeloop.exec();
 

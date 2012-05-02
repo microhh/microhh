@@ -23,6 +23,7 @@ class cmpi
 
     int getavg(double *);
     int getmax(double *);
+    int getsum(double *);
 
     int nprocs;
     int npx;
