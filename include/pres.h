@@ -43,7 +43,7 @@ class cpres
                     double *, double *, double *,
                     double *, double *, double *,
                     double *, double);
-    int pres_2nd_solve(double *, double *, 
+    int pres_2nd_solve(double *, double *, double *,
                        double *, double *, 
                        double *, double *);
     int pres_2nd_out(double *, double *, double *,
