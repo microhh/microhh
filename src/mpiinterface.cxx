@@ -10,6 +10,7 @@ cmpi::cmpi(cgrid *gridin)
   grid = gridin;
 
   initialized = false;
+  allocated   = false;
 }
 
 cmpi::~cmpi()
