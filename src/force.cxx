@@ -46,11 +46,11 @@ int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz
         utavg = utavg + ut[ijk]*dz[k];
       }
 
+  mpi->getsum(&uavg);
+  mpi->getsum(&utavg);
+
   uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
   utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
-
-  mpi->getavg(&uavg);
-  mpi->getavg(&utavg);
 
   const double uflux = 0.0282;
 

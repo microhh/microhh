@@ -369,15 +369,6 @@ int cmpi::transposeyz(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cmpi::getavg(double *var)
-{
-  double varl = *var;
-  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, commxy);
-  *var /= (double)nprocs;
-
-  return 0;
-}
-
 int cmpi::getmax(double *var)
 {
   double varl = *var;

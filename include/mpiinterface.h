@@ -21,7 +21,6 @@ class cmpi
     int transposeyx(double *, double *);
     int transposeyz(double *, double *);
 
-    int getavg(double *);
     int getmax(double *);
     int getsum(double *);
 
