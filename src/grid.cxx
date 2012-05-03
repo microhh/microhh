@@ -246,12 +246,12 @@ int cgrid::load(int mpiid)
   else
     std::printf("Loading \"%s\"\n", filename);
 
-  fread(&x [istart], sizeof(double), itot, pFile);
-  fread(&xh[istart], sizeof(double), itot, pFile);
-  fread(&y [jstart], sizeof(double), jtot, pFile);
-  fread(&yh[jstart], sizeof(double), jtot, pFile);
-  fread(&z [kstart], sizeof(double), ktot, pFile);
-  fread(&zh[kstart], sizeof(double), ktot, pFile);
+  fread(&x [istart], sizeof(double), imax, pFile);
+  fread(&xh[istart], sizeof(double), imax, pFile);
+  fread(&y [jstart], sizeof(double), jmax, pFile);
+  fread(&yh[jstart], sizeof(double), jmax, pFile);
+  fread(&z [kstart], sizeof(double), kmax, pFile);
+  fread(&zh[kstart], sizeof(double), kmax, pFile);
   fclose(pFile);
 
   calculate();
