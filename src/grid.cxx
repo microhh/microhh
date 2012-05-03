@@ -220,12 +220,12 @@ int cgrid::save(int mpiid)
   else
     std::printf("Saving \"%s\"\n", filename);
 
-  fwrite(&x [istart], sizeof(double), itot, pFile);
-  fwrite(&xh[istart], sizeof(double), itot, pFile);
-  fwrite(&y [jstart], sizeof(double), jtot, pFile);
-  fwrite(&yh[jstart], sizeof(double), jtot, pFile);
-  fwrite(&z [kstart], sizeof(double), ktot, pFile);
-  fwrite(&zh[kstart], sizeof(double), ktot, pFile);
+  fwrite(&x [istart], sizeof(double), imax, pFile);
+  fwrite(&xh[istart], sizeof(double), imax, pFile);
+  fwrite(&y [jstart], sizeof(double), jmax, pFile);
+  fwrite(&yh[jstart], sizeof(double), jmax, pFile);
+  fwrite(&z [kstart], sizeof(double), kmax, pFile);
+  fwrite(&zh[kstart], sizeof(double), kmax, pFile);
   fclose(pFile);
 
   return 0;
