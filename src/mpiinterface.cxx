@@ -125,7 +125,9 @@ int cmpi::init()
   MPI_Type_commit(&transposey);
 
   // create the requests arrays for the nonblocking sends
-  int npmax = std::max(npx, npy);
+  int npmax;
+  npmax = std::max(npx, npy);
+  npmax = std::max(npmax, 8);
   reqs = new MPI_Request[npmax*2];
 
   allocated = true;
