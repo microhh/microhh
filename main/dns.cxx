@@ -70,7 +70,7 @@ int main()
 
   // output information only for the main processor
   if(mpi.mpiid == 0)
-    std::printf("%8s  %12s  %10s  %10s  %10s  %8s  %13s  %13s  %13s  %13s\n", 
+    std::printf("%8s %12s %10s %10s %8s %8s %13s %13s %13s %13s\n", 
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
 
   // set the boundary conditions
@@ -116,7 +116,7 @@ int main()
       mass    = fields.check(2);
 
       if(mpi.mpiid == 0)
-        std::printf("%8d  %12.3f  %10.4f  %10.4f  %10.4f  %8.4f  %13.5E  %13.5E  %13.5E  %13.5E\n", 
+        std::printf("%8d %12.3f %10.4f %10.4f %8.4f %8.4f %13.5E %13.5E %13.5E %13.5E\n", 
           iter, time, cputime, dt, cfl, dnum, div, mom, tke, mass);
     }
 
