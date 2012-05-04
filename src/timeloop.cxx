@@ -31,6 +31,7 @@ int ctimeloop::readinifile(cinput *inputin)
 
   // optional parameters
   n += inputin->getItem(&cflmax    , "time", "cflmax"     , 1. );
+  n += inputin->getItem(&dnmax     , "time", "dnmax"      , 0.5);
   n += inputin->getItem(&maxiter   , "time", "maxiter"    , 1e9);
   n += inputin->getItem(&iteration , "time", "iteration"  , 0  );
   n += inputin->getItem(&rkorder   , "time", "rkorder"    , 4  );
@@ -104,11 +105,11 @@ double ctimeloop::check()
   return timeelapsed;
 }
 
-int ctimeloop::settimestep(double cfl)
+int ctimeloop::settimestep(double cfl, double dn)
 {
   if(adaptivestep)
   {
-    idt = (long)((double)idt * cflmax/cfl);
+    idt = (long)(std::min((double)idt * cflmax/cfl, (double)idt * dnmax/dn));
     dt  = (double)idt / ifactor;
   }
 

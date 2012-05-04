@@ -3,14 +3,16 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
+#include "mpiinterface.h"
 #include "diff.h"
 #include "defines.h"
 
-cdiff::cdiff(cgrid *gridin, cfields *fieldsin)
+cdiff::cdiff(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   std::printf("Creating instance of object diff\n");
   grid   = gridin;
   fields = fieldsin;
+  mpi    = mpiin;
 }
 
 cdiff::~cdiff()
@@ -21,8 +23,18 @@ cdiff::~cdiff()
 int cdiff::init()
 {
   // get the maximum time step for diffusion
+  double viscmax = std::max(fields->visc, fields->viscs);
+
+  dnmul = 0;
+  for(int k=grid->kstart; k<grid->kend; k++)
+    dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 
   return 0;
+}
+
+double cdiff::getdnum(double dt)
+{
+  return dnmul*dt;
 }
 
 int cdiff::exec()

@@ -37,7 +37,7 @@ int main()
   // create the instances of the model operations
   ctimeloop timeloop(&grid, &fields);
   cadvec    advec   (&grid, &fields, &mpi);
-  cdiff     diff    (&grid, &fields);
+  cdiff     diff    (&grid, &fields, &mpi);
   cpres     pres    (&grid, &fields, &mpi);
   cforce    force   (&grid, &fields, &mpi);
 
@@ -66,12 +66,12 @@ int main()
   double time, dt, cputime;
   double mom, tke, mass;
   double div;
-  double cfl;
+  double cfl, dnum;
 
   // output information only for the main processor
   if(mpi.mpiid == 0)
-    std::printf("%8s  %12s  %10s  %10s  %8s  %13s  %13s  %13s  %13s\n", 
-      "ITER", "TIME", "CPUDT", "DT", "CFL", "DIV", "MOM", "TKE", "MASS");
+    std::printf("%8s  %12s  %10s  %10s  %10s  %8s  %13s  %13s  %13s  %13s\n", 
+      "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
 
   // set the boundary conditions
   fields.boundary();
@@ -82,8 +82,9 @@ int main()
     // determine the time step
     if(!timeloop.insubstep())
     {
-      cfl = advec.getcfl(timeloop.dt);
-      timeloop.settimestep(cfl);
+      cfl  = advec.getcfl(timeloop.dt);
+      dnum = diff.getdnum(timeloop.dt);
+      timeloop.settimestep(cfl, dnum);
     }
 
     // advection
@@ -115,8 +116,8 @@ int main()
       mass    = fields.check(2);
 
       if(mpi.mpiid == 0)
-        std::printf("%8d  %12.3f  %10.4f  %10.4f  %8.4f  %13.5E  %13.5E  %13.5E  %13.5E\n", 
-          iter, time, cputime, dt, cfl, div, mom, tke, mass);
+        std::printf("%8d  %12.3f  %10.4f  %10.4f  %10.4f  %8.4f  %13.5E  %13.5E  %13.5E  %13.5E\n", 
+          iter, time, cputime, dt, cfl, dnum, div, mom, tke, mass);
     }
 
     if(timeloop.dosave() && !timeloop.insubstep())

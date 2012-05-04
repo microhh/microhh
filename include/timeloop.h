@@ -14,7 +14,7 @@ class ctimeloop
 
     int readinifile(cinput *);
     int timestep();
-    int settimestep(double);
+    int settimestep(double, double);
 
     int exec();
     bool insubstep();
@@ -36,6 +36,7 @@ class ctimeloop
     double time;
     double dt;
     double cflmax;
+    double dnmax;
     double runtime;
 
     int iteration;
