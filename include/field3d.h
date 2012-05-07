@@ -3,12 +3,13 @@
 
 #include <string>
 #include "grid.h"
+#include "mpiinterface.h"
 
 class cfield3d
 {
   public:
     // functions
-    cfield3d(cgrid *, std::string);
+    cfield3d(cgrid *, cmpi *, std::string);
     ~cfield3d();
     int init();
     int boundary_bottop(int);
@@ -22,6 +23,7 @@ class cfield3d
 
   private:
     cgrid *grid;
+    cmpi  *mpi;
     bool allocated;
 };
 #endif

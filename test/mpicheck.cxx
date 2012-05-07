@@ -28,9 +28,9 @@ int cmpicheck::checkLayout()
 
 int cmpicheck::create()
 {
-  s     = new cfield3d(grid, "s");
-  temp1 = new cfield3d(grid, "temp1");
-  temp2 = new cfield3d(grid, "temp2");
+  s     = new cfield3d(grid, mpi, "s");
+  temp1 = new cfield3d(grid, mpi, "temp1");
+  temp2 = new cfield3d(grid, mpi, "temp2");
 
   s->init();
   temp1->init();

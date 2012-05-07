@@ -54,18 +54,18 @@ int cfields::initfields()
   std::printf("Initializing fields\n");
 
   // set pointers to correct location
-  u  = new cfield3d(grid, "u" );
-  v  = new cfield3d(grid, "v" );
-  w  = new cfield3d(grid, "w" );
-  p  = new cfield3d(grid, "p" );
+  u  = new cfield3d(grid, mpi, "u" );
+  v  = new cfield3d(grid, mpi, "v" );
+  w  = new cfield3d(grid, mpi, "w" );
+  p  = new cfield3d(grid, mpi, "p" );
 
-  ut = new cfield3d(grid, "ut");
-  vt = new cfield3d(grid, "vt");
-  wt = new cfield3d(grid, "wt");
+  ut = new cfield3d(grid, mpi, "ut");
+  vt = new cfield3d(grid, mpi, "vt");
+  wt = new cfield3d(grid, mpi, "wt");
 
-  s  = new cfield3d(grid, "s" );
+  s  = new cfield3d(grid, mpi, "s" );
 
-  st = new cfield3d(grid, "st");
+  st = new cfield3d(grid, mpi, "st");
 
   u->init();
   v->init();
