@@ -55,7 +55,6 @@ class cmpi
     MPI_Datatype transposex;
     MPI_Datatype transposex2;
     MPI_Datatype transposey;
-    MPI_Datatype transposezgc;
     MPI_Datatype subarray;
 
     MPI_Request *reqs;

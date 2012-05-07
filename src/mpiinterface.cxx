@@ -103,21 +103,6 @@ int cmpi::init()
   MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez);
   MPI_Type_commit(&transposez);
 
-  // transposezgc
-  int bcount = grid->jmax;
-  int blength[grid->jmax];
-  int bdispl [grid->jmax];
-
-  for(int j=0; j<grid->jmax; j++)
-  {
-    blength[j] = grid->imax;
-    bdispl [j] = 2*grid->igc;
-  }
-  bdispl[grid->jmax-1] = 2*grid->igc + 2*grid->icells;
-  MPI_Type_indexed(bcount, blength, bdispl, MPI_DOUBLE, &transposezgc);
-  MPI_Type_commit(&transposezgc);
-
-
   // transposex imax
   datacount  = grid->jmax*grid->kblock;
   datablock  = grid->imax;
