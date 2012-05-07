@@ -190,14 +190,18 @@ int cfield3d::save(int n, int mpiid)
     std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
   }
+  else
+    std::printf("Saved \"%s\"\n", filename);
 
   return 0;
 }
 
 int cfield3d::load(int n, int mpiid)
 {
-  FILE *pFile;
   char filename[256];
+
+  /*
+  FILE *pFile;
   std::sprintf(filename, "%s.%07d.%07d", name.c_str(), n, mpiid);
   pFile = fopen(filename, "rb");
 
@@ -223,6 +227,17 @@ int cfield3d::load(int n, int mpiid)
       }
 
   fclose(pFile);
+  */
+
+  std::sprintf(filename, "%s.%07d", name.c_str(), n);
+
+  if(mpi->readfield3d(data, filename))
+  {
+    std::printf("ERROR \"%s\" does not exist\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Loaded \"%s\"\n", filename);
 
   return 0;
 }

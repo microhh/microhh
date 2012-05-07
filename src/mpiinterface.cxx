@@ -439,6 +439,46 @@ int cmpi::writefield3d(double * restrict data, char *filename)
 }
 
 int cmpi::readfield3d(double *data, char *filename)
-{
+{  
+  MPI_File fh;
+  if(MPI_File_open(commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[8] = "native";
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+  int igc,jgc,kgc;
+
+  jj  = grid->icells;
+  kk  = grid->icells*grid->jcells;
+  jjb = grid->imax;
+  kkb = grid->imax*grid->jmax;
+  igc = grid->igc;
+  jgc = grid->jgc;
+  kgc = grid->kgc;
+
+  int count = grid->imax*grid->jmax*grid->kmax;
+  double buffer[count];
+
+  fileoff = mpicoordx*grid->imax + mpicoordy*grid->itot*grid->jmax;
+  MPI_File_read_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  for(int k=0; k<grid->kmax; k++)
+    for(int j=0; j<grid->jmax; j++)
+#pragma ivdep
+      for(int i=0; i<grid->imax; i++)
+      {
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijkb = i + j*jjb + k*kkb;
+        data[ijk] = buffer[ijkb] = data[ijk];
+      }
+
+  if(MPI_File_close(&fh))
+    return 1;
   return 0;
 }
