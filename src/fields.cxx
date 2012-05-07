@@ -112,7 +112,7 @@ int cfields::createfields()
 
   // set Moser180 as a default setup
   double dpdxls = -8.e-7;
-  double rndamp =  5.e-2;
+  double rndamp =  1.e-2;
   int k;
 
   // put initial perturbation in u, v and w
