@@ -103,6 +103,21 @@ int cmpi::init()
   MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez);
   MPI_Type_commit(&transposez);
 
+  // transposezgc
+  int bcount = grid->jmax;
+  int blength[grid->jmax];
+  int bdispl [grid->jmax];
+
+  for(int j=0; j<grid->jmax; j++)
+  {
+    blength[j] = grid->imax;
+    bdispl [j] = 2*grid->igc;
+  }
+  bdispl[grid->jmax-1] = 2*grid->igc + 2*grid->icells;
+  MPI_Type_indexed(bcount, blength, bdispl, MPI_DOUBLE, &transposezgc);
+  MPI_Type_commit(&transposezgc);
+
+
   // transposex imax
   datacount  = grid->jmax*grid->kblock;
   datablock  = grid->imax;
@@ -123,6 +138,13 @@ int cmpi::init()
   datastride = grid->iblock*grid->jtot;
   MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposey);
   MPI_Type_commit(&transposey);
+
+  // file saving and loading, take C-ordering into account
+  int totsize [3] = {grid->kmax, grid->jtot, grid->itot};
+  int subsize [3] = {grid->kmax, grid->jmax, grid->imax};
+  int substart[3] = {0, mpicoordy*grid->jmax, mpicoordx*grid->imax};
+  MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
+  MPI_Type_commit(&subarray);
 
   // create the requests arrays for the nonblocking sends
   int npmax;
@@ -382,5 +404,40 @@ int cmpi::getsum(double *var)
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, commxy);
 
+  return 0;
+}
+
+int cmpi::writefield3d(double *data, char *filename)
+{
+  int n = 0;
+  MPI_File fh;
+  if(MPI_File_open(commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, NULL, MPI_INFO_NULL);
+
+  // extract the data from the 3d field without the ghost cells
+  int ijk, jj, kk;
+  jj  = grid->icells;
+  kk  = grid->icells*grid->jcells;
+  ijk = grid->istart + grid->jstart*jj + grid->kstart*kk;
+
+  int count = grid->imax * grid->jmax * grid->kmax;
+  for(int n=0; n<count; n++)
+    data[n] = mpiid;
+
+  fileoff = mpicoordx*grid->imax + mpicoordy*grid->itot*grid->jmax;
+  MPI_File_write_at_all(fh, fileoff, data, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  return 0;
+}
+
+int cmpi::readfield3d(double *data, char *filename)
+{
   return 0;
 }

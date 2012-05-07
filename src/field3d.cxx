@@ -152,9 +152,10 @@ int cfield3d::boundary_cyclic()
 
 int cfield3d::save(int n, int mpiid)
 {
-  FILE *pFile;
   char filename[256];
   std::sprintf(filename, "%s.%07d.%07d", name.c_str(), n, mpiid);
+  
+  FILE *pFile;
   pFile = fopen(filename, "wb");
 
   if(pFile == NULL)
@@ -179,7 +180,14 @@ int cfield3d::save(int n, int mpiid)
       }
 
   fclose(pFile);
-
+  
+  /*
+  if(mpi->writefield3d(data, filename))
+  {
+    std::printf("ERROR \"%s\" cannot be written\n", filename);
+    return 1;
+  }
+  */
   return 0;
 }
 
