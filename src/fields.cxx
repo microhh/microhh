@@ -112,11 +112,11 @@ int cfields::createfields()
 
   // set Moser180 as a default setup
   double dpdxls = -8.e-7;
-  double rndamp =  5.e-3;
+  double rndamp =  5.e-2;
   int k;
 
   // put initial perturbation in u, v and w
-  std::srand(0);
+  std::srand(mpi->mpiid);
 
   for(int n=0; n<grid->ncells; n++)
     u->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
