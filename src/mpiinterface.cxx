@@ -429,7 +429,7 @@ int cmpi::writefield3d(double * restrict data, char *filename)
         buffer[ijkb] = data[ijk];
       }
 
-  fileoff = mpicoordx*grid->imax + mpicoordy*grid->itot*grid->jmax;
+  fileoff = 0;
   MPI_File_write_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
 
   if(MPI_File_close(&fh))
@@ -465,7 +465,7 @@ int cmpi::readfield3d(double *data, char *filename)
   int count = grid->imax*grid->jmax*grid->kmax;
   double buffer[count];
 
-  fileoff = mpicoordx*grid->imax + mpicoordy*grid->itot*grid->jmax;
+  fileoff = 0;
   MPI_File_read_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
 
   for(int k=0; k<grid->kmax; k++)
@@ -475,7 +475,7 @@ int cmpi::readfield3d(double *data, char *filename)
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
-        data[ijk] = buffer[ijkb] = data[ijk];
+        data[ijk] = buffer[ijkb];
       }
 
   if(MPI_File_close(&fh))
