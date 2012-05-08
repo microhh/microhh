@@ -54,8 +54,6 @@ int cmpi::init()
   int dims    [2] = {npy, npx};
   int periodic[2] = {true, true};
 
-  int n;
-
   if(MPI_Dims_create(nprocs, 2, dims))
     return 1;
 
@@ -65,13 +63,13 @@ int cmpi::init()
     return 1;
 
   int mpicoords[2];
-  n = MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
+  MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
 
   mpicoordx = mpicoords[1];
   mpicoordy = mpicoords[0];
 
-  int dimx[2] = {false, true };
-  int dimy[2] = {true , false};
+  // int dimx[2] = {false, true };
+  // int dimy[2] = {true , false};
 
   // MPI_Cart_sub(commxy, dimx, &commx);
   // MPI_Cart_sub(commxy, dimy, &commy);
@@ -186,7 +184,6 @@ int cmpi::boundary_cyclic(double * restrict data)
 
 int cmpi::transposezx(double * restrict ar, double * restrict as)
 {
-  int startk;
   int nblock;
   int ncount = 1;
 
@@ -226,7 +223,6 @@ int cmpi::transposezx(double * restrict ar, double * restrict as)
 
 int cmpi::transposexz(double * restrict ar, double * restrict as)
 {
-  int startk;
   int nblock;
   int ncount = 1;
 
@@ -266,7 +262,6 @@ int cmpi::transposexz(double * restrict ar, double * restrict as)
 
 int cmpi::transposexy(double * restrict ar, double * restrict as)
 {
-  int startk;
   int nblock;
   int ncount = 1;
 
@@ -304,7 +299,6 @@ int cmpi::transposexy(double * restrict ar, double * restrict as)
 
 int cmpi::transposeyx(double * restrict ar, double * restrict as)
 {
-  int startk;
   int nblock;
   int ncount = 1;
 
@@ -341,7 +335,6 @@ int cmpi::transposeyx(double * restrict ar, double * restrict as)
 
 int cmpi::transposeyz(double * restrict ar, double * restrict as)
 {
-  int startk;
   int nblock;
   int ncount = 1;
 
@@ -400,7 +393,7 @@ int cmpi::writefield3d(double * restrict data, char *filename)
 
   // select noncontiguous part of 3d array to store the selected data
   MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[8] = "native";
+  char name[] = "native";
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
 
   // extract the data from the 3d field without the ghost cells
@@ -446,7 +439,7 @@ int cmpi::readfield3d(double *data, char *filename)
 
   // select noncontiguous part of 3d array to store the selected data
   MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[8] = "native";
+  char name[] = "native";
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
 
   // extract the data from the 3d field without the ghost cells

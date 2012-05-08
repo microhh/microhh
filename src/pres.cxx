@@ -476,15 +476,11 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
                 
 {
   int i,j,k,jj,kk,ijk,ij;
-  int imax,jmax,kmax,igc,jgc,kgc;
+  int imax,jmax,kmax;
 
   imax = grid->imax;
   jmax = grid->jmax;
   kmax = grid->kmax;
-
-  igc = grid->igc;
-  jgc = grid->jgc;
-  kgc = grid->kgc;
 
   jj = imax;
   kk = imax*jmax;

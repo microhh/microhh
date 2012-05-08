@@ -141,7 +141,7 @@ int ctimeloop::exec()
 
 double ctimeloop::getsubdt()
 {
-  double subdt;
+  double subdt = 0.;
   if(rkorder == 3)
     subdt = rk3subdt(dt);
   else if(rkorder == 4)

@@ -36,7 +36,7 @@ int cmpicheck::create()
   temp1->init();
   temp2->init();
 
-  int n, k;
+  int n;
 
   for(n=0; n<grid->ncells; n++)
     s->data[n] = (double)mpi->mpiid;
@@ -49,7 +49,7 @@ int cmpicheck::checkBoundary()
   mpi->boundary_cyclic(s->data);
 
   int i,j,k;
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
@@ -75,7 +75,7 @@ int cmpicheck::checkBoundary()
 
 int cmpicheck::checkTranspose()
 {
-  int i,j,k,ijk,ijkw;
+  int ijk,ijkw;
   int jj,kk,jjw,kkw;
   int igc,jgc,kgc;
 
