@@ -43,6 +43,9 @@ int cfields::readinifile(cinput *inputin)
   n += inputin->getItem(&visc , "fields", "visc" );
   n += inputin->getItem(&viscs, "fields", "viscs");
 
+  // optional parameters
+  n += inputin->getItem(&rndamp, "fields", "rndamp", 1.e-3);
+
   if(n > 0)
     return 1;
 
@@ -111,11 +114,7 @@ int cfields::createfields()
   // end Taylor-Green vortex setup */
 
   // set Moser180 as a default setup
-  double dpdxls = -8.e-7;
-  double rndamp =  1.e-2;
-  int k;
-
-  // put initial perturbation in u, v and w
+  // put initial perturbation in u, v and w, set mpiid as random seed to avoid having the same field at all procs
   std::srand(mpi->mpiid);
 
   for(int n=0; n<grid->ncells; n++)
@@ -124,6 +123,9 @@ int cfields::createfields()
     v->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
   for(int n=0; n<grid->ncells; n++)
     w->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+
+  double dpdxls = -8.e-7;
+  int k;
 
   for(int n=0; n<grid->ncells; n++)
   {

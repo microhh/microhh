@@ -39,11 +39,14 @@ class cfields
 
     double visc;
     double viscs;
+
   private:
     // variables
     cgrid *grid;
     cmpi  *mpi;
     bool allocated;
+
+    double rndamp;
 
     // functions
     double calcmom (double *, double *, double *, double *);
