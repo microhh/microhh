@@ -13,7 +13,7 @@ int main()
   cmpi      mpi     (&grid);
   cfields   fields  (&grid, &mpi);
   cpres     pres    (&grid, &fields, &mpi);
-  ctimeloop timeloop(&grid, &fields);
+  ctimeloop timeloop(&grid, &fields, &mpi);
   
   // read the input data and terminate on error
   if(input.readinifile())
@@ -40,11 +40,11 @@ int main()
   // store the data on disk
   if(grid.save(mpi.mpiid))
     return 1;
-  if(pres.save(mpi.mpiid))
+  if(pres.save())
     return 1;
-  if(fields.save(0, mpi.mpiid))
+  if(fields.save(0))
     return 1;
-  if(timeloop.save(0, mpi.mpiid))
+  if(timeloop.save(0))
     return 1;
 
   return 0;

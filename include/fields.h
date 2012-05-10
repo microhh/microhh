@@ -15,8 +15,8 @@ class cfields
     int readinifile(cinput *);
     int initfields();
     int createfields();
-    int save(int, int);
-    int load(int, int);
+    int save(int);
+    int load(int);
 
     // int resettend();
     int boundary();

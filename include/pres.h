@@ -13,8 +13,8 @@ class cpres
     ~cpres();
 
     int init();
-    int save(int);
-    int load(int);
+    int save();
+    int load();
     int exec(double);
     double check();
 

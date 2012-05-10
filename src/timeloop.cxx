@@ -5,11 +5,12 @@
 #include "timeloop.h"
 #include "defines.h"
 
-ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin)
+ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   std::printf("Creating instance of object timeloop\n");
   grid   = gridin;
   fields = fieldsin;
+  mpi    = mpiin;
 
   substep = 0;
   ifactor = 10000.;
@@ -257,42 +258,49 @@ bool ctimeloop::insubstep()
     return false;
 }
 
-int ctimeloop::save(int n, int mpiid)
+int ctimeloop::save(int n)
 {
-  FILE *pFile;
-  char filename[256];
-  std::sprintf(filename, "time.%07d.%07d", n, mpiid);
-  pFile = fopen(filename, "wb");
-
-  if(pFile == NULL)
+  if(mpi->mpiid == 0)
   {
-    std::printf("ERROR \"%s\" cannot be written", filename);
-    return 1;
-  }
-  else
+    char filename[256];
+    std::sprintf(filename, "time.%07d", n);
+
     std::printf("Saving \"%s\"\n", filename);
 
-  fwrite(&itime, sizeof(long), 1, pFile);
+    FILE *pFile;
+    pFile = fopen(filename, "wb");
 
-  fclose(pFile);
+    if(pFile == NULL)
+    {
+      std::printf("ERROR \"%s\" cannot be written", filename);
+      return 1;
+    }
+
+    fwrite(&itime, sizeof(long), 1, pFile);
+
+    fclose(pFile);
+  }
 
   return 0;
 }
 
-int ctimeloop::load(int n, int mpiid)
+int ctimeloop::load(int n)
 {
-  FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "time.%07d.%07d", n, mpiid);
+  std::sprintf(filename, "time.%07d", n);
+
+  if(mpi->mpiid == 0)
+    std::printf("Loading \"%s\"\n", filename);
+
+  FILE *pFile;
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)
   {
-    std::printf("ERROR \"%s\" does not exist\n", filename);
+    if(mpi->mpiid == 0)
+      std::printf("ERROR \"%s\" does not exist\n", filename);
     return 1;
   }
-  else
-    std::printf("Loading \"%s\"\n", filename);
 
   fread(&itime, sizeof(long), 1, pFile);
 

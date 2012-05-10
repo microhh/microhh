@@ -92,7 +92,7 @@ double cpres::check()
   return divmax;
 }
 
-int cpres::load(int mpiid)
+int cpres::load()
 { 
   int itot, jtot;
 
@@ -106,14 +106,17 @@ int cpres::load(int mpiid)
 
   char filename[256];
   std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+
+  if(mpi->mpiid == 0)
+    std::printf("Loading \"%s\"\n", filename);
+
   int n = fftw_import_wisdom_from_filename(filename);
   if(n == 0)
   {
-    std::printf("ERROR \"%s\" does not exist\n", filename);
+    if(mpi->mpiid == 0)
+      std::printf("ERROR \"%s\" does not exist\n", filename);
     return 1;
   }
-  else
-    std::printf("Loading \"%s\"\n", filename);
 
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
   iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
@@ -125,7 +128,7 @@ int cpres::load(int mpiid)
   return 0;
 }
 
-int cpres::save(int mpiid)
+int cpres::save()
 {
   int itot, jtot;
 
@@ -146,14 +149,15 @@ int cpres::save(int mpiid)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
+
+    std::printf("Saving \"%s\"\n", filename);
+
     int n = fftw_export_wisdom_to_filename(filename);
     if(n == 0)
     {
       std::printf("ERROR \"%s\" cannot be saved\n", filename);
       return 1;
     }
-    else
-      std::printf("Saving \"%s\"\n", filename);
   }
 
   return 0;

@@ -5,11 +5,12 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
+#include "mpiinterface.h"
 
 class ctimeloop
 {
   public:
-    ctimeloop(cgrid *, cfields *);
+    ctimeloop(cgrid *, cfields *, cmpi *);
     ~ctimeloop();
 
     int readinifile(cinput *);
@@ -20,8 +21,8 @@ class ctimeloop
     bool insubstep();
     double getsubdt();
 
-    int save(int, int);
-    int load(int, int);
+    int save(int);
+    int load(int);
 
     int docheck();
     double check();
@@ -42,8 +43,9 @@ class ctimeloop
     int iteration;
 
   private:
-    cgrid *grid;
+    cgrid   *grid;
     cfields *fields;
+    cmpi    *mpi;
 
     double ifactor;
 

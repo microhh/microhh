@@ -168,14 +168,14 @@ int cfields::createfields()
   return 0;
 }
 
-int cfields::load(int n, int mpiid)
+int cfields::load(int n)
 {
   // check them all before returning error
   int nerror = 0;
-  nerror += u->load(n, mpiid);
-  nerror += v->load(n, mpiid);
-  nerror += w->load(n, mpiid);
-  nerror += s->load(n, mpiid);
+  nerror += u->load(n);
+  nerror += v->load(n);
+  nerror += w->load(n);
+  nerror += s->load(n);
 
   if(nerror > 0)
     return 1;
@@ -183,13 +183,13 @@ int cfields::load(int n, int mpiid)
   return 0;
 }
 
-int cfields::save(int n, int mpiid)
+int cfields::save(int n)
 {
-  u->save(n, mpiid);
-  v->save(n, mpiid);
-  w->save(n, mpiid);
-  p->save(n, mpiid);
-  s->save(n, mpiid);
+  u->save(n);
+  v->save(n);
+  w->save(n);
+  p->save(n);
+  s->save(n);
 
   return 0;
 }
