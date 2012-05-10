@@ -3,29 +3,31 @@
 
 #include <mpi.h>
 #include "input.h"
-#include "grid.h"
+// #include "grid.h"
 
 class cmpi
 {
   public:
-    cmpi(cgrid *);
+    cmpi();
     ~cmpi();
 
     int readinifile(cinput *);
     int init();
 
-    int boundary_cyclic(double *);
-    int transposezx(double *, double *);
-    int transposexz(double *, double *);
-    int transposexy(double *, double *);
-    int transposeyx(double *, double *);
-    int transposeyz(double *, double *);
+//    int boundary_cyclic(double *);
+//    int transposezx(double *, double *);
+//    int transposexz(double *, double *);
+//    int transposexy(double *, double *);
+//    int transposeyx(double *, double *);
+//    int transposeyz(double *, double *);
+//
+//    int getmax(double *);
+//    int getsum(double *);
+//
+//    int writefield3d(double *, char *);
+//    int readfield3d(double *, char *);
 
-    int getmax(double *);
-    int getsum(double *);
-
-    int writefield3d(double *, char *);
-    int readfield3d(double *, char *);
+    MPI_Comm commxy;
 
     int nprocs;
     int npx;
@@ -39,24 +41,21 @@ class cmpi
     int neast;
     int nwest;
 
+    MPI_Request *reqs;
+
   private:
-    cgrid *grid;
+//    cgrid *grid;
 
     bool initialized;
     bool allocated;
-
-    MPI_Comm commxy;
-    MPI_Comm commx;
-    MPI_Comm commy;
-
-    MPI_Datatype eastwestedge;
-    MPI_Datatype northsouthedge;
-    MPI_Datatype transposez;
-    MPI_Datatype transposex;
-    MPI_Datatype transposex2;
-    MPI_Datatype transposey;
-    MPI_Datatype subarray;
-
-    MPI_Request *reqs;
+    // MPI_Comm commx;
+    // MPI_Comm commy;
+    // MPI_Datatype eastwestedge;
+    // MPI_Datatype northsouthedge;
+    // MPI_Datatype transposez;
+    // MPI_Datatype transposex;
+    // MPI_Datatype transposex2;
+    // MPI_Datatype transposey;
+    // MPI_Datatype subarray;
 };
 #endif

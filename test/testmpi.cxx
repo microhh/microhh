@@ -6,9 +6,9 @@
 int main()
 {
   // create the instances of the objects
-  cgrid     grid;
   cinput    input;
-  cmpi      mpi(&grid);
+  cmpi      mpi;
+  cgrid     grid(&mpi);
   cmpicheck mpicheck(&grid, &mpi);
 
   // read the input data
@@ -20,9 +20,9 @@ int main()
     return 1;
 
   // initialize the objects, allocate the required memory
-  if(grid.init(mpi.npx, mpi.npy))
-    return 1;
   if(mpi.init())
+    return 1;
+  if(grid.init())
     return 1;
 
   // check the layout

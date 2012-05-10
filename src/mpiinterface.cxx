@@ -4,10 +4,9 @@
 #include "defines.h"
 #include "mpiinterface.h"
 
-cmpi::cmpi(cgrid *gridin)
+cmpi::cmpi()
 {
   std::printf("Creating instance of object mpi\n");
-  grid = gridin;
 
   initialized = false;
   allocated   = false;
@@ -15,11 +14,11 @@ cmpi::cmpi(cgrid *gridin)
 
 cmpi::~cmpi()
 {
-  if(initialized)
-    MPI_Finalize();
-
   if(allocated)
     delete[] reqs;
+
+  if(initialized)
+    MPI_Finalize();
 
   std::printf("Destroying instance of object mpi\n");
 }
@@ -79,6 +78,18 @@ int cmpi::init()
   if(MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth))
     return 1;
 
+  // create the requests arrays for the nonblocking sends
+  int npmax;
+  npmax = std::max(npx, npy);
+  npmax = std::max(npmax, 8);
+  reqs = new MPI_Request[npmax*2];
+
+  allocated = true;
+
+  return 0;
+}
+
+/*
   // create the MPI types for the cyclic boundary conditions
   int datacount, datablock, datastride;
 
@@ -128,14 +139,6 @@ int cmpi::init()
   int substart[3] = {0, mpicoordy*grid->jmax, mpicoordx*grid->imax};
   MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
   MPI_Type_commit(&subarray);
-
-  // create the requests arrays for the nonblocking sends
-  int npmax;
-  npmax = std::max(npx, npy);
-  npmax = std::max(npmax, 8);
-  reqs = new MPI_Request[npmax*2];
-
-  allocated = true;
 
   return 0;
 } 
@@ -483,3 +486,4 @@ int cmpi::readfield3d(double *data, char *filename)
 
   return 0;
 }
+*/

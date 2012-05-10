@@ -9,8 +9,8 @@ int main()
 {
   // create the class objects
   cinput    input;
-  cgrid     grid;
-  cmpi      mpi     (&grid);
+  cmpi      mpi;
+  cgrid     grid    (&mpi);
   cfields   fields  (&grid, &mpi);
   cpres     pres    (&grid, &fields, &mpi);
   ctimeloop timeloop(&grid, &fields, &mpi);
@@ -28,8 +28,9 @@ int main()
     return 1;
   
   // initialize the objects, allocate the required memory
-  grid.init(mpi.npx, mpi.npy);
   if(mpi.init())
+    return 1;
+  if(grid.init())
     return 1;
   fields.initfields();
 

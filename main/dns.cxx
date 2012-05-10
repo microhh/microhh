@@ -12,8 +12,8 @@ int main()
 {
   // create the instances of the objects
   cinput  input;
-  cgrid   grid;
-  cmpi    mpi(&grid);
+  cmpi    mpi;
+  cgrid   grid  (&mpi);
   cfields fields(&grid, &mpi);
 
   // read the input data
@@ -26,11 +26,11 @@ int main()
   if(fields.readinifile(&input))
     return 1;
 
-  // initialize the objects, allocate the required memory
-  if(grid.init(mpi.npx, mpi.npy))
-    return 1;
-  // init the mpi after the grid, such that the MPI types can be made
+  // init the mpi 
   if(mpi.init())
+    return 1;
+  // initialize the objects, allocate the required memory
+  if(grid.init())
     return 1;
   fields.initfields();
 

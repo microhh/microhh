@@ -46,7 +46,7 @@ int cmpicheck::create()
 
 int cmpicheck::checkBoundary()
 {
-  mpi->boundary_cyclic(s->data);
+  grid->boundary_cyclic(s->data);
 
   int i,j,k;
   int ijk,jj,kk;
@@ -97,7 +97,7 @@ int cmpicheck::checkTranspose()
         temp1->data[ijkw] = mpi->mpiid; //k - kgc + 100*mpi->mpiid;
       }
 
-  mpi->transposezx(temp2->data, temp1->data);
+  grid->transposezx(temp2->data, temp1->data);
 
   jj = grid->itot;
   kk = grid->itot*grid->jmax;
@@ -110,7 +110,7 @@ int cmpicheck::checkTranspose()
         std::printf("MPI transzx id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk]);
       }
 
-  mpi->transposexz(temp1->data, temp2->data);
+  grid->transposexz(temp1->data, temp2->data);
 
   jj = grid->imax;
   kk = grid->imax*grid->jmax;
@@ -123,8 +123,8 @@ int cmpicheck::checkTranspose()
         std::printf("MPI transxz id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp1->data[ijk]);
       }
 
-  mpi->transposezx(temp2->data, temp1->data);
-  mpi->transposexy(temp1->data, temp2->data);
+  grid->transposezx(temp2->data, temp1->data);
+  grid->transposexy(temp1->data, temp2->data);
 
   jj = grid->iblock;
   kk = grid->iblock*grid->jtot;
@@ -137,7 +137,7 @@ int cmpicheck::checkTranspose()
         std::printf("MPI transxy id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp1->data[ijk]);
       }
 
-  mpi->transposeyx(temp2->data, temp1->data);
+  grid->transposeyx(temp2->data, temp1->data);
 
   jj = grid->itot;
   kk = grid->itot*grid->jmax;
@@ -150,7 +150,7 @@ int cmpicheck::checkTranspose()
         std::printf("MPI transyx id %d, (%d,%d,%d) = %4.0f\n", mpi->mpiid, i, j, k, temp2->data[ijk]);
       }
 
-  mpi->transposexz(temp1->data, temp2->data);
+  grid->transposexz(temp1->data, temp2->data);
 
   jj = grid->imax;
   kk = grid->imax*grid->jmax;

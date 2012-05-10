@@ -128,7 +128,7 @@ int cfields::createfields()
   // add a double vortex to the initial conditions
   const double pi = std::acos((double)-1.);
 
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
@@ -206,10 +206,10 @@ int cfields::boundary()
   // w->boundary_cyclic();
   // s->boundary_cyclic();
   
-  mpi->boundary_cyclic(u->data);
-  mpi->boundary_cyclic(v->data);
-  mpi->boundary_cyclic(w->data);
-  mpi->boundary_cyclic(s->data);
+  grid->boundary_cyclic(u->data);
+  grid->boundary_cyclic(v->data);
+  grid->boundary_cyclic(w->data);
+  grid->boundary_cyclic(s->data);
 
   // for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
   //   std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
@@ -250,7 +250,7 @@ double cfields::calcmass(double * restrict s, double * restrict dz)
         mass += s[ijk]*dz[k];
       }
 
-  mpi->getsum(&mass);
+  grid->getsum(&mass);
 
   mass /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -281,7 +281,7 @@ double cfields::calcmom(double * restrict u, double * restrict v, double * restr
         momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
       }
 
-  mpi->getsum(&momentum);
+  grid->getsum(&momentum);
 
   momentum /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -313,7 +313,7 @@ double cfields::calctke(double * restrict u, double * restrict v, double * restr
                + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
       }
 
-  mpi->getsum(&tke);
+  grid->getsum(&tke);
 
   tke /= (grid->itot*grid->jtot*grid->zsize);
   tke *= 0.5;

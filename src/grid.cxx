@@ -2,11 +2,15 @@
 #include <cmath>
 #include "grid.h"
 #include "input.h"
+#include "defines.h"
 
 // build the grid
-cgrid::cgrid()
+cgrid::cgrid(cmpi *mpiin)
 {
   std::printf("Creating instance of object grid\n");
+
+  mpi = mpiin;
+
   allocated = false;
 }
 
@@ -61,35 +65,35 @@ int cgrid::readinifile(cinput *inputin)
   return 0;
 }
 
-int cgrid::init(int npx, int npy)
+int cgrid::init()
 {
-  if(itot % npx != 0)
+  if(itot % mpi->npx != 0)
   {
-    std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, npx);
+    std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, mpi->npx);
     return 1;
   }
-  if(jtot % npy != 0)
+  if(jtot % mpi->npy != 0)
   {
-    std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, npy);
+    std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, mpi->npy);
     return 1;
   }
-  if(ktot % npx != 0)
+  if(ktot % mpi->npx != 0)
   {
-    std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, npx);
+    std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, mpi->npx);
     return 1;
   }
-  if(itot % npy != 0)
+  if(itot % mpi->npy != 0)
   {
-    std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, npy);
+    std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, mpi->npy);
     return 1;
   }
 
-  imax   = itot / npx;
-  jmax   = jtot / npy;
+  imax   = itot / mpi->npx;
+  jmax   = jtot / mpi->npy;
   kmax   = ktot;
 
-  kblock = ktot / npx;
-  iblock = itot / npy;
+  kblock = ktot / mpi->npx;
+  iblock = itot / mpi->npy;
 
   icells = (imax+2*igc);
   jcells = (jmax+2*jgc);
@@ -116,6 +120,9 @@ int cgrid::init(int npx, int npy)
   dzhi = new double[kmax+2*kgc];
 
   allocated = true;
+
+  // initialize the communication functions
+  initmpi();
 
   return 0;
 }
@@ -255,6 +262,407 @@ int cgrid::load(int mpiid)
   fclose(pFile);
 
   calculate();
+
+  return 0;
+}
+
+// MPI functions
+int cgrid::initmpi()
+{
+  // create the MPI types for the cyclic boundary conditions
+  int datacount, datablock, datastride;
+
+  // east west
+  datacount  = jcells*kcells;
+  datablock  = igc;
+  datastride = icells;
+  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &eastwestedge);
+  MPI_Type_commit(&eastwestedge);
+
+  // north south
+  datacount  = kcells;
+  datablock  = icells*jgc;
+  datastride = icells*jcells;
+  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &northsouthedge);
+  MPI_Type_commit(&northsouthedge);
+
+  // transposez
+  datacount = imax*jmax*kblock;
+  MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez);
+  MPI_Type_commit(&transposez);
+
+  // transposex imax
+  datacount  = jmax*kblock;
+  datablock  = imax;
+  datastride = itot;
+  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposex);
+  MPI_Type_commit(&transposex);
+
+  // transposex iblock
+  datacount  = jmax*kblock;
+  datablock  = iblock;
+  datastride = itot;
+  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposex2);
+  MPI_Type_commit(&transposex2);
+
+  // transposey
+  datacount  = kblock;
+  datablock  = iblock*jmax;
+  datastride = iblock*jtot;
+  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposey);
+  MPI_Type_commit(&transposey);
+
+  // file saving and loading, take C-ordering into account
+  int totsize [3] = {kmax, jtot, itot};
+  int subsize [3] = {kmax, jmax, imax};
+  int substart[3] = {0, mpi->mpicoordy*jmax, mpi->mpicoordx*imax};
+  MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
+  MPI_Type_commit(&subarray);
+
+  return 0;
+} 
+
+int cgrid::boundary_cyclic(double * restrict data)
+{
+  int ncount = 1;
+
+  // communicate east-west edges
+  int eastout = iend-igc;
+  int westin  = 0;
+  int westout = istart;
+  int eastin  = iend;
+
+  int reqid = 0;
+  MPI_Isend(&data[eastout], ncount, eastwestedge, mpi->neast, 1, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+  MPI_Irecv(&data[westin ], ncount, eastwestedge, mpi->nwest, 1, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+               
+  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+  MPI_Irecv(&data[eastin ], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+
+  // communicate north-south edges
+  int northout = (jend-jgc)*icells;
+  int southin  = 0;
+  int southout = jstart*icells;
+  int northin  = jend  *icells;
+
+  MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+  MPI_Irecv(&data[southin ], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+
+  MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+  MPI_Irecv(&data[northin ], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+
+  MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
+
+  return 0;
+}
+
+int cgrid::transposezx(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+
+  int jj = imax;
+  int kk = imax*jmax;
+
+  //int kblock = kblock;
+
+  int reqid = 0;
+
+  for(int k=0; k<mpi->npx; k++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
+
+    // determine where to fetch the send data
+    int ijks = k*kblock*kk;
+
+    // determine where to store the receive data
+    int ijkr = k*jj;
+
+    // send the block, tag it with the height (in kblocks) where it should come
+    int sendtag = k;
+    MPI_Isend(&as[ijks], ncount, transposez, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+
+    // and determine what has to be delivered at height k (in kblocks)
+    int recvtag = mpi->mpiid % mpi->npx;
+    MPI_Irecv(&ar[ijkr], ncount, transposex, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+  }
+
+  MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
+
+  return 0;
+}
+
+int cgrid::transposexz(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+
+  int jj = imax;
+  int kk = imax*jmax;
+
+  // int kblock = kblock;
+
+  int reqid = 0;
+
+  for(int i=0; i<mpi->npx; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
+
+    // determine where to fetch the send data
+    int ijks = i*jj;
+
+    // determine where to store the receive data
+    int ijkr = i*kblock*kk;
+
+    // send the block, tag it with the height (in kblocks) where it should come
+    int sendtag = mpi->mpiid % mpi->npx;
+    MPI_Isend(&as[ijks], ncount, transposex, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+
+    // and determine what has to be delivered at height i (in kblocks)
+    int recvtag = i;
+    MPI_Irecv(&ar[ijkr], ncount, transposez, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+  }
+
+  MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
+
+  return 0;
+}
+
+int cgrid::transposexy(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+
+  int jj = iblock;
+  int kk = iblock*jmax;
+
+  int reqid = 0;
+
+  for(int i=0; i<mpi->npy; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+
+    // determine where to fetch the send data
+    int ijks = i*jj;
+
+    // determine where to store the receive data
+    int ijkr = i*kk;
+
+    // send the block, tag it with the east west location
+    int sendtag = i;
+    MPI_Isend(&as[ijks], ncount, transposex2, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+
+    // and determine what has to be delivered at depth i (in iblocks)
+    int recvtag = mpi->mpiid / mpi->npx;
+    MPI_Irecv(&ar[ijkr], ncount, transposey, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+  }
+
+  MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
+
+  return 0;
+}
+
+int cgrid::transposeyx(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+
+  int jj = iblock;
+  int kk = iblock*jmax;
+
+  int reqid = 0;
+
+  for(int i=0; i<mpi->npy; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+
+    // determine where to fetch the send data
+    int ijks = i*kk;
+
+    // determine where to store the receive data
+    int ijkr = i*jj;
+
+    // send the block, tag it with the east west location
+    int sendtag = mpi->mpiid / mpi->npx;
+    MPI_Isend(&as[ijks], ncount, transposey, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+
+    // and determine what has to be delivered at depth i (in iblocks)
+    int recvtag = i;
+    MPI_Irecv(&ar[ijkr], ncount, transposex2, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+  }
+
+  MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
+  return 0;
+}
+
+int cgrid::transposeyz(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+
+  int jj = iblock;
+  int kk = iblock*jmax;
+
+  int reqid = 0;
+
+  for(int i=0; i<mpi->npy; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+
+    // determine where to fetch the send data
+    int ijks = i*kk;
+
+    // determine where to store the receive data
+    int ijkr = i*jj;
+
+    // send the block, tag it with the east west location
+    int sendtag = mpi->mpiid / mpi->npx;
+    MPI_Isend(&as[ijks], ncount, transposey, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+
+    // and determine what has to be delivered at depth i (in iblocks)
+    int recvtag = i;
+    MPI_Irecv(&ar[ijkr], ncount, transposez, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+  }
+
+  MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
+
+  return 0;
+}
+
+int cgrid::getmax(double *var)
+{
+  double varl = *var;
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, mpi->commxy);
+
+  return 0;
+}
+
+int cgrid::getsum(double *var)
+{
+  double varl = *var;
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, mpi->commxy);
+
+  return 0;
+}
+
+int cgrid::writefield3d(double * restrict data, char *filename)
+{
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+  // int igc,jgc,kgc;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+  kkb = imax*jmax;
+  // igc = igc;
+  // jgc = jgc;
+  // kgc = kgc;
+
+  int count = imax*jmax*kmax;
+
+  double *buffer;
+  buffer = new double[count];
+
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijkb = i + j*jjb + k*kkb;
+        buffer[ijkb] = data[ijk];
+      }
+
+  fileoff = 0;
+  MPI_File_write_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  delete[] buffer;
+
+  return 0;
+}
+
+int cgrid::readfield3d(double *data, char *filename)
+{  
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+  // int igc,jgc,kgc;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+  kkb = imax*jmax;
+  // igc = igc;
+  // jgc = jgc;
+  // kgc = kgc;
+
+  int count = imax*jmax*kmax;
+  double *buffer;
+  buffer = new double[count];
+
+  fileoff = 0;
+  MPI_File_read_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijkb = i + j*jjb + k*kkb;
+        data[ijk] = buffer[ijkb];
+      }
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  delete[] buffer;
 
   return 0;
 }

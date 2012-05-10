@@ -50,9 +50,9 @@ int cpres::exec(double dt)
   // (*fields->ut).boundary_cyclic();
   // (*fields->vt).boundary_cyclic();
   // (*fields->wt).boundary_cyclic();
-  mpi->boundary_cyclic((*fields->ut).data);
-  mpi->boundary_cyclic((*fields->vt).data);
-  mpi->boundary_cyclic((*fields->wt).data);
+  grid->boundary_cyclic((*fields->ut).data);
+  grid->boundary_cyclic((*fields->vt).data);
+  grid->boundary_cyclic((*fields->wt).data);
 
   // create the input for the pressure solver
   pres_2nd_in((*fields->p ).data,
@@ -65,7 +65,7 @@ int cpres::exec(double dt)
 
   // set the boundary conditions
   // (*fields->p).boundary_cyclic();
-  mpi->boundary_cyclic((*fields->p).data);
+  grid->boundary_cyclic((*fields->p).data);
   (*fields->p).boundary_bottop(1);
 
   // get the pressure tendencies from the pressure field
@@ -277,7 +277,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
   kgc    = grid->kgc;
 
   // transpose the pressure field
-  mpi->transposezx(work3d,p);
+  grid->transposezx(work3d,p);
 
   jj = itot;
   kk = itot*jmax;
@@ -304,7 +304,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
     }
 
   // transpose again
-  mpi->transposexy(p,work3d);
+  grid->transposexy(p,work3d);
 
   jj = iblock;
   kk = iblock*jtot;
@@ -329,8 +329,8 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
     }
 
   // transpose back to original orientation
-  mpi->transposeyx(work3d,p);
-  mpi->transposexz(p,work3d);
+  grid->transposeyx(work3d,p);
+  grid->transposexz(p,work3d);
 
   jj = imax;
   kk = imax*jmax;
@@ -374,8 +374,8 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
   tdma(a, b, c, p, work2d, work3d);
         
   // transpose back to y
-  mpi->transposezx(work3d, p);
-  mpi->transposexy(p, work3d);
+  grid->transposezx(work3d, p);
+  grid->transposexy(p, work3d);
   
   jj = iblock;
   kk = iblock*jtot;
@@ -400,7 +400,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
     }
 
   // transpose back to x
-  mpi->transposeyx(work3d, p);
+  grid->transposeyx(work3d, p);
     
   jj = itot;
   kk = itot*jmax;
@@ -428,7 +428,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
     }
 
   // and transpose back...
-  mpi->transposexz(work3d, p);
+  grid->transposexz(work3d, p);
 
   jj = imax;
   kk = imax*jmax;
@@ -576,7 +576,7 @@ double cpres::calcdivergence(double * restrict u, double * restrict v, double * 
         divmax = std::max(divmax, std::abs(div));
       }
 
-  mpi->getmax(&divmax);
+  grid->getmax(&divmax);
 
   return divmax;
 }
