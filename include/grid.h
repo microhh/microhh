@@ -15,7 +15,7 @@ class cgrid
     int init();
     int create();
     int calculate();
-    int save(int);
+    int save();
     int load(int);
 
     // variables
@@ -89,6 +89,8 @@ class cgrid
     MPI_Datatype transposex;
     MPI_Datatype transposex2;
     MPI_Datatype transposey;
+    MPI_Datatype subi;
+    MPI_Datatype subj;
     MPI_Datatype subarray;
 };
 #endif

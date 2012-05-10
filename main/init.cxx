@@ -39,7 +39,7 @@ int main()
   fields.createfields();
 
   // store the data on disk
-  if(grid.save(mpi.mpiid))
+  if(grid.save())
     return 1;
   if(pres.save())
     return 1;

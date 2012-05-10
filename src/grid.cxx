@@ -159,17 +159,20 @@ int cgrid::calculate()
   dx = xsize / itot;
   dy = ysize / jtot;
 
+  double xoff = mpi->mpicoordx * xsize / mpi->npx;
+  double yoff = mpi->mpicoordy * ysize / mpi->npy;
+
   // calculate the x and y coordinates
   for(i=0; i<icells; i++)
   {
-    x [i] = 0.5*dx + (i-igc)*dx;
-    xh[i] = (i-igc)*dx;
+    x [i] = 0.5*dx + (i-igc)*dx + xoff;
+    xh[i] = (i-igc)*dx + xoff;
   }
 
   for(j=0; j<jcells; j++)
   {
-    y [j] = 0.5*dy + (j-jgc)*dy;
-    yh[j] = (j-jgc)*dy;
+    y [j] = 0.5*dy + (j-jgc)*dy + yoff;
+    yh[j] = (j-jgc)*dy + yoff;
   }
 
   // calculate the height of the ghost cells
@@ -193,7 +196,7 @@ int cgrid::calculate()
   dzh [0] = -999.;
   dzhi[0] = -999.;
 
-  // compute the heigth of the grid cells
+  // compute the height of the grid cells
   for(k=kstart; k<kend; k++)
   {
     dz [k] = 0.5*(z[k]-z[k-1]) + 0.5*(z[k+1]-z[k]);
@@ -212,11 +215,12 @@ int cgrid::calculate()
   return 0;
 }
 
-int cgrid::save(int mpiid)
+int cgrid::save()
 {
-  FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%07d.%07d", "grid", 0, mpiid);
+  std::sprintf(filename, "%s.%07d", "grid", 0);
+
+  /*FILE *pFile;
   pFile = fopen(filename, "wb");
 
   if(pFile == NULL)
@@ -233,7 +237,42 @@ int cgrid::save(int mpiid)
   fwrite(&yh[jstart], sizeof(double), jmax, pFile);
   fwrite(&z [kstart], sizeof(double), kmax, pFile);
   fwrite(&zh[kstart], sizeof(double), kmax, pFile);
-  fclose(pFile);
+  fclose(pFile);*/
+
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  if(mpi->mpiid / mpi->npx == 0)
+    MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  if(mpi->mpiid / mpi->npx == 0)
+    MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  if(mpi->mpiid % mpi->npx == 0)
+    MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  if(mpi->mpiid % mpi->npx == 0)
+    MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  if(mpi->mpiid == 0)
+  {
+    FILE *pFile;
+    pFile = fopen(filename, "ab");
+    fwrite(&z [kstart], sizeof(double), kmax, pFile);
+    fwrite(&zh[kstart], sizeof(double), kmax, pFile);
+    fclose(pFile);
+  }
 
   return 0;
 }
@@ -313,6 +352,18 @@ int cgrid::initmpi()
   MPI_Type_commit(&transposey);
 
   // file saving and loading, take C-ordering into account
+  int totsizei  = itot;
+  int subsizei  = imax;
+  int substarti = mpi->mpicoordx*imax;
+  MPI_Type_create_subarray(1, &totsizei, &subsizei, &substarti, MPI_ORDER_C, MPI_DOUBLE, &subi);
+  MPI_Type_commit(&subi);
+
+  int totsizej  = jtot;
+  int subsizej  = jmax;
+  int substartj = mpi->mpicoordy*jmax;
+  MPI_Type_create_subarray(1, &totsizej, &subsizej, &substartj, MPI_ORDER_C, MPI_DOUBLE, &subj);
+  MPI_Type_commit(&subj);
+
   int totsize [3] = {kmax, jtot, itot};
   int subsize [3] = {kmax, jmax, imax};
   int substart[3] = {0, mpi->mpicoordy*jmax, mpi->mpicoordx*imax};
