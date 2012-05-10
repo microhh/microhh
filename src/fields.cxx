@@ -124,6 +124,27 @@ int cfields::createfields()
   for(int n=0; n<grid->ncells; n++)
     w->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
 
+
+  // add a double vortex to the initial conditions
+  const double pi = std::acos((double)-1.);
+
+  int ijk,ii,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  double yoff = mpi->mpicoordy * grid->ysize / mpi->npy;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        v->data[ijk] =  0.002*std::sin(2.*pi*(grid->y[j]+yoff)/grid->ysize)*std::cos(pi*grid->z[k]/grid->zsize);
+        w->data[ijk] = -0.002*std::cos(2.*pi*(grid->y[j]+yoff)/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
+      }
+
+  // set the mean profile
   double dpdxls = -8.e-7;
   int k;
 
