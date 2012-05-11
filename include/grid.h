@@ -16,7 +16,7 @@ class cgrid
     int create();
     int calculate();
     int save();
-    int load(int);
+    int load();
 
     // variables
     int itot;
@@ -75,8 +75,8 @@ class cgrid
     int getmax(double *);
     int getsum(double *);
 
-    int writefield3d(double *, char *);
-    int readfield3d (double *, char *);
+    int savefield3d(double *, char *);
+    int loadfield3d (double *, char *);
 
   private:
     cmpi *mpi;

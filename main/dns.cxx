@@ -46,7 +46,7 @@ int main()
     return 1;
 
   // fill the fields with data
-  if(grid.load(mpi.mpiid))
+  if(grid.load())
     return 1;
   if(pres.load())
     return 1;

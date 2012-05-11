@@ -219,6 +219,8 @@ int cgrid::save()
 {
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
+  if(mpi->mpiid == 0)
+    std::printf("Saving \"%s\"\n", filename);
 
   /*FILE *pFile;
   pFile = fopen(filename, "wb");
@@ -241,7 +243,11 @@ int cgrid::save()
 
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  {
+    if(mpi->mpiid == 0)
+      std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
+  }
 
   // select noncontiguous part of 3d array to store the selected data
 
@@ -287,11 +293,15 @@ int cgrid::save()
   return 0;
 }
 
-int cgrid::load(int mpiid)
+int cgrid::load()
 {
-  FILE *pFile;
   char filename[256];
-  std::sprintf(filename, "%s.%07d.%07d", "grid", 0, mpiid);
+  std::sprintf(filename, "%s.%07d", "grid", 0);
+  if(mpi->mpiid == 0)
+    std::printf("Loading \"%s\"\n", filename);
+
+  /*
+  FILE *pFile;
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)
@@ -309,7 +319,60 @@ int cgrid::load(int mpiid)
   fread(&z [kstart], sizeof(double), kmax, pFile);
   fread(&zh[kstart], sizeof(double), kmax, pFile);
   fclose(pFile);
+  */
 
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  {
+    if(mpi->mpiid == 0)
+      std::printf("ERROR \"%s\" cannot be loaded\n", filename);
+    return 1;
+  }
+
+  // select noncontiguous part of 3d array to store the selected data
+
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  // if(mpi->mpiid / mpi->npx == 0)
+  MPI_File_read_all(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  // if(mpi->mpiid / mpi->npx == 0)
+  MPI_File_read_all(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  // if(mpi->mpiid % mpi->npx == 0)
+  MPI_File_read_all(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += jtot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  // if(mpi->mpiid % mpi->npx == 0)
+  MPI_File_read_all(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+
+  MPI_File_sync(fh);
+  if(MPI_File_close(&fh))
+    return 1;
+
+  //if(mpi->mpiid == 0)
+  //{
+  FILE *pFile;
+  pFile = fopen(filename, "rb");
+  int n = (2*itot+2*jtot)*sizeof(double);
+  fseek(pFile, n, SEEK_SET);
+  fread(&z [kstart], sizeof(double), kmax, pFile);
+  fread(&zh[kstart], sizeof(double), kmax, pFile);
+  fclose(pFile);
+  // }
+
+  // calculate the ghost cells
   calculate();
 
   return 0;
@@ -629,7 +692,7 @@ int cgrid::getsum(double *var)
   return 0;
 }
 
-int cgrid::writefield3d(double * restrict data, char *filename)
+int cgrid::savefield3d(double * restrict data, char *filename)
 {
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
@@ -679,7 +742,7 @@ int cgrid::writefield3d(double * restrict data, char *filename)
   return 0;
 }
 
-int cgrid::readfield3d(double *data, char *filename)
+int cgrid::loadfield3d(double *data, char *filename)
 {  
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))

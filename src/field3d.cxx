@@ -188,7 +188,7 @@ int cfield3d::save(int n)
   if(mpi->mpiid == 0)
     std::printf("Saving \"%s\"\n", filename);
 
-  if(grid->writefield3d(data, filename))
+  if(grid->savefield3d(data, filename))
   {
     if(mpi->mpiid == 0)
       std::printf("ERROR \"%s\" cannot be written\n", filename);
@@ -236,7 +236,7 @@ int cfield3d::load(int n)
   if(mpi->mpiid == 0)
     std::printf("Loading \"%s\"\n", filename);
 
-  if(grid->readfield3d(data, filename))
+  if(grid->loadfield3d(data, filename))
   {
     if(mpi->mpiid == 0)
       std::printf("ERROR \"%s\" does not exist\n", filename);
