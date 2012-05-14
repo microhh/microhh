@@ -68,10 +68,15 @@ int main()
   double div;
   double cfl, dnum;
 
-  // output information only for the main processor
+  // write output file header to the main processor
+  FILE *dnsout;
   if(mpi.mpiid == 0)
-    std::printf("%8s %12s %10s %10s %8s %8s %13s %13s %13s %13s\n", 
+  {
+    dnsout = std::fopen("dns.out", "w");
+    std::setvbuf(dnsout, NULL, _IOLBF, 1024);
+    std::fprintf(dnsout, "%8s %12s %10s %10s %8s %8s %13s %13s %13s %13s\n", 
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
+  }
 
   // set the boundary conditions
   fields.boundary();
@@ -115,8 +120,9 @@ int main()
       tke     = fields.check(1);
       mass    = fields.check(2);
 
+      // write the output to file
       if(mpi.mpiid == 0)
-        std::printf("%8d %12.3f %10.4f %10.4f %8.4f %8.4f %13.5E %13.5E %13.5E %13.5E\n", 
+        std::fprintf(dnsout, "%8d %12.3f %10.4f %10.4f %8.4f %8.4f %13.5E %13.5E %13.5E %13.5E\n", 
           iter, time, cputime, dt, cfl, dnum, div, mom, tke, mass);
     }
 
@@ -126,6 +132,10 @@ int main()
       fields.save  (timeloop.iteration);
     }
   }
+
+  // close the output file
+  if(mpi.mpiid == 0)
+    std::fclose(dnsout);
   
   return 0;
 }
