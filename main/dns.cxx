@@ -63,12 +63,13 @@ int main()
 
   // initialize the check variables
   int    iter;
-  double time, dt, cputime;
+  double time, dt;
   double mom, tke, mass;
   double div;
   double cfl, dnum;
+  double cputime, start, end;
 
-  // write output file header to the main processor
+  // write output file header to the main processor and set the time
   FILE *dnsout;
   if(mpi.mpiid == 0)
   {
@@ -76,6 +77,8 @@ int main()
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %12s %10s %10s %8s %8s %13s %13s %13s %13s\n", 
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
+
+    start = mpi.gettime();
   }
 
   // set the boundary conditions
@@ -114,11 +117,14 @@ int main()
       iter    = timeloop.iteration;
       time    = timeloop.time;
       dt      = timeloop.dt;
-      cputime = timeloop.check();
       div     = pres.check();
       mom     = fields.check(0);
       tke     = fields.check(1);
       mass    = fields.check(2);
+
+      end     = mpi.gettime();
+      cputime = end - start;
+      start   = end;
 
       // write the output to file
       if(mpi.mpiid == 0)

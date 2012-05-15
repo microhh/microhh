@@ -14,6 +14,8 @@ class cmpi
     int readinifile(cinput *);
     int init();
 
+    double gettime();
+
 //    int boundary_cyclic(double *);
 //    int transposezx(double *, double *);
 //    int transposexz(double *, double *);

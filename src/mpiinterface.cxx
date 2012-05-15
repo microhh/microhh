@@ -89,6 +89,11 @@ int cmpi::init()
   return 0;
 }
 
+double cmpi::gettime()
+{
+  return MPI_Wtime();
+}
+
 /*
   // create the MPI types for the cyclic boundary conditions
   int datacount, datablock, datastride;
