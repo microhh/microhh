@@ -694,7 +694,6 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
 
   int reqid = 0;
 
-  std::printf("CvH: %d, %d\n", iblock*jblock, imax*jmax);
   for(int k=0; k<mpi->npx; k++)
   {
     // determine where to send it to

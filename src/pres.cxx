@@ -261,7 +261,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
   int i,j,k,jj,kk,ijk;
   int imax,jmax,kmax;
   int itot,jtot;
-  int iblock,kblock;
+  int iblock,jblock,kblock;
   int igc,jgc,kgc;
   int iindex,jindex;
 
@@ -271,6 +271,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
   itot   = grid->itot;
   jtot   = grid->jtot;
   iblock = grid->iblock;
+  jblock = grid->jblock;
   kblock = grid->kblock;
   igc    = grid->igc;
   jgc    = grid->jgc;
@@ -324,38 +325,39 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
       for(int j=0; j<jtot; j++)
       {
         ijk = i + j*jj + k*kk;
-        p[ijk] = fftoutj[j];
+        // shift to use p in pressure solver
+        work3d[ijk] = fftoutj[j];
       }
     }
 
   // transpose back to original orientation
-  grid->transposeyx(work3d,p);
-  grid->transposexz(p,work3d);
+  grid->transposeyz(p,work3d);
 
-  jj = imax;
-  kk = imax*jmax;
+  jj = iblock;
+  kk = iblock*jblock;
 
   // solve the tridiagonal system
   // create vectors that go into the tridiagonal matrix solver
   for(k=0; k<kmax; k++)
-    for(j=0; j<jmax; j++)
+    for(j=0; j<jblock; j++)
 #pragma ivdep
-      for(i=0; i<imax; i++)
+      for(i=0; i<iblock; i++)
       {
-        iindex = mpi->mpicoordx * imax + i;
-        jindex = mpi->mpicoordy * jmax + j;
+        // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
+        iindex = mpi->mpicoordy * iblock + i;
+        jindex = mpi->mpicoordx * jblock + j;
 
         ijk  = i + j*jj + k*kk;
         b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
         p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
-  for(j=0; j<jmax; j++)
+  for(j=0; j<jblock; j++)
 #pragma ivdep
-    for(i=0; i<imax; i++)
+    for(i=0; i<iblock; i++)
     {
-      iindex = mpi->mpicoordx * imax + i;
-      jindex = mpi->mpicoordy * jmax + j;
+      iindex = mpi->mpicoordy * iblock + i;
+      jindex = mpi->mpicoordx * jblock + j;
 
       // substitute BC's
       ijk = i + j*jj;
@@ -374,8 +376,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
   tdma(a, b, c, p, work2d, work3d);
         
   // transpose back to y
-  grid->transposezx(work3d, p);
-  grid->transposexy(p, work3d);
+  grid->transposezy(work3d, p);
   
   jj = iblock;
   kk = iblock*jtot;
@@ -387,7 +388,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
       for(int j=0; j<jtot; j++)
       { 
         ijk = i + j*jj + k*kk;
-        fftinj[j] = p[ijk];
+        fftinj[j] = work3d[ijk];
       }
 
       fftw_execute(jplanb);
@@ -483,26 +484,26 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
                 
 {
   int i,j,k,jj,kk,ijk,ij;
-  int imax,jmax,kmax;
+  int iblock,jblock,kmax;
 
-  imax = grid->imax;
-  jmax = grid->jmax;
+  iblock = grid->iblock;
+  jblock = grid->jblock;
   kmax = grid->kmax;
 
-  jj = imax;
-  kk = imax*jmax;
+  jj = iblock;
+  kk = iblock*jblock;
 
-  for(j=0;j<jmax;j++)
+  for(j=0;j<jblock;j++)
 #pragma ivdep
-    for(i=0;i<imax;i++)
+    for(i=0;i<iblock;i++)
     {
       ij = i + j*jj;
       work2d[ij] = b[ij];
     }
 
-  for(j=0;j<jmax;j++)
+  for(j=0;j<jblock;j++)
 #pragma ivdep
-    for(i=0;i<imax;i++)
+    for(i=0;i<iblock;i++)
     {
       ij = i + j*jj;
       p[ij] /= work2d[ij];
@@ -510,25 +511,25 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
 
   for(k=1; k<kmax; k++)
   {
-    for(j=0;j<jmax;j++)
+    for(j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<imax;i++)
+      for(i=0;i<iblock;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         work3d[ijk] = c[k-1] / work2d[ij];
       }
-    for(j=0;j<jmax;j++)
+    for(j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<imax;i++)
+      for(i=0;i<iblock;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         work2d[ij] = b[ijk] - a[k]*work3d[ijk];
       }
-    for(j=0;j<jmax;j++)
+    for(j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<imax;i++)
+      for(i=0;i<iblock;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
@@ -538,9 +539,9 @@ int cpres::tdma(double * restrict a, double * restrict b, double * restrict c,
   }
 
   for(k=kmax-2; k>=0; k--)
-    for(j=0;j<jmax;j++)
+    for(j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<imax;i++)
+      for(i=0;i<iblock;i++)
       {
         ijk = i + j*jj + k*kk;
         p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
