@@ -67,14 +67,14 @@ int cgrid::readinifile(cinput *inputin)
 
 int cgrid::init()
 {
-  if(itot % mpi->npx != 0)
+  if(itot % mpi->npx != 0 || itot % mpi->npy != 0)
   {
-    std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, mpi->npx);
+    std::printf("ERROR itot = %d is not a multiple of npx = %d or npy = %d\n", itot, mpi->npx, mpi->npy);
     return 1;
   }
-  if(jtot % mpi->npy != 0)
+  if(jtot % mpi->npx != 0 || jtot % mpi->npy != 0)
   {
-    std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, mpi->npy);
+    std::printf("ERROR jtot = %d is not a multiple of npx = %d or npy = %d\n", jtot, mpi->npx, mpi->npy);
     return 1;
   }
   if(ktot % mpi->npx != 0)
@@ -82,18 +82,14 @@ int cgrid::init()
     std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, mpi->npx);
     return 1;
   }
-  if(itot % mpi->npy != 0)
-  {
-    std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, mpi->npy);
-    return 1;
-  }
 
   imax   = itot / mpi->npx;
   jmax   = jtot / mpi->npy;
   kmax   = ktot;
 
-  kblock = ktot / mpi->npx;
   iblock = itot / mpi->npy;
+  jblock = jtot / mpi->npx;
+  kblock = ktot / mpi->npx;
 
   icells = (imax+2*igc);
   jcells = (jmax+2*jgc);
@@ -403,6 +399,11 @@ int cgrid::initmpi()
   MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez);
   MPI_Type_commit(&transposez);
 
+  // transposez iblock/jblock/kblock
+  datacount = iblock*jblock*kblock;
+  MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez2);
+  MPI_Type_commit(&transposez2);
+
   // transposex imax
   datacount  = jmax*kblock;
   datablock  = imax;
@@ -423,6 +424,13 @@ int cgrid::initmpi()
   datastride = iblock*jtot;
   MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposey);
   MPI_Type_commit(&transposey);
+
+  // transposey2
+  datacount  = kblock;
+  datablock  = iblock*jblock;
+  datastride = iblock*jtot;
+  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposey2);
+  MPI_Type_commit(&transposey2);
 
   // file saving and loading, take C-ordering into account
   int totsizei  = itot;
@@ -645,32 +653,70 @@ int cgrid::transposeyz(double * restrict ar, double * restrict as)
   int ncount = 1;
 
   int jj = iblock;
-  int kk = iblock*jmax;
+  int kk = iblock*jblock;
 
   int reqid = 0;
 
-  for(int i=0; i<mpi->npy; i++)
+  for(int i=0; i<mpi->npx; i++)
   {
     // determine where to send it to
-    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
 
     // determine where to fetch the send data
-    int ijks = i*kk;
+    int ijks = i*jblock*jj;
 
     // determine where to store the receive data
-    int ijkr = i*jj;
+    int ijkr = i*kblock*kk;
 
-    // send the block, tag it with the east west location
-    int sendtag = mpi->mpiid / mpi->npx;
-    MPI_Isend(&as[ijks], ncount, transposey, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
+    // send the block, tag it with the height (in kblocks) where it should come
+    int sendtag = mpi->mpiid % mpi->npx;
+    MPI_Isend(&as[ijks], ncount, transposey2, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
 
-    // and determine what has to be delivered at depth i (in iblocks)
+    // and determine what has to be delivered at height i (in kblocks)
     int recvtag = i;
-    MPI_Irecv(&ar[ijkr], ncount, transposez, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
+    MPI_Irecv(&ar[ijkr], ncount, transposez2, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
   }
+ 
+  MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
 
+  return 0;
+}
+
+int cgrid::transposezy(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+
+  int jj = iblock;
+  int kk = iblock*jblock;
+
+  int reqid = 0;
+
+  std::printf("CvH: %d, %d\n", iblock*jblock, imax*jmax);
+  for(int k=0; k<mpi->npx; k++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
+
+    // determine where to fetch the send data
+    int ijks = k*kblock*kk;
+
+    // determine where to store the receive data
+    int ijkr = k*jblock*jj;
+
+    // determine what has to be sent from height i (in kblocks)
+    int sendtag = mpi->mpiid % mpi->npx;
+    MPI_Isend(&as[ijks], ncount, transposez2, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+
+    // recv the block, tag is the height (in kblocks) where it should come
+    int recvtag = k;
+    MPI_Irecv(&ar[ijkr], ncount, transposey2, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
+    reqid++;
+  }
+ 
   MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
 
   return 0;

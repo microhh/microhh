@@ -28,6 +28,7 @@ class cgrid
     int kmax;
 
     int iblock;
+    int jblock;
     int kblock;
 
     int igc;
@@ -71,6 +72,7 @@ class cgrid
     int transposexy(double *, double *);
     int transposeyx(double *, double *);
     int transposeyz(double *, double *);
+    int transposezy(double *, double *);
 
     int getmax(double *);
     int getsum(double *);
@@ -86,9 +88,11 @@ class cgrid
     MPI_Datatype eastwestedge;
     MPI_Datatype northsouthedge;
     MPI_Datatype transposez;
+    MPI_Datatype transposez2;
     MPI_Datatype transposex;
     MPI_Datatype transposex2;
     MPI_Datatype transposey;
+    MPI_Datatype transposey2;
     MPI_Datatype subi;
     MPI_Datatype subj;
     MPI_Datatype subarray;
