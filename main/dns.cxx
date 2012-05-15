@@ -44,6 +44,8 @@ int main()
   // read the inputdata
   if(timeloop.readinifile(&input))
     return 1;
+  if(force.readinifile(&input))
+    return 1;
 
   // fill the fields with data
   if(grid.load())
@@ -66,7 +68,7 @@ int main()
   double time, dt;
   double mom, tke, mass;
   double div;
-  double cfl, dnum;
+  double cfl, dn;
   double cputime, start, end;
 
   // write output file header to the main processor and set the time
@@ -90,9 +92,9 @@ int main()
     // determine the time step
     if(!timeloop.insubstep())
     {
-      cfl  = advec.getcfl(timeloop.dt);
-      dnum = diff.getdnum(timeloop.dt);
-      timeloop.settimestep(cfl, dnum);
+      cfl = advec.getcfl(timeloop.dt);
+      dn  = diff.getdn(timeloop.dt);
+      timeloop.settimestep(cfl, dn);
     }
 
     // advection
@@ -129,7 +131,7 @@ int main()
       // write the output to file
       if(mpi.mpiid == 0)
         std::fprintf(dnsout, "%8d %12.3f %10.4f %10.4f %8.4f %8.4f %13.5E %13.5E %13.5E %13.5E\n", 
-          iter, time, cputime, dt, cfl, dnum, div, mom, tke, mass);
+          iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
     }
 
     if(timeloop.dosave() && !timeloop.insubstep())

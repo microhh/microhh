@@ -17,6 +17,18 @@ cforce::~cforce()
   std::printf("Destroying instance of object force\n");
 }
 
+int cforce::readinifile(cinput *inputin)
+{
+  int n = 0;
+
+  n += inputin->getItem(&uflow, "fields", "uflow", 0);
+
+  if(n > 0)
+    return 1;
+
+  return 0;
+}
+
 int cforce::exec(double dt)
 {
   flux((*fields->ut).data, (*fields->u).data, grid->dz, dt);
@@ -52,10 +64,8 @@ int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz
   uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
   utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
 
-  const double uflux = 0.0282;
-
   double fbody; 
-  fbody = (uflux - uavg) / dt - utavg;
+  fbody = (uflow - uavg) / dt - utavg;
 
   for(int n=0; n<grid->ncells; n++)
     ut[n] += fbody;

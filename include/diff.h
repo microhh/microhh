@@ -14,7 +14,7 @@ class cdiff
     int init();
     int exec();
 
-    double getdnum(double);
+    double getdn(double);
 
   private:
     cgrid   *grid;
