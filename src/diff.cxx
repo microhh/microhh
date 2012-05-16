@@ -32,7 +32,7 @@ int cdiff::init()
   return 0;
 }
 
-double cdiff::getdnum(double dt)
+double cdiff::getdn(double dt)
 {
   return dnmul*dt;
 }
