@@ -67,15 +67,15 @@ int cmpi::init()
   mpicoordx = mpicoords[1];
   mpicoordy = mpicoords[0];
 
-  // int dimx[2] = {false, true };
-  // int dimy[2] = {true , false};
+  int dimx[2] = {false, true };
+  int dimy[2] = {true , false};
 
-  // MPI_Cart_sub(commxy, dimx, &commx);
-  // MPI_Cart_sub(commxy, dimy, &commy);
+  MPI_Cart_sub(commxy, dimx, &commx);
+  MPI_Cart_sub(commxy, dimy, &commy);
 
-  if(MPI_Cart_shift(commxy, 1, 1, &nwest , &neast ))
+  if(MPI_Cart_shift(commx, 0, 1, &nwest , &neast ))
     return 1;
-  if(MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth))
+  if(MPI_Cart_shift(commy, 0, 1, &nsouth, &nnorth))
     return 1;
 
   // create the requests arrays for the nonblocking sends

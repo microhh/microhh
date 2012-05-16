@@ -30,6 +30,8 @@ class cmpi
 //    int readfield3d(double *, char *);
 
     MPI_Comm commxy;
+    MPI_Comm commx;
+    MPI_Comm commy;
 
     int nprocs;
     int npx;
@@ -50,8 +52,6 @@ class cmpi
 
     bool initialized;
     bool allocated;
-    // MPI_Comm commx;
-    // MPI_Comm commy;
     // MPI_Datatype eastwestedge;
     // MPI_Datatype northsouthedge;
     // MPI_Datatype transposez;
