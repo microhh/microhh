@@ -138,8 +138,8 @@ int cfields::createfields()
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        v->data[ijk] =  0.002*std::sin(2.*pi*(grid->y[j])/grid->ysize)*std::cos(pi*grid->z[k]/grid->zsize);
-        w->data[ijk] = -0.002*std::cos(2.*pi*(grid->y[j])/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
+        v->data[ijk] =  0.002*std::sin(4.*pi*(grid->y[j])/grid->ysize)*std::cos(pi*grid->z[k]/grid->zsize);
+        w->data[ijk] = -0.002*std::cos(4.*pi*(grid->y[j])/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
       }
 
   // set the mean profile
