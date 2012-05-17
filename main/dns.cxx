@@ -79,12 +79,13 @@ int main()
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %12s %10s %10s %8s %8s %13s %13s %13s %13s\n", 
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
-
-    start = mpi.gettime();
   }
 
   // set the boundary conditions
   fields.boundary();
+
+  // catch the start time for the first iteration
+  start = mpi.gettime();
 
   // start the time loop
   while(timeloop.loop)
