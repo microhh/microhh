@@ -1,11 +1,11 @@
-#include <cstdio>
 #include <mpi.h>
+#include <cstdio>
 
 int main()
 {
   // hard set processors
-  const int npx = 4;
-  const int npy = 4;
+  const int npx = 8;
+  const int npy = 5;
 
   // variables from header
   MPI_Comm commxy;
@@ -26,6 +26,7 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
 
   n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
@@ -33,6 +34,7 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
 
   n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -40,6 +42,7 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
 
   int dims    [2] = {npy, npx};
@@ -50,6 +53,7 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
 
   n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true, &commxy);
@@ -57,6 +61,7 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
 
   n = MPI_Comm_rank(commxy, &mpiid);
@@ -64,6 +69,7 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
 
   int mpicoords[2];
@@ -72,6 +78,7 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
 
   mpicoordx = mpicoords[1];
@@ -85,6 +92,7 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
 
   n = MPI_Cart_sub(commxy, dimy, &commy);
@@ -92,7 +100,10 @@ int main()
   {
     MPI_Error_string(n, err_buffer, &resultlen);
     std::printf("MPI ERROR: %s\n", err_buffer);
+    return 1;
   }
+
+  MPI_Finalize();
 
   return 0;
 }
