@@ -52,6 +52,8 @@ class cmpi
 
     bool initialized;
     bool allocated;
+
+    int checkerror(int);
     // MPI_Datatype eastwestedge;
     // MPI_Datatype northsouthedge;
     // MPI_Datatype transposez;

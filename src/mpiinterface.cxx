@@ -38,11 +38,21 @@ int cmpi::readinifile(cinput *inputin)
 
 int cmpi::init()
 {
-  MPI_Init(NULL, NULL);
+  int n;
+
+  n = MPI_Init(NULL, NULL);
+  if(checkerror(n))
+    return 1;
+
   initialized = true;
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
-  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
+  if(checkerror(n))
+    return 1;
+
+  n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  if(checkerror(n))
+    return 1;
 
   if(nprocs != npx*npy)
   {
@@ -53,16 +63,21 @@ int cmpi::init()
   int dims    [2] = {npy, npx};
   int periodic[2] = {true, true};
 
-  if(MPI_Dims_create(nprocs, 2, dims))
+  n = MPI_Dims_create(nprocs, 2, dims);
+  if(checkerror(n))
     return 1;
 
-  if(MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true, &commxy))
+  n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true, &commxy);
+  if(checkerror(n))
     return 1;
-  if(MPI_Comm_rank(commxy, &mpiid))
+  n = MPI_Comm_rank(commxy, &mpiid);
+  if(checkerror(n))
     return 1;
 
   int mpicoords[2];
-  MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
+  n = MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
+  if(checkerror(n))
+    return 1;
 
   mpicoordx = mpicoords[1];
   mpicoordy = mpicoords[0];
@@ -70,12 +85,18 @@ int cmpi::init()
   int dimx[2] = {false, true };
   int dimy[2] = {true , false};
 
-  MPI_Cart_sub(commxy, dimx, &commx);
-  MPI_Cart_sub(commxy, dimy, &commy);
-
-  if(MPI_Cart_shift(commx, 0, 1, &nwest , &neast ))
+  n = MPI_Cart_sub(commxy, dimx, &commx);
+  if(checkerror(n))
     return 1;
-  if(MPI_Cart_shift(commy, 0, 1, &nsouth, &nnorth))
+  n = MPI_Cart_sub(commxy, dimy, &commy);
+  if(checkerror(n))
+    return 1;
+
+  n = MPI_Cart_shift(commx, 0, 1, &nwest , &neast );
+  if(checkerror(n))
+    return 1;
+  n = MPI_Cart_shift(commy, 0, 1, &nsouth, &nnorth);
+  if(checkerror(n))
     return 1;
 
   // create the requests arrays for the nonblocking sends
@@ -92,6 +113,21 @@ int cmpi::init()
 double cmpi::gettime()
 {
   return MPI_Wtime();
+}
+
+int cmpi::checkerror(int n)
+{
+  char errbuffer[MPI_MAX_ERROR_STRING];
+  int errlen;
+
+  if(n != MPI_SUCCESS)
+  {
+    MPI_Error_string(n, errbuffer, &errlen);
+    std::printf("ERROR MPI %s\n", errbuffer);
+    return 1;
+  }
+
+  return 0;
 }
 
 /*
