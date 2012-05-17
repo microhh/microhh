@@ -473,23 +473,23 @@ int cgrid::boundary_cyclic(double * restrict data)
   int reqid = 0;
 
   // first, send the receives, to avoid unnecessary waiting of data
-  MPI_Irecv(&data[westin ], ncount, eastwestedge, mpi->nwest, 1, mpi->commx, &mpi->reqs[reqid]);
+  MPI_Irecv(&data[westin], ncount, eastwestedge, mpi->nwest, 1, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
-  MPI_Irecv(&data[eastin ], ncount, eastwestedge, mpi->neast, 2, mpi->commx, &mpi->reqs[reqid]);
+  MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
-  MPI_Irecv(&data[southin ], ncount, northsouthedge, mpi->nsouth, 1, mpi->commy, &mpi->reqs[reqid]);
+  MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
-  MPI_Irecv(&data[northin ], ncount, northsouthedge, mpi->nnorth, 2, mpi->commy, &mpi->reqs[reqid]);
+  MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
 
   // second, send the sends
-  MPI_Isend(&data[eastout], ncount, eastwestedge, mpi->neast, 1, mpi->commx, &mpi->reqs[reqid]);
+  MPI_Isend(&data[eastout], ncount, eastwestedge, mpi->neast, 1, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
-  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commx, &mpi->reqs[reqid]);
+  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
-  MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commy, &mpi->reqs[reqid]);
+  MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
-  MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commy, &mpi->reqs[reqid]);
+  MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
 
   MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);

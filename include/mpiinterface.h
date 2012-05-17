@@ -30,8 +30,8 @@ class cmpi
 //    int readfield3d(double *, char *);
 
     MPI_Comm commxy;
-    MPI_Comm commx;
-    MPI_Comm commy;
+    // MPI_Comm commx;
+    // MPI_Comm commy;
 
     int nprocs;
     int npx;
