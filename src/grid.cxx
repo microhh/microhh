@@ -472,17 +472,7 @@ int cgrid::boundary_cyclic(double * restrict data)
 
   int reqid = 0;
 
-  // first, send the receives, to avoid unnecessary waiting of data
-  MPI_Irecv(&data[westin], ncount, eastwestedge, mpi->nwest, 1, mpi->commxy, &mpi->reqs[reqid]);
-  reqid++;
-  MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[reqid]);
-  reqid++;
-  MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[reqid]);
-  reqid++;
-  MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[reqid]);
-  reqid++;
-
-  // second, send the sends
+  // first, send the sends
   MPI_Isend(&data[eastout], ncount, eastwestedge, mpi->neast, 1, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
   MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commxy, &mpi->reqs[reqid]);
@@ -490,6 +480,16 @@ int cgrid::boundary_cyclic(double * restrict data)
   MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
   MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+
+  // second, send the receives, to avoid unnecessary waiting of data
+  MPI_Irecv(&data[westin], ncount, eastwestedge, mpi->nwest, 1, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+  MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+  MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[reqid]);
+  reqid++;
+  MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[reqid]);
   reqid++;
 
   MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
@@ -517,13 +517,19 @@ int cgrid::transposezx(double * restrict ar, double * restrict as)
     // determine where to fetch the send data
     int ijks = k*kblock*kk;
 
-    // determine where to store the receive data
-    int ijkr = k*jj;
-
     // send the block, tag it with the height (in kblocks) where it should come
     int sendtag = k;
     MPI_Isend(&as[ijks], ncount, transposez, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
+  }
+
+  for(int k=0; k<mpi->npx; k++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
+
+    // determine where to store the receive data
+    int ijkr = k*jj;
 
     // and determine what has to be delivered at height k (in kblocks)
     int recvtag = mpi->mpiid % mpi->npx;
@@ -556,20 +562,25 @@ int cgrid::transposexz(double * restrict ar, double * restrict as)
     // determine where to fetch the send data
     int ijks = i*jj;
 
-    // determine where to store the receive data
-    int ijkr = i*kblock*kk;
-
     // send the block, tag it with the height (in kblocks) where it should come
     int sendtag = mpi->mpiid % mpi->npx;
     MPI_Isend(&as[ijks], ncount, transposex, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
+  }
+
+  for(int i=0; i<mpi->npx; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
+
+    // determine where to store the receive data
+    int ijkr = i*kblock*kk;
 
     // and determine what has to be delivered at height i (in kblocks)
     int recvtag = i;
     MPI_Irecv(&ar[ijkr], ncount, transposez, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
   }
-
   MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
 
   return 0;
@@ -593,13 +604,19 @@ int cgrid::transposexy(double * restrict ar, double * restrict as)
     // determine where to fetch the send data
     int ijks = i*jj;
 
-    // determine where to store the receive data
-    int ijkr = i*kk;
-
     // send the block, tag it with the east west location
     int sendtag = i;
     MPI_Isend(&as[ijks], ncount, transposex2, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
+  }
+
+  for(int i=0; i<mpi->npy; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+
+    // determine where to store the receive data
+    int ijkr = i*kk;
 
     // and determine what has to be delivered at depth i (in iblocks)
     int recvtag = mpi->mpiid / mpi->npx;
@@ -630,13 +647,19 @@ int cgrid::transposeyx(double * restrict ar, double * restrict as)
     // determine where to fetch the send data
     int ijks = i*kk;
 
-    // determine where to store the receive data
-    int ijkr = i*jj;
-
     // send the block, tag it with the east west location
     int sendtag = mpi->mpiid / mpi->npx;
     MPI_Isend(&as[ijks], ncount, transposey, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
+  }
+
+  for(int i=0; i<mpi->npy; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+
+    // determine where to store the receive data
+    int ijkr = i*jj;
 
     // and determine what has to be delivered at depth i (in iblocks)
     int recvtag = i;
@@ -645,6 +668,7 @@ int cgrid::transposeyx(double * restrict ar, double * restrict as)
   }
 
   MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
+
   return 0;
 }
 
@@ -666,13 +690,19 @@ int cgrid::transposeyz(double * restrict ar, double * restrict as)
     // determine where to fetch the send data
     int ijks = i*jblock*jj;
 
-    // determine where to store the receive data
-    int ijkr = i*kblock*kk;
-
     // send the block, tag it with the height (in kblocks) where it should come
     int sendtag = mpi->mpiid % mpi->npx;
     MPI_Isend(&as[ijks], ncount, transposey2, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
+  }
+
+  for(int i=0; i<mpi->npx; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
+
+    // determine where to store the receive data
+    int ijkr = i*kblock*kk;
 
     // and determine what has to be delivered at height i (in kblocks)
     int recvtag = i;
@@ -703,20 +733,26 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
     // determine where to fetch the send data
     int ijks = k*kblock*kk;
 
-    // determine where to store the receive data
-    int ijkr = k*jblock*jj;
-
     // determine what has to be sent from height i (in kblocks)
     int sendtag = mpi->mpiid % mpi->npx;
     MPI_Isend(&as[ijks], ncount, transposez2, nblock, sendtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
+  }
+
+  for(int k=0; k<mpi->npx; k++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
+
+    // determine where to store the receive data
+    int ijkr = k*jblock*jj;
 
     // recv the block, tag is the height (in kblocks) where it should come
     int recvtag = k;
     MPI_Irecv(&ar[ijkr], ncount, transposey2, nblock, recvtag, mpi->commxy, &mpi->reqs[reqid]);
     reqid++;
   }
- 
+
   MPI_Waitall(reqid, mpi->reqs, MPI_STATUSES_IGNORE);
 
   return 0;
