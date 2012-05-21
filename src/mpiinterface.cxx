@@ -67,7 +67,7 @@ int cmpi::init()
   if(checkerror(n))
     return 1;
 
-  n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true, &commxy);
+  n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
   if(checkerror(n))
     return 1;
   n = MPI_Comm_rank(commxy, &mpiid);
