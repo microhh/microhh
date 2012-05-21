@@ -3,7 +3,7 @@
 #include "mpiinterface.h"
 #include "mpicheck.h"
 
-int main()
+int main(int argc, char *argv[])
 {
   // create the instances of the objects
   cinput    input;
@@ -12,7 +12,13 @@ int main()
   cmpicheck mpicheck(&grid, &mpi);
 
   // read the input data
-  if(input.readinifile())
+  std::string inputfilename;
+  if(argc > 1)
+    inputfilename = argv[1];
+  else
+    inputfilename = "microhh";
+
+  if(input.readinifile(inputfilename))
     return 1;
   if(grid.readinifile(&input))
     return 1;

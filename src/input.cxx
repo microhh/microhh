@@ -13,17 +13,18 @@ cinput::~cinput()
   std::printf("Destroying instance of object input\n");
 }
 
-int cinput::readinifile()
+int cinput::readinifile(std::string inputfilename)
 {
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256];
 
   // read the input file
   FILE *inputfile;
-  inputfile = fopen("microhh.ini", "r");
+  inputfilename += ".ini";
+  inputfile = fopen(inputfilename.c_str(), "r");
 
   if(inputfile == NULL)
   {
-    std::printf("ERROR \"microhh.ini\" does not exist\n");
+    std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
     return 1;
   }
 
@@ -31,7 +32,7 @@ int cinput::readinifile()
   bool blockset = false;
   int  nerrors  = 0;
  
-  std::printf("Processing inifile\n");
+  std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
 
   // check the cases: comments, empty line, block, value, rubbish
   while(std::fgets(inputline, 256, inputfile) != NULL)

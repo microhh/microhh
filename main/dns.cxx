@@ -8,7 +8,7 @@
 #include "force.h"
 #include "pres.h"
 
-int main()
+int main(int argc, char *argv[])
 {
   // create the instances of the objects
   cinput  input;
@@ -17,7 +17,13 @@ int main()
   cfields fields(&grid, &mpi);
 
   // read the input data
-  if(input.readinifile())
+  std::string inputfilename;
+  if(argc > 1)
+    inputfilename = argv[1];
+  else
+    inputfilename = "microhh";
+
+  if(input.readinifile(inputfilename))
     return 1;
   if(mpi.readinifile(&input))
     return 1;
