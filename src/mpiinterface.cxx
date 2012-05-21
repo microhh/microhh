@@ -60,7 +60,6 @@ int cmpi::init()
     return 1;
   }
 
-  /*
   int dims    [2] = {npy, npx};
   int periodic[2] = {true, true};
 
@@ -80,6 +79,8 @@ int cmpi::init()
   if(checkerror(n))
     return 1;
 
+  mpicoordx = mpicoords[1];
+  mpicoordy = mpicoords[0];
 
   // int dimx[2] = {false, true };
   // int dimy[2] = {true , false};
@@ -97,15 +98,6 @@ int cmpi::init()
   n = MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth);
   if(checkerror(n))
     return 1;
-  */
-
-  mpicoordx = mpiid % npx;
-  mpicoordy = mpiid / npx;
-
-  nwest  = mpicoordy*npx + (mpicoordx-1+npx) % npx;
-  neast  = mpicoordy*npx + (mpicoordx+1)     % npx;
-  nsouth = mpicoordx + ((mpicoordy-1+npy) % npy) * npx;
-  nnorth = mpicoordx + ((mpicoordy+1    ) % npy) * npx;
 
   // create the requests arrays for the nonblocking sends
   int npmax;
