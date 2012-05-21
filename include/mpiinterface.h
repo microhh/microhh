@@ -29,7 +29,7 @@ class cmpi
 //    int writefield3d(double *, char *);
 //    int readfield3d(double *, char *);
 
-    MPI_Comm commxy;
+    // MPI_Comm commxy;
     // MPI_Comm commx;
     // MPI_Comm commy;
 
