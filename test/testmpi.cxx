@@ -5,20 +5,18 @@
 
 int main(int argc, char *argv[])
 {
+  // set the name of the simulation
+  std::string simname("microhh");
+  if(argc > 1)
+    simname = argv[1];
+
   // create the instances of the objects
   cinput    input;
   cmpi      mpi;
   cgrid     grid(&mpi);
   cmpicheck mpicheck(&grid, &mpi);
 
-  // read the input data
-  std::string inputfilename;
-  if(argc > 1)
-    inputfilename = argv[1];
-  else
-    inputfilename = "microhh";
-
-  if(input.readinifile(inputfilename))
+  if(input.readinifile(simname))
     return 1;
   if(grid.readinifile(&input))
     return 1;
