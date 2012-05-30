@@ -15,6 +15,7 @@ class cmpi
     int init();
 
     double gettime();
+    int waitall();
 
 //    int boundary_cyclic(double *);
 //    int transposezx(double *, double *);
@@ -46,6 +47,7 @@ class cmpi
     int nwest;
 
     MPI_Request *reqs;
+    int reqsn;
 
   private:
 //    cgrid *grid;

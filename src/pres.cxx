@@ -53,6 +53,7 @@ int cpres::exec(double dt)
   grid->boundary_cyclic((*fields->ut).data);
   grid->boundary_cyclic((*fields->vt).data);
   grid->boundary_cyclic((*fields->wt).data);
+  mpi->waitall();
 
   // create the input for the pressure solver
   pres_2nd_in((*fields->p ).data,
@@ -66,6 +67,7 @@ int cpres::exec(double dt)
   // set the boundary conditions
   // (*fields->p).boundary_cyclic();
   grid->boundary_cyclic((*fields->p).data);
+  mpi->waitall();
   (*fields->p).boundary_bottop(1);
 
   // get the pressure tendencies from the pressure field
@@ -279,6 +281,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
 
   // transpose the pressure field
   grid->transposezx(work3d,p);
+  mpi->waitall();
 
   jj = itot;
   kk = itot*jmax;
@@ -306,6 +309,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
 
   // transpose again
   grid->transposexy(p,work3d);
+  mpi->waitall();
 
   jj = iblock;
   kk = iblock*jtot;
@@ -332,6 +336,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
 
   // transpose back to original orientation
   grid->transposeyz(p,work3d);
+  mpi->waitall();
 
   jj = iblock;
   kk = iblock*jblock;
@@ -377,6 +382,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
         
   // transpose back to y
   grid->transposezy(work3d, p);
+  mpi->waitall();
   
   jj = iblock;
   kk = iblock*jtot;
@@ -402,6 +408,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
 
   // transpose back to x
   grid->transposeyx(work3d, p);
+  mpi->waitall();
     
   jj = itot;
   kk = itot*jmax;
@@ -430,6 +437,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
 
   // and transpose back...
   grid->transposexz(work3d, p);
+  mpi->waitall();
 
   jj = imax;
   kk = imax*jmax;

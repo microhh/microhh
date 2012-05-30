@@ -109,8 +109,9 @@ int cmpi::init()
   // create the requests arrays for the nonblocking sends
   int npmax;
   npmax = std::max(npx, npy);
-  npmax = std::max(npmax, 8);
-  reqs = new MPI_Request[npmax*2];
+  npmax = std::max(npmax, 8*4);
+  reqs  = new MPI_Request[npmax*2];
+  reqsn = 0;
 
   allocated = true;
 
@@ -136,3 +137,13 @@ int cmpi::checkerror(int n)
 
   return 0;
 }
+
+int cmpi::waitall()
+{
+  // wait for MPI processes and reset the number of pending requests
+  MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
+  reqsn = 0;
+
+  return 0;
+}
+

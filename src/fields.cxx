@@ -208,6 +208,7 @@ int cfields::boundary()
   grid->boundary_cyclic(v->data);
   grid->boundary_cyclic(w->data);
   grid->boundary_cyclic(s->data);
+  mpi->waitall();
 
   // for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
   //   std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
