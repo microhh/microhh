@@ -109,6 +109,8 @@ int cmpi::init()
   // create the requests arrays for the nonblocking sends
   int npmax;
   npmax = std::max(npx, npy);
+
+  // have at least as many communicators as prognostic variables
   npmax = std::max(npmax, 8*4);
   reqs  = new MPI_Request[npmax*2];
   reqsn = 0;
