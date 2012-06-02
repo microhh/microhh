@@ -39,8 +39,11 @@ int main(int argc, char *argv[])
     return 1;
   fields.initfields();
 
-  // fill the fields with data
+  // read the grid from the input
   grid.create();
+
+  // create the random field
+  // read the mean profiles
   fields.createfields();
 
   // store the data on disk

@@ -46,7 +46,10 @@ class cfields
     cmpi  *mpi;
     bool allocated;
 
+    // perturbations
     double rndamp;
+    double vortexamp;
+    int nvortexpair;
 
     // functions
     double calcmom (double *, double *, double *, double *);

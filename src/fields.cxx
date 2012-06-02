@@ -44,7 +44,9 @@ int cfields::readinifile(cinput *inputin)
   n += inputin->getItem(&viscs, "fields", "viscs");
 
   // optional parameters
-  n += inputin->getItem(&rndamp, "fields", "rndamp", 1.e-3);
+  n += inputin->getItem(&rndamp     , "fields", "rndamp"     , 1.e-3);
+  n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", 0    );
+  n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
 
   if(n > 0)
     return 1;
@@ -138,8 +140,8 @@ int cfields::createfields()
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        v->data[ijk] =  0.002*std::sin(4.*pi*(grid->y[j])/grid->ysize)*std::cos(pi*grid->z[k]/grid->zsize);
-        w->data[ijk] = -0.002*std::cos(4.*pi*(grid->y[j])/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
+        v->data[ijk] =  vortexamp*std::sin(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::cos(pi*grid->z[k]/grid->zsize);
+        w->data[ijk] = -vortexamp*std::cos(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
       }
 
   // set the mean profile
