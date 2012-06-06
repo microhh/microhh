@@ -58,8 +58,8 @@ int cgrid::readinifile(cinput *inputin)
   if(n > 0)
     return 1;
   
-  igc = 1;
-  jgc = 1;
+  igc = 2;
+  jgc = 2;
   kgc = 1;
 
   return 0;

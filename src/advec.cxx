@@ -21,23 +21,29 @@ cadvec::~cadvec()
 
 int cadvec::exec()
 {
-  advecu_2nd((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
-  advecv_2nd((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
-  advecw_2nd((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
+  // advecu_2nd((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  // advecv_2nd((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  // advecw_2nd((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
+  // advecs_2nd((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
 
-  advecs_2nd((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  advecu_4th((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  advecv_4th((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  advecw_4th((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
+  advecs_4th((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+
   return 0;
 }
 
 double cadvec::getcfl(double dt)
 {
   double cfl;
-  cfl = calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+  // cfl = calccfl_2nd((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+  cfl = calccfl_4th((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
 
   return cfl;
 }
 
-double cadvec::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+double cadvec::calccfl_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -199,4 +205,185 @@ int cadvec::advecs_2nd(double * restrict st, double * restrict s, double * restr
 inline double cadvec::interp2(const double a, const double b)
 {
   return 0.5*(a + b);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 4th order interpolation in 2nd order fv-scheme
+
+double cadvec::calccfl_4th(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+{
+  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2;
+  double dxi,dyi;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  double cfl = 0;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj1 + k*kk1;
+        cfl = std::max(cfl, std::abs(interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]))*dxi 
+                          + std::abs(interp4(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]))*dyi 
+                          + std::abs(interp2(w[ijk], w[ijk+kk1]))*dzi[k]);
+      }
+
+  grid->getmax(&cfl);
+
+  cfl = cfl*dt;
+
+  return cfl;
+}
+
+int cadvec::advecu_4th(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+{
+  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2;
+  double dxi,dyi;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        ut[ijk] += 
+              - (  interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]) * interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2])
+                 - interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) * interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) ) * dxi
+
+              - (  interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * interp4(u[ijk-jj1], u[ijk    ], u[ijk+jj1], u[ijk+jj2])
+                 - interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * interp4(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
+
+              - (  interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1])
+                 - interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) * dzi[k];
+      }
+
+  return 0;
+}
+
+int cadvec::advecv_4th(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+{
+  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2;
+  double dxi,dyi;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        vt[ijk] += 
+              - (  interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp4(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2])
+                 - interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp4(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]) ) * dxi
+
+              - (  interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]) * interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2])
+                 - interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
+
+              - (  interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp2(v[ijk    ], v[ijk+kk1])
+                 - interp2(w[ijk-jj1    ], w[ijk    ]) * interp2(v[ijk-kk1], v[ijk    ]) ) * dzi[k];
+      }
+
+  return 0;
+}
+
+int cadvec::advecw_4th(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi)
+{
+  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2;
+  double dxi,dyi;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  for(int k=grid->kstart+1; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        wt[ijk] += 
+              - (  interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * interp4(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
+                 - interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * interp4(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
+
+              - (  interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * interp4(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
+                 - interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
+
+              - (  interp2(w[ijk    ], w[ijk+kk1]) * interp2(w[ijk    ], w[ijk+kk1])
+                 - interp2(w[ijk-kk1], w[ijk    ]) * interp2(w[ijk-kk1], w[ijk    ]) ) * dzhi[k];
+      }
+
+  return 0;
+}
+
+int cadvec::advecs_4th(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+{
+  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2;
+  double dxi,dyi;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        st[ijk] += 
+              - (  u[ijk+ii1] * interp4(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
+                 - u[ijk    ] * interp4(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
+
+              - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
+                 - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
+
+              - (  w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
+                 - w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) * dzi[k];
+      }
+
+  return 0;
+}
+
+inline double cadvec::interp4(const double a, const double b, const double c, const double d)
+{
+  return (-a + 9.*b + 9.*c - d) / 16.;
 }
