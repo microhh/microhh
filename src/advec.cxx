@@ -351,7 +351,7 @@ int cadvec::advecw_4th(double * restrict wt, double * restrict u, double * restr
 
 int cadvec::advecs_4th(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
-  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2,kk3;
+  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2;
   int    kstart, kend;
   double dxi,dyi;
 
@@ -361,7 +361,6 @@ int cadvec::advecs_4th(double * restrict st, double * restrict s, double * restr
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -382,26 +381,10 @@ int cadvec::advecs_4th(double * restrict st, double * restrict s, double * restr
             - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
-            - (  w[ijk+kk1] * interp4bot(s[ijk], s[ijk+kk1], s[ijk+kk2], s[ijk+kk3]) ) * dzi[kstart];
+            - (  w[ijk+kk1] * interp4(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2]) ) * dzi[kstart];
     }
 
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj1 + (kstart+1)*kk1;
-      st[ijk] += 
-            - (  u[ijk+ii1] * interp4(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-               - u[ijk    ] * interp4(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
-
-            - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-               - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
-
-            - (  w[ijk+kk1] * interp4   (s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2])
-               - w[ijk    ] * interp4bot(s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2]) ) * dzi[kstart+1];
-    }
-
-  for(int k=grid->kstart+2; k<grid->kend-2; k++)
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -418,22 +401,6 @@ int cadvec::advecs_4th(double * restrict st, double * restrict s, double * restr
                  - w[ijk    ] * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzi[k];
       }
 
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj1 + (kend-2)*kk1;
-      st[ijk] += 
-            - (  u[ijk+ii1] * interp4(s[ijk-ii1], s[ijk    ], s[ijk+ii1], s[ijk+ii2])
-               - u[ijk    ] * interp4(s[ijk-ii2], s[ijk-ii1], s[ijk    ], s[ijk+ii1]) ) * dxi
-
-            - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
-               - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
-
-            - (  w[ijk+kk1] * interp4top(s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1])
-               - w[ijk    ] * interp4   (s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]) ) * dzi[kend-2];
-    }
-
   // assume that w at the boundary equals zero...
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -447,7 +414,7 @@ int cadvec::advecs_4th(double * restrict st, double * restrict s, double * restr
             - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
-            - (- w[ijk    ] * interp4top(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk]) ) * dzi[kend-1];
+            - (- w[ijk    ] * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzi[kend-1];
     }
 
   return 0;
