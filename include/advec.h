@@ -32,5 +32,7 @@ class cadvec
     int advecw_4th(double *, double *, double *, double *, double *);
     int advecs_4th(double *, double *, double *, double *, double *, double *);
     inline double interp4(const double, const double, const double, const double);
+    inline double interp4bot(const double, const double, const double, const double);
+    inline double interp4top(const double, const double, const double, const double);
 };
 #endif
