@@ -393,6 +393,7 @@ int cadvec::advecw_4th(double * restrict wt, double * restrict u, double * restr
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -400,7 +401,23 @@ int cadvec::advecw_4th(double * restrict wt, double * restrict u, double * restr
   kstart = grid->kstart;
   kend   = grid->kend;
 
-  for(int k=grid->kstart+1; k<grid->kend; k++)
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + (kstart+1)*kk1;
+      wt[ijk] += 
+            - (  interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * interp4(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
+               - interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * interp4(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
+
+            - (  interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * interp4(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
+               - interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
+
+            - (  interp4   (w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) * interp4   (w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2])
+               - interp3bot(w[ijk-kk1], w[ijk], w[ijk+kk1])             * interp3bot(w[ijk-kk1], w[ijk], w[ijk+kk1]) ) * dzhi[kstart+1];
+    }
+
+  for(int k=grid->kstart+2; k<grid->kend-1; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -413,9 +430,25 @@ int cadvec::advecw_4th(double * restrict wt, double * restrict u, double * restr
               - (  interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * interp4(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
                  - interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
-              - (  interp2(w[ijk    ], w[ijk+kk1]) * interp2(w[ijk    ], w[ijk+kk1])
-                 - interp2(w[ijk-kk1], w[ijk    ]) * interp2(w[ijk-kk1], w[ijk    ]) ) * dzhi[k];
+              - (  interp4(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2]) * interp4(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
+                 - interp4(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) * interp4(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) * dzhi[k];
       }
+
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + (kend-1)*kk1;
+      wt[ijk] += 
+            - (  interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * interp4(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2])
+               - interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * interp4(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]) ) * dxi
+
+            - (  interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * interp4(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
+               - interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
+
+            - (  interp3top(w[ijk-kk1], w[ijk    ], w[ijk+kk1])             * interp3top(w[ijk-kk1], w[ijk    ], w[ijk+kk1])
+               - interp4   (w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) * interp4(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) * dzhi[kend-1];
+    }
 
   return 0;
 }
@@ -505,3 +538,14 @@ inline double cadvec::interp4top(const double a, const double b, const double c,
 {
   return (a - 5.*b + 15.*c + 5.*d) / 16.;
 }
+
+inline double cadvec::interp3bot(const double a, const double b, const double c)
+{
+  return (3.*a + 6.*b - c) / 8.;
+}
+
+inline double cadvec::interp3top(const double a, const double b, const double c)
+{
+  return (-a + 6.*b + 3.*c) / 8.;
+}
+
