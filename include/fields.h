@@ -21,8 +21,9 @@ class cfields
     // int resettend();
     int boundary();
 
-    double check(int);
-    inline double interp2(const double, const double);
+    double checkmom ();
+    double checktke ();
+    double checkmass();
 
     // variables
     cfield3d *u;
@@ -52,9 +53,10 @@ class cfields
     int nvortexpair;
 
     // functions
-    double calcmom (double *, double *, double *, double *);
-    double calctke (double *, double *, double *, double *);
-    double calcmass(double *, double *);
+    double calcmom_2nd(double *, double *, double *, double *);
+    double calctke_2nd(double *, double *, double *, double *);
+    double calcmass   (double *, double *);
+    inline double interp2(const double, const double);
 };
 #endif
 

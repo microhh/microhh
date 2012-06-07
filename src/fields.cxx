@@ -218,18 +218,19 @@ int cfields::boundary()
   return 0;
 }
 
-double cfields::check(int n)
+double cfields::checkmom()
 {
-  double checkval = 0.;
+  return calcmom_2nd(u->data, v->data, w->data, grid->dz);
+}
 
-  if(n == 0)
-    checkval = calcmom (u->data, v->data, w->data, grid->dz);
-  else if(n == 1)
-    checkval = calctke (u->data, v->data, w->data, grid->dz);
-  else if(n == 2)
-    checkval = calcmass(s->data, grid->dz);
+double cfields::checktke()
+{
+  return calctke_2nd(u->data, v->data, w->data, grid->dz);
+}
 
-  return checkval;
+double cfields::checkmass()
+{
+  return calcmass(s->data, grid->dz);
 }
 
 double cfields::calcmass(double * restrict s, double * restrict dz)
@@ -239,8 +240,7 @@ double cfields::calcmass(double * restrict s, double * restrict dz)
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double mass;
-  mass = 0;
+  double mass = 0;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -258,17 +258,13 @@ double cfields::calcmass(double * restrict s, double * restrict dz)
   return mass;
 }
 
-
-double cfields::calcmom(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double cfields::calcmom_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
-  int ijk,icells,ijcells,ii,jj,kk;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int ijk,ii,jj,kk;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
   double momentum;
   momentum = 0;
@@ -278,7 +274,7 @@ double cfields::calcmom(double * restrict u, double * restrict v, double * restr
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
       }
 
@@ -289,26 +285,22 @@ double cfields::calcmom(double * restrict u, double * restrict v, double * restr
   return momentum;
 }
 
-double cfields::calctke(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double cfields::calctke_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
-  int ijk,icells,ijcells,ii,jj,kk;
-
-  icells  = grid->icells;
-  ijcells = grid->icells*grid->jcells;
+  int ijk,ii,jj,kk;
 
   ii = 1;
-  jj = 1*icells;
-  kk = 1*ijcells;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
 
-  double tke;
-  tke = 0;
+  double tke = 0;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*icells + k*ijcells;
+        ijk = i + j*jj + k*kk;
         tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii]) 
                + interp2(v[ijk]*v[ijk], v[ijk+jj]*v[ijk+jj]) 
                + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];

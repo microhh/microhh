@@ -127,9 +127,9 @@ int main(int argc, char *argv[])
       time    = timeloop.time;
       dt      = timeloop.dt;
       div     = pres.check();
-      mom     = fields.check(0);
-      tke     = fields.check(1);
-      mass    = fields.check(2);
+      mom     = fields.checkmom();
+      tke     = fields.checktke();
+      mass    = fields.checkmass();
 
       end     = mpi.gettime();
       cputime = end - start;
