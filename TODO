@@ -1,12 +1,10 @@
 [MPI]
 clean up MPI, such that code can be compiled without
-optimize the transposes in the pressure solver
 
 [performance]
 implement fftw_many
 
 [structure]
-clean up dns.cxx and catch errors properly
 handle field registration properly
 
 [extensions]
