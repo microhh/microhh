@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
   if(mpi.mpiid == 0)
   {
     std::string outputname = simname + ".out";
-    dnsout = std::fopen(outputname.c_str(), "w");
+    dnsout = std::fopen(outputname.c_str(), "a");
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %12s %10s %10s %8s %8s %13s %13s %13s %13s\n", 
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
