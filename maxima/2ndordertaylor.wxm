@@ -1,0 +1,56 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 12.04.0 ] */
+
+/* [wxMaxima: input   start ] */
+f(x) := f0 + f1*x/1! + f2*x^2/2! + f3*x^3/3! + f4*x^4/4!;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-1/2] = f(-1/2*h)$
+eq2 : f[ 1/2] = f( 1/2*h)$
+sol1 : linsolve([eq1,eq2],[f0,f1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f2=0,f3=0,f4=0], sol1) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-1] = f(-1*h)$
+eq2 : f[ 0] = f( 0*h)$
+eq3 : f[ 1] = f( 1*h)$
+sol2 : linsolve([eq1,eq2,eq3],[f0,f1,f2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0], sol2) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dirichlet : solve(sol1[1], f[-1/2])$
+expand(dirichlet);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcdirichlet : ratsimp( subst(dirichlet, sol1) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f2=0,f3=0,f4=0], bcdirichlet) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+neumann : solve(sol1[2], f[-1/2])$
+expand(neumann);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcneumann : ratsimp( subst(neumann, sol1) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f2=0,f3=0,f4=0], bcneumann) );
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$
