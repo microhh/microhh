@@ -1,5 +1,5 @@
 /* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
-/* [ Created with wxMaxima version 0.8.5 ] */
+/* [ Created with wxMaxima version 12.04.0 ] */
 
 /* [wxMaxima: input   start ] */
 f(x) := f0 + f1*x/1! + f2*x^2/2! + f3*x^3/3! + f4*x^4/4! + f5*x^5/5! + f6*x^6/6!;
@@ -43,12 +43,12 @@ ratsimp( subst([f4=0,f5=0,f6=0], sol3) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-dirichlet : subst([f5=0,f6=0], solve(sol3[1], f[-1/2]))$
+dirichlet : solve(sol3[1], f[-1/2])$
 expand(dirichlet);
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-neumann : subst([f4=0,f5=0,f6=0], solve(sol3[2], f[-1/2]))$
+neumann : solve(sol3[2], f[-1/2])$
 expand(neumann);
 /* [wxMaxima: input   end   ] */
 
@@ -64,8 +64,7 @@ ratsimp( subst([f3=0,f4=0,f5=0,f6=0], sol4) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-dirichlet : subst([f4=0,f5=0,f6=0], solve(sol3[1], f[-1/2]))$
-expand(dirichlet);
+[f4=0,f5=0,f6=0], 
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
