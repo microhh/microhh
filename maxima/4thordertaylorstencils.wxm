@@ -18,8 +18,28 @@ ratsimp( subst([f4=0,f5=0,f6=0], sol1) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-interp(x1,x2,x3,x4) := (- x1 + 9*x2 + 9*x3 - x4) / 16$
-grad(x1,x2,x3,x4) := (x1 - 27*x2 + 27*x3 - x4) / (24*h)$
+interp(x1,x2,x3,x4) := (- x1 +  9*x2 +  9*x3 - x4) / 16$
+grad  (x1,x2,x3,x4) := (  x1 - 27*x2 + 27*x3 - x4) / (24*h)$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dudx : ratsimp( grad(interp(u[i-3], u[i-2], u[i-1], u[i  ]),
+                     interp(u[i-2], u[i-1], u[i  ], u[i+1]),
+                     interp(u[i-1], u[i  ], u[i+1], u[i+2]),
+                     interp(u[i  ], u[i+1], u[i+2], u[i+3])) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-2] = f(-2*h)$
+eq2 : f[-1] = f(-1*h)$
+eq3 : f[ 0] = f( 0*h)$
+eq4 : f[ 1] = f( 1*h)$
+eq5 : f[ 2] = f( 2*h)$
+sol2 : linsolve([eq1,eq2,eq3,eq4,eq5],[f0,f1,f2,f3,f4]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f5=0,f6=0], sol2) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
@@ -35,8 +55,8 @@ ratsimp( subst([f4=0,f5=0,f6=0], sol3) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-interpbias(x1,x2,x3,x4) := (5*x1 + 15*x2 - 5*x3 + x4) / 16$
-gradbias(x1,x2,x3,x4) := (-23*x1 + 21*x2 + 3*x3 - x4) / (24*h)$
+interpbias(x1,x2,x3,x4) := (  5*x1 + 15*x2 - 5*x3 + x4) / 16$
+gradpbias (x1,x2,x3,x4) := (-23*x1 + 21*x2 + 3*x3 - x4) / (24*h)$
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
@@ -58,10 +78,6 @@ ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bcf1) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-gradbcdir(bc,x1,x2,x3) := (-184*bc + 225*x1 - 50*x2 + 9*x3) / (60*h)$
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
 neumann : solve(sol3[2], f[-1/2])$
 neumann : subst(f1bc, f1, neumann)$
 expand(neumann);
@@ -76,13 +92,8 @@ ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bcf0) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-interpbcneu(bc,x1,x2,x3) := (-60*bc*h + 225*x1 - 50*x2 + 9*x3) / 184$
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
 bcf1 : ratsimp( subst(neumann, sol3[2]) );
 /* [wxMaxima: input   end   ] */
-
 
 /* Maxima can't load/batch files which end with a comment! */
 "Created with wxMaxima"$
