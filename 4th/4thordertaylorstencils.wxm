@@ -18,15 +18,22 @@ ratsimp( subst([f4=0,f5=0,f6=0], sol1) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-interp(x1,x2,x3,x4) := (- x1 +  9*x2 +  9*x3 - x4) / 16$
-grad  (x1,x2,x3,x4) := (  x1 - 27*x2 + 27*x3 - x4) / (24*h)$
+interp(x1,x2,x3,x4,err) := (- x1 +  9*x2 +  9*x3 - x4) / 16 + err*h^4$
+grad  (x1,x2,x3,x4,err) := (  x1 - 27*x2 + 27*x3 - x4) / (24*h) + err*h^4$
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-dudx : ratsimp( grad(interp(u[i-3], u[i-2], u[i-1], u[i  ]),
-                     interp(u[i-2], u[i-1], u[i  ], u[i+1]),
-                     interp(u[i-1], u[i  ], u[i+1], u[i+2]),
-                     interp(u[i  ], u[i+1], u[i+2], u[i+3])) );
+dudx : ratsimp( grad(interp(u[i-3], u[i-2], u[i-1], u[i  ], err1),
+                     interp(u[i-2], u[i-1], u[i  ], u[i+1], err2),
+                     interp(u[i-1], u[i  ], u[i+1], u[i+2], err3),
+                     interp(u[i  ], u[i+1], u[i+2], u[i+3], err4), err0) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2udx2 : ratsimp( grad(grad(u[i-3], u[i-2], u[i-1], u[i  ], err1),
+                       grad(u[i-2], u[i-1], u[i  ], u[i+1], err2),
+                       grad(u[i-1], u[i  ], u[i+1], u[i+2], err3),
+                       grad(u[i  ], u[i+1], u[i+2], u[i+3], err4), err0) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
