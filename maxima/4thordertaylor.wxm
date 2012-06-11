@@ -133,5 +133,30 @@ bcf1 : ratsimp( subst(neumann, sol3[2]) );
 ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bcf1) );
 /* [wxMaxima: input   end   ] */
 
+/* [wxMaxima: input   start ] */
+eq1 : f[0] = f(0*h)$
+eq2 : f[1] = f(1*h)$
+eq3 : f[2] = f(2*h)$
+eq4 : f[3] = f(3*h)$
+eq5 : f[4] = f(4*h)$
+sol2 : linsolve([eq1,eq2,eq3,eq4,eq5],[f0,f1,f2,f3,f4]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f5=0,f6=0], sol2) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[0] = f(0*h)$
+eq2 : f[1] = f(1*h)$
+eq3 : f[2] = f(2*h)$
+eq4 : f[3] = f(3*h)$
+sol2 : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], sol2) );
+/* [wxMaxima: input   end   ] */
+
 /* Maxima can't load/batch files which end with a comment! */
 "Created with wxMaxima"$
