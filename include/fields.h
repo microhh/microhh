@@ -51,6 +51,7 @@ class cfields
     double rndamp;
     double vortexamp;
     int nvortexpair;
+    int vortexaxis;
 
     // functions
     double calcmom_2nd(double *, double *, double *, double *);

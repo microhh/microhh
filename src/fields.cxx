@@ -47,6 +47,7 @@ int cfields::readinifile(cinput *inputin)
   n += inputin->getItem(&rndamp     , "fields", "rndamp"     , 1.e-3);
   n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", 0    );
   n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
+  n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , 1    );
 
   if(n > 0)
     return 1;
@@ -135,14 +136,24 @@ int cfields::createfields()
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        v->data[ijk] =  vortexamp*std::sin(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::cos(pi*grid->z[k]/grid->zsize);
-        w->data[ijk] = -vortexamp*std::cos(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
-      }
+  if(vortexaxis == 0)
+    for(int k=grid->kstart; k<grid->kend; k++)
+      for(int j=grid->jstart; j<grid->jend; j++)
+        for(int i=grid->istart; i<grid->iend; i++)
+        {
+          ijk = i + j*jj + k*kk;
+          u->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->x[j])/grid->xsize)*std::cos(pi*grid->z[k]/grid->zsize);
+          w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->x[j])/grid->xsize)*std::sin(pi*grid->z[k]/grid->zsize);
+        }
+  else if(vortexaxis == 1)
+    for(int k=grid->kstart; k<grid->kend; k++)
+      for(int j=grid->jstart; j<grid->jend; j++)
+        for(int i=grid->istart; i<grid->iend; i++)
+        {
+          ijk = i + j*jj + k*kk;
+          v->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::cos(pi*grid->z[k]/grid->zsize);
+          w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
+        }
 
   // set the mean profile
   double dpdxls = -8.e-7;
