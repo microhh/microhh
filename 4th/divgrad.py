@@ -79,8 +79,8 @@ dxs  = array([dx8 , dx16 , dx32 , dx64 ])
 errs_2nd = array([err8_2nd, err16_2nd, err32_2nd, err64_2nd])
 errs_4th = array([err8_4th, err16_4th, err32_4th, err64_4th])
 
-off2 = 0.4
-off4 = 0.02
+off2 = 0.7
+off4 = 0.04
 slope2 = off2*(dxs[:] / dxs[0])**2.
 slope4 = off4*(dxs[:] / dxs[0])**4.
 
@@ -99,6 +99,6 @@ loglog(dxs, errs_2nd, 'bo-', label="dg2nd")
 loglog(dxs, errs_4th, 'go-', label="dg4th")
 loglog(dxs, slope2, 'k--', label="2nd")
 loglog(dxs, slope4, 'k:' , label="4th")
-legend(loc=0, frameon=False)
+legend(loc=4, frameon=False)
 xlim(0.01, 0.2)
 
