@@ -9,7 +9,7 @@ def geterror(u, uref, n=2):
 
 def refdata(n):
   x = linspace(0.5*xsize/n, xsize-0.5*xsize/n, n)
-  u = cos(2.*pi*x/xsize)
+  u = sin(2.*pi*x/xsize)
   return x, u
 
 def gx2nd(x, u):
@@ -25,13 +25,13 @@ def gx2nd(x, u):
   # ucalc[iend:iend+igc] = u[0:igc]
 
   # non-periodic bc
-  ucalc[istart-1] = ucalc[istart]
-  ucalc[iend    ] = ucalc[iend-1]
+  ucalc[istart-1] = - ucalc[istart]
+  ucalc[iend    ] = - ucalc[iend-1]
 
   for i in range(istart, iend):
     gu[i-igc] = (ucalc[i+1] - ucalc[i-1]) / (2.*dx)
 
-  guref = -2.*pi/xsize * sin(2.*pi*x/xsize)
+  guref = 2.*pi/xsize * cos(2.*pi*x/xsize)
 
   erru = geterror(gu, guref)
 
@@ -50,8 +50,8 @@ def gx4th(x, u):
   #ucalc[iend:iend+igc] = u[0:igc]
 
   # ghost cell
-  ucalc[istart-1] = (21.*ucalc[istart] + 3.*ucalc[istart+1] - ucalc[istart+2]) / 23.
-  ucalc[iend    ] = (21.*ucalc[iend-1] + 3.*ucalc[iend-2  ] - ucalc[iend-3  ]) / 23.
+  ucalc[istart-1] = (-15.*ucalc[istart] + 5.*ucalc[istart+1] - ucalc[istart+2]) / 5.
+  ucalc[iend    ] = (-15.*ucalc[iend-1] + 5.*ucalc[iend-2  ] - ucalc[iend-3  ]) / 5.
 
   i = istart
   gu[i-igc] = (-136.*ucalc[i-1] - 159.*ucalc[i] + 332.*ucalc[i+1] - 26.*ucalc[i+2] - 12.*ucalc[i+3] + ucalc[i+4]) / (384.*dx)
@@ -64,7 +64,7 @@ def gx4th(x, u):
   i = iend-1
   gu[i-igc] = -(-136.*ucalc[i+1] - 159.*ucalc[i] + 332.*ucalc[i-1] - 26.*ucalc[i-2] - 12.*ucalc[i-3] + ucalc[i-4]) / (384.*dx)
 
-  guref = -2.*pi/xsize * sin(2.*pi*x/xsize)
+  guref = 2.*pi/xsize * cos(2.*pi*x/xsize)
 
   erru = geterror(gu, guref)
 

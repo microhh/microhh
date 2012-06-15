@@ -68,8 +68,11 @@ gradbias  (x1,x2,x3,x4,err) := (-23*x1 + 21*x2 + 3*x3 - x4) / (24*h) + err*h^4$
 
 /* [wxMaxima: input   start ] */
 dirichlet : solve(sol3[1], f[-1/2])$
-dirichlet : subst(f0bc, f0, dirichlet)$
-expand(dirichlet);
+dirichlet : subst(f0bc, f0, dirichlet);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], dirichlet) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
@@ -117,6 +120,20 @@ dudxbias2 : ratsimp( gradbias(interpbias(u[i-1], u[i  ], u[i+1], u[i+2], err1),
                               interp    (u[i-1], u[i  ], u[i+1], u[i+2], err2),
                               interp    (u[i  ], u[i+1], u[i+2], u[i+3], err3),
                               interp    (u[i+1], u[i+2], u[i+3], u[i+4], err4), err0) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2udx2bias : ratsimp( grad(gradbias(u[i-2], u[i-1], u[i  ], u[i+1], err1),
+                           grad    (u[i-2], u[i-1], u[i  ], u[i+1], err2),
+                           grad    (u[i-1], u[i  ], u[i+1], u[i+2], err3),
+                           grad    (u[i  ], u[i+1], u[i+2], u[i+3], err4), err0) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2udx2bias2 : ratsimp( gradbias(gradbias(u[i-1], u[i  ], u[i+1], u[i+2], err1),
+                                grad    (u[i-1], u[i  ], u[i+1], u[i+2], err2),
+                                grad    (u[i  ], u[i+1], u[i+2], u[i+3], err3),
+                                grad    (u[i+1], u[i+2], u[i+3], u[i+4], err4), err0) );
 /* [wxMaxima: input   end   ] */
 
 /* Maxima can't load/batch files which end with a comment! */
