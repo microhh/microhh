@@ -79,6 +79,9 @@ dxs  = array([dx8 , dx16 , dx32 , dx64 ])
 errs_2nd = array([err8_2nd, err16_2nd, err32_2nd, err64_2nd])
 errs_4th = array([err8_4th, err16_4th, err32_4th, err64_4th])
 
+print('convergence 2nd', (log(errs_2nd[-1])-log(errs_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
+print('convergence 4th', (log(errs_4th[-1])-log(errs_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
+
 off2 = 0.7
 off4 = 0.04
 slope2 = off2*(dxs[:] / dxs[0])**2.

@@ -91,14 +91,17 @@ dx64     = xsize / 64.
 g64_2nd, gref64_2nd, err64_2nd = dgx2nd(x64, u64)
 g64_4th, gref64_4th, err64_4th = dgx4th(x64, u64)
 
-x128, u128 = refdata(1028)
-dx128      = xsize / 1028.
+x128, u128 = refdata(128)
+dx128      = xsize / 128.
 g128_2nd, gref128_2nd, err128_2nd = dgx2nd(x128, u128)
 g128_4th, gref128_4th, err128_4th = dgx4th(x128, u128)
 
 dxs  = array([dx8, dx16, dx32, dx64, dx128])
 errs_2nd = array([err8_2nd, err16_2nd, err32_2nd, err64_2nd, err128_2nd])
 errs_4th = array([err8_4th, err16_4th, err32_4th, err64_4th, err128_4th])
+
+print('convergence 2nd', (log(errs_2nd[-1])-log(errs_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
+print('convergence 4th', (log(errs_4th[-1])-log(errs_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
 
 off2 = 8.
 off3 = 4.
@@ -108,6 +111,7 @@ slope3 = off3*(dxs[:] / dxs[0])**3.
 slope4 = off4*(dxs[:] / dxs[0])**4.
 
 close('all')
+"""
 figure()
 plot(x8 , g8_2nd , 'b-',  label="8_2nd" )
 plot(x16, g16_2nd, 'g-',  label="16_2nd")
@@ -118,6 +122,7 @@ plot(x32, g32_4th, 'r--', label="32_4th")
 #plot(x64, g64_4th, 'c-', label="64_4th")
 plot(x128, gref128_4th, 'k--', label="ref")
 legend(loc=4, frameon=False)
+"""
 
 figure()
 loglog(dxs, errs_2nd, 'bo-', label="g2nd")
