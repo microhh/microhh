@@ -414,7 +414,7 @@ int cadvec::advecw_4th(double * restrict wt, double * restrict u, double * restr
                - interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
             - (  interp4   (w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) * interp4   (w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2])
-               - interp3bot(w[ijk-kk1], w[ijk], w[ijk+kk1])             * interp3bot(w[ijk-kk1], w[ijk], w[ijk+kk1]) ) * dzhi[kstart+1];
+               - interp4bot(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) * interp4bot(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) ) * dzhi[kstart+1];
     }
 
   for(int k=grid->kstart+2; k<grid->kend-1; k++)
@@ -446,8 +446,8 @@ int cadvec::advecw_4th(double * restrict wt, double * restrict u, double * restr
             - (  interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * interp4(w[ijk-jj1], w[ijk    ], w[ijk+jj1], w[ijk+jj2])
                - interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
-            - (  interp3top(w[ijk-kk1], w[ijk    ], w[ijk+kk1])             * interp3top(w[ijk-kk1], w[ijk    ], w[ijk+kk1])
-               - interp4   (w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) * interp4(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) * dzhi[kend-1];
+            - (  interp4top(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) * interp4top(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1])
+               - interp4   (w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) * interp4   (w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) * dzhi[kend-1];
     }
 
   return 0;
@@ -539,6 +539,7 @@ inline double cadvec::interp4top(const double a, const double b, const double c,
   return (a - 5.*b + 15.*c + 5.*d) / 16.;
 }
 
+/*
 inline double cadvec::interp3bot(const double a, const double b, const double c)
 {
   return (3.*a + 6.*b - c) / 8.;
@@ -548,4 +549,4 @@ inline double cadvec::interp3top(const double a, const double b, const double c)
 {
   return (-a + 6.*b + 3.*c) / 8.;
 }
-
+*/

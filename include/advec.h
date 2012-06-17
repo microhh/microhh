@@ -34,7 +34,7 @@ class cadvec
     inline double interp4(const double, const double, const double, const double);
     inline double interp4bot(const double, const double, const double, const double);
     inline double interp4top(const double, const double, const double, const double);
-    inline double interp3bot(const double, const double, const double);
-    inline double interp3top(const double, const double, const double);
+    // inline double interp3bot(const double, const double, const double);
+    // inline double interp3top(const double, const double, const double);
 };
 #endif
