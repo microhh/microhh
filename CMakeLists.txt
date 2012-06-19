@@ -14,5 +14,7 @@ set(FFTW_LIB         "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/lib/libfft
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR})
 set(LIBS ${FFTW_LIB})
 
+add_subdirectory(src)
 add_subdirectory(main)
 add_subdirectory(test)
+
