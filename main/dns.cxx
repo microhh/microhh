@@ -3,7 +3,7 @@
 #include "fields.h"
 #include "mpiinterface.h"
 #include "timeloop.h"
-#include "advec.h"
+#include "advec_g2i4.h"
 #include "diff.h"
 #include "force.h"
 #include "pres.h"
@@ -40,11 +40,11 @@ int main(int argc, char *argv[])
   fields.initfields();
 
   // create the instances of the model operations
-  ctimeloop timeloop(&grid, &fields, &mpi);
-  cadvec    advec   (&grid, &fields, &mpi);
-  cdiff     diff    (&grid, &fields, &mpi);
-  cpres     pres    (&grid, &fields, &mpi);
-  cforce    force   (&grid, &fields, &mpi);
+  ctimeloop   timeloop(&grid, &fields, &mpi);
+  cadvec_g2i4 advec   (&grid, &fields, &mpi);
+  cdiff       diff    (&grid, &fields, &mpi);
+  cpres       pres    (&grid, &fields, &mpi);
+  cforce      force   (&grid, &fields, &mpi);
 
   // read the inputdata
   if(timeloop.readinifile(&input))
