@@ -3,3 +3,7 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -ftree-vectorizer-verbose=1 -march=n
 
 # intel flags
 CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -xHOST -fno-alias -restrict -vec-report1 -axSSE4.2 -opt-prefetch -prof-use
+
+# ibm JUGENE flags
+CMAKE_CXX_FLAGS_RELEASE:STRING=-O4 -qnoipa -qmaxmem=-1 -qarch=450d -qtune=450 -qnostrict -qhot=simd
+
