@@ -50,8 +50,10 @@ def dgx4th(x, u):
   #ucalc[iend:iend+igc] = u[0:igc]
 
   # ghost cell
-  ucalc[istart-1] = (-15.*ucalc[istart] + 5.*ucalc[istart+1] - ucalc[istart+2]) / 5.
-  ucalc[iend    ] = (-15.*ucalc[iend-1] + 5.*ucalc[iend-2  ] - ucalc[iend-3  ]) / 5.
+  #ucalc[istart-1] = (-15.*ucalc[istart] + 5.*ucalc[istart+1] - ucalc[istart+2]) / 5.
+  #ucalc[iend    ] = (-15.*ucalc[iend-1] + 5.*ucalc[iend-2  ] - ucalc[iend-3  ]) / 5.
+  ucalc[istart-1] = (-140.*ucalc[istart] + 70.*ucalc[istart+1] - 28.*ucalc[istart+2] + 5.*ucalc[istart+3]) / 35.
+  ucalc[iend    ] = (-140.*ucalc[iend-1] + 70.*ucalc[iend-2  ] - 28.*ucalc[iend-3  ] + 5.*ucalc[iend-4  ]) / 35.
 
   i = istart
   dgu[i-igc] = (11.*ucalc[i-1] - 20.*ucalc[i] + 6.*ucalc[i+1] + 4.*ucalc[i+2] - ucalc[i+3]) / (12.*dx**2.)
