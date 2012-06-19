@@ -1,5 +1,5 @@
 /* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
-/* [ Created with wxMaxima version 12.04.0 ] */
+/* [ Created with wxMaxima version 0.8.5 ] */
 
 /* [wxMaxima: input   start ] */
 f(x) := f0 + f1*x/1! + f2*x^2/2! + f3*x^3/3! + f4*x^4/4! + f5*x^5/5! + f6*x^6/6!;
@@ -23,6 +23,99 @@ grad  (x1,x2,x3,x4,err) := (  x1 - 27*x2 + 27*x3 - x4) / (24*h) + err*h^4$
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
+eq1 : f[-1/2] = f(-1/2*h)$
+eq2 : f[ 1/2] = f( 1/2*h)$
+eq3 : f[ 3/2] = f( 3/2*h)$
+eq4 : f[ 5/2] = f( 5/2*h)$
+sol2 : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], sol2) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+interpbias(x1,x2,x3,x4,err) := (  5*x1 + 15*x2 - 5*x3 + x4) / 16 + err*h^4$
+gradbias  (x1,x2,x3,x4,err) := (-23*x1 + 21*x2 + 3*x3 - x4) / (24*h) + err*h^4$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dirichlet : solve(sol2[1], f[-1/2])$
+dirichlet : subst(f0bc, f0, dirichlet);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], dirichlet) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcf0 : ratsimp( subst(dirichlet, sol2[1]) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcf1 : ratsimp( subst(dirichlet, sol2[2]) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bcf1) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+neumann : solve(sol2[2], f[-1/2])$
+neumann : subst(f1bc, f1, neumann);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], neumann) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcf0 : ratsimp( subst(neumann, sol2[1]) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bcf0) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcf1 : ratsimp( subst(neumann, sol2[2]) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-2] = f(-2*h)$
+eq2 : f[-1] = f(-1*h)$
+eq3 : f[ 0] = f( 0*h)$
+eq4 : f[ 1] = f( 1*h)$
+eq5 : f[ 2] = f( 2*h)$
+sol3 : linsolve([eq1,eq2,eq3,eq4,eq5],[f0,f1,f2,f3,f4]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f5=0,f6=0], sol3) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+lapl(x1,x2,x3,x4,x5,err) := (- x1 + 16*x2 - 30*x3 + 16*x4 - x5) / (12*h^2) + err*h^4$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-1] = f(-1*h)$
+eq2 : f[ 0] = f( 0*h)$
+eq3 : f[ 1] = f( 1*h)$
+eq4 : f[ 2] = f( 2*h)$
+eq5 : f[ 3] = f( 3*h)$
+sol4 : linsolve([eq1,eq2,eq3,eq4,eq5],[f0,f1,f2,f3,f4]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f5=0,f6=0], sol4) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+laplbias(x1,x2,x3,x4,x5,err) := (11*x1 - 20*x2 + 6*x3 + 4*x4 - x5) / (12*h^2) + err*h^3$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
 dudx : ratsimp( grad(interp(u[i-3], u[i-2], u[i-1], u[i  ], err1),
                      interp(u[i-2], u[i-1], u[i  ], u[i+1], err2),
                      interp(u[i-1], u[i  ], u[i+1], u[i+2], err3),
@@ -34,78 +127,6 @@ d2udx2 : ratsimp( grad(grad(u[i-3], u[i-2], u[i-1], u[i  ], err1),
                        grad(u[i-2], u[i-1], u[i  ], u[i+1], err2),
                        grad(u[i-1], u[i  ], u[i+1], u[i+2], err3),
                        grad(u[i  ], u[i+1], u[i+2], u[i+3], err4), err0) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-eq1 : f[-2] = f(-2*h)$
-eq2 : f[-1] = f(-1*h)$
-eq3 : f[ 0] = f( 0*h)$
-eq4 : f[ 1] = f( 1*h)$
-eq5 : f[ 2] = f( 2*h)$
-sol2 : linsolve([eq1,eq2,eq3,eq4,eq5],[f0,f1,f2,f3,f4]);
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-ratsimp( subst([f5=0,f6=0], sol2) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-eq1 : f[-1/2] = f(-1/2*h)$
-eq2 : f[ 1/2] = f( 1/2*h)$
-eq3 : f[ 3/2] = f( 3/2*h)$
-eq4 : f[ 5/2] = f( 5/2*h)$
-sol3 : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-ratsimp( subst([f4=0,f5=0,f6=0], sol3) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-interpbias(x1,x2,x3,x4,err) := (  5*x1 + 15*x2 - 5*x3 + x4) / 16 + err*h^4$
-gradbias  (x1,x2,x3,x4,err) := (-23*x1 + 21*x2 + 3*x3 - x4) / (24*h) + err*h^4$
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-dirichlet : solve(sol3[1], f[-1/2])$
-dirichlet : subst(f0bc, f0, dirichlet);
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-ratsimp( subst([f3=0,f4=0,f5=0,f6=0], dirichlet) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-bcf0 : ratsimp( subst(dirichlet, sol3[1]) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-bcf1 : ratsimp( subst(dirichlet, sol3[2]) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bcf1) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-neumann : solve(sol3[2], f[-1/2])$
-neumann : subst(f1bc, f1, neumann);
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-ratsimp( subst([f3=0,f4=0,f5=0,f6=0], neumann) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-bcf0 : ratsimp( subst(neumann, sol3[1]) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bcf0) );
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
-bcf1 : ratsimp( subst(neumann, sol3[2]) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */

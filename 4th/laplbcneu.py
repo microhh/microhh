@@ -21,8 +21,8 @@ def dgx2nd(x, u):
   ucalc[istart:iend] = u[:]
 
   # # periodic bcs
-  #ucalc[0   :igc     ] = u[u.size-igc:u.size]
-  #ucalc[iend:iend+igc] = u[0:igc]
+  # ucalc[0   :igc     ] = u[u.size-igc:u.size]
+  # ucalc[iend:iend+igc] = u[0:igc]
 
   # non-periodic bc
   ucalc[istart-1] = ucalc[istart]
@@ -54,15 +54,11 @@ def dgx4th(x, u):
   ucalc[iend    ] = (21.*ucalc[iend-1] + 3.*ucalc[iend-2  ] - ucalc[iend-3  ]) / 23.
 
   i = istart
-  dgu[i-igc] = (550.*ucalc[i-1] - 1047.*ucalc[i] + 416.*ucalc[i+1] + 110.*ucalc[i+2] - 30.*ucalc[i+3] + ucalc[i+4]) / (576.*dx**2.)
-  i = istart+1
-  dgu[i-igc] = (-50.*ucalc[i-2] + 777.*ucalc[i-1] - 1456.*ucalc[i] + 782.*ucalc[i+1] - 54.*ucalc[i+2] + ucalc[i+3]) / (576.*dx**2.)
-  for i in range(istart+2, iend-2):
-    dgu[i-igc] = ((ucalc[i-3]+ucalc[i+3]) -54.*(ucalc[i-2]+ucalc[i+2]) + 783.*(ucalc[i-1]+ucalc[i+1]) - 1460.*ucalc[i]) / (576.*dx**2.)
-  i = iend-2
-  dgu[i-igc] = (-50.*ucalc[i+2] + 777.*ucalc[i+1] - 1456.*ucalc[i] + 782.*ucalc[i-1] - 54.*ucalc[i-2] + ucalc[i-3]) / (576.*dx**2.)
+  dgu[i-igc] = (11.*ucalc[i-1] - 20.*ucalc[i] + 6.*ucalc[i+1] + 4.*ucalc[i+2] - ucalc[i+3]) / (12.*dx**2.)
+  for i in range(istart+1, iend-1):
+    dgu[i-igc] = (-1.*(ucalc[i-2]+ucalc[i+2]) + 16.*(ucalc[i-1]+ucalc[i+1]) - 30.*ucalc[i]) / (12.*dx**2.)
   i = iend-1
-  dgu[i-igc] = (550.*ucalc[i+1] - 1047.*ucalc[i] + 416.*ucalc[i-1] + 110.*ucalc[i-2] - 30.*ucalc[i-3] + ucalc[i-4]) / (576.*dx**2.)
+  dgu[i-igc] = (11.*ucalc[i+1] - 20.*ucalc[i] + 6.*ucalc[i-1] + 4.*ucalc[i-2] - ucalc[i-3]) / (12.*dx**2.)
 
   dguref = -4*pi**2./xsize**2. * cos(2.*pi*x/xsize)
 
@@ -96,36 +92,33 @@ dx128      = xsize / 128.
 g128_2nd, gref128_2nd, err128_2nd = dgx2nd(x128, u128)
 g128_4th, gref128_4th, err128_4th = dgx4th(x128, u128)
 
-x256, u256 = refdata(256)
-dx256      = xsize / 256.
-g256_2nd, gref256_2nd, err256_2nd = dgx2nd(x256, u256)
-g256_4th, gref256_4th, err256_4th = dgx4th(x256, u256)
-
-dxs  = array([dx8, dx16, dx32, dx64, dx128, dx256])
-errs_2nd = array([err8_2nd, err16_2nd, err32_2nd, err64_2nd, err128_2nd, err256_2nd])
-errs_4th = array([err8_4th, err16_4th, err32_4th, err64_4th, err128_4th, err256_4th])
+dxs  = array([dx8, dx16, dx32, dx64, dx128])
+errs_2nd = array([err8_2nd, err16_2nd, err32_2nd, err64_2nd, err128_2nd])
+errs_4th = array([err8_4th, err16_4th, err32_4th, err64_4th, err128_4th])
 
 print('convergence 2nd', (log(errs_2nd[-1])-log(errs_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
 print('convergence 4th', (log(errs_4th[-1])-log(errs_4th[0])) / (log(dxs[-1])-log(dxs[0])) )
 
 off2 = 8.
-off3 = 4.
+off3 = 5.2
 off4 = 2.
 slope2 = off2*(dxs[:] / dxs[0])**2.
 slope3 = off3*(dxs[:] / dxs[0])**3.
 slope4 = off4*(dxs[:] / dxs[0])**4.
 
 close('all')
+
 figure()
-plot(x8 , g8_2nd , 'b-',  label="8_2nd" )
-plot(x16, g16_2nd, 'g-',  label="16_2nd")
-plot(x32, g32_2nd, 'r-',  label="32_2nd")
-plot(x8 , g8_4th , 'b--', label="8_4th" )
-plot(x16, g16_4th, 'g--', label="16_4th")
-plot(x32, g32_4th, 'r--', label="32_4th")
+#plot(x8 , g8_2nd , 'b-',  label="8_2nd" )
+#plot(x16, g16_2nd, 'g-',  label="16_2nd")
+#plot(x32, g32_2nd, 'r-',  label="32_2nd")
+plot(x8 , g8_4th , 'b-', label="8_4th" )
+plot(x16, g16_4th, 'g-', label="16_4th")
+plot(x32, g32_4th, 'r-', label="32_4th")
 #plot(x64, g64_4th, 'c-', label="64_4th")
 plot(x128, gref128_4th, 'k--', label="ref")
-legend(loc=1, frameon=False)
+legend(loc=4, frameon=False)
+
 
 figure()
 loglog(dxs, errs_2nd, 'bo-', label="g2nd")
