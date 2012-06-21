@@ -1,11 +1,11 @@
 from pylab import *
 from microhh import *
 
-t = 0
+t = 6500
 
-itot = 96
-jtot = 64
-ktot = 48
+itot = 256
+jtot = 192
+ktot = 128
 
 data = microhh(t, itot, jtot, ktot)
 
@@ -19,7 +19,7 @@ title('streamwise velocity')
 colorbar()
 
 figure()
-pcolormesh(data.xh, data.y, data.u[ktot/2,:,:])
+pcolormesh(data.xh, data.y, data.u[20,:,:])
 xlim(min(data.xh), max(data.xh))
 ylim(min(data.y ), max(data.y ))
 xlabel('x')
@@ -34,7 +34,7 @@ xlim(min(data.y), max(data.y))
 ylim(min(data.z), max(data.z))
 xlabel('y')
 ylabel('z')
-title('spanwise velocity')
+title('streamwise velocity')
 colorbar()
 subplot(132)
 pcolormesh(data.yh, data.z, data.v[:,:,0])
@@ -96,10 +96,6 @@ wmean = average(average(data.w,1),1)
 
 pmean = average(average(data.p,1),1)
 
-uvar  = average(average(data.u**2.,1),1)
-vvar  = average(average(data.v**2.,1),1)
-wvar  = average(average(data.w**2.,1),1)
-
 figure()
 plot(umean, data.z , label='u')
 plot(vmean, data.z , label='v')
@@ -112,17 +108,4 @@ figure()
 plot(pmean, data.z)
 xlabel('modified pressure')
 ylabel('height')
-
-uvar = zeros(ktot)
-for k in range(ktot):
-  uplane = average(data.u[k,:,:])
-  uvar[k] = average((data.u[k,:,:] - uplane)**2.)
-
-figure()
-plot(uvar, data.z , label='u')
-plot(vvar, data.z , label='v')
-plot(wvar, data.zh, label='w')
-xlabel('variance')
-ylabel('height')
-legend(loc=0, frameon=False)
 
