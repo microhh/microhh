@@ -73,28 +73,28 @@ def dgx4th(x, u):
 
 x8, u8 = refdata(8)
 dx8    = xsize / 8.
-g8_2nd, gref8_2nd, err8_2nd = dgx2nd(x8, u8)
-g8_4th, gref8_4th, err8_4th = dgx4th(x8, u8)
+dg8_2nd, dgref8_2nd, err8_2nd = dgx2nd(x8, u8)
+dg8_4th, dgref8_4th, err8_4th = dgx4th(x8, u8)
 
 x16, u16 = refdata(16)
 dx16     = xsize / 16.
-g16_2nd, gref16_2nd, err16_2nd = dgx2nd(x16, u16)
-g16_4th, gref16_4th, err16_4th = dgx4th(x16, u16)
+dg16_2nd, dgref16_2nd, err16_2nd = dgx2nd(x16, u16)
+dg16_4th, dgref16_4th, err16_4th = dgx4th(x16, u16)
 
 x32, u32 = refdata(32)
 dx32     = xsize / 32.
-g32_2nd, gref32_2nd, err32_2nd = dgx2nd(x32, u32)
-g32_4th, gref32_4th, err32_4th = dgx4th(x32, u32)
+dg32_2nd, dgref32_2nd, err32_2nd = dgx2nd(x32, u32)
+dg32_4th, dgref32_4th, err32_4th = dgx4th(x32, u32)
 
 x64, u64 = refdata(64)
 dx64     = xsize / 64.
-g64_2nd, gref64_2nd, err64_2nd = dgx2nd(x64, u64)
-g64_4th, gref64_4th, err64_4th = dgx4th(x64, u64)
+dg64_2nd, dgref64_2nd, err64_2nd = dgx2nd(x64, u64)
+dg64_4th, dgref64_4th, err64_4th = dgx4th(x64, u64)
 
 x128, u128 = refdata(128)
 dx128      = xsize / 128.
-g128_2nd, gref128_2nd, err128_2nd = dgx2nd(x128, u128)
-g128_4th, gref128_4th, err128_4th = dgx4th(x128, u128)
+dg128_2nd, dgref128_2nd, err128_2nd = dgx2nd(x128, u128)
+dg128_4th, dgref128_4th, err128_4th = dgx4th(x128, u128)
 
 dxs  = array([dx8, dx16, dx32, dx64, dx128])
 errs_2nd = array([err8_2nd, err16_2nd, err32_2nd, err64_2nd, err128_2nd])
@@ -111,18 +111,17 @@ slope3 = off3*(dxs[:] / dxs[0])**3.
 slope4 = off4*(dxs[:] / dxs[0])**4.
 
 close('all')
-"""
+
 figure()
-plot(x8 , g8_2nd , 'b-',  label="8_2nd" )
-plot(x16, g16_2nd, 'g-',  label="16_2nd")
-plot(x32, g32_2nd, 'r-',  label="32_2nd")
-plot(x8 , g8_4th , 'b--', label="8_4th" )
-plot(x16, g16_4th, 'g--', label="16_4th")
-plot(x32, g32_4th, 'r--', label="32_4th")
-#plot(x64, g64_4th, 'c-', label="64_4th")
-plot(x128, gref128_4th, 'k--', label="ref")
+plot(x8 , dg8_2nd , 'b-',  label="8_2nd" )
+plot(x16, dg16_2nd, 'g-',  label="16_2nd")
+plot(x32, dg32_2nd, 'r-',  label="32_2nd")
+plot(x8 , dg8_4th , 'b--', label="8_4th" )
+plot(x16, dg16_4th, 'g--', label="16_4th")
+plot(x32, dg32_4th, 'r--', label="32_4th")
+#plot(x64, dg64_4th, 'c-', label="64_4th")
+plot(x128, dgref128_4th, 'k--', label="ref")
 legend(loc=4, frameon=False)
-"""
 
 figure()
 loglog(dxs, errs_2nd, 'bo-', label="g2nd")
