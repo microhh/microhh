@@ -5,11 +5,11 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
-class cadvec_g2i4
+class cadvec
 {
   public:
-    cadvec_g2i4(cgrid *, cfields *, cmpi *);
-    ~cadvec_g2i4();
+    cadvec(cgrid *, cfields *, cmpi *);
+    ~cadvec();
 
     int exec();
     double getcfl(double);
