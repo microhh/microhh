@@ -7,9 +7,21 @@ from pylab import *
 nx = 256
 ny = 192
 nz = 128
-iter = 7000
 
-# read the 3d data
+iter = 30000
+nt   = 20
+
+# read Moser's data
+Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
+Moserrey  = numpy.loadtxt("chan180.reystress", skiprows=25)
+
+yplusMoser = Mosermean[:,1]
+uavgMoser  = Mosermean[:,2]
+uvarMoser  = Moserrey[:,2]
+vvarMoser  = Moserrey[:,3]
+wvarMoser  = Moserrey[:,4]
+
+# read the grid data
 n = nx*ny*nz
 
 fin = open("grid.{:07d}".format(0),"rb")
@@ -27,50 +39,60 @@ raw = fin.read(nz*8)
 zh  = numpy.array(struct.unpack('{}d'.format(nz), raw))
 fin.close()
 
-fin = open("u.{:07d}".format(iter),"rb")
-raw = fin.read(n*8)
-tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
-u   = tmp.reshape((nz, ny, nx))
-fin.close()
+# read the 3d data and process it
+uavgt = numpy.zeros((nt, nz))
+vavgt = numpy.zeros((nt, nz))
 
-fin = open("v.{:07d}".format(iter),"rb")
-raw = fin.read(n*8)
-tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
-v   = tmp.reshape((nz, ny, nx))
-fin.close()
+uvart = numpy.zeros((nt, nz))
+vvart = numpy.zeros((nt, nz))
+wvart = numpy.zeros((nt, nz))
 
-fin = open("w.{:07d}".format(iter),"rb")
-raw = fin.read(n*8)
-tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
-w   = tmp.reshape((nz, ny, nx))
-fin.close()
+for t in range(nt):
+  prociter = iter + 500*t
+  print("Processing iter = {:07d}".format(prociter))
 
-del(raw)
-del(tmp)
+  fin = open("u.{:07d}".format(prociter),"rb")
+  raw = fin.read(n*8)
+  tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
+  u   = tmp.reshape((nz, ny, nx))
+  fin.close()
+  
+  fin = open("v.{:07d}".format(prociter),"rb")
+  raw = fin.read(n*8)
+  tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
+  v   = tmp.reshape((nz, ny, nx))
+  fin.close()
+  
+  fin = open("w.{:07d}".format(prociter),"rb")
+  raw = fin.read(n*8)
+  tmp = numpy.array(struct.unpack('{}d'.format(n), raw))
+  w   = tmp.reshape((nz, ny, nx))
+  fin.close()
+  
+  del(raw)
+  del(tmp)
 
-# read Moser's data
-Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
-Moserrey  = numpy.loadtxt("chan180.reystress", skiprows=25)
+  uavgt[t,:] = numpy.mean(numpy.mean(u,2),1)
+  vavgt[t,:] = numpy.mean(numpy.mean(v,2),1)
 
-yplusMoser = Mosermean[:,1]
-uavgMoser  = Mosermean[:,2]
-uvarMoser  = Moserrey[:,2]
-vvarMoser  = Moserrey[:,3]
-wvarMoser  = Moserrey[:,4]
+  for k in range(nz):
+    uvart[t,k] = numpy.var(u[k,:,:] - uavgt[t,k])
+    vvart[t,k] = numpy.var(v[k,:,:] - vavgt[t,k])
+    wvart[t,k] = numpy.var(w[k,:,:])
 
-# process the 3d data
-uavg  = numpy.mean(numpy.mean(u,2),1)
-uvar  = numpy.zeros(nz)
-vvar  = numpy.zeros(nz)
-wvar  = numpy.zeros(nz)
+utotavgt = (uavgt**2. + vavgt**2.)**.5
+visc     = 1.0e-5
+ustart   = (visc * utotavgt[:,0] / z[0])**0.5
 
-for k in range(nz):
-  uvar[k] = numpy.var(u[k,:,:] - uavg[k])
-  vvar[k] = numpy.var(v[k,:,:])
-  wvar[k] = numpy.var(w[k,:,:])
+uavg = numpy.mean(uavgt,0)
+vavg = numpy.mean(vavgt,0)
+uvar = numpy.mean(uvart,0)
+vvar = numpy.mean(vvart,0)
+wvar = numpy.mean(wvart,0)
 
-visc  = 1.0e-5
-ustar = (visc * uavg[0] / z[0])**0.5
+utotavg = numpy.mean(utotavgt,0)
+
+ustar = numpy.mean(ustart)
 
 print('Re_tau = %.2f' % (ustar / visc))
 
@@ -88,7 +110,10 @@ endy   = z.size / 2
 
 close('all')
 figure()
-semilogx(yplus[starty:endy], uavg[starty:endy] / ustar, 'b-')
+for t in range(nt):
+  semilogx(yplus[starty:endy], utotavgt[t,starty:endy] / ustar, color='#cccccc')
+semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'b-')
+semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'b-')
 semilogx(yplusMoser, uavgMoser, 'k--', label="Moser")
 semilogx(ypluslin, ulin, 'k:')
 semilogx(ypluslog, ulog, 'k:')
@@ -99,6 +124,10 @@ grid()
 axis([0.3, 200, 0, 22])
 
 figure()
+for t in range(nt):
+  plot(yplus[starty:endy], (uvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+  plot(yplus[starty:endy], (vvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+  plot(yplus[starty:endy], (wvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
 plot(yplus [starty:endy], (uvar[starty:endy] / ustar**2.)**0.5, 'b-')
 plot(yplus [starty:endy], (vvar[starty:endy] / ustar**2.)**0.5, 'g-')
 plot(yplush[starty:endy], (wvar[starty:endy] / ustar**2.)**0.5, 'r-')
