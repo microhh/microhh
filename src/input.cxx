@@ -149,10 +149,13 @@ int cinput::readproffile(std::string inputfilename)
     while(substring != NULL)
     {
       nvar++;
-      std::printf("Found variable \"%s\"\n", substring);
+
+      n = std::sscanf(substring, " %s ", temp1);
+      std::printf("Found variable \"%s\"\n", temp1);
 
       // read the next substring
       substring = std::strtok(NULL, " ,;\t\n");
+
     }
 
     if(nvar == 0)
