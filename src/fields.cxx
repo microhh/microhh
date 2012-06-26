@@ -168,9 +168,9 @@ int cfields::createfields(cinput *inputin)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        u->data[ijk] += uproftemp[k];
-        v->data[ijk] += vproftemp[k];
-        s->data[ijk] += sproftemp[k];
+        u->data[ijk] += uproftemp[k-grid->kstart];
+        v->data[ijk] += vproftemp[k-grid->kstart];
+        s->data[ijk] += sproftemp[k-grid->kstart];
       }
 
   // set w equal to zero at the boundaries
