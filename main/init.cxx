@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 
   // INPUT FILE CREATION
   // read the grid from the input
-  grid.create();
+  grid.create(&input);
 
   // create the random field
   // create the initial field

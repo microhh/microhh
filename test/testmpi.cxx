@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
   mpicheck.checkLayout();
 
   // fill the fields with data
-  if(grid.create())
+  if(grid.create(&input))
     return 1;
 
   // fill the fields with the test data

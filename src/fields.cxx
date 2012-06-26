@@ -155,17 +155,23 @@ int cfields::createfields(cinput *inputin)
           w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
         }
 
-  // set the mean profile
-  double dpdxls = -8.e-7;
-  int k;
+  double uproftemp[grid->kmax];
+  double vproftemp[grid->kmax];
+  double sproftemp[grid->kmax];
 
-  for(int n=0; n<grid->ncells; n++)
-  {
-    k           = n / (grid->icells*grid->jcells);
-    u->data[n] += 1./(2.*visc)*dpdxls*(grid->z[k]*grid->z[k] - grid->zsize*grid->z[k]);
-    s->data[n] += (double)(k+1-grid->kgc) * grid->zsize / (double)(grid->ktot+1);
-  }
-  // end Moser180 setup 
+  inputin->getProf(uproftemp, "u", grid->kmax);
+  inputin->getProf(vproftemp, "v", grid->kmax);
+  inputin->getProf(sproftemp, "s", grid->kmax);
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        u->data[ijk] += uproftemp[k];
+        v->data[ijk] += vproftemp[k];
+        s->data[ijk] += sproftemp[k];
+      }
 
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;

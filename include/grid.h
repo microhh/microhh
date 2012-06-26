@@ -13,7 +13,7 @@ class cgrid
     ~cgrid();
     int readinifile(cinput *);
     int init();
-    int create();
+    int create(cinput *);
     int calculate();
     int save();
     int load();

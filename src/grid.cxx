@@ -123,8 +123,9 @@ int cgrid::init()
   return 0;
 }
 
-int cgrid::create()
+int cgrid::create(cinput *inputin)
 {
+  /*
   // create non-equidistant grid
   double alpha = 0.967;
   double eta;
@@ -137,11 +138,13 @@ int cgrid::create()
     z[k] = zsize / (2.*alpha) * std::tanh(eta*0.5*(std::log(1.+alpha) - std::log(1.-alpha))) + 0.5*zsize;
   }
   // end Moser180 setup 
+  */
   
-  /*// uniform height setup
-  for(k=kstart; k<kend; k++)
-    z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
-  // end uniform height setup*/
+  // // uniform height setup
+  // for(k=kstart; k<kend; k++)
+  //   z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
+  // // end uniform height setup*/
+  inputin->getProf(z, "z", kmax);
 
   calculate();
 

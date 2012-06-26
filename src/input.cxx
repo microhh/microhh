@@ -110,7 +110,7 @@ int cinput::readinifile(std::string inputfilename)
 
 int cinput::readproffile(std::string inputfilename)
 {
-  char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256];
+  char inputline[256], temp1[256];
   char *substring;
   int n;
 
@@ -127,6 +127,7 @@ int cinput::readproffile(std::string inputfilename)
 
   std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
   int nvar = 0;
+  std::vector<std::string> varnames;
 
   // first find the header
   while(std::fgets(inputline, 256, inputfile) != NULL)
@@ -156,7 +157,8 @@ int cinput::readproffile(std::string inputfilename)
         
       std::printf("Found variable \"%s\"\n", substring);
 
-      // store the variable name
+      // temporarily store the variable name
+      varnames.push_back(std::string(substring));
 
       // read the next substring
       substring = std::strtok(NULL, " ,;\t\n");
@@ -177,6 +179,8 @@ int cinput::readproffile(std::string inputfilename)
   int ncols;
   double datavalue;
 
+  std::vector<double> varvalues;
+
   while(std::fgets(inputline, 256, inputfile) != NULL)
   {
     // check for empty line
@@ -191,6 +195,7 @@ int cinput::readproffile(std::string inputfilename)
 
     // read the data
     ncols = 0;
+    varvalues.clear();
     // read the first substring
     substring = std::strtok(inputline, " ,;\t\n");
     while(substring != NULL)
@@ -206,7 +211,8 @@ int cinput::readproffile(std::string inputfilename)
         return 1;
       }
 
-      // store the data
+      // temporarily store the data
+      varvalues.push_back(datavalue);
         
       // read the next substring
       substring = std::strtok(NULL, " ,;\t\n");
@@ -222,6 +228,10 @@ int cinput::readproffile(std::string inputfilename)
       std::printf("ERROR %d data columns, but %d defined variables\n", ncols, nvar);
       return 1;
     }
+
+    // store the data
+    for(n=0; n<nvar; n++)
+      proflist[varnames[n]].push_back(varvalues[n]);
   }
 
   return 0;
@@ -415,6 +425,36 @@ int cinput::checkItem(bool *value, std::string cat, std::string item)
       std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
       return 1;
     }
+  }
+
+  return 0;
+}
+
+int cinput::getProf(double *data, std::string varname, int kmaxin)
+{
+  profmap::const_iterator it = proflist.find(varname);
+
+  if(it != proflist.end())
+  {
+    int profsize = proflist[varname].size();
+    if(profsize < kmaxin)
+    {
+      std::printf("ERROR only %d of %d levels can be read for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
+      return 1;
+    }
+    if(profsize > kmaxin)
+      std::printf("WARNING %d is larger than the number of grid points %d for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
+
+    for(int k=0; k<kmaxin; k++)
+      data[k] = proflist[varname][k];
+
+    std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
+  }
+  else
+  { 
+    std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
+    for(int k=0; k<kmaxin; k++)
+      data[k] = 0.;
   }
 
   return 0;
