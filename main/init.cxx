@@ -20,9 +20,14 @@ int main(int argc, char *argv[])
   cpres     pres    (&grid, &fields, &mpi);
   ctimeloop timeloop(&grid, &fields, &mpi);
   
-  // read the input data and terminate on error
+  // read the input data
   if(input.readinifile(simname))
     return 1;
+  // read the profiles
+  if(input.readproffile(simname))
+    return 1;
+
+  // process the settings data
   if(grid.readinifile(&input))
     return 1;
   if(mpi.readinifile(&input))
@@ -39,12 +44,13 @@ int main(int argc, char *argv[])
     return 1;
   fields.initfields();
 
+  // INPUT FILE CREATION
   // read the grid from the input
   grid.create();
 
   // create the random field
-  // read the mean profiles
-  fields.createfields();
+  // create the initial field
+  fields.createfields(&input);
 
   // store the data on disk
   if(grid.save())

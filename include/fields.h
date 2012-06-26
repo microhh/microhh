@@ -14,7 +14,7 @@ class cfields
 
     int readinifile(cinput *);
     int initfields();
-    int createfields();
+    int createfields(cinput *);
     int save(int);
     int load(int);
 

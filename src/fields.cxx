@@ -91,7 +91,7 @@ int cfields::initfields()
   return 0;
 }
 
-int cfields::createfields()
+int cfields::createfields(cinput *inputin)
 {
   std::printf("Creating fields\n");
   

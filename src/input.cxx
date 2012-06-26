@@ -108,6 +108,67 @@ int cinput::readinifile(std::string inputfilename)
   return nerrors;
 }
 
+int cinput::readproffile(std::string inputfilename)
+{
+  char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256];
+  int n;
+
+  // read the input file
+  FILE *inputfile;
+  inputfilename += ".prof";
+  inputfile = fopen(inputfilename.c_str(), "r");
+
+  if(inputfile == NULL)
+  {
+    std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
+    return 1;
+  }
+
+  std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
+
+  // first find the header
+  while(std::fgets(inputline, 256, inputfile) != NULL)
+  {
+    // check for empty line
+    n = std::sscanf(inputline, " %s ", temp1);
+    if(n == 0) 
+      continue; 
+
+    // check for comments
+    n = std::sscanf(inputline, " #%[^\n]", temp1);
+    if(n > 0)
+      continue;
+
+    // read the header
+    char *substring;
+
+    int nvar = 0;
+
+    // read the first substring
+    substring = std::strtok(inputline, " ,;\t\n");
+    while(substring != NULL)
+    {
+      nvar++;
+      std::printf("Found variable \"%s\"\n", substring);
+
+      // read the next substring
+      substring = std::strtok(NULL, " ,;\t\n");
+    }
+
+    if(nvar == 0)
+    {
+      std::printf("ERROR 0 variable names in header\n");
+      return 1;
+    }
+
+    // step out of the fgets loop
+    break;
+  }
+
+  return 0;
+}
+
+
 int cinput::checkItemExists(std::string cat, std::string item)
 {  
   inputmap::const_iterator it1 = inputlist.find(cat);
