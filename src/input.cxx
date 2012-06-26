@@ -111,6 +111,7 @@ int cinput::readinifile(std::string inputfilename)
 int cinput::readproffile(std::string inputfilename)
 {
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256];
+  char *substring;
   int n;
 
   // read the input file
@@ -125,6 +126,7 @@ int cinput::readproffile(std::string inputfilename)
   }
 
   std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
+  int nvar = 0;
 
   // first find the header
   while(std::fgets(inputline, 256, inputfile) != NULL)
@@ -140,32 +142,86 @@ int cinput::readproffile(std::string inputfilename)
       continue;
 
     // read the header
-    char *substring;
-
-    int nvar = 0;
-
     // read the first substring
     substring = std::strtok(inputline, " ,;\t\n");
     while(substring != NULL)
     {
       nvar++;
 
-      n = std::sscanf(substring, " %s ", temp1);
-      std::printf("Found variable \"%s\"\n", temp1);
+      if(!std::isalpha(substring[0]))
+      {
+        std::printf("ERROR \"%s\" is not a variable name\n", substring);
+        return 1;
+      }
+        
+      std::printf("Found variable \"%s\"\n", substring);
+
+      // store the variable name
 
       // read the next substring
       substring = std::strtok(NULL, " ,;\t\n");
-
     }
 
     if(nvar == 0)
     {
-      std::printf("ERROR 0 variable names in header\n");
+      std::printf("ERROR no variable names in header\n");
       return 1;
     }
 
     // step out of the fgets loop
     break;
+  }
+  
+  // second read the data
+  // continue reading
+  int ncols;
+  double datavalue;
+
+  while(std::fgets(inputline, 256, inputfile) != NULL)
+  {
+    // check for empty line
+    n = std::sscanf(inputline, " %s ", temp1);
+    if(n == 0) 
+      continue; 
+
+    // check for comments
+    n = std::sscanf(inputline, " #%[^\n]", temp1);
+    if(n > 0)
+      continue;
+
+    // read the data
+    ncols = 0;
+    // read the first substring
+    substring = std::strtok(inputline, " ,;\t\n");
+    while(substring != NULL)
+    {
+      ncols++;
+
+      // scan the line, while checking that the whole string has been read
+      n = std::sscanf(inputline, " %lf %[^\n]", &datavalue, temp1);
+
+      if(n != 1)
+      {
+        std::printf("ERROR \"%s\" is not a correct data value\n", substring);
+        return 1;
+      }
+
+      // store the data
+        
+      // read the next substring
+      substring = std::strtok(NULL, " ,;\t\n");
+    }
+
+    if(nvar == 0)
+    {
+      std::printf("ERROR no variable names in header\n");
+      return 1;
+    }
+    else if(ncols != nvar)
+    {
+      std::printf("ERROR %d data columns, but %d defined variables\n", ncols, nvar);
+      return 1;
+    }
   }
 
   return 0;
