@@ -34,9 +34,11 @@ int cinput::readinifile(std::string inputfilename)
  
   std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
 
+  int nline=0;
   // check the cases: comments, empty line, block, value, rubbish
   while(std::fgets(inputline, 256, inputfile) != NULL)
   {
+    nline++;
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
     if(n == 0) 
@@ -58,7 +60,7 @@ int cinput::readinifile(std::string inputfilename)
       }
       else
       {
-        std::printf("ERROR in block specification [%s]\n", temp1);
+        std::printf("ERROR line %d: illegal block specification [%s]\n", nline, temp1);
         nerrors++;
       }
       continue;
@@ -72,7 +74,7 @@ int cinput::readinifile(std::string inputfilename)
       {
         if(!blockset)
         {
-          std::printf("ERROR item [?][%s] = \"%s\"\n", lhs, rhs);
+          std::printf("ERROR line %d: illegal item [?][%s] = \"%s\"\n", nline, lhs, rhs);
           nerrors++;
           continue;
         }
@@ -86,7 +88,7 @@ int cinput::readinifile(std::string inputfilename)
       else
       {
         n = std::sscanf(inputline, "%[^=]", temp1);
-        std::printf("ERROR item  [%s][%s]\n", block, temp1);
+        std::printf("ERROR line %d: illegal item  [%s][%s]\n", nline, block, temp1);
         nerrors++;
       }
     }
@@ -97,7 +99,7 @@ int cinput::readinifile(std::string inputfilename)
       n = std::sscanf(inputline, "%[^\n]", temp1);
       if(n > 0)
       {
-        std::printf("ERROR \"%s\" is illegal input\n", temp1);
+        std::printf("ERROR line %d: \"%s\" is illegal input\n", nline, temp1);
         nerrors++;
       }
     }
