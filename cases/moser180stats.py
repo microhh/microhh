@@ -8,8 +8,8 @@ nx = 256
 ny = 192
 nz = 128
 
-iter = 30000
-nt   = 20
+iter = 0
+nt   = 1
 
 # read Moser's data
 Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
@@ -125,9 +125,9 @@ axis([0.3, 200, 0, 22])
 
 figure()
 for t in range(nt):
-  plot(yplus[starty:endy], (uvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
-  plot(yplus[starty:endy], (vvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
-  plot(yplus[starty:endy], (wvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+  plot(yplus [starty:endy], (uvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+  plot(yplus [starty:endy], (vvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+  plot(yplush[starty:endy], (wvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
 plot(yplus [starty:endy], (uvar[starty:endy] / ustar**2.)**0.5, 'b-')
 plot(yplus [starty:endy], (vvar[starty:endy] / ustar**2.)**0.5, 'g-')
 plot(yplush[starty:endy], (wvar[starty:endy] / ustar**2.)**0.5, 'r-')
