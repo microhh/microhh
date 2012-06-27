@@ -39,7 +39,7 @@ double cadvec::getcfl(double dt)
 
 double cadvec::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
-  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2;
+  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2,kk3;
   double dxi,dyi;
 
   ii1 = 1;
@@ -48,13 +48,27 @@ double cadvec::calccfl(double * restrict u, double * restrict v, double * restri
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
+  kk3 = 2*grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
   double cfl = 0;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  int kstart = grid->kstart;
+  int kend   = grid->kend;
+
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk  = i + j*jj1 + kstart*kk1;
+      cfl = std::max(cfl, std::abs(interp4   (u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]))*dxi 
+                        + std::abs(interp4   (v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]))*dyi 
+                        + std::abs(interp4bot(w[ijk    ], w[ijk+kk1], w[ijk+kk2], w[ijk+kk3]))*dzi[kstart]);
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -62,8 +76,18 @@ double cadvec::calccfl(double * restrict u, double * restrict v, double * restri
         ijk  = i + j*jj1 + k*kk1;
         cfl = std::max(cfl, std::abs(interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]))*dxi 
                           + std::abs(interp4(v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2]))*dyi 
-                          + std::abs(interp2(w[ijk], w[ijk+kk1]))*dzi[k]);
+                          + std::abs(interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]))*dzi[k]);
       }
+
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk  = i + j*jj1 + (kend-1)*kk1;
+      cfl = std::max(cfl, std::abs(interp4   (u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]))*dxi 
+                        + std::abs(interp4   (v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]))*dyi 
+                        + std::abs(interp4top(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]))*dzi[kend-1]);
+    }
 
   grid->getmax(&cfl);
 

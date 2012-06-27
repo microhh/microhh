@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     return 1;
 
   // free the memory of the input data
-  input.clear()
+  input.clear();
 
   // store the data on disk
   if(grid.save())
