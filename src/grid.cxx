@@ -145,7 +145,8 @@ int cgrid::create(cinput *inputin)
   //   z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
   // // end uniform height setup*/
   
-  inputin->getProf(&z[kstart], "z", kmax);
+  if(inputin->getProf(&z[kstart], "z", kmax))
+    return 1;
 
   calculate();
 

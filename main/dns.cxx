@@ -54,6 +54,9 @@ int main(int argc, char *argv[])
   if(force.readinifile(&input))
     return 1;
 
+  // free the memory of the input
+  input.clear();
+
   // fill the fields with data
   if(grid.load())
     return 1;

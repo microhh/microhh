@@ -13,6 +13,13 @@ cinput::~cinput()
   std::printf("Destroying instance of object input\n");
 }
 
+int cinput::clear()
+{
+  inputlist.clear();
+  proflist.clear();
+  return 0;
+}
+
 int cinput::readinifile(std::string inputfilename)
 {
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256];

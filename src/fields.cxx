@@ -159,9 +159,12 @@ int cfields::create(cinput *inputin)
   double vproftemp[grid->kmax];
   double sproftemp[grid->kmax];
 
-  inputin->getProf(uproftemp, "u", grid->kmax);
-  inputin->getProf(vproftemp, "v", grid->kmax);
-  inputin->getProf(sproftemp, "s", grid->kmax);
+  if(inputin->getProf(uproftemp, "u", grid->kmax))
+    return 1;
+  if(inputin->getProf(vproftemp, "v", grid->kmax))
+    return 1;
+  if(inputin->getProf(sproftemp, "s", grid->kmax))
+    return 1;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)

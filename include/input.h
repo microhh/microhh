@@ -19,6 +19,7 @@ class cinput
     int getItem(double *, std::string, std::string, double);
     int getItem(bool *  , std::string, std::string, bool);
     int getProf(double *, std::string, int size);
+    int clear();
 
   private:
     int checkItemExists(std::string, std::string);
