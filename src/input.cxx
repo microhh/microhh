@@ -129,9 +129,11 @@ int cinput::readproffile(std::string inputfilename)
   int nvar = 0;
   std::vector<std::string> varnames;
 
+  int nline = 0;
   // first find the header
   while(std::fgets(inputline, 256, inputfile) != NULL)
   {
+    nline++;
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
     if(n == 0) 
@@ -151,7 +153,7 @@ int cinput::readproffile(std::string inputfilename)
 
       if(!std::isalpha(substring[0]))
       {
-        std::printf("ERROR \"%s\" is not a variable name\n", substring);
+        std::printf("ERROR at line %d: \"%s\" is not a variable name\n", nline, substring);
         return 1;
       }
         
@@ -183,6 +185,7 @@ int cinput::readproffile(std::string inputfilename)
 
   while(std::fgets(inputline, 256, inputfile) != NULL)
   {
+    nline++;
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
     if(n == 0) 
@@ -207,7 +210,7 @@ int cinput::readproffile(std::string inputfilename)
 
       if(n != 1)
       {
-        std::printf("ERROR \"%s\" is not a correct data value\n", substring);
+        std::printf("ERROR line %d: \"%s\" is not a correct data value\n", nline, substring);
         return 1;
       }
 
@@ -218,14 +221,9 @@ int cinput::readproffile(std::string inputfilename)
       substring = std::strtok(NULL, " ,;\t\n");
     }
 
-    if(nvar == 0)
+    if(ncols != nvar)
     {
-      std::printf("ERROR no variable names in header\n");
-      return 1;
-    }
-    else if(ncols != nvar)
-    {
-      std::printf("ERROR %d data columns, but %d defined variables\n", ncols, nvar);
+      std::printf("ERROR line %d: %d data columns, but %d defined variables\n", nline, ncols, nvar);
       return 1;
     }
 

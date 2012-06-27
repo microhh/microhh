@@ -42,15 +42,18 @@ int main(int argc, char *argv[])
     return 1;
   if(grid.init())
     return 1;
-  fields.initfields();
+  if(fields.init())
+    return 1;
 
   // INPUT FILE CREATION
   // read the grid from the input
-  grid.create(&input);
+  if(grid.create(&input))
+    return 1;
 
   // create the random field
   // create the initial field
-  fields.createfields(&input);
+  if(fields.create(&input))
+    return 1;
 
   // store the data on disk
   if(grid.save())

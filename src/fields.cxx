@@ -55,7 +55,7 @@ int cfields::readinifile(cinput *inputin)
   return 0;
 }
 
-int cfields::initfields()
+int cfields::init()
 {
   std::printf("Initializing fields\n");
 
@@ -91,7 +91,7 @@ int cfields::initfields()
   return 0;
 }
 
-int cfields::createfields(cinput *inputin)
+int cfields::create(cinput *inputin)
 {
   std::printf("Creating fields\n");
   

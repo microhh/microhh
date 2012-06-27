@@ -13,8 +13,8 @@ class cfields
     ~cfields();
 
     int readinifile(cinput *);
-    int initfields();
-    int createfields(cinput *);
+    int init();
+    int create(cinput *);
     int save(int);
     int load(int);
 

@@ -38,7 +38,8 @@ int main(int argc, char *argv[])
   // initialize the objects, allocate the required memory
   if(grid.init())
     return 1;
-  fields.initfields();
+  if(fields.init())
+    return 1;
 
   // create the instances of the model operations
   ctimeloop timeloop(&grid, &fields, &mpi);
