@@ -27,17 +27,16 @@ int ctimeloop::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&adaptivestep, "time", "adaptivestep");
-  n += inputin->getItem(&runtime     , "time", "runtime"     );
+  n += inputin->getItem(&maxiter     , "time", "maxiter");
 
   // optional parameters
-  n += inputin->getItem(&cflmax    , "time", "cflmax"     , 1. );
-  n += inputin->getItem(&dnmax     , "time", "dnmax"      , 0.5);
-  n += inputin->getItem(&maxiter   , "time", "maxiter"    , 1e9);
-  n += inputin->getItem(&iteration , "time", "iteration"  , 0  );
-  n += inputin->getItem(&rkorder   , "time", "rkorder"    , 4  );
-  n += inputin->getItem(&outputiter, "time", "outputiter" , 100);
-  n += inputin->getItem(&saveiter  , "time", "saveiter"   , 500);
+  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true );
+  n += inputin->getItem(&cflmax      , "time", "cflmax"      , 1.   );
+  n += inputin->getItem(&dnmax       , "time", "dnmax"       , 0.5  );
+  n += inputin->getItem(&iteration   , "time", "iteration"   , 0    );
+  n += inputin->getItem(&rkorder     , "time", "rkorder"     , 4    );
+  n += inputin->getItem(&outputiter  , "time", "outputiter"  , 100  );
+  n += inputin->getItem(&saveiter    , "time", "saveiter"    , 500  );
 
   // if one argument fails, then crash
   if(n > 0)
@@ -59,7 +58,6 @@ int ctimeloop::readinifile(cinput *inputin)
   dt        = 0.1;
 
   itime    = (long)(ifactor * time);
-  iruntime = (long)(ifactor * runtime);
   idt      = (long)(ifactor * dt);
 
   gettimeofday(&start, NULL);
@@ -74,7 +72,7 @@ int ctimeloop::timestep()
 
   iteration++;
 
-  if(itime >= iruntime || iteration >= maxiter)
+  if(iteration >= maxiter)
     loop = false;
 
   return 0;
