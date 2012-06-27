@@ -203,7 +203,7 @@ int cinput::readproffile(std::string inputfilename)
       ncols++;
 
       // scan the line, while checking that the whole string has been read
-      n = std::sscanf(inputline, " %lf %[^\n]", &datavalue, temp1);
+      n = std::sscanf(substring, " %lf %[^\n]", &datavalue, temp1);
 
       if(n != 1)
       {
