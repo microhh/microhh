@@ -8,8 +8,6 @@ implement fftw_many
 handle field registration properly
 
 [extensions]
-create input system for fields
-create more options for initial perturbations
 compute basic statistics
 
 [dynamical core]
