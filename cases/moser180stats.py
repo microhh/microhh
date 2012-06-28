@@ -113,7 +113,6 @@ figure()
 for t in range(nt):
   semilogx(yplus[starty:endy], utotavgt[t,starty:endy] / ustar, color='#cccccc')
 semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'b-')
-semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'b-')
 semilogx(yplusMoser, uavgMoser, 'k--', label="Moser")
 semilogx(ypluslin, ulin, 'k:')
 semilogx(ypluslog, ulog, 'k:')
