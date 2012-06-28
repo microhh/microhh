@@ -42,9 +42,6 @@ int ctimeloop::readinifile(cinput *inputin)
   if(n > 0)
     return 1;
 
-  // the maximum iteration is relative to the start iteration
-  maxiter += iteration;
-
   // 3 and 4 are the only valid values for the rkorder
   if(!(rkorder == 3 || rkorder == 4))
   {
