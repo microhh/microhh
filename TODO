@@ -1,5 +1,6 @@
 [MPI]
 clean up MPI, such that code can be compiled without
+check why code is not bitwise identical when mpi config is changed
 
 [performance]
 implement fftw_many

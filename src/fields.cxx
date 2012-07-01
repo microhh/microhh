@@ -142,8 +142,8 @@ int cfields::create(cinput *inputin)
         for(int i=grid->istart; i<grid->iend; i++)
         {
           ijk = i + j*jj + k*kk;
-          u->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->x[j])/grid->xsize)*std::cos(pi*grid->z[k]/grid->zsize);
-          w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->x[j])/grid->xsize)*std::sin(pi*grid->z[k]/grid->zsize);
+          u->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->x[i])/grid->xsize)*std::cos(pi*grid->z[k]/grid->zsize);
+          w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->x[i])/grid->xsize)*std::sin(pi*grid->z[k]/grid->zsize);
         }
   else if(vortexaxis == 1)
     for(int k=grid->kstart; k<grid->kend; k++)
