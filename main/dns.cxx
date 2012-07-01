@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
   double cputime, start, end;
 
   // write output file header to the main processor and set the time
-  FILE *dnsout;
+  FILE *dnsout = NULL;
   if(mpi.mpiid == 0)
   {
     std::string outputname = simname + ".out";
