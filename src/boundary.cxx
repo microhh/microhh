@@ -62,7 +62,7 @@ int cboundary::exec()
 
 int cboundary::setgcbot(double * restrict a, int sw)
 { 
-  int ijk0,ijk1,jj,kk,kstart,kend;
+  int ijk0,ijk1,jj,kk,kstart;
 
   kstart = grid->kstart;
 
@@ -99,7 +99,7 @@ int cboundary::setgcbot(double * restrict a, int sw)
 
 int cboundary::setgctop(double * restrict a, int sw)
 { 
-  int ijk0,ijk1,jj,kk,kstart,kend;
+  int ijk0,ijk1,jj,kk,kend;
 
   kend   = grid->kend;
 
