@@ -485,15 +485,40 @@ int cgrid::boundary_cyclic(double * restrict data)
   MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
 
-  // second, send and receive the ghost cells in the north-south direction
-  MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
-  MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
-  MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
-  MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
+  // if the run is 3D, apply the BCs
+  if(jmax > 1)
+  {
+    // second, send and receive the ghost cells in the north-south direction
+    MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+  }
+  // in case of 2D, fill all the ghost cells with the current value
+  else
+  {
+    // 2d essential variables
+    int ijkref,ijknorth,ijksouth,jj,kk;
+
+    jj = icells;
+    kk = icells*jcells;
+
+    for(int k=kstart; k<kend; k++)
+      for(int j=0; j<jgc; j++)
+#pragma ivdep
+        for(int i=istart; i<iend; i++)
+        {
+          ijkref   = i + jstart*jj   + k*kk;
+          ijknorth = i + j*jj        + k*kk;
+          ijksouth = i + (jend+j)*jj + k*kk;
+          data[ijknorth] = data[ijkref];
+          data[ijksouth] = data[ijkref];
+        }
+  }
 
   return 0;
 }
