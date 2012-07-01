@@ -67,14 +67,27 @@ int cgrid::readinifile(cinput *inputin)
 
 int cgrid::init()
 {
-  if(itot % mpi->npx != 0 || itot % mpi->npy != 0)
+  // check whether the grid fits the processor configuration
+  if(itot % mpi->npx != 0)
   {
-    std::printf("ERROR itot = %d is not a multiple of npx = %d or npy = %d\n", itot, mpi->npx, mpi->npy);
+    std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, mpi->npx);
     return 1;
   }
-  if(jtot % mpi->npx != 0 || jtot % mpi->npy != 0)
+  if(itot % mpi->npy != 0)
   {
-    std::printf("ERROR jtot = %d is not a multiple of npx = %d or npy = %d\n", jtot, mpi->npx, mpi->npy);
+    std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, mpi->npy);
+    return 1;
+  }
+  // check this one only when npy > 1, since the transpose in that direction only happens then
+  //if(jtot % mpi->npx != 0 && mpi->npy > 1)
+  if(jtot % mpi->npx != 0)
+  {
+    std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, mpi->npx);
+    return 1;
+  }
+  if(jtot % mpi->npy != 0)
+  {
+    std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, mpi->npy);
     return 1;
   }
   if(ktot % mpi->npx != 0)
