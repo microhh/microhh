@@ -1,8 +1,8 @@
 from pylab import *
 from taylorgreenfunc import *
 
-t    = 0
-time = 0.
+t    = 400
+time = 1.
 visc = (8.*pi**2. * 100.)**(-1.)
 
 data32  = microhh(t,  32,  16, 'taylorgreen32' )
@@ -27,6 +27,9 @@ errsw = array([err32.w, err64.w, err128.w, err256.w])
 errsp = array([err32.p, err64.p, err128.p, err256.p])
 
 print('errors p', errsp)
+if(t > 0):
+  print('convergence u', (log(errsu[-1])-log(errsu[0])) / (log(dxs[-1])-log(dxs[0])) )
+  print('convergence w', (log(errsw[-1])-log(errsw[0])) / (log(dxs[-1])-log(dxs[0])) )
 print('convergence p', (log(errsp[-1])-log(errsp[0])) / (log(dxs[-1])-log(dxs[0])) )
 
 off2 = 0.01
@@ -37,7 +40,9 @@ slope4 = off4*(dxs[:] / dxs[0])**4.
 close('all')
 
 figure()
-loglog(dxs, errsp, 'bo-', label="p")
+loglog(dxs, errsu, 'bo-', label="u")
+loglog(dxs, errsw, 'go-', label="w")
+loglog(dxs, errsp, 'ro-', label="p")
 loglog(dxs, slope2, 'k--', label="2nd")
 loglog(dxs, slope4, 'k:' , label="4th")
 legend(loc=4, frameon=False)
