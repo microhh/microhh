@@ -386,7 +386,7 @@ int cgrid::load()
   fclose(pFile);
   // }
 
-  // calculate the ghost cells
+  // calculate the missing coordinates
   calculate();
 
   return 0;
@@ -499,7 +499,7 @@ int cgrid::boundary_cyclic(double * restrict data)
   mpi->reqsn++;
 
   // if the run is 3D, apply the BCs
-  if(jmax > 1)
+  if(jtot > 1)
   {
     // second, send and receive the ghost cells in the north-south direction
     MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
