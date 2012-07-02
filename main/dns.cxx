@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
   start = mpi.gettime();
 
   // start the time loop
-  while(timeloop.loop)
+  while(true)
   {
     // determine the time step
     if(!timeloop.insubstep())
@@ -117,6 +117,13 @@ int main(int argc, char *argv[])
     force.exec(timeloop.getsubdt());
     // pressure
     pres.exec(timeloop.getsubdt());
+    if(timeloop.dosave() && !timeloop.insubstep())
+      fields.p->save(timeloop.iteration);
+
+    // exit the simulation when the runtime has been hit after the pressure calculation
+    if(!timeloop.loop)
+      break;
+
     // perform the timestepping substep
     timeloop.exec();
 

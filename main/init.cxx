@@ -63,9 +63,9 @@ int main(int argc, char *argv[])
     return 1;
   if(pres.save())
     return 1;
-  if(fields.save(0))
+  if(fields.save(timeloop.iteration))
     return 1;
-  if(timeloop.save(0))
+  if(timeloop.save(timeloop.iteration))
     return 1;
 
   return 0;
