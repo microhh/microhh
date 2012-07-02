@@ -33,6 +33,7 @@ int cfield3d::init()
   return 0;
 }
 
+/*
 int cfield3d::boundary_bottop(int sw)
 { 
   int ijk0,ijk1,jj,kk,kstart,kend;
@@ -148,7 +149,7 @@ int cfield3d::boundary_cyclic()
       }
 
   return 0;
-}
+}*/
 
 int cfield3d::save(int n)
 {

@@ -50,11 +50,6 @@ int cpres::exec(double dt)
   // (*fields->ut).boundary_cyclic();
   // (*fields->vt).boundary_cyclic();
   // (*fields->wt).boundary_cyclic();
-  grid->boundary_cyclic((*fields->ut).data);
-  grid->boundary_cyclic((*fields->vt).data);
-  grid->boundary_cyclic((*fields->wt).data);
-  mpi->waitall();
-
   // create the input for the pressure solver
   pres_2nd_in((*fields->p ).data,
               (*fields->u ).data, (*fields->v ).data, (*fields->w ).data,
@@ -63,12 +58,6 @@ int cpres::exec(double dt)
 
   // solve the system
   pres_2nd_solve((*fields->p).data, work3d, grid->dz, fftini, fftouti, fftinj, fftoutj);
-
-  // set the boundary conditions
-  // (*fields->p).boundary_cyclic();
-  grid->boundary_cyclic((*fields->p).data);
-  mpi->waitall();
-  (*fields->p).boundary_bottop(1);
 
   // get the pressure tendencies from the pressure field
   pres_2nd_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
@@ -238,6 +227,12 @@ int cpres::pres_2nd_in(double * restrict p,
   igc = grid->igc;
   jgc = grid->jgc;
   kgc = grid->kgc;
+
+  // set the cyclic boundary conditions for the tendencies
+  grid->boundary_cyclic(ut);
+  grid->boundary_cyclic(vt);
+  grid->boundary_cyclic(wt);
+  mpi->waitall();
 
   // write pressure as a 3d array without ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -446,6 +441,7 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
   jjp = grid->icells;
   kkp = grid->icells*grid->jcells;
 
+  // put the pressure back onto the original grid including ghost cells
   for(int k=0; k<grid->kmax; k++)
     for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
@@ -455,6 +451,20 @@ int cpres::pres_2nd_solve(double * restrict p, double * restrict work3d, double 
         ijk  = i + j*jj + k*kk;
         p[ijkp] = work3d[ijk];
       }
+
+  // set the boundary conditions
+  // set a zero gradient boundary at the bottom
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jjp + grid->kstart*kkp;
+      p[ijk-kkp] = p[ijk];
+    }
+
+  // set the cyclic boundary conditions
+  grid->boundary_cyclic(p);
+  mpi->waitall();
 
   return 0;
 }

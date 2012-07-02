@@ -15,11 +15,12 @@ class cfields
     int readinifile(cinput *);
     int init();
     int create(cinput *);
+
     int save(int);
     int load(int);
 
     // int resettend();
-    int boundary();
+    // int boundary();
 
     double checkmom ();
     double checktke ();

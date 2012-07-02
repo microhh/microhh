@@ -11,9 +11,10 @@ class cfield3d
     // functions
     cfield3d(cgrid *, cmpi *, std::string);
     ~cfield3d();
+
     int init();
-    int boundary_bottop(int);
-    int boundary_cyclic();
+    // int boundary_bottop(int);
+    // int boundary_cyclic();
     int save(int);
     int load(int);
 

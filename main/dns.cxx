@@ -2,6 +2,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
+#include "boundary.h"
 #include "timeloop.h"
 // #include "advec_g2i2.h"
 #include "advec_g2i4.h"
@@ -41,6 +42,9 @@ int main(int argc, char *argv[])
   if(fields.init())
     return 1;
 
+  // create the boundary conditions class
+  cboundary boundary(&grid, &fields, &mpi);
+
   // create the instances of the model operations
   ctimeloop timeloop(&grid, &fields, &mpi);
   cadvec    advec   (&grid, &fields, &mpi);
@@ -49,6 +53,8 @@ int main(int argc, char *argv[])
   cforce    force   (&grid, &fields, &mpi);
 
   // read the inputdata
+  if(boundary.readinifile(&input))
+    return 1;
   if(timeloop.readinifile(&input))
     return 1;
   if(force.readinifile(&input))
@@ -93,7 +99,7 @@ int main(int argc, char *argv[])
   }
 
   // set the boundary conditions
-  fields.boundary();
+  boundary.exec();
 
   // catch the start time for the first iteration
   start = mpi.gettime();
@@ -128,7 +134,7 @@ int main(int argc, char *argv[])
     timeloop.exec();
 
     // boundary conditions
-    fields.boundary();
+    boundary.exec();
 
     if(!timeloop.insubstep())
       timeloop.timestep();

@@ -214,6 +214,7 @@ int cfields::save(int n)
   return 0;
 }
 
+/*
 int cfields::boundary()
 {
   u->boundary_bottop(0);
@@ -237,6 +238,7 @@ int cfields::boundary()
 
   return 0;
 }
+*/
 
 double cfields::checkmom()
 {
