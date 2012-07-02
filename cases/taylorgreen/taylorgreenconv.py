@@ -3,7 +3,7 @@ from taylorgreenfunc import *
 
 t    = 0
 time = 0.
-visc = (8.*pi**2. * 1000.)**(-1.)
+visc = (8.*pi**2. * 100.)**(-1.)
 
 data32  = microhh(t,  32,  16, 'taylorgreen32' )
 data64  = microhh(t,  64,  32, 'taylorgreen64' )
@@ -26,6 +26,7 @@ errsu = array([err32.u, err64.u, err128.u, err256.u])
 errsw = array([err32.w, err64.w, err128.w, err256.w])
 errsp = array([err32.p, err64.p, err128.p, err256.p])
 
+print('errors p', errsp)
 print('convergence p', (log(errsp[-1])-log(errsp[0])) / (log(dxs[-1])-log(dxs[0])) )
 
 off2 = 0.01
