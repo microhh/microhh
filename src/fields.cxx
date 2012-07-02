@@ -142,8 +142,8 @@ int cfields::create(cinput *inputin)
         for(int i=grid->istart; i<grid->iend; i++)
         {
           ijk = i + j*jj + k*kk;
-          u->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->x[i])/grid->xsize)*std::cos(pi*grid->z[k]/grid->zsize);
-          w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->x[i])/grid->xsize)*std::sin(pi*grid->z[k]/grid->zsize);
+          u->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->xh[i])/grid->xsize)*std::cos(pi*grid->z [k]/grid->zsize);
+          w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->x [i])/grid->xsize)*std::sin(pi*grid->zh[k]/grid->zsize);
         }
   else if(vortexaxis == 1)
     for(int k=grid->kstart; k<grid->kend; k++)
@@ -151,8 +151,8 @@ int cfields::create(cinput *inputin)
         for(int i=grid->istart; i<grid->iend; i++)
         {
           ijk = i + j*jj + k*kk;
-          v->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::cos(pi*grid->z[k]/grid->zsize);
-          w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->y[j])/grid->ysize)*std::sin(pi*grid->z[k]/grid->zsize);
+          v->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->yh[j])/grid->ysize)*std::cos(pi*grid->z [k]/grid->zsize);
+          w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->y [j])/grid->ysize)*std::sin(pi*grid->zh[k]/grid->zsize);
         }
 
   double uproftemp[grid->kmax];
