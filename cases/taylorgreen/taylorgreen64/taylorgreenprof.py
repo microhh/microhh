@@ -1,7 +1,7 @@
 import numpy
 
 # set the height
-kmax  = 48
+kmax  = 32
 zsize = 0.5
 
 # define the variables
