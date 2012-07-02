@@ -1,5 +1,5 @@
 from pylab import *
-from microhh import *
+from taylorgreenfunc import *
 
 t    = 0
 time = 0.
