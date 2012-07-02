@@ -31,6 +31,7 @@ int ctimeloop::readinifile(cinput *inputin)
 
   // optional parameters
   n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true );
+  n += inputin->getItem(&dt          , "time", "dt"          , 0.1  );
   n += inputin->getItem(&cflmax      , "time", "cflmax"      , 1.   );
   n += inputin->getItem(&dnmax       , "time", "dnmax"       , 0.5  );
   n += inputin->getItem(&iteration   , "time", "iteration"   , 0    );
@@ -55,7 +56,6 @@ int ctimeloop::readinifile(cinput *inputin)
   // initializations
   loop      = true;
   time      = 0.;
-  dt        = 0.1;
 
   itime    = (long)(ifactor * time);
   idt      = (long)(ifactor * dt);
