@@ -1,8 +1,8 @@
 from pylab import *
 from taylorgreenfunc import *
 
-t    = 0
-time = 0.
+t    = 400
+time = 1.
 visc = (8.*pi**2. * 100.)**(-1.)
 
 data32  = microhh(t,  32,  16, 'taylorgreen32' )

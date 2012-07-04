@@ -65,7 +65,7 @@ class getref:
     for k in range(z.size):
       self.u[k,0,:] =  sin(2.*pi*xh)*cos(2.*pi*z [k])*exp(-8.*pi**2.*visc*time)
       self.w[k,0,:] = -cos(2.*pi*x )*sin(2.*pi*zh[k])*exp(-8.*pi**2.*visc*time)
-      self.p[k,0,:] = 0.25*(cos(4.*pi*x) + cos(4.*pi*z[k]))*(exp(-8.*pi**2.*visc*time)**2.) - 0.25
+      self.p[k,0,:] = (0.25*(cos(4.*pi*x) + cos(4.*pi*z[k]))-0.25)*(exp(-8.*pi**2.*visc*time)**2.)
 
 class geterror:
   def __init__(self, data, ref):
