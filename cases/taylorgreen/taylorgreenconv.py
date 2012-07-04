@@ -1,8 +1,8 @@
 from pylab import *
 from taylorgreenfunc import *
 
-t    = 400
-time = 1.
+t    = 0
+time = 0.
 visc = (8.*pi**2. * 100.)**(-1.)
 
 data32  = microhh(t,  32,  16, 'taylorgreen32' )
@@ -40,8 +40,9 @@ slope4 = off4*(dxs[:] / dxs[0])**4.
 close('all')
 
 figure()
-loglog(dxs, errsu, 'bo-', label="u")
-loglog(dxs, errsw, 'go-', label="w")
+if(t > 0):
+  loglog(dxs, errsu, 'bo-', label="u")
+  loglog(dxs, errsw, 'go-', label="w")
 loglog(dxs, errsp, 'ro-', label="p")
 loglog(dxs, slope2, 'k--', label="2nd")
 loglog(dxs, slope4, 'k:' , label="4th")
