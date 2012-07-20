@@ -44,8 +44,27 @@ cpres::~cpres()
   std::printf("Destroying instance of object pres\n");
 }
 
+int cpres::readinifile(cinput *inputin)
+{
+  // input parameters
+  int n = 0;
+
+  // obligatory parameters
+  n += inputin->getItem(&ipres, "physics", "ipres");
+
+  // if one argument fails, then crash
+  if(n > 0)
+    return 1;
+
+  return 0;
+}
+
+
 int cpres::exec(double dt)
 {
+  if(ipres == 0)
+    return 0;
+
   // cyclic boundaries for tendencies 
   // (*fields->ut).boundary_cyclic();
   // (*fields->vt).boundary_cyclic();

@@ -3,12 +3,11 @@
 #include "fields.h"
 #include "mpiinterface.h"
 #include "boundary.h"
-#include "timeloop.h"
-// #include "advec_g2i2.h"
-#include "advec_g2i4.h"
+#include "advec.h"
 #include "diff.h"
 #include "force.h"
 #include "pres.h"
+#include "timeloop.h"
 
 int main(int argc, char *argv[])
 {
@@ -55,9 +54,15 @@ int main(int argc, char *argv[])
   // read the inputdata
   if(boundary.readinifile(&input))
     return 1;
-  if(timeloop.readinifile(&input))
+  if(advec.readinifile(&input))
+    return 1;
+  if(diff.readinifile(&input))
     return 1;
   if(force.readinifile(&input))
+    return 1;
+  if(pres.readinifile(&input))
+    return 1;
+  if(timeloop.readinifile(&input))
     return 1;
 
   // free the memory of the input

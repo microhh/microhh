@@ -12,6 +12,8 @@ class cpres
     cpres(cgrid *, cfields *, cmpi *);
     ~cpres();
 
+    int readinifile(cinput *);
+
     int init();
     int save();
     int load();
@@ -25,6 +27,7 @@ class cpres
     cmpi    *mpi;
 
     bool allocated;
+    int ipres;
 
     double *fftini, *fftouti;
     double *fftinj, *fftoutj;

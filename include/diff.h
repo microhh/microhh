@@ -11,6 +11,7 @@ class cdiff
     cdiff(cgrid *, cfields *, cmpi *);
     ~cdiff();
 
+    int readinifile(cinput *);
     int init();
     int exec();
 
@@ -24,6 +25,7 @@ class cdiff
     int diffc_2nd(double *, double *, double *, double *, double);
     int diffw_2nd(double *, double *, double *, double *, double);
 
+    int idiff;
     double dnmul;
 };
 #endif

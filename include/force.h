@@ -18,6 +18,7 @@ class cforce
     cfields *fields;
     cmpi    *mpi;
 
+    int iforce;
     double uflow;
 
     int flux(double *, double *, double *, double);

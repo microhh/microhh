@@ -21,7 +21,8 @@ int cforce::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&uflow, "fields", "uflow", 0);
+  n += inputin->getItem(&iforce, "physics", "iforce");
+  n += inputin->getItem(&uflow , "physics", "uflow", 0.);
 
   if(n > 0)
     return 1;
@@ -31,6 +32,9 @@ int cforce::readinifile(cinput *inputin)
 
 int cforce::exec(double dt)
 {
+  if(iforce == 0)
+    return 0;
+
   flux((*fields->ut).data, (*fields->u).data, grid->dz, dt);
 
   return 0;

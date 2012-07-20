@@ -20,6 +20,21 @@ cdiff::~cdiff()
   std::printf("Destroying instance of object diff\n");
 }
 
+int cdiff::readinifile(cinput *inputin)
+{
+  // input parameters
+  int n = 0;
+
+  // obligatory parameters
+  n += inputin->getItem(&idiff, "physics", "idiff");
+
+  // if one argument fails, then crash
+  if(n > 0)
+    return 1;
+
+  return 0;
+}
+
 int cdiff::init()
 {
   // get the maximum time step for diffusion
@@ -34,11 +49,21 @@ int cdiff::init()
 
 double cdiff::getdn(double dt)
 {
-  return dnmul*dt;
+  double dn;
+
+  if(idiff == 0)
+    dn = 0;
+  else
+    dn = dnmul*dt;
+
+  return dn;
 }
 
 int cdiff::exec()
 {
+  if(idiff == 0)
+    return 0;
+
   // diffuse the flow
   diffc_2nd((*fields->ut).data, (*fields->u).data, grid->dzi, grid->dzhi, fields->visc);
   diffc_2nd((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi, fields->visc);
