@@ -43,9 +43,9 @@ double cadvec::getcfl(double dt)
 {
   double cfl;
 
-  // when advection is switched off CFL is not limiting, therefore set it to zero
+  // in case of no advection set cfl to a small number to avoid zero divisions
   if(iadvec == 0)
-    cfl = 0.;
+    cfl = dsmall;
   
   if(iadvec == 2)
     cfl = advec_g2i2->calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);

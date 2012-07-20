@@ -51,8 +51,9 @@ double cdiff::getdn(double dt)
 {
   double dn;
 
+  // in case of no diffusion set dn to a small number to avoid zero divisions
   if(idiff == 0)
-    dn = 0;
+    dn = dsmall;
   else
     dn = dnmul*dt;
 
