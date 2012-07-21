@@ -21,6 +21,9 @@ cadvec::cadvec(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cadvec::~cadvec()
 {
+  delete advec_g2i2;
+  delete advec_g2i4;
+
   std::printf("Destroying instance of object advec\n");
 }
 
