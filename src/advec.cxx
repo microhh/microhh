@@ -15,8 +15,8 @@ cadvec::cadvec(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   fields = fieldsin;
   mpi    = mpiin;
 
-  advec_g2i2 = new cadvec_g2i2(gridin, fieldsin, mpiin);
-  advec_g2i4 = new cadvec_g2i4(gridin, fieldsin, mpiin);
+  advec_g2i2 = new cadvec_g2i2(grid, fields, mpi);
+  advec_g2i4 = new cadvec_g2i4(grid, fields, mpi);
 }
 
 cadvec::~cadvec()

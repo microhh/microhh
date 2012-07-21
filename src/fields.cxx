@@ -29,6 +29,9 @@ cfields::~cfields()
 
     delete s;
     delete st;
+
+    delete tmp1;
+    delete tmp2;
   }
 
   std::printf("Destroying instance of object fields\n");
@@ -70,8 +73,10 @@ int cfields::init()
   wt = new cfield3d(grid, mpi, "wt");
 
   s  = new cfield3d(grid, mpi, "s" );
-
   st = new cfield3d(grid, mpi, "st");
+
+  tmp1 = new cfield3d(grid, mpi, "tmp1");
+  tmp2 = new cfield3d(grid, mpi, "tmp2");
 
   u->init();
   v->init();
@@ -82,9 +87,11 @@ int cfields::init()
   vt->init();
   wt->init();
 
-  s->init();
-
+  s ->init();
   st->init();
+
+  tmp1->init();
+  tmp2->init();
 
   allocated = true;
 

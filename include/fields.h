@@ -39,6 +39,10 @@ class cfields
     cfield3d *s;
     cfield3d *st;
 
+    // temporary arrays
+    cfield3d *tmp1;
+    cfield3d *tmp2;
+
     double visc;
     double viscs;
 

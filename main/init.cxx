@@ -34,6 +34,8 @@ int main(int argc, char *argv[])
     return 1;
   if(fields.readinifile(&input))
     return 1;
+  if(pres.readinifile(&input))
+    return 1;
   if(timeloop.readinifile(&input))
     return 1;
   
