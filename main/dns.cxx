@@ -71,18 +71,21 @@ int main(int argc, char *argv[])
   // fill the fields with data
   if(grid.load())
     return 1;
-  if(pres.load())
-    return 1;
   if(timeloop.load(timeloop.iteration))
     return 1;
   if(fields.load(timeloop.iteration))
     return 1;
 
   // initialize the diffusion to get the time step requirement
-  diff.init();
+  if(diff.init())
+    return 1;
 
   // initialize the pressure solver
-  pres.init();
+  // CvH check this later, init is already using information from grid, should not happen...
+  if(pres.init())
+    return 1;
+  if(pres.load())
+    return 1;
 
   // initialize the check variables
   int    iter;

@@ -63,6 +63,9 @@ int main(int argc, char *argv[])
   // store the data on disk
   if(grid.save())
     return 1;
+  // CvH check this later, init is already using information from grid, should not happen...
+  if(pres.init())
+    return 1;
   if(pres.save())
     return 1;
   if(fields.save(timeloop.iteration))

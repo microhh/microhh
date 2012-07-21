@@ -87,6 +87,11 @@ int cpres_g2::init()
     c[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc+1];
   }
 
+  fftini  = fftw_alloc_real(itot);
+  fftouti = fftw_alloc_real(itot);
+  fftinj  = fftw_alloc_real(jtot);
+  fftoutj = fftw_alloc_real(jtot);
+
   allocated = true;
 
   return 0;
@@ -98,11 +103,6 @@ int cpres_g2::load()
 
   itot = grid->itot;
   jtot = grid->jtot;
-
-  fftini  = fftw_alloc_real(itot);
-  fftouti = fftw_alloc_real(itot);
-  fftinj  = fftw_alloc_real(jtot);
-  fftoutj = fftw_alloc_real(jtot);
 
   char filename[256];
   std::sprintf(filename, "%s.%07d", "fftwplan", 0);
@@ -134,11 +134,6 @@ int cpres_g2::save()
 
   itot = grid->itot;
   jtot = grid->jtot;
-
-  fftini  = fftw_alloc_real(itot);
-  fftouti = fftw_alloc_real(itot);
-  fftinj  = fftw_alloc_real(jtot);
-  fftoutj = fftw_alloc_real(jtot);
 
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
   iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
