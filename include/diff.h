@@ -4,6 +4,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
+#include "diff_g2.h"
 
 class cdiff
 {
@@ -22,10 +23,9 @@ class cdiff
     cfields *fields;
     cmpi    *mpi;
 
-    int diffc_2nd(double *, double *, double *, double *, double);
-    int diffw_2nd(double *, double *, double *, double *, double);
-
     int idiff;
     double dnmul;
+
+    cdiff_g2 *diff_g2;
 };
 #endif
