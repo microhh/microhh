@@ -1,27 +1,27 @@
 #!/bin/bash
 
-cd taylorgreen32
+cd taylorgreen32_2nd
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen
 ../dns taylorgreen
 cd ..
 
-cd taylorgreen64
+cd taylorgreen64_2nd
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen
 ../dns taylorgreen
 cd ..
 
-cd taylorgreen128
+cd taylorgreen128_2nd
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen
 ../dns taylorgreen
 cd ..
 
-cd taylorgreen256
+cd taylorgreen256_2nd
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen

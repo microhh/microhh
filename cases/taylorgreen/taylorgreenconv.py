@@ -5,10 +5,10 @@ t    = 400
 time = 1.
 visc = (8.*pi**2. * 100.)**(-1.)
 
-data32  = microhh(t,  32,  16, 'taylorgreen32' )
-data64  = microhh(t,  64,  32, 'taylorgreen64' )
-data128 = microhh(t, 128,  64, 'taylorgreen128')
-data256 = microhh(t, 256, 128, 'taylorgreen256')
+data32  = microhh(t,  32,  16, 'taylorgreen32_2nd' )
+data64  = microhh(t,  64,  32, 'taylorgreen64_2nd' )
+data128 = microhh(t, 128,  64, 'taylorgreen128_2nd')
+data256 = microhh(t, 256, 128, 'taylorgreen256_2nd')
 
 ref32  = getref(data32 .x, data32 .xh, data32 .z, data32 .zh, visc, time)
 ref64  = getref(data64 .x, data64 .xh, data64 .z, data64 .zh, visc, time)
