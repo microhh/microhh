@@ -4,12 +4,12 @@
 #include <fftw3.h>
 #include "grid.h"
 #include "fields.h"
-#include "pres_g2.h"
+#include "pres_g42.h"
 #include "defines.h"
 
-cpres_g2::cpres_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cpres_g42::cpres_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object pres_g2\n");
+  std::printf("Creating instance of object pres_g42\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -17,7 +17,7 @@ cpres_g2::cpres_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   allocated = false;
 }
 
-cpres_g2::~cpres_g2()
+cpres_g42::~cpres_g42()
 {
   if(allocated)
   {
@@ -39,10 +39,10 @@ cpres_g2::~cpres_g2()
     delete[] bmatj;
   }
 
-  std::printf("Destroying instance of object pres_g2\n");
+  std::printf("Destroying instance of object pres_g42\n");
 }
 
-int cpres_g2::init()
+int cpres_g42::init()
 {
   int imax, jmax, kmax;
   int itot, jtot, kgc;
@@ -57,20 +57,26 @@ int cpres_g2::init()
   bmati = new double[itot];
   bmatj = new double[jtot];
   
-  // compute the modified wave numbers of the 2nd order scheme
+  // compute the modified wave numbers of the 42 order scheme
   double dxidxi = 1./(grid->dx*grid->dx);
   double dyidyi = 1./(grid->dy*grid->dy);
 
   const double pi = std::acos(-1.);
 
   for(int j=0; j<jtot/2+1; j++)
-    bmatj[j] = 2. * (std::cos(2.*pi*(double)j/(double)jtot)-1.) * dyidyi;
+    bmatj[j] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)j/(double)jtot)
+               - 2.* (54./576.)   * std::cos(4.*pi*(double)j/(double)jtot)
+               + 2.* (783./576.)  * std::cos(2.*pi*(double)j/(double)jtot)
+               -     (1460./576.) ) * dyidyi;
 
   for(int j=jtot/2+1; j<jtot; j++)
     bmatj[j] = bmatj[jtot-j];
 
   for(int i=0; i<itot/2+1; i++)
-    bmati[i] = 2. * (std::cos(2.*pi*(double)i/(double)itot)-1.) * dxidxi;
+    bmati[i] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)i/(double)itot)
+               - 2.* (54./576.)   * std::cos(4.*pi*(double)i/(double)itot)
+               + 2.* (783./576.)  * std::cos(2.*pi*(double)i/(double)itot)
+               -     (1460./576.) ) * dxidxi;
 
   for(int i=itot/2+1; i<itot; i++)
     bmati[i] = bmati[itot-i];
@@ -97,7 +103,7 @@ int cpres_g2::init()
   return 0;
 }
 
-int cpres_g2::load()
+int cpres_g42::load()
 { 
   int itot, jtot;
 
@@ -128,7 +134,7 @@ int cpres_g2::load()
   return 0;
 }
 
-int cpres_g2::save()
+int cpres_g42::save()
 {
   int itot, jtot;
 
@@ -158,19 +164,22 @@ int cpres_g2::save()
   return 0;
 }
 
-int cpres_g2::pres_in(double * restrict p, 
+int cpres_g42::pres_in(double * restrict p, 
                       double * restrict u , double * restrict v , double * restrict w , 
                       double * restrict ut, double * restrict vt, double * restrict wt, 
                       double * restrict dzi,
                       double dt)
 {
-  int    ijk,ii,jj,kk,ijkp,jjp,kkp;
+  int    ijk,kk,ijkp,jjp,kkp;
+  int    ii1,ii2,jj1,jj2;
   int    igc,jgc,kgc;
   double dxi,dyi;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk  = grid->icells*grid->jcells;
 
   jjp = grid->imax;
   kkp = grid->imax*grid->jmax;
@@ -195,16 +204,16 @@ int cpres_g2::pres_in(double * restrict p,
       for(int i=0; i<grid->imax; i++)
       {
         ijkp = i + j*jjp + k*kkp;
-        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
-                + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
+        ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk;
+        p[ijkp] = grad4( ut[ijk-ii1] + u[ijk-ii1] / dt, ut[ijk] + u[ijk] / dt, ut[ijk+ii1] + u[ijk+ii1] / dt, ut[ijk+ii2] + u[ijk+ii2] / dt, dxi)
+                + grad4( vt[ijk-jj1] + v[ijk-jj1] / dt, vt[ijk] + v[ijk] / dt, vt[ijk+jj1] + v[ijk+jj1] / dt, vt[ijk+jj2] + v[ijk+jj2] / dt, dyi)
                 + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k+kgc];
       }
 
   return 0;
 }
 
-int cpres_g2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
+int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
                          double * restrict fftini, double * restrict fftouti, 
                          double * restrict fftinj, double * restrict fftoutj)
 
@@ -423,15 +432,17 @@ int cpres_g2::pres_solve(double * restrict p, double * restrict work3d, double *
   return 0;
 }
 
-int cpres_g2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+int cpres_g42::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
                        double * restrict p , double * restrict dzhi)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,ii1,ii2,jj1,jj2,kk;
   double dxi,dyi;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk  = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -441,9 +452,9 @@ int cpres_g2::pres_out(double * restrict ut, double * restrict vt, double * rest
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj + k*kk;
-        ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
-        vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
+        ijk = i + j*jj1 + k*kk;
+        ut[ijk] -= grad4( p[ijk-ii2],  p[ijk-ii1],  p[ijk],  p[ijk+ii1], dxi);
+        vt[ijk] -= grad4( p[ijk-jj2],  p[ijk-jj1],  p[ijk],  p[ijk+jj1], dyi);
         wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
       }
 
@@ -451,7 +462,7 @@ int cpres_g2::pres_out(double * restrict ut, double * restrict vt, double * rest
 }
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
-int cpres_g2::tdma(double * restrict a, double * restrict b, double * restrict c, 
+int cpres_g42::tdma(double * restrict a, double * restrict b, double * restrict c, 
                 double * restrict p, double * restrict work2d, double * restrict work3d)
                 
 {
@@ -522,14 +533,16 @@ int cpres_g2::tdma(double * restrict a, double * restrict b, double * restrict c
   return 0;
 }
 
-double cpres_g2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+double cpres_g42::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,ii1,ii2,jj1,jj2,kk;
   double dxi,dyi;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk  = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -543,8 +556,10 @@ double cpres_g2::calcdivergence(double * restrict u, double * restrict v, double
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj + k*kk;
-        div = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
+        ijk = i + j*jj1 + k*kk;
+        div = grad4( u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2], dxi)
+            + grad4( v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2], dyi)
+            + (w[ijk+kk]-w[ijk])*dzi[k];
 
         divmax = std::max(divmax, std::abs(div));
       }
@@ -552,5 +567,10 @@ double cpres_g2::calcdivergence(double * restrict u, double * restrict v, double
   grid->getmax(&divmax);
 
   return divmax;
+}
+
+inline double cpres_g42::grad4(const double a, const double b, const double c, const double d, const double dxi)
+{
+  return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
 }
 

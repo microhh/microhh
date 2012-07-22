@@ -6,6 +6,7 @@
 #include "fields.h"
 #include "mpiinterface.h"
 #include "pres_g2.h"
+#include "pres_g42.h"
 
 class cpres
 {
@@ -31,6 +32,7 @@ class cpres
 
     int ipres;
 
-    cpres_g2 *pres_g2;
+    cpres_g2  *pres_g2;
+    cpres_g42 *pres_g42;
 };
 #endif
