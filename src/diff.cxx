@@ -5,7 +5,6 @@
 #include "fields.h"
 #include "mpiinterface.h"
 #include "diff.h"
-#include "diff_g2.h"
 #include "defines.h"
 
 cdiff::cdiff(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)

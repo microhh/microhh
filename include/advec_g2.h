@@ -1,15 +1,15 @@
-#ifndef ADVEC_G2I2
-#define ADVEC_G2I2
+#ifndef ADVEC_G2
+#define ADVEC_G2
 
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
 
-class cadvec_g2i2
+class cadvec_g2
 {
   public:
-    cadvec_g2i2(cgrid *, cfields *, cmpi *);
-    ~cadvec_g2i2();
+    cadvec_g2(cgrid *, cfields *, cmpi *);
+    ~cadvec_g2();
 
     double calccfl(double *, double *, double *, double *, double);
     int advecu(double *, double *, double *, double *, double *);

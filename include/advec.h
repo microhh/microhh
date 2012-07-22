@@ -4,7 +4,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
-#include "advec_g2i2.h"
+#include "advec_g2.h"
 #include "advec_g2i4.h"
 
 class cadvec
@@ -23,7 +23,7 @@ class cadvec
     cfields *fields;
     cmpi    *mpi;
 
-    cadvec_g2i2 *advec_g2i2;
+    cadvec_g2   *advec_g2;
     cadvec_g2i4 *advec_g2i4;
 
     int iadvec;

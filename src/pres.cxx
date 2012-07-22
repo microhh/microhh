@@ -5,8 +5,6 @@
 #include "grid.h"
 #include "fields.h"
 #include "pres.h"
-#include "pres_g2.h"
-#include "pres_g42.h"
 #include "defines.h"
 
 cpres::cpres(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)

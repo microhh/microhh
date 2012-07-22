@@ -3,23 +3,23 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
-#include "advec_g2i2.h"
+#include "advec_g2.h"
 #include "defines.h"
 
-cadvec_g2i2::cadvec_g2i2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cadvec_g2::cadvec_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object advec_g2i2\n");
+  std::printf("Creating instance of object advec_g2\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
 }
 
-cadvec_g2i2::~cadvec_g2i2()
+cadvec_g2::~cadvec_g2()
 {
-  std::printf("Destroying instance of object advec_g2i2\n");
+  std::printf("Destroying instance of object advec_g2\n");
 }
 
-double cadvec_g2i2::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+double cadvec_g2::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -50,7 +50,7 @@ double cadvec_g2i2::calccfl(double * restrict u, double * restrict v, double * r
   return cfl;
 }
 
-int cadvec_g2i2::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+int cadvec_g2::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -82,7 +82,7 @@ int cadvec_g2i2::advecu(double * restrict ut, double * restrict u, double * rest
   return 0;
 }
 
-int cadvec_g2i2::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+int cadvec_g2::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -114,7 +114,7 @@ int cadvec_g2i2::advecv(double * restrict vt, double * restrict u, double * rest
   return 0;
 }
 
-int cadvec_g2i2::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi)
+int cadvec_g2::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -146,7 +146,7 @@ int cadvec_g2i2::advecw(double * restrict wt, double * restrict u, double * rest
   return 0;
 }
 
-int cadvec_g2i2::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+int cadvec_g2::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -178,7 +178,7 @@ int cadvec_g2i2::advecs(double * restrict st, double * restrict s, double * rest
   return 0;
 }
 
-inline double cadvec_g2i2::interp2(const double a, const double b)
+inline double cadvec_g2::interp2(const double a, const double b)
 {
   return 0.5*(a + b);
 }
