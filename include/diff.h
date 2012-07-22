@@ -5,6 +5,7 @@
 #include "fields.h"
 #include "mpiinterface.h"
 #include "diff_g2.h"
+#include "diff_g42.h"
 
 class cdiff
 {
@@ -26,6 +27,7 @@ class cdiff
     int idiff;
     double dnmul;
 
-    cdiff_g2 *diff_g2;
+    cdiff_g2  *diff_g2;
+    cdiff_g42 *diff_g42;
 };
 #endif
