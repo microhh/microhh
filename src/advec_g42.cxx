@@ -52,12 +52,17 @@ double cadvec_g42::calccfl(double * restrict u, double * restrict v, double * re
 
 int cadvec_g42::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,kk;
+  int    ii1,ii2,ii3,jj1,jj2,jj3;
   double dxi,dyi;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  ii1 = 1;
+  ii2 = 2;
+  ii3 = 3;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  jj3 = 3*grid->icells;
+  kk  = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -67,16 +72,25 @@ int cadvec_g42::advecu(double * restrict ut, double * restrict u, double * restr
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj + k*kk;
+        ijk = i + j*jj1 + k*kk;
         ut[ijk] += 
-              - (  interp2(u[ijk   ], u[ijk+ii]) * interp2(u[ijk   ], u[ijk+ii])
-                 - interp2(u[ijk-ii], u[ijk   ]) * interp2(u[ijk-ii], u[ijk   ]) ) * dxi
+              // Morinishi
+              // - grad4(interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]) * interp2(u[ijk-ii3], u[ijk    ]),
+              //         interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) * interp2(u[ijk-ii1], u[ijk    ]),
+              //         interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]) * interp2(u[ijk    ], u[ijk+ii1]),
+              //         interp4(u[ijk    ], u[ijk+ii1], u[ijk+ii2], u[ijk+ii3]) * interp2(u[ijk    ], u[ijk+ii3]), dxi)
 
-              - (  interp2(v[ijk-ii+jj], v[ijk+jj]) * interp2(u[ijk   ], u[ijk+jj])
-                 - interp2(v[ijk-ii   ], v[ijk   ]) * interp2(u[ijk-jj], u[ijk   ]) ) * dyi 
+              // standard
+              - grad4(interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]) * interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]),
+                      interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) * interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]),
+                      interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]) * interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]),
+                      interp4(u[ijk    ], u[ijk+ii1], u[ijk+ii2], u[ijk+ii3]) * interp4(u[ijk    ], u[ijk+ii1], u[ijk+ii2], u[ijk+ii3]), dxi)
 
-              - (  interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk   ], u[ijk+kk])
-                 - interp2(w[ijk-ii   ], w[ijk   ]) * interp2(u[ijk-kk], u[ijk   ]) ) * dzi[k];
+              - (  interp2(v[ijk-ii1+jj1], v[ijk+jj1]) * interp2(u[ijk    ], u[ijk+jj1])
+                 - interp2(v[ijk-ii1    ], v[ijk    ]) * interp2(u[ijk-jj1], u[ijk    ]) ) * dyi 
+
+              - (  interp4(w[ijk-ii2+kk], w[ijk-ii1+kk], w[ijk+kk], w[ijk+ii1+kk]) * interp2(u[ijk    ], u[ijk+kk ])
+                 - interp4(w[ijk-ii2   ], w[ijk-ii1   ], w[ijk   ], w[ijk+ii1   ]) * interp2(u[ijk-kk ], u[ijk    ]) ) * dzi[k];
       }
 
   return 0;
@@ -116,12 +130,19 @@ int cadvec_g42::advecv(double * restrict vt, double * restrict u, double * restr
 
 int cadvec_g42::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk;
+  int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   double dxi,dyi;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  ii1 = 1;
+  ii2 = 2;
+  ii3 = 3;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  jj3 = 3*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+  kk3 = 3*grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -131,16 +152,24 @@ int cadvec_g42::advecw(double * restrict wt, double * restrict u, double * restr
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj + k*kk;
-        wt[ijk] += 
-              - (  interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk   ], w[ijk+ii])
-                 - interp2(u[ijk   -kk], u[ijk   ]) * interp2(w[ijk-ii], w[ijk   ]) ) * dxi
+        ijk = i + j*jj1 + k*kk1;
+        wt[ijk] +=
+              // Morinishi
+              // - grad4(interp4(u[ijk-ii1-kk2], u[ijk-ii1-kk1], u[ijk-ii1], u[ijk-ii1+kk1]) * interp2(w[ijk-ii3], w[ijk    ]),
+              //         interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * interp2(w[ijk-ii1], w[ijk    ]),
+              //         interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * interp2(w[ijk    ], w[ijk+ii1]),
+              //         interp4(u[ijk+ii2-kk2], u[ijk+ii2-kk1], u[ijk+ii2], u[ijk+ii2+kk1]) * interp2(w[ijk    ], w[ijk+ii3]), dxi)
 
-              - (  interp2(v[ijk+jj-kk], v[ijk+jj]) * interp2(w[ijk   ], w[ijk+jj])
-                 - interp2(v[ijk   -kk], v[ijk   ]) * interp2(w[ijk-jj], w[ijk   ]) ) * dyi
+              - grad4(interp4(u[ijk-ii1-kk2], u[ijk-ii1-kk1], u[ijk-ii1], u[ijk-ii1+kk1]) * interp4(w[ijk-ii3], w[ijk-ii2], w[ijk-ii1], w[ijk    ]),
+                      interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * interp4(w[ijk-ii2], w[ijk-ii1], w[ijk    ], w[ijk+ii1]),
+                      interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * interp4(w[ijk-ii1], w[ijk    ], w[ijk+ii1], w[ijk+ii2]),
+                      interp4(u[ijk+ii2-kk2], u[ijk+ii2-kk1], u[ijk+ii2], u[ijk+ii2+kk1]) * interp4(w[ijk    ], w[ijk+ii1], w[ijk+ii2], w[ijk+ii3]), dxi)
 
-              - (  interp2(w[ijk   ], w[ijk+kk]) * interp2(w[ijk   ], w[ijk+kk])
-                 - interp2(w[ijk-kk], w[ijk   ]) * interp2(w[ijk-kk], w[ijk   ]) ) * dzhi[k];
+              - (  interp2(v[ijk+jj1-kk1], v[ijk+jj1]) * interp2(w[ijk    ], w[ijk+jj1])
+                 - interp2(v[ijk    -kk1], v[ijk    ]) * interp2(w[ijk-jj1], w[ijk    ]) ) * dyi
+
+              - (  interp2(w[ijk    ], w[ijk+kk1]) * interp2(w[ijk    ], w[ijk+kk1])
+                 - interp2(w[ijk-kk1], w[ijk    ]) * interp2(w[ijk-kk1], w[ijk    ]) ) * dzhi[k];
       }
 
   return 0;
@@ -148,12 +177,17 @@ int cadvec_g42::advecw(double * restrict wt, double * restrict u, double * restr
 
 int cadvec_g42::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,kk;
+  int    ii1,ii2,ii3,jj1,jj2,jj3;
   double dxi,dyi;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  ii1 = 1;
+  ii2 = 2;
+  ii3 = 3;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  jj3 = 3*grid->icells;
+  kk  = grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -163,13 +197,17 @@ int cadvec_g42::advecs(double * restrict st, double * restrict s, double * restr
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj + k*kk;
+        ijk = i + j*jj1 + k*kk;
         st[ijk] += 
-              - (  u[ijk+ii] * interp2(s[ijk   ], s[ijk+ii])
-                 - u[ijk   ] * interp2(s[ijk-ii], s[ijk   ]) ) * dxi
+              - grad4(u[ijk-ii1] * interp2(s[ijk-ii3], s[ijk    ]),
+                      u[ijk    ] * interp2(s[ijk-ii1], s[ijk    ]),
+                      u[ijk+ii1] * interp2(s[ijk    ], s[ijk+ii1]),
+                      u[ijk+ii2] * interp2(s[ijk    ], s[ijk+ii3]), dxi)
 
-              - (  v[ijk+jj] * interp2(s[ijk   ], s[ijk+jj])
-                 - v[ijk   ] * interp2(s[ijk-jj], s[ijk   ]) ) * dyi 
+              - grad4(v[ijk-jj1] * interp2(s[ijk-jj3], s[ijk    ]),
+                      v[ijk    ] * interp2(s[ijk-jj1], s[ijk    ]),
+                      v[ijk+jj1] * interp2(s[ijk    ], s[ijk+jj1]),
+                      v[ijk+jj2] * interp2(s[ijk    ], s[ijk+jj3]), dyi)
 
               - (  w[ijk+kk] * interp2(s[ijk   ], s[ijk+kk])
                  - w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) * dzi[k];
@@ -181,4 +219,14 @@ int cadvec_g42::advecs(double * restrict st, double * restrict s, double * restr
 inline double cadvec_g42::interp2(const double a, const double b)
 {
   return 0.5*(a + b);
+}
+
+inline double cadvec_g42::interp4(const double a, const double b, const double c, const double d)
+{
+  return (-a + 9.*b + 9.*c - d) / 16.;
+}
+
+inline double cadvec_g42::grad4(const double a, const double b, const double c, const double d, const double dxi)
+{
+  return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
 }

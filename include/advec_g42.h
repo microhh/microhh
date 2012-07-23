@@ -23,5 +23,7 @@ class cadvec_g42
     cmpi    *mpi;
 
     inline double interp2(const double, const double);
+    inline double interp4(const double, const double, const double, const double);
+    inline double grad4  (const double, const double, const double, const double, const double);
 };
 #endif
