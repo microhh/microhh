@@ -24,6 +24,8 @@ class cboundary
     int setgcbot_4th(double *, int);
     int setgctop_4th(double *, int);
 
+    int iboundary;
+
     int bcbotmom;
     int bctopmom;
 

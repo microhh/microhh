@@ -23,6 +23,8 @@ int cboundary::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
+  n += inputin->getItem(&iboundary, "physics", "iboundary");
+
   n += inputin->getItem(&bcbotmom, "fields", "bcbotmom");
   n += inputin->getItem(&bctopmom, "fields", "bctopmom");
 
@@ -38,31 +40,34 @@ int cboundary::readinifile(cinput *inputin)
 
 int cboundary::exec()
 {
-  // bottom boundary conditions
-  setgcbot_2nd((*fields->u).data, bcbotmom);
-  setgcbot_2nd((*fields->v).data, bcbotmom);
-  // setgcbot((*fields->w).data);
-  setgcbot_2nd((*fields->s).data, bcbotscal);
+  if(iboundary == 2)
+  {
+    // bottom boundary conditions
+    setgcbot_2nd((*fields->u).data, bcbotmom);
+    setgcbot_2nd((*fields->v).data, bcbotmom);
+    // setgcbot((*fields->w).data);
+    setgcbot_2nd((*fields->s).data, bcbotscal);
 
-  // top boundary conditions
-  setgctop_2nd((*fields->u).data, bctopmom);
-  setgctop_2nd((*fields->v).data, bctopmom);
-  // setgcbot((*fields->w).data);
-  setgctop_2nd((*fields->s).data, bctopscal);
+    // top boundary conditions
+    setgctop_2nd((*fields->u).data, bctopmom);
+    setgctop_2nd((*fields->v).data, bctopmom);
+    // setgcbot((*fields->w).data);
+    setgctop_2nd((*fields->s).data, bctopscal);
+  }
+  else if(iboundary == 4)
+  {
+    // bottom boundary conditions
+    setgcbot_4th((*fields->u).data, bcbotmom);
+    setgcbot_4th((*fields->v).data, bcbotmom);
+    // setgcbot((*fields->w).data);
+    setgcbot_4th((*fields->s).data, bcbotscal);
 
-  /*
-  // bottom boundary conditions
-  setgcbot_4th((*fields->u).data, bcbotmom);
-  setgcbot_4th((*fields->v).data, bcbotmom);
-  // setgcbot((*fields->w).data);
-  setgcbot_4th((*fields->s).data, bcbotscal);
-
-  // top boundary conditions
-  setgctop_4th((*fields->u).data, bctopmom);
-  setgctop_4th((*fields->v).data, bctopmom);
-  // setgcbot((*fields->w).data);
-  setgctop_4th((*fields->s).data, bctopscal);
-  */
+    // top boundary conditions
+    setgctop_4th((*fields->u).data, bctopmom);
+    setgctop_4th((*fields->v).data, bctopmom);
+    // setgcbot((*fields->w).data);
+    setgctop_4th((*fields->s).data, bctopscal);
+  }
  
   // cyclic boundary conditions
   grid->boundary_cyclic((*fields->u).data);
@@ -120,6 +125,7 @@ int cboundary::setgctop_2nd(double * restrict a, int sw)
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
+        // add the bcvalues later
         ijk = i + j*jj + kend*kk;
         a[ijk] = -1.*a[ijk-kk];
       }
@@ -130,6 +136,7 @@ int cboundary::setgctop_2nd(double * restrict a, int sw)
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
+        // add the bcvalues later
         ijk = i + j*jj + kend*kk;
         a[ijk] = a[ijk-kk];
       }
@@ -154,7 +161,8 @@ int cboundary::setgcbot_4th(double * restrict a, int sw)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj;
-        a[ijk] = -1.*a[ijk+kk1];
+        // add the bcvalues later
+        a[ijk] = -3.*a[ijk+kk1] + a[ijk+kk2] - (1./5.)*a[ijk+kk3];
       }
   }
   else if(sw == 1)
@@ -164,7 +172,8 @@ int cboundary::setgcbot_4th(double * restrict a, int sw)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj;
-        a[ijk] = a[ijk+kk1];
+        // add the bcvalues later
+        a[ijk] = (21./23.)*a[ijk+kk1] + (3./23.)*a[ijk+kk2] - (1./23.)*a[ijk+kk3];
       }
   }
 
@@ -189,7 +198,8 @@ int cboundary::setgctop_4th(double * restrict a, int sw)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + kend*kk1;
-        a[ijk] = -1.*a[ijk-kk1];
+        // add the bcvalues later
+        a[ijk] = -3.*a[ijk-kk1] + a[ijk-kk2] - (1./5.)*a[ijk-kk3];
       }
   }
   else if(sw == 1)
@@ -199,7 +209,8 @@ int cboundary::setgctop_4th(double * restrict a, int sw)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + kend*kk1;
-        a[ijk] = a[ijk-kk1];
+        // add the bcvalues later
+        a[ijk] = (21./23.)*a[ijk-kk1] + (3./23.)*a[ijk-kk2] - (1./23.)*a[ijk-kk3];
       }
   }
 
