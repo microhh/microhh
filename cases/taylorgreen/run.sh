@@ -58,3 +58,32 @@ rm -f *.00* taylorgreen.out
 ../dns taylorgreen
 cd ..
 
+# 4th order scheme
+cd taylorgreen32_4th
+python taylorgreenprof.py
+rm -f *.00* taylorgreen.out
+../init taylorgreen
+../dns taylorgreen
+cd ..
+
+cd taylorgreen64_4th
+python taylorgreenprof.py
+rm -f *.00* taylorgreen.out
+../init taylorgreen
+../dns taylorgreen
+cd ..
+
+cd taylorgreen128_4th
+python taylorgreenprof.py
+rm -f *.00* taylorgreen.out
+../init taylorgreen
+../dns taylorgreen
+cd ..
+
+cd taylorgreen256_4th
+python taylorgreenprof.py
+rm -f *.00* taylorgreen.out
+../init taylorgreen
+../dns taylorgreen
+cd ..
+
