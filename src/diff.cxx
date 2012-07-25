@@ -92,11 +92,11 @@ int cdiff::exec()
   }
   else if(idiff == 4)
   {
-    diff_g4->diffc((*fields->ut).data, (*fields->u).data, grid->dzi, grid->dzhi, fields->visc);
-    diff_g4->diffc((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi, fields->visc);
+    diff_g4->diffc((*fields->ut).data, (*fields->u).data, grid->z, grid->zh, fields->visc);
+    diff_g4->diffc((*fields->vt).data, (*fields->v).data, grid->z, grid->zh, fields->visc);
     diff_g4->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
-    diff_g4->diffc((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, fields->viscs);
+    diff_g4->diffc((*fields->st).data, (*fields->s).data, grid->z, grid->zh, fields->viscs);
   }
 
   return 0;

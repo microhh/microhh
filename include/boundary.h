@@ -14,6 +14,9 @@ class cboundary
     int readinifile(cinput *);
     int exec();
 
+    // CvH make private later
+    int iboundary;
+
   private:
     cgrid   *grid;
     cfields *fields;
@@ -24,7 +27,7 @@ class cboundary
     int setgcbot_4th(double *, int);
     int setgctop_4th(double *, int);
 
-    int iboundary;
+    // int iboundary;
 
     int bcbotmom;
     int bctopmom;
