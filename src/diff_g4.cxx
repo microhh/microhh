@@ -99,10 +99,10 @@ int cdiff_g4::diffc(double * restrict at, double * restrict a, double * restrict
       at[ijk] += visc * (
             + divgrad4(a[ijk-ii3], a[ijk-ii2], a[ijk-ii1], a[ijk], a[ijk+ii1], a[ijk+ii2], a[ijk+ii3], dxidxi)
             + divgrad4(a[ijk-jj3], a[ijk-jj2], a[ijk-jj1], a[ijk], a[ijk+jj1], a[ijk+jj2], a[ijk+jj3], dyidyi)
-            + grad4x(grad4x       (a[ijk-kk3], a[ijk-kk2], a[ijk-kk1], a[ijk    ]) / grad4x(z[kend-5], z[kend-4], z[kend-3], z[kend-2]),
-                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) / grad4x(z[kend-4], z[kend-3], z[kend-2], z[kend-1]),
-                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) / grad4x(z[kend-3], z[kend-2], z[kend-1], z[kend  ]),
-                     grad4xbiastop(a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) / grad4x(z[kend-3], z[kend-2], z[kend-1], z[kend  ]))
+            + grad4x(grad4x       (a[ijk-kk3], a[ijk-kk2], a[ijk-kk1], a[ijk    ]) / grad4x       (z[kend-5], z[kend-4], z[kend-3], z[kend-2]),
+                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) / grad4x       (z[kend-4], z[kend-3], z[kend-2], z[kend-1]),
+                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) / grad4x       (z[kend-3], z[kend-2], z[kend-1], z[kend  ]),
+                     grad4xbiastop(a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) / grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend  ]))
               / grad4x(zh[kend-3], zh[kend-2], zh[kend-1], zh[kend]) );
     }
   // top boundary
