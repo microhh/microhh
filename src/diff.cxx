@@ -94,7 +94,7 @@ int cdiff::exec()
   {
     diff_g4->diffc((*fields->ut).data, (*fields->u).data, grid->z, grid->zh, fields->visc);
     diff_g4->diffc((*fields->vt).data, (*fields->v).data, grid->z, grid->zh, fields->visc);
-    diff_g4->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
+    diff_g4->diffw((*fields->wt).data, (*fields->w).data, grid->z, grid->zh, fields->visc);
 
     diff_g4->diffc((*fields->st).data, (*fields->s).data, grid->z, grid->zh, fields->viscs);
   }

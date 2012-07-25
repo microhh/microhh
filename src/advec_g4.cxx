@@ -569,6 +569,6 @@ inline double cadvec_g4::grad4xbiasbot(const double a, const double b, const dou
 
 inline double cadvec_g4::grad4xbiastop(const double a, const double b, const double c, const double d)
 {
-  return (-23.*d + 21.*c + 3.*b - a);
+  return ( 23.*d - 21.*c - 3.*b + a);
 }
 
