@@ -16,12 +16,14 @@ cdiff::cdiff(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
   diff_g2  = new cdiff_g2 (grid, fields, mpi);
   diff_g42 = new cdiff_g42(grid, fields, mpi);
+  diff_g4  = new cdiff_g4 (grid, fields, mpi);
 }
 
 cdiff::~cdiff()
 {
   delete diff_g2;
   delete diff_g42;
+  delete diff_g4;
 
   std::printf("Destroying instance of object diff\n");
 }
@@ -87,6 +89,14 @@ int cdiff::exec()
     diff_g42->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
     diff_g42->diffc((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, fields->viscs);
+  }
+  else if(idiff == 4)
+  {
+    diff_g4->diffc((*fields->ut).data, (*fields->u).data, grid->dzi, grid->dzhi, fields->visc);
+    diff_g4->diffc((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi, fields->visc);
+    diff_g4->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
+
+    diff_g4->diffc((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, fields->viscs);
   }
 
   return 0;
