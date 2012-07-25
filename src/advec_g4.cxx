@@ -84,7 +84,7 @@ int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restri
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      ut[ijk] += 
+      ut[ijk] +=
             - grad4(interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]) * interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]),
                     interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) * interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]),
                     interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]) * interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]),
@@ -108,7 +108,7 @@ int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restri
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + (kstart+1)*kk1;
-      ut[ijk] += 
+      ut[ijk] +=
             - grad4(interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]) * interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]),
                     interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) * interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]),
                     interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]) * interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]),
@@ -132,7 +132,7 @@ int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restri
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        ut[ijk] += 
+        ut[ijk] +=
               - grad4(interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]) * interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]),
                       interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) * interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]),
                       interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]) * interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]),
@@ -156,7 +156,7 @@ int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restri
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + (kend-2)*kk1;
-      ut[ijk] += 
+      ut[ijk] +=
             - grad4(interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]) * interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]),
                     interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) * interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]),
                     interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]) * interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]),
@@ -180,7 +180,7 @@ int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restri
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
-      ut[ijk] += 
+      ut[ijk] +=
             - grad4(interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]) * interp4(u[ijk-ii3], u[ijk-ii2], u[ijk-ii1], u[ijk    ]),
                     interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]) * interp4(u[ijk-ii2], u[ijk-ii1], u[ijk    ], u[ijk+ii1]),
                     interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]) * interp4(u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2]),
@@ -201,10 +201,10 @@ int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restri
   return 0;
 }
 
-int cadvec_g4::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+int cadvec_g4::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict zh)
 {
-  int    ijk,kk;
-  int    ii1,ii2,ii3,jj1,jj2,jj3;
+  int    ijk,kstart,kend;
+  int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3,kk4;
   double dxi,dyi;
 
   ii1 = 1;
@@ -213,30 +213,136 @@ int cadvec_g4::advecv(double * restrict vt, double * restrict u, double * restri
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
   jj3 = 3*grid->icells;
-  kk  = grid->icells*grid->jcells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+  kk3 = 3*grid->icells*grid->jcells;
+  kk4 = 4*grid->icells*grid->jcells;
+
+  kstart = grid->kstart;
+  kend   = grid->kend;
+
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  // bottom boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + kstart*kk1;
+      vt[ijk] +=
+            - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp4(v[ijk-ii3], v[ijk-ii2], v[ijk-ii1], v[ijk    ]),
+                    interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp4(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]),
+                    interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp4(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2]),
+                    interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp4(v[ijk    ], v[ijk+ii1], v[ijk+ii2], v[ijk+ii3]), dxi)
+
+            - grad4(interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]) * interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]),
+                    interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]),
+                    interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]) * interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]),
+                    interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]) * interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]), dyi)
+
+            - grad4xbiasbot(interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp4biasbot(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]),
+                            interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp4       (v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]),
+                            interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * interp4       (v[ijk    ], v[ijk+kk1], v[ijk+kk2], v[ijk+kk3]),
+                            interp4(w[ijk-jj2+kk3], w[ijk-jj1+kk3], w[ijk+kk3], w[ijk+jj1+kk3]) * interp4       (v[ijk+kk1], v[ijk+kk2], v[ijk+kk3], v[ijk+kk4]))
+              / grad4xbiasbot(zh[kstart], zh[kstart+1], zh[kstart+2], zh[kstart+3]);
+    }
+
+  // bottom boundary + 1
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + (kstart+1)*kk1;
+      vt[ijk] +=
+            - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp4(v[ijk-ii3], v[ijk-ii2], v[ijk-ii1], v[ijk    ]),
+                    interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp4(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]),
+                    interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp4(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2]),
+                    interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp4(v[ijk    ], v[ijk+ii1], v[ijk+ii2], v[ijk+ii3]), dxi)
+
+            - grad4(interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]) * interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]),
+                    interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]),
+                    interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]) * interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]),
+                    interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]) * interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]), dyi)
+
+            - grad4x(interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * interp4biasbot(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]),
+                     interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp4       (v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]),
+                     interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp4       (v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]),
+                     interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * interp4       (v[ijk    ], v[ijk+kk1], v[ijk+kk2], v[ijk+kk3]))
+              / grad4x(zh[kstart], zh[kstart+1], zh[kstart+2], zh[kstart+3]);
+    }
+
+  for(int k=grid->kstart+2; k<grid->kend-2; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj1 + k*kk;
-        vt[ijk] += 
-              - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp4(v[ijk-ii3], v[ijk-ii2], v[ijk-ii1], v[ijk    ]),
-                      interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp4(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]),
-                      interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp4(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2]),
-                      interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp4(v[ijk    ], v[ijk+ii1], v[ijk+ii2], v[ijk+ii3]), dxi)
+        ijk = i + j*jj1 + k*kk1;
+        vt[ijk] +=
+            - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp4(v[ijk-ii3], v[ijk-ii2], v[ijk-ii1], v[ijk    ]),
+                    interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp4(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]),
+                    interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp4(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2]),
+                    interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp4(v[ijk    ], v[ijk+ii1], v[ijk+ii2], v[ijk+ii3]), dxi)
 
-              - grad4(interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]) * interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]),
-                      interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]),
-                      interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]) * interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]),
-                      interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]) * interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]), dyi)
+            - grad4(interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]) * interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]),
+                    interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]),
+                    interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]) * interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]),
+                    interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]) * interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]), dyi)
 
-              - (  interp4(w[ijk-jj2+kk], w[ijk-jj1+kk], w[ijk+kk], w[ijk+jj1+kk]) * interp2(v[ijk   ], v[ijk+kk])
-                 - interp4(w[ijk-jj2   ], w[ijk-jj1   ], w[ijk   ], w[ijk+jj1   ]) * interp2(v[ijk-kk], v[ijk   ]) ) * dzi[k];
+              - grad4x(interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * interp4(v[ijk-kk3], v[ijk-kk2], v[ijk-kk1], v[ijk    ]),
+                       interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp4(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]),
+                       interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp4(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]),
+                       interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * interp4(v[ijk    ], v[ijk+kk1], v[ijk+kk2], v[ijk+kk3]))
+                / grad4x(zh[k-1], zh[k], zh[k+1], zh[k+2]);
       }
+
+  // top boundary - 1
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + (kend-2)*kk1;
+      vt[ijk] +=
+            - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp4(v[ijk-ii3], v[ijk-ii2], v[ijk-ii1], v[ijk    ]),
+                    interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp4(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]),
+                    interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp4(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2]),
+                    interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp4(v[ijk    ], v[ijk+ii1], v[ijk+ii2], v[ijk+ii3]), dxi)
+
+            - grad4(interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]) * interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]),
+                    interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]),
+                    interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]) * interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]),
+                    interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]) * interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]), dyi)
+
+            - grad4x(interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * interp4       (v[ijk-kk3], v[ijk-kk2], v[ijk-kk1], v[ijk    ]),
+                     interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp4       (v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]),
+                     interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp4       (v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]),
+                     interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * interp4biastop(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2]))
+                / grad4x(zh[kend-3], zh[kend-2], zh[kend-1], zh[kend]);
+    }
+
+  // top boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + (kend-1)*kk1;
+      vt[ijk] +=
+            - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp4(v[ijk-ii3], v[ijk-ii2], v[ijk-ii1], v[ijk    ]),
+                    interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp4(v[ijk-ii2], v[ijk-ii1], v[ijk    ], v[ijk+ii1]),
+                    interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp4(v[ijk-ii1], v[ijk    ], v[ijk+ii1], v[ijk+ii2]),
+                    interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp4(v[ijk    ], v[ijk+ii1], v[ijk+ii2], v[ijk+ii3]), dxi)
+
+            - grad4(interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]) * interp4(v[ijk-jj3], v[ijk-jj2], v[ijk-jj1], v[ijk    ]),
+                    interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]),
+                    interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]) * interp4(v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2]),
+                    interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]) * interp4(v[ijk    ], v[ijk+jj1], v[ijk+jj2], v[ijk+jj3]), dyi)
+
+            - grad4xbiastop(interp4(w[ijk-jj2-kk2], w[ijk-jj1-kk2], w[ijk-kk2], w[ijk+jj1-kk2]) * interp4       (v[ijk-kk4], v[ijk-kk3], v[ijk-kk2], v[ijk-kk1]),
+                            interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * interp4       (v[ijk-kk3], v[ijk-kk2], v[ijk-kk1], v[ijk    ]),
+                            interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp4       (v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]),
+                            interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp4biastop(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]))
+                / grad4xbiastop(zh[kend-3], zh[kend-2], zh[kend-1], zh[kend]);
+    }
 
   return 0;
 }
