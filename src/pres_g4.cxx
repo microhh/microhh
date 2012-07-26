@@ -430,9 +430,11 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
   jj = imax;
   kk = imax*jmax;
 
-  int ijkp,jjp,kkp;
-  jjp = grid->icells;
-  kkp = grid->icells*grid->jcells;
+  int ijkp,jjp,kkp1,kkp2,kkp3;
+  jjp  = grid->icells;
+  kkp1 = 1*grid->icells*grid->jcells;
+  kkp2 = 2*grid->icells*grid->jcells;
+  kkp3 = 3*grid->icells*grid->jcells;
 
   // put the pressure back onto the original grid including ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -440,7 +442,7 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 #pragma ivdep
       for(int i=0; i<grid->imax; i++)
       {
-        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
+        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp1;
         ijk  = i + j*jj + k*kk;
         p[ijkp] = work3d[ijk];
       }
@@ -451,8 +453,8 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk = i + j*jjp + grid->kstart*kkp;
-      p[ijk-kkp] = p[ijk];
+      ijk = i + j*jjp + (grid->kstart-1)*kkp1;
+      p[ijk] = (21./23.)*p[ijk+kkp1] + (3./23.)*p[ijk+kkp2] - (1./23.)*p[ijk+kkp3];
     }
 
   // set a zero gradient boundary at the top
@@ -460,8 +462,8 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk = i + j*jjp + (grid->kend-1)*kkp;
-      p[ijk+kkp] = p[ijk];
+      ijk = i + j*jjp + (grid->kend)*kkp1;
+      p[ijk] = (21./23.)*p[ijk-kkp1] + (3./23.)*p[ijk-kkp2] - (1./23.)*p[ijk-kkp3];
     }
 
   // set the cyclic boundary conditions
