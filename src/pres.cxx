@@ -120,7 +120,7 @@ double cpres::check()
   else if(ipres == 42)
     divmax = pres_g42->calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   else if(ipres == 4)
-    divmax = pres_g4->calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
+    divmax = pres_g4->calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->zh);
 
   return divmax;
 }
