@@ -50,5 +50,9 @@ class cpres_g4
              double *, double *);
 
     inline double grad4(const double, const double, const double, const double, const double);
+
+    inline double grad4x       (const double, const double, const double, const double);
+    inline double grad4xbiasbot(const double, const double, const double, const double);
+    inline double grad4xbiastop(const double, const double, const double, const double);
 };
 #endif
