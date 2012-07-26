@@ -16,12 +16,14 @@ cpres::cpres(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
   pres_g2  = new cpres_g2 (grid, fields, mpi);
   pres_g42 = new cpres_g42(grid, fields, mpi);
+  pres_g4  = new cpres_g4 (grid, fields, mpi);
 }
 
 cpres::~cpres()
 {
   delete pres_g2;
   delete pres_g42;
+  delete pres_g4;
 
   std::printf("Destroying instance of object pres\n");
 }
@@ -47,6 +49,8 @@ int cpres::init()
     pres_g2->init();
   else if(ipres == 42)
     pres_g42->init();
+  else if(ipres == 4)
+    pres_g4->init();
 
   return 0;
 }
@@ -88,6 +92,22 @@ int cpres::exec(double dt)
     pres_g42->pres_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
                        (*fields->p ).data, grid->dzhi);
   }
+  else if(ipres == 4)
+  {
+    // create the input for the pressure solver
+    pres_g4->pres_in((*fields->p ).data,
+                     (*fields->u ).data, (*fields->v ).data, (*fields->w ).data,
+                     (*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
+                     grid->dzi, dt);
+
+    // solve the system
+    pres_g4->pres_solve((*fields->p).data, (*fields->tmp1).data, (*fields->tmp2).data, grid->dz,
+                        pres_g4->fftini, pres_g4->fftouti, pres_g4->fftinj, pres_g4->fftoutj);
+
+    // get the pressure tendencies from the pressure field
+    pres_g4->pres_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
+                      (*fields->p ).data, grid->dzhi);
+  }
 
   return 0;
 }
@@ -99,6 +119,8 @@ double cpres::check()
     divmax = pres_g2 ->calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   else if(ipres == 42)
     divmax = pres_g42->calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
+  else if(ipres == 4)
+    divmax = pres_g4->calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
 
   return divmax;
 }
@@ -109,6 +131,8 @@ int cpres::load()
     return pres_g2->load();
   else if(ipres == 42)
     return pres_g42->load();
+  else if(ipres == 4)
+    return pres_g4->load();
 
   return 0;
 }
@@ -119,6 +143,8 @@ int cpres::save()
     return pres_g2->save();
   else if(ipres == 42)
     return pres_g42->save();
+  else if(ipres == 4)
+    return pres_g4->save();
 
   return 0;
 }
