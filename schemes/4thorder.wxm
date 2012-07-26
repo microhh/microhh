@@ -209,5 +209,18 @@ d2udx2bias2 : ratsimp( gradbias(gradbias(u[i-1], u[i  ], u[i+1], u[i+2], err1),
                                 grad    (u[i+1], u[i+2], u[i+3], u[i+4], err4), err0) );
 /* [wxMaxima: input   end   ] */
 
+/* [wxMaxima: input   start ] */
+gradx(x1,x2,x3,x4) := (x1 - 27*x2 + 27*x3 - x4)$
+d2udx2noneq : ( gradx(gradx(u[i-3], u[i-2], u[i-1], u[i  ]) / gradx0,
+                      gradx(u[i-2], u[i-1], u[i  ], u[i+1]) / gradx1,
+                      gradx(u[i-1], u[i  ], u[i+1], u[i+2]) / gradx2,
+                      gradx(u[i  ], u[i+1], u[i+2], u[i+3]) / gradx3)
+                /  gradxh0 );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+expand(d2udx2noneq);
+/* [wxMaxima: input   end   ] */
+
 /* Maxima can't load/batch files which end with a comment! */
 "Created with wxMaxima"$
