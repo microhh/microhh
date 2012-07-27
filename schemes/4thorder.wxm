@@ -210,16 +210,65 @@ d2udx2bias2 : ratsimp( gradbias(gradbias(u[i-1], u[i  ], u[i+1], u[i+2], err1),
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-gradx(x1,x2,x3,x4) := (x1 - 27*x2 + 27*x3 - x4)$
+gradx    (x1,x2,x3,x4) := (x1 - 27*x2 + 27*x3 - x4)$
+gradxbias(x1,x2,x3,x4) := (-23*x1 + 21*x2 + 3*x3 - x4)$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
 d2udx2noneq : ( gradx(gradx(u[i-3], u[i-2], u[i-1], u[i  ]) / gradx0,
                       gradx(u[i-2], u[i-1], u[i  ], u[i+1]) / gradx1,
                       gradx(u[i-1], u[i  ], u[i+1], u[i+2]) / gradx2,
                       gradx(u[i  ], u[i+1], u[i+2], u[i+3]) / gradx3)
-                /  gradxh0 );
+                /  gradxh0 )$
+expand(d2udx2noneq);
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-expand(d2udx2noneq);
+neusubst : subst( (-u[i]+3*u[i-1]+21*u[i-2])/23, u[i-3], d2udx2noneq)$
+expand(neusubst);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dirsubst : subst( (-u[i]+5*u[i-1]-15*u[i-2])/5, u[i-3], d2udx2noneq)$
+expand(dirsubst);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2udx2noneqbias : ( gradx(gradxbias(u[i-2], u[i-1], u[i  ], u[i+1]) / gradx0,
+                          gradx    (u[i-2], u[i-1], u[i  ], u[i+1]) / gradx1,
+                          gradx    (u[i-1], u[i  ], u[i+1], u[i+2]) / gradx2,
+                          gradx    (u[i  ], u[i+1], u[i+2], u[i+3]) / gradx3)
+                     /  gradxh0 )$
+expand(d2udx2noneqbias);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+neusubstbias : subst( (-u[i+1]+3*u[i]+21*u[i-1])/23, u[i-2], d2udx2noneqbias)$
+expand(neusubstbias);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dirsubstbias : subst( (-u[i+1]+5*u[i]-15*u[i-1])/5, u[i-2], d2udx2noneqbias)$
+expand(dirsubstbias);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2udx2noneqbias2 : ( gradxbias(gradxbias(u[i-1], u[i  ], u[i+1], u[i+2]) / gradx0,
+                               gradx    (u[i-1], u[i  ], u[i+1], u[i+2]) / gradx1,
+                               gradx    (u[i  ], u[i+1], u[i+2], u[i+3]) / gradx2,
+                               gradx    (u[i+1], u[i+2], u[i+3], u[i+4]) / gradx3)
+                     /  gradxh0 )$
+expand(d2udx2noneqbias2);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+neusubstbias2 : subst( (-u[i+2]+3*u[i+1]+21*u[i])/23, u[i-1], d2udx2noneqbias2)$
+expand(neusubstbias2);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dirsubstbias2 : subst( (-u[i+1]+5*u[i]-15*u[i-1])/5, u[i-2], d2udx2noneqbias2)$
+expand(dirsubstbias2);
 /* [wxMaxima: input   end   ] */
 
 /* Maxima can't load/batch files which end with a comment! */
