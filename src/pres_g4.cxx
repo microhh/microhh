@@ -32,7 +32,15 @@ cpres_g4::~cpres_g4()
     fftw_free(fftoutj);
 
     delete[] a;
+    delete[] b;
     delete[] c;
+    delete[] d;
+    delete[] e;
+    delete[] f;
+    delete[] g;
+    delete[] h;
+    delete[] i;
+
     delete[] work2d;
 
     delete[] bmati;
@@ -83,15 +91,56 @@ int cpres_g4::init()
 
   // allocate help variables for the matrix solver
   a = new double[kmax];
+  b = new double[kmax];
   c = new double[kmax];
+  d = new double[kmax];
+  e = new double[kmax];
+  f = new double[kmax];
+  g = new double[kmax];
+  h = new double[kmax];
+  i = new double[kmax];
+
   work2d = new double[imax*jmax];
 
+  int kc;
   // create vectors that go into the tridiagonal matrix solver
+  // bottom boundary
+  kc = grid->kstart;
+  a[k] = 0.;
+  b[k] =   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]);
+  c[k] = -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]);
+  d[k] =  27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]);
+  e[k] =  -1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+  f[k] =                                               +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+  g[k] =                                                                                               -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+  h[k] =                                                                                                                                               +  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+  i[k] = 0.;
+
+  // bottom boundary + 1
+  kc = grid->kstart+1
+  a[k] = 0.;
+  b[k] =   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]);
+  c[k] = -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]);
+  d[k] =  27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]);
+  e[k] =  -1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+  f[k] =                                               +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+  g[k] =                                                                                               -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+  h[k] =                                                                                                                                               +  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+  i[k] = 0.;
+  
   for(int k=0; k<kmax; k++)
   {
-    a[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc  ];
-    c[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc+1];
-  }
+    kc = grid->kstart+k;
+    a[k] = 0.;
+    b[k] =   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]);
+    c[k] = -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]);
+    d[k] =  27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]);
+    e[k] =  -1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+    f[k] =                                               +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+    g[k] =                                                                                               -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+    h[k] =                                                                                                                                               +  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
+    i[k] = 0.;
+  }                                                                                                                                       
 
   fftini  = fftw_alloc_real(itot);
   fftouti = fftw_alloc_real(itot);
