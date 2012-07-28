@@ -608,6 +608,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
 
   kmax = grid->kmax;
 
+  // LU factorization
   m0[k] = 1.;
   m1[k] = 1.;
   m2[k] = 1.;
@@ -699,40 +700,61 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
   m7[k] = 1.; // padding
   m8[k] = 1.; // padding
 
-  /*
-  // Backward substitution step in the Thomas algorith
-  // Solve Ly=frc, forward
-  DO ij = 1,len
-     frm2(ij,1) =             frm2(ij,1)*m3(1) ! Normalize first eqn. See NONADFS
-     frm2(ij,2) = frm2(ij,2) -frm2(ij,1)*m3(2)
-     frm2(ij,3) = frm2(ij,3) -frm2(ij,2)*m3(3) -frm2(ij,1)*m2(3)
-     frm2(ij,4) = frm2(ij,4) -frm2(ij,3)*m3(4) -frm2(ij,2)*m2(4) -frm2(ij,1)*m1(4)
-  ENDDO
+  // Backward substitution 
+  int i,j,jj,ijk,ij;
+  int kk1,kk2,kk3,kk4;
+  int iblock,jblock;
 
-  DO n = 5,nmax
-     DO ij = 1,len
-        frm2(ij,n) = frm2(ij,n) -frm2(ij,n-1)*m3(n) -frm2(ij,n-2)*m2(n) -frm2(ij,n-3)*m1(n) -frm2(ij,n-4)*m0(n)
-     ENDDO
-  ENDDO
+  iblock = grid->iblock;
+  jblock = grid->jblock;
+
+  jj  = iblock;
+  kk1 = 1*iblock*jblock;
+  kk2 = 2*iblock*jblock;
+  kk3 = 3*iblock*jblock;
+  kk4 = 4*iblock*jblock;
+
+  // Solve Ly=frc, forward
+  for(j=0;j<jblock;j++)
+#pragma ivdep
+    for(i=0;i<iblock;i++)
+    {
+      ij = i + j*jj;
+      p[ij    ] =             p[ij    ]*m3[0]; // Normalize first eqn. See NONADFS
+      p[ij+kk1] = p[ij+kk1] - p[ij    ]*m3[1];
+      p[ij+kk2] = p[ij+kk2] - p[ij+kk1]*m3[2] - p[ij    ]*m2[2];
+      p[ij+kk3] = p[ij+kk3] - p[ij+kk2]*m3[3] - p[ij+kk1]*m2[1] -p[ij]*m1[3];
+    }
+
+  for(k=4; k<kmax; k++)
+    for(j=0;j<jblock;j++)
+#pragma ivdep
+      for(i=0;i<iblock;i++)
+      {
+        ijk = i + j*jj + k*kk1;
+        p[ijk] = p[ijk] - p[ijk-kk1]*m3[k] - p[ijk-kk2]*m2[k] - p[ijk-kk3]*m1[k] - p[ijk-kk4]*m0[k];
+      }
 
   // Solve Ux=y, backward
-  DO ij = 1,len
-     frm2(ij,nmax  ) = frm2(ij,nmax  ) &
-           /m4(nmax  )
-     frm2(ij,nmax-1) =(frm2(ij,nmax-1) -frm2(ij,nmax  )*m5(nmax-1) &
-          )/m4(nmax-1)
-     frm2(ij,nmax-2) =(frm2(ij,nmax-2) -frm2(ij,nmax-1)*m5(nmax-2) -frm2(ij,nmax  )*m6(nmax-2) &
-          )/m4(nmax-2)
-     frm2(ij,nmax-3) =(frm2(ij,nmax-3) -frm2(ij,nmax-2)*m5(nmax-3) -frm2(ij,nmax-1)*m6(nmax-3) -frm2(ij,nmax)*m7(nmax-3) &
-          )/m4(nmax-3)
-  ENDDO
+  for(j=0;j<jblock;j++)
+#pragma ivdep
+    for(i=0;i<iblock;i++)
+    {
+      ijk = i + j*jj + k*(kmax-1);
+      p[ijk    ] =   p[ijk    ]                                                              / m4[k  ];
+      p[ijk-kk1] = ( p[ijk-kk1] - p[ijk    ]*m5[k-1] )                                       / m4[k-1];
+      p[ijk-kk2] = ( p[ijk-kk2] - p[ijk-kk1]*m5[k-2] - p[ijk    ]*m6[k-2] )                  / m4[k-2];
+      p[ijk-kk3] = ( p[ijk-kk3] - p[ijk-kk2]*m5[k-3] - p[ijk-kk1]*m6[k-3] - p[ijk]*m7[k-3] ) / m4[k-3];
+    }
 
-  DO n = nmax-4,1,-1
-     DO ij = 1,len
-        frm2(ij,n) =(frm2(ij,n) -frm2(ij,n+1)*m5(n) -frm2(ij,n+2)*m6(n) -frm2(ij,n+3)*m7(n) -frm2(ij,n+4)*m8(n))/m4(n)
-     ENDDO
-  ENDDO
-  */
+  for(k=kmax-5; k>=0; k--)
+    for(j=0;j<jblock;j++)
+#pragma ivdep
+      for(i=0;i<iblock;i++)
+      {
+        ijk = i + j*jj + k*kk1;
+        p[ijk] = ( p[ijk] - p[ijk+kk1]*m5[k] - p[ijk+kk2]*m6[k] - p[ijk+kk3]*m7[k] - p[ijk+kk4]*m8[k] ) / m4[k];
+      }
 
   return 0;
 }
