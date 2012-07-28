@@ -45,6 +45,18 @@ cpres_g4::~cpres_g4()
 
     delete[] bmati;
     delete[] bmatj;
+
+    // CvH temporary, remove later...
+    delete[] m0temp;
+    delete[] m1temp;
+    delete[] m2temp;
+    delete[] m3temp;
+    delete[] m4temp;
+    delete[] m5temp;
+    delete[] m6temp;
+    delete[] m7temp;
+    delete[] m8temp;
+    delete[] ptemp;
   }
 
   std::printf("Destroying instance of object pres_g4\n");
@@ -90,15 +102,27 @@ int cpres_g4::init()
     bmati[i] = bmati[itot-i];
 
   // allocate help variables for the matrix solver
-  m0 = new double[kmax];
-  m1 = new double[kmax];
-  m2 = new double[kmax];
-  m3 = new double[kmax];
-  m4 = new double[kmax];
-  m5 = new double[kmax];
-  m6 = new double[kmax];
-  m7 = new double[kmax];
-  m8 = new double[kmax];
+  m0 = new double[kmax+2];
+  m1 = new double[kmax+2];
+  m2 = new double[kmax+2];
+  m3 = new double[kmax+2];
+  m4 = new double[kmax+2];
+  m5 = new double[kmax+2];
+  m6 = new double[kmax+2];
+  m7 = new double[kmax+2];
+  m8 = new double[kmax+2];
+
+  // CvH temporary, remove later...
+  m0temp = new double[kmax+2];
+  m1temp = new double[kmax+2];
+  m2temp = new double[kmax+2];
+  m3temp = new double[kmax+2];
+  m4temp = new double[kmax+2];
+  m5temp = new double[kmax+2];
+  m6temp = new double[kmax+2];
+  m7temp = new double[kmax+2];
+  m8temp = new double[kmax+2];
+  ptemp  = new double[kmax+2];
 
   work2d = new double[imax*jmax];
 
@@ -108,8 +132,30 @@ int cpres_g4::init()
 
   int k,kc;
   // create vectors that go into the tridiagonal matrix solver
+  
+  // k == 0 and k == kmax+1 contain the boundary conditions in the solver
+  m0[0] = 0.;
+  m1[0] = 0.;
+  m2[0] = 0.;
+  m3[0] = 0.;
+  m4[0] = 0.;
+  m5[0] = 0.;
+  m6[0] = 0.;
+  m7[0] = 0.;
+  m8[0] = 0.;
+
+  m0[kmax+1] = 0.;
+  m1[kmax+1] = 0.;
+  m2[kmax+1] = 0.;
+  m3[kmax+1] = 0.;
+  m4[kmax+1] = 0.;
+  m5[kmax+1] = 0.;
+  m6[kmax+1] = 0.;
+  m7[kmax+1] = 0.;
+  m8[kmax+1] = 0.;
+
   // bottom boundary
-  k  = 0;
+  k  = 1;
   kc = kstart+k;
   m0[k] = 0.;
   m1[k] = 0.;
@@ -122,7 +168,7 @@ int cpres_g4::init()
   m8[k] = (                                                                                                                                                      +  1.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbiasbot(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
 
   // bottom boundary + 1
-  k  = 1;
+  k  = 2;
   kc = kstart+k;
   m0[k] = 0.;
   m1[k] = 0.;
@@ -134,7 +180,7 @@ int cpres_g4::init()
   m7[k] = (                                                                                                                                                     +  1.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
   m8[k] = 0.;
   
-  for(int k=2; k<kmax-2; k++)
+  for(int k=3; k<kmax-1; k++)
   {
     kc = kstart+k;
     m0[k] = 0.;
@@ -149,7 +195,7 @@ int cpres_g4::init()
   }                                                                                                                                       
 
   // top boundary - 1
-  k  = kmax-2;
+  k  = kmax-1;
   kc = kstart+k;
   m0[k] = 0.;
   m1[k] = (   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                                                                       ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
@@ -162,7 +208,7 @@ int cpres_g4::init()
   m8[k] = 0.;
   
   // top boundary
-  k  = kmax-1;
+  k  = kmax;
   kc = kstart+k;
   m0[k] = (  1.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1])                                                                                                                                                       ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
   m1[k] = (-27.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) -  3.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                        ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
@@ -410,9 +456,13 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
   jj = iblock;
   kk = iblock*jblock;
 
-  // solve the tridiagonal system
-  // create vectors that go into the tridiagonal matrix solver
-  for(k=0; k<kmax; k++)
+  // solve the nonadiagonal system
+
+  // CvH reenable later
+  /*
+  // create vectors that go into the solver
+  //
+  for(k=1; k<kmax+1; k++)
     for(j=0; j<jblock; j++)
 #pragma ivdep
       for(i=0; i<iblock; i++)
@@ -423,8 +473,8 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
         ijk  = i + j*jj + k*kk;
         m5calc[ijk] = bmati[iindex] + bmatj[jindex] + m5[k];
-        // p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
+      */
 
   for(j=0; j<jblock; j++)
 #pragma ivdep
@@ -434,22 +484,96 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
       iindex = mpi->mpicoordy * iblock + i;
       jindex = mpi->mpicoordx * jblock + j;
 
-      // substitute BC's
+      /*
+      // set the BC's
       ijk = i + j*jj;
-      // b[ijk] += a[0];
+      m4[0] =       1.;
+      m5[0] = -21./23.;
+      m6[0] =  -3./23.;
+      m7[0] =   1./23.;
 
       // for wave number 0, which contains average, set pressure at top to zero
       ijk  = i + j*jj + (kmax-1)*kk;
-      // if(iindex == 0 && jindex == 0)
-        // b[ijk] -= c[kmax-1];
+      if(iindex == 0 && jindex == 0)
+      {
+        m1[kmax+1] =  1./5.; 
+        m2[kmax+1] = -5./5.;
+        m3[kmax+1] = 15./5.;
+        m4[kmax+1] =     1.;
+      }
       // set dp/dz at top to zero
-      // else
-        // b[ijk] += c[kmax-1];
+      else
+      {
+        m1[kmax+1] =   1./23.;
+        m2[kmax+1] =  -3./23.;
+        m3[kmax+1] = -21./23.;
+        m4[kmax+1] =       1.;
+      }
+      */
+
+      // set a zero gradient bc at the top
+      m0temp[0] =      0.;
+      m1temp[0] =      0.;
+      m2temp[0] =      0.;
+      m3temp[0] =      0.;
+      m4temp[0] =      1.;
+      m5temp[0] =-21./23.;
+      m6temp[0] = -3./23.;
+      m7temp[0] =  1./23.;
+      m8temp[0] =      0.;
+      ptemp [0] =      0.;
+
+      // fill the matrix
+      for(k=0; k<kmax; k++)
+      {
+        ijk  = i + j*jj + k*kk;
+        m0temp[k+1] = m0[k+1];
+        m1temp[k+1] = m1[k+1];
+        m2temp[k+1] = m2[k+1];
+        m3temp[k+1] = m3[k+1];
+        m4temp[k+1] = m4[k+1] + bmati[iindex] + bmatj[jindex];
+        m5temp[k+1] = m5[k+1];
+        m6temp[k+1] = m6[k+1];
+        m7temp[k+1] = m7[k+1];
+        m8temp[k+1] = m8[k+1];
+        ptemp [k+1] = p[ijk];
+      }
+
+      if(iindex == 0 && jindex == 0)
+      {
+        m1temp[kmax+1] =  1./5.; 
+        m2temp[kmax+1] = -5./5.;
+        m3temp[kmax+1] = 15./5.;
+        m4temp[kmax+1] =     1.;
+      }
+      // set dp/dz at top to zero
+      else
+      {
+        m1temp[kmax+1] =   1./23.;
+        m2temp[kmax+1] =  -3./23.;
+        m3temp[kmax+1] = -21./23.;
+        m4temp[kmax+1] =       1.;
+      }
+      m0temp[kmax+1] = 0.;
+      m5temp[kmax+1] = 0.;
+      m6temp[kmax+1] = 0.;
+      m7temp[kmax+1] = 0.;
+      m8temp[kmax+1] = 0.;
+      ptemp [kmax+1] = 0.;
+
+      // for now, call the solver here
+      ndma(m0, m1, m2, m3, m4temp, m5, m6, m7, m8, ptemp);
+
+      // put back the solution
+      for(k=0; k<kmax; k++)
+      {
+        ijk  = i + j*jj + k*kk;
+        p[ijk] = ptemp[k+1];
+      }
     }
 
   // call ndma solver
-  // ndma(a, b, c, p, work2d, work3d);
-  ndma(m0, m1, m2, m3, m4, m5, m6, m7, m8, p);
+  // ndma(m0, m1, m2, m3, m4, m5, m6, m7, m8, p);
         
   // transpose back to y
   grid->transposezy(work3d, p);
@@ -705,8 +829,8 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
   int kk1,kk2,kk3,kk4;
   int iblock,jblock;
 
-  iblock = grid->iblock;
-  jblock = grid->jblock;
+  iblock = 1; // grid->iblock; CvH vectorize later
+  jblock = 1; // grid->jblock;
 
   jj  = iblock;
   kk1 = 1*iblock*jblock;
