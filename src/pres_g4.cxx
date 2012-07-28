@@ -31,15 +31,15 @@ cpres_g4::~cpres_g4()
     fftw_free(fftinj);
     fftw_free(fftoutj);
 
-    delete[] a;
-    delete[] b;
-    delete[] c;
-    delete[] d;
-    delete[] e;
-    delete[] f;
-    delete[] g;
-    delete[] h;
-    delete[] i;
+    delete[] m0;
+    delete[] m1;
+    delete[] m2;
+    delete[] m3;
+    delete[] m4;
+    delete[] m5;
+    delete[] m6;
+    delete[] m7;
+    delete[] m8;
 
     delete[] work2d;
 
@@ -90,58 +90,86 @@ int cpres_g4::init()
     bmati[i] = bmati[itot-i];
 
   // allocate help variables for the matrix solver
-  a = new double[kmax];
-  b = new double[kmax];
-  c = new double[kmax];
-  d = new double[kmax];
-  e = new double[kmax];
-  f = new double[kmax];
-  g = new double[kmax];
-  h = new double[kmax];
-  i = new double[kmax];
+  m0 = new double[kmax];
+  m1 = new double[kmax];
+  m2 = new double[kmax];
+  m3 = new double[kmax];
+  m4 = new double[kmax];
+  m5 = new double[kmax];
+  m6 = new double[kmax];
+  m7 = new double[kmax];
+  m8 = new double[kmax];
 
   work2d = new double[imax*jmax];
 
-  int kc;
+  int k,kc;
   // create vectors that go into the tridiagonal matrix solver
   // bottom boundary
-  kc = grid->kstart;
-  a[k] = 0.;
-  b[k] =   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]);
-  c[k] = -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]);
-  d[k] =  27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]);
-  e[k] =  -1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-  f[k] =                                               +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-  g[k] =                                                                                               -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-  h[k] =                                                                                                                                               +  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-  i[k] = 0.;
+  k  = 0;
+  kc = grid->kstart+k;
+  m0[k] = 0.;
+  m1[k] = 0.;
+  m2[k] = 0.;
+  m3[k] = (  529.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) +  21.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2])                                                                                                 ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m4[k] = ( -483.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 567.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) +  3.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3])                                                  ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m5[k] = (  -69.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 567.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 81.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) -  1.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m6[k] = (   23.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  21.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 81.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) + 27.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m7[k] = (                                                                                                       -  3.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) - 27.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m8[k] = (                                                                                                                                                      +  1.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
 
   // bottom boundary + 1
-  kc = grid->kstart+1
-  a[k] = 0.;
-  b[k] =   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]);
-  c[k] = -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]);
-  d[k] =  27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]);
-  e[k] =  -1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-  f[k] =                                               +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-  g[k] =                                                                                               -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-  h[k] =                                                                                                                                               +  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-  i[k] = 0.;
+  k  = 1;
+  kc = grid->kstart+k;
+  m0[k] = 0.;
+  m1[k] = 0.;
+  m2[k] = (-23.*grad4xbiasbot(z[kc-2], z[kc-1], z[kc], z[kc+1]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1])                                                                                                ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m3[k] = ( 21.*grad4xbiasbot(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2])                                                ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m4[k] = (  3.*grad4xbiasbot(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m5[k] = ( -1.*grad4xbiasbot(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 27.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m6[k] = (                                                                                                     -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 27.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m7[k] = (                                                                                                                                                     +  1.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m8[k] = 0.;
   
-  for(int k=0; k<kmax; k++)
+  for(int k=2; k<kmax-2; k++)
   {
     kc = grid->kstart+k;
-    a[k] = 0.;
-    b[k] =   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]);
-    c[k] = -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]);
-    d[k] =  27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]);
-    e[k] =  -1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-    f[k] =                                               +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-    g[k] =                                                                                               -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 27.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-    h[k] =                                                                                                                                               +  1.* grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]);
-    i[k] = 0.;
+    m0[k] = 0.;
+    m1[k] = (   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                                                                ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+    m2[k] = ( -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1])                                                                                                ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+    m3[k] = (  27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2])                                                ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+    m4[k] = (  -1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+    m5[k] = (                                               +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 27.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+    m6[k] = (                                                                                               -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 27.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+    m7[k] = (                                                                                                                                               +  1.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+    m8[k] = 0.;
   }                                                                                                                                       
 
+  // top boundary - 1
+  k  = kmax-2;
+  kc = grid->kstart+k;
+  m0[k] = 0.;
+  m1[k] = (   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                                                                       ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m2[k] = ( -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1])                                                                                                       ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m3[k] = (  27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  1.*grad4xbiastop(z[kc-1], z[kc], z[kc+1], z[kc+2]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m4[k] = (  -1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 729.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) +  3.*grad4xbiastop(z[kc-1], z[kc], z[kc+1], z[kc+2]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m5[k] = (                                               +  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 729.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 21.*grad4xbiastop(z[kc-1], z[kc], z[kc+1], z[kc+2]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m6[k] = (                                                                                               -  27.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 23.*grad4xbiastop(z[kc-1], z[kc], z[kc+1], z[kc+2]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
+  m7[k] = 0.;
+  m8[k] = 0.;
+  
+  // top boundary
+  k  = kmax-1;
+  kc = grid->kstart+k;
+  m1[k] = (  1.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1])                                                                                                                                                       ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m2[k] = (-27.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) -  3.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                        ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m3[k] = ( 27.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) + 81.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  21.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  23.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m4[k] = ( -1.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) - 81.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 567.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) -  69.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m5[k] = (                                                +  3.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 567.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 483.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m6[k] = (                                                                                               +  21.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 529.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m7[k] = 0.;
+  m8[k] = 0.;
+  m9[k] = 0.;
+  
   fftini  = fftw_alloc_real(itot);
   fftouti = fftw_alloc_real(itot);
   fftinj  = fftw_alloc_real(jtot);
@@ -292,7 +320,7 @@ int cpres_g4::pres_in(double * restrict p,
   return 0;
 }
 
-int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
+int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double * restrict m5calc, double * restrict dz,
                          double * restrict fftini, double * restrict fftouti, 
                          double * restrict fftinj, double * restrict fftoutj)
 
@@ -390,14 +418,15 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
         jindex = mpi->mpicoordx * jblock + j;
 
         ijk  = i + j*jj + k*kk;
-        b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
-        p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
+        m5calc[ijk] = bmati[iindex] + bmatj[jindex] + m5
+        // p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
   for(j=0; j<jblock; j++)
 #pragma ivdep
     for(i=0; i<iblock; i++)
     {
+      // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
       iindex = mpi->mpicoordy * iblock + i;
       jindex = mpi->mpicoordx * jblock + j;
 
@@ -415,7 +444,7 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
     }
 
   // call tdma solver
-  tdma(a, b, c, p, work2d, work3d);
+  // tdma(a, b, c, p, work2d, work3d);
         
   // transpose back to y
   grid->transposezy(work3d, p);

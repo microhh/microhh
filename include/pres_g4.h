@@ -42,7 +42,7 @@ class cpres_g4
     fftw_plan jplanf, jplanb;
 
     double *bmati, *bmatj;
-    double *a, *c;
+    double *m1,*m2,*m3,*m4,*m5,*m6,*m7,*m8,*m9;
     double *work2d;
 
     // functions
