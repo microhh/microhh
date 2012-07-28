@@ -42,12 +42,12 @@ class cpres_g4
     fftw_plan jplanf, jplanb;
 
     double *bmati, *bmatj;
-    double *m1,*m2,*m3,*m4,*m5,*m6,*m7,*m8,*m9;
+    double *m0,*m1,*m2,*m3,*m4,*m5,*m6,*m7,*m8;
     double *work2d;
 
     // functions
-    int tdma(double *, double *, double *, double *, 
-             double *, double *);
+    int ndma(double *, double *, double *, double *, double *,
+             double *, double *, double *, double *, double *);
 
     inline double grad4(const double, const double, const double, const double, const double);
 

@@ -53,14 +53,14 @@ cpres_g4::~cpres_g4()
 int cpres_g4::init()
 {
   int imax, jmax, kmax;
-  int itot, jtot, kgc;
+  int itot, jtot, kstart;
 
-  itot = grid->itot;
-  jtot = grid->jtot;
-  imax = grid->imax;
-  jmax = grid->jmax;
-  kmax = grid->kmax;
-  kgc  = grid->kgc;
+  itot   = grid->itot;
+  jtot   = grid->jtot;
+  imax   = grid->imax;
+  jmax   = grid->jmax;
+  kmax   = grid->kmax;
+  kstart = grid->kstart;
 
   bmati = new double[itot];
   bmatj = new double[jtot];
@@ -102,24 +102,28 @@ int cpres_g4::init()
 
   work2d = new double[imax*jmax];
 
+  double *zh, *z;
+  z  = grid->z;
+  zh = grid->zh;
+
   int k,kc;
   // create vectors that go into the tridiagonal matrix solver
   // bottom boundary
   k  = 0;
-  kc = grid->kstart+k;
+  kc = kstart+k;
   m0[k] = 0.;
   m1[k] = 0.;
   m2[k] = 0.;
-  m3[k] = (  529.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) +  21.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2])                                                                                                 ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
-  m4[k] = ( -483.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 567.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) +  3.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3])                                                  ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
-  m5[k] = (  -69.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 567.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 81.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) -  1.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
-  m6[k] = (   23.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  21.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 81.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) + 27.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
-  m7[k] = (                                                                                                       -  3.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) - 27.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
-  m8[k] = (                                                                                                                                                      +  1.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbias(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m3[k] = (  529.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) +  21.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2])                                                                                                 ) / grad4xbiasbot(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m4[k] = ( -483.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 567.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) +  3.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3])                                                  ) / grad4xbiasbot(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m5[k] = (  -69.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 567.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) - 81.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) -  1.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbiasbot(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m6[k] = (   23.*grad4xbiasbot(z[kc-1], z[kc], z[kc+1], z[kc+2]) -  21.*grad4x(z[kc-1], z[kc], z[kc+1], z[kc+2]) + 81.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) + 27.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbiasbot(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m7[k] = (                                                                                                       -  3.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) - 27.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbiasbot(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
+  m8[k] = (                                                                                                                                                      +  1.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbiasbot(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
 
   // bottom boundary + 1
   k  = 1;
-  kc = grid->kstart+k;
+  kc = kstart+k;
   m0[k] = 0.;
   m1[k] = 0.;
   m2[k] = (-23.*grad4xbiasbot(z[kc-2], z[kc-1], z[kc], z[kc+1]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1])                                                                                                ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
@@ -132,7 +136,7 @@ int cpres_g4::init()
   
   for(int k=2; k<kmax-2; k++)
   {
-    kc = grid->kstart+k;
+    kc = kstart+k;
     m0[k] = 0.;
     m1[k] = (   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                                                                ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
     m2[k] = ( -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1])                                                                                                ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
@@ -146,7 +150,7 @@ int cpres_g4::init()
 
   // top boundary - 1
   k  = kmax-2;
-  kc = grid->kstart+k;
+  kc = kstart+k;
   m0[k] = 0.;
   m1[k] = (   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                                                                       ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
   m2[k] = ( -27.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  27.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1])                                                                                                       ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
@@ -159,16 +163,16 @@ int cpres_g4::init()
   
   // top boundary
   k  = kmax-1;
-  kc = grid->kstart+k;
-  m1[k] = (  1.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1])                                                                                                                                                       ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
-  m2[k] = (-27.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) -  3.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                        ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
-  m3[k] = ( 27.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) + 81.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  21.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  23.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
-  m4[k] = ( -1.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) - 81.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 567.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) -  69.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
-  m5[k] = (                                                +  3.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 567.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 483.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
-  m6[k] = (                                                                                               +  21.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 529.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4x(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  kc = kstart+k;
+  m0[k] = (  1.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1])                                                                                                                                                       ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m1[k] = (-27.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) -  3.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                        ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m2[k] = ( 27.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) + 81.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) -  21.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) +  23.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m3[k] = ( -1.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) - 81.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) + 567.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) -  69.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m4[k] = (                                                +  3.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc]) - 567.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) - 483.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m5[k] = (                                                                                               +  21.*grad4x(z[kc-2], z[kc-1], z[kc], z[kc+1]) + 529.*grad4xbiastop(z[kc-2], z[kc-1], z[kc], z[kc+1]) ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
+  m6[k] = 0.;
   m7[k] = 0.;
   m8[k] = 0.;
-  m9[k] = 0.;
   
   fftini  = fftw_alloc_real(itot);
   fftouti = fftw_alloc_real(itot);
@@ -418,7 +422,7 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
         jindex = mpi->mpicoordx * jblock + j;
 
         ijk  = i + j*jj + k*kk;
-        m5calc[ijk] = bmati[iindex] + bmatj[jindex] + m5
+        m5calc[ijk] = bmati[iindex] + bmatj[jindex] + m5[k];
         // p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
@@ -432,19 +436,20 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
       // substitute BC's
       ijk = i + j*jj;
-      b[ijk] += a[0];
+      // b[ijk] += a[0];
 
       // for wave number 0, which contains average, set pressure at top to zero
       ijk  = i + j*jj + (kmax-1)*kk;
-      if(iindex == 0 && jindex == 0)
-        b[ijk] -= c[kmax-1];
+      // if(iindex == 0 && jindex == 0)
+        // b[ijk] -= c[kmax-1];
       // set dp/dz at top to zero
-      else
-        b[ijk] += c[kmax-1];
+      // else
+        // b[ijk] += c[kmax-1];
     }
 
-  // call tdma solver
-  // tdma(a, b, c, p, work2d, work3d);
+  // call ndma solver
+  // ndma(a, b, c, p, work2d, work3d);
+  ndma(m0, m1, m2, m3, m4, m5, m6, m7, m8, p);
         
   // transpose back to y
   grid->transposezy(work3d, p);
@@ -594,6 +599,145 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
   return 0;
 }
 
+int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict m8, double * restrict p)
+{
+  int kmax;
+  int inorm = 1;
+  int k = 0;
+
+  kmax = grid->kmax;
+
+  m0[k] = 1.;
+  m1[k] = 1.;
+  m2[k] = 1.;
+  if(inorm == 1)
+  {
+     m3[k] = 1./m4[k]; // padding, and used in nonadss to normalize 1st eqn.
+     m4[k] = 1.;
+     m5[k] = m5[k]*m3[k];
+     m6[k] = m6[k]*m3[k];
+     m7[k] = m7[k]*m3[k];
+     m8[k] = m8[k]*m3[k];
+  }
+  else
+     m3[k] = 1.; // padding
+
+  k = 1;
+  m0[k] = 1.; // padding
+  m1[k] = 1.; // padding
+  m2[k] = 1.; // padding
+  m3[k] = m3[k]                 / m4[k-1];
+  m4[k] = m4[k] - m3[k]*m5[k-1];
+  m5[k] = m5[k] - m3[k]*m6[k-1];
+  m6[k] = m6[k] - m3[k]*m7[k-1];
+  m7[k] = m7[k] - m3[k]*m8[k-1];
+
+  k = 2;
+  m0[k] = 1.; // padding
+  m1[k] = 1.; // padding
+  m2[k] =   m2[k]                                   / m4[k-2];
+  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] ) / m4[k-1];
+  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2];
+  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
+  m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
+  m7[k] =   m7[k] - m3[k]*m8[k-1];
+
+  k = 3;
+  m0[k] = 1.; // padding
+  m1[k] =   m1[k]                                                   / m4[k-3];
+  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] ) / m4[k-2];
+  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] ) / m4[k-1];
+  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3]; 
+  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2] - m1[k]*m8[k-3];
+  m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
+  m7[k] =   m7[k] - m3[k]*m8[k-1];
+
+  for(k=4; k<kmax-3; k++)
+  {
+    m0[k] =   m0[k]                                                                  / m4[k-4];
+    m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
+    m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
+    m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] - m0[k]*m7[k-4]) / m4[k-1];
+    m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3] - m0[k]*m8[k-4];
+    m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2] - m1[k]*m8[k-3];
+    m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
+    m7[k] =   m7[k] - m3[k]*m8[k-1];
+  }
+  m8[k-1] = 1.; // padding
+
+  k = kmax-3;
+  m0[k] =   m0[k]                                                                  / m4[k-4];
+  m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
+  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
+  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] - m0[k]*m7[k-4]) / m4[k-1];
+  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3] - m0[k]*m8[k-4];
+  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2] - m1[k]*m8[k-3];
+  m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
+  m7[k] =  1.; // padding
+  m8[k] =  1.; // padding
+
+  k = kmax-2;
+  m0[k] =   m0[k]                                                                  / m4[k-4];
+  m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
+  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
+  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] - m0[k]*m7[k-4]) / m4[k-1];
+  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3] - m0[k]*m8[k-4];
+  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2] - m1[k]*m8[k-3];
+  m6[k] = 1.; // padding
+  m7[k] = 1.; // padding
+  m8[k] = 1.; // padding
+
+  k = kmax-1;
+  m0[k] =   m0[k]                                                                  / m4[k-4];
+  m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
+  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
+  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] - m0[k]*m7[k-4]) / m4[k-1];
+  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3] - m0[k]*m8[k-4];
+  m5[k] = 1.; // padding
+  m6[k] = 1.; // padding
+  m7[k] = 1.; // padding
+  m8[k] = 1.; // padding
+
+  /*
+  // Backward substitution step in the Thomas algorith
+  // Solve Ly=frc, forward
+  DO ij = 1,len
+     frm2(ij,1) =             frm2(ij,1)*m3(1) ! Normalize first eqn. See NONADFS
+     frm2(ij,2) = frm2(ij,2) -frm2(ij,1)*m3(2)
+     frm2(ij,3) = frm2(ij,3) -frm2(ij,2)*m3(3) -frm2(ij,1)*m2(3)
+     frm2(ij,4) = frm2(ij,4) -frm2(ij,3)*m3(4) -frm2(ij,2)*m2(4) -frm2(ij,1)*m1(4)
+  ENDDO
+
+  DO n = 5,nmax
+     DO ij = 1,len
+        frm2(ij,n) = frm2(ij,n) -frm2(ij,n-1)*m3(n) -frm2(ij,n-2)*m2(n) -frm2(ij,n-3)*m1(n) -frm2(ij,n-4)*m0(n)
+     ENDDO
+  ENDDO
+
+  // Solve Ux=y, backward
+  DO ij = 1,len
+     frm2(ij,nmax  ) = frm2(ij,nmax  ) &
+           /m4(nmax  )
+     frm2(ij,nmax-1) =(frm2(ij,nmax-1) -frm2(ij,nmax  )*m5(nmax-1) &
+          )/m4(nmax-1)
+     frm2(ij,nmax-2) =(frm2(ij,nmax-2) -frm2(ij,nmax-1)*m5(nmax-2) -frm2(ij,nmax  )*m6(nmax-2) &
+          )/m4(nmax-2)
+     frm2(ij,nmax-3) =(frm2(ij,nmax-3) -frm2(ij,nmax-2)*m5(nmax-3) -frm2(ij,nmax-1)*m6(nmax-3) -frm2(ij,nmax)*m7(nmax-3) &
+          )/m4(nmax-3)
+  ENDDO
+
+  DO n = nmax-4,1,-1
+     DO ij = 1,len
+        frm2(ij,n) =(frm2(ij,n) -frm2(ij,n+1)*m5(n) -frm2(ij,n+2)*m6(n) -frm2(ij,n+3)*m7(n) -frm2(ij,n+4)*m8(n))/m4(n)
+     ENDDO
+  ENDDO
+  */
+
+  return 0;
+}
+
+/*
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
 int cpres_g4::tdma(double * restrict a, double * restrict b, double * restrict c, 
                 double * restrict p, double * restrict work2d, double * restrict work3d)
@@ -665,6 +809,7 @@ int cpres_g4::tdma(double * restrict a, double * restrict b, double * restrict c
 
   return 0;
 }
+*/
 
 double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict zh)
 {
