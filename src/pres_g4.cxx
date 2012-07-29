@@ -844,7 +844,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
 #pragma ivdep
     for(i=0;i<iblock;i++)
     {
-      ijk = i + j*jj + k*(kmax+1);
+      ijk = i + j*jj + (kmax+1)*kk1;
       p[ijk    ] =   p[ijk    ]                                                              / m4[k  ];
       p[ijk-kk1] = ( p[ijk-kk1] - p[ijk    ]*m5[k-1] )                                       / m4[k-1];
       p[ijk-kk2] = ( p[ijk-kk2] - p[ijk-kk1]*m5[k-2] - p[ijk    ]*m6[k-2] )                  / m4[k-2];
