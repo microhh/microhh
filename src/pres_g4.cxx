@@ -77,7 +77,7 @@ int cpres_g4::init()
   bmati = new double[itot];
   bmatj = new double[jtot];
   
-  // compute the modified wave numbers of the 42 order scheme
+  // compute the modified wave numbers of the 4th order scheme
   double dxidxi = 1./(grid->dx*grid->dx);
   double dyidyi = 1./(grid->dy*grid->dy);
 
@@ -102,15 +102,15 @@ int cpres_g4::init()
     bmati[i] = bmati[itot-i];
 
   // allocate help variables for the matrix solver
-  m0 = new double[kmax+2];
-  m1 = new double[kmax+2];
-  m2 = new double[kmax+2];
-  m3 = new double[kmax+2];
-  m4 = new double[kmax+2];
-  m5 = new double[kmax+2];
-  m6 = new double[kmax+2];
-  m7 = new double[kmax+2];
-  m8 = new double[kmax+2];
+  m0 = new double[kmax];
+  m1 = new double[kmax];
+  m2 = new double[kmax];
+  m3 = new double[kmax];
+  m4 = new double[kmax];
+  m5 = new double[kmax];
+  m6 = new double[kmax];
+  m7 = new double[kmax];
+  m8 = new double[kmax];
 
   // CvH temporary, remove later...
   m0temp = new double[kmax+2];
@@ -133,29 +133,8 @@ int cpres_g4::init()
   int k,kc;
   // create vectors that go into the tridiagonal matrix solver
   
-  // k == 0 and k == kmax+1 contain the boundary conditions in the solver
-  m0[0] = 0.;
-  m1[0] = 0.;
-  m2[0] = 0.;
-  m3[0] = 0.;
-  m4[0] = 0.;
-  m5[0] = 0.;
-  m6[0] = 0.;
-  m7[0] = 0.;
-  m8[0] = 0.;
-
-  m0[kmax+1] = 0.;
-  m1[kmax+1] = 0.;
-  m2[kmax+1] = 0.;
-  m3[kmax+1] = 0.;
-  m4[kmax+1] = 0.;
-  m5[kmax+1] = 0.;
-  m6[kmax+1] = 0.;
-  m7[kmax+1] = 0.;
-  m8[kmax+1] = 0.;
-
   // bottom boundary
-  k  = 1;
+  k  = 0;
   kc = kstart+k;
   m0[k] = 0.;
   m1[k] = 0.;
@@ -168,7 +147,7 @@ int cpres_g4::init()
   m8[k] = (                                                                                                                                                      +  1.*grad4x(z[kc+1], z[kc+2], z[kc+3], z[kc+4]) ) / grad4xbiasbot(zh[kc], zh[kc+1], zh[kc+2], zh[kc+3]);
 
   // bottom boundary + 1
-  k  = 2;
+  k  = 1;
   kc = kstart+k;
   m0[k] = 0.;
   m1[k] = 0.;
@@ -180,7 +159,7 @@ int cpres_g4::init()
   m7[k] = (                                                                                                                                                     +  1.*grad4x(z[kc], z[kc+1], z[kc+2], z[kc+3]) ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
   m8[k] = 0.;
   
-  for(int k=3; k<kmax-1; k++)
+  for(int k=2; k<kmax-2; k++)
   {
     kc = kstart+k;
     m0[k] = 0.;
@@ -195,7 +174,7 @@ int cpres_g4::init()
   }                                                                                                                                       
 
   // top boundary - 1
-  k  = kmax-1;
+  k  = kmax-2;
   kc = kstart+k;
   m0[k] = 0.;
   m1[k] = (   1.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                                                                       ) / grad4x(zh[kc-1], zh[kc], zh[kc+1], zh[kc+2]);
@@ -208,7 +187,7 @@ int cpres_g4::init()
   m8[k] = 0.;
   
   // top boundary
-  k  = kmax;
+  k  = kmax-1;
   kc = kstart+k;
   m0[k] = (  1.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1])                                                                                                                                                       ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
   m1[k] = (-27.*grad4x(z[kc-4], z[kc-3], z[kc-2], z[kc-1]) -  3.*grad4x(z[kc-3], z[kc-2], z[kc-1], z[kc])                                                                                                        ) / grad4xbiastop(zh[kc-2], zh[kc-1], zh[kc], zh[kc+1]);
@@ -527,15 +506,15 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
       for(k=0; k<kmax; k++)
       {
         ijk  = i + j*jj + k*kk;
-        m0temp[k+1] = m0[k+1];
-        m1temp[k+1] = m1[k+1];
-        m2temp[k+1] = m2[k+1];
-        m3temp[k+1] = m3[k+1];
-        m4temp[k+1] = m4[k+1] + bmati[iindex] + bmatj[jindex];
-        m5temp[k+1] = m5[k+1];
-        m6temp[k+1] = m6[k+1];
-        m7temp[k+1] = m7[k+1];
-        m8temp[k+1] = m8[k+1];
+        m0temp[k+1] = m0[k];
+        m1temp[k+1] = m1[k];
+        m2temp[k+1] = m2[k];
+        m3temp[k+1] = m3[k];
+        m4temp[k+1] = m4[k] + bmati[iindex] + bmatj[jindex];
+        m5temp[k+1] = m5[k];
+        m6temp[k+1] = m6[k];
+        m7temp[k+1] = m7[k];
+        m8temp[k+1] = m8[k];
         ptemp [k+1] = p[ijk];
       }
 
@@ -563,13 +542,13 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
       ptemp [kmax+1] = 0.;
 
       // for now, call the solver here
-      ndma(m0temp, m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, m8temp, ptemp);
+      // ndma(m0temp, m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, m8temp, ptemp);
 
       // put back the solution
       for(k=0; k<kmax; k++)
       {
         ijk  = i + j*jj + k*kk;
-        p[ijk] = ptemp[k+1];
+        // p[ijk] = ptemp[k+1];
       }
     }
 
@@ -849,7 +828,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
       p[ij    ] =             p[ij    ]*m3[0]; // Normalize first eqn. See NONADFS
       p[ij+kk1] = p[ij+kk1] - p[ij    ]*m3[1];
       p[ij+kk2] = p[ij+kk2] - p[ij+kk1]*m3[2] - p[ij    ]*m2[2];
-      p[ij+kk3] = p[ij+kk3] - p[ij+kk2]*m3[3] - p[ij+kk1]*m2[1] -p[ij]*m1[3];
+      p[ij+kk3] = p[ij+kk3] - p[ij+kk2]*m3[3] - p[ij+kk1]*m2[3] -p[ij]*m1[3];
     }
 
   for(k=4; k<kmax+2; k++)
