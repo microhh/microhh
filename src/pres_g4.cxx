@@ -542,13 +542,13 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
       ptemp [kmax+1] = 0.;
 
       // for now, call the solver here
-      // ndma(m0temp, m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, m8temp, ptemp);
+      ndma(m0temp, m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, m8temp, ptemp);
 
       // put back the solution
       for(k=0; k<kmax; k++)
       {
         ijk  = i + j*jj + k*kk;
-        // p[ijk] = ptemp[k+1];
+        p[ijk] = ptemp[k+1];
       }
     }
 
