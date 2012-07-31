@@ -66,26 +66,14 @@ int cbuoyancy::buoyancy_2nd(double * restrict wt, double * restrict s)
 
 int cbuoyancy::buoyancy_4th(double * restrict wt, double * restrict s)
 {
-  int ijk,jj,kstart,kend;
-  int kk1,kk2,kk3;
+  int ijk,jj;
+  int kk1,kk2;
 
   jj  = grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
 
-  kstart = grid->kstart;
-  kend   = grid->kend;
-  
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj + (kstart+1)*kk1;
-      wt[ijk] += gravity * interp4biasbot(s[ijk-kk1], s[ijk], s[ijk+kk1], s[ijk+kk2]);
-    }
-
-  for(int k=grid->kstart+2; k<grid->kend-2; k++)
+  for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -93,14 +81,6 @@ int cbuoyancy::buoyancy_4th(double * restrict wt, double * restrict s)
         ijk = i + j*jj + k*kk1;
         wt[ijk] += gravity * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
       }
-
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj + (kend-1)*kk1;
-      wt[ijk] += gravity * interp4biastop(s[ijk-kk3], s[ijk-kk2], s[ijk-kk1], s[ijk]);
-    }
 
   return 0;
 }
