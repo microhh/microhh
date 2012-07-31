@@ -6,6 +6,7 @@
 #include "advec.h"
 #include "diff.h"
 #include "force.h"
+#include "buoyancy.h"
 #include "pres.h"
 #include "timeloop.h"
 
@@ -50,6 +51,7 @@ int main(int argc, char *argv[])
   cdiff     diff    (&grid, &fields, &mpi);
   cpres     pres    (&grid, &fields, &mpi);
   cforce    force   (&grid, &fields, &mpi);
+  cbuoyancy buoyancy(&grid, &fields, &mpi);
 
   // read the inputdata
   if(boundary.readinifile(&input))
@@ -59,6 +61,8 @@ int main(int argc, char *argv[])
   if(diff.readinifile(&input))
     return 1;
   if(force.readinifile(&input))
+    return 1;
+  if(buoyancy.readinifile(&input))
     return 1;
   if(pres.readinifile(&input))
     return 1;
@@ -149,6 +153,8 @@ int main(int argc, char *argv[])
     diff.exec();
     // large scale forcings
     force.exec(timeloop.getsubdt());
+    // buoyancy
+    buoyancy.exec();
     // pressure
     pres.exec(timeloop.getsubdt());
     if(timeloop.dosave() && !timeloop.insubstep())
