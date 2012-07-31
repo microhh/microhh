@@ -1,11 +1,11 @@
 from pylab import *
 from microhh import *
 
-t = 2500
+t = 2100
 
-itot = 128
+itot = 1024
 jtot = 1
-ktot = 128
+ktot = 256
 
 data = microhh(t, itot, jtot, ktot)
 
@@ -53,7 +53,6 @@ xlabel('y ')
 ylabel('zh')
 title('vertical velocity')
 colorbar()
-"""
 
 figure()
 pcolormesh(data.x, data.z, data.v[:,0,:])
@@ -64,6 +63,7 @@ ylabel('z')
 title('spanwise velocity')
 colorbar()
 
+"""
 figure()
 pcolormesh(data.x, data.zh, data.w[:,0,:])
 xlim(min(data.x ), max(data.x ))
@@ -83,7 +83,7 @@ title('pressure')
 colorbar()
 
 figure()
-pcolormesh(data.x, data.z, data.s[:,0,:])
+pcolormesh(data.x, data.z, data.s[:,0,:], vmin=-0.03, vmax=0.03)
 xlim(min(data.x), max(data.x))
 ylim(min(data.z), max(data.z))
 xlabel('x')
@@ -107,6 +107,7 @@ xlabel('velocity')
 ylabel('height')
 legend(loc=0, frameon=False)
 
+"""
 figure()
 plot(pmean, data.z)
 xlabel('modified pressure')
@@ -116,3 +117,4 @@ figure()
 plot(smean, data.z, 'bo')
 xlabel('scalar')
 ylabel('height')
+"""

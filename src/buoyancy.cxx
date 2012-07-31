@@ -21,9 +21,9 @@ int cbuoyancy::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&ibuoyancy, "physics", "ibuoyancy");
-  n += inputin->getItem(&gravity  , "physics", "gravity", 9.81);
-  n += inputin->getItem(&gravity  , "physics", "buoyancyref", 0.);
+  n += inputin->getItem(&ibuoyancy  , "physics", "ibuoyancy");
+  n += inputin->getItem(&gravity    , "physics", "gravity", 9.81);
+  n += inputin->getItem(&buoyancyref, "physics", "buoyancyref", 0.);
 
   if(n > 0)
     return 1;
