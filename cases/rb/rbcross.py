@@ -1,7 +1,7 @@
 from pylab import *
 from microhh import *
 
-t = 500
+t = 2500
 
 itot = 128
 jtot = 1
@@ -113,6 +113,6 @@ xlabel('modified pressure')
 ylabel('height')
 
 figure()
-plot(smean, data.z)
+plot(smean, data.z, 'bo')
 xlabel('scalar')
 ylabel('height')

@@ -54,6 +54,7 @@ class cfields
 
     // perturbations
     double rndamp;
+    double rndamps;
     double vortexamp;
     int nvortexpair;
     int vortexaxis;

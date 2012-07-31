@@ -96,7 +96,7 @@ int cboundary::setgcbot_2nd(double * restrict a, int sw, double abot)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj;
-        a[ijk] = -1.*a[ijk+kk];
+        a[ijk] = 2.*abot - a[ijk+kk];
       }
   }
   else if(sw == 1)
@@ -130,7 +130,7 @@ int cboundary::setgctop_2nd(double * restrict a, int sw, double atop)
       {
         // add the bcvalues later
         ijk = i + j*jj + kend*kk;
-        a[ijk] = -1.*a[ijk-kk];
+        a[ijk] = 2.*atop - a[ijk-kk];
       }
   }
   else if(sw == 1)
