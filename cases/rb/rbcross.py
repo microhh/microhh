@@ -1,11 +1,11 @@
 from pylab import *
 from microhh import *
 
-t = 500
+t = 100
 
-itot = 512
+itot = 1024
 jtot = 1
-ktot = 256
+ktot = 512
 
 data = microhh(t, itot, jtot, ktot)
 

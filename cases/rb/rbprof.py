@@ -1,8 +1,8 @@
 import numpy
 
 # set the height
-kmax  = 256
-zsize = 0.5
+kmax  = 512
+zsize = 2.
 
 dz = zsize / kmax
 
@@ -12,7 +12,7 @@ z = numpy.zeros(kmax)
 s = numpy.zeros(kmax)
 
 # create non-equidistant grid
-alpha = 0.5
+alpha = 0.7
 for k in range(kmax):
   eta  = -1. + 2.*((k+1)-0.5) / kmax
   z[k] = zsize / (2.*alpha) * numpy.tanh(eta*0.5*(numpy.log(1.+alpha) - numpy.log(1.-alpha))) + 0.5*zsize
