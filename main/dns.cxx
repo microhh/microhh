@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
     std::string outputname = simname + ".out";
     dnsout = std::fopen(outputname.c_str(), "a");
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
-    std::fprintf(dnsout, "%8s %12s %10s %10s %8s %8s %11s %16s %16s %16s\n",
+    std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
   }
 
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
     // write the output to file
     if(mpi.mpiid == 0)
-      std::fprintf(dnsout, "%8d %12.3f %10.4f %10.4f %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+      std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
         iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
     }
 
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 
       // write the output to file
       if(mpi.mpiid == 0)
-        std::fprintf(dnsout, "%8d %12.3f %10.4f %10.4f %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+        std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
           iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
     }
 

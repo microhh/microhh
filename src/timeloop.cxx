@@ -13,7 +13,7 @@ ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   mpi    = mpiin;
 
   substep = 0;
-  ifactor = 10000.;
+  ifactor = 1e6;
 }
 
 ctimeloop::~ctimeloop()
