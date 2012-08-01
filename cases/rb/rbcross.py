@@ -1,9 +1,9 @@
 from pylab import *
 from microhh import *
 
-t = 2100
+t = 500
 
-itot = 1024
+itot = 512
 jtot = 1
 ktot = 256
 
@@ -83,7 +83,7 @@ title('pressure')
 colorbar()
 
 figure()
-pcolormesh(data.x, data.z, data.s[:,0,:], vmin=-0.03, vmax=0.03)
+pcolormesh(data.x, data.z, data.s[:,0,:])
 xlim(min(data.x), max(data.x))
 ylim(min(data.z), max(data.z))
 xlabel('x')
@@ -91,13 +91,11 @@ ylabel('z')
 title('scalar')
 colorbar()
 
-##### some means ######
+"""
 umean = average(average(data.u,1),1)
 vmean = average(average(data.v,1),1)
 wmean = average(average(data.w,1),1)
-
 pmean = average(average(data.p,1),1)
-smean = average(average(data.s,1),1)
 
 figure()
 plot(umean, data.z , label='u')
@@ -107,14 +105,15 @@ xlabel('velocity')
 ylabel('height')
 legend(loc=0, frameon=False)
 
-"""
 figure()
 plot(pmean, data.z)
 xlabel('modified pressure')
 ylabel('height')
+"""
+
+smean = average(average(data.s,1),1)
 
 figure()
-plot(smean, data.z, 'bo')
+plot(smean, data.z, 'bo-')
 xlabel('scalar')
 ylabel('height')
-"""
