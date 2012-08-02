@@ -60,16 +60,16 @@ int cboundary::exec()
   else if(iboundary == 4)
   {
     // bottom boundary conditions
-    setgcbot_4th((*fields->u).data, bcbotmom, 0.);
-    setgcbot_4th((*fields->v).data, bcbotmom, 0.);
+    setgcbot_4th((*fields->u).data, grid->z, bcbotmom, 0.);
+    setgcbot_4th((*fields->v).data, grid->z, bcbotmom, 0.);
     // setgcbot((*fields->w).data);
-    setgcbot_4th((*fields->s).data, bcbotscal, sbot);
+    setgcbot_4th((*fields->s).data, grid->z, bcbotscal, sbot);
 
     // top boundary conditions
-    setgctop_4th((*fields->u).data, bctopmom, 0.);
-    setgctop_4th((*fields->v).data, bctopmom, 0.);
+    setgctop_4th((*fields->u).data, grid->z, bctopmom, 0.);
+    setgctop_4th((*fields->v).data, grid->z, bctopmom, 0.);
     // setgcbot((*fields->w).data);
-    setgctop_4th((*fields->s).data, bctopscal, stop);
+    setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
   }
  
   // cyclic boundary conditions
@@ -148,14 +148,16 @@ int cboundary::setgctop_2nd(double * restrict a, int sw, double atop)
   return 0;
 }
 
-int cboundary::setgcbot_4th(double * restrict a, int sw, double abot)
+int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, double abot)
 { 
-  int ijk,jj,kk1,kk2,kk3;
+  int ijk,jj,kk1,kk2,kk3,kstart;
 
   jj  = grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
   kk3 = 3*grid->icells*grid->jcells;
+
+  kstart = grid->kstart;
 
   if(sw == 0)
   {
@@ -164,7 +166,6 @@ int cboundary::setgcbot_4th(double * restrict a, int sw, double abot)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj;
-        // add the bcvalues later
         a[ijk] = (16./5.)*abot - 3.*a[ijk+kk1] + a[ijk+kk2] - (1./5.)*a[ijk+kk3];
       }
   }
@@ -175,15 +176,15 @@ int cboundary::setgcbot_4th(double * restrict a, int sw, double abot)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj;
-        // add the bcvalues later
-        a[ijk] = (21./23.)*a[ijk+kk1] + (3./23.)*a[ijk+kk2] - (1./23.)*a[ijk+kk3];
+        a[ijk] = ( - grad4xbiasbot(z[kstart-1], z[kstart], z[kstart+1], z[kstart+2])*abot 
+                   + 21.*a[ijk+kk1] + 3.*a[ijk+kk2] - a[ijk+kk3] ) / 23.;
       }
   }
 
   return 0;
 }
 
-int cboundary::setgctop_4th(double * restrict a, int sw, double atop)
+int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, double atop)
 { 
   int ijk,jj,kend,kk1,kk2,kk3;
 
@@ -201,7 +202,6 @@ int cboundary::setgctop_4th(double * restrict a, int sw, double atop)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + kend*kk1;
-        // add the bcvalues later
         a[ijk] = (16./5.)*atop - 3.*a[ijk-kk1] + a[ijk-kk2] - (1./5.)*a[ijk-kk3];
       }
   }
@@ -212,11 +212,20 @@ int cboundary::setgctop_4th(double * restrict a, int sw, double atop)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + kend*kk1;
-        // add the bcvalues later
-        a[ijk] = (21./23.)*a[ijk-kk1] + (3./23.)*a[ijk-kk2] - (1./23.)*a[ijk-kk3];
+        a[ijk] = ( grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend]) * atop 
+                   + 21.*a[ijk-kk1] + 3.*a[ijk-kk2] - a[ijk-kk3] ) / 23.;
       }
   }
 
   return 0;
 }
 
+inline double cboundary::grad4xbiasbot(const double a, const double b, const double c, const double d)
+{
+  return (-23.*a + 21.*b + 3.*c - d);
+}
+
+inline double cboundary::grad4xbiastop(const double a, const double b, const double c, const double d)
+{
+  return ( 23.*d - 21.*c - 3.*b + a);
+}

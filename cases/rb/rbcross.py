@@ -1,7 +1,7 @@
 from pylab import *
 from microhh import *
 
-t = 100
+t = 50
 
 itot = 1024
 jtot = 1

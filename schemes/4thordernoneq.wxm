@@ -59,7 +59,7 @@ dfdxbias : rhs(sol2[2])/rhs(sol2x[2]);
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f3x=0,f4x=0,f5x=0,f6x=0], dfdx) );
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f3x=0,f4x=0,f5x=0,f6x=0], dfdxbias) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
@@ -84,6 +84,83 @@ bcf1 : ratsimp( subst(neumann, sol2[2]) );
 
 /* [wxMaxima: input   start ] */
 ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f3x=0,f4x=0,f5x=0,f6x=0], bcf1) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-5/2] = f(-5/2*h)$
+eq2 : f[-3/2] = f(-3/2*h)$
+eq3 : f[-1/2] = f(-1/2*h)$
+eq4 : f[ 1/2] = f( 1/2*h)$
+sol3 : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], sol3) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : x[-5/2] = fx(-5/2*h)$
+eq2 : x[-3/2] = fx(-3/2*h)$
+eq3 : x[-1/2] = fx(-1/2*h)$
+eq4 : x[ 1/2] = fx( 1/2*h)$
+sol3x : linsolve([eq1,eq2,eq3,eq4],[f0x,f1x,f2x,f3x]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4x=0,f5x=0,f6x=0], sol3x) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dirichlettop : solve(sol3[1], f[1/2])$
+dirichlettop : subst(f0bc, f0, dirichlettop);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], dirichlet) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcf0top : ratsimp( subst(dirichlettop, sol3[1]) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcf1top : ratsimp( subst(dirichlettop, sol3[2]) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bcf1top) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dfdxbiastop : rhs(sol3[2])/rhs(sol3x[2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f3x=0,f4x=0,f5x=0,f6x=0], dfdxbiastop) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+neumanntop : solve(dfdxbiastop = f1bc, f[1/2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f3x=0,f4x=0,f5x=0,f6x=0], neumanntop) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcf0top : ratsimp( subst(neumanntop, sol3[1]) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f3x=0,f4x=0,f5x=0,f6x=0], bcf0top) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bcf1top : ratsimp( subst(neumanntop, sol3[2]) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f3x=0,f4x=0,f5x=0,f6x=0], bcf1top) );
 /* [wxMaxima: input   end   ] */
 
 /* Maxima can't load/batch files which end with a comment! */

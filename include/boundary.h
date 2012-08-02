@@ -24,8 +24,8 @@ class cboundary
 
     int setgcbot_2nd(double *, int, double);
     int setgctop_2nd(double *, int, double);
-    int setgcbot_4th(double *, int, double);
-    int setgctop_4th(double *, int, double);
+    int setgcbot_4th(double *, double *, int, double);
+    int setgctop_4th(double *, double *, int, double);
 
     // int iboundary;
 
@@ -37,5 +37,8 @@ class cboundary
 
     double sbot;
     double stop;
+
+    inline double grad4xbiasbot (const double, const double, const double, const double);
+    inline double grad4xbiastop (const double, const double, const double, const double);
 };
 #endif
