@@ -56,6 +56,8 @@ class cgrid
     double *dzh;
     double *dzi;
     double *dzhi;
+    double *dzi4;
+    double *dzhi4;
     
     double *x;
     double *y;
@@ -96,5 +98,9 @@ class cgrid
     MPI_Datatype subi;
     MPI_Datatype subj;
     MPI_Datatype subarray;
+
+    inline double grad4x       (const double, const double, const double, const double);
+    inline double grad4xbiasbot(const double, const double, const double, const double);
+    inline double grad4xbiastop(const double, const double, const double, const double);
 };
 #endif

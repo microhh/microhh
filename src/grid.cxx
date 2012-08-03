@@ -28,6 +28,8 @@ cgrid::~cgrid()
     delete[] dzh;
     delete[] dzi;
     delete[] dzhi;
+    delete[] dzi4;
+    delete[] dzhi4;
   }
 
   std::printf("Destroying instance of object grid\n");
@@ -117,16 +119,18 @@ int cgrid::init()
   jend   = jmax + jgc;
   kend   = kmax + kgc;
 
-  x    = new double[imax+2*igc];
-  xh   = new double[imax+2*igc];
-  y    = new double[jmax+2*jgc];
-  yh   = new double[jmax+2*jgc];
-  z    = new double[kmax+2*kgc];
-  zh   = new double[kmax+2*kgc];
-  dz   = new double[kmax+2*kgc];
-  dzh  = new double[kmax+2*kgc];
-  dzi  = new double[kmax+2*kgc];
-  dzhi = new double[kmax+2*kgc];
+  x     = new double[imax+2*igc];
+  xh    = new double[imax+2*igc];
+  y     = new double[jmax+2*jgc];
+  yh    = new double[jmax+2*jgc];
+  z     = new double[kmax+2*kgc];
+  zh    = new double[kmax+2*kgc];
+  dz    = new double[kmax+2*kgc];
+  dzh   = new double[kmax+2*kgc];
+  dzi   = new double[kmax+2*kgc];
+  dzhi  = new double[kmax+2*kgc];
+  dzi4  = new double[kmax+2*kgc];
+  dzhi4 = new double[kmax+2*kgc];
 
   allocated = true;
 
@@ -225,6 +229,17 @@ int cgrid::calculate()
     dzi[kstart-k-1] = 1./dz[kstart-k-1];
     dzi[kend+k]     = 1./dz[kend+k];
   }
+
+  // calculate the inverse gradients for the 4th order scheme
+  dzi4 [kstart] = 1./grad4xbiasbot(zh[kstart  ], zh[kstart+1], zh[kstart+2], zh[kstart+3]);
+  dzhi4[kstart] = 1./grad4xbiasbot(z [kstart-1], z [kstart  ], z [kstart+1], z [kstart+2]);
+  for(k=kstart+1; k<kend-1; k++)
+  {
+    dzi4 [k] = 1./grad4x(zh[k-1], zh[k  ], zh[k+1], zh[k+2]);
+    dzhi4[k] = 1./grad4x(z [k-2], z [k-1], z [k  ], z [k+1]);
+  }
+  dzi4 [kend-1] = 1./grad4xbiastop(zh[kend-3], zh[kend-2], zh[kend-1], zh[kend]);
+  dzhi4[kend-1] = 1./grad4xbiastop(z [kend  ], z [kend  ], z [kend  ], z [kend]);
 
   return 0;
 }
@@ -877,4 +892,19 @@ int cgrid::loadfield3d(double *data, char *filename)
   delete[] buffer;
 
   return 0;
+}
+
+inline double cgrid::grad4x(const double a, const double b, const double c, const double d)
+{
+  return (-(d-a) + 27.*(c-b)); 
+}
+
+inline double cgrid::grad4xbiasbot(const double a, const double b, const double c, const double d)
+{
+  return (-23.*a + 21.*b + 3.*c - d);
+}
+
+inline double cgrid::grad4xbiastop(const double a, const double b, const double c, const double d)
+{
+  return ( 23.*d - 21.*c - 3.*b + a);
 }
