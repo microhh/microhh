@@ -239,7 +239,9 @@ int cgrid::calculate()
     dzhi4[k] = 1./grad4x(z [k-2], z [k-1], z [k  ], z [k+1]);
   }
   dzi4 [kend-1] = 1./grad4xbiastop(zh[kend-3], zh[kend-2], zh[kend-1], zh[kend]);
-  dzhi4[kend-1] = 1./grad4xbiastop(z [kend  ], z [kend  ], z [kend  ], z [kend]);
+
+  dzhi4[kend-1] = 1./grad4x       (z[kend-3], z[kend-2], z[kend-1], z[kend]);
+  dzhi4[kend  ] = 1./grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend]);
 
   return 0;
 }
