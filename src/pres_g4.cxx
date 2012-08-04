@@ -126,10 +126,6 @@ int cpres_g4::init()
 
   work2d = new double[imax*jmax];
 
-  double *zh, *z;
-  z  = grid->z;
-  zh = grid->zh;
-
   double *dzi4, *dzhi4;
   dzi4  = grid->dzi4;
   dzhi4 = grid->dzhi4;
@@ -276,7 +272,7 @@ int cpres_g4::save()
 int cpres_g4::pres_in(double * restrict p, 
                       double * restrict u , double * restrict v , double * restrict w , 
                       double * restrict ut, double * restrict vt, double * restrict wt, 
-                      double * restrict zh, double dt)
+                      double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
   int    ii1,ii2,jj1,jj2,kk1,kk2,kk3;
@@ -317,10 +313,10 @@ int cpres_g4::pres_in(double * restrict p,
     {
       ijkp = i + j*jjp;
       ijk  = i+igc + (j+jgc)*jj1 + kgc*kk1;
-      p[ijkp] = grad4        ( ut[ijk-ii1] + u[ijk-ii1] / dt, ut[ijk    ] + u[ijk    ] / dt, ut[ijk+ii1] + u[ijk+ii1] / dt, ut[ijk+ii2] + u[ijk+ii2] / dt, dxi)
-              + grad4        ( vt[ijk-jj1] + v[ijk-jj1] / dt, vt[ijk    ] + v[ijk    ] / dt, vt[ijk+jj1] + v[ijk+jj1] / dt, vt[ijk+jj2] + v[ijk+jj2] / dt, dyi)
-              + grad4xbiasbot( wt[ijk    ] + w[ijk    ] / dt, wt[ijk+kk1] + w[ijk+kk1] / dt, wt[ijk+kk2] + w[ijk+kk2] / dt, wt[ijk+kk3] + w[ijk+kk3] / dt)
-                / grad4xbiasbot( zh[kgc], zh[kgc+1], zh[kgc+2], zh[kgc+3]);
+      p[ijkp] = grad4        ( ut[ijk-ii1] + u[ijk-ii1]/dt, ut[ijk    ] + u[ijk    ]/dt, ut[ijk+ii1] + u[ijk+ii1]/dt, ut[ijk+ii2] + u[ijk+ii2]/dt, dxi)
+              + grad4        ( vt[ijk-jj1] + v[ijk-jj1]/dt, vt[ijk    ] + v[ijk    ]/dt, vt[ijk+jj1] + v[ijk+jj1]/dt, vt[ijk+jj2] + v[ijk+jj2]/dt, dyi)
+              + grad4xbiasbot( wt[ijk    ] + w[ijk    ]/dt, wt[ijk+kk1] + w[ijk+kk1]/dt, wt[ijk+kk2] + w[ijk+kk2]/dt, wt[ijk+kk3] + w[ijk+kk3]/dt)
+                * dzi4[kgc];
     }
 
   for(int k=1; k<grid->kmax-1; k++)
@@ -330,10 +326,10 @@ int cpres_g4::pres_in(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp] = grad4 ( ut[ijk-ii1] + u[ijk-ii1] / dt, ut[ijk] + u[ijk] / dt, ut[ijk+ii1] + u[ijk+ii1] / dt, ut[ijk+ii2] + u[ijk+ii2] / dt, dxi)
-                + grad4 ( vt[ijk-jj1] + v[ijk-jj1] / dt, vt[ijk] + v[ijk] / dt, vt[ijk+jj1] + v[ijk+jj1] / dt, vt[ijk+jj2] + v[ijk+jj2] / dt, dyi)
-                + grad4x( wt[ijk-kk1] + w[ijk-kk1] / dt, wt[ijk] + w[ijk] / dt, wt[ijk+kk1] + w[ijk+kk1] / dt, wt[ijk+kk2] + w[ijk+kk2] / dt)
-                  / grad4x( zh[(k-1)+kgc], zh[k+kgc], zh[(k+1)+kgc], zh[(k+2)+kgc]);
+        p[ijkp] = grad4 ( ut[ijk-ii1] + u[ijk-ii1]/dt, ut[ijk] + u[ijk]/dt, ut[ijk+ii1] + u[ijk+ii1]/dt, ut[ijk+ii2] + u[ijk+ii2]/dt, dxi)
+                + grad4 ( vt[ijk-jj1] + v[ijk-jj1]/dt, vt[ijk] + v[ijk]/dt, vt[ijk+jj1] + v[ijk+jj1]/dt, vt[ijk+jj2] + v[ijk+jj2]/dt, dyi)
+                + grad4x( wt[ijk-kk1] + w[ijk-kk1]/dt, wt[ijk] + w[ijk]/dt, wt[ijk+kk1] + w[ijk+kk1]/dt, wt[ijk+kk2] + w[ijk+kk2]/dt)
+                  * dzi4[k+kgc];
       }
 
   // top boundary
@@ -343,10 +339,10 @@ int cpres_g4::pres_in(double * restrict p,
     {
       ijkp = i + j*jjp + (kmax-1)*kkp;
       ijk  = i+igc + (j+jgc)*jj1 + (kmax+kgc-1)*kk1;
-      p[ijkp] = grad4        ( ut[ijk-ii1] + u[ijk-ii1] / dt, ut[ijk    ] + u[ijk    ] / dt, ut[ijk+ii1] + u[ijk+ii1] / dt, ut[ijk+ii2] + u[ijk+ii2] / dt, dxi)
-              + grad4        ( vt[ijk-jj1] + v[ijk-jj1] / dt, vt[ijk    ] + v[ijk    ] / dt, vt[ijk+jj1] + v[ijk+jj1] / dt, vt[ijk+jj2] + v[ijk+jj2] / dt, dyi)
-              + grad4xbiastop( wt[ijk-kk2] + w[ijk-kk2] / dt, wt[ijk-kk1] + w[ijk-kk1] / dt, wt[ijk    ] + w[ijk    ] / dt, wt[ijk+kk1] + w[ijk+kk1] / dt)
-                / grad4xbiastop( zh[kmax+kgc-3], zh[kmax+kgc-2], zh[kmax+kgc-1], zh[kmax+kgc]);
+      p[ijkp] = grad4        ( ut[ijk-ii1] + u[ijk-ii1]/dt, ut[ijk    ] + u[ijk    ]/dt, ut[ijk+ii1] + u[ijk+ii1]/dt, ut[ijk+ii2] + u[ijk+ii2]/dt, dxi)
+              + grad4        ( vt[ijk-jj1] + v[ijk-jj1]/dt, vt[ijk    ] + v[ijk    ]/dt, vt[ijk+jj1] + v[ijk+jj1]/dt, vt[ijk+jj2] + v[ijk+jj2]/dt, dyi)
+              + grad4xbiastop( wt[ijk-kk2] + w[ijk-kk2]/dt, wt[ijk-kk1] + w[ijk-kk1]/dt, wt[ijk    ] + w[ijk    ]/dt, wt[ijk+kk1] + w[ijk+kk1]/dt)
+                * dzi4[kmax-1+kgc];
     }
 
   return 0;
@@ -664,7 +660,7 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 }
 
 int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                       double * restrict p , double * restrict z)
+                       double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart;
@@ -700,7 +696,7 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
         ut[ijk] -= grad4 ( p[ijk-ii2],  p[ijk-ii1],  p[ijk],  p[ijk+ii1], dxi);
         vt[ijk] -= grad4 ( p[ijk-jj2],  p[ijk-jj1],  p[ijk],  p[ijk+jj1], dyi);
         wt[ijk] -= grad4x( p[ijk-kk2],  p[ijk-kk1],  p[ijk],  p[ijk+kk1])
-                   / grad4x( z[k-2], z[k-1], z[k], z[k+1]);
+                   * dzhi4[k];
       }
 
   return 0;

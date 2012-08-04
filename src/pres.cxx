@@ -98,7 +98,7 @@ int cpres::exec(double dt)
     pres_g4->pres_in((*fields->p ).data,
                      (*fields->u ).data, (*fields->v ).data, (*fields->w ).data,
                      (*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
-                     grid->zh, dt);
+                     grid->dzi4, dt);
 
     // solve the system
     pres_g4->pres_solve((*fields->p).data, (*fields->tmp1).data, (*fields->tmp2).data, grid->dz,
@@ -106,7 +106,7 @@ int cpres::exec(double dt)
 
     // get the pressure tendencies from the pressure field
     pres_g4->pres_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
-                      (*fields->p ).data, grid->z);
+                      (*fields->p ).data, grid->dzhi4);
   }
 
   return 0;
