@@ -174,27 +174,33 @@ int cgrid::calculate()
   }
 
   // calculate the height of the ghost cell
-  z[kstart-1] = -1. * z[kstart];
-  z[kend    ] = -1. * z[kend-1] + 2.*zsize;
+  z[kstart-1] =                - 3.*z[kstart] + z[kstart+1] - (1./5.)*z[kstart+2];
+  z[kend    ] = (16./5.)*zsize - 3.*z[kend-1] + z[kend  -2] - (1./5.)*z[kend  -3];
+
+  // calculate the half levels according to the numerical scheme
+  zh[0] = -999.;
+  zh[kstart] = 0.;
+  for(k=kstart+1; k<kend; k++)
+    zh[k] = interp4(z[k-2], z[k-1], z[k], z[k+1]);
+  zh[kend] = zsize;
 
   // assume the flux levels are exactly in between the cells
   // compute the flux levels and the distance between them
   for(k=1; k<kcells; k++)
   {
-    zh  [k] = 0.5*(z[k] + z[k-1]);
     dzh [k] = z[k] - z[k-1];
     dzhi[k] = 1./dzh[k];
   }
 
   // set the non-initialized values
-  zh  [0] = -zh[2];
+  // zh  [0] = -zh[2];
   dzh [0] = -999.;
   dzhi[0] = -999.;
 
   // compute the height of the grid cells
   for(k=kstart; k<kend; k++)
   {
-    dz [k] = 0.5*(z[k]-z[k-1]) + 0.5*(z[k+1]-z[k]);
+    dz [k] = zh[k+1] - zh[k];
     dzi[k] = 1./dz[k];
   }
 
@@ -870,6 +876,11 @@ int cgrid::loadfield3d(double *data, char *filename)
   delete[] buffer;
 
   return 0;
+}
+
+inline double cgrid::interp4(const double a, const double b, const double c, const double d)
+{
+  return (-a + 9.*b + 9.*c - d) / 16.;
 }
 
 inline double cgrid::grad4x(const double a, const double b, const double c, const double d)
