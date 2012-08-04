@@ -142,26 +142,6 @@ int cgrid::init()
 
 int cgrid::create(cinput *inputin)
 {
-  /*
-  // create non-equidistant grid
-  double alpha = 0.967;
-  double eta;
-  int k;
-
-  // heights are set according to Moser180 case
-  for(k=kstart; k<kend; k++)
-  {
-    eta  = -1. + 2.*((k-kstart+1) - 0.5) / kmax;
-    z[k] = zsize / (2.*alpha) * std::tanh(eta*0.5*(std::log(1.+alpha) - std::log(1.-alpha))) + 0.5*zsize;
-  }
-  // end Moser180 setup 
-  */
-  
-  // // uniform height setup
-  // for(k=kstart; k<kend; k++)
-  //   z[k] = zsize / (2*kmax) + zsize / kmax * (k-kstart);
-  // // end uniform height setup*/
-  
   if(inputin->getProf(&z[kstart], "z", kmax))
     return 1;
 
@@ -193,12 +173,9 @@ int cgrid::calculate()
     yh[j] = (j-jgc)*dy + yoff;
   }
 
-  // calculate the height of the ghost cells
-  for(k=0; k<kgc; k++)
-  {
-    z[kstart-k-1] = -1. * z[kstart+k];
-    z[kend  +k  ] = -1. * z[kend-1-k] + 2.*zsize;
-  }
+  // calculate the height of the ghost cell
+  z[kstart-1] = -1. * z[kstart];
+  z[kend    ] = -1. * z[kend-1] + 2.*zsize;
 
   // assume the flux levels are exactly in between the cells
   // compute the flux levels and the distance between them
@@ -222,13 +199,12 @@ int cgrid::calculate()
   }
 
   // compute the height of the ghost cells
-  for(k=0; k<kgc; k++)
-  {
-    dz[kstart-k-1]  = dz[kstart+k];
-    dz[kend+k]      = dz[kend-k-1];
-    dzi[kstart-k-1] = 1./dz[kstart-k-1];
-    dzi[kend+k]     = 1./dz[kend+k];
-  }
+  dz[kstart-1] = dz[kstart];
+  dz[kend    ] = dz[kend-1];
+
+  // inverse the heights
+  dzi[kstart-1] = 1./dz[kstart-1];
+  dzi[kend    ] = 1./dz[kend];
 
   // calculate the inverse gradients for the 4th order scheme
   dzi4 [kstart] = 1./grad4xbiasbot(zh[kstart  ], zh[kstart+1], zh[kstart+2], zh[kstart+3]);
