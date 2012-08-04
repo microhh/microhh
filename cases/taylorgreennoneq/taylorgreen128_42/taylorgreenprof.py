@@ -3,7 +3,7 @@ import numpy
 # set the values
 kmax  = 64
 zsize = 0.5
-stretch = 1.03
+stretch = 1.02
 
 # equidistant grid
 dz = zsize / kmax
