@@ -20,8 +20,8 @@ for k in range(1,kmax):
 
 # write the data to a file
 proffile = open('taylorgreen.prof','w')
-proffile.write('{0:^14s}\n'.format('z'))
+proffile.write('{0:^22s}\n'.format('z'))
 for k in range(kmax):
-  proffile.write('{0:1.8E}\n'.format(z[k]))
+  proffile.write('{0:1.16E}\n'.format(z[k]))
 proffile.close()
 
