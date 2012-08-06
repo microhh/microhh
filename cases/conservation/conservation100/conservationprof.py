@@ -8,7 +8,6 @@ dz    = zsize / kmax
 # define the variables
 z = numpy.zeros(kmax)
 z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
-u = numpy.zeros(kmax)
 s = numpy.zeros(kmax)
 
 # create non-equidistant grid
@@ -20,8 +19,8 @@ for k in range(kmax):
 
 # write the data to a file
 proffile = open('conservation.prof','w')
-proffile.write('{0:^22s} {1:^22s} {2:^22s}\n'.format('z', 'u', 's'))
+proffile.write('{0:^22s} {1:^22s}\n'.format('z', 's'))
 for k in range(kmax):
-  proffile.write('{0:1.16E} {1:1.16E} {2:1.16E}\n'.format(z[k], u[k], s[k]))
+  proffile.write('{0:1.16E} {1:1.16E}\n'.format(z[k], s[k]))
 proffile.close()
 
