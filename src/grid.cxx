@@ -177,6 +177,9 @@ int cgrid::calculate()
   z[kstart-1] =                - 3.*z[kstart] + z[kstart+1] - (1./5.)*z[kstart+2];
   z[kend    ] = (16./5.)*zsize - 3.*z[kend-1] + z[kend  -2] - (1./5.)*z[kend  -3];
 
+  // z[kstart-1] = - z[kstart];
+  // z[kend    ] = zsize + zsize - z[kend-1];
+
   // calculate the half levels according to the numerical scheme
   zh[0] = -999.;
   zh[kstart] = 0.;
