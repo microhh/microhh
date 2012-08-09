@@ -174,47 +174,57 @@ int cgrid::calculate()
   }
 
   // calculate the height of the ghost cell
-  z[kstart-1] =                - 3.*z[kstart] + z[kstart+1] - (1./5.)*z[kstart+2];
-  z[kend    ] = (16./5.)*zsize - 3.*z[kend-1] + z[kend  -2] - (1./5.)*z[kend  -3];
+  // z[kstart-1] =                - 3.*z[kstart] + z[kstart+1] - (1./5.)*z[kstart+2];
+  // z[kend    ] = (16./5.)*zsize - 3.*z[kend-1] + z[kend  -2] - (1./5.)*z[kend  -3];
 
   // z[kstart-1] = - z[kstart];
   // z[kend    ] = zsize + zsize - z[kend-1];
 
+  // calculate the height of the ghost cells according to the scheme
+  z[kstart-1] = -2.*z[kstart] + (1./3.)*z[kstart+1];
+  z[kstart-2] = -9.*z[kstart] + 2.*z[kstart+1];
+
+  z[kend  ] = (8./3.)*zsize - 2.*z[kend-1] + (1./3.)*z[kend-2];
+  z[kend+1] = 8.*zsize - 9.*z[kend-1] + 2.*z[kend-2];
+
   // calculate the half levels according to the numerical scheme
   zh[0] = -999.;
-  zh[kstart] = 0.;
+  zh[kstart-1] = interp4biasbot(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1]);
+  zh[kstart  ] = 0.;
   for(k=kstart+1; k<kend; k++)
     zh[k] = interp4(z[k-2], z[k-1], z[k], z[k+1]);
   zh[kend] = zsize;
+  zh[kend+1] = interp4biastop(z[kend-2], z[kend-1], z[kend], z[kend+1]);
 
-  // assume the flux levels are exactly in between the cells
-  // compute the flux levels and the distance between them
+  // compute the height of the grid cells
+  dzh [0] = -999.;
+  dzhi[0] = -999.;
   for(k=1; k<kcells; k++)
   {
     dzh [k] = z[k] - z[k-1];
     dzhi[k] = 1./dzh[k];
   }
 
-  // set the non-initialized values
-  // zh  [0] = -zh[2];
   dzh [0] = -999.;
   dzhi[0] = -999.;
+  for(k=1; k<kcells; k++)
+  {
+    dzh [k] = z[k] - z[k-1];
+    dzhi[k] = 1./dzh[k];
+  }
 
   // compute the height of the grid cells
-  for(k=kstart; k<kend; k++)
+  dz [0] = -999.;
+  dzi[0] = -999.;
+  for(k=1; k<kcells-1; k++)
   {
     dz [k] = zh[k+1] - zh[k];
     dzi[k] = 1./dz[k];
   }
+  dz [kcells-1] = -999.;
+  dzi[kcells-1] = -999.;
 
-  // compute the height of the ghost cells
-  dz[kstart-1] = dz[kstart];
-  dz[kend    ] = dz[kend-1];
-
-  // inverse the heights
-  dzi[kstart-1] = 1./dz[kstart-1];
-  dzi[kend    ] = 1./dz[kend];
-
+  /*
   // calculate the inverse gradients for the 4th order scheme
   dzi4 [kstart] = 1./grad4xbiasbot(zh[kstart  ], zh[kstart+1], zh[kstart+2], zh[kstart+3]);
   dzhi4[kstart] = 1./grad4xbiasbot(z [kstart-1], z [kstart  ], z [kstart+1], z [kstart+2]);
@@ -227,6 +237,22 @@ int cgrid::calculate()
 
   dzhi4[kend-1] = 1./grad4x       (z[kend-3], z[kend-2], z[kend-1], z[kend]);
   dzhi4[kend  ] = 1./grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend]);
+  */
+  
+  // calculate the inverse gradients for the 4th order scheme
+  dzi4 [0] = -999.;
+  dzhi4[0] = -999.;
+  dzi4 [kstart-1] = 1./grad4xbiasbot(zh[kstart-1], zh[kstart  ], zh[kstart+1], zh[kstart+2]);
+  dzhi4[kstart-1] = 1./grad4xbiasbot(z [kstart-2], z [kstart-1], z [kstart  ], z [kstart+1]);
+  for(k=kstart; k<kend; k++)
+  {
+    dzi4 [k] = 1./grad4x(zh[k-1], zh[k  ], zh[k+1], zh[k+2]);
+    dzhi4[k] = 1./grad4x(z [k-2], z [k-1], z [k  ], z [k+1]);
+  }
+  dzi4 [kend  ] = 1./grad4xbiastop(zh[kend-2], zh[kend-1], zh[kend], zh[kend+1]);
+  dzhi4[kend  ] = 1./grad4x       (z [kend-2], z [kend-1], z [kend], z [kend+1]);
+  dzi4 [kend+1] = -999.;
+  dzhi4[kend+1] = 1./grad4xbiastop(z [kend-2], z [kend-1], z [kend], z [kend+1]);
 
   return 0;
 }
@@ -884,6 +910,16 @@ int cgrid::loadfield3d(double *data, char *filename)
 inline double cgrid::interp4(const double a, const double b, const double c, const double d)
 {
   return (-a + 9.*b + 9.*c - d) / 16.;
+}
+
+inline double cgrid::interp4biasbot(const double a, const double b, const double c, const double d)
+{
+  return ((5./16.)*a + (15./16.)*b - (5./16.)*c + (1./16)*d);
+}
+
+inline double cgrid::interp4biastop(const double a, const double b, const double c, const double d)
+{
+  return ((5./16.)*d + (15./16.)*c - (5./16.)*b + (1./16)*a);
 }
 
 inline double cgrid::grad4x(const double a, const double b, const double c, const double d)
