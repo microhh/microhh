@@ -964,21 +964,7 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
   double div, divmax;
   divmax = 0;
 
-  // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj1 + kstart*kk1;
-      div = grad4        ( u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2], dxi)
-          + grad4        ( v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2], dyi)
-          + grad4xbiasbot( w[ijk    ], w[ijk+kk1], w[ijk+kk2], w[ijk+kk3])
-            / grad4xbiasbot( zh[kstart], zh[kstart+1], zh[kstart+2], zh[kstart+3]);
-
-      divmax = std::max(divmax, std::abs(div));
-    }
-
-  for(int k=grid->kstart+1; k<grid->kend-1; k++)
+  for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -991,21 +977,6 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
 
         divmax = std::max(divmax, std::abs(div));
       }
-
-  // top boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj1 + (kend-1)*kk1;
-      div = grad4        ( u[ijk-ii1], u[ijk    ], u[ijk+ii1], u[ijk+ii2], dxi)
-          + grad4        ( v[ijk-jj1], v[ijk    ], v[ijk+jj1], v[ijk+jj2], dyi)
-          + grad4xbiastop( w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1])
-            / grad4xbiastop( zh[kend-3], zh[kend-2], zh[kend-1], zh[kend]);
-
-      divmax = std::max(divmax, std::abs(div));
-    }
-
 
   grid->getmax(&divmax);
 
