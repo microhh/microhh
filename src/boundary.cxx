@@ -84,10 +84,12 @@ int cboundary::exec()
 
 int cboundary::setgcbot_2nd(double * restrict a, int sw, double abot)
 { 
-  int ijk,jj,kk;
+  int ijk,jj,kk,kstart;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+
+  kstart = grid->kstart;
 
   if(sw == 0)
   {
@@ -95,8 +97,8 @@ int cboundary::setgcbot_2nd(double * restrict a, int sw, double abot)
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
-        ijk = i + j*jj;
-        a[ijk] = 2.*abot - a[ijk+kk];
+        ijk = i + j*jj + kstart*kk;
+        a[ijk-kk] = 2.*abot - a[ijk];
       }
   }
   else if(sw == 1)
@@ -105,8 +107,8 @@ int cboundary::setgcbot_2nd(double * restrict a, int sw, double abot)
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
-        ijk = i + j*jj;
-        a[ijk] = a[ijk+kk];
+        ijk = i + j*jj + kstart*kk;
+        a[ijk-kk] = a[ijk];
       }
   }
 
@@ -129,8 +131,8 @@ int cboundary::setgctop_2nd(double * restrict a, int sw, double atop)
       for(int i=0; i<grid->icells; i++)
       {
         // add the bcvalues later
-        ijk = i + j*jj + kend*kk;
-        a[ijk] = 2.*atop - a[ijk-kk];
+        ijk = i + j*jj + (kend-1)*kk;
+        a[ijk+kk] = 2.*atop - a[ijk];
       }
   }
   else if(sw == 1)
@@ -140,8 +142,8 @@ int cboundary::setgctop_2nd(double * restrict a, int sw, double atop)
       for(int i=0; i<grid->icells; i++)
       {
         // add the bcvalues later
-        ijk = i + j*jj + kend*kk;
-        a[ijk] = a[ijk-kk];
+        ijk = i + j*jj + (kend-1)*kk;
+        a[ijk+kk] = a[ijk];
       }
   }
 
@@ -165,8 +167,8 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
-        ijk = i + j*jj;
-        a[ijk] = (16./5.)*abot - 3.*a[ijk+kk1] + a[ijk+kk2] - (1./5.)*a[ijk+kk3];
+        ijk = i + j*jj + kstart*kk1;
+        a[ijk-kk1] = (16./5.)*abot - 3.*a[ijk] + a[ijk+kk1] - (1./5.)*a[ijk+kk2];
       }
   }
   else if(sw == 1)
@@ -175,9 +177,9 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
-        ijk = i + j*jj;
-        a[ijk] = ( - grad4xbiasbot(z[kstart-1], z[kstart], z[kstart+1], z[kstart+2])*abot 
-                   + 21.*a[ijk+kk1] + 3.*a[ijk+kk2] - a[ijk+kk3] ) / 23.;
+        ijk = i + j*jj + kstart*kk1;
+        a[ijk-kk1] = ( - grad4xbiasbot(z[kstart-1], z[kstart], z[kstart+1], z[kstart+2])*abot 
+                     + 21.*a[ijk] + 3.*a[ijk+kk1] - a[ijk+kk2] ) / 23.;
       }
   }
 
@@ -201,8 +203,8 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
-        ijk = i + j*jj + kend*kk1;
-        a[ijk] = (16./5.)*atop - 3.*a[ijk-kk1] + a[ijk-kk2] - (1./5.)*a[ijk-kk3];
+        ijk = i + j*jj + (kend-1)*kk1;
+        a[ijk+kk1] = (16./5.)*atop - 3.*a[ijk] + a[ijk-kk1] - (1./5.)*a[ijk-kk2];
       }
   }
   else if(sw == 1)
@@ -211,9 +213,9 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
-        ijk = i + j*jj + kend*kk1;
-        a[ijk] = ( grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend]) * atop 
-                   + 21.*a[ijk-kk1] + 3.*a[ijk-kk2] - a[ijk-kk3] ) / 23.;
+        ijk = i + j*jj + (kend-1)*kk1;
+        a[ijk+kk1] = ( grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend]) * atop 
+                     + 21.*a[ijk] + 3.*a[ijk-kk1] - a[ijk-kk2] ) / 23.;
       }
   }
 
@@ -229,3 +231,4 @@ inline double cboundary::grad4xbiastop(const double a, const double b, const dou
 {
   return ( 23.*d - 21.*c - 3.*b + a);
 }
+

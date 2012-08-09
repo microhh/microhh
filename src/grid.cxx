@@ -62,7 +62,7 @@ int cgrid::readinifile(cinput *inputin)
   
   igc = 3;
   jgc = 3;
-  kgc = 1;
+  kgc = 2;
 
   return 0;
 }
