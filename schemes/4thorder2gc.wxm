@@ -1,0 +1,59 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 0.8.5 ] */
+
+/* [wxMaxima: input   start ] */
+f(x) := f0 + f1*x/1! + f2*x^2/2! + f3*x^3/3! + f4*x^4/4! + f5*x^5/5! + f6*x^6/6!;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-3/2] = f(-3/2*h)$
+eq2 : f[-1/2] = f(-1/2*h)$
+eq3 : f[ 1/2] = f( 1/2*h)$
+eq4 : f[ 3/2] = f( 3/2*h)$
+sol1 : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], sol1) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1dirtemp : solve( sol1[1], f[-1/2])$
+bc1dirtemp : subst(f0bc, f0, bc1dirtemp)$
+bc2dir : ratsimp( solve( subst( bc1dirtemp, sol1[4]), f[-3/2]) );
+bc1dir : ratsimp( subst(bc2, bc1dirtemp) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], bc1dir) );
+ratsimp( subst([f4=0,f5=0,f6=0], bc2dir) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1dirtemp : solve( sol1[1], f[-1/2])$
+bc1dirtemp : subst(f0bc, f0, bc1dirtemp)$
+bc2dir : ratsimp( solve( subst( bc1dirtemp, sol1[4]), f[-3/2]) );
+bc2dir : subst(0, f3, bc2dir)$
+bc1dir : ratsimp( subst(bc2dir, bc1dirtemp) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], bc1dir) );
+ratsimp( subst([f4=0,f5=0,f6=0], bc2dir) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1neutemp : solve( sol1[2], f[-1/2])$
+bc1neutemp : subst(f0bc, f0, bc1neutemp)$
+bc2neu : ratsimp( solve( subst( bc1neutemp, sol1[4]), f[-3/2]) );
+bc2neu : subst(0, f3, bc2neu)$
+bc1neu : ratsimp( subst(bc2neu, bc1neutemp) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], bc1neu) );
+ratsimp( subst([f4=0,f5=0,f6=0], bc2neu) );
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$
