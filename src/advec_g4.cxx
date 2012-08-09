@@ -29,8 +29,8 @@ double cadvec_g4::calccfl(double * restrict u, double * restrict v, double * res
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = grid->icells*grid->jcells;
-  kk2 = grid->icells*grid->jcells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
