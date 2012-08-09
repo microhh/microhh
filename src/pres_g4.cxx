@@ -279,21 +279,23 @@ int cpres_g4::pres_in(double * restrict p,
   grid->boundary_cyclic(wt);
   mpi->waitall();
 
-  // write pressure as a 3d array without ghost cells
-  // bottom boundary
+  // set the bc 
   for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
     for(int i=0; i<grid->imax; i++)
     {
-      ijkp = i + j*jjp;
       ijk  = i+igc + (j+jgc)*jj1 + kgc*kk1;
-      p[ijkp] = grad4        ( ut[ijk-ii1] + u[ijk-ii1]/dt, ut[ijk    ] + u[ijk    ]/dt, ut[ijk+ii1] + u[ijk+ii1]/dt, ut[ijk+ii2] + u[ijk+ii2]/dt, dxi)
-              + grad4        ( vt[ijk-jj1] + v[ijk-jj1]/dt, vt[ijk    ] + v[ijk    ]/dt, vt[ijk+jj1] + v[ijk+jj1]/dt, vt[ijk+jj2] + v[ijk+jj2]/dt, dyi)
-              + grad4xbiasbot( wt[ijk    ] + w[ijk    ]/dt, wt[ijk+kk1] + w[ijk+kk1]/dt, wt[ijk+kk2] + w[ijk+kk2]/dt, wt[ijk+kk3] + w[ijk+kk3]/dt)
-                * dzi4[kgc];
+      wt[ijk-kk1] = -3.*wt[ijk+kk1] + wt[ijk+kk2];
+    }
+  for(int j=0; j<grid->jmax; j++)
+#pragma ivdep
+    for(int i=0; i<grid->imax; i++)
+    {
+      ijk  = i+igc + (j+jgc)*jj1 + (kmax+kgc)*kk1;
+      wt[ijk+kk1] = -3.*wt[ijk-kk1] + wt[ijk-kk2];
     }
 
-  for(int k=1; k<grid->kmax-1; k++)
+  for(int k=0; k<grid->kmax; k++)
     for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
       for(int i=0; i<grid->imax; i++)
@@ -305,19 +307,6 @@ int cpres_g4::pres_in(double * restrict p,
                 + grad4x( wt[ijk-kk1] + w[ijk-kk1]/dt, wt[ijk] + w[ijk]/dt, wt[ijk+kk1] + w[ijk+kk1]/dt, wt[ijk+kk2] + w[ijk+kk2]/dt)
                   * dzi4[k+kgc];
       }
-
-  // top boundary
-  for(int j=0; j<grid->jmax; j++)
-#pragma ivdep
-    for(int i=0; i<grid->imax; i++)
-    {
-      ijkp = i + j*jjp + (kmax-1)*kkp;
-      ijk  = i+igc + (j+jgc)*jj1 + (kmax+kgc-1)*kk1;
-      p[ijkp] = grad4        ( ut[ijk-ii1] + u[ijk-ii1]/dt, ut[ijk    ] + u[ijk    ]/dt, ut[ijk+ii1] + u[ijk+ii1]/dt, ut[ijk+ii2] + u[ijk+ii2]/dt, dxi)
-              + grad4        ( vt[ijk-jj1] + v[ijk-jj1]/dt, vt[ijk    ] + v[ijk    ]/dt, vt[ijk+jj1] + v[ijk+jj1]/dt, vt[ijk+jj2] + v[ijk+jj2]/dt, dyi)
-              + grad4xbiastop( wt[ijk-kk2] + w[ijk-kk2]/dt, wt[ijk-kk1] + w[ijk-kk1]/dt, wt[ijk    ] + w[ijk    ]/dt, wt[ijk+kk1] + w[ijk+kk1]/dt)
-                * dzi4[kmax-1+kgc];
-    }
 
   return 0;
 }
@@ -512,8 +501,8 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
         m3temp[kmax+2] =     2.;
         m4temp[kmax+2] =     1.;
 
-        m1temp[kmax+2] =     9.;
-        m2temp[kmax+2] =    -2.;
+        m1temp[kmax+2] =    -2.;
+        m2temp[kmax+2] =     9.;
         m3temp[kmax+2] =     0.;
         m4temp[kmax+2] =     1.;
       }
