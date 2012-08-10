@@ -930,7 +930,7 @@ int cpres_g4::tdma(double * restrict a, double * restrict b, double * restrict c
 }
 */
 
-double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict zh)
+double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2,kk3;
   int    kstart,kend;
@@ -962,7 +962,7 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
         div = grad4 ( u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2], dxi)
             + grad4 ( v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2], dyi)
             + grad4x( w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2])
-              / grad4x( zh[k-1], zh[k], zh[k+1], zh[k+2]);
+              *dzi4[k];
 
         divmax = std::max(divmax, std::abs(div));
       }
