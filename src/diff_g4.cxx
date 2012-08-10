@@ -51,10 +51,10 @@ int cdiff_g4::diffc(double * restrict at, double * restrict a, double * restrict
       at[ijk] += visc * (
             + divgrad4(a[ijk-ii3], a[ijk-ii2], a[ijk-ii1], a[ijk], a[ijk+ii1], a[ijk+ii2], a[ijk+ii3], dxidxi)
             + divgrad4(a[ijk-jj3], a[ijk-jj2], a[ijk-jj1], a[ijk], a[ijk+jj1], a[ijk+jj2], a[ijk+jj3], dyidyi)
-            + grad4x(grad4xbiasbot(a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzhi4[kstart  ],
-                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzhi4[kstart+1],
-                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzhi4[kstart+2],
-                     grad4x       (a[ijk    ], a[ijk+kk1], a[ijk+kk2], a[ijk+kk3]) * dzhi4[kstart+3])
+            + grad4x(grad4xbiasbot(a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzhi4[kstart-1],
+                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzhi4[kstart  ],
+                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzhi4[kstart+1],
+                     grad4x       (a[ijk    ], a[ijk+kk1], a[ijk+kk2], a[ijk+kk3]) * dzhi4[kstart+2])
               * dzi4[kstart] );
     }
 
@@ -83,10 +83,10 @@ int cdiff_g4::diffc(double * restrict at, double * restrict a, double * restrict
       at[ijk] += visc * (
             + divgrad4(a[ijk-ii3], a[ijk-ii2], a[ijk-ii1], a[ijk], a[ijk+ii1], a[ijk+ii2], a[ijk+ii3], dxidxi)
             + divgrad4(a[ijk-jj3], a[ijk-jj2], a[ijk-jj1], a[ijk], a[ijk+jj1], a[ijk+jj2], a[ijk+jj3], dyidyi)
-            + grad4x(grad4x       (a[ijk-kk3], a[ijk-kk2], a[ijk-kk1], a[ijk    ]) * dzhi4[kend-3],
-                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzhi4[kend-2],
-                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzhi4[kend-1],
-                     grad4xbiastop(a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzhi4[kend  ])
+            + grad4x(grad4x       (a[ijk-kk3], a[ijk-kk2], a[ijk-kk1], a[ijk    ]) * dzhi4[kend-2],
+                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzhi4[kend-1],
+                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzhi4[kend  ],
+                     grad4xbiastop(a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzhi4[kend+1])
               * dzi4[kend-1] );
     }
 
@@ -124,10 +124,10 @@ int cdiff_g4::diffw(double * restrict at, double * restrict a, double * restrict
       at[ijk] += visc * (
             + divgrad4(a[ijk-ii3], a[ijk-ii2], a[ijk-ii1], a[ijk], a[ijk+ii1], a[ijk+ii2], a[ijk+ii3], dxidxi)
             + divgrad4(a[ijk-jj3], a[ijk-jj2], a[ijk-jj1], a[ijk], a[ijk+jj1], a[ijk+jj2], a[ijk+jj3], dyidyi)
-            + grad4x(grad4xbiasbot(a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzi4[kstart  ],
-                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzi4[kstart+1],
-                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzi4[kstart+2],
-                     grad4x       (a[ijk    ], a[ijk+kk1], a[ijk+kk2], a[ijk+kk3]) * dzi4[kstart+3])
+            + grad4x(grad4xbiasbot(a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzi4[kstart-1],
+                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzi4[kstart  ],
+                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzi4[kstart+1],
+                     grad4x       (a[ijk    ], a[ijk+kk1], a[ijk+kk2], a[ijk+kk3]) * dzi4[kstart+2])
               * dzhi4[kstart+1] );
     }
 
@@ -156,10 +156,10 @@ int cdiff_g4::diffw(double * restrict at, double * restrict a, double * restrict
       at[ijk] += visc * (
             + divgrad4(a[ijk-ii3], a[ijk-ii2], a[ijk-ii1], a[ijk], a[ijk+ii1], a[ijk+ii2], a[ijk+ii3], dxidxi)
             + divgrad4(a[ijk-jj3], a[ijk-jj2], a[ijk-jj1], a[ijk], a[ijk+jj1], a[ijk+jj2], a[ijk+jj3], dyidyi)
-            + grad4x(grad4x       (a[ijk-kk3], a[ijk-kk2], a[ijk-kk1], a[ijk    ]) * dzi4[kend-4],
-                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzi4[kend-3],
-                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzi4[kend-2],
-                     grad4xbiastop(a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzi4[kend-1])
+            + grad4x(grad4x       (a[ijk-kk3], a[ijk-kk2], a[ijk-kk1], a[ijk    ]) * dzi4[kend-3],
+                     grad4x       (a[ijk-kk2], a[ijk-kk1], a[ijk    ], a[ijk+kk1]) * dzi4[kend-2],
+                     grad4x       (a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzi4[kend-1],
+                     grad4xbiastop(a[ijk-kk1], a[ijk    ], a[ijk+kk1], a[ijk+kk2]) * dzi4[kend  ])
               * dzhi4[kend-1] );
     }
 
