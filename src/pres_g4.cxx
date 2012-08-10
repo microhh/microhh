@@ -501,10 +501,10 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
         m3temp[kmax+2] =     2.;
         m4temp[kmax+2] =     1.;
 
-        m1temp[kmax+2] =    -2.;
-        m2temp[kmax+2] =     9.;
-        m3temp[kmax+2] =     0.;
-        m4temp[kmax+2] =     1.;
+        m1temp[kmax+3] =    -2.;
+        m2temp[kmax+3] =     9.;
+        m3temp[kmax+3] =     0.;
+        m4temp[kmax+3] =     1.;
       }
       // set dp/dz at top to zero
       else
