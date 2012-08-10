@@ -750,7 +750,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
   m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
   m7[k] =   m7[k] - m3[k]*m8[k-1];
 
-  for(k=4; k<kmax-1; k++)
+  for(k=4; k<kmax+1; k++)
   {
     m0[k] =   m0[k]                                                                  / m4[k-4];
     m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
@@ -763,7 +763,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
   }
   m8[k-1] = 1.; // padding
 
-  k = kmax-1;
+  k = kmax+1;
   m0[k] =   m0[k]                                                                  / m4[k-4];
   m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
   m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
@@ -774,7 +774,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
   m7[k] =  1.; // padding
   m8[k] =  1.; // padding
 
-  k = kmax;
+  k = kmax+2;
   m0[k] =   m0[k]                                                                  / m4[k-4];
   m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
   m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
@@ -785,7 +785,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
   m7[k] = 1.; // padding
   m8[k] = 1.; // padding
 
-  k = kmax+1;
+  k = kmax+3;
   m0[k] =   m0[k]                                                                  / m4[k-4];
   m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
   m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
@@ -822,7 +822,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
       p[ij+kk3] = p[ij+kk3] - p[ij+kk2]*m3[3] - p[ij+kk1]*m2[3] -p[ij]*m1[3];
     }
 
-  for(k=4; k<kmax+2; k++)
+  for(k=4; k<kmax+4; k++)
     for(j=0;j<jblock;j++)
 #pragma ivdep
       for(i=0;i<iblock;i++)
@@ -832,7 +832,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
       }
 
   // Solve Ux=y, backward
-  k = kmax+1;
+  k = kmax+3;
   for(j=0;j<jblock;j++)
 #pragma ivdep
     for(i=0;i<iblock;i++)
@@ -844,7 +844,7 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
       p[ijk-kk3] = ( p[ijk-kk3] - p[ijk-kk2]*m5[k-3] - p[ijk-kk1]*m6[k-3] - p[ijk]*m7[k-3] ) / m4[k-3];
     }
 
-  for(k=kmax-3; k>=0; k--)
+  for(k=kmax-1; k>=0; k--)
     for(j=0;j<jblock;j++)
 #pragma ivdep
       for(i=0;i<iblock;i++)
