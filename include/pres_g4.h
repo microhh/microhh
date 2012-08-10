@@ -49,8 +49,8 @@ class cpres_g4
     double *m0temp,*m1temp,*m2temp,*m3temp,*m4temp,*m5temp,*m6temp,*m7temp,*m8temp,*ptemp;
 
     // functions
-    int ndma(double *, double *, double *, double *, double *,
-             double *, double *, double *, double *, double *);
+    int hdma(double *, double *, double *, double *,
+             double *, double *, double *, double *);
 
     inline double grad4(const double, const double, const double, const double, const double);
 

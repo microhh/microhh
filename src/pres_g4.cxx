@@ -533,7 +533,7 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
       ptemp [kmax+3] = 0.;
 
       // for now, call the solver here
-      ndma(m0temp, m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, m8temp, ptemp);
+      hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
 
       // put back the solution
       for(k=0; k<kmax; k++)
@@ -694,107 +694,68 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
   return 0;
 }
 
-int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict m8, double * restrict p)
+int cpres_g4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p)
 {
   int kmax;
-  int inorm = 1;
   int k;
 
   kmax = grid->kmax;
 
   // LU factorization
   k = 0;
-  m0[k] = 1.;
   m1[k] = 1.;
   m2[k] = 1.;
-  if(inorm == 1)
-  {
-     m3[k] = 1.          / m4[k]; // padding, and used in nonadss to normalize 1st eqn.
-     m4[k] = 1.;
-     m5[k] = m5[k]*m3[k];
-     m6[k] = m6[k]*m3[k];
-     m7[k] = m7[k]*m3[k];
-     m8[k] = m8[k]*m3[k];
-  }
-  else
-     m3[k] = 1.; // padding
+  m3[k] = 1.          / m4[k]; // padding, and used in nonadss to normalize 1st eqn.
+  m4[k] = 1.;
+  m5[k] = m5[k]*m3[k];
+  m6[k] = m6[k]*m3[k];
+  m7[k] = m7[k]*m3[k];
 
   k = 1;
-  m0[k] = 1.; // padding
   m1[k] = 1.; // padding
   m2[k] = 1.; // padding
   m3[k] = m3[k]                 / m4[k-1];
   m4[k] = m4[k] - m3[k]*m5[k-1];
   m5[k] = m5[k] - m3[k]*m6[k-1];
   m6[k] = m6[k] - m3[k]*m7[k-1];
-  m7[k] = m7[k] - m3[k]*m8[k-1];
 
   k = 2;
-  m0[k] = 1.; // padding
   m1[k] = 1.; // padding
   m2[k] =   m2[k]                                   / m4[k-2];
   m3[k] = ( m3[k]                 - m2[k]*m5[k-2] ) / m4[k-1];
   m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2];
   m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
-  m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
-  m7[k] =   m7[k] - m3[k]*m8[k-1];
+  m6[k] =   m6[k] - m3[k]*m7[k-1];
 
-  k = 3;
-  m0[k] = 1.; // padding
-  m1[k] =   m1[k]                                                   / m4[k-3];
-  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] ) / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] ) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3]; 
-  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2] - m1[k]*m8[k-3];
-  m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
-  m7[k] =   m7[k] - m3[k]*m8[k-1];
-
-  for(k=4; k<kmax+1; k++)
+  for(k=3; k<kmax+2; k++)
   {
-    m0[k] =   m0[k]                                                                  / m4[k-4];
-    m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
-    m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
-    m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] - m0[k]*m7[k-4]) / m4[k-1];
-    m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3] - m0[k]*m8[k-4];
-    m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2] - m1[k]*m8[k-3];
+    m1[k] = ( m1[k]                                                ) / m4[k-3];
+    m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
+    m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
+    m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
+    m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
     m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
-    m7[k] =   m7[k] - m3[k]*m8[k-1];
   }
-  m8[k-1] = 1.; // padding
-
-  k = kmax+1;
-  m0[k] =   m0[k]                                                                  / m4[k-4];
-  m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
-  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] - m0[k]*m7[k-4]) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3] - m0[k]*m8[k-4];
-  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2] - m1[k]*m8[k-3];
-  m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
-  m7[k] =  1.; // padding
-  m8[k] =  1.; // padding
+  m7[k-1] = 1.; // padding
 
   k = kmax+2;
-  m0[k] =   m0[k]                                                                  / m4[k-4];
-  m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
-  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] - m0[k]*m7[k-4]) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3] - m0[k]*m8[k-4];
-  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2] - m1[k]*m8[k-3];
+  m1[k] = ( m1[k]                                                ) / m4[k-3];
+  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
+  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
+  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
+  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
   m6[k] = 1.; // padding
   m7[k] = 1.; // padding
-  m8[k] = 1.; // padding
 
   k = kmax+3;
-  m0[k] =   m0[k]                                                                  / m4[k-4];
-  m1[k] = ( m1[k]                                                 - m0[k]*m5[k-4]) / m4[k-3];
-  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3] - m0[k]*m6[k-4]) / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3] - m0[k]*m7[k-4]) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3] - m0[k]*m8[k-4];
+  m1[k] = ( m1[k]                                                ) / m4[k-3];
+  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
+  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
+  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
   m5[k] = 1.; // padding
   m6[k] = 1.; // padding
   m7[k] = 1.; // padding
-  m8[k] = 1.; // padding
 
   // Backward substitution 
   int i,j,jj,ijk,ij;
@@ -819,16 +780,15 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
       p[ij    ] =             p[ij    ]*m3[0]; // Normalize first eqn. See NONADFS
       p[ij+kk1] = p[ij+kk1] - p[ij    ]*m3[1];
       p[ij+kk2] = p[ij+kk2] - p[ij+kk1]*m3[2] - p[ij    ]*m2[2];
-      p[ij+kk3] = p[ij+kk3] - p[ij+kk2]*m3[3] - p[ij+kk1]*m2[3] -p[ij]*m1[3];
     }
 
-  for(k=4; k<kmax+4; k++)
+  for(k=3; k<kmax+4; k++)
     for(j=0;j<jblock;j++)
 #pragma ivdep
       for(i=0;i<iblock;i++)
       {
         ijk = i + j*jj + k*kk1;
-        p[ijk] = p[ijk] - p[ijk-kk1]*m3[k] - p[ijk-kk2]*m2[k] - p[ijk-kk3]*m1[k] - p[ijk-kk4]*m0[k];
+        p[ijk] = p[ijk] - p[ijk-kk1]*m3[k] - p[ijk-kk2]*m2[k] - p[ijk-kk3]*m1[k];
       }
 
   // Solve Ux=y, backward
@@ -838,19 +798,18 @@ int cpres_g4::ndma(double * restrict m0, double * restrict m1, double * restrict
     for(i=0;i<iblock;i++)
     {
       ijk = i + j*jj + k*kk1;
-      p[ijk    ] =   p[ijk    ]                                                              / m4[k  ];
-      p[ijk-kk1] = ( p[ijk-kk1] - p[ijk    ]*m5[k-1] )                                       / m4[k-1];
-      p[ijk-kk2] = ( p[ijk-kk2] - p[ijk-kk1]*m5[k-2] - p[ijk    ]*m6[k-2] )                  / m4[k-2];
-      p[ijk-kk3] = ( p[ijk-kk3] - p[ijk-kk2]*m5[k-3] - p[ijk-kk1]*m6[k-3] - p[ijk]*m7[k-3] ) / m4[k-3];
+      p[ijk    ] =   p[ijk    ]                                         / m4[k  ];
+      p[ijk-kk1] = ( p[ijk-kk1] - p[ijk    ]*m5[k-1] )                  / m4[k-1];
+      p[ijk-kk2] = ( p[ijk-kk2] - p[ijk-kk1]*m5[k-2] - p[ijk]*m6[k-2] ) / m4[k-2];
     }
 
-  for(k=kmax-1; k>=0; k--)
+  for(k=kmax; k>=0; k--)
     for(j=0;j<jblock;j++)
 #pragma ivdep
       for(i=0;i<iblock;i++)
       {
         ijk = i + j*jj + k*kk1;
-        p[ijk] = ( p[ijk] - p[ijk+kk1]*m5[k] - p[ijk+kk2]*m6[k] - p[ijk+kk3]*m7[k] - p[ijk+kk4]*m8[k] ) / m4[k];
+        p[ijk] = ( p[ijk] - p[ijk+kk1]*m5[k] - p[ijk+kk2]*m6[k] - p[ijk+kk3]*m7[k] ) / m4[k];
       }
 
   return 0;
