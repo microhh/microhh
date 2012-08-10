@@ -285,14 +285,14 @@ int cpres_g4::pres_in(double * restrict p,
     for(int i=0; i<grid->imax; i++)
     {
       ijk  = i+igc + (j+jgc)*jj1 + kgc*kk1;
-      wt[ijk-kk1] = -3.*wt[ijk+kk1] + wt[ijk+kk2];
+      wt[ijk-kk1] = -wt[ijk+kk1];
     }
   for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
     for(int i=0; i<grid->imax; i++)
     {
       ijk  = i+igc + (j+jgc)*jj1 + (kmax+kgc)*kk1;
-      wt[ijk+kk1] = -3.*wt[ijk-kk1] + wt[ijk-kk2];
+      wt[ijk+kk1] = -wt[ijk-kk1];
     }
 
   for(int k=0; k<grid->kmax; k++)
