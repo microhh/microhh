@@ -132,16 +132,16 @@ int cpres_g4::init()
 
   int k,kc;
   // create vectors that go into the matrix solver
-  // bottom boundary
+  // bottom boundary, taking into account that w is mirrored over the wall to conserve global momentum
   k  = 0;
   kc = kstart+k;
   m0[k] = 0.;
   m1[k] = 0.;
-  m2[k] = (-23.*dzhi4[kc-1] -  27.*dzhi4[kc]                                      ) * dzi4[kc];
-  m3[k] = ( 21.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
-  m4[k] = (  3.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
-  m5[k] = ( -1.*dzhi4[kc-1] +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
-  m6[k] = (                                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
+  m2[k] = (                 -  27.*dzhi4[kc]                                      ) * dzi4[kc];
+  m3[k] = ( -1.*dzhi4[kc+1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
+  m4[k] = ( 27.*dzhi4[kc+1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
+  m5[k] = (-27.*dzhi4[kc+1] +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
+  m6[k] = (  1.*dzhi4[kc+1]                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
   m7[k] = (                                                     +  1.*dzhi4[kc+2] ) * dzi4[kc];
   m8[k] = 0.;
   
@@ -159,16 +159,16 @@ int cpres_g4::init()
     m8[k] = 0.;
   }                                                                                                                                       
 
-  // top boundary
+  // top boundary, taking into account that w is mirrored over the wall to conserve global momentum
   k  = kmax-1;
   kc = kstart+k;
   m0[k] = 0.;
-  m1[k] = (   1.*dzhi4[kc-1]                                                       ) * dzi4[kc];
-  m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                                      ) * dzi4[kc];
-  m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1] -  1.*dzhi4[kc+2] ) * dzi4[kc];
-  m4[k] = (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] +  3.*dzhi4[kc+2] ) * dzi4[kc];
-  m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 21.*dzhi4[kc+2] ) * dzi4[kc];
-  m6[k] = (                                   -  27.*dzhi4[kc+1] - 23.*dzhi4[kc+2] ) * dzi4[kc];
+  m1[k] = (   1.*dzhi4[kc-1]                                                     ) * dzi4[kc];
+  m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                    +  1.*dzhi4[kc] ) * dzi4[kc];
+  m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1] - 27.*dzhi4[kc] ) * dzi4[kc];
+  m4[k] = (  -1.*dzhi4[kc-1] - 729.*dzhi4[kc] - 729.*dzhi4[kc+1] + 27.*dzhi4[kc] ) * dzi4[kc];
+  m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] -  1.*dzhi4[kc] ) * dzi4[kc];
+  m6[k] = (                                   -  27.*dzhi4[kc+1]                 ) * dzi4[kc];
   m7[k] = 0.;
   m8[k] = 0.;
   
