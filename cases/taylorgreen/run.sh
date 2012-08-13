@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # 2nd order scheme
+cd taylorgreen16_2nd
+python taylorgreenprof.py
+rm -f *.00* taylorgreen.out
+../init taylorgreen
+../dns taylorgreen
+cd ..
+
 cd taylorgreen32_2nd
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
@@ -30,6 +37,13 @@ rm -f *.00* taylorgreen.out
 cd ..
 
 # 42 order scheme
+cd taylorgreen16_42
+python taylorgreenprof.py
+rm -f *.00* taylorgreen.out
+../init taylorgreen
+../dns taylorgreen
+cd ..
+
 cd taylorgreen32_42
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
@@ -59,6 +73,13 @@ rm -f *.00* taylorgreen.out
 cd ..
 
 # 4th order scheme
+cd taylorgreen16_4th
+python taylorgreenprof.py
+rm -f *.00* taylorgreen.out
+../init taylorgreen
+../dns taylorgreen
+cd ..
+
 cd taylorgreen32_4th
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
