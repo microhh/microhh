@@ -55,5 +55,26 @@ ratsimp( subst([f4=0,f5=0,f6=0], bc1neu) );
 ratsimp( subst([f4=0,f5=0,f6=0], bc2neu) );
 /* [wxMaxima: input   end   ] */
 
+/* [wxMaxima: input   start ] */
+eq1 : f[-1] = f(-1*h)$
+eq2 : f[ 0] = f( 0*h)$
+eq3 : f[ 1] = f( 1*h)$
+eq4 : f[ 2] = f( 2*h)$
+sol2 : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], sol2) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1dir2 : solve( sol2[4], f[-1])$
+bc1dir2 : subst(0, f3, bc1dir2);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], bc1dir2) );
+/* [wxMaxima: input   end   ] */
+
 /* Maxima can't load/batch files which end with a comment! */
 "Created with wxMaxima"$
