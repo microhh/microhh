@@ -9,34 +9,34 @@ data200_4th = loadtxt('conservation200_4th/conservation.out', skiprows=1)
 data400_4th = loadtxt('conservation400_4th/conservation.out', skiprows=1)
 
 time100_2nd = data100_2nd[:,1]
-mom100_2nd  = data100_2nd[:,7]
-tke100_2nd  = data100_2nd[:,8]
-mass100_2nd = data100_2nd[:,9]
+mom100_2nd  = data100_2nd[:,7] / data100_2nd[1,7]
+tke100_2nd  = data100_2nd[:,8] / data100_2nd[1,8]
+mass100_2nd = data100_2nd[:,9] / data100_2nd[1,9]
 
 time200_2nd = data200_2nd[:,1]
-mom200_2nd  = data200_2nd[:,7]
-tke200_2nd  = data200_2nd[:,8]
-mass200_2nd = data200_2nd[:,9]
+mom200_2nd  = data200_2nd[:,7] / data200_2nd[1,7]
+tke200_2nd  = data200_2nd[:,8] / data200_2nd[1,8]
+mass200_2nd = data200_2nd[:,9] / data200_2nd[1,9]
 
 time400_2nd = data400_2nd[:,1]
-mom400_2nd  = data400_2nd[:,7]
-tke400_2nd  = data400_2nd[:,8]
-mass400_2nd = data400_2nd[:,9]
+mom400_2nd  = data400_2nd[:,7] / data400_2nd[1,7]
+tke400_2nd  = data400_2nd[:,8] / data400_2nd[1,8]
+mass400_2nd = data400_2nd[:,9] / data400_2nd[1,9]
 
 time100_4th = data100_4th[:,1]
-mom100_4th  = data100_4th[:,7]
-tke100_4th  = data100_4th[:,8]
-mass100_4th = data100_4th[:,9]
+mom100_4th  = data100_4th[:,7] / data100_4th[1,7]
+tke100_4th  = data100_4th[:,8] / data100_4th[1,8]
+mass100_4th = data100_4th[:,9] / data100_4th[1,9]
 
 time200_4th = data200_4th[:,1]
-mom200_4th  = data200_4th[:,7]
-tke200_4th  = data200_4th[:,8]
-mass200_4th = data200_4th[:,9]
+mom200_4th  = data200_4th[:,7] / data200_4th[1,7]
+tke200_4th  = data200_4th[:,8] / data200_4th[1,8]
+mass200_4th = data200_4th[:,9] / data200_4th[1,9]
 
 time400_4th = data400_4th[:,1]
-mom400_4th  = data400_4th[:,7]
-tke400_4th  = data400_4th[:,8]
-mass400_4th = data400_4th[:,9]
+mom400_4th  = data400_4th[:,7] / data400_4th[1,7]
+tke400_4th  = data400_4th[:,8] / data400_4th[1,8]
+mass400_4th = data400_4th[:,9] / data400_4th[1,9]
 
 """
 figure()
