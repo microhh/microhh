@@ -5,28 +5,31 @@ t    = 500
 time = 1.
 visc = (8.*pi**2. * 100.)**(-1.)
 
-ns    = array([32, 64, 128, 256])
+ns    = array([16, 32, 64, 128, 256])
 dxs   = 1./ns
 
 # 2nd order data
+data16_2nd  = microhh(t,  16,   8, 'taylorgreen16_2nd' )
 data32_2nd  = microhh(t,  32,  16, 'taylorgreen32_2nd' )
 data64_2nd  = microhh(t,  64,  32, 'taylorgreen64_2nd' )
 data128_2nd = microhh(t, 128,  64, 'taylorgreen128_2nd')
 data256_2nd = microhh(t, 256, 128, 'taylorgreen256_2nd')
 
+ref16_2nd  = getref(data16_2nd .x, data16_2nd .xh, data16_2nd .z, data16_2nd .zh, visc, time)
 ref32_2nd  = getref(data32_2nd .x, data32_2nd .xh, data32_2nd .z, data32_2nd .zh, visc, time)
 ref64_2nd  = getref(data64_2nd .x, data64_2nd .xh, data64_2nd .z, data64_2nd .zh, visc, time)
 ref128_2nd = getref(data128_2nd.x, data128_2nd.xh, data128_2nd.z, data128_2nd.zh, visc, time)
 ref256_2nd = getref(data256_2nd.x, data256_2nd.xh, data256_2nd.z, data256_2nd.zh, visc, time)
 
+err16_2nd  = geterror(data16_2nd , ref16_2nd )
 err32_2nd  = geterror(data32_2nd , ref32_2nd )
 err64_2nd  = geterror(data64_2nd , ref64_2nd )
 err128_2nd = geterror(data128_2nd, ref128_2nd)
 err256_2nd = geterror(data256_2nd, ref256_2nd)
 
-errsu_2nd = array([err32_2nd.u, err64_2nd.u, err128_2nd.u, err256_2nd.u])
-errsw_2nd = array([err32_2nd.w, err64_2nd.w, err128_2nd.w, err256_2nd.w])
-errsp_2nd = array([err32_2nd.p, err64_2nd.p, err128_2nd.p, err256_2nd.p])
+errsu_2nd = array([err16_2nd.u, err32_2nd.u, err64_2nd.u, err128_2nd.u, err256_2nd.u])
+errsw_2nd = array([err16_2nd.w, err32_2nd.w, err64_2nd.w, err128_2nd.w, err256_2nd.w])
+errsp_2nd = array([err16_2nd.p, err32_2nd.p, err64_2nd.p, err128_2nd.p, err256_2nd.p])
 
 print('errors p_2nd', errsp_2nd)
 if(t > 0):
@@ -35,24 +38,27 @@ if(t > 0):
 print('convergence p_2nd', (log(errsp_2nd[-1])-log(errsp_2nd[0])) / (log(dxs[-1])-log(dxs[0])) )
 
 # 42 order data
+data16_42  = microhh(t,  16,   8, 'taylorgreen16_42' )
 data32_42  = microhh(t,  32,  16, 'taylorgreen32_42' )
 data64_42  = microhh(t,  64,  32, 'taylorgreen64_42' )
 data128_42 = microhh(t, 128,  64, 'taylorgreen128_42')
 data256_42 = microhh(t, 256, 128, 'taylorgreen256_42')
 
+ref16_42  = getref(data16_42 .x, data16_42 .xh, data16_42 .z, data16_42 .zh, visc, time)
 ref32_42  = getref(data32_42 .x, data32_42 .xh, data32_42 .z, data32_42 .zh, visc, time)
 ref64_42  = getref(data64_42 .x, data64_42 .xh, data64_42 .z, data64_42 .zh, visc, time)
 ref128_42 = getref(data128_42.x, data128_42.xh, data128_42.z, data128_42.zh, visc, time)
 ref256_42 = getref(data256_42.x, data256_42.xh, data256_42.z, data256_42.zh, visc, time)
 
+err16_42  = geterror(data16_42 , ref16_42 )
 err32_42  = geterror(data32_42 , ref32_42 )
 err64_42  = geterror(data64_42 , ref64_42 )
 err128_42 = geterror(data128_42, ref128_42)
 err256_42 = geterror(data256_42, ref256_42)
 
-errsu_42 = array([err32_42.u, err64_42.u, err128_42.u, err256_42.u])
-errsw_42 = array([err32_42.w, err64_42.w, err128_42.w, err256_42.w])
-errsp_42 = array([err32_42.p, err64_42.p, err128_42.p, err256_42.p])
+errsu_42 = array([err16_42.u, err32_42.u, err64_42.u, err128_42.u, err256_42.u])
+errsw_42 = array([err16_42.w, err32_42.w, err64_42.w, err128_42.w, err256_42.w])
+errsp_42 = array([err16_42.p, err32_42.p, err64_42.p, err128_42.p, err256_42.p])
 
 print('errors p_42', errsp_42)
 if(t > 0):
@@ -60,25 +66,28 @@ if(t > 0):
   print('convergence w_42', (log(errsw_42[-1])-log(errsw_42[0])) / (log(dxs[-1])-log(dxs[0])) )
 print('convergence p_42', (log(errsp_42[-1])-log(errsp_42[0])) / (log(dxs[-1])-log(dxs[0])) )
 
-# 42 order data
+# 4th order data
+data16_4th  = microhh(t,  16,   8, 'taylorgreen16_4th' )
 data32_4th  = microhh(t,  32,  16, 'taylorgreen32_4th' )
 data64_4th  = microhh(t,  64,  32, 'taylorgreen64_4th' )
 data128_4th = microhh(t, 128,  64, 'taylorgreen128_4th')
 data256_4th = microhh(t, 256, 128, 'taylorgreen256_4th')
 
+ref16_4th  = getref(data16_4th .x, data16_4th .xh, data16_4th .z, data16_4th .zh, visc, time)
 ref32_4th  = getref(data32_4th .x, data32_4th .xh, data32_4th .z, data32_4th .zh, visc, time)
 ref64_4th  = getref(data64_4th .x, data64_4th .xh, data64_4th .z, data64_4th .zh, visc, time)
 ref128_4th = getref(data128_4th.x, data128_4th.xh, data128_4th.z, data128_4th.zh, visc, time)
 ref256_4th = getref(data256_4th.x, data256_4th.xh, data256_4th.z, data256_4th.zh, visc, time)
 
+err16_4th  = geterror(data16_4th , ref16_4th )
 err32_4th  = geterror(data32_4th , ref32_4th )
 err64_4th  = geterror(data64_4th , ref64_4th )
 err128_4th = geterror(data128_4th, ref128_4th)
 err256_4th = geterror(data256_4th, ref256_4th)
 
-errsu_4th = array([err32_4th.u, err64_4th.u, err128_4th.u, err256_4th.u])
-errsw_4th = array([err32_4th.w, err64_4th.w, err128_4th.w, err256_4th.w])
-errsp_4th = array([err32_4th.p, err64_4th.p, err128_4th.p, err256_4th.p])
+errsu_4th = array([err16_4th.u, err32_4th.u, err64_4th.u, err128_4th.u, err256_4th.u])
+errsw_4th = array([err16_4th.w, err32_4th.w, err64_4th.w, err128_4th.w, err256_4th.w])
+errsp_4th = array([err16_4th.p, err32_4th.p, err64_4th.p, err128_4th.p, err256_4th.p])
 
 print('errors p_4th', errsp_4th)
 if(t > 0):
@@ -106,7 +115,7 @@ loglog(dxs, errsp_42 , 'g^-', label="p_42" )
 loglog(dxs, errsp_4th, 'r^-', label="p_4th")
 loglog(dxs, slope2, 'k--', label="2nd")
 loglog(dxs, slope4, 'k:' , label="4th")
-legend(loc=4, frameon=False)
+legend(loc=0, frameon=False)
 #xlim(0.01, 0.2)
 
 """
