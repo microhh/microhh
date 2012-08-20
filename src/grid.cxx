@@ -62,7 +62,7 @@ int cgrid::readinifile(cinput *inputin)
   
   igc = 3;
   jgc = 3;
-  kgc = 2;
+  kgc = 3;
 
   return 0;
 }
@@ -174,55 +174,49 @@ int cgrid::calculate()
   }
 
   // calculate the height of the ghost cell
-  // z[kstart-1] =                - 3.*z[kstart] + z[kstart+1] - (1./5.)*z[kstart+2];
-  // z[kend    ] = (16./5.)*zsize - 3.*z[kend-1] + z[kend  -2] - (1./5.)*z[kend  -3];
+  z[kstart-1] = -z[kstart  ];
+  z[kstart-2] = -z[kstart+1];
+  z[kstart-3] = -z[kstart+2];
 
-  // z[kstart-1] = - z[kstart];
-  // z[kend    ] = zsize + zsize - z[kend-1];
-
-  // calculate the height of the ghost cells according to the scheme
-  z[kstart-1] = -2.*z[kstart] + (1./3.)*z[kstart+1];
-  z[kstart-2] = -9.*z[kstart] + 2.*z[kstart+1];
-
-  z[kend  ] = (8./3.)*zsize - 2.*z[kend-1] + (1./3.)*z[kend-2];
-  z[kend+1] = 8.*zsize - 9.*z[kend-1] + 2.*z[kend-2];
+  z[kend  ] = 2.*zsize - z[kend-1];
+  z[kend+1] = 2.*zsize - z[kend-2];
+  z[kend+2] = 2.*zsize - z[kend-3];
 
   // calculate the half levels according to the numerical scheme
-  zh[0] = -999.;
-  zh[kstart-1] = interp4biasbot(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1]);
+  // zh[0] = -999.;
+  // zh[kstart-1] = interp4biasbot(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1]);
   zh[kstart  ] = 0.;
   for(k=kstart+1; k<kend; k++)
     zh[k] = interp4(z[k-2], z[k-1], z[k], z[k+1]);
   zh[kend] = zsize;
-  zh[kend+1] = interp4biastop(z[kend-2], z[kend-1], z[kend], z[kend+1]);
+  // zh[kend+1] = interp4biastop(z[kend-2], z[kend-1], z[kend], z[kend+1]);
+  //
+  zh[kstart-1] = -zh[kstart+1];
+  zh[kstart-2] = -zh[kstart+2];
+  zh[kstart-3] = -zh[kstart+3];
+
+  zh[kend+1] = 2.*zsize - zh[kend-1];
+  zh[kend+2] = 2.*zsize - zh[kend-2];
 
   // compute the height of the grid cells
-  dzh [0] = -999.;
-  dzhi[0] = -999.;
   for(k=1; k<kcells; k++)
   {
     dzh [k] = z[k] - z[k-1];
     dzhi[k] = 1./dzh[k];
   }
-
-  dzh [0] = -999.;
-  dzhi[0] = -999.;
-  for(k=1; k<kcells; k++)
-  {
-    dzh [k] = z[k] - z[k-1];
-    dzhi[k] = 1./dzh[k];
-  }
+  dzh [kstart-3] = dzh [kstart+3];
+  dzhi[kstart-3] = dzhi[kstart+3];
 
   // compute the height of the grid cells
-  dz [0] = -999.;
-  dzi[0] = -999.;
   for(k=1; k<kcells-1; k++)
   {
     dz [k] = zh[k+1] - zh[k];
     dzi[k] = 1./dz[k];
   }
-  dz [kcells-1] = -999.;
-  dzi[kcells-1] = -999.;
+  dz [kstart-3] = dz [kstart+2];
+  dzi[kstart-3] = dzi[kstart+2];
+  dz [kend+2] = dz [kend-2];
+  dzi[kend+2] = dzi[kend-2];
 
   /*
   // calculate the inverse gradients for the 4th order scheme
@@ -240,19 +234,31 @@ int cgrid::calculate()
   */
   
   // calculate the inverse gradients for the 4th order scheme
-  dzi4 [0] = -999.;
-  dzhi4[0] = -999.;
-  dzi4 [kstart-1] = 1./grad4xbiasbot(zh[kstart-1], zh[kstart  ], zh[kstart+1], zh[kstart+2]);
-  dzhi4[kstart-1] = 1./grad4xbiasbot(z [kstart-2], z [kstart-1], z [kstart  ], z [kstart+1]);
+  // dzi4 [0] = -999.;
+  // dzhi4[0] = -999.;
+  // dzi4 [kstart-1] = 1./grad4xbiasbot(zh[kstart-1], zh[kstart  ], zh[kstart+1], zh[kstart+2]);
+  // dzhi4[kstart-1] = 1./grad4xbiasbot(z [kstart-2], z [kstart-1], z [kstart  ], z [kstart+1]);
+  //
   for(k=kstart; k<kend; k++)
   {
     dzi4 [k] = 1./grad4x(zh[k-1], zh[k  ], zh[k+1], zh[k+2]);
     dzhi4[k] = 1./grad4x(z [k-2], z [k-1], z [k  ], z [k+1]);
   }
-  dzi4 [kend  ] = 1./grad4xbiastop(zh[kend-2], zh[kend-1], zh[kend], zh[kend+1]);
-  dzhi4[kend  ] = 1./grad4x       (z [kend-2], z [kend-1], z [kend], z [kend+1]);
-  dzi4 [kend+1] = -999.;
-  dzhi4[kend+1] = 1./grad4xbiastop(z [kend-2], z [kend-1], z [kend], z [kend+1]);
+  dzhi4[kend  ] = 1./grad4x(z [kend-2], z [kend-1], z [kend], z [kend+1]);
+
+  // bc's
+  dzi4 [kstart-3] = dzi4 [kstart+2];
+  dzhi4[kstart-3] = dzhi4[kstart+3];
+  dzi4 [kstart-2] = dzi4 [kstart+1];
+  dzhi4[kstart-2] = dzhi4[kstart+2];
+  dzi4 [kstart-1] = dzi4 [kstart  ];
+  dzhi4[kstart-1] = dzhi4[kstart+1];
+
+  dzi4 [kend  ] = dzi4 [kend-1];
+  dzi4 [kend+1] = dzi4 [kend-2];
+  dzhi4[kend+1] = dzhi4[kend-1];
+  dzi4 [kend+2] = dzi4 [kend-3];
+  dzhi4[kend+2] = dzhi4[kend-2];
 
   return 0;
 }
