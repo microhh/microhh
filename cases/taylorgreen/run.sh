@@ -36,36 +36,36 @@ rm -f *.00* taylorgreen.out
 ../dns taylorgreen
 cd ..
 
-# 42 order scheme
-cd taylorgreen16_42
+# 4th order scheme Morinishi
+cd taylorgreen16_44
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen
 ../dns taylorgreen
 cd ..
 
-cd taylorgreen32_42
+cd taylorgreen32_44
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen
 ../dns taylorgreen
 cd ..
 
-cd taylorgreen64_42
+cd taylorgreen64_44
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen
 ../dns taylorgreen
 cd ..
 
-cd taylorgreen128_42
+cd taylorgreen128_44
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen
 ../dns taylorgreen
 cd ..
 
-cd taylorgreen256_42
+cd taylorgreen256_44
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../init taylorgreen
