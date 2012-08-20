@@ -17,6 +17,7 @@ cadvec::cadvec(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   advec_g2i4 = new cadvec_g2i4(grid, fields, mpi);
   advec_g42  = new cadvec_g42 (grid, fields, mpi);
   advec_g4   = new cadvec_g4  (grid, fields, mpi);
+  advec_g4m  = new cadvec_g4m (grid, fields, mpi);
 }
 
 cadvec::~cadvec()
@@ -25,6 +26,7 @@ cadvec::~cadvec()
   delete advec_g2i4;
   delete advec_g42;
   delete advec_g4;
+  delete advec_g4m;
 
   std::printf("Destroying instance of object advec\n");
 }
@@ -60,6 +62,8 @@ double cadvec::getcfl(double dt)
     cfl = advec_g42->calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
   else if(iadvec == 4)
     cfl = advec_g4->calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+  else if(iadvec == 44)
+    cfl = advec_g4m->calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
 
   return cfl;
 }
@@ -96,6 +100,13 @@ int cadvec::exec()
     advec_g4->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
     advec_g4->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
     advec_g4->advecs((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
+  }
+  else if(iadvec == 44)
+  {
+    advec_g4m->advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
+    advec_g4m->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
+    advec_g4m->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
+    advec_g4m->advecs((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
   }
 
   return 0;

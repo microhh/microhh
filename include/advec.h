@@ -8,6 +8,7 @@
 #include "advec_g2i4.h"
 #include "advec_g42.h"
 #include "advec_g4.h"
+#include "advec_g4m.h"
 
 class cadvec
 {
@@ -29,6 +30,7 @@ class cadvec
     cadvec_g2i4 *advec_g2i4;
     cadvec_g42  *advec_g42;
     cadvec_g4   *advec_g4;
+    cadvec_g4m  *advec_g4m;
 
     int iadvec;
 };

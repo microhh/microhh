@@ -240,6 +240,7 @@ int cboundary::setgcbotw_4th(double * restrict w)
     {
       ijk = i + j*jj + kstart*kk1;
       w[ijk-kk1] = -w[ijk+kk1];
+      w[ijk-kk2] = -w[ijk+kk2];
     }
  
   return 0;
@@ -261,6 +262,7 @@ int cboundary::setgctopw_4th(double * restrict w)
     {
       ijk = i + j*jj + kend*kk1;
       w[ijk+kk1] = -w[ijk-kk1];
+      w[ijk+kk2] = -w[ijk-kk2];
     }
  
   return 0;
