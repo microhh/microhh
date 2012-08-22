@@ -88,15 +88,15 @@ int cmpi::init()
   mpicoordx = mpicoords[1];
   mpicoordy = mpicoords[0];
 
-  // int dimx[2] = {false, true };
-  // int dimy[2] = {true , false};
+  int dimx[2] = {false, true };
+  int dimy[2] = {true , false};
 
-  // n = MPI_Cart_sub(commxy, dimx, &commx);
-  // if(checkerror(n))
-  //   return 1;
-  // n = MPI_Cart_sub(commxy, dimy, &commy);
-  // if(checkerror(n))
-  //   return 1;
+  n = MPI_Cart_sub(commxy, dimx, &commx);
+  if(checkerror(n))
+    return 1;
+  n = MPI_Cart_sub(commxy, dimy, &commy);
+  if(checkerror(n))
+    return 1;
 
   // find out who are the neighbors of this process to facilitate the communication routines
   n = MPI_Cart_shift(commxy, 1, 1, &nwest , &neast );
