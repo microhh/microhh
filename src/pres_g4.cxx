@@ -302,10 +302,9 @@ int cpres_g4::pres_in(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp] = grad4 ( ut[ijk-ii1] + u[ijk-ii1]/dt, ut[ijk] + u[ijk]/dt, ut[ijk+ii1] + u[ijk+ii1]/dt, ut[ijk+ii2] + u[ijk+ii2]/dt, dxi)
-                + grad4 ( vt[ijk-jj1] + v[ijk-jj1]/dt, vt[ijk] + v[ijk]/dt, vt[ijk+jj1] + v[ijk+jj1]/dt, vt[ijk+jj2] + v[ijk+jj2]/dt, dyi)
-                + grad4x( wt[ijk-kk1] + w[ijk-kk1]/dt, wt[ijk] + w[ijk]/dt, wt[ijk+kk1] + w[ijk+kk1]/dt, wt[ijk+kk2] + w[ijk+kk2]/dt)
-                  * dzi4[k+kgc];
+        p[ijkp] = ((ut[ijk-ii1] + u[ijk-ii1]/dt) - 27.*(ut[ijk] + u[ijk]/dt) + 27.*(ut[ijk+ii1] + u[ijk+ii1]/dt) - (ut[ijk+ii2] + u[ijk+ii2]/dt)) * (dxi/24.)
+                + ((vt[ijk-jj1] + v[ijk-jj1]/dt) - 27.*(vt[ijk] + v[ijk]/dt) + 27.*(vt[ijk+jj1] + v[ijk+jj1]/dt) - (vt[ijk+jj2] + v[ijk+jj2]/dt)) * (dyi/24.)
+                + ((wt[ijk-kk1] + w[ijk-kk1]/dt) - 27.*(wt[ijk] + w[ijk]/dt) + 27.*(wt[ijk+kk1] + w[ijk+kk1]/dt) - (wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
       }
 
   return 0;
@@ -675,8 +674,8 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      ut[ijk] -= grad4 ( p[ijk-ii2],  p[ijk-ii1],  p[ijk],  p[ijk+ii1], dxi);
-      vt[ijk] -= grad4 ( p[ijk-jj2],  p[ijk-jj1],  p[ijk],  p[ijk+jj1], dyi);
+      ut[ijk] -= (p[ijk-ii2] - 27.*p[ijk-ii1] + 27.*p[ijk] - p[ijk+ii1]) * (dxi/24.);
+      vt[ijk] -= (p[ijk-jj2] - 27.*p[ijk-jj1] + 27.*p[ijk] - p[ijk+jj1]) * (dyi/24.);
     }
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -685,10 +684,9 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        ut[ijk] -= grad4 ( p[ijk-ii2],  p[ijk-ii1],  p[ijk],  p[ijk+ii1], dxi);
-        vt[ijk] -= grad4 ( p[ijk-jj2],  p[ijk-jj1],  p[ijk],  p[ijk+jj1], dyi);
-        wt[ijk] -= grad4x( p[ijk-kk2],  p[ijk-kk1],  p[ijk],  p[ijk+kk1])
-                   * dzhi4[k];
+        ut[ijk] -= (p[ijk-ii2] - 27.*p[ijk-ii1] + 27.*p[ijk] - p[ijk+ii1]) * (dxi/24.);
+        vt[ijk] -= (p[ijk-jj2] - 27.*p[ijk-jj1] + 27.*p[ijk] - p[ijk+jj1]) * (dyi/24.);
+        wt[ijk] -= (p[ijk-kk2] - 27.*p[ijk-kk1] + 27.*p[ijk] - p[ijk+kk1]) * dzhi4[k];
       }
 
   return 0;
@@ -918,10 +916,9 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        div = grad4 ( u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2], dxi)
-            + grad4 ( v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2], dyi)
-            + grad4x( w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2])
-              *dzi4[k];
+        div = (u[ijk-ii1] - 27.*u[ijk] + 27.*u[ijk+ii1] - u[ijk+ii2]) * (dxi/24.)
+            + (v[ijk-jj1] - 27.*v[ijk] + 27.*v[ijk+jj1] - v[ijk+jj2]) * (dyi/24.)
+            + (w[ijk-kk1] - 27.*w[ijk] + 27.*w[ijk+kk1] - w[ijk+kk2]) * dzi4[k];
 
         divmax = std::max(divmax, std::abs(div));
       }
