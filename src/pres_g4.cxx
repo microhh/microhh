@@ -253,6 +253,12 @@ int cpres_g4::pres_in(double * restrict p,
   int    igc,jgc,kgc,kmax;
   double dxi,dyi;
 
+  const double cg0 =   1.;
+  const double cg1 = -27.;
+  const double cg2 =  27.;
+  const double cg3 =  -1.;
+  const double cgi =   1./24.;
+
   ii1 = 1;
   ii2 = 2;
   jj1 = 1*grid->icells;
@@ -303,21 +309,21 @@ int cpres_g4::pres_in(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp]  = ((ut[ijk-ii1] + u[ijk-ii1]/dt) - 27.*(ut[ijk] + u[ijk]/dt) + 27.*(ut[ijk+ii1] + u[ijk+ii1]/dt) - (ut[ijk+ii2] + u[ijk+ii2]/dt)) * (dxi/24.);
+        p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]/dt) + cg1*(ut[ijk] + u[ijk]/dt) + cg2*(ut[ijk+ii1] + u[ijk+ii1]/dt) + cg3*(ut[ijk+ii2] + u[ijk+ii2]/dt)) * cgi*dxi;
       }
 #pragma ivdep
       for(int i=0; i<grid->imax; i++)
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp] += ((vt[ijk-jj1] + v[ijk-jj1]/dt) - 27.*(vt[ijk] + v[ijk]/dt) + 27.*(vt[ijk+jj1] + v[ijk+jj1]/dt) - (vt[ijk+jj2] + v[ijk+jj2]/dt)) * (dyi/24.);
+        p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
       }
 #pragma ivdep
       for(int i=0; i<grid->imax; i++)
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp] += ((wt[ijk-kk1] + w[ijk-kk1]/dt) - 27.*(wt[ijk] + w[ijk]/dt) + 27.*(wt[ijk+kk1] + w[ijk+kk1]/dt) - (wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
+        p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
       }
     }
 
@@ -671,6 +677,12 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
   int    kstart;
   double dxi,dyi;
 
+  const double cg0 =   1.;
+  const double cg1 = -27.;
+  const double cg2 =  27.;
+  const double cg3 =  -1.;
+  const double cgi =   1./24.;
+
   ii1 = 1;
   ii2 = 2;
   jj1 = 1*grid->icells;
@@ -684,24 +696,40 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
   dyi = 1./grid->dy;
 
   for(int j=grid->jstart; j<grid->jend; j++)
+  {
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      ut[ijk] -= (p[ijk-ii2] - 27.*p[ijk-ii1] + 27.*p[ijk] - p[ijk+ii1]) * (dxi/24.);
-      vt[ijk] -= (p[ijk-jj2] - 27.*p[ijk-jj1] + 27.*p[ijk] - p[ijk+jj1]) * (dyi/24.);
+      ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
     }
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + kstart*kk1;
+      vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+    }
+  }
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
+    {
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        ut[ijk] -= (p[ijk-ii2] - 27.*p[ijk-ii1] + 27.*p[ijk] - p[ijk+ii1]) * (dxi/24.);
-        vt[ijk] -= (p[ijk-jj2] - 27.*p[ijk-jj1] + 27.*p[ijk] - p[ijk+jj1]) * (dyi/24.);
-        wt[ijk] -= (p[ijk-kk2] - 27.*p[ijk-kk1] + 27.*p[ijk] - p[ijk+kk1]) * dzhi4[k];
+        ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
       }
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+      }
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
+      }
+    }
 
   return 0;
 }
@@ -907,6 +935,12 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
   int    kstart,kend;
   double dxi,dyi;
 
+  const double cg0 =   1.;
+  const double cg1 = -27.;
+  const double cg2 =  27.;
+  const double cg3 =  -1.;
+  const double cgi =   1./24.;
+
   ii1 = 1;
   ii2 = 2;
   jj1 = 1*grid->icells;
@@ -930,9 +964,9 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        div = (u[ijk-ii1] - 27.*u[ijk] + 27.*u[ijk+ii1] - u[ijk+ii2]) * (dxi/24.)
-            + (v[ijk-jj1] - 27.*v[ijk] + 27.*v[ijk+jj1] - v[ijk+jj2]) * (dyi/24.)
-            + (w[ijk-kk1] - 27.*w[ijk] + 27.*w[ijk+kk1] - w[ijk+kk2]) * dzi4[k];
+        div = (cg0*u[ijk-ii1] + cg1*u[ijk] + cg2*u[ijk+ii1] + cg3*u[ijk+ii2]) * cgi*dxi
+            + (cg0*v[ijk-jj1] + cg1*v[ijk] + cg2*v[ijk+jj1] + cg3*v[ijk+jj2]) * cgi*dyi
+            + (cg0*w[ijk-kk1] + cg1*w[ijk] + cg2*w[ijk+kk1] + cg3*w[ijk+kk2]) * dzi4[k];
 
         divmax = std::max(divmax, std::abs(div));
       }
