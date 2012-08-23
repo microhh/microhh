@@ -297,15 +297,29 @@ int cpres_g4::pres_in(double * restrict p,
 
   for(int k=0; k<grid->kmax; k++)
     for(int j=0; j<grid->jmax; j++)
+    {
 #pragma ivdep
       for(int i=0; i<grid->imax; i++)
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp] = ((ut[ijk-ii1] + u[ijk-ii1]/dt) - 27.*(ut[ijk] + u[ijk]/dt) + 27.*(ut[ijk+ii1] + u[ijk+ii1]/dt) - (ut[ijk+ii2] + u[ijk+ii2]/dt)) * (dxi/24.)
-                + ((vt[ijk-jj1] + v[ijk-jj1]/dt) - 27.*(vt[ijk] + v[ijk]/dt) + 27.*(vt[ijk+jj1] + v[ijk+jj1]/dt) - (vt[ijk+jj2] + v[ijk+jj2]/dt)) * (dyi/24.)
-                + ((wt[ijk-kk1] + w[ijk-kk1]/dt) - 27.*(wt[ijk] + w[ijk]/dt) + 27.*(wt[ijk+kk1] + w[ijk+kk1]/dt) - (wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
+        p[ijkp]  = ((ut[ijk-ii1] + u[ijk-ii1]/dt) - 27.*(ut[ijk] + u[ijk]/dt) + 27.*(ut[ijk+ii1] + u[ijk+ii1]/dt) - (ut[ijk+ii2] + u[ijk+ii2]/dt)) * (dxi/24.);
       }
+#pragma ivdep
+      for(int i=0; i<grid->imax; i++)
+      {
+        ijkp = i + j*jjp + k*kkp;
+        ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
+        p[ijkp] += ((vt[ijk-jj1] + v[ijk-jj1]/dt) - 27.*(vt[ijk] + v[ijk]/dt) + 27.*(vt[ijk+jj1] + v[ijk+jj1]/dt) - (vt[ijk+jj2] + v[ijk+jj2]/dt)) * (dyi/24.);
+      }
+#pragma ivdep
+      for(int i=0; i<grid->imax; i++)
+      {
+        ijkp = i + j*jjp + k*kkp;
+        ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
+        p[ijkp] += ((wt[ijk-kk1] + w[ijk-kk1]/dt) - 27.*(wt[ijk] + w[ijk]/dt) + 27.*(wt[ijk+kk1] + w[ijk+kk1]/dt) - (wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
+      }
+    }
 
   return 0;
 }
