@@ -249,7 +249,7 @@ int cpres_g4::pres_in(double * restrict p,
                       double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
-  int    ii1,ii2,jj1,jj2,kk1,kk2,kk3;
+  int    ii1,ii2,jj1,jj2,kk1,kk2;
   int    igc,jgc,kgc,kmax;
   double dxi,dyi;
 
@@ -265,7 +265,6 @@ int cpres_g4::pres_in(double * restrict p,
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
 
   jjp = grid->imax;
   kkp = grid->imax*grid->jmax;
@@ -303,29 +302,15 @@ int cpres_g4::pres_in(double * restrict p,
 
   for(int k=0; k<grid->kmax; k++)
     for(int j=0; j<grid->jmax; j++)
-    {
 #pragma ivdep
       for(int i=0; i<grid->imax; i++)
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
         p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]/dt) + cg1*(ut[ijk] + u[ijk]/dt) + cg2*(ut[ijk+ii1] + u[ijk+ii1]/dt) + cg3*(ut[ijk+ii2] + u[ijk+ii2]/dt)) * cgi*dxi;
-      }
-#pragma ivdep
-      for(int i=0; i<grid->imax; i++)
-      {
-        ijkp = i + j*jjp + k*kkp;
-        ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
         p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
-      }
-#pragma ivdep
-      for(int i=0; i<grid->imax; i++)
-      {
-        ijkp = i + j*jjp + k*kkp;
-        ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
         p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
       }
-    }
 
   return 0;
 }
@@ -627,11 +612,9 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
   jj = imax;
   kk = imax*jmax;
 
-  int ijkp,jjp,kkp1,kkp2,kkp3;
+  int ijkp,jjp,kkp1;
   jjp  = grid->icells;
   kkp1 = 1*grid->icells*grid->jcells;
-  kkp2 = 2*grid->icells*grid->jcells;
-  kkp3 = 3*grid->icells*grid->jcells;
 
   // put the pressure back onto the original grid including ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -696,40 +679,24 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
   dyi = 1./grid->dy;
 
   for(int j=grid->jstart; j<grid->jend; j++)
-  {
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + kstart*kk1;
       ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
-    }
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj1 + kstart*kk1;
       vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
     }
-  }
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
-    {
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
         ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
-      }
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj1 + k*kk1;
         vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
-      }
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj1 + k*kk1;
         wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
       }
-    }
 
   return 0;
 }
@@ -931,7 +898,7 @@ int cpres_g4::tdma(double * restrict a, double * restrict b, double * restrict c
 
 double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
-  int    ijk,ii1,ii2,jj1,jj2,kk1,kk2,kk3;
+  int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart,kend;
   double dxi,dyi;
 
@@ -947,7 +914,6 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
 
   kstart = grid->kstart;
   kend   = grid->kend;
