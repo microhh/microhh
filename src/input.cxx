@@ -5,12 +5,12 @@
 
 cinput::cinput()
 {
-  std::printf("Creating instance of object input\n");
+  // std::printf("Creating instance of object input\n");
 }
 
 cinput::~cinput()
 {
-  std::printf("Destroying instance of object input\n");
+  // std::printf("Destroying instance of object input\n");
 }
 
 int cinput::clear()

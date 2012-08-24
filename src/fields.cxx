@@ -7,7 +7,7 @@
 
 cfields::cfields(cgrid *gridin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object fields\n");
+  // std::printf("Creating instance of object fields\n");
   grid = gridin;
   mpi  = mpiin;
 
@@ -34,7 +34,7 @@ cfields::~cfields()
     delete tmp2;
   }
 
-  std::printf("Destroying instance of object fields\n");
+  // std::printf("Destroying instance of object fields\n");
 }
 
 int cfields::readinifile(cinput *inputin)

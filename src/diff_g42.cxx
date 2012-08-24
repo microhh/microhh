@@ -9,7 +9,7 @@
 
 cdiff_g42::cdiff_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object diff_g42\n");
+  // std::printf("Creating instance of object diff_g42\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -17,7 +17,7 @@ cdiff_g42::cdiff_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cdiff_g42::~cdiff_g42()
 {
-  std::printf("Destroying instance of object diff_g42\n");
+  // std::printf("Destroying instance of object diff_g42\n");
 }
 
 int cdiff_g42::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)

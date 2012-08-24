@@ -4,7 +4,7 @@
 
 cfield3d::cfield3d(cgrid *gridin, cmpi *mpiin, std::string namein)
 {
-  std::printf("Creating instance of object field3d\n");
+  // std::printf("Creating instance of object field3d\n");
   grid = gridin;
   name = namein;
   mpi  = mpiin;
@@ -15,7 +15,7 @@ cfield3d::~cfield3d()
   if(allocated)
     delete[] data;
 
-  std::printf("Destroying instance of object field3d\n");
+  // std::printf("Destroying instance of object field3d\n");
 }
 
 int cfield3d::init()

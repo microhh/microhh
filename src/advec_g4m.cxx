@@ -8,7 +8,7 @@
 
 cadvec_g4m::cadvec_g4m(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object advec_g4m\n");
+  // std::printf("Creating instance of object advec_g4m\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -16,7 +16,7 @@ cadvec_g4m::cadvec_g4m(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cadvec_g4m::~cadvec_g4m()
 {
-  std::printf("Destroying instance of object advec_g4m\n");
+  // std::printf("Destroying instance of object advec_g4m\n");
 }
 
 double cadvec_g4m::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)

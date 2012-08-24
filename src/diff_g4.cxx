@@ -9,7 +9,7 @@
 
 cdiff_g4::cdiff_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object diff_g4\n");
+  // std::printf("Creating instance of object diff_g4\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -17,7 +17,7 @@ cdiff_g4::cdiff_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cdiff_g4::~cdiff_g4()
 {
-  std::printf("Destroying instance of object diff_g4\n");
+  // std::printf("Destroying instance of object diff_g4\n");
 }
 
 int cdiff_g4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)

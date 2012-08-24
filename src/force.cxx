@@ -6,7 +6,7 @@
 
 cforce::cforce(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object force\n");
+  // std::printf("Creating instance of object force\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -14,7 +14,7 @@ cforce::cforce(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cforce::~cforce()
 {
-  std::printf("Destroying instance of object force\n");
+  // std::printf("Destroying instance of object force\n");
 }
 
 int cforce::readinifile(cinput *inputin)

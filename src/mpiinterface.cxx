@@ -6,7 +6,7 @@
 
 cmpi::cmpi()
 {
-  std::printf("Creating instance of object mpi\n");
+  // std::printf("Creating instance of object mpi\n");
 
   initialized = false;
   allocated   = false;
@@ -20,7 +20,7 @@ cmpi::~cmpi()
   if(initialized)
     MPI_Finalize();
 
-  std::printf("Destroying instance of object mpi\n");
+  // std::printf("Destroying instance of object mpi\n");
 }
 
 int cmpi::readinifile(cinput *inputin)

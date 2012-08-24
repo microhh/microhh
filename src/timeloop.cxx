@@ -7,7 +7,7 @@
 
 ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object timeloop\n");
+  // std::printf("Creating instance of object timeloop\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -18,7 +18,7 @@ ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 ctimeloop::~ctimeloop()
 {
-  std::printf("Destroying instance of object timeloop\n");
+  // std::printf("Destroying instance of object timeloop\n");
 }
 
 int ctimeloop::readinifile(cinput *inputin)

@@ -7,7 +7,7 @@
 
 cboundary::cboundary(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object boundary\n");
+  // std::printf("Creating instance of object boundary\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -15,7 +15,7 @@ cboundary::cboundary(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cboundary::~cboundary()
 {
-  std::printf("Destroying instance of object boundary\n");
+  // std::printf("Destroying instance of object boundary\n");
 }
 
 int cboundary::readinifile(cinput *inputin)

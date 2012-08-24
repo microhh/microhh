@@ -7,7 +7,7 @@
 // build the grid
 cgrid::cgrid(cmpi *mpiin)
 {
-  std::printf("Creating instance of object grid\n");
+  // std::printf("Creating instance of object grid\n");
 
   mpi = mpiin;
 
@@ -32,7 +32,7 @@ cgrid::~cgrid()
     delete[] dzhi4;
   }
 
-  std::printf("Destroying instance of object grid\n");
+  // std::printf("Destroying instance of object grid\n");
 }
 
 int cgrid::readinifile(cinput *inputin)

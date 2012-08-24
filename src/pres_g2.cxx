@@ -9,7 +9,7 @@
 
 cpres_g2::cpres_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object pres_g2\n");
+  // std::printf("Creating instance of object pres_g2\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -39,7 +39,7 @@ cpres_g2::~cpres_g2()
     delete[] bmatj;
   }
 
-  std::printf("Destroying instance of object pres_g2\n");
+  // std::printf("Destroying instance of object pres_g2\n");
 }
 
 int cpres_g2::init()

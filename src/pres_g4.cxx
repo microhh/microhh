@@ -9,7 +9,7 @@
 
 cpres_g4::cpres_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object pres_g4\n");
+  // std::printf("Creating instance of object pres_g4\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -59,7 +59,7 @@ cpres_g4::~cpres_g4()
     delete[] ptemp;
   }
 
-  std::printf("Destroying instance of object pres_g4\n");
+  // std::printf("Destroying instance of object pres_g4\n");
 }
 
 int cpres_g4::init()
