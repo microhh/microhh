@@ -942,6 +942,7 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
   return divmax;
 }
 
+/*
 inline double cpres_g4::grad4(const double a, const double b, const double c, const double d, const double dxi)
 {
   return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
@@ -961,4 +962,4 @@ inline double cpres_g4::grad4xbiastop(const double a, const double b, const doub
 {
   return ( 23.*d - 21.*c - 3.*b + a);
 }
-
+*/
