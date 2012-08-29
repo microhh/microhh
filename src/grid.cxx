@@ -290,7 +290,7 @@ int cgrid::save()
   fclose(pFile);*/
 
   MPI_File fh;
-  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
   {
     if(mpi->mpiid == 0)
       std::printf("ERROR \"%s\" cannot be written\n", filename);
@@ -305,25 +305,25 @@ int cgrid::save()
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
   if(mpi->mpiid / mpi->npx == 0)
     MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
   if(mpi->mpiid / mpi->npx == 0)
     MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
   if(mpi->mpiid % mpi->npx == 0)
     MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += jtot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
   if(mpi->mpiid % mpi->npx == 0)
     MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
 
   MPI_File_sync(fh);
   if(MPI_File_close(&fh))
@@ -370,7 +370,7 @@ int cgrid::load()
   */
 
   MPI_File fh;
-  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
   {
     if(mpi->mpiid == 0)
       std::printf("ERROR \"%s\" cannot be loaded\n", filename);
@@ -385,25 +385,25 @@ int cgrid::load()
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
   // if(mpi->mpiid / mpi->npx == 0)
   MPI_File_read_all(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
   // if(mpi->mpiid / mpi->npx == 0)
   MPI_File_read_all(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
   // if(mpi->mpiid % mpi->npx == 0)
   MPI_File_read_all(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += jtot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
   // if(mpi->mpiid % mpi->npx == 0)
   MPI_File_read_all(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
 
   MPI_File_sync(fh);
   if(MPI_File_close(&fh))
@@ -765,7 +765,7 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
 int cgrid::getmax(double *var)
 {
   double varl = *var;
-  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, mpi->commxy);
 
   return 0;
 }
@@ -773,7 +773,7 @@ int cgrid::getmax(double *var)
 int cgrid::getsum(double *var)
 {
   double varl = *var;
-  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, mpi->commxy);
 
   return 0;
 }
@@ -781,7 +781,7 @@ int cgrid::getsum(double *var)
 int cgrid::savefield3d(double * restrict data, char *filename)
 {
   MPI_File fh;
-  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data
@@ -831,7 +831,7 @@ int cgrid::savefield3d(double * restrict data, char *filename)
 int cgrid::loadfield3d(double *data, char *filename)
 {  
   MPI_File fh;
-  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data
