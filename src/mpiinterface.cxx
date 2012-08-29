@@ -36,7 +36,7 @@ int cmpi::readinifile(cinput *inputin)
   return 0;
 }
 
-int cmpi::init()
+int cmpi::startup()
 {
   int n;
 
@@ -51,6 +51,27 @@ int cmpi::init()
   n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
   if(checkerror(n))
     return 1;
+
+  return 0;
+}
+
+int cmpi::init()
+{
+  int n;
+
+  /*
+  // initialize the MPI
+  n = MPI_Init(NULL, NULL);
+  if(checkerror(n))
+    return 1;
+
+  initialized = true;
+
+  // get the rank of the current process
+  n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
+  if(checkerror(n))
+    return 1;
+  */
 
   // get the total number of processors
   n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);

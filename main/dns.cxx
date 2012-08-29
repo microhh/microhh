@@ -17,9 +17,12 @@ int main(int argc, char *argv[])
   if(argc > 1)
     simname = argv[1];
 
+  // start up the message passing interface
+  cmpi mpi;
+  mpi.startup();
+
   // create the instances of the objects
   cinput  input;
-  cmpi    mpi;
   cgrid   grid  (&mpi);
   cfields fields(&grid, &mpi);
 
