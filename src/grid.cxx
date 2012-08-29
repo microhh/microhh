@@ -590,12 +590,6 @@ int cgrid::transposezx(double * restrict ar, double * restrict as)
     // send the block
     MPI_Isend(&as[ijks], ncount, transposez, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-  }
-
-  for(int k=0; k<mpi->npx; k++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
 
     // determine where to store the receive data
     int ijkr = k*jj;
@@ -628,12 +622,6 @@ int cgrid::transposexz(double * restrict ar, double * restrict as)
     // send the block
     MPI_Isend(&as[ijks], ncount, transposex, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-  }
-
-  for(int i=0; i<mpi->npx; i++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
 
     // determine where to store the receive data
     int ijkr = i*kblock*kk;
@@ -666,12 +654,6 @@ int cgrid::transposexy(double * restrict ar, double * restrict as)
     // send the block
     MPI_Isend(&as[ijks], ncount, transposex2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-  }
-
-  for(int i=0; i<mpi->npy; i++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
 
     // determine where to store the receive data
     int ijkr = i*kk;
@@ -704,12 +686,6 @@ int cgrid::transposeyx(double * restrict ar, double * restrict as)
     // send the block
     MPI_Isend(&as[ijks], ncount, transposey, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-  }
-
-  for(int i=0; i<mpi->npy; i++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
 
     // determine where to store the receive data
     int ijkr = i*jj;
@@ -742,12 +718,6 @@ int cgrid::transposeyz(double * restrict ar, double * restrict as)
     // send the block, tag it with the height (in kblocks) where it should come
     MPI_Isend(&as[ijks], ncount, transposey2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-  }
-
-  for(int i=0; i<mpi->npx; i++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
 
     // determine where to store the receive data
     int ijkr = i*kblock*kk;
@@ -780,12 +750,6 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
     // send the block
     MPI_Isend(&as[ijks], ncount, transposez2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-  }
-
-  for(int k=0; k<mpi->npx; k++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
 
     // determine where to store the receive data
     int ijkr = k*jblock*jj;
