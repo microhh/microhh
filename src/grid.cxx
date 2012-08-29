@@ -572,30 +572,23 @@ int cgrid::boundary_cyclic(double * restrict data)
 
 int cgrid::transposezx(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks, ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = imax;
   int kk = imax*jmax;
 
-  for(int k=0; k<mpi->npx; k++)
+  for(int n=0; n<mpi->npx; n++)
   {
-    // determine where to send it to
-    nblock = k;
+    // determine where to fetch the data and where to store it
+    ijks = n*kblock*kk;
+    ijkr = n*jj;
 
-    // determine where to fetch the send data
-    int ijks = k*kblock*kk;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposez, nblock, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposez, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-
-    // determine where to store the receive data
-    int ijkr = k*jj;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposex, nblock, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
@@ -604,30 +597,23 @@ int cgrid::transposezx(double * restrict ar, double * restrict as)
 
 int cgrid::transposexz(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks, ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = imax;
   int kk = imax*jmax;
 
-  for(int i=0; i<mpi->npx; i++)
+  for(int n=0; n<mpi->npx; n++)
   {
-    // determine where to send it to
-    nblock = i;
+    // determine where to fetch the data and where to store it
+    ijks = n*jj;
+    ijkr = n*kblock*kk;
 
-    // determine where to fetch the send data
-    int ijks = i*jj;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposex, nblock, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposex, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-
-    // determine where to store the receive data
-    int ijkr = i*kblock*kk;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposez, nblock, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
@@ -636,30 +622,23 @@ int cgrid::transposexz(double * restrict ar, double * restrict as)
 
 int cgrid::transposexy(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks, ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = iblock;
   int kk = iblock*jmax;
 
-  for(int i=0; i<mpi->npy; i++)
+  for(int n=0; n<mpi->npy; n++)
   {
-    // determine where to send it to
-    nblock = i;
+    // determine where to fetch the data and where to store it
+    ijks = n*jj;
+    ijkr = n*kk;
 
-    // determine where to fetch the send data
-    int ijks = i*jj;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposex2, nblock, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposex2, n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-
-    // determine where to store the receive data
-    int ijkr = i*kk;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposey, nblock, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
+    MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
@@ -668,30 +647,23 @@ int cgrid::transposexy(double * restrict ar, double * restrict as)
 
 int cgrid::transposeyx(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks, ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = iblock;
   int kk = iblock*jmax;
 
-  for(int i=0; i<mpi->npy; i++)
+  for(int n=0; n<mpi->npy; n++)
   {
-    // determine where to send it to
-    nblock = i;
+    // determine where to fetch the data and where to store it
+    ijks = n*kk;
+    ijkr = n*jj;
 
-    // determine where to fetch the send data
-    int ijks = i*kk;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposey, nblock, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposey , n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-
-    // determine where to store the receive data
-    int ijkr = i*jj;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposex2, nblock, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
+    MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
@@ -700,30 +672,23 @@ int cgrid::transposeyx(double * restrict ar, double * restrict as)
 
 int cgrid::transposeyz(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks,ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = iblock;
   int kk = iblock*jblock;
 
-  for(int i=0; i<mpi->npx; i++)
+  for(int n=0; n<mpi->npx; n++)
   {
-    // determine where to send it to
-    nblock = i;
+    // determine where to fetch the data and where to store it
+    ijks = n*jblock*jj;
+    ijkr = n*kblock*kk;
 
-    // determine where to fetch the send data
-    int ijks = i*jblock*jj;
-
-    // send the block, tag it with the height (in kblocks) where it should come
-    MPI_Isend(&as[ijks], ncount, transposey2, nblock, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposey2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-
-    // determine where to store the receive data
-    int ijkr = i*kblock*kk;
-
-    // and determine what has to be delivered at height i (in kblocks)
-    MPI_Irecv(&ar[ijkr], ncount, transposez2, nblock, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
  
@@ -732,30 +697,23 @@ int cgrid::transposeyz(double * restrict ar, double * restrict as)
 
 int cgrid::transposezy(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks,ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = iblock;
   int kk = iblock*jblock;
 
-  for(int k=0; k<mpi->npx; k++)
+  for(int n=0; n<mpi->npx; n++)
   {
-    // determine where to send it to
-    nblock = k;
+    // determine where to fetch the data and where to store it
+    ijks = n*kblock*kk;
+    ijkr = n*jblock*jj;
 
-    // determine where to fetch the send data
-    int ijks = k*kblock*kk;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposez2, nblock, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposez2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-
-    // determine where to store the receive data
-    int ijkr = k*jblock*jj;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposey2, nblock, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
