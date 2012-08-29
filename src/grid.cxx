@@ -525,9 +525,9 @@ int cgrid::boundary_cyclic(double * restrict data)
   // first, send and receive the ghost cells in east-west direction
   MPI_Isend(&data[eastout], ncount, eastwestedge, mpi->neast, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
-  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
   MPI_Irecv(&data[westin], ncount, eastwestedge, mpi->nwest, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
+  mpi->reqsn++;
+  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
   MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
@@ -538,9 +538,9 @@ int cgrid::boundary_cyclic(double * restrict data)
     // second, send and receive the ghost cells in the north-south direction
     MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-    MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
     MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
     MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
@@ -567,6 +567,8 @@ int cgrid::boundary_cyclic(double * restrict data)
         }
   }
 
+  mpi->waitall();
+
   return 0;
 }
 
@@ -591,6 +593,8 @@ int cgrid::transposezx(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
+
+  mpi->waitall();
 
   return 0;
 }
@@ -617,6 +621,8 @@ int cgrid::transposexz(double * restrict ar, double * restrict as)
     mpi->reqsn++;
   }
 
+  mpi->waitall();
+
   return 0;
 }
 
@@ -641,6 +647,8 @@ int cgrid::transposexy(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
+
+  mpi->waitall();
 
   return 0;
 }
@@ -667,6 +675,8 @@ int cgrid::transposeyx(double * restrict ar, double * restrict as)
     mpi->reqsn++;
   }
 
+  mpi->waitall();
+
   return 0;
 }
 
@@ -691,6 +701,8 @@ int cgrid::transposeyz(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
+
+  mpi->waitall();
  
   return 0;
 }
@@ -716,6 +728,8 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
+
+  mpi->waitall();
 
   return 0;
 }

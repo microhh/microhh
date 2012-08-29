@@ -195,7 +195,6 @@ int cpres_g42::pres_in(double * restrict p,
   grid->boundary_cyclic(ut);
   grid->boundary_cyclic(vt);
   grid->boundary_cyclic(wt);
-  mpi->waitall();
 
   // write pressure as a 3d array without ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -239,7 +238,6 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
 
   // transpose the pressure field
   grid->transposezx(work3d,p);
-  mpi->waitall();
 
   jj = itot;
   kk = itot*jmax;
@@ -267,7 +265,6 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
 
   // transpose again
   grid->transposexy(p,work3d);
-  mpi->waitall();
 
   jj = iblock;
   kk = iblock*jtot;
@@ -294,7 +291,6 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
 
   // transpose back to original orientation
   grid->transposeyz(p,work3d);
-  mpi->waitall();
 
   jj = iblock;
   kk = iblock*jblock;
@@ -340,7 +336,6 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
         
   // transpose back to y
   grid->transposezy(work3d, p);
-  mpi->waitall();
   
   jj = iblock;
   kk = iblock*jtot;
@@ -366,8 +361,7 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
 
   // transpose back to x
   grid->transposeyx(work3d, p);
-  mpi->waitall();
-    
+
   jj = itot;
   kk = itot*jmax;
 
@@ -395,7 +389,6 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
 
   // and transpose back...
   grid->transposexz(work3d, p);
-  mpi->waitall();
 
   jj = imax;
   kk = imax*jmax;
@@ -427,7 +420,6 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
 
   // set the cyclic boundary conditions
   grid->boundary_cyclic(p);
-  mpi->waitall();
 
   return 0;
 }

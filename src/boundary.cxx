@@ -79,7 +79,6 @@ int cboundary::exec()
   grid->boundary_cyclic((*fields->v).data);
   grid->boundary_cyclic((*fields->w).data);
   grid->boundary_cyclic((*fields->s).data);
-  mpi->waitall();
 
   return 0;
 }
