@@ -49,7 +49,7 @@ int ctimeloop::readinifile(cinput *inputin)
   // 3 and 4 are the only valid values for the rkorder
   if(!(rkorder == 3 || rkorder == 4))
   {
-    std::printf("ERROR \"%d\" is an illegal value for rkorder\n", rkorder);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%d\" is an illegal value for rkorder\n", rkorder);
     return 1;
   }
 
@@ -287,16 +287,15 @@ int ctimeloop::load(int n)
   char filename[256];
   std::sprintf(filename, "time.%07d", n);
 
-  if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
 
   FILE *pFile;
   pFile = fopen(filename, "rb");
 
   if(pFile == NULL)
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" does not exist\n", filename);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
+
     return 1;
   }
 

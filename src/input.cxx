@@ -2,16 +2,17 @@
 #include <cstring>
 #include <map>
 #include "input.h"
+#include "mpiinterface.h"
 
 cinput::cinput(cmpi *mpiin)
 {
-  // std::printf("Creating instance of object input\n");
+  // if(mpi->mpiid == 0) std::printf("Creating instance of object input\n");
   mpi = mpiin;
 }
 
 cinput::~cinput()
 {
-  // std::printf("Destroying instance of object input\n");
+  // if(mpi->mpiid == 0) std::printf("Destroying instance of object input\n");
 }
 
 int cinput::clear()
@@ -32,7 +33,7 @@ int cinput::readinifile(std::string inputfilename)
 
   if(inputfile == NULL)
   {
-    std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
     return 1;
   }
 
@@ -40,7 +41,7 @@ int cinput::readinifile(std::string inputfilename)
   bool blockset = false;
   int  nerrors  = 0;
  
-  std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
+  if(mpi->mpiid == 0) std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
 
   int nline=0;
   // check the cases: comments, empty line, block, value, rubbish
@@ -63,12 +64,12 @@ int cinput::readinifile(std::string inputfilename)
       n = std::sscanf(temp1, "%s %s", block, dummy);
       if(n == 1)
       {
-        std::printf("Found block [%s]\n", block);
+        if(mpi->mpiid == 0) std::printf("Found block [%s]\n", block);
         blockset = true;
       }
       else
       {
-        std::printf("ERROR line %d: illegal block specification [%s]\n", nline, temp1);
+        if(mpi->mpiid == 0) std::printf("ERROR line %d: illegal block specification [%s]\n", nline, temp1);
         nerrors++;
       }
       continue;
@@ -82,12 +83,12 @@ int cinput::readinifile(std::string inputfilename)
       {
         if(!blockset)
         {
-          std::printf("ERROR line %d: illegal item [?][%s] = \"%s\"\n", nline, lhs, rhs);
+          if(mpi->mpiid == 0) std::printf("ERROR line %d: illegal item [?][%s] = \"%s\"\n", nline, lhs, rhs);
           nerrors++;
           continue;
         }
 
-        std::printf("Found item  [%s][%s] = \"%s\"\n", block, lhs, rhs);
+        if(mpi->mpiid == 0) std::printf("Found item  [%s][%s] = \"%s\"\n", block, lhs, rhs);
         std::string blockstring(block);
         std::string itemstring(lhs);
         std::string valuestring(rhs);
@@ -96,7 +97,7 @@ int cinput::readinifile(std::string inputfilename)
       else
       {
         n = std::sscanf(inputline, "%[^=]", temp1);
-        std::printf("ERROR line %d: illegal item  [%s][%s]\n", nline, block, temp1);
+        if(mpi->mpiid == 0) std::printf("ERROR line %d: illegal item  [%s][%s]\n", nline, block, temp1);
         nerrors++;
       }
     }
@@ -107,14 +108,14 @@ int cinput::readinifile(std::string inputfilename)
       n = std::sscanf(inputline, "%[^\n]", temp1);
       if(n > 0)
       {
-        std::printf("ERROR line %d: \"%s\" is illegal input\n", nline, temp1);
+        if(mpi->mpiid == 0) std::printf("ERROR line %d: \"%s\" is illegal input\n", nline, temp1);
         nerrors++;
       }
     }
   }
   fclose(inputfile);
 
-  std::printf("Inifile has been processed with %d errors\n", nerrors);
+  if(mpi->mpiid == 0) std::printf("Inifile has been processed with %d errors\n", nerrors);
   return nerrors;
 }
 
@@ -131,11 +132,11 @@ int cinput::readproffile(std::string inputfilename)
 
   if(inputfile == NULL)
   {
-    std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
     return 1;
   }
 
-  std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
+  if(mpi->mpiid == 0) std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
   int nvar = 0;
   std::vector<std::string> varnames;
 
@@ -163,11 +164,11 @@ int cinput::readproffile(std::string inputfilename)
 
       if(!std::isalpha(substring[0]))
       {
-        std::printf("ERROR at line %d: \"%s\" is not a variable name\n", nline, substring);
+        if(mpi->mpiid == 0) std::printf("ERROR at line %d: \"%s\" is not a variable name\n", nline, substring);
         return 1;
       }
         
-      std::printf("Found variable \"%s\"\n", substring);
+      if(mpi->mpiid == 0) std::printf("Found variable \"%s\"\n", substring);
 
       // temporarily store the variable name
       varnames.push_back(std::string(substring));
@@ -178,7 +179,7 @@ int cinput::readproffile(std::string inputfilename)
 
     if(nvar == 0)
     {
-      std::printf("ERROR no variable names in header\n");
+      if(mpi->mpiid == 0) std::printf("ERROR no variable names in header\n");
       return 1;
     }
 
@@ -220,7 +221,7 @@ int cinput::readproffile(std::string inputfilename)
 
       if(n != 1)
       {
-        std::printf("ERROR line %d: \"%s\" is not a correct data value\n", nline, substring);
+        if(mpi->mpiid == 0) std::printf("ERROR line %d: \"%s\" is not a correct data value\n", nline, substring);
         return 1;
       }
 
@@ -233,7 +234,7 @@ int cinput::readproffile(std::string inputfilename)
 
     if(ncols != nvar)
     {
-      std::printf("ERROR line %d: %d data columns, but %d defined variables\n", nline, ncols, nvar);
+      if(mpi->mpiid == 0) std::printf("ERROR line %d: %d data columns, but %d defined variables\n", nline, ncols, nvar);
       return 1;
     }
 
@@ -273,7 +274,7 @@ int cinput::getItem(int *value, std::string cat, std::string item)
 {
   if(checkItemExists(cat, item))
   {
-    std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
     return 1;
   }
   else
@@ -287,7 +288,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, int def)
 {
   if(checkItemExists(cat, item))
   {
-    std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
     *value = def;
     return 0;
   }
@@ -312,7 +313,7 @@ int cinput::checkItem(int *value, std::string cat, std::string item)
   {
     if(std::strcmp(inputstring,""))
     {
-      std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
       return 1;
     }
   }
@@ -324,7 +325,7 @@ int cinput::getItem(double *value, std::string cat, std::string item)
 {
   if(checkItemExists(cat, item))
   {
-    std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
     return 1;
   }
   else
@@ -338,7 +339,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, double def
 {
   if(checkItemExists(cat, item))
   {
-    std::printf("WARNING [%s][%s] does not exist, default value of %f used\n", cat.c_str(), item.c_str(), def);
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %f used\n", cat.c_str(), item.c_str(), def);
     *value = def;
     return 0;
   }
@@ -364,7 +365,7 @@ int cinput::checkItem(double *value, std::string cat, std::string item)
   {
     if(std::strcmp(inputstring,""))
     {
-      std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
       return 1;
     }
   }
@@ -376,7 +377,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item)
 {
   if(checkItemExists(cat, item))
   {
-    std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
     return 1;
   }
   else
@@ -390,7 +391,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, bool def)
 {
   if(checkItemExists(cat, item))
   {
-    std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
     *value = def;
     return 0;
   }
@@ -430,7 +431,7 @@ int cinput::checkItem(bool *value, std::string cat, std::string item)
   {
     if(std::strcmp(inputstring,""))
     {
-      std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
       return 1;
     }
   }
@@ -447,20 +448,20 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
     int profsize = proflist[varname].size();
     if(profsize < kmaxin)
     {
-      std::printf("ERROR only %d of %d levels can be read for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
+      if(mpi->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
       return 1;
     }
     if(profsize > kmaxin)
-      std::printf("WARNING %d is larger than the number of grid points %d for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
+      if(mpi->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
 
     for(int k=0; k<kmaxin; k++)
       data[k] = proflist[varname][k];
 
-    std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
+    if(mpi->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
   }
   else
   { 
-    std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
+    if(mpi->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
     for(int k=0; k<kmaxin; k++)
       data[k] = 0.;
   }

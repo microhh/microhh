@@ -61,7 +61,7 @@ int cfields::readinifile(cinput *inputin)
 
 int cfields::init()
 {
-  std::printf("Initializing fields\n");
+  if(mpi->mpiid == 0) std::printf("Initializing fields\n");
 
   // set pointers to correct location
   u  = new cfield3d(grid, mpi, "u" );
@@ -101,7 +101,7 @@ int cfields::init()
 
 int cfields::create(cinput *inputin)
 {
-  std::printf("Creating fields\n");
+  if(mpi->mpiid == 0) std::printf("Creating fields\n");
   
   /*// set Taylor-Green vortex as default setup
   const double pi = std::acos((double)-1.);

@@ -8,7 +8,6 @@
 cgrid::cgrid(cmpi *mpiin)
 {
   // std::printf("Creating instance of object grid\n");
-
   mpi = mpiin;
 
   allocated = false;
@@ -72,29 +71,29 @@ int cgrid::init()
   // check whether the grid fits the processor configuration
   if(itot % mpi->npx != 0)
   {
-    std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, mpi->npx);
+    if(mpi->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, mpi->npx);
     return 1;
   }
   if(itot % mpi->npy != 0)
   {
-    std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, mpi->npy);
+    if(mpi->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, mpi->npy);
     return 1;
   }
   // check this one only when npy > 1, since the transpose in that direction only happens then
   //if(jtot % mpi->npx != 0 && mpi->npy > 1)
   if(jtot % mpi->npx != 0)
   {
-    std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, mpi->npx);
+    if(mpi->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, mpi->npx);
     return 1;
   }
   if(jtot % mpi->npy != 0)
   {
-    std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, mpi->npy);
+    if(mpi->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, mpi->npy);
     return 1;
   }
   if(ktot % mpi->npx != 0)
   {
-    std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, mpi->npx);
+    if(mpi->mpiid == 0) std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, mpi->npx);
     return 1;
   }
 
@@ -267,8 +266,7 @@ int cgrid::save()
 {
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0)
-    std::printf("Saving \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
   /*FILE *pFile;
   pFile = fopen(filename, "wb");
@@ -292,8 +290,7 @@ int cgrid::save()
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" cannot be written\n", filename);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
   }
 
@@ -345,8 +342,7 @@ int cgrid::load()
 {
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
 
   /*
   FILE *pFile;
@@ -372,8 +368,7 @@ int cgrid::load()
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" cannot be loaded\n", filename);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be loaded\n", filename);
     return 1;
   }
 
