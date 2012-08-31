@@ -15,8 +15,8 @@ int main(int argc, char *argv[])
   mpi.startup();
 
   // create the instances of the objects
-  cinput    input;
-  cgrid     grid(&mpi);
+  cinput    input   (&mpi);
+  cgrid     grid    (&mpi);
   cmpicheck mpicheck(&grid, &mpi);
 
   if(input.readinifile(simname))

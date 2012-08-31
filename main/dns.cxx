@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
   mpi.startup();
 
   // create the instances of the objects
-  cinput  input;
+  cinput  input (&mpi);
   cgrid   grid  (&mpi);
   cfields fields(&grid, &mpi);
 

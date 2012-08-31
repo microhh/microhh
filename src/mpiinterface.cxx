@@ -52,6 +52,14 @@ int cmpi::startup()
   if(checkerror(n))
     return 1;
 
+  // get the total number of processors
+  n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  if(checkerror(n))
+    return 1;
+
+  if(mpiid == 0)
+    std::printf("Starting run on %d processes\n", nprocs);
+
   return 0;
 }
 
@@ -72,11 +80,6 @@ int cmpi::init()
   if(checkerror(n))
     return 1;
   */
-
-  // get the total number of processors
-  n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  if(checkerror(n))
-    return 1;
 
   if(nprocs != npx*npy)
   {

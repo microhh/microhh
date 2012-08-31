@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
   mpi.startup();
 
   // create the class objects
-  cinput    input;
+  cinput    input   (&mpi);
   cgrid     grid    (&mpi);
   cfields   fields  (&grid, &mpi);
   cpres     pres    (&grid, &fields, &mpi);

@@ -3,9 +3,10 @@
 #include <map>
 #include "input.h"
 
-cinput::cinput()
+cinput::cinput(cmpi *mpiin)
 {
   // std::printf("Creating instance of object input\n");
+  mpi = mpiin;
 }
 
 cinput::~cinput()
