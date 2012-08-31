@@ -39,15 +39,31 @@ int cinput::readinifile(std::string inputfilename)
 
   int n;
   bool blockset = false;
-  int  nerrors  = 0;
- 
-  if(mpi->mpiid == 0) std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
+  int nerrors = 0;
+  int nlines  = 0;
+  int nline;
 
-  int nline=0;
-  // check the cases: comments, empty line, block, value, rubbish
-  while(std::fgets(inputline, 256, inputfile) != NULL)
+  if(mpi->mpiid == 0)
   {
-    nline++;
+    std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
+    while(std::fgets(inputline, 256, inputfile) != NULL)
+      nlines++;
+    std::printf("Inifile contains %d lines\n", nlines);
+    rewind(inputfile);
+  }
+  MPI_Bcast(&nlines, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  // check the cases: comments, empty line, block, value, rubbish
+  for(int nn=0; nn<nlines; nn++)
+  {
+    nline = nn+1;
+    if(mpi->mpiid == 0)
+    {
+      // fetch a line and broadcast it
+      std::fgets(inputline, 256, inputfile);
+    }
+    MPI_Bcast(inputline, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
     if(n == 0) 
