@@ -152,15 +152,34 @@ int cinput::readproffile(std::string inputfilename)
     return 1;
   }
 
-  if(mpi->mpiid == 0) std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
-  int nvar = 0;
+  int nlines = 0;
+  int nline;
+  int nvar   = 0;
   std::vector<std::string> varnames;
 
-  int nline = 0;
-  // first find the header
-  while(std::fgets(inputline, 256, inputfile) != NULL)
+  if(mpi->mpiid == 0)
   {
-    nline++;
+    std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
+    while(std::fgets(inputline, 256, inputfile) != NULL)
+      nlines++;
+    std::printf("Inifile contains %d lines\n", nlines);
+    rewind(inputfile);
+  }
+  MPI_Bcast(&nlines, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  int nn;
+
+  // first find the header
+  for(nn=0; nn<nlines; nn++)
+  {
+    nline = nn+1;
+    if(mpi->mpiid == 0)
+    {
+      // fetch a line and broadcast it
+      std::fgets(inputline, 256, inputfile);
+    }
+    MPI_Bcast(inputline, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
     if(n == 0) 
@@ -210,9 +229,17 @@ int cinput::readproffile(std::string inputfilename)
 
   std::vector<double> varvalues;
 
-  while(std::fgets(inputline, 256, inputfile) != NULL)
+  // continue the loop from the exit value of nn
+  for(nn++; nn<nlines; nn++)
   {
-    nline++;
+    nline = nn+1;
+    if(mpi->mpiid == 0)
+    {
+      // fetch a line and broadcast it
+      std::fgets(inputline, 256, inputfile);
+    }
+    MPI_Bcast(inputline, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
     if(n == 0) 
