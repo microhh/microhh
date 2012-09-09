@@ -25,11 +25,6 @@ double cadvec_g4::calccfl(double * restrict u, double * restrict v, double * res
   int    ii1,ii2,jj1,jj2,kk1,kk2;
   double dxi,dyi;
 
-  const double ci0 = -1./16.;
-  const double ci1 =  9./16.;
-  const double ci2 =  9./16.;
-  const double ci3 = -1./16.;
-
   ii1 = 1;
   ii2 = 2;
   jj1 = 1*grid->icells;
@@ -65,27 +60,6 @@ int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restri
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   double dxi,dyi;
-
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-  const double cgi =   1./24.;
-
-  const double ci0 = -1./16.;
-  const double ci1 =  9./16.;
-  const double ci2 =  9./16.;
-  const double ci3 = -1./16.;
-
-  const double bi0 =  5./16.;
-  const double bi1 = 15./16.;
-  const double bi2 = -5./16.;
-  const double bi3 =  1./16.;
-
-  const double ti0 =  1./16.;
-  const double ti1 = -5./16.;
-  const double ti2 = 15./16.;
-  const double ti3 =  5./16.;
 
   ii1 = 1;
   ii2 = 2;
@@ -181,27 +155,6 @@ int cadvec_g4::advecv(double * restrict vt, double * restrict u, double * restri
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   double dxi,dyi;
 
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-  const double cgi =   1./24.;
-
-  const double ci0 = -1./16.;
-  const double ci1 =  9./16.;
-  const double ci2 =  9./16.;
-  const double ci3 = -1./16.;
-
-  const double bi0 =  5./16.;
-  const double bi1 = 15./16.;
-  const double bi2 = -5./16.;
-  const double bi3 =  1./16.;
-
-  const double ti0 =  1./16.;
-  const double ti1 = -5./16.;
-  const double ti2 = 15./16.;
-  const double ti3 =  5./16.;
-
   ii1 = 1;
   ii2 = 2;
   ii3 = 3;
@@ -296,27 +249,6 @@ int cadvec_g4::advecw(double * restrict wt, double * restrict u, double * restri
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   double dxi,dyi;
 
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-  const double cgi =   1./24.;
-
-  const double ci0 = -1./16.;
-  const double ci1 =  9./16.;
-  const double ci2 =  9./16.;
-  const double ci3 = -1./16.;
-
-  const double bi0 =  5./16.;
-  const double bi1 = 15./16.;
-  const double bi2 = -5./16.;
-  const double bi3 =  1./16.;
-
-  const double ti0 =  1./16.;
-  const double ti1 = -5./16.;
-  const double ti2 = 15./16.;
-  const double ti3 =  5./16.;
-
   ii1 = 1;
   ii2 = 2;
   ii3 = 3;
@@ -410,27 +342,6 @@ int cadvec_g4::advecs(double * restrict st, double * restrict s, double * restri
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   double dxi,dyi;
-
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-  const double cgi =   1./24.;
-
-  const double ci0 = -1./16.;
-  const double ci1 =  9./16.;
-  const double ci2 =  9./16.;
-  const double ci3 = -1./16.;
-
-  const double bi0 =  5./16.;
-  const double bi1 = 15./16.;
-  const double bi2 = -5./16.;
-  const double bi3 =  1./16.;
-
-  const double ti0 =  1./16.;
-  const double ti1 = -5./16.;
-  const double ti2 = 15./16.;
-  const double ti3 =  5./16.;
 
   ii1 = 1;
   ii2 = 2;

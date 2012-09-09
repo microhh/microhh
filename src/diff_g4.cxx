@@ -26,26 +26,6 @@ int cdiff_g4::diffc(double * restrict at, double * restrict a, double * restrict
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   double dxidxi,dyidyi;
 
-  const double cdg0 = -1460./576.;
-  const double cdg1 =   783./576.;
-  const double cdg2 =   -54./576.;
-  const double cdg3 =     1./576.;
-
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-
-  const double bg0 = -23.;
-  const double bg1 =  21.;
-  const double bg2 =   3.;
-  const double bg3 =  -1.;
-
-  const double tg0 =   1.;
-  const double tg1 =  -3.;
-  const double tg2 = -21.;
-  const double tg3 =  23.;
-
   ii1 = 1;
   ii2 = 2;
   ii3 = 3;
@@ -115,26 +95,6 @@ int cdiff_g4::diffw(double * restrict at, double * restrict a, double * restrict
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   double dxidxi,dyidyi;
-
-  const double cdg0 = -1460./576.;
-  const double cdg1 =   783./576.;
-  const double cdg2 =   -54./576.;
-  const double cdg3 =     1./576.;
-
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-
-  const double bg0 = -23.;
-  const double bg1 =  21.;
-  const double bg2 =   3.;
-  const double bg3 =  -1.;
-
-  const double tg0 =   1.;
-  const double tg1 =  -3.;
-  const double tg2 = -21.;
-  const double tg3 =  23.;
 
   ii1 = 1;
   ii2 = 2;

@@ -253,12 +253,6 @@ int cpres_g4::pres_in(double * restrict p,
   int    igc,jgc,kgc,kmax;
   double dxi,dyi;
 
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-  const double cgi =   1./24.;
-
   ii1 = 1;
   ii2 = 2;
   jj1 = 1*grid->icells;
@@ -652,12 +646,6 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
   int    kstart;
   double dxi,dyi;
 
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-  const double cgi =   1./24.;
-
   ii1 = 1;
   ii2 = 2;
   jj1 = 1*grid->icells;
@@ -893,12 +881,6 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart,kend;
   double dxi,dyi;
-
-  const double cg0 =   1.;
-  const double cg1 = -27.;
-  const double cg2 =  27.;
-  const double cg3 =  -1.;
-  const double cgi =   1./24.;
 
   ii1 = 1;
   ii2 = 2;
