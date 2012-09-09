@@ -11,6 +11,7 @@ class cmpi
     cmpi();
     ~cmpi();
 
+    int startup();
     int readinifile(cinput *);
     int init();
 

@@ -4,7 +4,7 @@
 
 cfield3d::cfield3d(cgrid *gridin, cmpi *mpiin, std::string namein)
 {
-  std::printf("Creating instance of object field3d\n");
+  // std::printf("Creating instance of object field3d\n");
   grid = gridin;
   name = namein;
   mpi  = mpiin;
@@ -15,13 +15,13 @@ cfield3d::~cfield3d()
   if(allocated)
     delete[] data;
 
-  std::printf("Destroying instance of object field3d\n");
+  // std::printf("Destroying instance of object field3d\n");
 }
 
 int cfield3d::init()
 {
   // allocate the memory
-  std::printf("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
+  if(mpi->mpiid == 0) std::printf("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
   data = new double[grid->ncells];
 
   allocated = true;
@@ -186,13 +186,11 @@ int cfield3d::save(int n)
 
   std::sprintf(filename, "%s.%07d", name.c_str(), n);
 
-  if(mpi->mpiid == 0)
-    std::printf("Saving \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
   if(grid->savefield3d(data, filename))
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" cannot be written\n", filename);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
   }
 
@@ -234,13 +232,11 @@ int cfield3d::load(int n)
 
   std::sprintf(filename, "%s.%07d", name.c_str(), n);
 
-  if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
 
   if(grid->loadfield3d(data, filename))
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" does not exist\n", filename);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
     return 1;
   }
 

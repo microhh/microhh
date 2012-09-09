@@ -6,7 +6,7 @@
 
 cmpi::cmpi()
 {
-  std::printf("Creating instance of object mpi\n");
+  // std::printf("Creating instance of object mpi\n");
 
   initialized = false;
   allocated   = false;
@@ -20,7 +20,7 @@ cmpi::~cmpi()
   if(initialized)
     MPI_Finalize();
 
-  std::printf("Destroying instance of object mpi\n");
+  // std::printf("Destroying instance of object mpi\n");
 }
 
 int cmpi::readinifile(cinput *inputin)
@@ -36,7 +36,7 @@ int cmpi::readinifile(cinput *inputin)
   return 0;
 }
 
-int cmpi::init()
+int cmpi::startup()
 {
   int n;
 
@@ -56,6 +56,30 @@ int cmpi::init()
   n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   if(checkerror(n))
     return 1;
+
+  if(mpiid == 0)
+    std::printf("Starting run on %d processes\n", nprocs);
+
+  return 0;
+}
+
+int cmpi::init()
+{
+  int n;
+
+  /*
+  // initialize the MPI
+  n = MPI_Init(NULL, NULL);
+  if(checkerror(n))
+    return 1;
+
+  initialized = true;
+
+  // get the rank of the current process
+  n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
+  if(checkerror(n))
+    return 1;
+  */
 
   if(nprocs != npx*npy)
   {

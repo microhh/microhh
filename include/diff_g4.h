@@ -19,11 +19,11 @@ class cdiff_g4
     cfields *fields;
     cmpi    *mpi;
 
-    inline double divgrad4(const double, const double, const double, const double,
-                           const double, const double, const double, const double);
+    // inline double divgrad4(const double, const double, const double, const double,
+    //                        const double, const double, const double, const double);
 
-    inline double grad4x       (const double, const double, const double, const double);
-    inline double grad4xbiasbot(const double, const double, const double, const double);
-    inline double grad4xbiastop(const double, const double, const double, const double);
+    // inline double grad4x       (const double, const double, const double, const double);
+    // inline double grad4xbiasbot(const double, const double, const double, const double);
+    // inline double grad4xbiastop(const double, const double, const double, const double);
 };
 #endif

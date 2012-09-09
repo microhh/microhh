@@ -12,9 +12,12 @@ int main(int argc, char *argv[])
   if(argc > 1)
     simname = argv[1];
 
-  // create the class objects
-  cinput    input;
+  // start the MPI
   cmpi      mpi;
+  mpi.startup();
+
+  // create the class objects
+  cinput    input   (&mpi);
   cgrid     grid    (&mpi);
   cfields   fields  (&grid, &mpi);
   cpres     pres    (&grid, &fields, &mpi);

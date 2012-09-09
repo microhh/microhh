@@ -8,7 +8,7 @@
 
 cadvec::cadvec(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object advec\n");
+  // std::printf("Creating instance of object advec\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -28,7 +28,7 @@ cadvec::~cadvec()
   delete advec_g4;
   delete advec_g4m;
 
-  std::printf("Destroying instance of object advec\n");
+  // std::printf("Destroying instance of object advec\n");
 }
 
 int cadvec::readinifile(cinput *inputin)

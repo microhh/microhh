@@ -9,7 +9,7 @@
 
 cpres::cpres(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object pres\n");
+  // std::printf("Creating instance of object pres\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -25,7 +25,7 @@ cpres::~cpres()
   delete pres_g42;
   delete pres_g4;
 
-  std::printf("Destroying instance of object pres\n");
+  // std::printf("Destroying instance of object pres\n");
 }
 
 int cpres::readinifile(cinput *inputin)

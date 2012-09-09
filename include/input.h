@@ -5,10 +5,13 @@
 #include <string>
 #include <vector>
 
+// forward declaration to avoid circular dependency
+class cmpi;
+
 class cinput
 {
   public:
-    cinput();
+    cinput(cmpi *);
     ~cinput();
     int readinifile (std::string);
     int readproffile(std::string);
@@ -22,6 +25,7 @@ class cinput
     int clear();
 
   private:
+    cmpi *mpi;
     int checkItemExists(std::string, std::string);
     int checkItem(int *   , std::string, std::string);
     int checkItem(double *, std::string, std::string);

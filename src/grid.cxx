@@ -7,8 +7,7 @@
 // build the grid
 cgrid::cgrid(cmpi *mpiin)
 {
-  std::printf("Creating instance of object grid\n");
-
+  // std::printf("Creating instance of object grid\n");
   mpi = mpiin;
 
   allocated = false;
@@ -32,7 +31,7 @@ cgrid::~cgrid()
     delete[] dzhi4;
   }
 
-  std::printf("Destroying instance of object grid\n");
+  // std::printf("Destroying instance of object grid\n");
 }
 
 int cgrid::readinifile(cinput *inputin)
@@ -72,29 +71,29 @@ int cgrid::init()
   // check whether the grid fits the processor configuration
   if(itot % mpi->npx != 0)
   {
-    std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, mpi->npx);
+    if(mpi->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, mpi->npx);
     return 1;
   }
   if(itot % mpi->npy != 0)
   {
-    std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, mpi->npy);
+    if(mpi->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, mpi->npy);
     return 1;
   }
   // check this one only when npy > 1, since the transpose in that direction only happens then
   //if(jtot % mpi->npx != 0 && mpi->npy > 1)
   if(jtot % mpi->npx != 0)
   {
-    std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, mpi->npx);
+    if(mpi->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, mpi->npx);
     return 1;
   }
   if(jtot % mpi->npy != 0)
   {
-    std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, mpi->npy);
+    if(mpi->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, mpi->npy);
     return 1;
   }
   if(ktot % mpi->npx != 0)
   {
-    std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, mpi->npx);
+    if(mpi->mpiid == 0) std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, mpi->npx);
     return 1;
   }
 
@@ -267,8 +266,7 @@ int cgrid::save()
 {
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0)
-    std::printf("Saving \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
   /*FILE *pFile;
   pFile = fopen(filename, "wb");
@@ -290,40 +288,38 @@ int cgrid::save()
   fclose(pFile);*/
 
   MPI_File fh;
-  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" cannot be written\n", filename);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
   }
 
   // select noncontiguous part of 3d array to store the selected data
-
   MPI_Offset fileoff = 0; // the offset within the file (header size)
   char name[] = "native";
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(mpi->mpiid / mpi->npx == 0)
+  if(mpi->mpicoordy == 0)
     MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(mpi->mpiid / mpi->npx == 0)
+  if(mpi->mpicoordy == 0)
     MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(mpi->mpiid % mpi->npx == 0)
+  if(mpi->mpicoordx == 0)
     MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += jtot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(mpi->mpiid % mpi->npx == 0)
+  if(mpi->mpicoordx == 0)
     MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
 
   MPI_File_sync(fh);
   if(MPI_File_close(&fh))
@@ -345,8 +341,7 @@ int cgrid::load()
 {
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
 
   /*
   FILE *pFile;
@@ -369,11 +364,12 @@ int cgrid::load()
   fclose(pFile);
   */
 
+  // DISABLE READING OF THE HORIZONTAL DATA, IT SLOWS DOWN THE INIT UNNECESSARILY
+  /*
   MPI_File fh;
-  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" cannot be loaded\n", filename);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be loaded\n", filename);
     return 1;
   }
 
@@ -385,40 +381,43 @@ int cgrid::load()
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
   // if(mpi->mpiid / mpi->npx == 0)
   MPI_File_read_all(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
   // if(mpi->mpiid / mpi->npx == 0)
   MPI_File_read_all(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
   // if(mpi->mpiid % mpi->npx == 0)
   MPI_File_read_all(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
   fileoff += jtot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
   // if(mpi->mpiid % mpi->npx == 0)
   MPI_File_read_all(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(mpi->commxy);
 
   MPI_File_sync(fh);
   if(MPI_File_close(&fh))
     return 1;
+   */
 
-  //if(mpi->mpiid == 0)
-  //{
   FILE *pFile;
-  pFile = fopen(filename, "rb");
-  int n = (2*itot+2*jtot)*sizeof(double);
-  fseek(pFile, n, SEEK_SET);
-  fread(&z [kstart], sizeof(double), kmax, pFile);
-  fread(&zh[kstart], sizeof(double), kmax, pFile);
-  fclose(pFile);
-  // }
+  if(mpi->mpiid == 0)
+  {
+    pFile = fopen(filename, "rb");
+    int n = (2*itot+2*jtot)*sizeof(double);
+    fseek(pFile, n, SEEK_SET);
+    fread(&z [kstart], sizeof(double), kmax, pFile);
+    fread(&zh[kstart], sizeof(double), kmax, pFile);
+    fclose(pFile);
+  }
+  MPI_Bcast(&z [kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
+  MPI_Bcast(&zh[kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
 
   // calculate the missing coordinates
   calculate();
@@ -525,9 +524,9 @@ int cgrid::boundary_cyclic(double * restrict data)
   // first, send and receive the ghost cells in east-west direction
   MPI_Isend(&data[eastout], ncount, eastwestedge, mpi->neast, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
-  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
   MPI_Irecv(&data[westin], ncount, eastwestedge, mpi->nwest, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
+  mpi->reqsn++;
+  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
   MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
@@ -538,9 +537,9 @@ int cgrid::boundary_cyclic(double * restrict data)
     // second, send and receive the ghost cells in the north-south direction
     MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
-    MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
     MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
     MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
@@ -567,233 +566,169 @@ int cgrid::boundary_cyclic(double * restrict data)
         }
   }
 
+  mpi->waitall();
+
   return 0;
 }
 
 int cgrid::transposezx(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks, ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = imax;
   int kk = imax*jmax;
 
-  for(int k=0; k<mpi->npx; k++)
+  for(int n=0; n<mpi->npx; n++)
   {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
+    // determine where to fetch the data and where to store it
+    ijks = n*kblock*kk;
+    ijkr = n*jj;
 
-    // determine where to fetch the send data
-    int ijks = k*kblock*kk;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposez, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposez, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
-  for(int k=0; k<mpi->npx; k++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
-
-    // determine where to store the receive data
-    int ijkr = k*jj;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposex, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
+  mpi->waitall();
 
   return 0;
 }
 
 int cgrid::transposexz(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks, ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = imax;
   int kk = imax*jmax;
 
-  for(int i=0; i<mpi->npx; i++)
+  for(int n=0; n<mpi->npx; n++)
   {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
+    // determine where to fetch the data and where to store it
+    ijks = n*jj;
+    ijkr = n*kblock*kk;
 
-    // determine where to fetch the send data
-    int ijks = i*jj;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposex, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposex, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
-  for(int i=0; i<mpi->npx; i++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
-
-    // determine where to store the receive data
-    int ijkr = i*kblock*kk;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposez, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
+  mpi->waitall();
 
   return 0;
 }
 
 int cgrid::transposexy(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks, ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = iblock;
   int kk = iblock*jmax;
 
-  for(int i=0; i<mpi->npy; i++)
+  for(int n=0; n<mpi->npy; n++)
   {
-    // determine where to send it to
-    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+    // determine where to fetch the data and where to store it
+    ijks = n*jj;
+    ijkr = n*kk;
 
-    // determine where to fetch the send data
-    int ijks = i*jj;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposex2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposex2, n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
-  for(int i=0; i<mpi->npy; i++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
-
-    // determine where to store the receive data
-    int ijkr = i*kk;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposey, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
+  mpi->waitall();
 
   return 0;
 }
 
 int cgrid::transposeyx(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks, ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = iblock;
   int kk = iblock*jmax;
 
-  for(int i=0; i<mpi->npy; i++)
+  for(int n=0; n<mpi->npy; n++)
   {
-    // determine where to send it to
-    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+    // determine where to fetch the data and where to store it
+    ijks = n*kk;
+    ijkr = n*jj;
 
-    // determine where to fetch the send data
-    int ijks = i*kk;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposey, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposey , n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
-  for(int i=0; i<mpi->npy; i++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
-
-    // determine where to store the receive data
-    int ijkr = i*jj;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposex2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
+  mpi->waitall();
 
   return 0;
 }
 
 int cgrid::transposeyz(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks,ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = iblock;
   int kk = iblock*jblock;
 
-  for(int i=0; i<mpi->npx; i++)
+  for(int n=0; n<mpi->npx; n++)
   {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
+    // determine where to fetch the data and where to store it
+    ijks = n*jblock*jj;
+    ijkr = n*kblock*kk;
 
-    // determine where to fetch the send data
-    int ijks = i*jblock*jj;
-
-    // send the block, tag it with the height (in kblocks) where it should come
-    MPI_Isend(&as[ijks], ncount, transposey2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposey2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
-  for(int i=0; i<mpi->npx; i++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
-
-    // determine where to store the receive data
-    int ijkr = i*kblock*kk;
-
-    // and determine what has to be delivered at height i (in kblocks)
-    MPI_Irecv(&ar[ijkr], ncount, transposez2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
+  mpi->waitall();
  
   return 0;
 }
 
 int cgrid::transposezy(double * restrict ar, double * restrict as)
 {
-  int nblock;
+  int ijks,ijkr;
   int ncount = 1;
   int tag = 1;
 
   int jj = iblock;
   int kk = iblock*jblock;
 
-  for(int k=0; k<mpi->npx; k++)
+  for(int n=0; n<mpi->npx; n++)
   {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
+    // determine where to fetch the data and where to store it
+    ijks = n*kblock*kk;
+    ijkr = n*jblock*jj;
 
-    // determine where to fetch the send data
-    int ijks = k*kblock*kk;
-
-    // send the block
-    MPI_Isend(&as[ijks], ncount, transposez2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    // send and receive the data
+    MPI_Isend(&as[ijks], ncount, transposez2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
   }
 
-  for(int k=0; k<mpi->npx; k++)
-  {
-    // determine where to send it to
-    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
-
-    // determine where to store the receive data
-    int ijkr = k*jblock*jj;
-
-    // receive the block
-    MPI_Irecv(&ar[ijkr], ncount, transposey2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
+  mpi->waitall();
 
   return 0;
 }
@@ -801,7 +736,7 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
 int cgrid::getmax(double *var)
 {
   double varl = *var;
-  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, mpi->commxy);
 
   return 0;
 }
@@ -809,7 +744,7 @@ int cgrid::getmax(double *var)
 int cgrid::getsum(double *var)
 {
   double varl = *var;
-  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, mpi->commxy);
 
   return 0;
 }
@@ -817,7 +752,7 @@ int cgrid::getsum(double *var)
 int cgrid::savefield3d(double * restrict data, char *filename)
 {
   MPI_File fh;
-  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data
@@ -867,7 +802,7 @@ int cgrid::savefield3d(double * restrict data, char *filename)
 int cgrid::loadfield3d(double *data, char *filename)
 {  
   MPI_File fh;
-  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data

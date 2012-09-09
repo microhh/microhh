@@ -9,7 +9,7 @@
 
 cpres_g4::cpres_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object pres_g4\n");
+  // std::printf("Creating instance of object pres_g4\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -59,7 +59,7 @@ cpres_g4::~cpres_g4()
     delete[] ptemp;
   }
 
-  std::printf("Destroying instance of object pres_g4\n");
+  // std::printf("Destroying instance of object pres_g4\n");
 }
 
 int cpres_g4::init()
@@ -249,7 +249,7 @@ int cpres_g4::pres_in(double * restrict p,
                       double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
-  int    ii1,ii2,jj1,jj2,kk1,kk2,kk3;
+  int    ii1,ii2,jj1,jj2,kk1,kk2;
   int    igc,jgc,kgc,kmax;
   double dxi,dyi;
 
@@ -259,7 +259,6 @@ int cpres_g4::pres_in(double * restrict p,
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
 
   jjp = grid->imax;
   kkp = grid->imax*grid->jmax;
@@ -277,7 +276,6 @@ int cpres_g4::pres_in(double * restrict p,
   grid->boundary_cyclic(ut);
   grid->boundary_cyclic(vt);
   grid->boundary_cyclic(wt);
-  mpi->waitall();
 
   // set the bc 
   for(int j=0; j<grid->jmax; j++)
@@ -302,10 +300,9 @@ int cpres_g4::pres_in(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp] = grad4 ( ut[ijk-ii1] + u[ijk-ii1]/dt, ut[ijk] + u[ijk]/dt, ut[ijk+ii1] + u[ijk+ii1]/dt, ut[ijk+ii2] + u[ijk+ii2]/dt, dxi)
-                + grad4 ( vt[ijk-jj1] + v[ijk-jj1]/dt, vt[ijk] + v[ijk]/dt, vt[ijk+jj1] + v[ijk+jj1]/dt, vt[ijk+jj2] + v[ijk+jj2]/dt, dyi)
-                + grad4x( wt[ijk-kk1] + w[ijk-kk1]/dt, wt[ijk] + w[ijk]/dt, wt[ijk+kk1] + w[ijk+kk1]/dt, wt[ijk+kk2] + w[ijk+kk2]/dt)
-                  * dzi4[k+kgc];
+        p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]/dt) + cg1*(ut[ijk] + u[ijk]/dt) + cg2*(ut[ijk+ii1] + u[ijk+ii1]/dt) + cg3*(ut[ijk+ii2] + u[ijk+ii2]/dt)) * cgi*dxi;
+        p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
+        p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
       }
 
   return 0;
@@ -337,7 +334,6 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // transpose the pressure field
   grid->transposezx(work3d,p);
-  mpi->waitall();
 
   jj = itot;
   kk = itot*jmax;
@@ -365,7 +361,6 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // transpose again
   grid->transposexy(p,work3d);
-  mpi->waitall();
 
   jj = iblock;
   kk = iblock*jtot;
@@ -392,7 +387,6 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // transpose back to original orientation
   grid->transposeyz(p,work3d);
-  mpi->waitall();
 
   jj = iblock;
   kk = iblock*jblock;
@@ -548,7 +542,6 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
         
   // transpose back to y
   grid->transposezy(work3d, p);
-  mpi->waitall();
   
   jj = iblock;
   kk = iblock*jtot;
@@ -574,8 +567,7 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // transpose back to x
   grid->transposeyx(work3d, p);
-  mpi->waitall();
-    
+
   jj = itot;
   kk = itot*jmax;
 
@@ -603,16 +595,13 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // and transpose back...
   grid->transposexz(work3d, p);
-  mpi->waitall();
 
   jj = imax;
   kk = imax*jmax;
 
-  int ijkp,jjp,kkp1,kkp2,kkp3;
+  int ijkp,jjp,kkp1;
   jjp  = grid->icells;
   kkp1 = 1*grid->icells*grid->jcells;
-  kkp2 = 2*grid->icells*grid->jcells;
-  kkp3 = 3*grid->icells*grid->jcells;
 
   // put the pressure back onto the original grid including ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -646,7 +635,6 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // set the cyclic boundary conditions
   grid->boundary_cyclic(p);
-  mpi->waitall();
 
   return 0;
 }
@@ -675,8 +663,8 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      ut[ijk] -= grad4 ( p[ijk-ii2],  p[ijk-ii1],  p[ijk],  p[ijk+ii1], dxi);
-      vt[ijk] -= grad4 ( p[ijk-jj2],  p[ijk-jj1],  p[ijk],  p[ijk+jj1], dyi);
+      ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
+      vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
     }
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -685,10 +673,9 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        ut[ijk] -= grad4 ( p[ijk-ii2],  p[ijk-ii1],  p[ijk],  p[ijk+ii1], dxi);
-        vt[ijk] -= grad4 ( p[ijk-jj2],  p[ijk-jj1],  p[ijk],  p[ijk+jj1], dyi);
-        wt[ijk] -= grad4x( p[ijk-kk2],  p[ijk-kk1],  p[ijk],  p[ijk+kk1])
-                   * dzhi4[k];
+        ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
+        vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+        wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
       }
 
   return 0;
@@ -891,7 +878,7 @@ int cpres_g4::tdma(double * restrict a, double * restrict b, double * restrict c
 
 double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
-  int    ijk,ii1,ii2,jj1,jj2,kk1,kk2,kk3;
+  int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart,kend;
   double dxi,dyi;
 
@@ -901,7 +888,6 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
 
   kstart = grid->kstart;
   kend   = grid->kend;
@@ -918,10 +904,9 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        div = grad4 ( u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2], dxi)
-            + grad4 ( v[ijk-jj1], v[ijk], v[ijk+jj1], v[ijk+jj2], dyi)
-            + grad4x( w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2])
-              *dzi4[k];
+        div = (cg0*u[ijk-ii1] + cg1*u[ijk] + cg2*u[ijk+ii1] + cg3*u[ijk+ii2]) * cgi*dxi
+            + (cg0*v[ijk-jj1] + cg1*v[ijk] + cg2*v[ijk+jj1] + cg3*v[ijk+jj2]) * cgi*dyi
+            + (cg0*w[ijk-kk1] + cg1*w[ijk] + cg2*w[ijk+kk1] + cg3*w[ijk+kk2]) * dzi4[k];
 
         divmax = std::max(divmax, std::abs(div));
       }
@@ -931,6 +916,7 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
   return divmax;
 }
 
+/*
 inline double cpres_g4::grad4(const double a, const double b, const double c, const double d, const double dxi)
 {
   return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
@@ -950,4 +936,4 @@ inline double cpres_g4::grad4xbiastop(const double a, const double b, const doub
 {
   return ( 23.*d - 21.*c - 3.*b + a);
 }
-
+*/

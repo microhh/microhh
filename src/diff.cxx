@@ -9,7 +9,7 @@
 
 cdiff::cdiff(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object diff\n");
+  // std::printf("Creating instance of object diff\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -25,7 +25,7 @@ cdiff::~cdiff()
   delete diff_g42;
   delete diff_g4;
 
-  std::printf("Destroying instance of object diff\n");
+  // std::printf("Destroying instance of object diff\n");
 }
 
 int cdiff::readinifile(cinput *inputin)

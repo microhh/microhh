@@ -6,7 +6,7 @@
 
 cbuoyancy::cbuoyancy(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
-  std::printf("Creating instance of object buoyancy\n");
+  // std::printf("Creating instance of object buoyancy\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -14,7 +14,7 @@ cbuoyancy::cbuoyancy(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cbuoyancy::~cbuoyancy()
 {
-  std::printf("Destroying instance of object buoyancy\n");
+  // std::printf("Destroying instance of object buoyancy\n");
 }
 
 int cbuoyancy::readinifile(cinput *inputin)

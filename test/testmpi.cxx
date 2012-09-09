@@ -10,10 +10,13 @@ int main(int argc, char *argv[])
   if(argc > 1)
     simname = argv[1];
 
-  // create the instances of the objects
-  cinput    input;
+  // start the MPI
   cmpi      mpi;
-  cgrid     grid(&mpi);
+  mpi.startup();
+
+  // create the instances of the objects
+  cinput    input   (&mpi);
+  cgrid     grid    (&mpi);
   cmpicheck mpicheck(&grid, &mpi);
 
   if(input.readinifile(simname))
