@@ -295,30 +295,29 @@ int cgrid::save()
   }
 
   // select noncontiguous part of 3d array to store the selected data
-
   MPI_Offset fileoff = 0; // the offset within the file (header size)
   char name[] = "native";
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(mpi->mpiid / mpi->npx == 0)
+  if(mpi->mpicoordy == 0)
     MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
   MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(mpi->mpiid / mpi->npx == 0)
+  if(mpi->mpicoordy == 0)
     MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
   MPI_Barrier(mpi->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(mpi->mpiid % mpi->npx == 0)
+  if(mpi->mpicoordx == 0)
     MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
   MPI_Barrier(mpi->commxy);
   fileoff += jtot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(mpi->mpiid % mpi->npx == 0)
+  if(mpi->mpicoordx == 0)
     MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
   MPI_Barrier(mpi->commxy);
 
