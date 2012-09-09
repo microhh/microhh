@@ -365,6 +365,8 @@ int cgrid::load()
   fclose(pFile);
   */
 
+  // DISABLE READING OF THE HORIZONTAL DATA, IT SLOWS DOWN THE INIT UNNECESSARILY
+  /*
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
   {
@@ -403,17 +405,20 @@ int cgrid::load()
   MPI_File_sync(fh);
   if(MPI_File_close(&fh))
     return 1;
+   */
 
-  //if(mpi->mpiid == 0)
-  //{
   FILE *pFile;
-  pFile = fopen(filename, "rb");
-  int n = (2*itot+2*jtot)*sizeof(double);
-  fseek(pFile, n, SEEK_SET);
-  fread(&z [kstart], sizeof(double), kmax, pFile);
-  fread(&zh[kstart], sizeof(double), kmax, pFile);
-  fclose(pFile);
-  // }
+  if(mpi->mpiid == 0)
+  {
+    pFile = fopen(filename, "rb");
+    int n = (2*itot+2*jtot)*sizeof(double);
+    fseek(pFile, n, SEEK_SET);
+    fread(&z [kstart], sizeof(double), kmax, pFile);
+    fread(&zh[kstart], sizeof(double), kmax, pFile);
+    fclose(pFile);
+  }
+  MPI_Bcast(&z [kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
+  MPI_Bcast(&zh[kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
 
   // calculate the missing coordinates
   calculate();
