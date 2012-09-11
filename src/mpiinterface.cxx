@@ -96,7 +96,11 @@ int cmpi::init()
     return 1;
 
   // create a 2-D grid communicator that is optimized for grid to grid transfer
+#ifdef MPISUBCOMM
+  n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true , &commxy);
+#else
   n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
+#endif
   if(checkerror(n))
     return 1;
   n = MPI_Comm_rank(commxy, &mpiid);

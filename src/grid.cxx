@@ -262,169 +262,6 @@ int cgrid::calculate()
   return 0;
 }
 
-int cgrid::save()
-{
-  char filename[256];
-  std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
-
-  /*FILE *pFile;
-  pFile = fopen(filename, "wb");
-
-  if(pFile == NULL)
-  {
-    std::printf("ERROR \"%s\" cannot be written\n", filename);
-    return 1;
-  }
-  else
-    std::printf("Saving \"%s\"\n", filename);
-
-  fwrite(&x [istart], sizeof(double), imax, pFile);
-  fwrite(&xh[istart], sizeof(double), imax, pFile);
-  fwrite(&y [jstart], sizeof(double), jmax, pFile);
-  fwrite(&yh[jstart], sizeof(double), jmax, pFile);
-  fwrite(&z [kstart], sizeof(double), kmax, pFile);
-  fwrite(&zh[kstart], sizeof(double), kmax, pFile);
-  fclose(pFile);*/
-
-  MPI_File fh;
-  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-  {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
-    return 1;
-  }
-
-  // select noncontiguous part of 3d array to store the selected data
-  MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[] = "native";
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(mpi->mpicoordy == 0)
-    MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += itot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(mpi->mpicoordy == 0)
-    MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += itot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(mpi->mpicoordx == 0)
-    MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += jtot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(mpi->mpicoordx == 0)
-    MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-
-  MPI_File_sync(fh);
-  if(MPI_File_close(&fh))
-    return 1;
-
-  if(mpi->mpiid == 0)
-  {
-    FILE *pFile;
-    pFile = fopen(filename, "ab");
-    fwrite(&z [kstart], sizeof(double), kmax, pFile);
-    fwrite(&zh[kstart], sizeof(double), kmax, pFile);
-    fclose(pFile);
-  }
-
-  return 0;
-}
-
-int cgrid::load()
-{
-  char filename[256];
-  std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
-
-  /*
-  FILE *pFile;
-  pFile = fopen(filename, "rb");
-
-  if(pFile == NULL)
-  {
-    std::printf("ERROR \"%s\" does not exist\n", filename);
-    return 1;
-  }
-  else
-    std::printf("Loading \"%s\"\n", filename);
-
-  fread(&x [istart], sizeof(double), imax, pFile);
-  fread(&xh[istart], sizeof(double), imax, pFile);
-  fread(&y [jstart], sizeof(double), jmax, pFile);
-  fread(&yh[jstart], sizeof(double), jmax, pFile);
-  fread(&z [kstart], sizeof(double), kmax, pFile);
-  fread(&zh[kstart], sizeof(double), kmax, pFile);
-  fclose(pFile);
-  */
-
-  // DISABLE READING OF THE HORIZONTAL DATA, IT SLOWS DOWN THE INIT UNNECESSARILY
-  /*
-  MPI_File fh;
-  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
-  {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be loaded\n", filename);
-    return 1;
-  }
-
-  // select noncontiguous part of 3d array to store the selected data
-
-  MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[] = "native";
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  // if(mpi->mpiid / mpi->npx == 0)
-  MPI_File_read_all(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += itot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  // if(mpi->mpiid / mpi->npx == 0)
-  MPI_File_read_all(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += itot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  // if(mpi->mpiid % mpi->npx == 0)
-  MPI_File_read_all(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += jtot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  // if(mpi->mpiid % mpi->npx == 0)
-  MPI_File_read_all(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-
-  MPI_File_sync(fh);
-  if(MPI_File_close(&fh))
-    return 1;
-   */
-
-  FILE *pFile;
-  if(mpi->mpiid == 0)
-  {
-    pFile = fopen(filename, "rb");
-    int n = (2*itot+2*jtot)*sizeof(double);
-    fseek(pFile, n, SEEK_SET);
-    fread(&z [kstart], sizeof(double), kmax, pFile);
-    fread(&zh[kstart], sizeof(double), kmax, pFile);
-    fclose(pFile);
-  }
-  MPI_Bcast(&z [kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
-  MPI_Bcast(&zh[kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
-
-  // calculate the missing coordinates
-  calculate();
-
-  return 0;
-}
-
 // MPI functions
 int cgrid::initmpi()
 {
@@ -505,6 +342,7 @@ int cgrid::initmpi()
   return 0;
 } 
 
+#ifdef MPISUBCOMM
 int cgrid::boundary_cyclic(double * restrict data)
 {
   int ncount = 1;
@@ -749,6 +587,170 @@ int cgrid::getsum(double *var)
   return 0;
 }
 
+// IO functions
+int cgrid::save()
+{
+  char filename[256];
+  std::sprintf(filename, "%s.%07d", "grid", 0);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+
+  /*FILE *pFile;
+  pFile = fopen(filename, "wb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" cannot be written\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Saving \"%s\"\n", filename);
+
+  fwrite(&x [istart], sizeof(double), imax, pFile);
+  fwrite(&xh[istart], sizeof(double), imax, pFile);
+  fwrite(&y [jstart], sizeof(double), jmax, pFile);
+  fwrite(&yh[jstart], sizeof(double), jmax, pFile);
+  fwrite(&z [kstart], sizeof(double), kmax, pFile);
+  fwrite(&zh[kstart], sizeof(double), kmax, pFile);
+  fclose(pFile);*/
+
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
+    return 1;
+  }
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  if(mpi->mpicoordy == 0)
+    MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  if(mpi->mpicoordy == 0)
+    MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  if(mpi->mpicoordx == 0)
+    MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += jtot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  if(mpi->mpicoordx == 0)
+    MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+
+  MPI_File_sync(fh);
+  if(MPI_File_close(&fh))
+    return 1;
+
+  if(mpi->mpiid == 0)
+  {
+    FILE *pFile;
+    pFile = fopen(filename, "ab");
+    fwrite(&z [kstart], sizeof(double), kmax, pFile);
+    fwrite(&zh[kstart], sizeof(double), kmax, pFile);
+    fclose(pFile);
+  }
+
+  return 0;
+}
+
+int cgrid::load()
+{
+  char filename[256];
+  std::sprintf(filename, "%s.%07d", "grid", 0);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
+
+  /*
+  FILE *pFile;
+  pFile = fopen(filename, "rb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" does not exist\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Loading \"%s\"\n", filename);
+
+  fread(&x [istart], sizeof(double), imax, pFile);
+  fread(&xh[istart], sizeof(double), imax, pFile);
+  fread(&y [jstart], sizeof(double), jmax, pFile);
+  fread(&yh[jstart], sizeof(double), jmax, pFile);
+  fread(&z [kstart], sizeof(double), kmax, pFile);
+  fread(&zh[kstart], sizeof(double), kmax, pFile);
+  fclose(pFile);
+  */
+
+  // DISABLE READING OF THE HORIZONTAL DATA, IT SLOWS DOWN THE INIT UNNECESSARILY
+  /*
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be loaded\n", filename);
+    return 1;
+  }
+
+  // select noncontiguous part of 3d array to store the selected data
+
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  // if(mpi->mpiid / mpi->npx == 0)
+  MPI_File_read_all(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  // if(mpi->mpiid / mpi->npx == 0)
+  MPI_File_read_all(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  // if(mpi->mpiid % mpi->npx == 0)
+  MPI_File_read_all(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+  fileoff += jtot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  // if(mpi->mpiid % mpi->npx == 0)
+  MPI_File_read_all(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(mpi->commxy);
+
+  MPI_File_sync(fh);
+  if(MPI_File_close(&fh))
+    return 1;
+   */
+
+  FILE *pFile;
+  if(mpi->mpiid == 0)
+  {
+    pFile = fopen(filename, "rb");
+    int n = (2*itot+2*jtot)*sizeof(double);
+    fseek(pFile, n, SEEK_SET);
+    fread(&z [kstart], sizeof(double), kmax, pFile);
+    fread(&zh[kstart], sizeof(double), kmax, pFile);
+    fclose(pFile);
+  }
+  MPI_Bcast(&z [kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
+  MPI_Bcast(&zh[kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
+
+  // calculate the missing coordinates
+  calculate();
+
+  return 0;
+}
+
 int cgrid::savefield3d(double * restrict data, char *filename)
 {
   MPI_File fh;
@@ -800,7 +802,7 @@ int cgrid::savefield3d(double * restrict data, char *filename)
 }
 
 int cgrid::loadfield3d(double *data, char *filename)
-{  
+{
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
     return 1;
@@ -847,6 +849,558 @@ int cgrid::loadfield3d(double *data, char *filename)
 
   return 0;
 }
+
+#else
+int cgrid::boundary_cyclic(double * restrict data)
+{
+  int ncount = 1;
+
+  // communicate east-west edges
+  int eastout = iend-igc;
+  int westin  = 0;
+  int westout = istart;
+  int eastin  = iend;
+
+  // communicate north-south edges
+  int northout = (jend-jgc)*icells;
+  int southin  = 0;
+  int southout = jstart*icells;
+  int northin  = jend  *icells;
+
+  // first, send and receive the ghost cells in east-west direction
+  MPI_Isend(&data[eastout], ncount, eastwestedge, mpi->neast, 1, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+  mpi->reqsn++;
+  MPI_Irecv(&data[westin], ncount, eastwestedge, mpi->nwest, 1, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+  mpi->reqsn++;
+  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+  mpi->reqsn++;
+  MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+  mpi->reqsn++;
+
+  // if the run is 3D, apply the BCs
+  if(jtot > 1)
+  {
+    // second, send and receive the ghost cells in the north-south direction
+    MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+    MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+  }
+  // in case of 2D, fill all the ghost cells with the current value
+  else
+  {
+    // 2d essential variables
+    int ijkref,ijknorth,ijksouth,jj,kk;
+
+    jj = icells;
+    kk = icells*jcells;
+
+    for(int k=kstart; k<kend; k++)
+      for(int j=0; j<jgc; j++)
+#pragma ivdep
+        for(int i=istart; i<iend; i++)
+        {
+          ijkref   = i + jstart*jj   + k*kk;
+          ijknorth = i + j*jj        + k*kk;
+          ijksouth = i + (jend+j)*jj + k*kk;
+          data[ijknorth] = data[ijkref];
+          data[ijksouth] = data[ijkref];
+        }
+  }
+
+  mpi->waitall();
+
+  return 0;
+}
+
+int cgrid::transposezx(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+  int tag = 1;
+
+  int jj = imax;
+  int kk = imax*jmax;
+
+  for(int k=0; k<mpi->npx; k++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
+
+    // determine where to fetch the send data
+    int ijks = k*kblock*kk;
+
+    // send the block
+    MPI_Isend(&as[ijks], ncount, transposez, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+
+    // determine where to store the receive data
+    int ijkr = k*jj;
+
+    // receive the block
+    MPI_Irecv(&ar[ijkr], ncount, transposex, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+  }
+
+  mpi->waitall();
+
+  return 0;
+}
+
+int cgrid::transposexz(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+  int tag = 1;
+
+  int jj = imax;
+  int kk = imax*jmax;
+
+  for(int i=0; i<mpi->npx; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
+
+    // determine where to fetch the send data
+    int ijks = i*jj;
+
+    // send the block
+    MPI_Isend(&as[ijks], ncount, transposex, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+
+    // determine where to store the receive data
+    int ijkr = i*kblock*kk;
+
+    // receive the block
+    MPI_Irecv(&ar[ijkr], ncount, transposez, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+  }
+
+  mpi->waitall();
+
+  return 0;
+}
+
+int cgrid::transposexy(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+  int tag = 1;
+
+  int jj = iblock;
+  int kk = iblock*jmax;
+
+  for(int i=0; i<mpi->npy; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+
+    // determine where to fetch the send data
+    int ijks = i*jj;
+
+    // send the block
+    MPI_Isend(&as[ijks], ncount, transposex2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+
+    // determine where to store the receive data
+    int ijkr = i*kk;
+
+    // receive the block
+    MPI_Irecv(&ar[ijkr], ncount, transposey, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+  }
+
+  mpi->waitall();
+
+  return 0;
+}
+
+int cgrid::transposeyx(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+  int tag = 1;
+
+  int jj = iblock;
+  int kk = iblock*jmax;
+
+  for(int i=0; i<mpi->npy; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid % mpi->npx + i * mpi->npx;
+
+    // determine where to fetch the send data
+    int ijks = i*kk;
+
+    // send the block
+    MPI_Isend(&as[ijks], ncount, transposey, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+
+    // determine where to store the receive data
+    int ijkr = i*jj;
+
+    // receive the block
+    MPI_Irecv(&ar[ijkr], ncount, transposex2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+  }
+
+  mpi->waitall();
+
+  return 0;
+}
+
+int cgrid::transposeyz(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+  int tag = 1;
+
+  int jj = iblock;
+  int kk = iblock*jblock;
+
+  for(int i=0; i<mpi->npx; i++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + i;
+
+    // determine where to fetch the send data
+    int ijks = i*jblock*jj;
+
+    // send the block, tag it with the height (in kblocks) where it should come
+    MPI_Isend(&as[ijks], ncount, transposey2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+
+    // determine where to store the receive data
+    int ijkr = i*kblock*kk;
+
+    // and determine what has to be delivered at height i (in kblocks)
+    MPI_Irecv(&ar[ijkr], ncount, transposez2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+  }
+
+  mpi->waitall();
+ 
+  return 0;
+}
+
+int cgrid::transposezy(double * restrict ar, double * restrict as)
+{
+  int nblock;
+  int ncount = 1;
+  int tag = 1;
+
+  int jj = iblock;
+  int kk = iblock*jblock;
+
+  for(int k=0; k<mpi->npx; k++)
+  {
+    // determine where to send it to
+    nblock = mpi->mpiid - mpi->mpiid % mpi->npx + k;
+
+    // determine where to fetch the send data
+    int ijks = k*kblock*kk;
+
+    // send the block
+    MPI_Isend(&as[ijks], ncount, transposez2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+
+    // determine where to store the receive data
+    int ijkr = k*jblock*jj;
+
+    // receive the block
+    MPI_Irecv(&ar[ijkr], ncount, transposey2, nblock, tag, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
+    mpi->reqsn++;
+  }
+
+  mpi->waitall();
+
+  return 0;
+}
+
+int cgrid::getmax(double *var)
+{
+  double varl = *var;
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+  return 0;
+}
+
+int cgrid::getsum(double *var)
+{
+  double varl = *var;
+  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+  return 0;
+}
+
+// IO functions
+int cgrid::save()
+{
+  char filename[256];
+  std::sprintf(filename, "%s.%07d", "grid", 0);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+
+  /*FILE *pFile;
+  pFile = fopen(filename, "wb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" cannot be written\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Saving \"%s\"\n", filename);
+
+  fwrite(&x [istart], sizeof(double), imax, pFile);
+  fwrite(&xh[istart], sizeof(double), imax, pFile);
+  fwrite(&y [jstart], sizeof(double), jmax, pFile);
+  fwrite(&yh[jstart], sizeof(double), jmax, pFile);
+  fwrite(&z [kstart], sizeof(double), kmax, pFile);
+  fwrite(&zh[kstart], sizeof(double), kmax, pFile);
+  fclose(pFile);*/
+
+  MPI_File fh;
+  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
+    return 1;
+  }
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  if(mpi->mpicoordy == 0)
+    MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(MPI_COMM_WORLD);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  if(mpi->mpicoordy == 0)
+    MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(MPI_COMM_WORLD);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  if(mpi->mpicoordx == 0)
+    MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(MPI_COMM_WORLD);
+  fileoff += jtot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  if(mpi->mpicoordx == 0)
+    MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  MPI_File_sync(fh);
+  if(MPI_File_close(&fh))
+    return 1;
+
+  if(mpi->mpiid == 0)
+  {
+    FILE *pFile;
+    pFile = fopen(filename, "ab");
+    fwrite(&z [kstart], sizeof(double), kmax, pFile);
+    fwrite(&zh[kstart], sizeof(double), kmax, pFile);
+    fclose(pFile);
+  }
+
+  return 0;
+}
+
+int cgrid::load()
+{
+  char filename[256];
+  std::sprintf(filename, "%s.%07d", "grid", 0);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
+
+  /*
+  FILE *pFile;
+  pFile = fopen(filename, "rb");
+
+  if(pFile == NULL)
+  {
+    std::printf("ERROR \"%s\" does not exist\n", filename);
+    return 1;
+  }
+  else
+    std::printf("Loading \"%s\"\n", filename);
+
+  fread(&x [istart], sizeof(double), imax, pFile);
+  fread(&xh[istart], sizeof(double), imax, pFile);
+  fread(&y [jstart], sizeof(double), jmax, pFile);
+  fread(&yh[jstart], sizeof(double), jmax, pFile);
+  fread(&z [kstart], sizeof(double), kmax, pFile);
+  fread(&zh[kstart], sizeof(double), kmax, pFile);
+  fclose(pFile);
+  */
+
+  // DISABLE READING OF THE HORIZONTAL DATA, IT SLOWS DOWN THE INIT UNNECESSARILY
+  /*
+  MPI_File fh;
+  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be loaded\n", filename);
+    return 1;
+  }
+
+  // select noncontiguous part of 3d array to store the selected data
+
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  // if(mpi->mpiid / mpi->npx == 0)
+  MPI_File_read_all(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(MPI_COMM_WORLD);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
+  // if(mpi->mpiid / mpi->npx == 0)
+  MPI_File_read_all(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(MPI_COMM_WORLD);
+  fileoff += itot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  // if(mpi->mpiid % mpi->npx == 0)
+  MPI_File_read_all(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(MPI_COMM_WORLD);
+  fileoff += jtot*sizeof(double);
+
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
+  // if(mpi->mpiid % mpi->npx == 0)
+  MPI_File_read_all(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  MPI_File_sync(fh);
+  if(MPI_File_close(&fh))
+    return 1;
+   */
+
+  FILE *pFile;
+  if(mpi->mpiid == 0)
+  {
+    pFile = fopen(filename, "rb");
+    int n = (2*itot+2*jtot)*sizeof(double);
+    fseek(pFile, n, SEEK_SET);
+    fread(&z [kstart], sizeof(double), kmax, pFile);
+    fread(&zh[kstart], sizeof(double), kmax, pFile);
+    fclose(pFile);
+  }
+  MPI_Bcast(&z [kstart], kmax, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&zh[kstart], kmax, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  // calculate the missing coordinates
+  calculate();
+
+  return 0;
+}
+
+int cgrid::savefield3d(double * restrict data, char *filename)
+{
+  MPI_File fh;
+  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+  // int igc,jgc,kgc;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+  kkb = imax*jmax;
+  // igc = igc;
+  // jgc = jgc;
+  // kgc = kgc;
+
+  int count = imax*jmax*kmax;
+
+  double *buffer;
+  buffer = new double[count];
+
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijkb = i + j*jjb + k*kkb;
+        buffer[ijkb] = data[ijk];
+      }
+
+  fileoff = 0;
+  MPI_File_write_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  delete[] buffer;
+
+  return 0;
+}
+
+int cgrid::loadfield3d(double *data, char *filename)
+{
+  MPI_File fh;
+  if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+  // int igc,jgc,kgc;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+  kkb = imax*jmax;
+  // igc = igc;
+  // jgc = jgc;
+  // kgc = kgc;
+
+  int count = imax*jmax*kmax;
+  double *buffer;
+  buffer = new double[count];
+
+  fileoff = 0;
+  MPI_File_read_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijkb = i + j*jjb + k*kkb;
+        data[ijk] = buffer[ijkb];
+      }
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  delete[] buffer;
+
+  return 0;
+}
+
+#endif
 
 inline double cgrid::interp4(const double a, const double b, const double c, const double d)
 {
