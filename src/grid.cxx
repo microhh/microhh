@@ -760,7 +760,9 @@ int cgrid::savefield3d(double * restrict data, char *filename)
   // select noncontiguous part of 3d array to store the selected data
   MPI_Offset fileoff = 0; // the offset within the file (header size)
   char name[] = "native";
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+
+  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
+    return 1;
 
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -777,8 +779,7 @@ int cgrid::savefield3d(double * restrict data, char *filename)
 
   int count = imax*jmax*kmax;
 
-  double *buffer;
-  buffer = new double[count];
+  double *buffer = new double[count];
 
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
@@ -790,11 +791,17 @@ int cgrid::savefield3d(double * restrict data, char *filename)
         buffer[ijkb] = data[ijk];
       }
 
-  fileoff = 0;
-  MPI_File_write_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  if(MPI_File_write_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  {
+    delete[] buffer;
+    return 1;
+  }
 
   if(MPI_File_close(&fh))
+  {
+    delete[] buffer;
     return 1;
+  }
 
   delete[] buffer;
 
@@ -826,11 +833,13 @@ int cgrid::loadfield3d(double *data, char *filename)
   // kgc = kgc;
 
   int count = imax*jmax*kmax;
-  double *buffer;
-  buffer = new double[count];
+  double *buffer = new double[count];
 
-  fileoff = 0;
-  MPI_File_read_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  if(MPI_File_read_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  {
+    delete[] buffer;
+    return 1;
+  }
 
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
@@ -843,7 +852,10 @@ int cgrid::loadfield3d(double *data, char *filename)
       }
 
   if(MPI_File_close(&fh))
+  {
+    delete[] buffer;
     return 1;
+  }
 
   delete[] buffer;
 
@@ -1310,7 +1322,9 @@ int cgrid::savefield3d(double * restrict data, char *filename)
   // select noncontiguous part of 3d array to store the selected data
   MPI_Offset fileoff = 0; // the offset within the file (header size)
   char name[] = "native";
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+
+  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
+    return 1;
 
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -1327,8 +1341,7 @@ int cgrid::savefield3d(double * restrict data, char *filename)
 
   int count = imax*jmax*kmax;
 
-  double *buffer;
-  buffer = new double[count];
+  double *buffer = new double[count];
 
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
@@ -1340,11 +1353,17 @@ int cgrid::savefield3d(double * restrict data, char *filename)
         buffer[ijkb] = data[ijk];
       }
 
-  fileoff = 0;
-  MPI_File_write_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  if(MPI_File_write_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  {
+    delete[] buffer;
+    return 1;
+  }
 
   if(MPI_File_close(&fh))
+  {
+    delete[] buffer;
     return 1;
+  }
 
   delete[] buffer;
 
@@ -1376,11 +1395,13 @@ int cgrid::loadfield3d(double *data, char *filename)
   // kgc = kgc;
 
   int count = imax*jmax*kmax;
-  double *buffer;
-  buffer = new double[count];
+  double *buffer = new double[count];
 
-  fileoff = 0;
-  MPI_File_read_at_all(fh, fileoff, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  if(MPI_File_read_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  {
+    delete[] buffer;
+    return 1;
+  }
 
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
@@ -1393,13 +1414,15 @@ int cgrid::loadfield3d(double *data, char *filename)
       }
 
   if(MPI_File_close(&fh))
+  {
+    delete[] buffer;
     return 1;
+  }
 
   delete[] buffer;
 
   return 0;
 }
-
 #endif
 
 inline double cgrid::interp4(const double a, const double b, const double c, const double d)
