@@ -151,7 +151,7 @@ int cfield3d::boundary_cyclic()
   return 0;
 }*/
 
-int cfield3d::save(int n)
+int cfield3d::save(int n, double *buffer)
 {
   char filename[256];
 
@@ -188,7 +188,7 @@ int cfield3d::save(int n)
 
   if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
-  if(grid->savefield3d(data, filename))
+  if(grid->savefield3d(data, buffer, filename))
   {
     if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
@@ -197,7 +197,7 @@ int cfield3d::save(int n)
   return 0;
 }
 
-int cfield3d::load(int n)
+int cfield3d::load(int n, double *buffer)
 {
   char filename[256];
 
@@ -234,7 +234,7 @@ int cfield3d::load(int n)
 
   if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
 
-  if(grid->loadfield3d(data, filename))
+  if(grid->loadfield3d(data, buffer, filename))
   {
     if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
     return 1;

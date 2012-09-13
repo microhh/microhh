@@ -205,10 +205,10 @@ int cfields::load(int n)
 {
   // check them all before returning error
   int nerror = 0;
-  nerror += u->load(n);
-  nerror += v->load(n);
-  nerror += w->load(n);
-  nerror += s->load(n);
+  nerror += u->load(n, tmp1->data);
+  nerror += v->load(n, tmp1->data);
+  nerror += w->load(n, tmp1->data);
+  nerror += s->load(n, tmp1->data);
 
   if(nerror > 0)
     return 1;
@@ -218,11 +218,11 @@ int cfields::load(int n)
 
 int cfields::save(int n)
 {
-  u->save(n);
-  v->save(n);
-  w->save(n);
+  u->save(n, tmp1->data);
+  v->save(n, tmp1->data);
+  w->save(n, tmp1->data);
   // p->save(n);
-  s->save(n);
+  s->save(n, tmp1->data);
 
   return 0;
 }

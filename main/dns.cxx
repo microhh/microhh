@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     // pressure
     pres.exec(timeloop.getsubdt());
     if(timeloop.dosave() && !timeloop.insubstep())
-      fields.p->save(timeloop.iteration);
+      fields.p->save(timeloop.iteration, fields.tmp1->data);
 
     // exit the simulation when the runtime has been hit after the pressure calculation
     if(!timeloop.loop)

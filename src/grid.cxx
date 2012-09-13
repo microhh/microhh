@@ -751,7 +751,7 @@ int cgrid::load()
   return 0;
 }
 
-int cgrid::savefield3d(double * restrict data, char *filename)
+int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *filename)
 {
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
@@ -767,19 +767,13 @@ int cgrid::savefield3d(double * restrict data, char *filename)
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
   int ijkb,jjb,kkb;
-  // int igc,jgc,kgc;
 
   jj  = icells;
   kk  = icells*jcells;
   jjb = imax;
   kkb = imax*jmax;
-  // igc = igc;
-  // jgc = jgc;
-  // kgc = kgc;
 
   int count = imax*jmax*kmax;
-
-  double *buffer = new double[count];
 
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
@@ -792,23 +786,15 @@ int cgrid::savefield3d(double * restrict data, char *filename)
       }
 
   if(MPI_File_write_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-  {
-    delete[] buffer;
     return 1;
-  }
 
   if(MPI_File_close(&fh))
-  {
-    delete[] buffer;
     return 1;
-  }
-
-  delete[] buffer;
 
   return 0;
 }
 
-int cgrid::loadfield3d(double *data, char *filename)
+int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *filename)
 {
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
@@ -822,24 +808,16 @@ int cgrid::loadfield3d(double *data, char *filename)
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
   int ijkb,jjb,kkb;
-  // int igc,jgc,kgc;
 
   jj  = icells;
   kk  = icells*jcells;
   jjb = imax;
   kkb = imax*jmax;
-  // igc = igc;
-  // jgc = jgc;
-  // kgc = kgc;
 
   int count = imax*jmax*kmax;
-  double *buffer = new double[count];
 
   if(MPI_File_read_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-  {
-    delete[] buffer;
     return 1;
-  }
 
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
@@ -852,12 +830,7 @@ int cgrid::loadfield3d(double *data, char *filename)
       }
 
   if(MPI_File_close(&fh))
-  {
-    delete[] buffer;
     return 1;
-  }
-
-  delete[] buffer;
 
   return 0;
 }
@@ -1313,7 +1286,7 @@ int cgrid::load()
   return 0;
 }
 
-int cgrid::savefield3d(double * restrict data, char *filename)
+int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *filename)
 {
   MPI_File fh;
   if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
@@ -1341,8 +1314,6 @@ int cgrid::savefield3d(double * restrict data, char *filename)
 
   int count = imax*jmax*kmax;
 
-  double *buffer = new double[count];
-
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
 #pragma ivdep
@@ -1354,23 +1325,15 @@ int cgrid::savefield3d(double * restrict data, char *filename)
       }
 
   if(MPI_File_write_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-  {
-    delete[] buffer;
     return 1;
-  }
 
   if(MPI_File_close(&fh))
-  {
-    delete[] buffer;
     return 1;
-  }
-
-  delete[] buffer;
 
   return 0;
 }
 
-int cgrid::loadfield3d(double *data, char *filename)
+int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *filename)
 {
   MPI_File fh;
   if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
@@ -1395,13 +1358,9 @@ int cgrid::loadfield3d(double *data, char *filename)
   // kgc = kgc;
 
   int count = imax*jmax*kmax;
-  double *buffer = new double[count];
 
   if(MPI_File_read_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-  {
-    delete[] buffer;
     return 1;
-  }
 
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
@@ -1414,12 +1373,7 @@ int cgrid::loadfield3d(double *data, char *filename)
       }
 
   if(MPI_File_close(&fh))
-  {
-    delete[] buffer;
     return 1;
-  }
-
-  delete[] buffer;
 
   return 0;
 }
