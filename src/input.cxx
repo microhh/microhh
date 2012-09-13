@@ -200,6 +200,7 @@ int cinput::readproffile(std::string inputfilename)
       if(!std::isalpha(substring[0]))
       {
         if(mpi->mpiid == 0) std::printf("ERROR at line %d: \"%s\" is not a variable name\n", nline, substring);
+        fclose(inputfile);
         return 1;
       }
         
@@ -215,6 +216,7 @@ int cinput::readproffile(std::string inputfilename)
     if(nvar == 0)
     {
       if(mpi->mpiid == 0) std::printf("ERROR no variable names in header\n");
+      fclose(inputfile);
       return 1;
     }
 
@@ -265,6 +267,7 @@ int cinput::readproffile(std::string inputfilename)
       if(n != 1)
       {
         if(mpi->mpiid == 0) std::printf("ERROR line %d: \"%s\" is not a correct data value\n", nline, substring);
+        fclose(inputfile);
         return 1;
       }
 
@@ -278,6 +281,7 @@ int cinput::readproffile(std::string inputfilename)
     if(ncols != nvar)
     {
       if(mpi->mpiid == 0) std::printf("ERROR line %d: %d data columns, but %d defined variables\n", nline, ncols, nvar);
+      fclose(inputfile);
       return 1;
     }
 
@@ -286,6 +290,7 @@ int cinput::readproffile(std::string inputfilename)
       proflist[varnames[n]].push_back(varvalues[n]);
   }
 
+  fclose(inputfile);
   return 0;
 }
 

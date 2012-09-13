@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
   // read the profiles
   if(input.readproffile(simname))
     return 1;
-
+/*
   // process the settings data
   if(grid.readinifile(&input))
     return 1;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     return 1;
   if(timeloop.save(timeloop.iteration))
     return 1;
-
+*/
   return 0;
 }
 
