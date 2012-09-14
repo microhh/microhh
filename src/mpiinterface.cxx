@@ -17,6 +17,8 @@ cmpi::~cmpi()
   if(allocated)
     delete[] reqs;
 
+  if(mpiid == 0) std::printf("Finished run on %d processes\n", nprocs);
+
   if(initialized)
     MPI_Finalize();
 
@@ -57,8 +59,7 @@ int cmpi::startup()
   if(checkerror(n))
     return 1;
 
-  if(mpiid == 0)
-    std::printf("Starting run on %d processes\n", nprocs);
+  if(mpiid == 0) std::printf("Starting run on %d processes\n", nprocs);
 
   return 0;
 }
@@ -67,23 +68,9 @@ int cmpi::init()
 {
   int n;
 
-  /*
-  // initialize the MPI
-  n = MPI_Init(NULL, NULL);
-  if(checkerror(n))
-    return 1;
-
-  initialized = true;
-
-  // get the rank of the current process
-  n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
-  if(checkerror(n))
-    return 1;
-  */
-
   if(nprocs != npx*npy)
   {
-    std::printf("ERROR nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
+    if(mpiid == 0) std::printf("ERROR nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
     return 1;
   }
 
