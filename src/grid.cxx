@@ -30,22 +30,10 @@ cgrid::~cgrid()
     delete[] dzi4;
     delete[] dzhi4;
   }
-
-  // std::printf("Destroying instance of object grid\n");
 }
 
 int cgrid::readinifile(cinput *inputin)
 {
-  /*// setup Taylor-Green vortex
-  xsize = 1.;
-  ysize = 1.;
-  zsize = 0.5;
-
-  itot  = 64;
-  jtot  = 8;
-  ktot  = 32;
-  // end setup Taylor-Green vortex*/
-
   int n = 0;
 
   n += inputin->getItem(&xsize, "grid", "xsize");
@@ -1302,15 +1290,11 @@ int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *f
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
   int ijkb,jjb,kkb;
-  // int igc,jgc,kgc;
 
   jj  = icells;
   kk  = icells*jcells;
   jjb = imax;
   kkb = imax*jmax;
-  // igc = igc;
-  // jgc = jgc;
-  // kgc = kgc;
 
   int count = imax*jmax*kmax;
 
@@ -1347,15 +1331,11 @@ int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *f
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
   int ijkb,jjb,kkb;
-  // int igc,jgc,kgc;
 
   jj  = icells;
   kk  = icells*jcells;
   jjb = imax;
   kkb = imax*jmax;
-  // igc = igc;
-  // jgc = jgc;
-  // kgc = kgc;
 
   int count = imax*jmax*kmax;
 
