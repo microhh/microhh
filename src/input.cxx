@@ -29,12 +29,15 @@ int cinput::readinifile(std::string inputfilename)
   // read the input file
   FILE *inputfile;
   inputfilename += ".ini";
-  inputfile = fopen(inputfilename.c_str(), "r");
 
-  if(inputfile == NULL)
+  if(mpi->mpiid == 0)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
-    return 1;
+    inputfile = fopen(inputfilename.c_str(), "r");
+    if(inputfile == NULL)
+    {
+      std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
+      return 1;
+    }
   }
 
   int n;
@@ -129,9 +132,13 @@ int cinput::readinifile(std::string inputfilename)
       }
     }
   }
-  fclose(inputfile);
 
-  if(mpi->mpiid == 0) std::printf("Inifile has been processed with %d errors\n", nerrors);
+  if(mpi->mpiid == 0)
+  {
+    std::printf("Inifile has been processed with %d errors\n", nerrors);
+    fclose(inputfile);
+  }
+
   return nerrors;
 }
 
@@ -144,12 +151,15 @@ int cinput::readproffile(std::string inputfilename)
   // read the input file
   FILE *inputfile;
   inputfilename += ".prof";
-  inputfile = fopen(inputfilename.c_str(), "r");
 
-  if(inputfile == NULL)
+  if(mpi->mpiid == 0)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
-    return 1;
+    inputfile = fopen(inputfilename.c_str(), "r");
+    if(inputfile == NULL)
+    {
+      std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
+      return 1;
+    }
   }
 
   int nlines = 0;
@@ -199,8 +209,11 @@ int cinput::readproffile(std::string inputfilename)
 
       if(!std::isalpha(substring[0]))
       {
-        if(mpi->mpiid == 0) std::printf("ERROR at line %d: \"%s\" is not a variable name\n", nline, substring);
-        fclose(inputfile);
+        if(mpi->mpiid == 0)
+        {
+          std::printf("ERROR at line %d: \"%s\" is not a variable name\n", nline, substring);
+          fclose(inputfile);
+        }
         return 1;
       }
         
@@ -215,8 +228,11 @@ int cinput::readproffile(std::string inputfilename)
 
     if(nvar == 0)
     {
-      if(mpi->mpiid == 0) std::printf("ERROR no variable names in header\n");
-      fclose(inputfile);
+      if(mpi->mpiid == 0)
+      {
+        std::printf("ERROR no variable names in header\n");
+        fclose(inputfile);
+      }
       return 1;
     }
 
@@ -266,8 +282,11 @@ int cinput::readproffile(std::string inputfilename)
 
       if(n != 1)
       {
-        if(mpi->mpiid == 0) std::printf("ERROR line %d: \"%s\" is not a correct data value\n", nline, substring);
-        fclose(inputfile);
+        if(mpi->mpiid == 0)
+        {
+          std::printf("ERROR line %d: \"%s\" is not a correct data value\n", nline, substring);
+          fclose(inputfile);
+        }
         return 1;
       }
 
@@ -280,8 +299,11 @@ int cinput::readproffile(std::string inputfilename)
 
     if(ncols != nvar)
     {
-      if(mpi->mpiid == 0) std::printf("ERROR line %d: %d data columns, but %d defined variables\n", nline, ncols, nvar);
-      fclose(inputfile);
+      if(mpi->mpiid == 0)
+      {
+        std::printf("ERROR line %d: %d data columns, but %d defined variables\n", nline, ncols, nvar);
+        fclose(inputfile);
+      }
       return 1;
     }
 
@@ -290,7 +312,9 @@ int cinput::readproffile(std::string inputfilename)
       proflist[varnames[n]].push_back(varvalues[n]);
   }
 
-  fclose(inputfile);
+  if(mpi->mpiid == 0)
+    fclose(inputfile);
+
   return 0;
 }
 
