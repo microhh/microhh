@@ -28,6 +28,7 @@ class ctimeloop
     double check();
 
     int dosave();
+    int dostats();
 
     // variables
     int substep;
@@ -60,6 +61,7 @@ class ctimeloop
 
     int outputiter;
     int saveiter;
+    int statsiter;
     int maxiter;
 
     int rk3(double *, double *, double);

@@ -38,6 +38,7 @@ int ctimeloop::readinifile(cinput *inputin)
   n += inputin->getItem(&rkorder     , "time", "rkorder"     , 4    );
   n += inputin->getItem(&outputiter  , "time", "outputiter"  , 100  );
   n += inputin->getItem(&saveiter    , "time", "saveiter"    , 500  );
+  n += inputin->getItem(&statsiter   , "time", "statsiter"   , 100  );
 
   // if one argument fails, then crash
   if(n > 0)
@@ -93,6 +94,15 @@ int ctimeloop::dosave()
 
   return 0;
 }
+
+int ctimeloop::dostats()
+{
+  if(iteration % statsiter == 0)
+    return 1;
+
+  return 0;
+}
+
 
 double ctimeloop::check()
 {

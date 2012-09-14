@@ -9,6 +9,7 @@
 #include "buoyancy.h"
 #include "pres.h"
 #include "timeloop.h"
+#include "stats.h"
 
 int main(int argc, char *argv[])
 {
@@ -71,6 +72,9 @@ int main(int argc, char *argv[])
     return 1;
   if(timeloop.readinifile(&input))
     return 1;
+
+  // load the postprocessing modules
+  cstats stats(&grid, &fields, &mpi);
 
   // free the memory of the input
   input.clear();
@@ -162,6 +166,9 @@ int main(int argc, char *argv[])
     pres.exec(timeloop.getsubdt());
     if(timeloop.dosave() && !timeloop.insubstep())
       fields.p->save(timeloop.iteration, fields.tmp1->data);
+
+    if(timeloop.dostats() && !timeloop.insubstep())
+      stats.exec(timeloop.iteration);
 
     // exit the simulation when the runtime has been hit after the pressure calculation
     if(!timeloop.loop)
