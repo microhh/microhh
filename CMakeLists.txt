@@ -8,8 +8,8 @@ set(FFTW_LIB         "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/lib/libfft
 #set(FFTW_INCLUDE_DIR "/opt/local/include")
 #set(FFTW_LIB         "/opt/local/lib/libfftw3.dylib")
 
-#set(FFTW_INCLUDE_DIR "/lrz/sys/libraries/fftw/3.3/include")
-#set(FFTW_LIB         "/lrz/sys/libraries/fftw/3.3/lib/libfftw3.a")
+#set(FFTW_INCLUDE_DIR "/lrz/sys/libraries/fftw/3.3.2/sse/include")
+#set(FFTW_LIB         "/lrz/sys/libraries/fftw/3.3.2/sse/lib/libfftw3.a")
 
 #set(FFTW_INCLUDE_DIR "/bgsys/local/fftw3/3.3/fftw_450/include")
 #set(FFTW_LIB         "/bgsys/local/fftw3/3.3/fftw_450/lib/libfftw3.a")

@@ -15,11 +15,11 @@ int main()
   int mpicoordy;
 
   // grid vars
-  int npx  = 8;
-  int npy  = 8;
-  int kmax = 32;
-  int itot = 32;
-  int jtot = 32;
+  int npx  = 16;
+  int npy  = 32;
+  int kmax = 1024;
+  int itot = 1024;
+  int jtot = 1024;
 
   int imax = itot / npx;
   int jmax = jtot / npy;
