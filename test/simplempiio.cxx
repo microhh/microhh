@@ -101,20 +101,24 @@ int main()
   if(mpiid == 0) std::printf("Write the full array to disk\n");
   char filename[] = "u.dump";
   MPI_File fh;
-  if(MPI_File_open(commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  n = MPI_File_open(commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh);
+  if(checkerror(n))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data
   MPI_Offset fileoff = 0; // the offset within the file (header size)
   char name[] = "native";
 
-  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
+  n = MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+  if(checkerror(n))
     return 1;
 
-  if(MPI_File_write_all(fh, u, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  n = MPI_File_write_all(fh, u, count, MPI_DOUBLE, MPI_STATUS_IGNORE);
+  if(checkerror(n))
     return 1;
 
-  if(MPI_File_close(&fh))
+  MPI_File_close(&fh);
+  if(checkerror(n))
     return 1;
 
   if(mpiid == 0) std::printf("Writing done\n");
@@ -142,5 +146,4 @@ int checkerror(int n)
 
   return 0;
 }
-
 
