@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
     // pressure
     pres.exec(timeloop.getsubdt());
     if(timeloop.dosave() && !timeloop.insubstep())
-      fields.p->save(timeloop.iteration, fields.tmp1->data);
+      fields.p->save(timeloop.iteration, fields.tmp1->data, fields.tmp2->data);
 
     if(timeloop.dostats() && !timeloop.insubstep())
       stats.exec(timeloop.iteration);

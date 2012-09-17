@@ -1,6 +1,7 @@
 #include <cstdio>
 #include "grid.h"
 #include "field3d.h"
+#include "defines.h"
 
 cfield3d::cfield3d(cgrid *gridin, cmpi *mpiin, std::string namein)
 {
@@ -151,7 +152,7 @@ int cfield3d::boundary_cyclic()
   return 0;
 }*/
 
-int cfield3d::save(int n, double *buffer)
+int cfield3d::save(int n, double * restrict tmp1, double * restrict tmp2)
 {
   char filename[256];
 
@@ -188,7 +189,7 @@ int cfield3d::save(int n, double *buffer)
 
   if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
-  if(grid->savefield3d(data, buffer, filename))
+  if(grid->savefield3d(data, tmp1, tmp2, filename))
   {
     if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
@@ -197,7 +198,7 @@ int cfield3d::save(int n, double *buffer)
   return 0;
 }
 
-int cfield3d::load(int n, double *buffer)
+int cfield3d::load(int n, double * restrict tmp1, double * restrict tmp2)
 {
   char filename[256];
 
@@ -234,7 +235,7 @@ int cfield3d::load(int n, double *buffer)
 
   if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
 
-  if(grid->loadfield3d(data, buffer, filename))
+  if(grid->loadfield3d(data, tmp1, tmp2, filename))
   {
     if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
     return 1;

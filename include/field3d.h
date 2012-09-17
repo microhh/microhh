@@ -15,8 +15,8 @@ class cfield3d
     int init();
     // int boundary_bottop(int);
     // int boundary_cyclic();
-    int save(int, double *);
-    int load(int, double *);
+    int save(int, double *, double *);
+    int load(int, double *, double *);
 
     // variables
     double *data;

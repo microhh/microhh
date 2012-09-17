@@ -321,9 +321,12 @@ int cgrid::initmpi()
   MPI_Type_create_subarray(1, &totsizej, &subsizej, &substartj, MPI_ORDER_C, MPI_DOUBLE, &subj);
   MPI_Type_commit(&subj);
 
-  int totsize [3] = {kmax, jtot, itot};
-  int subsize [3] = {kmax, jmax, imax};
-  int substart[3] = {0, mpi->mpicoordy*jmax, mpi->mpicoordx*imax};
+  // int totsize [3] = {kmax, jtot, itot};
+  // int subsize [3] = {kmax, jmax, imax};
+  // int substart[3] = {0, mpi->mpicoordy*jmax, mpi->mpicoordx*imax};
+  int totsize [3] = {kmax  , jtot, itot};
+  int subsize [3] = {kblock, jmax, itot};
+  int substart[3] = {mpi->mpicoordx*kblock, mpi->mpicoordy*jmax, 0};
   MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
   MPI_Type_commit(&subarray);
 
@@ -739,8 +742,34 @@ int cgrid::load()
   return 0;
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *filename)
+int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
 {
+  // save the data in transposed order to have large chunks of contiguous disk space
+  // MPI-IO is not stable on Juqueen and supermuc otherwise
+
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+  kkb = imax*jmax;
+
+  int count = imax*jmax*kmax;
+
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijkb = i + j*jjb + k*kkb;
+        tmp1[ijkb] = data[ijk];
+      }
+
+  transposezx(tmp2, tmp1);
+
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     return 1;
@@ -752,28 +781,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *f
   if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
     return 1;
 
-  // extract the data from the 3d field without the ghost cells
-  int ijk,jj,kk;
-  int ijkb,jjb,kkb;
-
-  jj  = icells;
-  kk  = icells*jcells;
-  jjb = imax;
-  kkb = imax*jmax;
-
-  int count = imax*jmax*kmax;
-
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
-#pragma ivdep
-      for(int i=0; i<imax; i++)
-      {
-        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        ijkb = i + j*jjb + k*kkb;
-        buffer[ijkb] = data[ijk];
-      }
-
-  if(MPI_File_write_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  if(MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
     return 1;
 
   if(MPI_File_close(&fh))
@@ -782,8 +790,12 @@ int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *f
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *filename)
+int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
 {
+  // save the data in transposed order to have large chunks of contiguous disk space
+  // MPI-IO is not stable on Juqueen and supermuc otherwise
+
+  // read the file
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
     return 1;
@@ -794,6 +806,17 @@ int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *f
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
 
   // extract the data from the 3d field without the ghost cells
+  int count = imax*jmax*kmax;
+
+  if(MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    return 1;
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  // transpose the data back
+  transposexz(tmp2, tmp1);
+
   int ijk,jj,kk;
   int ijkb,jjb,kkb;
 
@@ -802,11 +825,6 @@ int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *f
   jjb = imax;
   kkb = imax*jmax;
 
-  int count = imax*jmax*kmax;
-
-  if(MPI_File_read_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-    return 1;
-
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
 #pragma ivdep
@@ -814,11 +832,8 @@ int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *f
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
-        data[ijk] = buffer[ijkb];
+        data[ijk] = tmp2[ijkb];
       }
-
-  if(MPI_File_close(&fh))
-    return 1;
 
   return 0;
 }
@@ -1274,8 +1289,34 @@ int cgrid::load()
   return 0;
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *filename)
+int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
 {
+  // save the data in transposed order to have large chunks of contiguous disk space
+  // MPI-IO is not stable on Juqueen and supermuc otherwise
+
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+  kkb = imax*jmax;
+
+  int count = imax*jmax*kmax;
+
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        ijkb = i + j*jjb + k*kkb;
+        tmp1[ijkb] = data[ijk];
+      }
+
+  transposezx(tmp2, tmp1);
+
   MPI_File fh;
   if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     return 1;
@@ -1287,28 +1328,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *f
   if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
     return 1;
 
-  // extract the data from the 3d field without the ghost cells
-  int ijk,jj,kk;
-  int ijkb,jjb,kkb;
-
-  jj  = icells;
-  kk  = icells*jcells;
-  jjb = imax;
-  kkb = imax*jmax;
-
-  int count = imax*jmax*kmax;
-
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
-#pragma ivdep
-      for(int i=0; i<imax; i++)
-      {
-        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        ijkb = i + j*jjb + k*kkb;
-        buffer[ijkb] = data[ijk];
-      }
-
-  if(MPI_File_write_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  if(MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
     return 1;
 
   if(MPI_File_close(&fh))
@@ -1317,8 +1337,12 @@ int cgrid::savefield3d(double * restrict data, double * restrict buffer, char *f
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *filename)
+int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
 {
+  // save the data in transposed order to have large chunks of contiguous disk space
+  // MPI-IO is not stable on Juqueen and supermuc otherwise
+
+  // read the file
   MPI_File fh;
   if(MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
     return 1;
@@ -1329,6 +1353,17 @@ int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *f
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
 
   // extract the data from the 3d field without the ghost cells
+  int count = imax*jmax*kmax;
+
+  if(MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    return 1;
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  // transpose the data back
+  transposexz(tmp2, tmp1);
+
   int ijk,jj,kk;
   int ijkb,jjb,kkb;
 
@@ -1337,11 +1372,6 @@ int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *f
   jjb = imax;
   kkb = imax*jmax;
 
-  int count = imax*jmax*kmax;
-
-  if(MPI_File_read_all(fh, buffer, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-    return 1;
-
   for(int k=0; k<kmax; k++)
     for(int j=0; j<jmax; j++)
 #pragma ivdep
@@ -1349,11 +1379,8 @@ int cgrid::loadfield3d(double * restrict data, double * restrict buffer, char *f
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
-        data[ijk] = buffer[ijkb];
+        data[ijk] = tmp2[ijkb];
       }
-
-  if(MPI_File_close(&fh))
-    return 1;
 
   return 0;
 }
