@@ -1,0 +1,6 @@
+#strongscaling case 2048x2048x1024, procs, time per iteration
+512	17.3
+1024	9.2
+2048	5.6
+4096	3.0
+8192	1.85
