@@ -1,0 +1,6 @@
+#weak scaling, every proc has 32x32x1024 grid points, nprocs, time per iteration
+512  5.08
+1024 5.28
+2048 5.60
+4096 6.38
+8192 6.95
