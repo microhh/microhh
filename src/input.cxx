@@ -165,7 +165,7 @@ int cinput::readproffile(std::string inputfilename)
   int nlines = 0;
   int nline;
   int nvar   = 0;
-  std::vector<std::string> varnames;
+  // std::vector<std::string> varnames;
 
   if(mpi->mpiid == 0)
   {
@@ -245,7 +245,7 @@ int cinput::readproffile(std::string inputfilename)
   int ncols;
   double datavalue;
 
-  std::vector<double> varvalues;
+  // std::vector<double> varvalues;
 
   // continue the loop from the exit value of nn
   for(nn++; nn<nlines; nn++)

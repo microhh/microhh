@@ -35,5 +35,7 @@ class cinput
     inputmap inputlist;
     typedef std::map<std::string, std::vector<double> > profmap;
     profmap proflist;
+    std::vector<std::string> varnames;
+    std::vector<double> varvalues;
 };
 #endif
