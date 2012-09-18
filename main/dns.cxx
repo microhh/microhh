@@ -120,6 +120,10 @@ int main(int argc, char *argv[])
   // set the boundary conditions
   boundary.exec();
 
+  // set the initial cfl and dn
+  cfl = advec.getcfl(timeloop.dt);
+  dn  = diff.getdn(timeloop.dt);
+
   // print the initial information
   if(timeloop.docheck() && !timeloop.insubstep())
   {
@@ -127,8 +131,6 @@ int main(int argc, char *argv[])
     time    = timeloop.time;
     cputime = 0;
     dt      = timeloop.dt;
-    cfl     = advec.getcfl(timeloop.dt);
-    dn      = diff.getdn(timeloop.dt);
     div     = pres.check();
     mom     = fields.checkmom();
     tke     = fields.checktke();
@@ -149,9 +151,9 @@ int main(int argc, char *argv[])
     // determine the time step
     if(!timeloop.insubstep())
     {
+      timeloop.settimestep(cfl, dn);
       cfl = advec.getcfl(timeloop.dt);
       dn  = diff.getdn(timeloop.dt);
-      timeloop.settimestep(cfl, dn);
     }
 
     // advection
