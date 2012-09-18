@@ -29,6 +29,7 @@ xlabel('#processes')
 ylabel('speedup')
 legend(loc=0, frameon=False)
 grid()
+title('strong scaling SuperMUC')
 
 figure()
 semilogx(ss1024sm_procs, ss1024sm_eff, 'bo-', label='1024x1024x1024')
@@ -40,3 +41,27 @@ xlabel('#processes')
 ylabel('efficiency')
 legend(loc=0, frameon=False)
 grid()
+title('strong scaling SuperMUC')
+
+wssmallsm = loadtxt("weakscaling.small.supermuc", skiprows=1);
+wssmallsm_procs      = wssmallsm[:,0]
+wssmallsm_times      = wssmallsm[:,1]
+wssmallsm_eff        = wssmallsm_times[0] / wssmallsm_times[:]
+
+wslargesm = loadtxt("weakscaling.large.supermuc", skiprows=1);
+wslargesm_procs      = wslargesm[:,0]
+wslargesm_times      = wslargesm[:,1]
+wslargesm_eff        = wslargesm_times[0] / wslargesm_times[:]
+
+figure()
+semilogx(wssmallsm_procs, wssmallsm_eff, 'bo-', label='32x16x1024 per proc')
+semilogx(wslargesm_procs, wslargesm_eff, 'ro-', label='32x32x1024 per proc')
+semilogx(procsx, effy, 'k-' )
+xlim(procsx[0], procsx[-1])
+ylim(0., 1.5)
+xlabel('#processes')
+ylabel('efficiency')
+legend(loc=0, frameon=False)
+grid()
+title('weak scaling SuperMUC')
+
