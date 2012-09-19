@@ -179,8 +179,8 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + kstart*kk1;
-        a[ijk-kk1] = -    grad4xbiasbot(z[kstart-1], z[kstart], z[kstart+1], z[kstart+2])*abot + a[ijk    ];
-        a[ijk-kk2] = - 3.*grad4xbiasbot(z[kstart-1], z[kstart], z[kstart+1], z[kstart+2])*abot + a[ijk+kk1];
+        a[ijk-kk1] = -(1./24)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*abot + a[ijk    ];
+        a[ijk-kk2] = -(1./ 8)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*abot + a[ijk+kk1];
       }
   }
 
@@ -215,8 +215,8 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + (kend-1)*kk1;
-        a[ijk+kk1] = -    grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend])*atop + a[ijk    ];
-        a[ijk+kk2] = - 3.*grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend])*atop + a[ijk-kk1];
+        a[ijk+kk1] = - (1./24)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk    ];
+        a[ijk+kk2] = - (1./ 8)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk-kk1];
       }
   }
 
@@ -267,13 +267,7 @@ int cboundary::setgctopw_4th(double * restrict w)
   return 0;
 }
 
-inline double cboundary::grad4xbiasbot(const double a, const double b, const double c, const double d)
+inline double cboundary::grad4x(const double a, const double b, const double c, const double d)
 {
-  return (-23.*a + 21.*b + 3.*c - d);
+  return (-(d-a) + 27.*(c-b)); 
 }
-
-inline double cboundary::grad4xbiastop(const double a, const double b, const double c, const double d)
-{
-  return ( 23.*d - 21.*c - 3.*b + a);
-}
-
