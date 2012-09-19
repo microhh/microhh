@@ -11,6 +11,7 @@ cgrid::cgrid(cmpi *mpiin)
   mpi = mpiin;
 
   allocated = false;
+  mpitypes  = false;
 }
 
 cgrid::~cgrid()
@@ -29,6 +30,21 @@ cgrid::~cgrid()
     delete[] dzhi;
     delete[] dzi4;
     delete[] dzhi4;
+  }
+
+  if(mpitypes)
+  {
+    MPI_Type_free(&eastwestedge);
+    MPI_Type_free(&northsouthedge);
+    MPI_Type_free(&transposez);
+    MPI_Type_free(&transposez2);
+    MPI_Type_free(&transposex);
+    MPI_Type_free(&transposex2);
+    MPI_Type_free(&transposey);
+    MPI_Type_free(&transposey2);
+    MPI_Type_free(&subi);
+    MPI_Type_free(&subj);
+    MPI_Type_free(&subarray);
   }
 }
 
@@ -329,6 +345,8 @@ int cgrid::initmpi()
   int substart[3] = {mpi->mpicoordx*kblock, mpi->mpicoordy*jmax, 0};
   MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
   MPI_Type_commit(&subarray);
+
+  mpitypes = true;
 
   return 0;
 } 

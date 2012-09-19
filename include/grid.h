@@ -98,6 +98,7 @@ class cgrid
     MPI_Datatype subi;
     MPI_Datatype subj;
     MPI_Datatype subarray;
+    bool mpitypes;
 
     inline double interp4      (const double, const double, const double, const double);
     inline double interp4biasbot(const double, const double, const double, const double);
