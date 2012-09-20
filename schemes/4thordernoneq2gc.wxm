@@ -1,0 +1,65 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 12.04.0 ] */
+
+/* [wxMaxima: input   start ] */
+f(x) := f0 + f1*x/1! + f2*x^2/2! + f3*x^3/3! + f4*x^4/4! + f5*x^5/5! + f6*x^6/6!;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+fx(x) := f0x + f1x*x/1! + f2x*x^2/2! + f3x*x^3/3! + f4x*x^4/4! + f5x*x^5/5! + f6x*x^6/6!;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-3/2] = f(-3/2*h)$
+eq2 : f[-1/2] = f(-1/2*h)$
+eq3 : f[ 1/2] = f( 1/2*h)$
+eq4 : f[ 3/2] = f( 3/2*h)$
+sol : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], sol) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : x[-3/2] = fx(-3/2*h)$
+eq2 : x[-1/2] = fx(-1/2*h)$
+eq3 : x[ 1/2] = fx( 1/2*h)$
+eq4 : x[ 3/2] = fx( 3/2*h)$
+solx : linsolve([eq1,eq2,eq3,eq4],[f0x,f1x,f2x,f3x]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4x=0,f5x=0,f6x=0], solx) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1tempdir : solve(sol[1], f[-1/2]);
+bc1tempdir : subst(f0bc, f0, bc1tempdir);
+bc2dir : ratsimp(solve( subst(bc1tempdir, sol[4]), f[-3/2]));
+bc1dir : ratsimp(subst(bc2dir, bc1tempdir));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bc1dir) );
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bc2dir) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dfdx : rhs(sol[2])/rhs(solx[2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1tempneu : ratsimp( solve(dfdx = f1bc, f[-1/2]) );
+bc2neu : ratsimp(solve( subst(bc1tempneu, sol[4]), f[-3/2]));
+bc2neu : subst(0, f3, bc2neu);
+bc1neu : ratsimp(subst(bc2neu, bc1tempneu));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0], bc1neu) );
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0], bc2neu) );
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$

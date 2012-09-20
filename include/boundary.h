@@ -22,8 +22,8 @@ class cboundary
     cfields *fields;
     cmpi    *mpi;
 
-    int setgcbot_2nd(double *, int, double);
-    int setgctop_2nd(double *, int, double);
+    int setgcbot_2nd(double *, double *, int, double);
+    int setgctop_2nd(double *, double *, int, double);
     int setgcbot_4th(double *, double *, int, double);
     int setgctop_4th(double *, double *, int, double);
 

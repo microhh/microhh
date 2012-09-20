@@ -46,16 +46,16 @@ int cboundary::exec()
   if(iboundary == 2)
   {
     // bottom boundary conditions
-    setgcbot_2nd((*fields->u).data, bcbotmom, 0.);
-    setgcbot_2nd((*fields->v).data, bcbotmom, 0.);
+    setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
+    setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
     // setgcbot((*fields->w).data);
-    setgcbot_2nd((*fields->s).data, bcbotscal, sbot);
+    setgcbot_2nd((*fields->s).data, grid->dzh, bcbotscal, sbot);
 
     // top boundary conditions
-    setgctop_2nd((*fields->u).data, bctopmom, 0.);
-    setgctop_2nd((*fields->v).data, bctopmom, 0.);
+    setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
+    setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
     // setgcbot((*fields->w).data);
-    setgctop_2nd((*fields->s).data, bctopscal, stop);
+    setgctop_2nd((*fields->s).data, grid->dzh, bctopscal, stop);
   }
   else if(iboundary == 4)
   {
@@ -83,7 +83,7 @@ int cboundary::exec()
   return 0;
 }
 
-int cboundary::setgcbot_2nd(double * restrict a, int sw, double abot)
+int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, double abot)
 { 
   int ijk,jj,kk,kstart;
 
@@ -109,14 +109,14 @@ int cboundary::setgcbot_2nd(double * restrict a, int sw, double abot)
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + kstart*kk;
-        a[ijk-kk] = a[ijk];
+        a[ijk-kk] = -abot*dzh[kstart] + a[ijk];
       }
   }
 
   return 0;
 }
 
-int cboundary::setgctop_2nd(double * restrict a, int sw, double atop)
+int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, double atop)
 { 
   int ijk,jj,kk,kend;
 
@@ -144,7 +144,7 @@ int cboundary::setgctop_2nd(double * restrict a, int sw, double atop)
       {
         // add the bcvalues later
         ijk = i + j*jj + (kend-1)*kk;
-        a[ijk+kk] = a[ijk];
+        a[ijk+kk] = -atop*dzh[kend] + a[ijk];
       }
   }
 
