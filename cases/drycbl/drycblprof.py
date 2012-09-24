@@ -1,21 +1,38 @@
 import numpy
+from scipy.special import erf
 
 # set the height
-kmax  = 1024
-zsize = 1.
-
-dz = zsize / kmax
+kmax  = 512
 
 # define the variables
-z = numpy.zeros(kmax)
-s = numpy.zeros(kmax)
+# create uniform grid
+#zref = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
+ztmp = numpy.zeros(kmax+1)
+z    = numpy.zeros(kmax)
+dz   = numpy.zeros(kmax)
+s    = numpy.zeros(kmax)
 
-# create non-equidistant grid
-alpha = 0.7
+zrefsize = 0.5
+zref = numpy.linspace(0., zrefsize, kmax+1)
+
+# create non-equidistant grid consisting of tanh
+dzratio  = 2.
+dzloc    = 0.171875
+dzdelta  = 0.015625
+
+# use integrated tanh function
+for k in range(kmax+1):
+  ztmp[k] = zref[k] + (dzratio-1.)*dzdelta*numpy.log( numpy.exp((zref[k]-dzloc)/dzdelta)+1.)
+
 for k in range(kmax):
-  eta  = -1. + 2.*((k+1)-0.5) / kmax
-  z[k] = zsize / (2.*alpha) * numpy.tanh(eta*0.5*(numpy.log(1.+alpha) - numpy.log(1.-alpha))) + 0.5*zsize
-  s[k] = z[k]
+  z [k] = 0.5*(ztmp[k]+ztmp[k+1])
+  dz[k] = (ztmp[k+1]-ztmp[k])
+
+b0    = 1.
+delta = 4.407731e-3
+
+for k in range(kmax):
+  s[k] = z[k] + b0*erf(-0.5*z[k]/delta) + b0
 
 # write the data to a file
 proffile = open('drycbl.prof','w')
