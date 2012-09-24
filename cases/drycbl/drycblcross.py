@@ -1,9 +1,9 @@
 from pylab import *
 from microhh import *
 
-t = 300
+t = 0
 
-itot = 1024
+itot = 512
 jtot = 1
 ktot = 512
 
