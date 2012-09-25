@@ -1,5 +1,5 @@
 import numpy
-#from scipy.special import erf
+from scipy.special import erf
 #from pylab import *
 
 # set the height
@@ -41,12 +41,13 @@ print('zsize = ', zsize)
 
 b0    = 1.
 delta = 4.407731e-3
+N2    = 3.
 
 s = numpy.zeros(numpy.size(z))
 
 for k in range(kmax):
-  #s[k] = z[k] + b0*erf(-0.5*z[k]/delta) + b0
-  s[k] = z[k]
+  s[k] = N2*z[k] + b0*erf(-0.5*z[k]/delta) + b0
+  #s[k] = z[k]
 
 # write the data to a file
 proffile = open('drycbl.prof','w')
