@@ -36,6 +36,9 @@ for k in range(1,kmax):
   z      [k] = z[k-1] + 0.5*(dz[k-1]+dz[k])
   stretch[k] = dz[k]/dz[k-1]
 
+zsize = z[kmax-1] + 0.5*dz[kmax-1]
+print('zsize = ', zsize)
+
 b0    = 1.
 delta = 4.407731e-3
 
