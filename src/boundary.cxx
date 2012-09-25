@@ -144,7 +144,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, 
       {
         // add the bcvalues later
         ijk = i + j*jj + (kend-1)*kk;
-        a[ijk+kk] = -atop*dzh[kend] + a[ijk];
+        a[ijk+kk] = atop*dzh[kend] + a[ijk];
       }
   }
 
@@ -215,8 +215,8 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + (kend-1)*kk1;
-        a[ijk+kk1] = - (1./24)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk    ];
-        a[ijk+kk2] = - (1./ 8)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk-kk1];
+        a[ijk+kk1] = (1./24)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk    ];
+        a[ijk+kk2] = (1./ 8)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk-kk1];
       }
   }
 
