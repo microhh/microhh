@@ -124,9 +124,9 @@ int cstats::exec(int iteration, double time)
   calcflux((*fields->v).data, (*fields->w).data, wv);
   calcflux((*fields->s).data, (*fields->w).data, ws);
 
-  calcdiff((*fields->u).data, wud, fields->visc );
-  calcdiff((*fields->v).data, wvd, fields->visc );
-  calcdiff((*fields->s).data, wsd, fields->viscs);
+  calcdiff((*fields->u).data, wud, grid->dzhi4, fields->visc );
+  calcdiff((*fields->v).data, wvd, grid->dzhi4, fields->visc );
+  calcdiff((*fields->s).data, wsd, grid->dzhi4, fields->viscs);
 
   if(mpi->mpiid == 0)
   {
@@ -269,7 +269,7 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
   return 0;
 }
 
-int cstats::calcdiff(double * restrict data, double * restrict prof, double visc)
+int cstats::calcdiff(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
 {
   int    ijk,ii,jj,kk1,kk2,kstart;
   double dxi,dyi;
@@ -292,7 +292,7 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double visc
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] += visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1]);
+        prof[k] += visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 

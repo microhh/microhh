@@ -39,7 +39,7 @@ class cstats
     int calcmean(double *, double *, int);
     int calcvar (double *, double *, double *, int);
     int calcflux(double *, double *, double *);
-    int calcdiff(double *, double *, double);
+    int calcdiff(double *, double *, double *, double);
     
     int nstats;
 };
