@@ -1,6 +1,7 @@
 #ifndef STATS
 #define STATS
 
+#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
@@ -11,7 +12,8 @@ class cstats
     cstats(cgrid *, cfields *, cmpi *);
     ~cstats();
     int readinifile(cinput *);
-    int exec(int);
+    int init();
+    int exec(int, double);
 
   private:
     cgrid   *grid;
@@ -19,6 +21,8 @@ class cstats
     cmpi    *mpi;
 
     int istats;
+
+    NcFile *dataFile;
 };
 #endif
 

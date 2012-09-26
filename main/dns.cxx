@@ -98,6 +98,10 @@ int main(int argc, char *argv[])
   if(pres.load())
     return 1;
 
+  // initialize the statistics
+  if(stats.init())
+    return 1;
+
   // initialize the check variables
   int    iter;
   double time, dt;
@@ -170,7 +174,7 @@ int main(int argc, char *argv[])
       fields.p->save(timeloop.iteration, fields.tmp1->data, fields.tmp2->data);
 
     if(timeloop.dostats() && !timeloop.insubstep())
-      stats.exec(timeloop.iteration);
+      stats.exec(timeloop.iteration, timeloop.time);
 
     // exit the simulation when the runtime has been hit after the pressure calculation
     if(!timeloop.loop)

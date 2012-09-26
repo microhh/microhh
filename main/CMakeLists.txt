@@ -4,4 +4,4 @@ add_executable(init init.cxx)
 target_link_libraries(init microhhc ${LIBS} m)
 
 add_executable(dns dns.cxx)
-target_link_libraries(dns microhhc ${LIBS} m)
+target_link_libraries(dns microhhc ${LIBS} m z)
