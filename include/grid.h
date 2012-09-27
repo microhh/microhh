@@ -76,8 +76,9 @@ class cgrid
     int transposeyz(double *, double *);
     int transposezy(double *, double *);
 
-    int getmax(double *);
-    int getsum(double *);
+    int getmax (double *);
+    int getsum (double *);
+    int getprof(double *);
 
     int savefield3d(double *, double *, double *, char *);
     int loadfield3d(double *, double *, double *, char *);

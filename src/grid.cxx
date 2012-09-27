@@ -596,6 +596,18 @@ int cgrid::getsum(double *var)
   return 0;
 }
 
+int cgrid::getprof(double *prof)
+{
+  double profl[kcells];
+
+  for(int k=0; k<kcells; k++)
+    profl[k] = prof[k] / mpi->nprocs;
+
+  MPI_Allreduce(profl, prof, kcells, MPI_DOUBLE, MPI_SUM, mpi->commxy);
+
+  return 0;
+}
+
 // IO functions
 int cgrid::save()
 {
@@ -1139,6 +1151,18 @@ int cgrid::getsum(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+  return 0;
+}
+
+int cgrid::getprof(double *prof)
+{
+  double profl[kcells];
+
+  for(int k=0; k<kcells; k++)
+    profl[k] = prof[k] / mpi->nprocs;
+
+  MPI_Allreduce(profl, prof, kcells, MPI_DOUBLE, MPI_SUM, mpi->commxy);
 
   return 0;
 }
