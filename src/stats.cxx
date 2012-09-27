@@ -70,6 +70,10 @@ int cstats::init()
     wvd_var = dataFile->add_var("wvd", ncDouble, t_dim, zh_dim );
     wsd_var = dataFile->add_var("wsd", ncDouble, t_dim, zh_dim );
 
+    uflux_var = dataFile->add_var("uflux", ncDouble, t_dim, zh_dim );
+    vflux_var = dataFile->add_var("vflux", ncDouble, t_dim, zh_dim );
+    sflux_var = dataFile->add_var("sflux", ncDouble, t_dim, zh_dim );
+
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
     zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
@@ -94,6 +98,10 @@ int cstats::init()
   wud = new double[grid->kcells];
   wvd = new double[grid->kcells];
   wsd = new double[grid->kcells];
+
+  uflux = new double[grid->kcells];
+  vflux = new double[grid->kcells];
+  sflux = new double[grid->kcells];
 
   // set the number of stats to zero
   nstats = 0;
@@ -128,6 +136,13 @@ int cstats::exec(int iteration, double time)
   calcdiff((*fields->v).data, wvd, grid->dzhi4, fields->visc );
   calcdiff((*fields->s).data, wsd, grid->dzhi4, fields->viscs);
 
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    uflux[k] = wu[k] + wud[k];
+    vflux[k] = wv[k] + wvd[k];
+    sflux[k] = ws[k] + wsd[k];
+  }
+
   if(mpi->mpiid == 0)
   {
     u_var->put_rec(&u[grid->kstart], nstats);
@@ -147,6 +162,10 @@ int cstats::exec(int iteration, double time)
     wud_var->put_rec(&wud[grid->kstart], nstats);
     wvd_var->put_rec(&wvd[grid->kstart], nstats);
     wsd_var->put_rec(&wsd[grid->kstart], nstats);
+
+    uflux_var->put_rec(&uflux[grid->kstart], nstats);
+    vflux_var->put_rec(&vflux[grid->kstart], nstats);
+    sflux_var->put_rec(&sflux[grid->kstart], nstats);
   }
 
   // calculate variance and higher order moments
@@ -292,7 +311,7 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double * re
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] += visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+        prof[k] += -visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 

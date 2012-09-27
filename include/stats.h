@@ -30,11 +30,13 @@ class cstats
     NcVar  *u2_var, *v2_var, *w2_var, *s2_var;
     NcVar  *wu_var, *wv_var, *ws_var;
     NcVar  *wud_var, *wvd_var, *wsd_var;
+    NcVar  *uflux_var, *vflux_var, *sflux_var;
 
     double *u , *v , *w , *s ;
     double *u2, *v2, *w2, *s2;
     double *wu , *wv , *ws ;
     double *wud, *wvd, *wsd;
+    double *uflux, *vflux, *sflux;
 
     int calcmean(double *, double *, int);
     int calcvar (double *, double *, double *, int);
