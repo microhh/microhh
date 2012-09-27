@@ -4,8 +4,8 @@ import netCDF4
 
 from pylab import *
 
-start = 0
-end   = 101
+start = 100
+end   = 180
 
 # read Moser's data
 Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
@@ -27,6 +27,10 @@ uvart = stats.variables["u2"][start:end,:]
 vvart = stats.variables["v2"][start:end,:]
 wvart = stats.variables["w2"][start:end,:]
 
+wut    = stats.variables["wu"] [start:end,:]
+wudt   = stats.variables["wud"][start:end,:]
+ufluxt = wut+wudt
+
 utotavgt = (uavgt**2. + vavgt**2.)**.5
 visc     = 1.0e-5
 ustart   = (visc * utotavgt[:,0] / z[0])**0.5
@@ -36,6 +40,10 @@ vavg = numpy.mean(vavgt,0)
 uvar = numpy.mean(uvart,0)
 vvar = numpy.mean(vvart,0)
 wvar = numpy.mean(wvart,0)
+
+wu    = numpy.mean(wut,0)
+wud   = numpy.mean(wudt,0)
+uflux = numpy.mean(ufluxt,0)
 
 utotavg = numpy.mean(utotavgt,0)
 
@@ -85,4 +93,16 @@ ylabel('rms')
 legend(loc=0, frameon=False)
 grid()
 axis([0, 200, 0, 3.5])
+
+figure()
+#for n in range(end-start):
+#  plot(ufluxt[n,:] / ustar**2., zh, color='#cccccc')
+plot(uflux / ustar**2., zh, 'b-' , label='total flux')
+plot(wu    / ustar**2., zh, 'b--', label='turbulent flux')
+plot(wud   / ustar**2., zh, 'b:' , label='diffusive flux')
+xlabel('y')
+ylabel('uflux')
+legend(loc=0, frameon=False)
+grid()
+axis([-1.1, 1.1, 0., 2.])
  
