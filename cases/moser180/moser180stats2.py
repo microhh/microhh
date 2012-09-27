@@ -4,8 +4,8 @@ import netCDF4
 
 from pylab import *
 
-start = 2
-end   = 4
+start = 0
+end   = 101
 
 # read Moser's data
 Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
@@ -18,6 +18,7 @@ vvarMoser  = Moserrey[:,3]
 wvarMoser  = Moserrey[:,4]
 
 stats = netCDF4.Dataset("test.nc","r")
+t  = stats.variables["t"] [start:end]
 z  = stats.variables["z"] [:]
 zh = stats.variables["zh"][:]
 uavgt = stats.variables["u"] [start:end,:]
@@ -56,9 +57,9 @@ endy   = z.size / 2
 
 close('all')
 figure()
-for t in range(end-start):
-  semilogx(yplus[starty:endy], utotavgt[t,starty:endy] / ustar, color='#cccccc')
-semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'b-')
+for n in range(end-start):
+  semilogx(yplus[starty:endy], utotavgt[n,starty:endy] / ustar, color='#cccccc')
+semilogx(yplus[starty:endy], utotavg[starty:endy] / ustar, 'b-', label='u')
 semilogx(yplusMoser, uavgMoser, 'k--', label="Moser")
 semilogx(ypluslin, ulin, 'k:')
 semilogx(ypluslog, ulog, 'k:')
@@ -69,13 +70,13 @@ grid()
 axis([0.3, 200, 0, 22])
 
 figure()
-for t in range(end-start):
-  plot(yplus [starty:endy], (uvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
-  plot(yplus [starty:endy], (vvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
-  plot(yplush[starty:endy], (wvart[t,starty:endy] / ustar**2.)**0.5, color='#cccccc')
-plot(yplus [starty:endy], (uvar[starty:endy] / ustar**2.)**0.5, 'b-')
-plot(yplus [starty:endy], (vvar[starty:endy] / ustar**2.)**0.5, 'g-')
-plot(yplush[starty:endy], (wvar[starty:endy] / ustar**2.)**0.5, 'r-')
+for n in range(end-start):
+  plot(yplus [starty:endy], (uvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+  plot(yplus [starty:endy], (vvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+  plot(yplush[starty:endy], (wvart[n,starty:endy] / ustar**2.)**0.5, color='#cccccc')
+plot(yplus [starty:endy], (uvar[starty:endy] / ustar**2.)**0.5, 'b-', label='u')
+plot(yplus [starty:endy], (vvar[starty:endy] / ustar**2.)**0.5, 'g-', label='v')
+plot(yplush[starty:endy], (wvar[starty:endy] / ustar**2.)**0.5, 'r-', label='w')
 plot(yplusMoser, sqrt(uvarMoser), 'k--', label="Moser")
 plot(yplusMoser, sqrt(vvarMoser), 'k--')
 plot(yplusMoser, sqrt(wvarMoser), 'k--')
