@@ -48,9 +48,10 @@ int cstats::init()
     t_dim  = dataFile->add_dim("t");
 
     // create variables
-    t_var  = dataFile->add_var("t" , ncDouble, t_dim );
-    z_var  = dataFile->add_var("z" , ncDouble, z_dim );
-    zh_var = dataFile->add_var("zh", ncDouble, zh_dim);
+    iter_var = dataFile->add_var("iter", ncInt   , t_dim );
+    t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
+    z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
+    zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
 
     u_var = dataFile->add_var("u", ncDouble, t_dim, z_dim );
     v_var = dataFile->add_var("v", ncDouble, t_dim, z_dim );
@@ -114,7 +115,10 @@ int cstats::exec(int iteration, double time)
   if(mpi->mpiid == 0) std::printf("Saving stats for iteration %d\n", iteration);
 
   if(mpi->mpiid == 0)
-    t_var->put_rec(&time, nstats);
+  {
+    t_var   ->put_rec(&time     , nstats);
+    iter_var->put_rec(&iteration, nstats);
+  }
 
   // PROFILES
   // calculate means

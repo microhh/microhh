@@ -45,6 +45,8 @@ cgrid::~cgrid()
     MPI_Type_free(&subi);
     MPI_Type_free(&subj);
     MPI_Type_free(&subarray);
+
+    delete[] profl;
   }
 }
 
@@ -346,6 +348,9 @@ int cgrid::initmpi()
   MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
   MPI_Type_commit(&subarray);
 
+  // allocate the array for the profiles
+  profl = new double[kcells];
+
   mpitypes = true;
 
   return 0;
@@ -598,8 +603,6 @@ int cgrid::getsum(double *var)
 
 int cgrid::getprof(double *prof)
 {
-  double profl[kcells];
-
   for(int k=0; k<kcells; k++)
     profl[k] = prof[k] / mpi->nprocs;
 
@@ -1157,8 +1160,6 @@ int cgrid::getsum(double *var)
 
 int cgrid::getprof(double *prof)
 {
-  double profl[kcells];
-
   for(int k=0; k<kcells; k++)
     profl[k] = prof[k] / mpi->nprocs;
 

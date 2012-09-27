@@ -25,7 +25,7 @@ class cstats
 
     NcFile *dataFile;
     NcDim  *z_dim, *zh_dim, *t_dim;
-    NcVar  *z_var, *zh_var, *t_var;
+    NcVar  *z_var, *zh_var, *t_var, *iter_var;
     NcVar  *u_var , *v_var , *w_var , *s_var ;
     NcVar  *u2_var, *v2_var, *w2_var, *s2_var;
     NcVar  *wu_var, *wv_var, *ws_var;
