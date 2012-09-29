@@ -15,6 +15,7 @@ class ctimeloop
 
     int readinifile(cinput *);
     int timestep();
+    int postprocstep();
     int settimestep(double, double);
 
     int exec();
@@ -63,6 +64,7 @@ class ctimeloop
     int saveiter;
     int statsiter;
     int maxiter;
+    int postprociter;
 
     int rk3(double *, double *, double);
     int rk4(double *, double *, double);

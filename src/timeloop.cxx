@@ -30,15 +30,16 @@ int ctimeloop::readinifile(cinput *inputin)
   n += inputin->getItem(&maxiter     , "time", "maxiter");
 
   // optional parameters
-  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true );
-  n += inputin->getItem(&dt          , "time", "dt"          , 0.1  );
-  n += inputin->getItem(&cflmax      , "time", "cflmax"      , 1.   );
-  n += inputin->getItem(&dnmax       , "time", "dnmax"       , 0.5  );
-  n += inputin->getItem(&iteration   , "time", "iteration"   , 0    );
-  n += inputin->getItem(&rkorder     , "time", "rkorder"     , 4    );
-  n += inputin->getItem(&outputiter  , "time", "outputiter"  , 100  );
-  n += inputin->getItem(&saveiter    , "time", "saveiter"    , 500  );
-  n += inputin->getItem(&statsiter   , "time", "statsiter"   , 100  );
+  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true);
+  n += inputin->getItem(&dt          , "time", "dt"          , 0.1 );
+  n += inputin->getItem(&cflmax      , "time", "cflmax"      , 1.  );
+  n += inputin->getItem(&dnmax       , "time", "dnmax"       , 0.5 );
+  n += inputin->getItem(&iteration   , "time", "iteration"   , 0   );
+  n += inputin->getItem(&rkorder     , "time", "rkorder"     , 4   );
+  n += inputin->getItem(&outputiter  , "time", "outputiter"  , 100 );
+  n += inputin->getItem(&saveiter    , "time", "saveiter"    , 500 );
+  n += inputin->getItem(&statsiter   , "time", "statsiter"   , 100 );
+  n += inputin->getItem(&postprociter, "time", "postprociter", 100 );
 
   // if one argument fails, then crash
   if(n > 0)
@@ -315,6 +316,16 @@ int ctimeloop::load(int n)
 
   // calculate the double precision time from the integer time
   time = (double)itime / ifactor;
+
+  return 0;
+}
+
+int ctimeloop::postprocstep()
+{
+  iteration += postprociter;
+
+  if(iteration > maxiter)
+    loop = false;
 
   return 0;
 }
