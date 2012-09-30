@@ -49,6 +49,8 @@ int cfields::readinifile(cinput *inputin)
   // optional parameters
   n += inputin->getItem(&rndamp     , "fields", "rndamp"     , 0.   );
   n += inputin->getItem(&rndamps    , "fields", "rndamps"    , 0.   );
+  n += inputin->getItem(&rndz       , "fields", "rndz"       , 0.   );
+  n += inputin->getItem(&rndbeta    , "fields", "rndbeta"    , 2.   );
   n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", 0    );
   n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
   n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , 1    );
@@ -128,22 +130,34 @@ int cfields::create(cinput *inputin)
   // put initial perturbation in u, v and w, set mpiid as random seed to avoid having the same field at all procs
   std::srand(mpi->mpiid);
 
-  for(int n=0; n<grid->ncells; n++)
-    u->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
-  for(int n=0; n<grid->ncells; n++)
-    v->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
-  for(int n=0; n<grid->ncells; n++)
-    w->data[n] = rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
-  for(int n=0; n<grid->ncells; n++)
-    s->data[n] = rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
-
-
-  // add a double vortex to the initial conditions
   int ijk,jj,kk;
+  int kendrnd;
+  double rndfac, rndfach;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
+  // find the location of the randomizer height
+  kendrnd = grid->kstart;
+  while(grid->z[kendrnd] <= rndz)
+    kendrnd++;
+
+  for(int k=grid->kstart; k<kendrnd; k++)
+  {
+    rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
+    rndfach = std::pow((rndz-grid->zh[k])/rndz, rndbeta);
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        u->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
+        v->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
+        w->data[ijk] = rndfach * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
+        s->data[ijk] = rndfac  * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
+      }
+  }
+
+  // add a double vortex to the initial conditions
   const double pi = std::acos((double)-1.);
 
   if(nvortexpair > 0)
