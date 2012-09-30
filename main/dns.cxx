@@ -8,6 +8,7 @@
 #include "force.h"
 #include "buoyancy.h"
 #include "pres.h"
+#include "buffer.h"
 #include "timeloop.h"
 #include "stats.h"
 
@@ -56,6 +57,7 @@ int main(int argc, char *argv[])
   cpres     pres    (&grid, &fields, &mpi);
   cforce    force   (&grid, &fields, &mpi);
   cbuoyancy buoyancy(&grid, &fields, &mpi);
+  cbuffer   buffer  (&grid, &fields, &mpi);
 
   // read the inputdata
   if(boundary.readinifile(&input))
@@ -67,6 +69,8 @@ int main(int argc, char *argv[])
   if(force.readinifile(&input))
     return 1;
   if(buoyancy.readinifile(&input))
+    return 1;
+  if(buffer.readinifile(&input))
     return 1;
   if(pres.readinifile(&input))
     return 1;
@@ -89,6 +93,10 @@ int main(int argc, char *argv[])
 
   // initialize the diffusion to get the time step requirement
   if(diff.init())
+    return 1;
+
+  // initialize the buffer
+  if(buffer.init())
     return 1;
 
   // initialize the pressure solver
@@ -123,6 +131,9 @@ int main(int argc, char *argv[])
 
   // set the boundary conditions
   boundary.exec();
+
+  // set the buffers
+  buffer.setbuffers();
 
   // set the initial cfl and dn
   cfl = advec.getcfl(timeloop.dt);
@@ -168,6 +179,9 @@ int main(int argc, char *argv[])
     force.exec(timeloop.getsubdt());
     // buoyancy
     buoyancy.exec();
+    // buffer
+    buffer.exec();
+
     // pressure
     pres.exec(timeloop.getsubdt());
     if(timeloop.dosave() && !timeloop.insubstep())

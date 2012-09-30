@@ -220,7 +220,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, int a)
   for(int k=grid->kstart; k<grid->kend+a; k++)
     prof[k] /= n;
 
-  grid->getprof(prof);
+  grid->getprof(prof, grid->kcells);
 
   return 0;
 }
@@ -256,7 +256,7 @@ int cstats::calcvar(double * restrict data, double * restrict datamean, double *
   for(int k=grid->kstart; k<grid->kend+a; k++)
     prof[k] /= n;
 
-  grid->getprof(prof);
+  grid->getprof(prof, grid->kcells);
 
   return 0;
 }
@@ -293,7 +293,7 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
   for(int k=grid->kstart; k<grid->kend+1; k++)
     prof[k] /= n;
 
-  grid->getprof(prof);
+  grid->getprof(prof, grid->kcells);
 
   return 0;
 }
@@ -330,7 +330,7 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double * re
   for(int k=grid->kstart; k<grid->kend+1; k++)
     prof[k] /= n;
 
-  grid->getprof(prof);
+  grid->getprof(prof, grid->kcells);
 
   return 0;
 }
