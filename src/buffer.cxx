@@ -11,6 +11,8 @@ cbuffer::cbuffer(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
+
+  allocated = false;
 }
 
 cbuffer::~cbuffer()
@@ -38,16 +40,19 @@ int cbuffer::readinifile(cinput *inputin)
 
 int cbuffer::init()
 {
-  // allocate the buffer array 
-  bufferkcells = grid->kmax - bufferkstart;
+  if(ibuffer == 1)
+  {
+    // allocate the buffer array 
+    bufferkcells = grid->kmax - bufferkstart;
 
-  // CvH fix this later with flexible number of scalars
-  bufferprofs = new double[4*bufferkcells];
+    // CvH fix this later with flexible number of scalars
+    bufferprofs = new double[4*bufferkcells];
 
-  allocated = true;
+    allocated = true;
 
-  // add the ghost cells to the starting point
-  bufferkstart += grid->kstart;
+    // add the ghost cells to the starting point
+    bufferkstart += grid->kstart;
+  }
 
   return 0;
 }
