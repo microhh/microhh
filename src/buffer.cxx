@@ -43,7 +43,7 @@ int cbuffer::init()
   if(ibuffer == 1)
   {
     // allocate the buffer array 
-    bufferkcells = grid->kmax - bufferkstart;
+    bufferkcells = grid->kmax-bufferkstart-1;
 
     // CvH fix this later with flexible number of scalars
     bufferprofs = new double[4*bufferkcells];
