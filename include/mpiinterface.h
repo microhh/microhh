@@ -17,6 +17,7 @@ class cmpi
 
     double gettime();
     int waitall();
+    int broadcast(double *, int);
 
 //    int boundary_cyclic(double *);
 //    int transposezx(double *, double *);

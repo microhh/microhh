@@ -15,6 +15,8 @@ class cbuffer
     int setbuffers();
     int init();
     int exec();
+    int save();
+    int load();
 
     // CvH make private later
     int ibuffer;

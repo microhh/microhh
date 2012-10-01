@@ -164,3 +164,16 @@ int cmpi::waitall()
   return 0;
 }
 
+#ifdef MPISUBCOMM
+int cmpi::broadcast(double *data, int datasize)
+{
+  MPI_Bcast(data, datasize, MPI_DOUBLE, 0, commxy);
+  return 0;
+}
+#else
+int cmpi::broadcast(double *data, int datasize)
+{
+  MPI_Bcast(data, datasize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  return 0;
+}
+#endif

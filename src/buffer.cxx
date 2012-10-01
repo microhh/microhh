@@ -144,3 +144,60 @@ int cbuffer::setbuffer(double * restrict a, double * restrict abuf)
   return 0;
 }
 
+int cbuffer::save()
+{
+  if(ibuffer != 1)
+    return 0;
+
+  char filename[256];
+  std::sprintf(filename, "%s.%07d", "buffer", 0);
+
+  if(mpi->mpiid == 0)
+  {
+    std::printf("Saving \"%s\"\n", filename);
+    FILE *pFile;
+    pFile = fopen(filename, "wb");
+
+    if(pFile == NULL)
+    {
+      std::printf("ERROR \"%s\" cannot be written", filename);
+      return 1;
+    }
+
+    fwrite(bufferprofs, sizeof(double), 4*bufferkcells, pFile);
+    fclose(pFile);
+  }
+
+  return 0;
+}
+
+int cbuffer::load()
+{
+  if(ibuffer != 1)
+    return 0;
+
+  char filename[256];
+  std::sprintf(filename, "%s.%07d", "buffer", 0);
+
+  if(mpi->mpiid == 0)
+  {
+    std::printf("Loading \"%s\"\n", filename);
+
+    FILE *pFile;
+    pFile = fopen(filename, "rb");
+
+    if(pFile == NULL)
+    {
+      std::printf("ERROR \"%s\" does not exist\n", filename);
+      return 1;
+    }
+
+    fread(bufferprofs, sizeof(double), 4*bufferkcells, pFile);
+    fclose(pFile);
+  }
+
+  // send the buffers to all processes
+  mpi->broadcast(bufferprofs, 4*bufferkcells);
+
+  return 0;
+}

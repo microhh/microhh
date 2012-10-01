@@ -3,6 +3,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "pres.h"
+#include "buffer.h"
 #include "timeloop.h"
 
 int main(int argc, char *argv[])
@@ -21,6 +22,7 @@ int main(int argc, char *argv[])
   cgrid     grid    (&mpi);
   cfields   fields  (&grid, &mpi);
   cpres     pres    (&grid, &fields, &mpi);
+  cbuffer   buffer  (&grid, &fields, &mpi);
   ctimeloop timeloop(&grid, &fields, &mpi);
   
   // read the input data
@@ -39,6 +41,8 @@ int main(int argc, char *argv[])
     return 1;
   if(pres.readinifile(&input))
     return 1;
+  if(buffer.readinifile(&input))
+    return 1;
   if(timeloop.readinifile(&input))
     return 1;
   
@@ -49,6 +53,8 @@ int main(int argc, char *argv[])
     return 1;
   if(fields.init())
     return 1;
+  if(buffer.init())
+    return 1;
 
   // INPUT FILE CREATION
   // read the grid from the input
@@ -58,6 +64,9 @@ int main(int argc, char *argv[])
   // create the random field
   // create the initial field
   if(fields.create(&input))
+    return 1;
+
+  if(buffer.setbuffers())
     return 1;
 
   // free the memory of the input data
@@ -71,6 +80,10 @@ int main(int argc, char *argv[])
     return 1;
   if(pres.save())
     return 1;
+
+  if(buffer.save())
+    return 1;
+
   if(fields.save(timeloop.iteration))
     return 1;
   if(timeloop.save(timeloop.iteration))

@@ -106,6 +106,10 @@ int main(int argc, char *argv[])
   if(pres.load())
     return 1;
 
+  // load the buffer
+  if(buffer.load())
+    return 1;
+
   // initialize the statistics
   if(stats.init())
     return 1;
@@ -131,9 +135,6 @@ int main(int argc, char *argv[])
 
   // set the boundary conditions
   boundary.exec();
-
-  // set the buffers
-  buffer.setbuffers();
 
   // set the initial cfl and dn
   cfl = advec.getcfl(timeloop.dt);
