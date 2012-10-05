@@ -55,8 +55,9 @@ int main(int argc, char *argv[])
     return 1;
   if(buffer.init())
     return 1;
+  if(pres.init())
+    return 1;
 
-  // INPUT FILE CREATION
   // read the grid from the input
   if(grid.create(&input))
     return 1;
@@ -75,17 +76,12 @@ int main(int argc, char *argv[])
   // store the data on disk
   if(grid.save())
     return 1;
-  // CvH check this later, init is already using information from grid, should not happen...
-  if(pres.init())
-    return 1;
   if(pres.setvalues())
     return 1;
   if(pres.save())
     return 1;
-
   if(buffer.save())
     return 1;
-
   if(fields.save(timeloop.iteration))
     return 1;
   if(timeloop.save(timeloop.iteration))
