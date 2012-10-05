@@ -43,7 +43,7 @@ int cdiff::readinifile(cinput *inputin)
   return 0;
 }
 
-int cdiff::init()
+int cdiff::setvalues()
 {
   // get the maximum time step for diffusion
   double viscmax = std::max(fields->visc, fields->viscs);

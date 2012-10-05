@@ -91,10 +91,6 @@ int main(int argc, char *argv[])
   if(fields.load(timeloop.iteration))
     return 1;
 
-  // initialize the diffusion to get the time step requirement
-  if(diff.init())
-    return 1;
-
   // initialize the buffer
   if(buffer.init())
     return 1;
@@ -113,6 +109,11 @@ int main(int argc, char *argv[])
   // initialize the statistics
   if(stats.init())
     return 1;
+
+  // initialize the diffusion to get the time step requirement
+  if(diff.setvalues())
+    return 1;
+
 
   // initialize the check variables
   int    iter;

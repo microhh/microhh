@@ -15,7 +15,7 @@ class cdiff
     ~cdiff();
 
     int readinifile(cinput *);
-    int init();
+    int setvalues();
     int exec();
 
     double getdn(double);
