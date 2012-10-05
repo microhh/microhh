@@ -28,25 +28,6 @@ int main(int argc, char *argv[])
   cgrid   grid  (&mpi);
   cfields fields(&grid, &mpi);
 
-  // read the input data
-  if(input.readinifile(simname))
-    return 1;
-  if(mpi.readinifile(&input))
-    return 1;
-  if(grid.readinifile(&input))
-    return 1;
-  if(fields.readinifile(&input))
-    return 1;
-
-  // init the mpi 
-  if(mpi.init())
-    return 1;
-  // initialize the objects, allocate the required memory
-  if(grid.init())
-    return 1;
-  if(fields.init())
-    return 1;
-
   // create the boundary conditions class
   cboundary boundary(&grid, &fields, &mpi);
 
@@ -59,7 +40,18 @@ int main(int argc, char *argv[])
   cbuoyancy buoyancy(&grid, &fields, &mpi);
   cbuffer   buffer  (&grid, &fields, &mpi);
 
-  // read the inputdata
+  // load the postprocessing modules
+  cstats    stats   (&grid, &fields, &mpi);
+
+  // read the input data
+  if(input.readinifile(simname))
+    return 1;
+  if(mpi.readinifile(&input))
+    return 1;
+  if(grid.readinifile(&input))
+    return 1;
+  if(fields.readinifile(&input))
+    return 1;
   if(boundary.readinifile(&input))
     return 1;
   if(advec.readinifile(&input))
@@ -77,8 +69,19 @@ int main(int argc, char *argv[])
   if(timeloop.readinifile(&input))
     return 1;
 
-  // load the postprocessing modules
-  cstats stats(&grid, &fields, &mpi);
+  // init the mpi 
+  if(mpi.init())
+    return 1;
+  if(grid.init())
+    return 1;
+  if(fields.init())
+    return 1;
+  if(buffer.init())
+    return 1;
+  if(pres.init())
+    return 1;
+  if(stats.init())
+    return 1;
 
   // free the memory of the input
   input.clear();
@@ -90,32 +93,16 @@ int main(int argc, char *argv[])
     return 1;
   if(fields.load(timeloop.iteration))
     return 1;
-
-  // initialize the buffer
-  if(buffer.init())
-    return 1;
-
-  // initialize the pressure solver
-  // CvH check this later, init is already using information from grid, should not happen...
-  if(pres.init())
-    return 1;
-  if(pres.setvalues())
-    return 1;
   if(pres.load())
     return 1;
-
-  // load the buffer
   if(buffer.load())
-    return 1;
-
-  // initialize the statistics
-  if(stats.init())
     return 1;
 
   // initialize the diffusion to get the time step requirement
   if(diff.setvalues())
     return 1;
-
+  if(pres.setvalues())
+    return 1;
 
   // initialize the check variables
   int    iter;
@@ -240,4 +227,3 @@ int main(int argc, char *argv[])
   
   return 0;
 }
-
