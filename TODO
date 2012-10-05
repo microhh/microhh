@@ -4,6 +4,8 @@ check why code is not bitwise identical when mpi config is changed
 
 [performance]
 implement fftw_many
+vectorize pressure solver
+integrate advection and diffusion
 
 [structure]
 handle field registration properly
@@ -12,7 +14,6 @@ handle field registration properly
 compute basic statistics
 
 [dynamical core]
-implement buoyancy
 implement Smagorinsky scheme
 loop on time or on iterations
 
