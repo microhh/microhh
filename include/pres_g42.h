@@ -15,6 +15,7 @@ class cpres_g42
     int init();
     int load();
     int save();
+    int setvalues();
 
     int pres_in(double *, 
                 double *, double *, double *,

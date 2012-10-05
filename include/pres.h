@@ -20,6 +20,7 @@ class cpres
     int init();
     int load();
     int save();
+    int setvalues();
 
     int exec(double);
 

@@ -45,6 +45,36 @@ cpres_g42::~cpres_g42()
 int cpres_g42::init()
 {
   int imax, jmax, kmax;
+  int itot, jtot;
+
+  itot = grid->itot;
+  jtot = grid->jtot;
+  imax = grid->imax;
+  jmax = grid->jmax;
+  kmax = grid->kmax;
+
+  bmati = new double[itot];
+  bmatj = new double[jtot];
+  
+  // allocate help variables for the matrix solver
+  a = new double[kmax];
+  c = new double[kmax];
+  work2d = new double[imax*jmax];
+
+  fftini  = fftw_alloc_real(itot);
+  fftouti = fftw_alloc_real(itot);
+  fftinj  = fftw_alloc_real(jtot);
+  fftoutj = fftw_alloc_real(jtot);
+
+  allocated = true;
+
+  return 0;
+}
+
+
+int cpres_g42::setvalues()
+{
+  int imax, jmax, kmax;
   int itot, jtot, kgc;
 
   itot = grid->itot;
@@ -54,9 +84,6 @@ int cpres_g42::init()
   kmax = grid->kmax;
   kgc  = grid->kgc;
 
-  bmati = new double[itot];
-  bmatj = new double[jtot];
-  
   // compute the modified wave numbers of the 42 order scheme
   double dxidxi = 1./(grid->dx*grid->dx);
   double dyidyi = 1./(grid->dy*grid->dy);
@@ -81,24 +108,12 @@ int cpres_g42::init()
   for(int i=itot/2+1; i<itot; i++)
     bmati[i] = bmati[itot-i];
 
-  // allocate help variables for the matrix solver
-  a = new double[kmax];
-  c = new double[kmax];
-  work2d = new double[imax*jmax];
-
   // create vectors that go into the tridiagonal matrix solver
   for(int k=0; k<kmax; k++)
   {
     a[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc  ];
     c[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc+1];
   }
-
-  fftini  = fftw_alloc_real(itot);
-  fftouti = fftw_alloc_real(itot);
-  fftinj  = fftw_alloc_real(jtot);
-  fftoutj = fftw_alloc_real(jtot);
-
-  allocated = true;
 
   return 0;
 }

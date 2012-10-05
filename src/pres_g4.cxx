@@ -76,30 +76,6 @@ int cpres_g4::init()
 
   bmati = new double[itot];
   bmatj = new double[jtot];
-  
-  // compute the modified wave numbers of the 4th order scheme
-  double dxidxi = 1./(grid->dx*grid->dx);
-  double dyidyi = 1./(grid->dy*grid->dy);
-
-  const double pi = std::acos(-1.);
-
-  for(int j=0; j<jtot/2+1; j++)
-    bmatj[j] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)j/(double)jtot)
-               - 2.* (54./576.)   * std::cos(4.*pi*(double)j/(double)jtot)
-               + 2.* (783./576.)  * std::cos(2.*pi*(double)j/(double)jtot)
-               -     (1460./576.) ) * dyidyi;
-
-  for(int j=jtot/2+1; j<jtot; j++)
-    bmatj[j] = bmatj[jtot-j];
-
-  for(int i=0; i<itot/2+1; i++)
-    bmati[i] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)i/(double)itot)
-               - 2.* (54./576.)   * std::cos(4.*pi*(double)i/(double)itot)
-               + 2.* (783./576.)  * std::cos(2.*pi*(double)i/(double)itot)
-               -     (1460./576.) ) * dxidxi;
-
-  for(int i=itot/2+1; i<itot; i++)
-    bmati[i] = bmati[itot-i];
 
   // allocate help variables for the matrix solver
   m0 = new double[kmax];
@@ -125,6 +101,52 @@ int cpres_g4::init()
   ptemp  = new double[kmax+4];
 
   work2d = new double[imax*jmax];
+  
+  fftini  = fftw_alloc_real(itot);
+  fftouti = fftw_alloc_real(itot);
+  fftinj  = fftw_alloc_real(jtot);
+  fftoutj = fftw_alloc_real(jtot);
+
+  allocated = true;
+
+  return 0;
+}
+
+int cpres_g4::setvalues()
+{
+  int imax, jmax, kmax;
+  int itot, jtot, kstart;
+
+  itot   = grid->itot;
+  jtot   = grid->jtot;
+  imax   = grid->imax;
+  jmax   = grid->jmax;
+  kmax   = grid->kmax;
+  kstart = grid->kstart;
+
+  // compute the modified wave numbers of the 4th order scheme
+  double dxidxi = 1./(grid->dx*grid->dx);
+  double dyidyi = 1./(grid->dy*grid->dy);
+
+  const double pi = std::acos(-1.);
+
+  for(int j=0; j<jtot/2+1; j++)
+    bmatj[j] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)j/(double)jtot)
+               - 2.* (54./576.)   * std::cos(4.*pi*(double)j/(double)jtot)
+               + 2.* (783./576.)  * std::cos(2.*pi*(double)j/(double)jtot)
+               -     (1460./576.) ) * dyidyi;
+
+  for(int j=jtot/2+1; j<jtot; j++)
+    bmatj[j] = bmatj[jtot-j];
+
+  for(int i=0; i<itot/2+1; i++)
+    bmati[i] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)i/(double)itot)
+               - 2.* (54./576.)   * std::cos(4.*pi*(double)i/(double)itot)
+               + 2.* (783./576.)  * std::cos(2.*pi*(double)i/(double)itot)
+               -     (1460./576.) ) * dxidxi;
+
+  for(int i=itot/2+1; i<itot; i++)
+    bmati[i] = bmati[itot-i];
 
   double *dzi4, *dzhi4;
   dzi4  = grid->dzi4;
@@ -172,13 +194,6 @@ int cpres_g4::init()
   m7[k] = 0.;
   m8[k] = 0.;
   
-  fftini  = fftw_alloc_real(itot);
-  fftouti = fftw_alloc_real(itot);
-  fftinj  = fftw_alloc_real(jtot);
-  fftoutj = fftw_alloc_real(jtot);
-
-  allocated = true;
-
   return 0;
 }
 

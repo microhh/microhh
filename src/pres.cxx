@@ -55,6 +55,18 @@ int cpres::init()
   return 0;
 }
 
+int cpres::setvalues()
+{
+  if(ipres == 2)
+    pres_g2->setvalues();
+  else if(ipres == 42)
+    pres_g42->setvalues();
+  else if(ipres == 4)
+    pres_g4->setvalues();
+
+  return 0;
+}
+
 int cpres::exec(double dt)
 {
   if(ipres == 0)
