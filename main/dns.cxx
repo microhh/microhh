@@ -99,6 +99,8 @@ int main(int argc, char *argv[])
     return 1;
 
   // initialize the diffusion to get the time step requirement
+  if(boundary.setvalues())
+    return 1;
   if(diff.setvalues())
     return 1;
   if(pres.setvalues())

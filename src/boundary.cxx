@@ -41,6 +41,48 @@ int cboundary::readinifile(cinput *inputin)
   return 0;
 }
 
+int cboundary::setvalues()
+{
+  setbc((*fields->u).databot, (*fields->u).datagradbot, bcbotmom , 0.  );
+  setbc((*fields->v).databot, (*fields->v).datagradbot, bcbotmom , 0.  );
+  setbc((*fields->s).databot, (*fields->s).datagradbot, bcbotscal, sbot);
+
+  setbc((*fields->u).datatop, (*fields->u).datagradtop, bctopmom , 0.  );
+  setbc((*fields->v).datatop, (*fields->v).datagradtop, bctopmom , 0.  );
+  setbc((*fields->s).datatop, (*fields->s).datagradtop, bctopscal, stop);
+
+  return 0;
+}
+
+int cboundary::setbc(double * restrict a, double * restrict agrad, int sw, double aval)
+{
+  int ij,jj;
+  jj = grid->icells;
+
+  if(sw == 0)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij = i + j*jj;
+        a[ij] = aval;
+      }
+  }
+  else if(sw == 1)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij = i + j*jj;
+        agrad[ij] = aval;
+      }
+  }
+
+  return 0;
+}
+
 int cboundary::exec()
 {
   if(iboundary == 2)
@@ -48,13 +90,10 @@ int cboundary::exec()
     // bottom boundary conditions
     setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
     setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
-    // setgcbot((*fields->w).data);
-    setgcbot_2nd((*fields->s).data, grid->dzh, bcbotscal, sbot);
 
     // top boundary conditions
     setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
     setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
-    // setgcbot((*fields->w).data);
     setgctop_2nd((*fields->s).data, grid->dzh, bctopscal, stop);
   }
   else if(iboundary == 4)
@@ -62,15 +101,15 @@ int cboundary::exec()
     // bottom boundary conditions
     setgcbot_4th ((*fields->u).data, grid->z, bcbotmom, 0.);
     setgcbot_4th ((*fields->v).data, grid->z, bcbotmom, 0.);
-    setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, sbot);
-
+    //setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, sbot);
+    setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, (*fields->s).datagradbot);
     setgcbotw_4th((*fields->w).data);
 
     // top boundary conditions
     setgctop_4th((*fields->u).data, grid->z, bctopmom, 0.);
     setgctop_4th((*fields->v).data, grid->z, bctopmom, 0.);
-    setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
-
+    //setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
+    setgctop_4th ((*fields->s).data, grid->z, bctopscal, (*fields->s).datagradtop);
     setgctopw_4th((*fields->w).data);
   }
  
