@@ -36,7 +36,7 @@ int cboundary::readinifile(cinput *inputin)
   n += inputin->getItem(&stop, "fields", "stop");
 
   // optional parameters
-  n += inputin->getItem(&stop, "boundary", "iboundarytype", 0);
+  n += inputin->getItem(&iboundarytype, "boundary", "iboundarytype", 0);
 
   // patch type
   n += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , 2 );
