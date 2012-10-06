@@ -83,6 +83,7 @@ int cboundary::exec()
   return 0;
 }
 
+// BOUNDARY CONDITIONS THAT HAVE ONE VALUE FOR THE ENTIRE DOMAIN
 int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, double abot)
 { 
   int ijk,jj,kk,kstart;
@@ -179,8 +180,8 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + kstart*kk1;
-        a[ijk-kk1] = -(1./24)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*abot + a[ijk    ];
-        a[ijk-kk2] = -(1./ 8)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*abot + a[ijk+kk1];
+        a[ijk-kk1] = -(1./24.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*abot + a[ijk    ];
+        a[ijk-kk2] = -(1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*abot + a[ijk+kk1];
       }
   }
 
@@ -215,14 +216,162 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
       for(int i=0; i<grid->icells; i++)
       {
         ijk = i + j*jj + (kend-1)*kk1;
-        a[ijk+kk1] = (1./24)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk    ];
-        a[ijk+kk2] = (1./ 8)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk-kk1];
+        a[ijk+kk1] = (1./24.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk    ];
+        a[ijk+kk2] = (1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop + a[ijk-kk1];
       }
   }
 
   return 0;
 }
 
+// BOUNDARY CONDITIONS THAT CONTAIN A 2D PATTERN
+int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, double * restrict abot)
+{ 
+  int ij,ijk,jj,kk,kstart;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  kstart = grid->kstart;
+
+  if(sw == 0)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk;
+        a[ijk-kk] = 2.*abot[ij] - a[ijk];
+      }
+  }
+  else if(sw == 1)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk;
+        a[ijk-kk] = -abot[ij]*dzh[kstart] + a[ijk];
+      }
+  }
+
+  return 0;
+}
+
+int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, double * restrict atop)
+{ 
+  int ij,ijk,jj,kk,kend;
+
+  kend = grid->kend;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  if(sw == 0)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + (kend-1)*kk;
+        a[ijk+kk] = 2.*atop[ij] - a[ijk];
+      }
+  }
+  else if(sw == 1)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + (kend-1)*kk;
+        a[ijk+kk] = atop[ij]*dzh[kend] + a[ijk];
+      }
+  }
+
+  return 0;
+}
+
+int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, double * restrict abot)
+{ 
+  int ij,ijk,jj,kk1,kk2,kstart;
+
+  jj  = grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+
+  kstart = grid->kstart;
+
+  if(sw == 0)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk1;
+        a[ijk-kk1] = (8./3.)*abot[ij] - 2.*a[ijk] + (1./3.)*a[ijk+kk1];
+        a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
+      }
+  }
+  else if(sw == 1)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk1;
+        a[ijk-kk1] = -(1./24.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*abot[ij] + a[ijk    ];
+        a[ijk-kk2] = -(1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*abot[ij] + a[ijk+kk1];
+      }
+  }
+
+  return 0;
+}
+
+int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, double * restrict atop)
+{ 
+  int ij,ijk,jj,kend,kk1,kk2;
+
+  kend = grid->kend;
+
+  jj  = grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+
+  if(sw == 0)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + (kend-1)*kk1;
+        a[ijk+kk1] = (8./3.)*atop[ij] - 2.*a[ijk] + (1./3.)*a[ijk-kk1];
+        a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
+      }
+  }
+  else if(sw == 1)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + (kend-1)*kk1;
+        a[ijk+kk1] = (1./24.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop[ij] + a[ijk    ];
+        a[ijk+kk2] = (1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*atop[ij] + a[ijk-kk1];
+      }
+  }
+
+  return 0;
+}
+
+// BOUNDARY CONDITIONS FOR THE VERTICAL VELOCITY (NO PENETRATION)
 int cboundary::setgcbotw_4th(double * restrict w)
 { 
   int ijk,jj,kk1,kk2,kstart;
