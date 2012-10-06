@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cmath>
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
@@ -34,6 +35,16 @@ int cboundary::readinifile(cinput *inputin)
   n += inputin->getItem(&sbot, "fields", "sbot");
   n += inputin->getItem(&stop, "fields", "stop");
 
+  // optional parameters
+  n += inputin->getItem(&stop, "boundary", "iboundarytype", 0);
+
+  // patch type
+  n += inputin->getItem(&patch_xh,   "boundary", "patch_xh"  , 1.);
+  n += inputin->getItem(&patch_xr,   "boundary", "patch_xr"  , 1.);
+  n += inputin->getItem(&patch_xi,   "boundary", "patch_xi"  , 0.);
+  n += inputin->getItem(&patch_facr, "boundary", "patch_facr", 1.);
+  n += inputin->getItem(&patch_facl, "boundary", "patch_facl", 0.);
+
     // if one argument fails, then crash
   if(n > 0)
     return 1;
@@ -45,14 +56,65 @@ int cboundary::setvalues()
 {
   setbc((*fields->u).databot, (*fields->u).datagradbot, bcbotmom , 0.  );
   setbc((*fields->v).databot, (*fields->v).datagradbot, bcbotmom , 0.  );
-  setbc((*fields->s).databot, (*fields->s).datagradbot, bcbotscal, sbot);
 
   setbc((*fields->u).datatop, (*fields->u).datagradtop, bctopmom , 0.  );
   setbc((*fields->v).datatop, (*fields->v).datagradtop, bctopmom , 0.  );
-  setbc((*fields->s).datatop, (*fields->s).datagradtop, bctopscal, stop);
+
+  if(iboundarytype == 0)
+  {
+    setbc((*fields->s).databot, (*fields->s).datagradbot, bcbotscal, sbot);
+    setbc((*fields->s).datatop, (*fields->s).datagradtop, bctopscal, stop);
+  }
+  if(iboundarytype == 1)
+  {
+    setbc_patch((*fields->s).datagradbot, patch_facl, patch_facr, sbot);
+    setbc      ((*fields->s).datatop, (*fields->s).datagradtop, bctopscal, stop);
+  }
 
   return 0;
 }
+
+int cboundary::setbc_patch(double * restrict a, double facl, double facr, double aval, int dim)
+{
+  // dimensions patches
+  double xrmid   = 0.5*patch_xh;
+  double xrstart = 0.5*(patch_xh - patch_xr);
+  double xrend   = 0.5*(patch_xh + patch_xr);
+
+  double avall, avalr;
+  double xmod, ymod;
+  double errvalx, errvaly;
+
+  int ij,jj;
+  jj = grid->icells;
+
+  avall = facl*aval;
+  avalr = facr*aval;
+
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij = i + j*jj;
+      xmod = fmod(grid->x[i], patch_xh);
+      ymod = fmod(grid->y[i], patch_xh);
+
+      if(xmod < xrmid)
+        errvalx =  0.5*erf(0.5*(xmod-xrstart) / patch_xi);
+      else
+        errvalx = -0.5*erf(0.5*(xmod-xrend) / patch_xi);
+
+      if(ymod < xrmid)
+        errvaly =  0.5*erf(0.5*(ymod-xrstart) / patch_xi);
+      else
+        errvaly = -0.5*erf(0.5*(ymod-xrend) / patch_xi);
+
+      a[ij] = 0.5*(avall+avalr) + (avall-avalr)*errvalx*errvaly;
+    }
+
+  return 0;
+}
+
 
 int cboundary::setbc(double * restrict a, double * restrict agrad, int sw, double aval)
 {
