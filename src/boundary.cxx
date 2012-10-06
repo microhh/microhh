@@ -39,6 +39,7 @@ int cboundary::readinifile(cinput *inputin)
   n += inputin->getItem(&stop, "boundary", "iboundarytype", 0);
 
   // patch type
+  n += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , 2 );
   n += inputin->getItem(&patch_xh,   "boundary", "patch_xh"  , 1.);
   n += inputin->getItem(&patch_xr,   "boundary", "patch_xr"  , 1.);
   n += inputin->getItem(&patch_xi,   "boundary", "patch_xi"  , 0.);
@@ -74,7 +75,7 @@ int cboundary::setvalues()
   return 0;
 }
 
-int cboundary::setbc_patch(double * restrict a, double facl, double facr, double aval, int dim)
+int cboundary::setbc_patch(double * restrict a, double facl, double facr, double aval)
 {
   // dimensions patches
   double xrmid   = 0.5*patch_xh;
@@ -104,10 +105,15 @@ int cboundary::setbc_patch(double * restrict a, double facl, double facr, double
       else
         errvalx = -0.5*erf(0.5*(xmod-xrend) / patch_xi);
 
-      if(ymod < xrmid)
-        errvaly =  0.5*erf(0.5*(ymod-xrstart) / patch_xi);
+      if(patch_dim == 2)
+      {
+        if(ymod < xrmid)
+          errvaly =  0.5*erf(0.5*(ymod-xrstart) / patch_xi);
+        else
+          errvaly = -0.5*erf(0.5*(ymod-xrend) / patch_xi);
+      }
       else
-        errvaly = -0.5*erf(0.5*(ymod-xrend) / patch_xi);
+        errvaly = 1.;
 
       a[ij] = 0.5*(avall+avalr) + (avall-avalr)*errvalx*errvaly;
     }
