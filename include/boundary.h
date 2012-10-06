@@ -23,7 +23,8 @@ class cboundary
     cfields *fields;
     cmpi    *mpi;
 
-    int setbc(double *, double *, int, double);
+    int setbc      (double *, double *, int, double);
+    int setbc_patch(double *, double, double, double);
 
     int setgcbot_2nd(double *, double *, int, double);
     int setgctop_2nd(double *, double *, int, double);
@@ -38,7 +39,7 @@ class cboundary
     int setgcbotw_4th(double *);
     int setgctopw_4th(double *);
 
-    // int iboundary;
+    int iboundarytype;
 
     int bcbotmom;
     int bctopmom;
@@ -48,6 +49,13 @@ class cboundary
 
     double sbot;
     double stop;
+
+    // patch type
+    double patch_xh;
+    double patch_xr;
+    double patch_xi;
+    double patch_facr;
+    double patch_facl;
 
     inline double grad4x(const double, const double, const double, const double);
 };
