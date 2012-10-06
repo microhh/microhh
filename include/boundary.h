@@ -12,6 +12,7 @@ class cboundary
     ~cboundary();
 
     int readinifile(cinput *);
+    int setvalues();
     int exec();
 
     // CvH make private later
@@ -21,6 +22,8 @@ class cboundary
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
+
+    int setbc(double *, double *, int, double);
 
     int setgcbot_2nd(double *, double *, int, double);
     int setgctop_2nd(double *, double *, int, double);
