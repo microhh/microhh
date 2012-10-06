@@ -14,7 +14,13 @@ cfield3d::cfield3d(cgrid *gridin, cmpi *mpiin, std::string namein)
 cfield3d::~cfield3d()
 {
   if(allocated)
+  {
     delete[] data;
+    delete[] databot;
+    delete[] datatop;
+    delete[] datagradbot;
+    delete[] datagradtop;
+  }
 
   // std::printf("Destroying instance of object field3d\n");
 }
@@ -23,13 +29,27 @@ int cfield3d::init()
 {
   // allocate the memory
   if(mpi->mpiid == 0) std::printf("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
-  data = new double[grid->ncells];
+  data    = new double[grid->ncells];
+
+  // allocate the boundary cells
+  databot = new double[grid->icells*grid->jcells];
+  datatop = new double[grid->icells*grid->jcells];
+  datagradbot = new double[grid->icells*grid->jcells];
+  datagradtop = new double[grid->icells*grid->jcells];
 
   allocated = true;
 
   // set all values to zero
   for(int n=0; n<grid->ncells; n++)
-    data[n] = 0;
+    data[n] = 0.;
+
+  for(int n=0; n<grid->icells*grid->jcells; n++)
+  {
+    databot    [n] = 0.;
+    datatop    [n] = 0.;
+    datagradbot[n] = 0.;
+    datagradtop[n] = 0.;
+  }
 
   return 0;
 }

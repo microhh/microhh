@@ -20,6 +20,10 @@ class cfield3d
 
     // variables
     double *data;
+    double *databot;
+    double *datatop;
+    double *datagradbot;
+    double *datagradtop;
     std::string name;
 
   private:
