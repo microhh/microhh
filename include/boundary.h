@@ -51,6 +51,7 @@ class cboundary
     double stop;
 
     // patch type
+    int    patch_dim;
     double patch_xh;
     double patch_xr;
     double patch_xi;
