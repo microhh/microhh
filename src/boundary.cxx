@@ -115,7 +115,7 @@ int cboundary::setbc_patch(double * restrict a, double facl, double facr, double
       else
         errvaly = 1.;
 
-      a[ij] = 0.5*(avall+avalr) + (avall-avalr)*errvalx*errvaly;
+      a[ij] = 0.5*(avall+avalr) + (avalr-avall)*errvalx*errvaly;
     }
 
   return 0;
