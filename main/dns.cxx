@@ -157,9 +157,9 @@ int main(int argc, char *argv[])
     // determine the time step
     if(!timeloop.insubstep())
     {
-      timeloop.settimestep(cfl, dn);
       cfl = advec.getcfl(timeloop.dt);
       dn  = diff.getdn(timeloop.dt);
+      timeloop.settimestep(cfl, dn);
     }
 
     // advection
