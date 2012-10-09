@@ -382,6 +382,8 @@ int cgrid::boundary_cyclic(double * restrict data)
   mpi->reqsn++;
   MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
+  // wait here for the mpi to have correct values in the corners of the cells
+  mpi->waitall();
 
   // if the run is 3D, apply the BCs
   if(jtot > 1)
@@ -395,6 +397,7 @@ int cgrid::boundary_cyclic(double * restrict data)
     mpi->reqsn++;
     MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
+    mpi->waitall();
   }
   // in case of 2D, fill all the ghost cells with the current value
   else
@@ -417,8 +420,6 @@ int cgrid::boundary_cyclic(double * restrict data)
           data[ijksouth] = data[ijkref];
         }
   }
-
-  mpi->waitall();
 
   return 0;
 }
@@ -897,6 +898,8 @@ int cgrid::boundary_cyclic(double * restrict data)
   mpi->reqsn++;
   MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
   mpi->reqsn++;
+  // wait here for the mpi to have correct values in the corners of the cells
+  mpi->waitall();
 
   // if the run is 3D, apply the BCs
   if(jtot > 1)
@@ -910,6 +913,7 @@ int cgrid::boundary_cyclic(double * restrict data)
     mpi->reqsn++;
     MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, MPI_COMM_WORLD, &mpi->reqs[mpi->reqsn]);
     mpi->reqsn++;
+    mpi->waitall();
   }
   // in case of 2D, fill all the ghost cells with the current value
   else
@@ -932,8 +936,6 @@ int cgrid::boundary_cyclic(double * restrict data)
           data[ijksouth] = data[ijkref];
         }
   }
-
-  mpi->waitall();
 
   return 0;
 }
