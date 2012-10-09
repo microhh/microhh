@@ -286,6 +286,7 @@ int ctimeloop::save(int n)
     }
 
     fwrite(&itime, sizeof(long), 1, pFile);
+    fwrite(&idt  , sizeof(long), 1, pFile);
 
     fclose(pFile);
   }
@@ -295,27 +296,35 @@ int ctimeloop::save(int n)
 
 int ctimeloop::load(int n)
 {
-  char filename[256];
-  std::sprintf(filename, "time.%07d", n);
-
-  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
-
-  FILE *pFile;
-  pFile = fopen(filename, "rb");
-
-  if(pFile == NULL)
+  if(mpi->mpiid == 0)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
+    char filename[256];
+    std::sprintf(filename, "time.%07d", n);
 
-    return 1;
+    std::printf("Loading \"%s\"\n", filename);
+
+    FILE *pFile;
+    pFile = fopen(filename, "rb");
+
+    if(pFile == NULL)
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
+
+      return 1;
+    }
+
+    fread(&itime, sizeof(long), 1, pFile);
+    fread(&idt  , sizeof(long), 1, pFile);
+
+    fclose(pFile);
   }
 
-  fread(&itime, sizeof(long), 1, pFile);
-
-  fclose(pFile);
+  MPI_Bcast(&itime, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&idt  , 1, MPI_LONG, 0, MPI_COMM_WORLD);
 
   // calculate the double precision time from the integer time
   time = (double)itime / ifactor;
+  dt   = (double)idt   / ifactor;
 
   return 0;
 }
