@@ -1,3 +1,4 @@
+#!/bin/bash
 rm -f *.000*
 rm -f *.out
 mpiexec -n 4 ./init drycbl_flow
