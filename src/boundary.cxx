@@ -75,6 +75,45 @@ int cboundary::setvalues()
   return 0;
 }
 
+int cboundary::exec()
+{
+  if(iboundary == 2)
+  {
+    // bottom boundary conditions
+    setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
+    setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
+
+    // top boundary conditions
+    setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
+    setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
+    setgctop_2nd((*fields->s).data, grid->dzh, bctopscal, stop);
+  }
+  else if(iboundary == 4)
+  {
+    // bottom boundary conditions
+    setgcbot_4th ((*fields->u).data, grid->z, bcbotmom, 0.);
+    setgcbot_4th ((*fields->v).data, grid->z, bcbotmom, 0.);
+    //setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, sbot);
+    setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, (*fields->s).datagradbot);
+    setgcbotw_4th((*fields->w).data);
+
+    // top boundary conditions
+    setgctop_4th((*fields->u).data, grid->z, bctopmom, 0.);
+    setgctop_4th((*fields->v).data, grid->z, bctopmom, 0.);
+    //setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
+    setgctop_4th ((*fields->s).data, grid->z, bctopscal, (*fields->s).datagradtop);
+    setgctopw_4th((*fields->w).data);
+  }
+
+  // cyclic boundary conditions
+  grid->boundary_cyclic((*fields->u).data);
+  grid->boundary_cyclic((*fields->v).data);
+  grid->boundary_cyclic((*fields->w).data);
+  grid->boundary_cyclic((*fields->s).data);
+
+  return 0;
+}
+
 int cboundary::setbc_patch(double * restrict a, double facl, double facr, double aval)
 {
   // dimensions patches
@@ -121,7 +160,6 @@ int cboundary::setbc_patch(double * restrict a, double facl, double facr, double
   return 0;
 }
 
-
 int cboundary::setbc(double * restrict a, double * restrict agrad, int sw, double aval)
 {
   int ij,jj;
@@ -147,45 +185,6 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, int sw, doubl
         agrad[ij] = aval;
       }
   }
-
-  return 0;
-}
-
-int cboundary::exec()
-{
-  if(iboundary == 2)
-  {
-    // bottom boundary conditions
-    setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
-    setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
-
-    // top boundary conditions
-    setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
-    setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
-    setgctop_2nd((*fields->s).data, grid->dzh, bctopscal, stop);
-  }
-  else if(iboundary == 4)
-  {
-    // bottom boundary conditions
-    setgcbot_4th ((*fields->u).data, grid->z, bcbotmom, 0.);
-    setgcbot_4th ((*fields->v).data, grid->z, bcbotmom, 0.);
-    //setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, sbot);
-    setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, (*fields->s).datagradbot);
-    setgcbotw_4th((*fields->w).data);
-
-    // top boundary conditions
-    setgctop_4th((*fields->u).data, grid->z, bctopmom, 0.);
-    setgctop_4th((*fields->v).data, grid->z, bctopmom, 0.);
-    //setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
-    setgctop_4th ((*fields->s).data, grid->z, bctopscal, (*fields->s).datagradtop);
-    setgctopw_4th((*fields->w).data);
-  }
- 
-  // cyclic boundary conditions
-  grid->boundary_cyclic((*fields->u).data);
-  grid->boundary_cyclic((*fields->v).data);
-  grid->boundary_cyclic((*fields->w).data);
-  grid->boundary_cyclic((*fields->s).data);
 
   return 0;
 }
