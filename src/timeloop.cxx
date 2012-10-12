@@ -319,8 +319,8 @@ int ctimeloop::load(int n)
     fclose(pFile);
   }
 
-  MPI_Bcast(&itime, 1, MPI_LONG, 0, MPI_COMM_WORLD);
-  MPI_Bcast(&idt  , 1, MPI_LONG, 0, MPI_COMM_WORLD);
+  mpi->broadcast(&itime, 1);
+  mpi->broadcast(&idt  , 1);
 
   // calculate the double precision time from the integer time
   time = (double)itime / ifactor;

@@ -17,7 +17,12 @@ class cmpi
 
     double gettime();
     int waitall();
+
+    // overload the broadcast function
+    int broadcast(char *, int);
+    int broadcast(int *, int);
     int broadcast(double *, int);
+    int broadcast(unsigned long *, int);
 
 //    int boundary_cyclic(double *);
 //    int transposezx(double *, double *);

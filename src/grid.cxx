@@ -767,8 +767,9 @@ int cgrid::load()
     fread(&zh[kstart], sizeof(double), kmax, pFile);
     fclose(pFile);
   }
-  MPI_Bcast(&z [kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
-  MPI_Bcast(&zh[kstart], kmax, MPI_DOUBLE, 0, mpi->commxy);
+
+  mpi->broadcast(&z [kstart], kmax);
+  mpi->broadcast(&zh[kstart], kmax);
 
   // calculate the missing coordinates
   calculate();
@@ -1325,8 +1326,9 @@ int cgrid::load()
     fread(&zh[kstart], sizeof(double), kmax, pFile);
     fclose(pFile);
   }
-  MPI_Bcast(&z [kstart], kmax, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  MPI_Bcast(&zh[kstart], kmax, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  mpi->broadcast(&z [kstart], kmax);
+  mpi->broadcast(&zh[kstart], kmax);
 
   // calculate the missing coordinates
   calculate();

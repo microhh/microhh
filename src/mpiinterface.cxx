@@ -164,16 +164,27 @@ int cmpi::waitall()
   return 0;
 }
 
-#ifdef MPISUBCOMM
-int cmpi::broadcast(double *data, int datasize)
+// do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
+int cmpi::broadcast(char *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_DOUBLE, 0, commxy);
+  MPI_Bcast(data, datasize, MPI_CHAR, 0, MPI_COMM_WORLD);
   return 0;
 }
-#else
+
+int cmpi::broadcast(int *data, int datasize)
+{
+  MPI_Bcast(data, datasize, MPI_INT, 0, MPI_COMM_WORLD);
+  return 0;
+}
+
+int cmpi::broadcast(unsigned long *data, int datasize)
+{
+  MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+  return 0;
+}
+
 int cmpi::broadcast(double *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   return 0;
 }
-#endif

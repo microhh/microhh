@@ -54,7 +54,7 @@ int cinput::readinifile(std::string inputfilename)
     std::printf("Inifile contains %d lines\n", nlines);
     rewind(inputfile);
   }
-  MPI_Bcast(&nlines, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  mpi->broadcast(&nlines, 1);
 
   // check the cases: comments, empty line, block, value, rubbish
   for(int nn=0; nn<nlines; nn++)
@@ -65,7 +65,7 @@ int cinput::readinifile(std::string inputfilename)
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
     }
-    MPI_Bcast(inputline, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+    mpi->broadcast(inputline, 256);
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
@@ -175,7 +175,7 @@ int cinput::readproffile(std::string inputfilename)
     std::printf("Inifile contains %d lines\n", nlines);
     rewind(inputfile);
   }
-  MPI_Bcast(&nlines, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  mpi->broadcast(&nlines, 1);
 
   int nn;
 
@@ -188,7 +188,7 @@ int cinput::readproffile(std::string inputfilename)
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
     }
-    MPI_Bcast(inputline, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+    mpi->broadcast(inputline, 256);
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
@@ -256,7 +256,7 @@ int cinput::readproffile(std::string inputfilename)
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
     }
-    MPI_Bcast(inputline, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+    mpi->broadcast(inputline, 256);
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
