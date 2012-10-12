@@ -8,8 +8,18 @@ mv v.0000002 v.0000002ref
 mv w.0000002 w.0000002ref
 mv s.0000002 s.0000002ref
 mpiexec -n 16 ./dns drycbl_flow_restart 
-diff u.0000002 u.0000002ref
-diff v.0000002 v.0000002ref
-diff w.0000002 w.0000002ref
-diff s.0000002 s.0000002ref
+cmp u.0000002 u.0000002ref
+diffu=$?
+cmp v.0000002 v.0000002ref
+diffv=$?
+cmp w.0000002 w.0000002ref
+diffw=$?
+cmp s.0000002 s.0000002ref
+diffs=$?
+error=$(($diffu + $diffv + $diffw + $diffs))
+if [ $error = 0 ]; then
+  echo "TEST SUCCEEDED!"
+else
+  echo "TEST FAILED!"
+fi
 
