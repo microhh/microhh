@@ -1,7 +1,5 @@
 #include <cstdio>
-//#include <cmath>
 #include "grid.h"
-//#include "input.h"
 #include "defines.h"
 
 // MPI functions
@@ -370,25 +368,6 @@ int cgrid::save()
   std::sprintf(filename, "%s.%07d", "grid", 0);
   if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
-  /*FILE *pFile;
-  pFile = fopen(filename, "wb");
-
-  if(pFile == NULL)
-  {
-    std::printf("ERROR \"%s\" cannot be written\n", filename);
-    return 1;
-  }
-  else
-    std::printf("Saving \"%s\"\n", filename);
-
-  fwrite(&x [istart], sizeof(double), imax, pFile);
-  fwrite(&xh[istart], sizeof(double), imax, pFile);
-  fwrite(&y [jstart], sizeof(double), jmax, pFile);
-  fwrite(&yh[jstart], sizeof(double), jmax, pFile);
-  fwrite(&z [kstart], sizeof(double), kmax, pFile);
-  fwrite(&zh[kstart], sizeof(double), kmax, pFile);
-  fclose(pFile);*/
-
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
   {
@@ -444,69 +423,6 @@ int cgrid::load()
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
   if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
-
-  /*
-  FILE *pFile;
-  pFile = fopen(filename, "rb");
-
-  if(pFile == NULL)
-  {
-    std::printf("ERROR \"%s\" does not exist\n", filename);
-    return 1;
-  }
-  else
-    std::printf("Loading \"%s\"\n", filename);
-
-  fread(&x [istart], sizeof(double), imax, pFile);
-  fread(&xh[istart], sizeof(double), imax, pFile);
-  fread(&y [jstart], sizeof(double), jmax, pFile);
-  fread(&yh[jstart], sizeof(double), jmax, pFile);
-  fread(&z [kstart], sizeof(double), kmax, pFile);
-  fread(&zh[kstart], sizeof(double), kmax, pFile);
-  fclose(pFile);
-  */
-
-  // DISABLE READING OF THE HORIZONTAL DATA, IT SLOWS DOWN THE INIT UNNECESSARILY
-  /*
-  MPI_File fh;
-  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
-  {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be loaded\n", filename);
-    return 1;
-  }
-
-  // select noncontiguous part of 3d array to store the selected data
-
-  MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[] = "native";
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  // if(mpi->mpiid / mpi->npx == 0)
-  MPI_File_read_all(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += itot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  // if(mpi->mpiid / mpi->npx == 0)
-  MPI_File_read_all(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += itot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  // if(mpi->mpiid % mpi->npx == 0)
-  MPI_File_read_all(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += jtot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  // if(mpi->mpiid % mpi->npx == 0)
-  MPI_File_read_all(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-
-  MPI_File_sync(fh);
-  if(MPI_File_close(&fh))
-    return 1;
-   */
 
   FILE *pFile;
   if(mpi->mpiid == 0)

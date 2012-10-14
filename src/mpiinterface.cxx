@@ -6,8 +6,6 @@
 
 cmpi::cmpi()
 {
-  // std::printf("Creating instance of object mpi\n");
-
   initialized = false;
   allocated   = false;
 }
@@ -21,8 +19,6 @@ cmpi::~cmpi()
 
   if(initialized)
     MPI_Finalize();
-
-  // std::printf("Destroying instance of object mpi\n");
 }
 
 int cmpi::readinifile(cinput *inputin)
@@ -83,11 +79,7 @@ int cmpi::init()
     return 1;
 
   // create a 2-D grid communicator that is optimized for grid to grid transfer
-#ifdef MPISUBCOMM
   n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true , &commxy);
-#else
-  n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
-#endif
   if(checkerror(n))
     return 1;
   n = MPI_Comm_rank(commxy, &mpiid);
@@ -171,6 +163,7 @@ int cmpi::broadcast(char *data, int datasize)
   return 0;
 }
 
+// overloaded broadcast functions
 int cmpi::broadcast(int *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_INT, 0, MPI_COMM_WORLD);
