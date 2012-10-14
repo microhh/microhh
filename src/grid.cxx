@@ -30,6 +30,16 @@ cgrid::~cgrid()
     delete[] dzhi;
     delete[] dzi4;
     delete[] dzhi4;
+
+    fftw_free(fftini);
+    fftw_free(fftouti);
+    fftw_free(fftinj);
+    fftw_free(fftoutj);
+
+    fftw_destroy_plan(iplanf);
+    fftw_destroy_plan(iplanb);
+    fftw_destroy_plan(jplanf);
+    fftw_destroy_plan(jplanb);
   }
 
   exitmpi();
@@ -121,6 +131,12 @@ int cgrid::init()
   dzhi  = new double[kmax+2*kgc];
   dzi4  = new double[kmax+2*kgc];
   dzhi4 = new double[kmax+2*kgc];
+
+  // allocate the data for the fourier transforms
+  fftini  = fftw_alloc_real(itot);
+  fftouti = fftw_alloc_real(itot);
+  fftinj  = fftw_alloc_real(jtot);
+  fftoutj = fftw_alloc_real(jtot);
 
   allocated = true;
 

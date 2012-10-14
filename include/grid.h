@@ -2,6 +2,7 @@
 #define GRID
 
 #include <mpi.h>
+#include <fftw3.h>
 #include "input.h"
 #include "mpiinterface.h"
 
@@ -83,6 +84,15 @@ class cgrid
 
     int savefield3d(double *, double *, double *, char *);
     int loadfield3d(double *, double *, double *, char *);
+
+    // variables for the fast fourier transforms
+    double *fftini, *fftouti;
+    double *fftinj, *fftoutj;
+    fftw_plan iplanf, iplanb;
+    fftw_plan jplanf, jplanb;
+
+    int fftforward (double *, double *, double *, double *, double *, double *);
+    int fftbackward(double *, double *, double *, double *, double *, double *);
 
   private:
     cmpi *mpi;

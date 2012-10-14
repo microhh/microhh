@@ -21,16 +21,6 @@ cpres_g4::~cpres_g4()
 {
   if(allocated)
   {
-    fftw_destroy_plan(iplanf);
-    fftw_destroy_plan(iplanb);
-    fftw_destroy_plan(jplanf);
-    fftw_destroy_plan(jplanb);
-
-    fftw_free(fftini);
-    fftw_free(fftouti);
-    fftw_free(fftinj);
-    fftw_free(fftoutj);
-
     delete[] m0;
     delete[] m1;
     delete[] m2;
@@ -102,11 +92,6 @@ int cpres_g4::init()
 
   work2d = new double[imax*jmax];
   
-  fftini  = fftw_alloc_real(itot);
-  fftouti = fftw_alloc_real(itot);
-  fftinj  = fftw_alloc_real(jtot);
-  fftoutj = fftw_alloc_real(jtot);
-
   allocated = true;
 
   return 0;
@@ -194,67 +179,6 @@ int cpres_g4::setvalues()
   m7[k] = 0.;
   m8[k] = 0.;
   
-  return 0;
-}
-
-int cpres_g4::load()
-{ 
-  int itot, jtot;
-
-  itot = grid->itot;
-  jtot = grid->jtot;
-
-  char filename[256];
-  std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-  if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
-
-  int n = fftw_import_wisdom_from_filename(filename);
-  if(n == 0)
-  {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" does not exist\n", filename);
-    return 1;
-  }
-
-  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
-
-  fftw_forget_wisdom();
-
-  return 0;
-}
-
-int cpres_g4::save()
-{
-  int itot, jtot;
-
-  itot = grid->itot;
-  jtot = grid->jtot;
-
-  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
-
-  if(mpi->mpiid == 0)
-  {
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-    std::printf("Saving \"%s\"\n", filename);
-
-    int n = fftw_export_wisdom_to_filename(filename);
-    if(n == 0)
-    {
-      std::printf("ERROR \"%s\" cannot be saved\n", filename);
-      return 1;
-    }
-  }
-
   return 0;
 }
 
@@ -347,6 +271,8 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
   jgc    = grid->jgc;
   kgc    = grid->kgc;
 
+  grid->fftforward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+  /*
   // transpose the pressure field
   grid->transposezx(work3d,p);
 
@@ -402,6 +328,7 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // transpose back to original orientation
   grid->transposeyz(p,work3d);
+  */
 
   jj = iblock;
   kk = iblock*jblock;
@@ -554,7 +481,10 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // call ndma solver
   // ndma(m0, m1, m2, m3, m4, m5, m6, m7, m8, p);
-        
+  
+  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+
+  /*
   // transpose back to y
   grid->transposezy(work3d, p);
   
@@ -628,6 +558,11 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
         ijk  = i + j*jj + k*kk;
         p[ijkp] = work3d[ijk];
       }
+  */
+
+  int ijkp,jjp,kkp1;
+  jjp  = grid->icells;
+  kkp1 = grid->icells*grid->jcells;
 
   // set the boundary conditions
   // set a zero gradient boundary at the bottom

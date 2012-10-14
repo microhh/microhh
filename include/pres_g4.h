@@ -13,8 +13,6 @@ class cpres_g4
     ~cpres_g4();
 
     int init();
-    int load();
-    int save();
     int setvalues();
 
     int pres_in(double *, 
@@ -28,9 +26,6 @@ class cpres_g4
                  double *, double *);
     double calcdivergence(double *, double *, double *, double *);
 
-    double *fftini, *fftouti;
-    double *fftinj, *fftoutj;
-
   private:
     // variables
     cgrid   *grid;
@@ -38,9 +33,6 @@ class cpres_g4
     cmpi    *mpi;
 
     bool allocated;
-
-    fftw_plan iplanf, iplanb;
-    fftw_plan jplanf, jplanb;
 
     double *bmati, *bmatj;
     double *m0,*m1,*m2,*m3,*m4,*m5,*m6,*m7,*m8;

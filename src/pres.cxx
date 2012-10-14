@@ -114,7 +114,7 @@ int cpres::exec(double dt)
 
     // solve the system
     pres_g4->pres_solve((*fields->p).data, (*fields->tmp1).data, (*fields->tmp2).data, grid->dz,
-                        pres_g4->fftini, pres_g4->fftouti, pres_g4->fftinj, pres_g4->fftoutj);
+                        grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
     // get the pressure tendencies from the pressure field
     pres_g4->pres_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
@@ -143,8 +143,8 @@ int cpres::load()
     return pres_g2->load();
   else if(ipres == 42)
     return pres_g42->load();
-  else if(ipres == 4)
-    return pres_g4->load();
+  //else if(ipres == 4)
+  //  return pres_g4->load();
 
   return 0;
 }
@@ -155,8 +155,8 @@ int cpres::save()
     return pres_g2->save();
   else if(ipres == 42)
     return pres_g42->save();
-  else if(ipres == 4)
-    return pres_g4->save();
+  //else if(ipres == 4)
+  //  return pres_g4->save();
 
   return 0;
 }
