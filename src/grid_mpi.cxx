@@ -604,7 +604,7 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
       for(int i=0; i<itot; i++)
       {
         ijk = i + j*jj + k*kk;
-        fftini[i] = data[ijk];
+        fftini[i] = tmp1[ijk];
       }
 
       fftw_execute(iplanf);
