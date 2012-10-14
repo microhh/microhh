@@ -68,6 +68,7 @@ class cgrid
 
     // MPI functions
     int initmpi();
+    int exitmpi();
     int boundary_cyclic(double *);
     int transposezx(double *, double *);
     int transposexz(double *, double *);
@@ -103,10 +104,6 @@ class cgrid
     bool mpitypes;
 
     inline double interp4       (const double, const double, const double, const double);
-    inline double interp4biasbot(const double, const double, const double, const double);
-    inline double interp4biastop(const double, const double, const double, const double);
     inline double grad4x        (const double, const double, const double, const double);
-    inline double grad4xbiasbot (const double, const double, const double, const double);
-    inline double grad4xbiastop (const double, const double, const double, const double);
 };
 #endif

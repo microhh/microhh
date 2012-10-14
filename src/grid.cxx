@@ -32,22 +32,7 @@ cgrid::~cgrid()
     delete[] dzhi4;
   }
 
-  if(mpitypes)
-  {
-    MPI_Type_free(&eastwestedge);
-    MPI_Type_free(&northsouthedge);
-    MPI_Type_free(&transposez);
-    MPI_Type_free(&transposez2);
-    MPI_Type_free(&transposex);
-    MPI_Type_free(&transposex2);
-    MPI_Type_free(&transposey);
-    MPI_Type_free(&transposey2);
-    MPI_Type_free(&subi);
-    MPI_Type_free(&subj);
-    MPI_Type_free(&subarray);
-
-    delete[] profl;
-  }
+  exitmpi();
 }
 
 int cgrid::readinifile(cinput *inputin)
@@ -1433,32 +1418,34 @@ int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * 
 }
 #endif
 
+int cgrid::exitmpi()
+{
+  if(mpitypes)
+  {
+    MPI_Type_free(&eastwestedge);
+    MPI_Type_free(&northsouthedge);
+    MPI_Type_free(&transposez);
+    MPI_Type_free(&transposez2);
+    MPI_Type_free(&transposex);
+    MPI_Type_free(&transposex2);
+    MPI_Type_free(&transposey);
+    MPI_Type_free(&transposey2);
+    MPI_Type_free(&subi);
+    MPI_Type_free(&subj);
+    MPI_Type_free(&subarray);
+
+    delete[] profl;
+  }
+
+  return 0;
+}
+
 inline double cgrid::interp4(const double a, const double b, const double c, const double d)
 {
   return (-a + 9.*b + 9.*c - d) / 16.;
 }
 
-inline double cgrid::interp4biasbot(const double a, const double b, const double c, const double d)
-{
-  return ((5./16.)*a + (15./16.)*b - (5./16.)*c + (1./16)*d);
-}
-
-inline double cgrid::interp4biastop(const double a, const double b, const double c, const double d)
-{
-  return ((5./16.)*d + (15./16.)*c - (5./16.)*b + (1./16)*a);
-}
-
 inline double cgrid::grad4x(const double a, const double b, const double c, const double d)
 {
   return (-(d-a) + 27.*(c-b)); 
-}
-
-inline double cgrid::grad4xbiasbot(const double a, const double b, const double c, const double d)
-{
-  return (-23.*a + 21.*b + 3.*c - d);
-}
-
-inline double cgrid::grad4xbiastop(const double a, const double b, const double c, const double d)
-{
-  return ( 23.*d - 21.*c - 3.*b + a);
 }
