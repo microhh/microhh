@@ -2,7 +2,6 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "pres.h"
 #include "buffer.h"
 #include "timeloop.h"
 
@@ -21,7 +20,6 @@ int main(int argc, char *argv[])
   cinput    input   (&mpi);
   cgrid     grid    (&mpi);
   cfields   fields  (&grid, &mpi);
-  cpres     pres    (&grid, &fields, &mpi);
   cbuffer   buffer  (&grid, &fields, &mpi);
   ctimeloop timeloop(&grid, &fields, &mpi);
   
@@ -39,8 +37,6 @@ int main(int argc, char *argv[])
     return 1;
   if(fields.readinifile(&input))
     return 1;
-  if(pres.readinifile(&input))
-    return 1;
   if(buffer.readinifile(&input))
     return 1;
   if(timeloop.readinifile(&input))
@@ -54,8 +50,6 @@ int main(int argc, char *argv[])
   if(fields.init())
     return 1;
   if(buffer.init())
-    return 1;
-  if(pres.init())
     return 1;
 
   // read the grid from the input
@@ -75,10 +69,6 @@ int main(int argc, char *argv[])
 
   // store the data on disk
   if(grid.save())
-    return 1;
-  if(pres.setvalues())
-    return 1;
-  if(pres.save())
     return 1;
   if(buffer.save())
     return 1;

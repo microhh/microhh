@@ -93,8 +93,6 @@ int main(int argc, char *argv[])
     return 1;
   if(fields.load(timeloop.iteration))
     return 1;
-  if(pres.load())
-    return 1;
   if(buffer.load())
     return 1;
 

@@ -272,63 +272,6 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
   kgc    = grid->kgc;
 
   grid->fftforward(p, work3d, fftini, fftouti, fftinj, fftoutj);
-  /*
-  // transpose the pressure field
-  grid->transposezx(work3d,p);
-
-  jj = itot;
-  kk = itot*jmax;
-
-  // do the first fourier transform
-  for(int k=0; k<kblock; k++)
-    for(int j=0; j<jmax; j++)
-    {
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      { 
-        ijk = i + j*jj + k*kk;
-        fftini[i] = work3d[ijk];
-      }
-
-      fftw_execute(iplanf);
-
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        work3d[ijk] = fftouti[i];
-      }
-    }
-
-  // transpose again
-  grid->transposexy(p,work3d);
-
-  jj = iblock;
-  kk = iblock*jtot;
-
-  // do the second fourier transform
-  for(int k=0; k<kblock; k++)
-    for(int i=0; i<iblock; i++)
-    {
-      for(int j=0; j<jtot; j++)
-      { 
-        ijk = i + j*jj + k*kk;
-        fftinj[j] = p[ijk];
-      }
-
-      fftw_execute(jplanf);
-
-      for(int j=0; j<jtot; j++)
-      {
-        ijk = i + j*jj + k*kk;
-        // shift to use p in pressure solver
-        work3d[ijk] = fftoutj[j];
-      }
-    }
-
-  // transpose back to original orientation
-  grid->transposeyz(p,work3d);
-  */
 
   jj = iblock;
   kk = iblock*jblock;

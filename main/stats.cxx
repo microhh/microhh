@@ -84,12 +84,9 @@ int main(int argc, char *argv[])
     return 1;
 
   // initialize the pressure solver
-  // CvH check this later, init is already using information from grid, should not happen...
   if(pres.init())
     return 1;
   if(pres.setvalues())
-    return 1;
-  if(pres.load())
     return 1;
 
   // initialize the diffusion to get the time step requirement

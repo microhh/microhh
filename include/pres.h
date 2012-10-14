@@ -18,8 +18,6 @@ class cpres
     int readinifile(cinput *);
 
     int init();
-    int load();
-    int save();
     int setvalues();
 
     int exec(double);

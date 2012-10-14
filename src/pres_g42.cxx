@@ -21,16 +21,6 @@ cpres_g42::~cpres_g42()
 {
   if(allocated)
   {
-    fftw_destroy_plan(iplanf);
-    fftw_destroy_plan(iplanb);
-    fftw_destroy_plan(jplanf);
-    fftw_destroy_plan(jplanb);
-
-    fftw_free(fftini);
-    fftw_free(fftouti);
-    fftw_free(fftinj);
-    fftw_free(fftoutj);
-
     delete[] a;
     delete[] c;
     delete[] work2d;
@@ -60,11 +50,6 @@ int cpres_g42::init()
   a = new double[kmax];
   c = new double[kmax];
   work2d = new double[imax*jmax];
-
-  fftini  = fftw_alloc_real(itot);
-  fftouti = fftw_alloc_real(itot);
-  fftinj  = fftw_alloc_real(jtot);
-  fftoutj = fftw_alloc_real(jtot);
 
   allocated = true;
 
@@ -113,67 +98,6 @@ int cpres_g42::setvalues()
   {
     a[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc  ];
     c[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc+1];
-  }
-
-  return 0;
-}
-
-int cpres_g42::load()
-{ 
-  int itot, jtot;
-
-  itot = grid->itot;
-  jtot = grid->jtot;
-
-  char filename[256];
-  std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-  if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
-
-  int n = fftw_import_wisdom_from_filename(filename);
-  if(n == 0)
-  {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" does not exist\n", filename);
-    return 1;
-  }
-
-  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
-
-  fftw_forget_wisdom();
-
-  return 0;
-}
-
-int cpres_g42::save()
-{
-  int itot, jtot;
-
-  itot = grid->itot;
-  jtot = grid->jtot;
-
-  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
-
-  if(mpi->mpiid == 0)
-  {
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "fftwplan", 0);
-
-    std::printf("Saving \"%s\"\n", filename);
-
-    int n = fftw_export_wisdom_to_filename(filename);
-    if(n == 0)
-    {
-      std::printf("ERROR \"%s\" cannot be saved\n", filename);
-      return 1;
-    }
   }
 
   return 0;
@@ -251,61 +175,7 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
   jgc    = grid->jgc;
   kgc    = grid->kgc;
 
-  // transpose the pressure field
-  grid->transposezx(work3d,p);
-
-  jj = itot;
-  kk = itot*jmax;
-
-  // do the first fourier transform
-  for(int k=0; k<kblock; k++)
-    for(int j=0; j<jmax; j++)
-    {
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      { 
-        ijk = i + j*jj + k*kk;
-        fftini[i] = work3d[ijk];
-      }
-
-      fftw_execute(iplanf);
-
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        work3d[ijk] = fftouti[i];
-      }
-    }
-
-  // transpose again
-  grid->transposexy(p,work3d);
-
-  jj = iblock;
-  kk = iblock*jtot;
-
-  // do the second fourier transform
-  for(int k=0; k<kblock; k++)
-    for(int i=0; i<iblock; i++)
-    {
-      for(int j=0; j<jtot; j++)
-      { 
-        ijk = i + j*jj + k*kk;
-        fftinj[j] = p[ijk];
-      }
-
-      fftw_execute(jplanf);
-
-      for(int j=0; j<jtot; j++)
-      {
-        ijk = i + j*jj + k*kk;
-        // shift to use p in pressure solver
-        work3d[ijk] = fftoutj[j];
-      }
-    }
-
-  // transpose back to original orientation
-  grid->transposeyz(p,work3d);
+  grid->fftforward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
   jj = iblock;
   kk = iblock*jblock;
@@ -348,63 +218,9 @@ int cpres_g42::pres_solve(double * restrict p, double * restrict work3d, double 
 
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);
+
+  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
         
-  // transpose back to y
-  grid->transposezy(work3d, p);
-  
-  jj = iblock;
-  kk = iblock*jtot;
-
-  // transform the second transform back
-  for(int k=0; k<kblock; k++)
-    for(int i=0; i<iblock; i++)
-    {
-      for(int j=0; j<jtot; j++)
-      { 
-        ijk = i + j*jj + k*kk;
-        fftinj[j] = work3d[ijk];
-      }
-
-      fftw_execute(jplanb);
-
-      for(int j=0; j<jtot; j++)
-      {
-        ijk = i + j*jj + k*kk;
-        p[ijk] = fftoutj[j] / jtot;
-      }
-    }
-
-  // transpose back to x
-  grid->transposeyx(work3d, p);
-
-  jj = itot;
-  kk = itot*jmax;
-
-  // transform the first transform back
-  for(int k=0; k<kblock; k++)
-    for(int j=0; j<jmax; j++)
-    {
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      { 
-        ijk = i + j*jj + k*kk;
-        fftini[i] = work3d[ijk];
-      }
-
-      fftw_execute(iplanb);
-
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        // swap array here to avoid unncessary 3d loop
-        p[ijk] = fftouti[i] / itot;
-      }
-    }
-
-  // and transpose back...
-  grid->transposexz(work3d, p);
-
   jj = imax;
   kk = imax*jmax;
 

@@ -13,8 +13,6 @@ class cpres_g2
     ~cpres_g2();
 
     int init();
-    int load();
-    int save();
     int setvalues();
 
     int pres_in(double *, 
@@ -28,9 +26,6 @@ class cpres_g2
                  double *, double *);
     double calcdivergence(double *, double *, double *, double *);
 
-    double *fftini, *fftouti;
-    double *fftinj, *fftoutj;
-
   private:
     // variables
     cgrid   *grid;
@@ -38,9 +33,6 @@ class cpres_g2
     cmpi    *mpi;
 
     bool allocated;
-
-    fftw_plan iplanf, iplanb;
-    fftw_plan jplanf, jplanb;
 
     double *bmati, *bmatj;
     double *a, *c;
