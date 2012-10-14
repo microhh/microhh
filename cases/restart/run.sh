@@ -18,7 +18,7 @@ cmp s.0000002 s.0000002ref
 diffs=$?
 error=$(($diffu + $diffv + $diffw + $diffs))
 if [ $error = 0 ]; then
-  echo "TEST SUCCEEDED!"
+  echo "TEST PASSED!"
 else
   echo "TEST FAILED!"
 fi
