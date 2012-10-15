@@ -14,6 +14,7 @@ class cstats
 
     int readinifile(cinput *);
     int init();
+    int create();
     int exec(int, double);
 
   private:

@@ -68,6 +68,8 @@ int main(int argc, char *argv[])
     return 1;
   if(timeloop.readinifile(&input))
     return 1;
+  if(stats.readinifile(&input))
+    return 1;
 
   // init the mpi 
   if(mpi.init())
@@ -94,6 +96,8 @@ int main(int argc, char *argv[])
   if(fields.load(timeloop.iteration))
     return 1;
   if(buffer.load())
+    return 1;
+  if(stats.create())
     return 1;
 
   // initialize the diffusion to get the time step requirement

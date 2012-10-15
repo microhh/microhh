@@ -22,7 +22,8 @@ int cstats::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&istats, "postproc", "stats");
+  // optional, by default switch stats on
+  n += inputin->getItem(&istats, "postproc", "stats", 1);
 
   if(n > 0)
     return 1;
@@ -31,6 +32,36 @@ int cstats::readinifile(cinput *inputin)
 }
 
 int cstats::init()
+{
+  u = new double[grid->kcells];
+  v = new double[grid->kcells];
+  w = new double[grid->kcells];
+  s = new double[grid->kcells];
+
+  u2 = new double[grid->kcells];
+  v2 = new double[grid->kcells];
+  w2 = new double[grid->kcells];
+  s2 = new double[grid->kcells];
+
+  wu = new double[grid->kcells];
+  wv = new double[grid->kcells];
+  ws = new double[grid->kcells];
+
+  wud = new double[grid->kcells];
+  wvd = new double[grid->kcells];
+  wsd = new double[grid->kcells];
+
+  uflux = new double[grid->kcells];
+  vflux = new double[grid->kcells];
+  sflux = new double[grid->kcells];
+
+  // set the number of stats to zero
+  nstats = 0;
+
+  return 0;
+}
+
+int cstats::create()
 {
   // create a NetCDF file for the statistics
   if(mpi->mpiid == 0)
@@ -81,31 +112,6 @@ int cstats::init()
 
     dataFile->sync();
   }
-
-  u = new double[grid->kcells];
-  v = new double[grid->kcells];
-  w = new double[grid->kcells];
-  s = new double[grid->kcells];
-
-  u2 = new double[grid->kcells];
-  v2 = new double[grid->kcells];
-  w2 = new double[grid->kcells];
-  s2 = new double[grid->kcells];
-
-  wu = new double[grid->kcells];
-  wv = new double[grid->kcells];
-  ws = new double[grid->kcells];
-
-  wud = new double[grid->kcells];
-  wvd = new double[grid->kcells];
-  wsd = new double[grid->kcells];
-
-  uflux = new double[grid->kcells];
-  vflux = new double[grid->kcells];
-  sflux = new double[grid->kcells];
-
-  // set the number of stats to zero
-  nstats = 0;
 
   return 0;
 }
