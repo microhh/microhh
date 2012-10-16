@@ -117,44 +117,55 @@ int cgrid::exitmpi()
 int cgrid::boundary_cyclic(double * restrict data)
 {
   int ncount = 1;
+  int ijk0,ijk1,jj,kk;
 
-  // communicate east-west edges
-  int eastout = iend-igc;
-  int westin  = 0;
-  int westout = istart;
-  int eastin  = iend;
+  jj = icells;
+  kk = icells*jcells;
 
-  // communicate north-south edges
-  int northout = (jend-jgc)*icells;
-  int southin  = 0;
-  int southout = jstart*icells;
-  int northin  = jend  *icells;
+  // first, east west boundaries
+  for(int k=0; k<kcells; k++)
+    for(int j=0; j<jcells; j++)
+#pragma ivdep
+      for(int i=0; i<igc; i++)
+      {
+        ijk0 = i          + j*jj + k*kk;
+        ijk1 = iend-igc+i + j*jj + k*kk;
+        data[ijk0] = data[ijk1];
+      }
 
-  // first, send and receive the ghost cells in east-west direction
-  MPI_Isend(&data[eastout], ncount, eastwestedge, mpi->neast, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
-  MPI_Irecv(&data[westin], ncount, eastwestedge, mpi->nwest, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
-  MPI_Isend(&data[westout], ncount, eastwestedge, mpi->nwest, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
-  MPI_Irecv(&data[eastin], ncount, eastwestedge, mpi->neast, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-  mpi->reqsn++;
-  // wait here for the mpi to have correct values in the corners of the cells
-  mpi->waitall();
+  for(int k=0; k<kcells; k++)
+    for(int j=0; j<jcells; j++)
+#pragma ivdep
+      for(int i=0; i<igc; i++)
+      {
+        ijk0 = i+iend   + j*jj + k*kk;
+        ijk1 = i+istart + j*jj + k*kk;
+        data[ijk0] = data[ijk1];
+      }
 
   // if the run is 3D, apply the BCs
   if(jtot > 1)
   {
     // second, send and receive the ghost cells in the north-south direction
-    MPI_Isend(&data[northout], ncount, northsouthedge, mpi->nnorth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Irecv(&data[southin], ncount, northsouthedge, mpi->nsouth, 1, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Isend(&data[southout], ncount, northsouthedge, mpi->nsouth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Irecv(&data[northin], ncount, northsouthedge, mpi->nnorth, 2, mpi->commxy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    mpi->waitall();
+    for(int k=0; k<kcells; k++)
+      for(int j=0; j<jgc; j++)
+#pragma ivdep
+        for(int i=0; i<icells; i++)
+        {
+          ijk0 = i + j           *jj + k*kk;
+          ijk1 = i + (jend-jgc+j)*jj + k*kk;
+          data[ijk0] = data[ijk1];
+        }
+
+    for(int k=0; k<kcells; k++)
+      for(int j=0; j<jgc; j++)
+#pragma ivdep
+        for(int i=0; i<icells; i++)
+        {
+          ijk0 = i + (j+jend  )*jj + k*kk;
+          ijk1 = i + (j+jstart)*jj + k*kk;
+          data[ijk0] = data[ijk1];
+        }
   }
   // in case of 2D, fill all the ghost cells with the current value
   else
