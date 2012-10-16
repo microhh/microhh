@@ -1,5 +1,6 @@
 #ifndef PARALLEL
 #include <cstdio>
+#include <sys/time.h>
 #include <mpi.h>
 #include "grid.h"
 #include "defines.h"
@@ -46,15 +47,11 @@ int cmpi::startup()
 
   initialized = true;
 
-  // get the rank of the current process
-  n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
-  if(checkerror(n))
-    return 1;
+  // set the rank of the only process to 0
+  mpiid = 0;
 
-  // get the total number of processors
-  n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  if(checkerror(n))
-    return 1;
+  // set the number of processes to 1
+  nprocs = 1;
 
   if(mpiid == 0) std::printf("Starting run on %d processes\n", nprocs);
 
@@ -93,8 +90,9 @@ int cmpi::init()
   if(checkerror(n))
     return 1;
 
-  mpicoordx = mpicoords[1];
-  mpicoordy = mpicoords[0];
+  // set the coordinates to 0
+  mpicoordx = 0;
+  mpicoordy = 0;
 
   int dimx[2] = {false, true };
   int dimy[2] = {true , false};
@@ -130,7 +128,11 @@ int cmpi::init()
 
 double cmpi::gettime()
 {
-  return MPI_Wtime();
+  timeval timestruct;
+  gettimeofday(&timeval, NULL);
+  double time;
+  time = timeval.tv_sec + (double)timeval.tv_usec*1.e-6;
+  return time;
 }
 
 int cmpi::checkerror(int n)
@@ -151,35 +153,31 @@ int cmpi::checkerror(int n)
 int cmpi::waitall()
 {
   // wait for MPI processes and reset the number of pending requests
-  MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
-  reqsn = 0;
+  // MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
+  // reqsn = 0;
 
   return 0;
 }
 
-// do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
+// all broadcasts return directly, because there is nothing to broadcast
 int cmpi::broadcast(char *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_CHAR, 0, MPI_COMM_WORLD);
   return 0;
 }
 
 // overloaded broadcast functions
 int cmpi::broadcast(int *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_INT, 0, MPI_COMM_WORLD);
   return 0;
 }
 
 int cmpi::broadcast(unsigned long *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
   return 0;
 }
 
 int cmpi::broadcast(double *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   return 0;
 }
 #endif
