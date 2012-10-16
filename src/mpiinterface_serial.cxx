@@ -129,9 +129,9 @@ int cmpi::init()
 double cmpi::gettime()
 {
   timeval timestruct;
-  gettimeofday(&timeval, NULL);
+  gettimeofday(&timestruct, NULL);
   double time;
-  time = timeval.tv_sec + (double)timeval.tv_usec*1.e-6;
+  time = (double)timestruct.tv_sec + (double)timestruct.tv_usec*1.e-6;
   return time;
 }
 
