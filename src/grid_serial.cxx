@@ -318,56 +318,27 @@ int cgrid::getprof(double *prof, int kcellsin)
 // IO functions
 int cgrid::save()
 {
+  // SAVE THE GRID
+  FILE *pFile;
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+  pFile = fopen(filename, "wb");
 
-  MPI_File fh;
-  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  if(pFile == NULL)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
+    std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
   }
+  else
+    std::printf("Saving \"%s\"\n", filename);
 
-  // select noncontiguous part of 3d array to store the selected data
-  MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[] = "native";
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(mpi->mpicoordy == 0)
-    MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += itot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(mpi->mpicoordy == 0)
-    MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += itot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(mpi->mpicoordx == 0)
-    MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-  fileoff += jtot*sizeof(double);
-
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(mpi->mpicoordx == 0)
-    MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
-  MPI_Barrier(mpi->commxy);
-
-  MPI_File_sync(fh);
-  if(MPI_File_close(&fh))
-    return 1;
-
-  if(mpi->mpiid == 0)
-  {
-    FILE *pFile;
-    pFile = fopen(filename, "ab");
-    fwrite(&z [kstart], sizeof(double), kmax, pFile);
-    fwrite(&zh[kstart], sizeof(double), kmax, pFile);
-    fclose(pFile);
-  }
+  fwrite(&x [istart], sizeof(double), itot, pFile);
+  fwrite(&xh[istart], sizeof(double), itot, pFile);
+  fwrite(&y [jstart], sizeof(double), jtot, pFile);
+  fwrite(&yh[jstart], sizeof(double), jtot, pFile);
+  fwrite(&z [kstart], sizeof(double), ktot, pFile);
+  fwrite(&zh[kstart], sizeof(double), ktot, pFile);
+  fclose(pFile);
 
   // SAVE THE FFTW PLAN
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
@@ -396,23 +367,26 @@ int cgrid::save()
 int cgrid::load()
 {
   // LOAD THE GRID
+  FILE *pFile;
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
+  pFile = fopen(filename, "rb");
 
-  FILE *pFile;
-  if(mpi->mpiid == 0)
+  if(pFile == NULL)
   {
-    pFile = fopen(filename, "rb");
-    int n = (2*itot+2*jtot)*sizeof(double);
-    fseek(pFile, n, SEEK_SET);
-    fread(&z [kstart], sizeof(double), kmax, pFile);
-    fread(&zh[kstart], sizeof(double), kmax, pFile);
-    fclose(pFile);
+    std::printf("ERROR \"%s\" does not exist\n", filename);
+    return 1;
   }
+  else
+    std::printf("Loading \"%s\"\n", filename);
 
-  mpi->broadcast(&z [kstart], kmax);
-  mpi->broadcast(&zh[kstart], kmax);
+  fread(&x [istart], sizeof(double), itot, pFile);
+  fread(&xh[istart], sizeof(double), itot, pFile);
+  fread(&y [jstart], sizeof(double), jtot, pFile);
+  fread(&yh[jstart], sizeof(double), jtot, pFile);
+  fread(&z [kstart], sizeof(double), ktot, pFile);
+  fread(&zh[kstart], sizeof(double), ktot, pFile);
+  fclose(pFile);
 
   // calculate the missing coordinates
   calculate();
