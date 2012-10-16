@@ -1,3 +1,4 @@
+#ifndef PARALLEL
 #include <fftw3.h>
 #include <cstdio>
 #include "grid.h"
@@ -731,3 +732,4 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
 
   return 0;
 }
+#endif

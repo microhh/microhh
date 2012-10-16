@@ -1,3 +1,4 @@
+#ifdef PARALLEL
 #include <cstdio>
 #include <mpi.h>
 #include "grid.h"
@@ -181,3 +182,4 @@ int cmpi::broadcast(double *data, int datasize)
   MPI_Bcast(data, datasize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   return 0;
 }
+#endif
