@@ -373,9 +373,6 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
 {
   int ijk,jj,kk;
 
-  // transpose the pressure field
-  transposezx(tmp1,data);
-
   jj = itot;
   kk = itot*jmax;
 
@@ -387,7 +384,7 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
       for(int i=0; i<itot; i++)
       {
         ijk = i + j*jj + k*kk;
-        fftini[i] = tmp1[ijk];
+        fftini[i] = data[ijk];
       }
 
       fftw_execute(iplanf);
@@ -396,12 +393,9 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
       for(int i=0; i<itot; i++)
       {
         ijk = i + j*jj + k*kk;
-        tmp1[ijk] = fftouti[i];
+        data[ijk] = fftouti[i];
       }
     }
-
-  // transpose again
-  transposexy(data,tmp1);
 
   jj = iblock;
   kk = iblock*jtot;
@@ -422,12 +416,9 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
       {
         ijk = i + j*jj + k*kk;
         // shift to use p in pressure solver
-        tmp1[ijk] = fftoutj[j];
+        data[ijk] = fftoutj[j];
       }
     }
-
-  // transpose back to original orientation
-  transposeyz(data,tmp1);
 
   return 0;
 }
@@ -437,9 +428,6 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftinj, double * restrict fftoutj)
 {
   int ijk,jj,kk;
-
-  // transpose back to y
-  transposezy(tmp1, data);
 
   jj = iblock;
   kk = iblock*jtot;
@@ -451,7 +439,7 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
       for(int j=0; j<jtot; j++)
       {
         ijk = i + j*jj + k*kk;
-        fftinj[j] = tmp1[ijk];
+        fftinj[j] = data[ijk];
       }
 
       fftw_execute(jplanb);
@@ -462,9 +450,6 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
         data[ijk] = fftoutj[j] / jtot;
       }
     }
-
-  // transpose back to x
-  transposeyx(tmp1, data);
 
   jj = itot;
   kk = itot*jmax;
@@ -477,7 +462,7 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
       for(int i=0; i<itot; i++)
       {
         ijk = i + j*jj + k*kk;
-        fftini[i] = tmp1[ijk];
+        fftini[i] = data[ijk];
       }
 
       fftw_execute(iplanb);
@@ -487,12 +472,9 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
       {
         ijk = i + j*jj + k*kk;
         // swap array here to avoid unncessary 3d loop
-        data[ijk] = fftouti[i] / itot;
+        tmp1[ijk] = fftouti[i] / itot;
       }
     }
-
-  // and transpose back...
-  transposexz(tmp1, data);
 
   jj = imax;
   kk = imax*jmax;
