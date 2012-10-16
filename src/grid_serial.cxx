@@ -183,156 +183,108 @@ int cgrid::boundary_cyclic(double * restrict data)
 
 int cgrid::transposezx(double * restrict ar, double * restrict as)
 {
-  int ijks, ijkr;
-  int ncount = 1;
-  int tag = 1;
+  int ijk,jj,kk;
+  jj = imax;
+  kk = imax*jmax;
 
-  int jj = imax;
-  int kk = imax*jmax;
-
-  for(int n=0; n<mpi->npx; n++)
-  {
-    // determine where to fetch the data and where to store it
-    ijks = n*kblock*kk;
-    ijkr = n*jj;
-
-    // send and receive the data
-    MPI_Isend(&as[ijks], ncount, transposez, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
-  mpi->waitall();
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ar[ijk] = as[ijk];
+      }
 
   return 0;
 }
 
 int cgrid::transposexz(double * restrict ar, double * restrict as)
 {
-  int ijks, ijkr;
-  int ncount = 1;
-  int tag = 1;
+  int ijk,jj,kk;
+  jj = imax;
+  kk = imax*jmax;
 
-  int jj = imax;
-  int kk = imax*jmax;
-
-  for(int n=0; n<mpi->npx; n++)
-  {
-    // determine where to fetch the data and where to store it
-    ijks = n*jj;
-    ijkr = n*kblock*kk;
-
-    // send and receive the data
-    MPI_Isend(&as[ijks], ncount, transposex, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
-  mpi->waitall();
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ar[ijk] = as[ijk];
+      }
 
   return 0;
 }
 
 int cgrid::transposexy(double * restrict ar, double * restrict as)
 {
-  int ijks, ijkr;
-  int ncount = 1;
-  int tag = 1;
+  int ijk,jj,kk;
+  jj = imax;
+  kk = imax*jmax;
 
-  int jj = iblock;
-  int kk = iblock*jmax;
-
-  for(int n=0; n<mpi->npy; n++)
-  {
-    // determine where to fetch the data and where to store it
-    ijks = n*jj;
-    ijkr = n*kk;
-
-    // send and receive the data
-    MPI_Isend(&as[ijks], ncount, transposex2, n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
-  mpi->waitall();
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ar[ijk] = as[ijk];
+      }
 
   return 0;
 }
 
 int cgrid::transposeyx(double * restrict ar, double * restrict as)
 {
-  int ijks, ijkr;
-  int ncount = 1;
-  int tag = 1;
+  int ijk,jj,kk;
+  jj = imax;
+  kk = imax*jmax;
 
-  int jj = iblock;
-  int kk = iblock*jmax;
-
-  for(int n=0; n<mpi->npy; n++)
-  {
-    // determine where to fetch the data and where to store it
-    ijks = n*kk;
-    ijkr = n*jj;
-
-    // send and receive the data
-    MPI_Isend(&as[ijks], ncount, transposey , n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, mpi->commy, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
-  mpi->waitall();
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ar[ijk] = as[ijk];
+      }
 
   return 0;
 }
 
 int cgrid::transposeyz(double * restrict ar, double * restrict as)
 {
-  int ijks,ijkr;
-  int ncount = 1;
-  int tag = 1;
+  int ijk,jj,kk;
+  jj = imax;
+  kk = imax*jmax;
 
-  int jj = iblock;
-  int kk = iblock*jblock;
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ar[ijk] = as[ijk];
+      }
 
-  for(int n=0; n<mpi->npx; n++)
-  {
-    // determine where to fetch the data and where to store it
-    ijks = n*jblock*jj;
-    ijkr = n*kblock*kk;
-
-    // send and receive the data
-    MPI_Isend(&as[ijks], ncount, transposey2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
-  mpi->waitall();
- 
   return 0;
 }
 
 int cgrid::transposezy(double * restrict ar, double * restrict as)
 {
-  int ijks,ijkr;
-  int ncount = 1;
-  int tag = 1;
+  int ijk,jj,kk;
+  jj = imax;
+  kk = imax*jmax;
 
-  int jj = iblock;
-  int kk = iblock*jblock;
-
-  for(int n=0; n<mpi->npx; n++)
-  {
-    // determine where to fetch the data and where to store it
-    ijks = n*kblock*kk;
-    ijkr = n*jblock*jj;
-
-    // send and receive the data
-    MPI_Isend(&as[ijks], ncount, transposez2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-    MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, mpi->commx, &mpi->reqs[mpi->reqsn]);
-    mpi->reqsn++;
-  }
-  mpi->waitall();
+  for(int k=0; k<kmax; k++)
+    for(int j=0; j<jmax; j++)
+#pragma ivdep
+      for(int i=0; i<imax; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ar[ijk] = as[ijk];
+      }
 
   return 0;
 }
