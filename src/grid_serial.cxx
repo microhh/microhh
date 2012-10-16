@@ -443,96 +443,50 @@ int cgrid::load()
 
 int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
 {
-  // save the data in transposed order to have large chunks of contiguous disk space
-  // MPI-IO is not stable on Juqueen and supermuc otherwise
+  FILE *pFile;
+  pFile = fopen(filename, "wb");
 
-  // extract the data from the 3d field without the ghost cells
+  if(pFile == NULL)
+    return 1;
+
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
 
-  jj  = icells;
-  kk  = icells*jcells;
-  jjb = imax;
-  kkb = imax*jmax;
+  jj = icells;
+  kk = icells*jcells;
 
-  int count = imax*jmax*kmax;
-
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
-#pragma ivdep
-      for(int i=0; i<imax; i++)
+  for(int k=kstart; k<kend; k++)
+    for(int j=jstart; j<jend; j++)
       {
-        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        ijkb = i + j*jjb + k*kkb;
-        tmp1[ijkb] = data[ijk];
+        ijk = istart + j*jj + k*kk;
+        fwrite(&data[ijk], sizeof(double), imax, pFile);
       }
 
-  transposezx(tmp2, tmp1);
-
-  MPI_File fh;
-  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-    return 1;
-
-  // select noncontiguous part of 3d array to store the selected data
-  MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[] = "native";
-
-  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
-    return 1;
-
-  if(MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-    return 1;
-
-  if(MPI_File_close(&fh))
-    return 1;
+  fclose(pFile);
 
   return 0;
 }
 
 int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
 {
-  // save the data in transposed order to have large chunks of contiguous disk space
-  // MPI-IO is not stable on Juqueen and supermuc otherwise
+  FILE *pFile;
+  pFile = fopen(filename, "rb");
 
-  // read the file
-  MPI_File fh;
-  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  if(pFile == NULL)
     return 1;
-
-  // select noncontiguous part of 3d array to store the selected data
-  MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[] = "native";
-  MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
-
-  // extract the data from the 3d field without the ghost cells
-  int count = imax*jmax*kmax;
-
-  if(MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-    return 1;
-
-  if(MPI_File_close(&fh))
-    return 1;
-
-  // transpose the data back
-  transposexz(tmp2, tmp1);
 
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
 
-  jj  = icells;
-  kk  = icells*jcells;
-  jjb = imax;
-  kkb = imax*jmax;
+  jj = icells;
+  kk = icells*jcells;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
-#pragma ivdep
-      for(int i=0; i<imax; i++)
+  for(int k=kstart; k<kend; k++)
+    for(int j=jstart; j<jend; j++)
       {
-        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        ijkb = i + j*jjb + k*kkb;
-        data[ijk] = tmp2[ijkb];
+        ijk = istart + j*jj + k*kk;
+        fread(&data[ijk], sizeof(double), imax, pFile);
       }
+
+  fclose(pFile);
 
   return 0;
 }
