@@ -153,8 +153,8 @@ int cmpi::checkerror(int n)
 int cmpi::waitall()
 {
   // wait for MPI processes and reset the number of pending requests
-  // MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
-  // reqsn = 0;
+  MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
+  reqsn = 0;
 
   return 0;
 }
