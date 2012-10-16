@@ -7,7 +7,7 @@ mv u.0000002 u.0000002ref
 mv v.0000002 v.0000002ref
 mv w.0000002 w.0000002ref
 mv s.0000002 s.0000002ref
-mpiexec -n 16 ./dns drycbl_flow_restart 
+mpiexec -n 4 ./dns drycbl_flow_restart
 cmp u.0000002 u.0000002ref
 diffu=$?
 cmp v.0000002 v.0000002ref
