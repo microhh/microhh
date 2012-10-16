@@ -1,7 +1,9 @@
 #ifndef GRID
 #define GRID
 
+#ifdef PARALLEL
 #include <mpi.h>
+#endif
 #include <fftw3.h>
 #include "input.h"
 #include "mpiinterface.h"
@@ -97,7 +99,9 @@ class cgrid
   private:
     cmpi *mpi;
     bool allocated;
+    bool mpitypes;
 
+#ifdef PARALLEL
     // MPI Datatypes
     MPI_Datatype eastwestedge;
     MPI_Datatype northsouthedge;
@@ -111,7 +115,7 @@ class cgrid
     MPI_Datatype subj;
     MPI_Datatype subarray;
     double *profl;
-    bool mpitypes;
+#endif
 
     inline double interp4       (const double, const double, const double, const double);
     inline double grad4x        (const double, const double, const double, const double);

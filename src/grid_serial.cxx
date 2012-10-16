@@ -7,110 +7,12 @@
 // MPI functions
 int cgrid::initmpi()
 {
-  // create the MPI types for the cyclic boundary conditions
-  int datacount, datablock, datastride;
-
-  // east west
-  datacount  = jcells*kcells;
-  datablock  = igc;
-  datastride = icells;
-  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &eastwestedge);
-  MPI_Type_commit(&eastwestedge);
-
-  // north south
-  datacount  = kcells;
-  datablock  = icells*jgc;
-  datastride = icells*jcells;
-  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &northsouthedge);
-  MPI_Type_commit(&northsouthedge);
-
-  // transposez
-  datacount = imax*jmax*kblock;
-  MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez);
-  MPI_Type_commit(&transposez);
-
-  // transposez iblock/jblock/kblock
-  datacount = iblock*jblock*kblock;
-  MPI_Type_contiguous(datacount, MPI_DOUBLE, &transposez2);
-  MPI_Type_commit(&transposez2);
-
-  // transposex imax
-  datacount  = jmax*kblock;
-  datablock  = imax;
-  datastride = itot;
-  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposex);
-  MPI_Type_commit(&transposex);
-
-  // transposex iblock
-  datacount  = jmax*kblock;
-  datablock  = iblock;
-  datastride = itot;
-  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposex2);
-  MPI_Type_commit(&transposex2);
-
-  // transposey
-  datacount  = kblock;
-  datablock  = iblock*jmax;
-  datastride = iblock*jtot;
-  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposey);
-  MPI_Type_commit(&transposey);
-
-  // transposey2
-  datacount  = kblock;
-  datablock  = iblock*jblock;
-  datastride = iblock*jtot;
-  MPI_Type_vector(datacount, datablock, datastride, MPI_DOUBLE, &transposey2);
-  MPI_Type_commit(&transposey2);
-
-  // file saving and loading, take C-ordering into account
-  int totsizei  = itot;
-  int subsizei  = imax;
-  int substarti = mpi->mpicoordx*imax;
-  MPI_Type_create_subarray(1, &totsizei, &subsizei, &substarti, MPI_ORDER_C, MPI_DOUBLE, &subi);
-  MPI_Type_commit(&subi);
-
-  int totsizej  = jtot;
-  int subsizej  = jmax;
-  int substartj = mpi->mpicoordy*jmax;
-  MPI_Type_create_subarray(1, &totsizej, &subsizej, &substartj, MPI_ORDER_C, MPI_DOUBLE, &subj);
-  MPI_Type_commit(&subj);
-
-  // int totsize [3] = {kmax, jtot, itot};
-  // int subsize [3] = {kmax, jmax, imax};
-  // int substart[3] = {0, mpi->mpicoordy*jmax, mpi->mpicoordx*imax};
-  int totsize [3] = {kmax  , jtot, itot};
-  int subsize [3] = {kblock, jmax, itot};
-  int substart[3] = {mpi->mpicoordx*kblock, mpi->mpicoordy*jmax, 0};
-  MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
-  MPI_Type_commit(&subarray);
-
-  // allocate the array for the profiles
-  profl = new double[kcells];
-
   mpitypes = true;
-
   return 0;
 } 
 
 int cgrid::exitmpi()
 {
-  if(mpitypes)
-  {
-    MPI_Type_free(&eastwestedge);
-    MPI_Type_free(&northsouthedge);
-    MPI_Type_free(&transposez);
-    MPI_Type_free(&transposez2);
-    MPI_Type_free(&transposex);
-    MPI_Type_free(&transposex2);
-    MPI_Type_free(&transposey);
-    MPI_Type_free(&transposey2);
-    MPI_Type_free(&subi);
-    MPI_Type_free(&subj);
-    MPI_Type_free(&subarray);
-
-    delete[] profl;
-  }
-
   return 0;
 }
 

@@ -1,9 +1,10 @@
 #ifndef MPIINTERFACE
 #define MPIINTERFACE
 
+#ifdef PARALLEL
 #include <mpi.h>
+#endif
 #include "input.h"
-// #include "grid.h"
 
 class cmpi
 {
@@ -24,23 +25,6 @@ class cmpi
     int broadcast(double *, int);
     int broadcast(unsigned long *, int);
 
-//    int boundary_cyclic(double *);
-//    int transposezx(double *, double *);
-//    int transposexz(double *, double *);
-//    int transposexy(double *, double *);
-//    int transposeyx(double *, double *);
-//    int transposeyz(double *, double *);
-//
-//    int getmax(double *);
-//    int getsum(double *);
-//
-//    int writefield3d(double *, char *);
-//    int readfield3d(double *, char *);
-
-    MPI_Comm commxy;
-    MPI_Comm commx;
-    MPI_Comm commy;
-
     int nprocs;
     int npx;
     int npy;
@@ -48,27 +32,26 @@ class cmpi
     int mpicoordx;
     int mpicoordy;
 
+#ifdef PARALLEL
     int nnorth;
     int nsouth;
     int neast;
     int nwest;
 
+    MPI_Comm commxy;
+    MPI_Comm commx;
+    MPI_Comm commy;
+
     MPI_Request *reqs;
     int reqsn;
+#endif
 
   private:
-//    cgrid *grid;
-
     bool initialized;
     bool allocated;
 
+#ifdef PARALLEL
     int checkerror(int);
-    // MPI_Datatype eastwestedge;
-    // MPI_Datatype northsouthedge;
-    // MPI_Datatype transposez;
-    // MPI_Datatype transposex;
-    // MPI_Datatype transposex2;
-    // MPI_Datatype transposey;
-    // MPI_Datatype subarray;
+#endif
 };
 #endif
