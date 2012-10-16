@@ -291,27 +291,16 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
 
 int cgrid::getmax(double *var)
 {
-  double varl = *var;
-  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, mpi->commxy);
-
   return 0;
 }
 
 int cgrid::getsum(double *var)
 {
-  double varl = *var;
-  MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, mpi->commxy);
-
   return 0;
 }
 
 int cgrid::getprof(double *prof, int kcellsin)
 {
-  for(int k=0; k<kcellsin; k++)
-    profl[k] = prof[k] / mpi->nprocs;
-
-  MPI_Allreduce(profl, prof, kcellsin, MPI_DOUBLE, MPI_SUM, mpi->commxy);
-
   return 0;
 }
 
