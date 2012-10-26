@@ -476,24 +476,6 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
       }
     }
 
-  jj = imax;
-  kk = imax*jmax;
-
-  int ijkp,jjp,kkp1;
-  jjp  = icells;
-  kkp1 = icells*jcells;
-
-  // put the pressure back onto the original grid including ghost cells
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
-#pragma ivdep
-      for(int i=0; i<imax; i++)
-      {
-        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp1;
-        ijk  = i + j*jj + k*kk;
-        data[ijkp] = tmp1[ijk];
-      }
-
   return 0;
 }
 #endif

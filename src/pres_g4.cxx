@@ -427,85 +427,23 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
   
   grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
-  /*
-  // transpose back to y
-  grid->transposezy(work3d, p);
-  
-  jj = iblock;
-  kk = iblock*jtot;
-
-  // transform the second transform back
-  for(int k=0; k<kblock; k++)
-    for(int i=0; i<iblock; i++)
-    {
-      for(int j=0; j<jtot; j++)
-      { 
-        ijk = i + j*jj + k*kk;
-        fftinj[j] = work3d[ijk];
-      }
-
-      fftw_execute(jplanb);
-
-      for(int j=0; j<jtot; j++)
-      {
-        ijk = i + j*jj + k*kk;
-        p[ijk] = fftoutj[j] / jtot;
-      }
-    }
-
-  // transpose back to x
-  grid->transposeyx(work3d, p);
-
-  jj = itot;
-  kk = itot*jmax;
-
-  // transform the first transform back
-  for(int k=0; k<kblock; k++)
-    for(int j=0; j<jmax; j++)
-    {
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      { 
-        ijk = i + j*jj + k*kk;
-        fftini[i] = work3d[ijk];
-      }
-
-      fftw_execute(iplanb);
-
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        // swap array here to avoid unncessary 3d loop
-        p[ijk] = fftouti[i] / itot;
-      }
-    }
-
-  // and transpose back...
-  grid->transposexz(work3d, p);
-
+  // put the pressure back onto the original grid including ghost cells
   jj = imax;
   kk = imax*jmax;
 
-  int ijkp,jjp,kkp1;
-  jjp  = grid->icells;
-  kkp1 = 1*grid->icells*grid->jcells;
+  int ijkp,jjp,kkp;
+  jjp = grid->icells;
+  kkp = grid->icells*grid->jcells;
 
-  // put the pressure back onto the original grid including ghost cells
   for(int k=0; k<grid->kmax; k++)
     for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
       for(int i=0; i<grid->imax; i++)
       {
-        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp1;
+        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
         ijk  = i + j*jj + k*kk;
         p[ijkp] = work3d[ijk];
       }
-  */
-
-  int ijkp,jjp,kkp1;
-  jjp  = grid->icells;
-  kkp1 = grid->icells*grid->jcells;
 
   // set the boundary conditions
   // set a zero gradient boundary at the bottom
@@ -513,8 +451,8 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk = i + j*jjp + (grid->kstart-1)*kkp1;
-      p[ijk] = p[ijk+kkp1];
+      ijk = i + j*jjp + (grid->kstart-1)*kkp;
+      p[ijk] = p[ijk+kkp];
     }
 
   // set a zero gradient boundary at the top
@@ -522,8 +460,8 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk = i + j*jjp + (grid->kend)*kkp1;
-      p[ijk] = p[ijk-kkp1];
+      ijk = i + j*jjp + (grid->kend)*kkp;
+      p[ijk] = p[ijk-kkp];
     }
 
   // set the cyclic boundary conditions
