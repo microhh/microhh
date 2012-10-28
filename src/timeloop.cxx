@@ -27,14 +27,14 @@ int ctimeloop::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&maxiter     , "time", "maxiter");
+  n += inputin->getItem(&maxiter     , "time", "maxiter"  );
+  n += inputin->getItem(&startiter   , "time", "startiter");
 
   // optional parameters
   n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true);
   n += inputin->getItem(&dt          , "time", "dt"          , 0.1 );
   n += inputin->getItem(&cflmax      , "time", "cflmax"      , 1.  );
   n += inputin->getItem(&dnmax       , "time", "dnmax"       , 0.5 );
-  n += inputin->getItem(&iteration   , "time", "iteration"   , 0   );
   n += inputin->getItem(&rkorder     , "time", "rkorder"     , 4   );
   n += inputin->getItem(&outputiter  , "time", "outputiter"  , 100 );
   n += inputin->getItem(&saveiter    , "time", "saveiter"    , 500 );
@@ -46,7 +46,10 @@ int ctimeloop::readinifile(cinput *inputin)
     return 1;
 
   // the maximum iteration is relative to the start iteration
-  maxiter += iteration;
+  maxiter += startiter;
+
+  // the current iteration is set to the start iteration
+  iteration = startiter;
 
   // 3 and 4 are the only valid values for the rkorder
   if(!(rkorder == 3 || rkorder == 4))
@@ -90,7 +93,8 @@ int ctimeloop::docheck()
 
 int ctimeloop::dosave()
 {
-  if(iteration % saveiter == 0)
+  // do not save directly after the start of the simulation
+  if(iteration % saveiter == 0 && iteration != startiter)
     return 1;
 
   return 0;
@@ -99,7 +103,13 @@ int ctimeloop::dosave()
 int ctimeloop::dostats()
 {
   if(iteration % statsiter == 0)
+  {
+    // do not save directly after the start of the simulation, because it has been done
+    // at the end of the previous run, except for iteration 0
+    if(iteration == startiter && iteration != 0)
+      return 0;
     return 1;
+  }
 
   return 0;
 }

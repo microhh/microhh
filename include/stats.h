@@ -14,7 +14,7 @@ class cstats
 
     int readinifile(cinput *);
     int init();
-    int create();
+    int create(std::string, int);
     int exec(int, double);
 
   private:

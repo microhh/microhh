@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
     return 1;
   if(buffer.load())
     return 1;
-  if(stats.create())
+  if(stats.create(simname, timeloop.iteration))
     return 1;
 
   // initialize the diffusion to get the time step requirement

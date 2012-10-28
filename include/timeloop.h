@@ -60,6 +60,7 @@ class ctimeloop
     unsigned long iruntime;
     unsigned long idt;
 
+    int startiter;
     int outputiter;
     int saveiter;
     int statsiter;
