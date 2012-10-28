@@ -61,12 +61,14 @@ int cstats::init()
   return 0;
 }
 
-int cstats::create()
+int cstats::create(std::string simname, int n)
 {
   // create a NetCDF file for the statistics
   if(mpi->mpiid == 0)
   {
-    dataFile = new NcFile("test.nc", NcFile::Replace);
+    char filename[256];
+    std::sprintf(filename, "%s.%07d.nc", simname.c_str(), n);
+    dataFile = new NcFile(filename, NcFile::Replace);
     if(!dataFile->is_valid())
     {
       std::printf("ERROR: can't write statistics file");
