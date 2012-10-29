@@ -82,6 +82,7 @@ int cboundary::exec()
     // bottom boundary conditions
     setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
     setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
+    setgcbot_2nd((*fields->s).data, grid->dzh, bcbotscal, sbot);
 
     // top boundary conditions
     setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
