@@ -1,10 +1,6 @@
 [bugs]
 implement default option for randomnization such that it is applied over whole field
 
-[MPI]
-clean up MPI, such that code can be compiled without
-back out fourier transform from pressure to grid function such that unnecessary transposes are not made for serial or 1D parallel runs
-
 [performance]
 implement fftw_many
 vectorize 4th order pressure solver
