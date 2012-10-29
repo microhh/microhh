@@ -189,14 +189,41 @@ int main(int argc, char *argv[])
     if(!timeloop.loop)
       break;
 
-    // perform the timestepping substep
+    // PROGNOSTIC MODE
+    // integrate in time
     timeloop.exec();
+
+    // step the time step
+    if(!timeloop.insubstep())
+      timeloop.timestep();
+
+    // save the fields
+    if(timeloop.dosave() && !timeloop.insubstep())
+    {
+      timeloop.save(timeloop.iteration);
+      fields.save  (timeloop.iteration);
+    }
+    // END PROGNOSTIC MODE
+
+    /*
+    // DIAGNOSTIC MODE
+    // step to the next time step
+    timeloop.postprocstep();
+
+    // if simulation is done break
+    if(!timeloop.loop)
+      break;
+
+    // load the data
+    if(timeloop.load(timeloop.iteration))
+      return 1;
+    if(fields.load(timeloop.iteration))
+      return 1;
+    // END DIAGNOSTIC MODE
+    */
 
     // boundary conditions
     boundary.exec();
-
-    if(!timeloop.insubstep())
-      timeloop.timestep();
 
     if(timeloop.docheck() && !timeloop.insubstep())
     {
@@ -216,12 +243,6 @@ int main(int argc, char *argv[])
       if(mpi.mpiid == 0)
         std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
           iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
-    }
-
-    if(timeloop.dosave() && !timeloop.insubstep())
-    {
-      timeloop.save(timeloop.iteration);
-      fields.save  (timeloop.iteration);
     }
   }
 
