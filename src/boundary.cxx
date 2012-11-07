@@ -138,7 +138,7 @@ int cboundary::setbc_patch(double * restrict a, double facl, double facr, double
     {
       ij = i + j*jj;
       xmod = fmod(grid->x[i], patch_xh);
-      ymod = fmod(grid->y[i], patch_xh);
+      ymod = fmod(grid->y[j], patch_xh);
 
       if(xmod < xrmid)
         errvalx =  0.5*erf(0.5*(xmod-xrstart) / patch_xi);
@@ -155,7 +155,11 @@ int cboundary::setbc_patch(double * restrict a, double facl, double facr, double
       else
         errvaly = 1.;
 
-      a[ij] = 0.5*(avall+avalr) + (avalr-avall)*errvalx*errvaly;
+      // normalize the values between 0 and 1
+      errvalx = errvalx + 0.5;
+      errvaly = errvaly + 0.5;
+
+      a[ij] = avall + (avalr-avall)*errvalx*errvaly;
     }
 
   return 0;
