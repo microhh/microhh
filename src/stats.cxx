@@ -68,10 +68,10 @@ int cstats::create(std::string simname, int n)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d.nc", simname.c_str(), n);
-    dataFile = new NcFile(filename, NcFile::Replace);
+    dataFile = new NcFile(filename, NcFile::New);
     if(!dataFile->is_valid())
     {
-      std::printf("ERROR: can't write statistics file");
+      std::printf("ERROR cannot write statistics file\n");
       return 1;
     }
 
