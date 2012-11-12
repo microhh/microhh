@@ -27,22 +27,27 @@ class cstats
     NcFile *dataFile;
     NcDim  *z_dim, *zh_dim, *t_dim;
     NcVar  *z_var, *zh_var, *t_var, *iter_var;
-    NcVar  *u_var , *v_var , *w_var , *s_var ;
+    NcVar  *u_var , *v_var , *w_var , *s_var;
     NcVar  *u2_var, *v2_var, *w2_var, *s2_var;
+    NcVar  *u3_var, *v3_var, *w3_var, *s3_var;
+    NcVar  *sgrad_var;
     NcVar  *wu_var, *wv_var, *ws_var;
-    NcVar  *wud_var, *wvd_var, *wsd_var;
+    NcVar  *udiff_var, *vdiff_var, *sdiff_var;
     NcVar  *uflux_var, *vflux_var, *sflux_var;
 
     double *u , *v , *w , *s ;
     double *u2, *v2, *w2, *s2;
+    double *u3, *v3, *w3, *s3;
     double *wu , *wv , *ws ;
-    double *wud, *wvd, *wsd;
+    double *sgrad;
+    double *udiff, *vdiff, *sdiff;
     double *uflux, *vflux, *sflux;
 
-    int calcmean(double *, double *, int);
-    int calcvar (double *, double *, double *, int);
-    int calcflux(double *, double *, double *);
-    int calcdiff(double *, double *, double *, double);
+    int calcmean  (double *, double *, int);
+    int calcmoment(double *, double *, double *, double, int);
+    int calcflux  (double *, double *, double *);
+    int calcdiff  (double *, double *, double *, double);
+    int calcgrad  (double *, double *, double *);
     
     int nstats;
 };

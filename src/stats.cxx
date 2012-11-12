@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cmath>
 #include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
@@ -43,13 +44,20 @@ int cstats::init()
   w2 = new double[grid->kcells];
   s2 = new double[grid->kcells];
 
+  u3 = new double[grid->kcells];
+  v3 = new double[grid->kcells];
+  w3 = new double[grid->kcells];
+  s3 = new double[grid->kcells];
+
+  sgrad = new double[grid->kcells];
+
   wu = new double[grid->kcells];
   wv = new double[grid->kcells];
   ws = new double[grid->kcells];
 
-  wud = new double[grid->kcells];
-  wvd = new double[grid->kcells];
-  wsd = new double[grid->kcells];
+  udiff = new double[grid->kcells];
+  vdiff = new double[grid->kcells];
+  sdiff = new double[grid->kcells];
 
   uflux = new double[grid->kcells];
   vflux = new double[grid->kcells];
@@ -96,13 +104,20 @@ int cstats::create(std::string simname, int n)
     w2_var = dataFile->add_var("w2", ncDouble, t_dim, zh_dim);
     s2_var = dataFile->add_var("s2", ncDouble, t_dim, z_dim );
 
+    u3_var = dataFile->add_var("u3", ncDouble, t_dim, z_dim );
+    v3_var = dataFile->add_var("v3", ncDouble, t_dim, z_dim );
+    w3_var = dataFile->add_var("w3", ncDouble, t_dim, zh_dim);
+    s3_var = dataFile->add_var("s3", ncDouble, t_dim, z_dim );
+
+    sgrad_var = dataFile->add_var("sgrad", ncDouble, t_dim, zh_dim );
+
     wu_var = dataFile->add_var("wu", ncDouble, t_dim, zh_dim );
     wv_var = dataFile->add_var("wv", ncDouble, t_dim, zh_dim );
     ws_var = dataFile->add_var("ws", ncDouble, t_dim, zh_dim );
 
-    wud_var = dataFile->add_var("wud", ncDouble, t_dim, zh_dim );
-    wvd_var = dataFile->add_var("wvd", ncDouble, t_dim, zh_dim );
-    wsd_var = dataFile->add_var("wsd", ncDouble, t_dim, zh_dim );
+    udiff_var = dataFile->add_var("udiff", ncDouble, t_dim, zh_dim );
+    vdiff_var = dataFile->add_var("vdiff", ncDouble, t_dim, zh_dim );
+    sdiff_var = dataFile->add_var("sdiff", ncDouble, t_dim, zh_dim );
 
     uflux_var = dataFile->add_var("uflux", ncDouble, t_dim, zh_dim );
     vflux_var = dataFile->add_var("vflux", ncDouble, t_dim, zh_dim );
@@ -135,24 +150,37 @@ int cstats::exec(int iteration, double time)
   calcmean((*fields->w).data, w, 1);
   calcmean((*fields->s).data, s, 0);
 
-  calcvar((*fields->u).data, u, u2, 0);
-  calcvar((*fields->v).data, v, v2, 0);
-  calcvar((*fields->w).data, w, w2, 1);
-  calcvar((*fields->s).data, s, s2, 0);
+  // calc variances
+  calcmoment((*fields->u).data, u, u2, 2., 0);
+  calcmoment((*fields->v).data, v, v2, 2., 0);
+  calcmoment((*fields->w).data, w, w2, 2., 1);
+  calcmoment((*fields->s).data, s, s2, 2., 0);
 
+  // calc skewnesses
+  calcmoment((*fields->u).data, u, u3, 3., 0);
+  calcmoment((*fields->v).data, v, v3, 3., 0);
+  calcmoment((*fields->w).data, w, w3, 3., 1);
+  calcmoment((*fields->s).data, s, s3, 3., 0);
+
+  // calculate gradients
+  calcgrad((*fields->s).data, (*fields->w).data, sgrad);
+
+  // calculate turbulent fluxes
   calcflux((*fields->u).data, (*fields->w).data, wu);
   calcflux((*fields->v).data, (*fields->w).data, wv);
   calcflux((*fields->s).data, (*fields->w).data, ws);
 
-  calcdiff((*fields->u).data, wud, grid->dzhi4, fields->visc );
-  calcdiff((*fields->v).data, wvd, grid->dzhi4, fields->visc );
-  calcdiff((*fields->s).data, wsd, grid->dzhi4, fields->viscs);
+  // calculate diffusive fluxes
+  calcdiff((*fields->u).data, udiff, grid->dzhi4, fields->visc );
+  calcdiff((*fields->v).data, vdiff, grid->dzhi4, fields->visc );
+  calcdiff((*fields->s).data, sdiff, grid->dzhi4, fields->viscs);
 
+  // add the turbulent and diffusive fluxes
   for(int k=grid->kstart; k<grid->kend+1; k++)
   {
-    uflux[k] = wu[k] + wud[k];
-    vflux[k] = wv[k] + wvd[k];
-    sflux[k] = ws[k] + wsd[k];
+    uflux[k] = wu[k] + udiff[k];
+    vflux[k] = wv[k] + vdiff[k];
+    sflux[k] = ws[k] + sdiff[k];
   }
 
   if(mpi->mpiid == 0)
@@ -167,13 +195,20 @@ int cstats::exec(int iteration, double time)
     w2_var->put_rec(&w2[grid->kstart], nstats);
     s2_var->put_rec(&s2[grid->kstart], nstats);
 
+    u3_var->put_rec(&u3[grid->kstart], nstats);
+    v3_var->put_rec(&v3[grid->kstart], nstats);
+    w3_var->put_rec(&w3[grid->kstart], nstats);
+    s3_var->put_rec(&s3[grid->kstart], nstats);
+
+    sgrad_var->put_rec(&sgrad[grid->kstart], nstats);
+
     wu_var->put_rec(&wu[grid->kstart], nstats);
     wv_var->put_rec(&wv[grid->kstart], nstats);
     ws_var->put_rec(&ws[grid->kstart], nstats);
 
-    wud_var->put_rec(&wud[grid->kstart], nstats);
-    wvd_var->put_rec(&wvd[grid->kstart], nstats);
-    wsd_var->put_rec(&wsd[grid->kstart], nstats);
+    udiff_var->put_rec(&udiff[grid->kstart], nstats);
+    vdiff_var->put_rec(&vdiff[grid->kstart], nstats);
+    sdiff_var->put_rec(&sdiff[grid->kstart], nstats);
 
     uflux_var->put_rec(&uflux[grid->kstart], nstats);
     vflux_var->put_rec(&vflux[grid->kstart], nstats);
@@ -233,7 +268,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, int a)
   return 0;
 }
 
-int cstats::calcvar(double * restrict data, double * restrict datamean, double * restrict prof, int a)
+int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
   int    ijk,ii,jj,kk,kstart;
   double dxi,dyi;
@@ -255,7 +290,7 @@ int cstats::calcvar(double * restrict data, double * restrict datamean, double *
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += (data[ijk]-datamean[k])*(data[ijk]-datamean[k]);
+        prof[k] += std::pow(data[ijk]-datamean[k], power);
       }
   }
 
@@ -306,20 +341,49 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
   return 0;
 }
 
-int cstats::calcdiff(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
+int cstats::calcgrad(double * restrict data, double * restrict prof, double * restrict dzhi4)
 {
   int    ijk,ii,jj,kk1,kk2,kstart;
-  double dxi,dyi;
 
   ii  = 1;
-  jj  = grid->icells;
+  jj  = 1*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
   
   kstart = grid->kstart;
 
-  dxi = 1./grid->dx;
-  dyi = 1./grid->dy;
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk1;
+        prof[k] += (cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcdiff(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
+{
+  int    ijk,ii,jj,kk1,kk2,kstart;
+
+  ii  = 1;
+  jj  = 1*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+  
+  kstart = grid->kstart;
 
   for(int k=grid->kstart; k<grid->kend+1; k++)
   {
