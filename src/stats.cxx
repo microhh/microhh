@@ -163,7 +163,7 @@ int cstats::exec(int iteration, double time)
   calcmoment((*fields->s).data, s, s3, 3., 0);
 
   // calculate gradients
-  calcgrad((*fields->s).data, (*fields->w).data, sgrad);
+  calcgrad((*fields->s).data, sgrad, grid->dzhi4);
 
   // calculate turbulent fluxes
   calcflux((*fields->u).data, (*fields->w).data, wu);
@@ -310,7 +310,7 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
   double dxi,dyi;
 
   ii  = 1;
-  jj  = grid->icells;
+  jj  = 1*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
   
