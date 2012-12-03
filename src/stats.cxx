@@ -49,6 +49,8 @@ int cstats::init()
   w3 = new double[grid->kcells];
   s3 = new double[grid->kcells];
 
+  ugrad = new double[grid->kcells];
+  vgrad = new double[grid->kcells];
   sgrad = new double[grid->kcells];
 
   wu = new double[grid->kcells];
@@ -109,6 +111,8 @@ int cstats::create(std::string simname, int n)
     w3_var = dataFile->add_var("w3", ncDouble, t_dim, zh_dim);
     s3_var = dataFile->add_var("s3", ncDouble, t_dim, z_dim );
 
+    ugrad_var = dataFile->add_var("ugrad", ncDouble, t_dim, zh_dim );
+    vgrad_var = dataFile->add_var("vgrad", ncDouble, t_dim, zh_dim );
     sgrad_var = dataFile->add_var("sgrad", ncDouble, t_dim, zh_dim );
 
     wu_var = dataFile->add_var("wu", ncDouble, t_dim, zh_dim );
@@ -163,12 +167,14 @@ int cstats::exec(int iteration, double time)
   calcmoment((*fields->s).data, s, s3, 3., 0);
 
   // calculate gradients
+  calcgrad((*fields->u).data, ugrad, grid->dzhi4);
+  calcgrad((*fields->v).data, vgrad, grid->dzhi4);
   calcgrad((*fields->s).data, sgrad, grid->dzhi4);
 
   // calculate turbulent fluxes
-  calcflux((*fields->u).data, (*fields->w).data, wu);
-  calcflux((*fields->v).data, (*fields->w).data, wv);
-  calcflux((*fields->s).data, (*fields->w).data, ws);
+  calcflux((*fields->u).data, (*fields->w).data, wu, (*fields->w).data, 1, 0);
+  calcflux((*fields->v).data, (*fields->w).data, wv, (*fields->w).data, 0, 1);
+  calcflux((*fields->s).data, (*fields->w).data, ws, (*fields->w).data, 0, 0);
 
   // calculate diffusive fluxes
   calcdiff((*fields->u).data, udiff, grid->dzhi4, fields->visc );
@@ -200,6 +206,8 @@ int cstats::exec(int iteration, double time)
     w3_var->put_rec(&w3[grid->kstart], nstats);
     s3_var->put_rec(&s3[grid->kstart], nstats);
 
+    ugrad_var->put_rec(&ugrad[grid->kstart], nstats);
+    vgrad_var->put_rec(&vgrad[grid->kstart], nstats);
     sgrad_var->put_rec(&sgrad[grid->kstart], nstats);
 
     wu_var->put_rec(&wu[grid->kstart], nstats);
@@ -300,19 +308,28 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   return 0;
 }
 
-int cstats::calcflux(double * restrict data, double * restrict w, double * restrict prof)
+int cstats::calcflux(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
   int    ijk,ii,jj,kk1,kk2;
-  double dxi,dyi;
 
   ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
-  
-  dxi = 1./grid->dx;
-  dyi = 1./grid->dy;
 
+  // set a pointer to the field that contains w, either interpolated or the original
+  double * restrict calcw = w;
+  if(locx == 1)
+  {
+    grid->interpolatex_4th(tmp1, w, 0);
+    calcw = tmp1;
+  }
+  else if(locy == 1)
+  {
+    grid->interpolatey_4th(tmp1, w, 0);
+    calcw = tmp1;
+  }
+  
   for(int k=grid->kstart; k<grid->kend+1; k++)
   {
     prof[k] = 0.;
@@ -321,7 +338,7 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] += (ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*w[ijk];
+        prof[k] += (ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
       }
   }
 
@@ -369,7 +386,6 @@ int cstats::calcgrad(double * restrict data, double * restrict prof, double * re
 int cstats::calcdiff(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
 {
   int    ijk,ii,jj,kk1,kk2;
-
 
   ii  = 1;
   jj  = 1*grid->icells;

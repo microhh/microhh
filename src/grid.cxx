@@ -269,6 +269,7 @@ int cgrid::calculate()
   return 0;
 }
 
+// interpolation functions
 // CvH merge interpolate functions later to something more consise but still vectorizable
 int cgrid::interpolatex_4th(double * restrict out, double * restrict in, int locx)
 {
@@ -299,7 +300,7 @@ int cgrid::interpolatex_4th(double * restrict out, double * restrict in, int loc
 
 int cgrid::interpolatey_4th(double * restrict out, double * restrict in, int locy)
 {
-  // interpolation function, locx = 1 indicates that the reference is at the half level
+  // interpolation function, locy = 1 indicates that the reference is at the half level
   int ijk,ii1,ii2,jj1,jj2,kk1,kk2,jhlf;
 
   ii1 = 1;
@@ -311,7 +312,7 @@ int cgrid::interpolatey_4th(double * restrict out, double * restrict in, int loc
 
   jhlf = locy*jj1;
 
-  // interpolate in x
+  // interpolate in y
   for(int k=kstart; k<kend; k++)
     for(int j=jstart; j<jend; j++)
 #pragma ivdep
@@ -324,6 +325,7 @@ int cgrid::interpolatey_4th(double * restrict out, double * restrict in, int loc
   return 0;
 }
 
+/*
 int cgrid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
 {
   // interpolation function, locz = 1 indicates that the reference is at the half level
@@ -350,6 +352,7 @@ int cgrid::interpolatez_4th(double * restrict out, double * restrict in, int loc
 
   return 0;
 }
+*/
 // end of interpolation functions
 
 // CvH remove these two...
