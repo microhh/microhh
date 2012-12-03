@@ -269,6 +269,90 @@ int cgrid::calculate()
   return 0;
 }
 
+// CvH merge interpolate functions later to something more consise but still vectorizable
+int cgrid::interpolatex_4th(double * restrict out, double * restrict in, int locx)
+{
+  // interpolation function, locx = 1 indicates that the reference is at the half level
+  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,ihlf;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*icells;
+  jj2 = 2*icells;
+  kk1 = 1*icells*jcells;
+  kk2 = 2*icells*jcells;
+
+  ihlf = locx*ii1;
+
+  // interpolate in x
+  for(int k=kstart; k<kend; k++)
+    for(int j=jstart; j<jend; j++)
+#pragma ivdep
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        out[ijk] = ci0*in[ijk-ii2+ihlf] + ci1*in[ijk-ii1+ihlf] + ci2*in[ijk+ihlf] + ci3*in[ijk+ii1+ihlf];
+      }
+
+  return 0;
+}
+
+int cgrid::interpolatey_4th(double * restrict out, double * restrict in, int locy)
+{
+  // interpolation function, locx = 1 indicates that the reference is at the half level
+  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,jhlf;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*icells;
+  jj2 = 2*icells;
+  kk1 = 1*icells*jcells;
+  kk2 = 2*icells*jcells;
+
+  jhlf = locy*jj1;
+
+  // interpolate in x
+  for(int k=kstart; k<kend; k++)
+    for(int j=jstart; j<jend; j++)
+#pragma ivdep
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        out[ijk] = ci0*in[ijk-jj2+jhlf] + ci1*in[ijk-jj1+jhlf] + ci2*in[ijk+jhlf] + ci3*in[ijk+jj1+jhlf];
+      }
+
+  return 0;
+}
+
+int cgrid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
+{
+  // interpolation function, locz = 1 indicates that the reference is at the half level
+  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,khlf;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*icells;
+  jj2 = 2*icells;
+  kk1 = 1*icells*jcells;
+  kk2 = 2*icells*jcells;
+
+  khlf = locz*kk1;
+
+  // interpolate in x, add aditional level when interpolation goes to half levels to have values at wall
+  for(int k=kstart; k<kend+(1-locz); k++)
+    for(int j=jstart; j<jend; j++)
+#pragma ivdep
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        out[ijk] = ci0*in[ijk-kk2+khlf] + ci1*in[ijk-kk1+khlf] + ci2*in[ijk+khlf] + ci3*in[ijk+kk1+khlf];
+      }
+
+  return 0;
+}
+// end of interpolation functions
+
+// CvH remove these two...
 inline double cgrid::interp4(const double a, const double b, const double c, const double d)
 {
   return (-a + 9.*b + 9.*c - d) / 16.;

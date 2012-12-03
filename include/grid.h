@@ -96,6 +96,12 @@ class cgrid
     int fftforward (double *, double *, double *, double *, double *, double *);
     int fftbackward(double *, double *, double *, double *, double *, double *);
 
+    // interpolation functions
+    // CvH 2nd order functions are necessary
+    int interpolatex_4th(double *, double *, int);
+    int interpolatey_4th(double *, double *, int);
+    int interpolatez_4th(double *, double *, int);
+
   private:
     cmpi *mpi;
     bool allocated;
