@@ -234,15 +234,13 @@ int cstats::exec(int iteration, double time)
 
 int cstats::calcmean(double * restrict data, double * restrict prof, int a)
 {
-  int    ijk,ii,jj,kk,kstart;
+  int    ijk,ii,jj,kk;
   double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  kstart = grid->kstart;
-
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
@@ -270,15 +268,13 @@ int cstats::calcmean(double * restrict data, double * restrict prof, int a)
 
 int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
-  int    ijk,ii,jj,kk,kstart;
+  int    ijk,ii,jj,kk;
   double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  kstart = grid->kstart;
-
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
@@ -306,7 +302,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 
 int cstats::calcflux(double * restrict data, double * restrict w, double * restrict prof)
 {
-  int    ijk,ii,jj,kk1,kk2,kstart;
+  int    ijk,ii,jj,kk1,kk2;
   double dxi,dyi;
 
   ii  = 1;
@@ -314,8 +310,6 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
   
-  kstart = grid->kstart;
-
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
@@ -343,15 +337,13 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
 
 int cstats::calcgrad(double * restrict data, double * restrict prof, double * restrict dzhi4)
 {
-  int    ijk,ii,jj,kk1,kk2,kstart;
+  int    ijk,ii,jj,kk1,kk2;
 
   ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
   
-  kstart = grid->kstart;
-
   for(int k=grid->kstart; k<grid->kend+1; k++)
   {
     prof[k] = 0.;
@@ -376,15 +368,14 @@ int cstats::calcgrad(double * restrict data, double * restrict prof, double * re
 
 int cstats::calcdiff(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
 {
-  int    ijk,ii,jj,kk1,kk2,kstart;
+  int    ijk,ii,jj,kk1,kk2;
+
 
   ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
   
-  kstart = grid->kstart;
-
   for(int k=grid->kstart; k<grid->kend+1; k++)
   {
     prof[k] = 0.;
