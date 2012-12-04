@@ -452,6 +452,11 @@ int cgrid::load()
   if(mpi->mpiid == 0)
   {
     pFile = fopen(filename, "rb");
+    if(pFile == NULL)
+    {
+      std::printf("ERROR \"%s\" does not exist\n", filename);
+      return 1;
+    }
     int n = (2*itot+2*jtot)*sizeof(double);
     fseek(pFile, n, SEEK_SET);
     fread(&z [kstart], sizeof(double), kmax, pFile);
