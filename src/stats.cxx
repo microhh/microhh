@@ -172,9 +172,9 @@ int cstats::exec(int iteration, double time)
   calcgrad((*fields->s).data, sgrad, grid->dzhi4);
 
   // calculate turbulent fluxes
-  calcflux((*fields->u).data, (*fields->w).data, wu, (*fields->w).data, 1, 0);
-  calcflux((*fields->v).data, (*fields->w).data, wv, (*fields->w).data, 0, 1);
-  calcflux((*fields->s).data, (*fields->w).data, ws, (*fields->w).data, 0, 0);
+  calcflux((*fields->u).data, (*fields->w).data, wu, (*fields->tmp1).data, 1, 0);
+  calcflux((*fields->v).data, (*fields->w).data, wv, (*fields->tmp1).data, 0, 1);
+  calcflux((*fields->s).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
 
   // calculate diffusive fluxes
   calcdiff((*fields->u).data, udiff, grid->dzhi4, fields->visc );
