@@ -71,6 +71,7 @@ int cstats::init()
 
   u2_turb  = new double[grid->kcells];
   v2_turb  = new double[grid->kcells];
+  w2_turb  = new double[grid->kcells];
   tke_turb = new double[grid->kcells];
 
   // set the number of stats to zero
@@ -141,6 +142,7 @@ int cstats::create(std::string simname, int n)
 
     u2_turb_var  = dataFile->add_var("u2_turb" , ncDouble, t_dim, z_dim );
     v2_turb_var  = dataFile->add_var("v2_turb" , ncDouble, t_dim, z_dim );
+    w2_turb_var  = dataFile->add_var("w2_turb" , ncDouble, t_dim, z_dim );
     tke_turb_var = dataFile->add_var("tke_turb", ncDouble, t_dim, z_dim );
 
     // save the grid variables
@@ -209,8 +211,8 @@ int cstats::exec(int iteration, double time)
   calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->tmp1).data, (*fields->tmp2).data,
                 u, v,
                 u2_shear, v2_shear, tke_shear,
-                u2_turb , v2_turb , tke_turb,
-                grid->dzi4);
+                u2_turb, v2_turb, w2_turb, tke_turb,
+                grid->dzi4, grid->dzhi4);
 
   if(mpi->mpiid == 0)
   {
@@ -251,6 +253,7 @@ int cstats::exec(int iteration, double time)
 
     u2_turb_var ->put_rec(&u2_turb [grid->kstart], nstats);
     v2_turb_var ->put_rec(&v2_turb [grid->kstart], nstats);
+    w2_turb_var ->put_rec(&w2_turb [grid->kstart], nstats);
     tke_turb_var->put_rec(&tke_turb[grid->kstart], nstats);
   }
 
@@ -441,8 +444,8 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double * re
 int cstats::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict wx, double * restrict wy,
                           double * restrict umean, double * restrict vmean,
                           double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
-                          double * restrict u2_turb , double * restrict v2_turb , double * restrict tke_turb,
-                          double * restrict dzi4)
+                          double * restrict u2_turb, double * restrict v2_turb, double * restrict w2_turb, double * restrict tke_turb,
+                          double * restrict dzi4, double * restrict dzhi4)
 {
   // get w on the x and y location
   grid->interpolatex_4th(wx, w, 0);
@@ -481,8 +484,8 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
                        + cg2*(ci0*vmean[k-1] + ci1*vmean[k  ] + ci2*vmean[k+1] + ci3*vmean[k+2])
                        + cg3*(ci0*vmean[k  ] + ci1*vmean[k+1] + ci2*vmean[k+2] + ci3*vmean[k+3])) * dzi4[k];
 
-        tke_shear[k] = 0.5*(u2_shear[k] + v2_shear[k]);
       }
+    tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
   }
 
   for(int k=grid->kstart; k<grid->kend; k++)
@@ -496,12 +499,12 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
   grid->getprof(v2_shear , grid->kcells);
   grid->getprof(tke_shear, grid->kcells);
 
-
   // calculate the turbulent transport term
   for(int k=grid->kstart; k<grid->kend; k++)
   {
     u2_turb [k] = 0.;
     v2_turb [k] = 0.;
+    w2_turb [k] = 0.;
     tke_turb[k] = 0.;
 
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -509,29 +512,43 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk1;
-        u2_turb[k] -= ( cg0*(std::pow(ci0*(u[ijk-kk3]-umean[k-3]) + ci1*(u[ijk-kk2]-umean[k-2]) + ci2*(u[ijk-kk1]-umean[k-1]) + ci3*(u[ijk    ]-umean[k  ]), 2.)*wx[ijk-kk1])
-                      + cg1*(std::pow(ci0*(u[ijk-kk2]-umean[k-2]) + ci1*(u[ijk-kk1]-umean[k-1]) + ci2*(u[ijk    ]-umean[k  ]) + ci3*(u[ijk+kk1]-umean[k+1]), 2.)*wx[ijk    ])
-                      + cg2*(std::pow(ci0*(u[ijk-kk1]-umean[k-1]) + ci1*(u[ijk    ]-umean[k  ]) + ci2*(u[ijk+kk1]-umean[k+1]) + ci3*(u[ijk+kk2]-umean[k+2]), 2.)*wx[ijk+kk1])
-                      + cg3*(std::pow(ci0*(u[ijk    ]-umean[k  ]) + ci1*(u[ijk+kk1]-umean[k+1]) + ci2*(u[ijk+kk2]-umean[k+2]) + ci3*(u[ijk+kk3]-umean[k+3]), 2.)*wx[ijk+kk2])) * dzi4[k];
+        u2_turb[k]  -= ( cg0*(std::pow(ci0*(u[ijk-kk3]-umean[k-3]) + ci1*(u[ijk-kk2]-umean[k-2]) + ci2*(u[ijk-kk1]-umean[k-1]) + ci3*(u[ijk    ]-umean[k  ]), 2.)*wx[ijk-kk1])
+                       + cg1*(std::pow(ci0*(u[ijk-kk2]-umean[k-2]) + ci1*(u[ijk-kk1]-umean[k-1]) + ci2*(u[ijk    ]-umean[k  ]) + ci3*(u[ijk+kk1]-umean[k+1]), 2.)*wx[ijk    ])
+                       + cg2*(std::pow(ci0*(u[ijk-kk1]-umean[k-1]) + ci1*(u[ijk    ]-umean[k  ]) + ci2*(u[ijk+kk1]-umean[k+1]) + ci3*(u[ijk+kk2]-umean[k+2]), 2.)*wx[ijk+kk1])
+                       + cg3*(std::pow(ci0*(u[ijk    ]-umean[k  ]) + ci1*(u[ijk+kk1]-umean[k+1]) + ci2*(u[ijk+kk2]-umean[k+2]) + ci3*(u[ijk+kk3]-umean[k+3]), 2.)*wx[ijk+kk2])) * dzi4[k];
 
-        v2_turb[k] -= ( cg0*(std::pow(ci0*(v[ijk-kk3]-vmean[k-3]) + ci1*(v[ijk-kk2]-vmean[k-2]) + ci2*(v[ijk-kk1]-vmean[k-1]) + ci3*(v[ijk    ]-vmean[k  ]), 2.)*wy[ijk-kk1])
-                      + cg1*(std::pow(ci0*(v[ijk-kk2]-vmean[k-2]) + ci1*(v[ijk-kk1]-vmean[k-1]) + ci2*(v[ijk    ]-vmean[k  ]) + ci3*(v[ijk+kk1]-vmean[k+1]), 2.)*wy[ijk    ])
-                      + cg2*(std::pow(ci0*(v[ijk-kk1]-vmean[k-1]) + ci1*(v[ijk    ]-vmean[k  ]) + ci2*(v[ijk+kk1]-vmean[k+1]) + ci3*(v[ijk+kk2]-vmean[k+2]), 2.)*wy[ijk+kk1])
-                      + cg3*(std::pow(ci0*(v[ijk    ]-vmean[k  ]) + ci1*(v[ijk+kk1]-vmean[k+1]) + ci2*(v[ijk+kk2]-vmean[k+2]) + ci3*(v[ijk+kk3]-vmean[k+3]), 2.)*wy[ijk+kk2])) * dzi4[k];
+        v2_turb[k]  -= ( cg0*(std::pow(ci0*(v[ijk-kk3]-vmean[k-3]) + ci1*(v[ijk-kk2]-vmean[k-2]) + ci2*(v[ijk-kk1]-vmean[k-1]) + ci3*(v[ijk    ]-vmean[k  ]), 2.)*wy[ijk-kk1])
+                       + cg1*(std::pow(ci0*(v[ijk-kk2]-vmean[k-2]) + ci1*(v[ijk-kk1]-vmean[k-1]) + ci2*(v[ijk    ]-vmean[k  ]) + ci3*(v[ijk+kk1]-vmean[k+1]), 2.)*wy[ijk    ])
+                       + cg2*(std::pow(ci0*(v[ijk-kk1]-vmean[k-1]) + ci1*(v[ijk    ]-vmean[k  ]) + ci2*(v[ijk+kk1]-vmean[k+1]) + ci3*(v[ijk+kk2]-vmean[k+2]), 2.)*wy[ijk+kk1])
+                       + cg3*(std::pow(ci0*(v[ijk    ]-vmean[k  ]) + ci1*(v[ijk+kk1]-vmean[k+1]) + ci2*(v[ijk+kk2]-vmean[k+2]) + ci3*(v[ijk+kk3]-vmean[k+3]), 2.)*wy[ijk+kk2])) * dzi4[k];
 
-        tke_turb[k] = 0.5*(u2_turb[k] + v2_turb[k]);
+        tke_turb[k] -= ( cg0*std::pow(w[ijk-kk1], 3.) + cg0*std::pow(w[ijk], 3.) + cg0*std::pow(w[ijk+kk1], 3.) + cg0*std::pow(w[ijk+kk2], 3.)) * dzi4[k];
       }
+    tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
   }
+  for(int k=grid->kstart+1; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk1;
+        w2_turb[k] -= ( cg0*(std::pow(ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ], 3.))
+                      + cg1*(std::pow(ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1], 3.))
+                      + cg2*(std::pow(ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2], 3.))
+                      + cg3*(std::pow(ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3], 3.))) * dzhi4[k];
+      }
 
   for(int k=grid->kstart; k<grid->kend; k++)
   {
     u2_turb [k] /= n;
     v2_turb [k] /= n;
+    w2_turb [k] /= n;
     tke_turb[k] /= n;
   }
 
   grid->getprof(u2_turb , grid->kcells);
   grid->getprof(v2_turb , grid->kcells);
+  grid->getprof(w2_turb , grid->kcells);
   grid->getprof(tke_turb, grid->kcells);
 
   return 0;

@@ -4,8 +4,8 @@ import netCDF4
 
 from pylab import *
 
-start = 50
-end   = 101
+start = 12
+end   = 20
 
 # read Moser's data
 Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
@@ -23,9 +23,11 @@ wvarMoser  = Moserrey[:,4]
 
 u2_shearMoser = Moseru2[:,3]
 u2_turbMoser  = Moseru2[:,6]
+v2_turbMoser  = Moserv2[:,6]
+w2_turbMoser  = Moserw2[:,6]
 
-v2_shearMoser  = Moserv2 [:,3]
 tke_shearMoser = Mosertke[:,3]
+tke_turbMoser  = Mosertke[:,6]
 
 stats = netCDF4.Dataset("moser180.0000000.nc","r")
 t  = stats.variables["t"] [start:end]
@@ -38,11 +40,20 @@ vvart = stats.variables["v2"][start:end,:]
 wvart = stats.variables["w2"][start:end,:]
 
 wut    = stats.variables["wu"]   [start:end,:]
-wudt   = stats.variables["udiff"][start:end,:]
+udifft = stats.variables["udiff"][start:end,:]
 ufluxt = stats.variables["uflux"][start:end,:]
 
+# variance budgets
 u2_sheart = stats.variables["u2_shear"][start:end,:]
 u2_turbt  = stats.variables["u2_turb"] [start:end,:]
+
+v2_turbt  = stats.variables["v2_turb"] [start:end,:]
+
+w2_turbt  = stats.variables["w2_turb"] [start:end,:]
+
+# tke budget
+tke_sheart = stats.variables["tke_shear"][start:end,:]
+tke_turbt  = stats.variables["tke_turb"] [start:end,:]
 
 utotavgt = (uavgt**2. + vavgt**2.)**.5
 visc   = 1.0e-5
@@ -56,15 +67,19 @@ vvar = numpy.mean(vvart,0)
 wvar = numpy.mean(wvart,0)
 
 wu    = numpy.mean(wut,0)
-wud   = numpy.mean(wudt,0)
+udiff = numpy.mean(udifft,0)
 uflux = numpy.mean(ufluxt,0)
 
 u2_shear = numpy.mean(u2_sheart,0)
 u2_turb  = numpy.mean(u2_turbt ,0)
+v2_turb  = numpy.mean(v2_turbt ,0)
+w2_turb  = numpy.mean(w2_turbt ,0)
+
+tke_shear = numpy.mean(tke_sheart,0)
+tke_turb  = numpy.mean(tke_turbt ,0)
 
 utotavg = numpy.mean(utotavgt,0)
-
-ustar = numpy.mean(ustart)
+ustar   = numpy.mean(ustart)
 
 print('Re_tau = %.2f' % (ustar / visc))
 
@@ -126,14 +141,52 @@ grid()
 axis([0, 200, -0.6, 0.6])
 
 figure()
-#for n in range(end-start):
-#  plot(ufluxt[n,:] / ustar**2., zh, color='#cccccc')
-plot(uflux / ustar**2., zh, 'b-' , label='total flux')
-plot(wu    / ustar**2., zh, 'b--', label='turbulent flux')
-plot(wud   / ustar**2., zh, 'b:' , label='diffusive flux')
-xlabel('uflux')
-ylabel('y+')
+for n in range(end-start):
+  plot(yplus[starty:endy], v2_turbt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+plot(yplus[starty:endy], v2_turb[starty:endy] * visc / ustar**4., 'g-', label='Tt')
+plot(yplusMoser, v2_turbMoser , 'k--')
+xlabel('y+')
+ylabel('Ryy')
 legend(loc=0, frameon=False)
 grid()
-axis([-1.1, 1.1, 0., 2.])
+axis([0, 200, -0.06, 0.06])
+
+figure()
+for n in range(end-start):
+  plot(yplush[starty:endy], w2_turbt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+plot(yplush[starty:endy], w2_turb[starty:endy] * visc / ustar**4., 'g-', label='Tt')
+plot(yplusMoser, w2_turbMoser , 'k--')
+xlabel('y+')
+ylabel('Rzz')
+legend(loc=0, frameon=False)
+grid()
+axis([0, 200, -0.06, 0.06])
+
+figure()
+for n in range(end-start):
+  plot(yplus[starty:endy], tke_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
+  plot(yplus[starty:endy], tke_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+plot(yplus[starty:endy], tke_shear[starty:endy] * visc / ustar**4., 'b-', label='S')
+plot(yplus[starty:endy], tke_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
+plot(yplusMoser, tke_shearMoser, 'k--', label="Moser")
+plot(yplusMoser, tke_turbMoser , 'k--')
+xlabel('y+')
+ylabel('tke')
+legend(loc=0, frameon=False)
+grid()
+#axis([0, 200, -0.6, 0.6])
+
+figure()
+for n in range(end-start):
+  plot(zh, ufluxt[n,:] / ustar**2., color='#cccccc')
+  plot(zh, wut   [n,:] / ustar**2., color='#cccccc')
+  plot(zh, udifft[n,:] / ustar**2., color='#cccccc')
+plot(zh, uflux / ustar**2., 'b-' , label='total flux')
+plot(zh, wu    / ustar**2., 'b--', label='turbulent flux')
+plot(zh, udiff / ustar**2., 'b:' , label='diffusive flux')
+xlabel('y+')
+ylabel('uflux')
+legend(loc=0, frameon=False)
+grid()
+axis([0., 2., -1.1, 1.1])
  
