@@ -274,7 +274,7 @@ int cgrid::interpolatex_4th(double * restrict out, double * restrict in, int loc
   ihlf = locx*ii1;
 
   // interpolate in x
-  for(int k=kstart; k<kend; k++)
+  for(int k=0; k<kcells; k++)
     for(int j=jstart; j<jend; j++)
 #pragma ivdep
       for(int i=istart; i<iend; i++)
@@ -301,7 +301,7 @@ int cgrid::interpolatey_4th(double * restrict out, double * restrict in, int loc
   jhlf = locy*jj1;
 
   // interpolate in y
-  for(int k=kstart; k<kend; k++)
+  for(int k=0; k<kcells; k++)
     for(int j=jstart; j<jend; j++)
 #pragma ivdep
       for(int i=istart; i<iend; i++)
