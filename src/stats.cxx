@@ -65,6 +65,14 @@ int cstats::init()
   vflux = new double[grid->kcells];
   sflux = new double[grid->kcells];
 
+  u2_shear  = new double[grid->kcells];
+  v2_shear  = new double[grid->kcells];
+  tke_shear = new double[grid->kcells];
+
+  u2_turb  = new double[grid->kcells];
+  v2_turb  = new double[grid->kcells];
+  tke_turb = new double[grid->kcells];
+
   // set the number of stats to zero
   nstats = 0;
 
@@ -127,6 +135,14 @@ int cstats::create(std::string simname, int n)
     vflux_var = dataFile->add_var("vflux", ncDouble, t_dim, zh_dim );
     sflux_var = dataFile->add_var("sflux", ncDouble, t_dim, zh_dim );
 
+    u2_shear_var  = dataFile->add_var("u2_shear" , ncDouble, t_dim, z_dim );
+    v2_shear_var  = dataFile->add_var("v2_shear" , ncDouble, t_dim, z_dim );
+    tke_shear_var = dataFile->add_var("tke_shear", ncDouble, t_dim, z_dim );
+
+    u2_turb_var  = dataFile->add_var("u2_turb" , ncDouble, t_dim, z_dim );
+    v2_turb_var  = dataFile->add_var("v2_turb" , ncDouble, t_dim, z_dim );
+    tke_turb_var = dataFile->add_var("tke_turb", ncDouble, t_dim, z_dim );
+
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
     zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
@@ -149,10 +165,10 @@ int cstats::exec(int iteration, double time)
 
   // PROFILES
   // calculate means
-  calcmean((*fields->u).data, u, 0);
-  calcmean((*fields->v).data, v, 0);
-  calcmean((*fields->w).data, w, 1);
-  calcmean((*fields->s).data, s, 0);
+  calcmean((*fields->u).data, u);
+  calcmean((*fields->v).data, v);
+  calcmean((*fields->w).data, w);
+  calcmean((*fields->s).data, s);
 
   // calc variances
   calcmoment((*fields->u).data, u, u2, 2., 0);
@@ -189,6 +205,13 @@ int cstats::exec(int iteration, double time)
     sflux[k] = ws[k] + sdiff[k];
   }
 
+  // calculate the TKE budget
+  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->tmp1).data, (*fields->tmp2).data,
+                u, v,
+                u2_shear, v2_shear, tke_shear,
+                u2_turb , v2_turb , tke_turb,
+                grid->dzi4);
+
   if(mpi->mpiid == 0)
   {
     u_var->put_rec(&u[grid->kstart], nstats);
@@ -221,6 +244,14 @@ int cstats::exec(int iteration, double time)
     uflux_var->put_rec(&uflux[grid->kstart], nstats);
     vflux_var->put_rec(&vflux[grid->kstart], nstats);
     sflux_var->put_rec(&sflux[grid->kstart], nstats);
+
+    u2_shear_var ->put_rec(&u2_shear [grid->kstart], nstats);
+    v2_shear_var ->put_rec(&v2_shear [grid->kstart], nstats);
+    tke_shear_var->put_rec(&tke_shear[grid->kstart], nstats);
+
+    u2_turb_var ->put_rec(&u2_turb [grid->kstart], nstats);
+    v2_turb_var ->put_rec(&v2_turb [grid->kstart], nstats);
+    tke_turb_var->put_rec(&tke_turb[grid->kstart], nstats);
   }
 
   // calculate variance and higher order moments
@@ -240,19 +271,15 @@ int cstats::exec(int iteration, double time)
   return 0;
 }
 
-int cstats::calcmean(double * restrict data, double * restrict prof, int a)
+int cstats::calcmean(double * restrict data, double * restrict prof)
 {
-  int    ijk,ii,jj,kk;
-  double dxi,dyi;
+  int ijk,ii,jj,kk;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  dxi = 1./grid->dx;
-  dyi = 1./grid->dy;
-
-  for(int k=grid->kstart; k<grid->kend+a; k++)
+  for(int k=0; k<grid->kcells; k++)
   {
     prof[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -266,7 +293,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, int a)
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+a; k++)
+  for(int k=0; k<grid->kcells; k++)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -276,16 +303,13 @@ int cstats::calcmean(double * restrict data, double * restrict prof, int a)
 
 int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
-  int    ijk,ii,jj,kk;
+  int ijk,ii,jj,kk;
   double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  dxi = 1./grid->dx;
-  dyi = 1./grid->dy;
-
   for(int k=grid->kstart; k<grid->kend+a; k++)
   {
     prof[k] = 0.;
@@ -310,7 +334,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 
 int cstats::calcflux(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
-  int    ijk,ii,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2;
 
   ii  = 1;
   jj  = 1*grid->icells;
@@ -354,7 +378,7 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
 
 int cstats::calcgrad(double * restrict data, double * restrict prof, double * restrict dzhi4)
 {
-  int    ijk,ii,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2;
 
   ii  = 1;
   jj  = 1*grid->icells;
@@ -385,7 +409,7 @@ int cstats::calcgrad(double * restrict data, double * restrict prof, double * re
 
 int cstats::calcdiff(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
 {
-  int    ijk,ii,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2;
 
   ii  = 1;
   jj  = 1*grid->icells;
@@ -413,3 +437,103 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double * re
 
   return 0;
 }
+
+int cstats::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict wx, double * restrict wy,
+                          double * restrict umean, double * restrict vmean,
+                          double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
+                          double * restrict u2_turb , double * restrict v2_turb , double * restrict tke_turb,
+                          double * restrict dzi4)
+{
+  // get w on the x and y location
+  grid->interpolatex_4th(wx, w, 0);
+  grid->interpolatey_4th(wy, w, 0);
+
+  int ijk,ii,jj,kk1,kk2,kk3;
+
+  ii  = 1;
+  jj  = 1*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+  kk3 = 3*grid->icells*grid->jcells;
+
+  double n = grid->imax*grid->jmax;
+ 
+  // calculate the shear term u'w*dumean/dz
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    u2_shear [k] = 0.;
+    v2_shear [k] = 0.;
+    tke_shear[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk1;
+        u2_shear[k] += -2.*(u[ijk]-umean[k])*(ci0*wx[ijk-kk1] + ci1*wx[ijk] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2])
+                     * ( cg0*(ci0*umean[k-3] + ci1*umean[k-2] + ci2*umean[k-1] + ci3*umean[k  ])
+                       + cg1*(ci0*umean[k-2] + ci1*umean[k-1] + ci2*umean[k  ] + ci3*umean[k+1])
+                       + cg2*(ci0*umean[k-1] + ci1*umean[k  ] + ci2*umean[k+1] + ci3*umean[k+2])
+                       + cg3*(ci0*umean[k  ] + ci1*umean[k+1] + ci2*umean[k+2] + ci3*umean[k+3])) * dzi4[k];
+
+        v2_shear[k] += -2.*(v[ijk]-vmean[k])*(ci0*wy[ijk-kk1] + ci1*wy[ijk] + ci2*wy[ijk+kk1] + ci3*wy[ijk+kk2])
+                     * ( cg0*(ci0*vmean[k-3] + ci1*vmean[k-2] + ci2*vmean[k-1] + ci3*vmean[k  ])
+                       + cg1*(ci0*vmean[k-2] + ci1*vmean[k-1] + ci2*vmean[k  ] + ci3*vmean[k+1])
+                       + cg2*(ci0*vmean[k-1] + ci1*vmean[k  ] + ci2*vmean[k+1] + ci3*vmean[k+2])
+                       + cg3*(ci0*vmean[k  ] + ci1*vmean[k+1] + ci2*vmean[k+2] + ci3*vmean[k+3])) * dzi4[k];
+
+        tke_shear[k] = 0.5*(u2_shear[k] + v2_shear[k]);
+      }
+  }
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    u2_shear [k] /= n;
+    v2_shear [k] /= n;
+    tke_shear[k] /= n;
+  }
+
+  grid->getprof(u2_shear , grid->kcells);
+  grid->getprof(v2_shear , grid->kcells);
+  grid->getprof(tke_shear, grid->kcells);
+
+
+  // calculate the turbulent transport term
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    u2_turb [k] = 0.;
+    v2_turb [k] = 0.;
+    tke_turb[k] = 0.;
+
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk1;
+        u2_turb[k] += ( cg0*(std::pow(ci0*(u[ijk-kk3]-umean[k-3]) + ci1*(u[ijk-kk2]-umean[k-2]) + ci2*(u[ijk-kk1]-umean[k-1]) + ci3*(u[ijk    ]-umean[k  ]), 2.)*wx[ijk-kk1])
+                      + cg1*(std::pow(ci0*(u[ijk-kk2]-umean[k-2]) + ci1*(u[ijk-kk1]-umean[k-1]) + ci2*(u[ijk    ]-umean[k  ]) + ci3*(u[ijk+kk1]-umean[k+1]), 2.)*wx[ijk    ])
+                      + cg2*(std::pow(ci0*(u[ijk-kk1]-umean[k-1]) + ci1*(u[ijk    ]-umean[k  ]) + ci2*(u[ijk+kk1]-umean[k+1]) + ci3*(u[ijk+kk2]-umean[k+2]), 2.)*wx[ijk+kk1])
+                      + cg3*(std::pow(ci0*(u[ijk    ]-umean[k  ]) + ci1*(u[ijk+kk1]-umean[k+1]) + ci2*(u[ijk+kk2]-umean[k+2]) + ci3*(u[ijk+kk3]-umean[k+3]), 2.)*wx[ijk+kk2])) * dzi4[k];
+
+        v2_turb[k] += ( cg0*(std::pow(ci0*(v[ijk-kk3]-vmean[k-3]) + ci1*(v[ijk-kk2]-vmean[k-2]) + ci2*(v[ijk-kk1]-vmean[k-1]) + ci3*(v[ijk    ]-vmean[k  ]), 2.)*wy[ijk-kk1])
+                      + cg1*(std::pow(ci0*(v[ijk-kk2]-vmean[k-2]) + ci1*(v[ijk-kk1]-vmean[k-1]) + ci2*(v[ijk    ]-vmean[k  ]) + ci3*(v[ijk+kk1]-vmean[k+1]), 2.)*wy[ijk    ])
+                      + cg2*(std::pow(ci0*(v[ijk-kk1]-vmean[k-1]) + ci1*(v[ijk    ]-vmean[k  ]) + ci2*(v[ijk+kk1]-vmean[k+1]) + ci3*(v[ijk+kk2]-vmean[k+2]), 2.)*wy[ijk+kk1])
+                      + cg3*(std::pow(ci0*(v[ijk    ]-vmean[k  ]) + ci1*(v[ijk+kk1]-vmean[k+1]) + ci2*(v[ijk+kk2]-vmean[k+2]) + ci3*(v[ijk+kk3]-vmean[k+3]), 2.)*wy[ijk+kk2])) * dzi4[k];
+
+        tke_turb[k] = 0.5*(u2_turb[k] + v2_turb[k]);
+      }
+  }
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    u2_turb [k] /= n;
+    v2_turb [k] /= n;
+    tke_turb[k] /= n;
+  }
+
+  grid->getprof(u2_turb , grid->kcells);
+  grid->getprof(v2_turb , grid->kcells);
+  grid->getprof(tke_turb, grid->kcells);
+
+  return 0;
+}
+
