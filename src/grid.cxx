@@ -179,30 +179,33 @@ int cgrid::calculate()
     yh[j] = (j-jgc)*dy + yoff;
   }
 
-  // calculate the height of the ghost cell
-  z[kstart-1] = -z[kstart  ];
-  z[kstart-2] = -z[kstart+1];
-  z[kstart-3] = -z[kstart+2];
+  // THE CALCULATION OF GHOST CELLS AND FLUX LEVELS HAS TO GO ACCORDING TO NUMERICAL SCHEME!!!
+  // CvH 2nd order is missing now...
 
-  z[kend  ] = 2.*zsize - z[kend-1];
-  z[kend+1] = 2.*zsize - z[kend-2];
-  z[kend+2] = 2.*zsize - z[kend-3];
+  // calculate the height of the ghost cell
+  z[kstart-1] = -2.*z[kstart] + (1./3.)*z[kstart+1];
+  z[kstart-2] = -9.*z[kstart] +      2.*z[kstart+1];
+
+  z[kend  ] = (8./3.)*zsize - 2.*z[kend-1] + (1./3.)*z[kend-2];
+  z[kend+1] =      8.*zsize - 9.*z[kend-1] +      2.*z[kend-2];
+
+  // z[kstart-3] = -z[kstart+2];
+  // z[kend+2] = 2.*zsize - z[kend-3];
 
   // calculate the half levels according to the numerical scheme
-  // zh[0] = -999.;
-  // zh[kstart-1] = interp4biasbot(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1]);
   zh[kstart  ] = 0.;
   for(k=kstart+1; k<kend; k++)
-    zh[k] = interp4(z[k-2], z[k-1], z[k], z[k+1]);
+    zh[k] = ci0*z[k-2] + ci1*z[k-1] + ci2*z[k] + ci3*z[k+1];
   zh[kend] = zsize;
-  // zh[kend+1] = interp4biastop(z[kend-2], z[kend-1], z[kend], z[kend+1]);
-  //
-  zh[kstart-1] = -zh[kstart+1];
-  zh[kstart-2] = -zh[kstart+2];
-  zh[kstart-3] = -zh[kstart+3];
 
-  zh[kend+1] = 2.*zsize - zh[kend-1];
-  zh[kend+2] = 2.*zsize - zh[kend-2];
+  // zh[kstart-1] = -zh[kstart+1];
+  // zh[kend+1]   = 2.*zsize - zh[kend-1];
+  zh[kstart-1] = bi0*z[kstart-2] + bi1*z[kstart-1] + bi2*z[kstart] + bi3*z[kstart+1];
+  zh[kend+1]   = ti0*z[kend-2  ] + ti1*z[kend-1  ] + ti2*z[kend  ] + ti3*z[kend+1  ];
+
+  // zh[kstart-2] = -zh[kstart+2];
+  // zh[kstart-3] = -zh[kstart+3];
+  // zh[kend+2] = 2.*zsize - zh[kend-2];
 
   // compute the height of the grid cells
   for(k=1; k<kcells; k++)
@@ -224,47 +227,32 @@ int cgrid::calculate()
   dz [kend+2] = dz [kend-2];
   dzi[kend+2] = dzi[kend-2];
 
-  /*
-  // calculate the inverse gradients for the 4th order scheme
-  dzi4 [kstart] = 1./grad4xbiasbot(zh[kstart  ], zh[kstart+1], zh[kstart+2], zh[kstart+3]);
-  dzhi4[kstart] = 1./grad4xbiasbot(z [kstart-1], z [kstart  ], z [kstart+1], z [kstart+2]);
-  for(k=kstart+1; k<kend-1; k++)
-  {
-    dzi4 [k] = 1./grad4x(zh[k-1], zh[k  ], zh[k+1], zh[k+2]);
-    dzhi4[k] = 1./grad4x(z [k-2], z [k-1], z [k  ], z [k+1]);
-  }
-  dzi4 [kend-1] = 1./grad4xbiastop(zh[kend-3], zh[kend-2], zh[kend-1], zh[kend]);
-
-  dzhi4[kend-1] = 1./grad4x       (z[kend-3], z[kend-2], z[kend-1], z[kend]);
-  dzhi4[kend  ] = 1./grad4xbiastop(z[kend-3], z[kend-2], z[kend-1], z[kend]);
-  */
-  
-  // calculate the inverse gradients for the 4th order scheme
-  // dzi4 [0] = -999.;
-  // dzhi4[0] = -999.;
-  // dzi4 [kstart-1] = 1./grad4xbiasbot(zh[kstart-1], zh[kstart  ], zh[kstart+1], zh[kstart+2]);
-  // dzhi4[kstart-1] = 1./grad4xbiasbot(z [kstart-2], z [kstart-1], z [kstart  ], z [kstart+1]);
-  //
+  // calculate the fourth order gradients
   for(k=kstart; k<kend; k++)
   {
-    dzi4 [k] = 1./grad4x(zh[k-1], zh[k  ], zh[k+1], zh[k+2]);
-    dzhi4[k] = 1./grad4x(z [k-2], z [k-1], z [k  ], z [k+1]);
+    dzi4 [k] = 1./(cg0*zh[k-1] + cg1*zh[k  ] + cg2*zh[k+1] + cg3*zh[k+2]);
+    dzhi4[k] = 1./(cg0*z [k-2] + cg1*z [k-1] + cg2*z [k  ] + cg3*z [k+1]);
   }
-  dzhi4[kend  ] = 1./grad4x(z [kend-2], z [kend-1], z [kend], z [kend+1]);
+  dzhi4[kend  ] = 1./(cg0*z[kend-2] + cg1*z[kend-1] + cg2*z[kend] + cg3*z[kend+1]);
 
   // bc's
-  dzi4 [kstart-3] = dzi4 [kstart+2];
-  dzhi4[kstart-3] = dzhi4[kstart+3];
-  dzi4 [kstart-2] = dzi4 [kstart+1];
-  dzhi4[kstart-2] = dzhi4[kstart+2];
-  dzi4 [kstart-1] = dzi4 [kstart  ];
-  dzhi4[kstart-1] = dzhi4[kstart+1];
+  // dzi4 [kstart-1] = dzi4 [kstart  ];
+  // dzhi4[kstart-1] = dzhi4[kstart+1];
+  dzi4 [kstart-1] = 1./(bg0*zh[kstart-1] + bg1*zh[kstart  ] + bg2*zh[kstart+1] + bg3*zh[kstart+2]);
+  dzhi4[kstart-1] = 1./(bg0*z [kstart-2] + bg1*z [kstart-1] + bg2*z [kstart  ] + bg3*z [kstart+1]);
 
-  dzi4 [kend  ] = dzi4 [kend-1];
-  dzi4 [kend+1] = dzi4 [kend-2];
-  dzhi4[kend+1] = dzhi4[kend-1];
-  dzi4 [kend+2] = dzi4 [kend-3];
-  dzhi4[kend+2] = dzhi4[kend-2];
+  // dzi4 [kend  ] = dzi4 [kend-1];
+  // dzhi4[kend+1] = dzhi4[kend-1];
+  dzi4 [kend  ] = 1./(tg0*zh[kend-2] + tg1*zh[kend-1] + tg2*zh[kend] + tg3*zh[kend+1]);
+  dzhi4[kend+1] = 1./(tg0*z [kend-2] + tg1*z [kend-1] + tg2*z [kend] + tg3*z [kend+1]);
+
+  // dzi4 [kstart-3] = dzi4 [kstart+2];
+  // dzhi4[kstart-3] = dzhi4[kstart+3];
+  // dzi4 [kstart-2] = dzi4 [kstart+1];
+  // dzhi4[kstart-2] = dzhi4[kstart+2];
+  // dzi4 [kend+1] = dzi4 [kend-2];
+  // dzi4 [kend+2] = dzi4 [kend-3];
+  // dzhi4[kend+2] = dzhi4[kend-2];
 
   return 0;
 }
