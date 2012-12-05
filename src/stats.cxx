@@ -84,6 +84,9 @@ int cstats::init()
   w2_diss  = new double[grid->kcells];
   tke_diss = new double[grid->kcells];
 
+  w2_pres  = new double[grid->kcells];
+  tke_pres = new double[grid->kcells];
+
   // set the number of stats to zero
   nstats = 0;
 
@@ -165,6 +168,9 @@ int cstats::create(std::string simname, int n)
     w2_diss_var  = dataFile->add_var("w2_diss" , ncDouble, t_dim, z_dim );
     tke_diss_var = dataFile->add_var("tke_diss", ncDouble, t_dim, z_dim );
 
+    w2_pres_var  = dataFile->add_var("w2_pres" , ncDouble, t_dim, z_dim );
+    tke_pres_var = dataFile->add_var("tke_pres", ncDouble, t_dim, z_dim );
+
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
     zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
@@ -228,12 +234,14 @@ int cstats::exec(int iteration, double time)
   }
 
   // calculate the TKE budget
-  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->tmp1).data, (*fields->tmp2).data,
+  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->p).data,
+                (*fields->tmp1).data, (*fields->tmp2).data,
                 u, v,
                 u2_shear, v2_shear, tke_shear,
                 u2_turb, v2_turb, w2_turb, tke_turb,
                 u2_visc, v2_visc, w2_visc, tke_visc,
                 u2_diss, v2_diss, w2_diss, tke_diss,
+                w2_pres, tke_pres,
                 grid->dzi4, grid->dzhi4, fields->visc);
 
   if(mpi->mpiid == 0)
@@ -287,6 +295,9 @@ int cstats::exec(int iteration, double time)
     v2_diss_var ->put_rec(&v2_diss [grid->kstart], nstats);
     w2_diss_var ->put_rec(&w2_diss [grid->kstart], nstats);
     tke_diss_var->put_rec(&tke_diss[grid->kstart], nstats);
+
+    w2_pres_var ->put_rec(&w2_pres [grid->kstart], nstats);
+    tke_pres_var->put_rec(&tke_pres[grid->kstart], nstats);
   }
 
   // calculate variance and higher order moments
@@ -472,12 +483,14 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double * re
   return 0;
 }
 
-int cstats::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict wx, double * restrict wy,
+int cstats::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
+                          double * restrict wx, double * restrict wy,
                           double * restrict umean, double * restrict vmean,
                           double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
                           double * restrict u2_turb, double * restrict v2_turb, double * restrict w2_turb, double * restrict tke_turb,
                           double * restrict u2_visc, double * restrict v2_visc, double * restrict w2_visc, double * restrict tke_visc,
                           double * restrict u2_diss, double * restrict v2_diss, double * restrict w2_diss, double * restrict tke_diss,
+                          double * restrict w2_pres, double * restrict tke_pres,
                           double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   // get w on the x and y location
@@ -588,6 +601,44 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
   grid->getprof(v2_turb , grid->kcells);
   grid->getprof(w2_turb , grid->kcells);
   grid->getprof(tke_turb, grid->kcells);
+
+  // calculate the pressure transport term
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    w2_pres [k] = 0.;
+    tke_pres[k] = 0.;
+
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj1 + k*kk1;
+        tke_pres[k] -= ( cg0*((ci0*p[ijk-kk3] + ci1*p[ijk-kk2] + ci2*p[ijk-kk1] + ci3*p[ijk    ])*w[ijk-kk1])
+                       + cg1*((ci0*p[ijk-kk2] + ci1*p[ijk-kk1] + ci2*p[ijk    ] + ci3*p[ijk+kk1])*w[ijk    ])
+                       + cg2*((ci0*p[ijk-kk1] + ci1*p[ijk    ] + ci2*p[ijk+kk1] + ci3*p[ijk+kk2])*w[ijk+kk1])
+                       + cg3*((ci0*p[ijk    ] + ci1*p[ijk+kk1] + ci2*p[ijk+kk2] + ci3*p[ijk+kk3])*w[ijk+kk2]) ) * dzi4[k];
+      }
+  }
+  for(int k=grid->kstart+1; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj1 + k*kk1;
+        w2_pres[k] -= ( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ])*p[ijk-kk2])
+                      + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1])*p[ijk-kk1])
+                      + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*p[ijk    ])
+                      + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])*p[ijk+kk1]) ) * dzhi4[k];
+      }
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    w2_pres [k] /= n;
+    tke_pres[k] /= n;
+  }
+
+  grid->getprof(w2_pres , grid->kcells);
+  grid->getprof(tke_pres, grid->kcells);
 
 
   // calculate the viscous transport term
