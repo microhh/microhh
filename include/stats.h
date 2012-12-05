@@ -39,6 +39,7 @@ class cstats
     NcVar  *u2_visc_var, *v2_visc_var, *w2_visc_var, *tke_visc_var;
     NcVar  *u2_diss_var, *v2_diss_var, *w2_diss_var, *tke_diss_var;
     NcVar  *w2_pres_var, *tke_pres_var;
+    NcVar  *u2_rdstr_var, *v2_rdstr_var, *w2_rdstr_var;
 
     double *u , *v , *w , *s ;
     double *u2, *v2, *w2, *s2;
@@ -52,6 +53,7 @@ class cstats
     double *u2_visc, *v2_visc, *w2_visc, *tke_visc;
     double *u2_diss, *v2_diss, *w2_diss, *tke_diss;
     double *w2_pres, *tke_pres;
+    double *u2_rdstr, *v2_rdstr, *w2_rdstr;
 
     int calcmean     (double *, double *);
     int calcmoment   (double *, double *, double *, double, int);
@@ -66,6 +68,7 @@ class cstats
                       double *, double *, double *, double *,
                       double *, double *, double *, double *,
                       double *, double *,
+                      double *, double *, double *,
                       double *, double *, double);
     int nstats;
 };

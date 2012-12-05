@@ -87,6 +87,10 @@ int cstats::init()
   w2_pres  = new double[grid->kcells];
   tke_pres = new double[grid->kcells];
 
+  u2_rdstr  = new double[grid->kcells];
+  v2_rdstr  = new double[grid->kcells];
+  w2_rdstr  = new double[grid->kcells];
+
   // set the number of stats to zero
   nstats = 0;
 
@@ -171,6 +175,10 @@ int cstats::create(std::string simname, int n)
     w2_pres_var  = dataFile->add_var("w2_pres" , ncDouble, t_dim, z_dim );
     tke_pres_var = dataFile->add_var("tke_pres", ncDouble, t_dim, z_dim );
 
+    u2_rdstr_var  = dataFile->add_var("u2_rdstr" , ncDouble, t_dim, z_dim );
+    v2_rdstr_var  = dataFile->add_var("v2_rdstr" , ncDouble, t_dim, z_dim );
+    w2_rdstr_var  = dataFile->add_var("w2_rdstr" , ncDouble, t_dim, z_dim );
+
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
     zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
@@ -242,6 +250,7 @@ int cstats::exec(int iteration, double time)
                 u2_visc, v2_visc, w2_visc, tke_visc,
                 u2_diss, v2_diss, w2_diss, tke_diss,
                 w2_pres, tke_pres,
+                u2_rdstr, v2_rdstr, w2_rdstr,
                 grid->dzi4, grid->dzhi4, fields->visc);
 
   if(mpi->mpiid == 0)
@@ -298,6 +307,10 @@ int cstats::exec(int iteration, double time)
 
     w2_pres_var ->put_rec(&w2_pres [grid->kstart], nstats);
     tke_pres_var->put_rec(&tke_pres[grid->kstart], nstats);
+
+    u2_rdstr_var ->put_rec(&u2_rdstr [grid->kstart], nstats);
+    v2_rdstr_var ->put_rec(&v2_rdstr [grid->kstart], nstats);
+    w2_rdstr_var ->put_rec(&w2_rdstr [grid->kstart], nstats);
   }
 
   // calculate variance and higher order moments
@@ -491,6 +504,7 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
                           double * restrict u2_visc, double * restrict v2_visc, double * restrict w2_visc, double * restrict tke_visc,
                           double * restrict u2_diss, double * restrict v2_diss, double * restrict w2_diss, double * restrict tke_diss,
                           double * restrict w2_pres, double * restrict tke_pres,
+                          double * restrict u2_rdstr, double * restrict v2_rdstr, double * restrict w2_rdstr,
                           double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   // get w on the x and y location
@@ -785,6 +799,56 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
   grid->getprof(v2_diss , grid->kcells);
   grid->getprof(w2_diss , grid->kcells);
   grid->getprof(tke_diss, grid->kcells);
+
+
+  // calculate the pressure redistribution term
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    u2_rdstr [k] = 0.;
+    v2_rdstr [k] = 0.;
+    w2_rdstr [k] = 0.;
+
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj1 + k*kk1;
+        u2_rdstr [k] += 2.*(ci0*p[ijk-ii2] + ci1*p[ijk-ii1] + ci2*p[ijk] + ci3*p[ijk+ii1])*
+                        ( cg0*((ci0*(u[ijk-ii3]-umean[k]) + ci1*(u[ijk-ii2]-umean[k]) + ci2*(u[ijk-ii1]-umean[k]) + ci3*(u[ijk    ]-umean[k])))
+                        + cg1*((ci0*(u[ijk-ii2]-umean[k]) + ci1*(u[ijk-ii1]-umean[k]) + ci2*(u[ijk    ]-umean[k]) + ci3*(u[ijk+ii1]-umean[k])))
+                        + cg2*((ci0*(u[ijk-ii1]-umean[k]) + ci1*(u[ijk    ]-umean[k]) + ci2*(u[ijk+ii1]-umean[k]) + ci3*(u[ijk+ii2]-umean[k])))
+                        + cg3*((ci0*(u[ijk    ]-umean[k]) + ci1*(u[ijk+ii1]-umean[k]) + ci2*(u[ijk+ii2]-umean[k]) + ci3*(u[ijk+ii3]-umean[k]))) ) * cgi*dxi;
+        v2_rdstr [k] += 2.*(ci0*p[ijk-jj2] + ci1*p[ijk-jj1] + ci2*p[ijk] + ci3*p[ijk+jj1])*
+                        ( cg0*((ci0*(v[ijk-jj3]-vmean[k]) + ci1*(v[ijk-jj2]-vmean[k]) + ci2*(v[ijk-jj1]-vmean[k]) + ci3*(v[ijk    ]-vmean[k])))
+                        + cg1*((ci0*(v[ijk-jj2]-vmean[k]) + ci1*(v[ijk-jj1]-vmean[k]) + ci2*(v[ijk    ]-vmean[k]) + ci3*(v[ijk+jj1]-vmean[k])))
+                        + cg2*((ci0*(v[ijk-jj1]-vmean[k]) + ci1*(v[ijk    ]-vmean[k]) + ci2*(v[ijk+jj1]-vmean[k]) + ci3*(v[ijk+jj2]-vmean[k])))
+                        + cg3*((ci0*(v[ijk    ]-vmean[k]) + ci1*(v[ijk+jj1]-vmean[k]) + ci2*(v[ijk+jj2]-vmean[k]) + ci3*(v[ijk+jj3]-vmean[k]))) ) * cgi*dyi;
+      }
+  }
+  for(int k=grid->kstart+1; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj1 + k*kk1;
+        w2_rdstr[k] += 2.*(ci0*p[ijk-kk2] + ci1*p[ijk-kk1] + ci2*p[ijk] + ci3*p[ijk+kk1])*
+                       ( cg0*(ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ])
+                       + cg1*(ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1])
+                       + cg2*(ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])
+                       + cg3*(ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) ) * dzhi4[k];
+      }
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    u2_rdstr [k] /= n;
+    v2_rdstr [k] /= n;
+    w2_rdstr [k] /= n;
+  }
+
+  grid->getprof(u2_rdstr , grid->kcells);
+  grid->getprof(v2_rdstr , grid->kcells);
+  grid->getprof(w2_rdstr , grid->kcells);
+
   return 0;
 }
 
