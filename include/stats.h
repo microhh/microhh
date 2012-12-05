@@ -36,6 +36,7 @@ class cstats
     NcVar  *uflux_var, *vflux_var, *sflux_var;
     NcVar  *u2_shear_var, *v2_shear_var, *tke_shear_var;
     NcVar  *u2_turb_var, *v2_turb_var, *w2_turb_var, *tke_turb_var;
+    NcVar  *u2_visc_var, *v2_visc_var, *w2_visc_var, *tke_visc_var;
 
     double *u , *v , *w , *s ;
     double *u2, *v2, *w2, *s2;
@@ -46,6 +47,7 @@ class cstats
     double *uflux, *vflux, *sflux;
     double *u2_shear, *v2_shear, *tke_shear;
     double *u2_turb, *v2_turb, *w2_turb, *tke_turb;
+    double *u2_visc, *v2_visc, *w2_visc, *tke_visc;
 
     int calcmean     (double *, double *);
     int calcmoment   (double *, double *, double *, double, int);
@@ -56,7 +58,8 @@ class cstats
                       double *, double *,
                       double *, double *, double *,
                       double *, double *, double *, double *,
-                      double *, double *);
+                      double *, double *, double *, double *,
+                      double *, double *, double);
     int nstats;
 };
 #endif

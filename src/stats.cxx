@@ -74,6 +74,11 @@ int cstats::init()
   w2_turb  = new double[grid->kcells];
   tke_turb = new double[grid->kcells];
 
+  u2_visc  = new double[grid->kcells];
+  v2_visc  = new double[grid->kcells];
+  w2_visc  = new double[grid->kcells];
+  tke_visc = new double[grid->kcells];
+
   // set the number of stats to zero
   nstats = 0;
 
@@ -145,6 +150,11 @@ int cstats::create(std::string simname, int n)
     w2_turb_var  = dataFile->add_var("w2_turb" , ncDouble, t_dim, z_dim );
     tke_turb_var = dataFile->add_var("tke_turb", ncDouble, t_dim, z_dim );
 
+    u2_visc_var  = dataFile->add_var("u2_visc" , ncDouble, t_dim, z_dim );
+    v2_visc_var  = dataFile->add_var("v2_visc" , ncDouble, t_dim, z_dim );
+    w2_visc_var  = dataFile->add_var("w2_visc" , ncDouble, t_dim, z_dim );
+    tke_visc_var = dataFile->add_var("tke_visc", ncDouble, t_dim, z_dim );
+
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
     zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
@@ -212,7 +222,8 @@ int cstats::exec(int iteration, double time)
                 u, v,
                 u2_shear, v2_shear, tke_shear,
                 u2_turb, v2_turb, w2_turb, tke_turb,
-                grid->dzi4, grid->dzhi4);
+                u2_visc, v2_visc, w2_visc, tke_visc,
+                grid->dzi4, grid->dzhi4, fields->visc);
 
   if(mpi->mpiid == 0)
   {
@@ -255,6 +266,11 @@ int cstats::exec(int iteration, double time)
     v2_turb_var ->put_rec(&v2_turb [grid->kstart], nstats);
     w2_turb_var ->put_rec(&w2_turb [grid->kstart], nstats);
     tke_turb_var->put_rec(&tke_turb[grid->kstart], nstats);
+
+    u2_visc_var ->put_rec(&u2_visc [grid->kstart], nstats);
+    v2_visc_var ->put_rec(&v2_visc [grid->kstart], nstats);
+    w2_visc_var ->put_rec(&w2_visc [grid->kstart], nstats);
+    tke_visc_var->put_rec(&tke_visc[grid->kstart], nstats);
   }
 
   // calculate variance and higher order moments
@@ -445,7 +461,8 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
                           double * restrict umean, double * restrict vmean,
                           double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
                           double * restrict u2_turb, double * restrict v2_turb, double * restrict w2_turb, double * restrict tke_turb,
-                          double * restrict dzi4, double * restrict dzhi4)
+                          double * restrict u2_visc, double * restrict v2_visc, double * restrict w2_visc, double * restrict tke_visc,
+                          double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   // get w on the x and y location
   grid->interpolatex_4th(wx, w, 0);
@@ -460,7 +477,8 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
   kk3 = 3*grid->icells*grid->jcells;
 
   double n = grid->imax*grid->jmax;
- 
+
+
   // calculate the shear term u'w*dumean/dz
   for(int k=grid->kstart; k<grid->kend; k++)
   {
@@ -499,6 +517,7 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
   grid->getprof(v2_shear , grid->kcells);
   grid->getprof(tke_shear, grid->kcells);
 
+
   // calculate the turbulent transport term
   for(int k=grid->kstart; k<grid->kend; k++)
   {
@@ -512,15 +531,15 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk1;
-        u2_turb[k]  -= ( cg0*(std::pow(ci0*(u[ijk-kk3]-umean[k-3]) + ci1*(u[ijk-kk2]-umean[k-2]) + ci2*(u[ijk-kk1]-umean[k-1]) + ci3*(u[ijk    ]-umean[k  ]), 2.)*wx[ijk-kk1])
-                       + cg1*(std::pow(ci0*(u[ijk-kk2]-umean[k-2]) + ci1*(u[ijk-kk1]-umean[k-1]) + ci2*(u[ijk    ]-umean[k  ]) + ci3*(u[ijk+kk1]-umean[k+1]), 2.)*wx[ijk    ])
-                       + cg2*(std::pow(ci0*(u[ijk-kk1]-umean[k-1]) + ci1*(u[ijk    ]-umean[k  ]) + ci2*(u[ijk+kk1]-umean[k+1]) + ci3*(u[ijk+kk2]-umean[k+2]), 2.)*wx[ijk+kk1])
-                       + cg3*(std::pow(ci0*(u[ijk    ]-umean[k  ]) + ci1*(u[ijk+kk1]-umean[k+1]) + ci2*(u[ijk+kk2]-umean[k+2]) + ci3*(u[ijk+kk3]-umean[k+3]), 2.)*wx[ijk+kk2])) * dzi4[k];
+        u2_turb[k]  -= ( cg0*((ci0*std::pow(u[ijk-kk3]-umean[k-3],2.) + ci1*std::pow(u[ijk-kk2]-umean[k-2],2.) + ci2*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci3*std::pow(u[ijk    ]-umean[k  ],2.))*wx[ijk-kk1])
+                       + cg1*((ci0*std::pow(u[ijk-kk2]-umean[k-2],2.) + ci1*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci2*std::pow(u[ijk    ]-umean[k  ],2.) + ci3*std::pow(u[ijk+kk1]-umean[k+1],2.))*wx[ijk    ])
+                       + cg2*((ci0*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci1*std::pow(u[ijk    ]-umean[k  ],2.) + ci2*std::pow(u[ijk+kk1]-umean[k+1],2.) + ci3*std::pow(u[ijk+kk2]-umean[k+2],2.))*wx[ijk+kk1])
+                       + cg3*((ci0*std::pow(u[ijk    ]-umean[k  ],2.) + ci1*std::pow(u[ijk+kk1]-umean[k+1],2.) + ci2*std::pow(u[ijk+kk2]-umean[k+2],2.) + ci3*std::pow(u[ijk+kk3]-umean[k+3],2.))*wx[ijk+kk2]) ) * dzi4[k];
 
-        v2_turb[k]  -= ( cg0*(std::pow(ci0*(v[ijk-kk3]-vmean[k-3]) + ci1*(v[ijk-kk2]-vmean[k-2]) + ci2*(v[ijk-kk1]-vmean[k-1]) + ci3*(v[ijk    ]-vmean[k  ]), 2.)*wy[ijk-kk1])
-                       + cg1*(std::pow(ci0*(v[ijk-kk2]-vmean[k-2]) + ci1*(v[ijk-kk1]-vmean[k-1]) + ci2*(v[ijk    ]-vmean[k  ]) + ci3*(v[ijk+kk1]-vmean[k+1]), 2.)*wy[ijk    ])
-                       + cg2*(std::pow(ci0*(v[ijk-kk1]-vmean[k-1]) + ci1*(v[ijk    ]-vmean[k  ]) + ci2*(v[ijk+kk1]-vmean[k+1]) + ci3*(v[ijk+kk2]-vmean[k+2]), 2.)*wy[ijk+kk1])
-                       + cg3*(std::pow(ci0*(v[ijk    ]-vmean[k  ]) + ci1*(v[ijk+kk1]-vmean[k+1]) + ci2*(v[ijk+kk2]-vmean[k+2]) + ci3*(v[ijk+kk3]-vmean[k+3]), 2.)*wy[ijk+kk2])) * dzi4[k];
+        v2_turb[k]  -= ( cg0*((ci0*std::pow(v[ijk-kk3]-vmean[k-3],2.) + ci1*std::pow(v[ijk-kk2]-vmean[k-2],2.) + ci2*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ci3*std::pow(v[ijk    ]-vmean[k  ],2.))*wy[ijk-kk1]) 
+                       + cg1*((ci0*std::pow(v[ijk-kk2]-vmean[k-2],2.) + ci1*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ci2*std::pow(v[ijk    ]-vmean[k  ],2.) + ci3*std::pow(v[ijk+kk1]-vmean[k+1],2.))*wy[ijk    ]) 
+                       + cg2*((ci0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ci1*std::pow(v[ijk    ]-vmean[k  ],2.) + ci2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + ci3*std::pow(v[ijk+kk2]-vmean[k+2],2.))*wy[ijk+kk1]) 
+                       + cg3*((ci0*std::pow(v[ijk    ]-vmean[k  ],2.) + ci1*std::pow(v[ijk+kk1]-vmean[k+1],2.) + ci2*std::pow(v[ijk+kk2]-vmean[k+2],2.) + ci3*std::pow(v[ijk+kk3]-vmean[k+3],2.))*wy[ijk+kk2]) ) * dzi4[k];
 
         tke_turb[k] -= ( cg0*std::pow(w[ijk-kk1], 3.) + cg0*std::pow(w[ijk], 3.) + cg0*std::pow(w[ijk+kk1], 3.) + cg0*std::pow(w[ijk+kk2], 3.)) * dzi4[k];
       }
@@ -532,10 +551,10 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk1;
-        w2_turb[k] -= ( cg0*(std::pow(ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ], 3.))
-                      + cg1*(std::pow(ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1], 3.))
-                      + cg2*(std::pow(ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2], 3.))
-                      + cg3*(std::pow(ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3], 3.))) * dzhi4[k];
+        w2_turb[k] -= ( cg0*(ci0*std::pow(w[ijk-kk3],3.) + ci1*std::pow(w[ijk-kk2],3.) + ci2*std::pow(w[ijk-kk1],3.) + ci3*std::pow(w[ijk    ],3.))
+                      + cg1*(ci0*std::pow(w[ijk-kk2],3.) + ci1*std::pow(w[ijk-kk1],3.) + ci2*std::pow(w[ijk    ],3.) + ci3*std::pow(w[ijk+kk1],3.))
+                      + cg2*(ci0*std::pow(w[ijk-kk1],3.) + ci1*std::pow(w[ijk    ],3.) + ci2*std::pow(w[ijk+kk1],3.) + ci3*std::pow(w[ijk+kk2],3.))
+                      + cg3*(ci0*std::pow(w[ijk    ],3.) + ci1*std::pow(w[ijk+kk1],3.) + ci2*std::pow(w[ijk+kk2],3.) + ci3*std::pow(w[ijk+kk3],3.)) ) * dzhi4[k];
       }
 
   for(int k=grid->kstart; k<grid->kend; k++)
@@ -550,6 +569,59 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
   grid->getprof(v2_turb , grid->kcells);
   grid->getprof(w2_turb , grid->kcells);
   grid->getprof(tke_turb, grid->kcells);
+
+
+  // calculate the viscous transport term
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    u2_visc [k] = 0.;
+    v2_visc [k] = 0.;
+    w2_visc [k] = 0.;
+    tke_visc[k] = 0.;
+
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk1;
+        u2_visc[k]  += visc * ( cg0*((cg0*std::pow(u[ijk-kk3]-umean[k-3],2.) + cg1*std::pow(u[ijk-kk2]-umean[k-2],2.) + cg2*std::pow(u[ijk-kk1]-umean[k-1],2.) + cg3*std::pow(u[ijk    ]-umean[k  ],2.)) * dzhi4[k-1])
+                              + cg1*((cg0*std::pow(u[ijk-kk2]-umean[k-2],2.) + cg1*std::pow(u[ijk-kk1]-umean[k-1],2.) + cg2*std::pow(u[ijk    ]-umean[k  ],2.) + cg3*std::pow(u[ijk+kk1]-umean[k+1],2.)) * dzhi4[k  ])
+                              + cg2*((cg0*std::pow(u[ijk-kk1]-umean[k-1],2.) + cg1*std::pow(u[ijk    ]-umean[k  ],2.) + cg2*std::pow(u[ijk+kk1]-umean[k+1],2.) + cg3*std::pow(u[ijk+kk2]-umean[k+2],2.)) * dzhi4[k+1])
+                              + cg3*((cg0*std::pow(u[ijk    ]-umean[k  ],2.) + cg1*std::pow(u[ijk+kk1]-umean[k+1],2.) + cg2*std::pow(u[ijk+kk2]-umean[k+2],2.) + cg3*std::pow(u[ijk+kk3]-umean[k+3],2.)) * dzhi4[k+2]) ) * dzi4[k];
+
+        v2_visc[k]  += visc * ( cg0*((cg0*std::pow(v[ijk-kk3]-vmean[k-3],2.) + cg1*std::pow(v[ijk-kk2]-vmean[k-2],2.) + cg2*std::pow(v[ijk-kk1]-vmean[k-1],2.) + cg3*std::pow(v[ijk    ]-vmean[k  ],2.)) * dzhi4[k-1])
+                              + cg1*((cg0*std::pow(v[ijk-kk2]-vmean[k-2],2.) + cg1*std::pow(v[ijk-kk1]-vmean[k-1],2.) + cg2*std::pow(v[ijk    ]-vmean[k  ],2.) + cg3*std::pow(v[ijk+kk1]-vmean[k+1],2.)) * dzhi4[k  ])
+                              + cg2*((cg0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + cg1*std::pow(v[ijk    ]-vmean[k  ],2.) + cg2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + cg3*std::pow(v[ijk+kk2]-vmean[k+2],2.)) * dzhi4[k+1])
+                              + cg3*((cg0*std::pow(v[ijk    ]-vmean[k  ],2.) + cg1*std::pow(v[ijk+kk1]-vmean[k+1],2.) + cg2*std::pow(v[ijk+kk2]-vmean[k+2],2.) + cg3*std::pow(v[ijk+kk3]-vmean[k+3],2.)) * dzhi4[k+2]) ) * dzi4[k];
+
+        tke_visc[k] += visc * ( cg0*std::pow(w[ijk-kk1],2.) + cg0*std::pow(w[ijk],2.) + cg0*std::pow(w[ijk+kk1],2.) + cg0*std::pow(w[ijk+kk2],2.)) * dzi4[k];
+      }
+    tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
+  }
+  for(int k=grid->kstart+1; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk1;
+        w2_visc[k] += visc * ( cg0*((cg0*std::pow(w[ijk-kk3],2.) + cg1*std::pow(w[ijk-kk2],2.) + cg2*std::pow(w[ijk-kk1],2.) + cg3*std::pow(w[ijk    ],2.)) * dzi4[k-2])
+                             + cg1*((cg0*std::pow(w[ijk-kk2],2.) + cg1*std::pow(w[ijk-kk1],2.) + cg2*std::pow(w[ijk    ],2.) + cg3*std::pow(w[ijk+kk1],2.)) * dzi4[k-1])
+                             + cg2*((cg0*std::pow(w[ijk-kk1],2.) + cg1*std::pow(w[ijk    ],2.) + cg2*std::pow(w[ijk+kk1],2.) + cg3*std::pow(w[ijk+kk2],2.)) * dzi4[k  ])
+                             + cg3*((cg0*std::pow(w[ijk    ],2.) + cg1*std::pow(w[ijk+kk1],2.) + cg2*std::pow(w[ijk+kk2],2.) + cg3*std::pow(w[ijk+kk3],2.)) * dzi4[k+1]) ) * dzhi4[k];
+      }
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    u2_visc [k] /= n;
+    v2_visc [k] /= n;
+    w2_visc [k] /= n;
+    tke_visc[k] /= n;
+  }
+
+  grid->getprof(u2_visc , grid->kcells);
+  grid->getprof(v2_visc , grid->kcells);
+  grid->getprof(w2_visc , grid->kcells);
+  grid->getprof(tke_visc, grid->kcells);
 
   return 0;
 }
