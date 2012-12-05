@@ -4,8 +4,8 @@ import netCDF4
 
 from pylab import *
 
-start = 160
-end   = 221
+start = 200
+end   = 401
 plotens = False
 
 # read Moser's data
@@ -45,7 +45,7 @@ tke_viscMoser  = Mosertke[:,7]
 tke_dissMoser  = Mosertke[:,2]
 tke_presMoser  = Mosertke[:,5]
 
-stats = netCDF4.Dataset("moser180.0000000.nc","r")
+stats = netCDF4.Dataset("moser180.nc","r")
 t  = stats.variables["t"] [start:end]
 z  = stats.variables["z"] [:]
 zh = stats.variables["zh"][:]
@@ -104,23 +104,27 @@ u2_turb  = numpy.mean(u2_turbt ,0)
 u2_visc  = numpy.mean(u2_visct ,0)
 u2_diss  = numpy.mean(u2_disst ,0)
 u2_rdstr = numpy.mean(u2_rdstrt,0)
+u2_resid = u2_shear + u2_turb + u2_visc + u2_diss + u2_rdstr
 
 v2_turb  = numpy.mean(v2_turbt ,0)
 v2_visc  = numpy.mean(v2_visct ,0)
 v2_diss  = numpy.mean(v2_disst ,0)
 v2_rdstr = numpy.mean(v2_rdstrt,0)
+v2_resid = v2_turb + v2_visc + v2_diss + v2_rdstr
 
 w2_turb  = numpy.mean(w2_turbt ,0)
 w2_visc  = numpy.mean(w2_visct ,0)
 w2_diss  = numpy.mean(w2_disst ,0)
 w2_pres  = numpy.mean(w2_prest ,0)
 w2_rdstr = numpy.mean(w2_rdstrt,0)
+w2_resid = w2_turb + w2_visc + w2_diss + w2_pres + w2_rdstr
 
 tke_shear = numpy.mean(tke_sheart,0)
 tke_turb  = numpy.mean(tke_turbt ,0)
 tke_visc  = numpy.mean(tke_visct ,0)
 tke_diss  = numpy.mean(tke_disst ,0)
 tke_pres  = numpy.mean(tke_prest ,0)
+tke_resid = tke_shear + tke_turb + tke_visc + tke_diss + tke_pres
 
 utotavg = numpy.mean(utotavgt,0)
 ustar   = numpy.mean(ustart)
@@ -185,6 +189,7 @@ plot(yplus[starty:endy], u2_turb [starty:endy] * visc / ustar**4., 'g-', label='
 plot(yplus[starty:endy], u2_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
 plot(yplus[starty:endy], u2_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
 plot(yplus[starty:endy], u2_rdstr[starty:endy] * visc / ustar**4., 'm-', label='P')
+plot(yplus[starty:endy], u2_resid[starty:endy] * visc / ustar**4., 'k-', label='resid')
 plot(yplusMoser, u2_shearMoser, 'k--', label="Moser")
 plot(yplusMoser, u2_turbMoser , 'k--')
 plot(yplusMoser, u2_viscMoser , 'k--')
@@ -207,6 +212,7 @@ plot(yplus[starty:endy], v2_turb [starty:endy] * visc / ustar**4., 'g-', label='
 plot(yplus[starty:endy], v2_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
 plot(yplus[starty:endy], v2_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
 plot(yplus[starty:endy], v2_rdstr[starty:endy] * visc / ustar**4., 'm-', label='P')
+plot(yplus[starty:endy], v2_resid[starty:endy] * visc / ustar**4., 'k-', label='resid')
 plot(yplusMoser, v2_turbMoser , 'k--', label="Moser")
 plot(yplusMoser, v2_viscMoser , 'k--')
 plot(yplusMoser, v2_dissMoser , 'k--')
@@ -230,6 +236,7 @@ plot(yplush[starty:endy], w2_visc [starty:endy] * visc / ustar**4., 'c-', label=
 plot(yplush[starty:endy], w2_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
 plot(yplush[starty:endy], w2_pres [starty:endy] * visc / ustar**4., 'y-', label='Tp')
 plot(yplush[starty:endy], w2_rdstr[starty:endy] * visc / ustar**4., 'm-', label='P')
+plot(yplush[starty:endy], w2_resid[starty:endy] * visc / ustar**4., 'k-', label='resid')
 plot(yplusMoser, w2_turbMoser , 'k--', label="Moser")
 plot(yplusMoser, w2_viscMoser , 'k--')
 plot(yplusMoser, w2_dissMoser , 'k--')
@@ -254,6 +261,7 @@ plot(yplus[starty:endy], tke_turb [starty:endy] * visc / ustar**4., 'g-', label=
 plot(yplus[starty:endy], tke_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
 plot(yplus[starty:endy], tke_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
 plot(yplus[starty:endy], tke_pres [starty:endy] * visc / ustar**4., 'y-', label='Tp')
+plot(yplus[starty:endy], tke_resid[starty:endy] * visc / ustar**4., 'k-', label='resid')
 plot(yplusMoser, tke_shearMoser, 'k--', label="Moser")
 plot(yplusMoser, tke_turbMoser , 'k--')
 plot(yplusMoser, tke_viscMoser , 'k--')
