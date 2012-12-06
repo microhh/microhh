@@ -91,6 +91,9 @@ int cstats::init()
   v2_rdstr  = new double[grid->kcells];
   w2_rdstr  = new double[grid->kcells];
 
+  w2_buoy  = new double[grid->kcells];
+  tke_buoy = new double[grid->kcells];
+
   // set the number of stats to zero
   nstats = 0;
 
@@ -179,6 +182,9 @@ int cstats::create(std::string simname, int n)
     v2_rdstr_var  = dataFile->add_var("v2_rdstr" , ncDouble, t_dim, z_dim );
     w2_rdstr_var  = dataFile->add_var("w2_rdstr" , ncDouble, t_dim, z_dim );
 
+    w2_buoy_var  = dataFile->add_var("w2_buoy" , ncDouble, t_dim, z_dim );
+    tke_buoy_var = dataFile->add_var("tke_buoy", ncDouble, t_dim, z_dim );
+
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
     zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
@@ -242,7 +248,7 @@ int cstats::exec(int iteration, double time)
   }
 
   // calculate the TKE budget
-  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->p).data,
+  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->p).data, (*fields->s).data,
                 (*fields->tmp1).data, (*fields->tmp2).data,
                 u, v,
                 u2_shear, v2_shear, tke_shear,
@@ -251,6 +257,7 @@ int cstats::exec(int iteration, double time)
                 u2_diss, v2_diss, w2_diss, tke_diss,
                 w2_pres, tke_pres,
                 u2_rdstr, v2_rdstr, w2_rdstr,
+                w2_buoy, tke_buoy,
                 grid->dzi4, grid->dzhi4, fields->visc);
 
   if(mpi->mpiid == 0)
@@ -311,6 +318,9 @@ int cstats::exec(int iteration, double time)
     u2_rdstr_var ->put_rec(&u2_rdstr [grid->kstart], nstats);
     v2_rdstr_var ->put_rec(&v2_rdstr [grid->kstart], nstats);
     w2_rdstr_var ->put_rec(&w2_rdstr [grid->kstart], nstats);
+
+    w2_buoy_var ->put_rec(&w2_buoy [grid->kstart], nstats);
+    tke_buoy_var->put_rec(&tke_buoy[grid->kstart], nstats);
   }
 
   // calculate variance and higher order moments
@@ -496,7 +506,7 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double * re
   return 0;
 }
 
-int cstats::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
+int cstats::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p, double * restrict b,
                           double * restrict wx, double * restrict wy,
                           double * restrict umean, double * restrict vmean,
                           double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
@@ -505,6 +515,7 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
                           double * restrict u2_diss, double * restrict v2_diss, double * restrict w2_diss, double * restrict tke_diss,
                           double * restrict w2_pres, double * restrict tke_pres,
                           double * restrict u2_rdstr, double * restrict v2_rdstr, double * restrict w2_rdstr,
+                          double * restrict w2_buoy, double * restrict tke_buoy,
                           double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   // get w on the x and y location
@@ -848,6 +859,40 @@ int cstats::calctkebudget(double * restrict u, double * restrict v, double * res
   grid->getprof(u2_rdstr , grid->kcells);
   grid->getprof(v2_rdstr , grid->kcells);
   grid->getprof(w2_rdstr , grid->kcells);
+
+
+  // calculate the buoyancy term
+  // CvH, check the correct usage of the gravity term later! check also the reference b!
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    w2_buoy [k] = 0.;
+    tke_buoy[k] = 0.;
+
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj1 + k*kk1;
+        tke_buoy[k] += (ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*b[ijk];
+      }
+  }
+  for(int k=grid->kstart+1; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj1 + k*kk1;
+        w2_buoy[k] += 2.*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1])*w[ijk];
+      }
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    w2_buoy [k] /= n;
+    tke_buoy[k] /= n;
+  }
+
+  grid->getprof(w2_buoy , grid->kcells);
+  grid->getprof(tke_buoy, grid->kcells);
 
   return 0;
 }

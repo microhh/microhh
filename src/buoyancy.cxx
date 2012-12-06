@@ -51,7 +51,8 @@ int cbuoyancy::buoyancy_2nd(double * restrict wt, double * restrict s)
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-  
+
+  // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
