@@ -750,27 +750,30 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice
       tmp[ijkb] = data[ijk];
     }
 
-  MPI_File fh;
-  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-    return 1;
-
-  // select noncontiguous part of 3d array to store the selected data
-  MPI_Offset fileoff = 0; // the offset within the file (header size)
-  char name[] = "native";
-
-  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
-    return 1;
-
-  // only write at the procs that contain the slice
-  if(mpi->mpicoordy == jslice / jmax)
+  if(mpi->mpicoordy == jslice/jmax)
   {
-    if(MPI_File_write(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    MPI_File fh;
+    if(MPI_File_open(mpi->commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+      return 1;
+
+    // select noncontiguous part of 3d array to store the selected data
+    MPI_Offset fileoff = 0; // the offset within the file (header size)
+    char name[] = "native";
+
+    if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
+      return 1;
+
+    // only write at the procs that contain the slice
+    if(MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+      return 1;
+
+    MPI_File_sync(fh);
+
+    if(MPI_File_close(&fh))
       return 1;
   }
-  MPI_Barrier(mpi->commxy);
 
-  if(MPI_File_close(&fh))
-    return 1;
+  MPI_Barrier(mpi->commxy);
 
   return 0;
 }
