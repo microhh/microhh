@@ -87,6 +87,8 @@ class cgrid
     int savefield3d(double *, double *, double *, char *);
     int loadfield3d(double *, double *, double *, char *);
 
+    int savexzslice(double *, double *, int, char *);
+
     // variables for the fast fourier transforms
     double *fftini, *fftouti;
     double *fftinj, *fftoutj;
@@ -120,6 +122,7 @@ class cgrid
     MPI_Datatype subi;
     MPI_Datatype subj;
     MPI_Datatype subarray;
+    MPI_Datatype subxzslice;
     double *profl;
 #endif
 

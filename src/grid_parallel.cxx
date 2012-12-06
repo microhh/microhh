@@ -84,6 +84,13 @@ int cgrid::initmpi()
   MPI_Type_create_subarray(3, totsize, subsize, substart, MPI_ORDER_C, MPI_DOUBLE, &subarray);
   MPI_Type_commit(&subarray);
 
+  // save mpitype for a xz-slice for cross section processing
+  int totxzsize [2] = {kmax, itot};
+  int subxzsize [2] = {kmax, imax};
+  int subxzstart[2] = {0, mpi->mpicoordx*imax};
+  MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, MPI_DOUBLE, &subxzslice);
+  MPI_Type_commit(&subxzslice);
+
   // allocate the array for the profiles
   profl = new double[kcells];
 
@@ -716,6 +723,54 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
 
   // and transpose back...
   transposexz(tmp1, data);
+
+  return 0;
+}
+
+int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice, char *filename)
+{
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+  kkb = imax;
+
+  int count = imax*kmax;
+
+  for(int k=0; k<kmax; k++)
+#pragma ivdep
+    for(int i=0; i<imax; i++)
+    {
+      // take the modulus of jslice and jmax to have the right offset within proc
+      ijk  = i+igc + ((jslice%jmax)+jgc)*jj + (k+kgc)*kk;
+      ijkb = i + k*kkb;
+      tmp[ijkb] = data[ijk];
+    }
+
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
+    return 1;
+
+  // only write at the procs that contain the slice
+  if(mpi->mpicoordy == jslice / jmax)
+  {
+    if(MPI_File_write(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+      return 1;
+  }
+  MPI_Barrier(mpi->commxy);
+
+  if(MPI_File_close(&fh))
+    return 1;
 
   return 0;
 }

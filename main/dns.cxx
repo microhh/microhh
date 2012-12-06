@@ -11,6 +11,7 @@
 #include "buffer.h"
 #include "timeloop.h"
 #include "stats.h"
+#include "cross.h"
 
 int main(int argc, char *argv[])
 {
@@ -42,6 +43,7 @@ int main(int argc, char *argv[])
 
   // load the postprocessing modules
   cstats    stats   (&grid, &fields, &mpi);
+  ccross    cross   (&grid, &fields, &mpi);
 
   // read the input data
   if(input.readinifile(simname))
@@ -69,6 +71,8 @@ int main(int argc, char *argv[])
   if(timeloop.readinifile(&input))
     return 1;
   if(stats.readinifile(&input))
+    return 1;
+  if(cross.readinifile(&input))
     return 1;
 
   // init the mpi 
@@ -183,7 +187,10 @@ int main(int argc, char *argv[])
       fields.p->save(timeloop.iteration, fields.tmp1->data, fields.tmp2->data);
 
     if(timeloop.dostats() && !timeloop.insubstep())
+    {
       stats.exec(timeloop.iteration, timeloop.time);
+      cross.exec(timeloop.iteration);
+    }
 
     // exit the simulation when the runtime has been hit after the pressure calculation
     if(!timeloop.loop)
