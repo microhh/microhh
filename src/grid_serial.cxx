@@ -478,4 +478,38 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
 
   return 0;
 }
+
+int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice, char *filename)
+{
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+  kkb = imax;
+
+  int count = imax*kmax;
+
+  for(int k=0; k<kmax; k++)
+#pragma ivdep
+    for(int i=0; i<imax; i++)
+    {
+      // take the modulus of jslice and jmax to have the right offset within proc
+      ijk  = i+igc + (jslice+jgc)*jj + (k+kgc)*kk;
+      ijkb = i + k*kkb;
+      tmp[ijkb] = data[ijk];
+    }
+
+  FILE *pFile;
+  pFile = fopen(filename, "wb");
+  if(pFile == NULL)
+    return 1;
+
+  fwrite(tmp, sizeof(double), count, pFile);
+  fclose(pFile);
+
+  return 0;
+}
 #endif
