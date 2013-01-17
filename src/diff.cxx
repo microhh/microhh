@@ -17,6 +17,8 @@ cdiff::cdiff(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   diff_g2  = new cdiff_g2 (grid, fields, mpi);
   diff_g42 = new cdiff_g42(grid, fields, mpi);
   diff_g4  = new cdiff_g4 (grid, fields, mpi);
+
+  diff_les_g2  = new cdiff_les_g2(grid, fields, mpi);
 }
 
 cdiff::~cdiff()
@@ -25,6 +27,7 @@ cdiff::~cdiff()
   delete diff_g42;
   delete diff_g4;
 
+  delete diff_les_g2;
   // std::printf("Destroying instance of object diff\n");
 }
 
@@ -97,6 +100,15 @@ int cdiff::exec()
     diff_g4->diffw((*fields->wt).data, (*fields->w).data, grid->dzi4, grid->dzhi4, fields->visc);
 
     diff_g4->diffc((*fields->st).data, (*fields->s).data, grid->dzi4, grid->dzhi4, fields->viscs);
+  }
+
+  else if(idiff == 22)
+  {
+    diff_les_g2->diffu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
+    diff_les_g2->diffv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
+    diff_les_g2->diffw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
+
+    diff_les_g2->diffc((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, fields->viscs);
   }
 
   return 0;

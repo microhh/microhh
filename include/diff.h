@@ -7,6 +7,7 @@
 #include "diff_g2.h"
 #include "diff_g42.h"
 #include "diff_g4.h"
+#include "diff_les_g2.h"
 
 class cdiff
 {
@@ -31,5 +32,7 @@ class cdiff
     cdiff_g2  *diff_g2;
     cdiff_g42 *diff_g42;
     cdiff_g4  *diff_g4;
+
+    cdiff_les_g2  *diff_les_g2;
 };
 #endif
