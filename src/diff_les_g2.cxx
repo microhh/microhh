@@ -20,10 +20,72 @@ cdiff_les_g2::~cdiff_les_g2()
   // std::printf("Destroying instance of object diff_les_g2\n");
 }
 
-int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
+int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * restrict v, double * restrict w, double * restrict dz, double * restrict dzi, double * restrict dzhi, double visc)
+{
+  int    ijk,ii,jj,kk;
+  double dx,dy,dxi,dyi;
+  const double cs = 0.16;
+  double fac;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  dx = grid->dx;
+  dy = grid->dy;
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    // calculate smagorinsky constant times filter width squared
+    fac = std::pow(cs*std::pow(dx*dy*dz[k], 1./3.), 2.);
+
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        evisc[ijk] = visc + fac * std::sqrt( 
+          // du/dx + du/dx
+          + std::pow((u[ijk+ii]-u[ijk])*dxi, 2.)
+
+          // dv/dy + dv/dy
+          + std::pow((v[ijk+jj]-v[ijk])*dyi, 2.)
+
+          // dw/dz + dw/dz
+          + std::pow((w[ijk+kk]-w[ijk])*dzi[k], 2.)
+
+          // du/dy + dv/dx
+          + 0.125*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2.)
+          + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2.)
+          + 0.125*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2.)
+          + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2.)
+
+          // du/dz + dw/dx
+          + 0.125*std::pow((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi, 2.)
+          + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi, 2.)
+          + 0.125*std::pow((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi, 2.)
+          + 0.125*std::pow((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2.)
+
+          // dv/dz + dw/dy
+          + 0.125*std::pow((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi, 2.)
+          + 0.125*std::pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, 2.)
+          + 0.125*std::pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2.)
+          + 0.125*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2.) );
+      }
+  }
+
+  grid->boundary_cyclic(evisc);
+
+  return 0;
+}
+
+int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
+  double eviscn, eviscs, eviscb, evisct;
 
   ii = 1;
   jj = grid->icells;
@@ -38,25 +100,30 @@ int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * rest
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        ut[ijk] += visc * (
+        eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+        eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+        eviscb = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+        evisct = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+        ut[ijk] +=
               // du/dx + du/dx
-              + (  (u[ijk+ii]-u[ijk   ])*dxi
-                 - (u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+              + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+                 - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
               // du/dy + dv/dx
-              + (  ((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
-                 - ((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+              + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+                 - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
               // du/dz + dw/dx
-              + (  ((u[ijk+kk]-u[ijk   ])* dzhi[k+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
-                 - ((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) * dzi[k] );
+              + (  evisct*((u[ijk+kk]-u[ijk   ])* dzhi[k+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+                 - eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) * dzi[k];
       }
 
   return 0;
 }
 
-int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
+int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
+  double evisce, eviscw, eviscb, evisct;
 
   ii = 1;
   jj = grid->icells;
@@ -71,25 +138,30 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        vt[ijk] += visc * (
+        evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+        eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+        evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+        eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+        vt[ijk] +=
               // dv/dx + du/dy
-              + (  ((v[ijk+ii]-v[ijk   ])*dxi  + (u[ijk+jj]-u[ijk-ii+jj])*dyi)
-                 - ((v[ijk   ]-v[ijk-ii])*dxi  + (u[ijk   ]-u[ijk-ii   ])*dyi) ) * dxi
+              + (  evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+                 - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
               // dv/dy + dv/dy
-              + (  (v[ijk+jj]-v[ijk   ])*dyi
-                 - (v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+              + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+                 - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
               // dv/dz + dw/dy
-              + (  ((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
-                 - ((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[k] );
+              + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+                 - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[k];
       }
 
   return 0;
 }
 
-int cdiff_les_g2::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
+int cdiff_les_g2::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
+  double evisce, eviscw, eviscn, eviscs;
 
   ii = 1;
   jj = grid->icells;
@@ -104,25 +176,30 @@ int cdiff_les_g2::diffw(double * restrict wt, double * restrict u, double * rest
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        wt[ijk] += visc * (
+        evisce = 0.25*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+ii-kk] + evisc[ijk+ii]);
+        eviscw = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-ii] + evisc[ijk   -kk] + evisc[ijk   ]);
+        eviscn = 0.25*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+jj-kk] + evisc[ijk+jj]);
+        eviscs = 0.25*(evisc[ijk-jj-kk] + evisc[ijk-jj] + evisc[ijk   -kk] + evisc[ijk   ]);
+        wt[ijk] +=
               // dw/dx + du/dz
-              + (  ((w[ijk+ii]-w[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-kk])*dzhi[k])
-                 - ((w[ijk   ]-w[ijk-ii])*dxi + (u[ijk   ]-u[ijk+  -kk])*dzhi[k]) ) * dxi
+              + (  evisce*((w[ijk+ii]-w[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-kk])*dzhi[k])
+                 - eviscw*((w[ijk   ]-w[ijk-ii])*dxi + (u[ijk   ]-u[ijk+  -kk])*dzhi[k]) ) * dxi
               // dw/dy + dv/dz
-              + (  ((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
-                 - ((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
+              + (  eviscn*((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
+                 - eviscs*((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
               // dw/dz + dw/dz
-              + (  (w[ijk+kk]-w[ijk   ])*dzi[k]
-                 - (w[ijk   ]-w[ijk-kk])*dzi[k-1] ) * 2.* dzhi[k] );
+              + (  evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
+                 - evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) * 2.* dzhi[k];
       }
 
   return 0;
 }
 
-int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
+int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
+  double evisce,eviscw,eviscn,eviscs,evisct,eviscb;
 
   ii = 1;
   jj = grid->icells;
@@ -137,13 +214,20 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        at[ijk] += visc * (
-              + (  (a[ijk+ii]-a[ijk   ]) 
-                 - (a[ijk   ]-a[ijk-ii]) )*dxidxi 
-              + (  (a[ijk+jj]-a[ijk   ]) 
-                 - (a[ijk   ]-a[ijk-jj]) )*dyidyi
-              + (  (a[ijk+kk]-a[ijk   ])*dzhi[k+1]
-                 - (a[ijk   ]-a[ijk-kk])*dzhi[k]  ) * dzi[k] );
+        evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii]);
+        eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ]);
+        eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj]);
+        eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ]);
+        evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk]);
+        eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ]);
+
+        at[ijk] +=
+              + (  evisce*(a[ijk+ii]-a[ijk   ]) 
+                 - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+              + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+                 - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+              + (  evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
+                 - eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) * dzi[k];
       }
 
   return 0;
