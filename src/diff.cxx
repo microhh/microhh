@@ -104,12 +104,12 @@ int cdiff::exec()
 
   else if(idiff == 22)
   {
-    diff_les_g2->evisc((*fields->tmp1).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dz, grid->dzi, grid->dzhi, fields->visc);
-    diff_les_g2->diffu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->tmp1).data, (*fields->u).datafluxbot, (*fields->u).datafluxtop);
-    diff_les_g2->diffv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->tmp1).data, (*fields->v).datafluxbot, (*fields->v).datafluxtop);
-    diff_les_g2->diffw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->tmp1).data);
+    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dz, grid->dzi, grid->dzhi, fields->visc);
+    diff_les_g2->diffu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->u).datafluxbot, (*fields->u).datafluxtop);
+    diff_les_g2->diffv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->v).datafluxbot, (*fields->v).datafluxtop);
+    diff_les_g2->diffw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data);
 
-    diff_les_g2->diffc((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, (*fields->tmp1).data, (*fields->s).datafluxbot, (*fields->s).datafluxtop);
+    diff_les_g2->diffc((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->s).datafluxbot, (*fields->s).datafluxtop);
   }
 
   return 0;

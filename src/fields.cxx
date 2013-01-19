@@ -32,6 +32,8 @@ cfields::~cfields()
 
     delete tmp1;
     delete tmp2;
+
+    delete evisc;
   }
 
   // std::printf("Destroying instance of object fields\n");
@@ -81,6 +83,9 @@ int cfields::init()
   tmp1 = new cfield3d(grid, mpi, "tmp1");
   tmp2 = new cfield3d(grid, mpi, "tmp2");
 
+  // for LES mode
+  evisc = new cfield3d(grid, mpi, "evisc");
+
   u->init();
   v->init();
   w->init();
@@ -95,6 +100,8 @@ int cfields::init()
 
   tmp1->init();
   tmp2->init();
+
+  evisc->init();
 
   allocated = true;
 
