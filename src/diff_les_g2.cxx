@@ -81,20 +81,45 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
   return 0;
 }
 
-int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc)
+int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
   double eviscn, eviscs, eviscb, evisct;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+  kend   = grid->kend;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  // bottom boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+      eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      eviscb = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+      evisct = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      ut[ijk] +=
+            // du/dx + du/dx
+            + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+               - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+            // du/dy + dv/dx
+            + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+               - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+            // du/dz + dw/dx
+            + (  evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+               - fluxbot[ij] ) * dzi[kstart];
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -116,23 +141,71 @@ int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * rest
                  - eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) * dzi[k];
       }
 
+  // top boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + (kend-1)*kk;
+      eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+      eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      eviscb = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+      evisct = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      ut[ijk] +=
+            // du/dx + du/dx
+            + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+               - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+            // du/dy + dv/dx
+            + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+               - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+            // du/dz + dw/dx
+            + (  fluxtop[ij]
+               - eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) * dzi[kend-1];
+    }
+
   return 0;
 }
 
-int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc)
+int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
-  double evisce, eviscw, eviscb, evisct;
+  double evisce,eviscw,eviscb,evisct;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+  kend   = grid->kend;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  // bottom boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+      eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+      evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+      eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+      vt[ijk] +=
+            // dv/dx + du/dy
+            + (  evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+               - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+            // dv/dy + dv/dy
+            + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+               - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
+            // dv/dz + dw/dy
+            + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+               - fluxbot[ij] ) * dzi[kstart];
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -148,11 +221,34 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
                  - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
               // dv/dy + dv/dy
               + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                 - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+                 - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
               // dv/dz + dw/dy
               + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                  - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[k];
       }
+
+  // top boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + (kend-1)*kk;
+      evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+      eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+      evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+      eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+      vt[ijk] +=
+            // dv/dx + du/dy
+            + (  evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+               - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+            // dv/dy + dv/dy
+            + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+               - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
+            // dv/dz + dw/dy
+            + (  fluxtop[ij]
+               - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[kend-1];
+    }
 
   return 0;
 }
@@ -195,20 +291,45 @@ int cdiff_les_g2::diffw(double * restrict wt, double * restrict u, double * rest
   return 0;
 }
 
-int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc)
+int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop)
 {
-  int    ijk,ii,jj,kk;
+  int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxidxi,dyidyi;
   double evisce,eviscw,eviscn,eviscs,evisct,eviscb;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+  kend   = grid->kend;
 
   dxidxi = 1./(grid->dx * grid->dx);
   dyidyi = 1./(grid->dy * grid->dy);
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  // bottom boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii]);
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ]);
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj]);
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ]);
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk]);
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ]);
+
+      at[ijk] +=
+            + (  evisce*(a[ijk+ii]-a[ijk   ]) 
+               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+            + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+            + (  evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
+               - fluxbot[ij] ) * dzi[kstart];
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -229,6 +350,29 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
               + (  evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
                  - eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) * dzi[k];
       }
+
+  // top boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + (kend-1)*kk;
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii]);
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ]);
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj]);
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ]);
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk]);
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ]);
+
+      at[ijk] +=
+            + (  evisce*(a[ijk+ii]-a[ijk   ]) 
+               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+            + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+            + (  fluxtop[ij]
+               - eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1]  ) * dzi[kend-1];
+    }
 
   return 0;
 }

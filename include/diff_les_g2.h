@@ -12,10 +12,10 @@ class cdiff_les_g2
     ~cdiff_les_g2();
 
     int evisc(double *, double *, double *, double *, double *, double *, double *, double);
-    int diffu(double *, double *, double *, double *, double *, double *, double *);
-    int diffv(double *, double *, double *, double *, double *, double *, double *);
+    int diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *);
     int diffw(double *, double *, double *, double *, double *, double *, double *);
-    int diffc(double *, double *, double *, double *, double *);
+    int diffc(double *, double *, double *, double *, double *, double *, double *);
 
   private:
     cgrid   *grid;

@@ -24,6 +24,8 @@ class cfield3d
     double *datatop;
     double *datagradbot;
     double *datagradtop;
+    double *datafluxbot;
+    double *datafluxtop;
     std::string name;
 
   private:
