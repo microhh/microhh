@@ -1,4 +1,7 @@
 #define restrict __restrict__
+
+#define kappa  0.4
+
 #define dsmall 1.e-9
 #define dbig   1.e9
 

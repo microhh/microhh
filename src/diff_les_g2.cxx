@@ -20,12 +20,16 @@ cdiff_les_g2::~cdiff_les_g2()
   // std::printf("Destroying instance of object diff_les_g2\n");
 }
 
-int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * restrict v, double * restrict w, double * restrict dz, double * restrict dzi, double * restrict dzhi, double visc)
+int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * restrict v, double * restrict w,  double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dx,dy,dxi,dyi;
-  const double cs = 0.16;
-  double fac;
+
+  // wall damping
+  double mlen,mlen0,fac;
+  const double cs = 0.22;
+  const double z0 = 0.1;
+  const double n  = 2.;
 
   ii = 1;
   jj = grid->icells;
@@ -39,7 +43,10 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
   for(int k=grid->kstart; k<grid->kend; k++)
   {
     // calculate smagorinsky constant times filter width squared
-    fac = std::pow(cs*std::pow(dx*dy*dz[k], 1./3.), 2.);
+    
+    mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
+    fac = std::pow(mlen, 2.);
 
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep

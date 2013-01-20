@@ -68,7 +68,7 @@ double cdiff::getdn(double dt)
   if(idiff == 22)
   {
     // calculate eddy viscosity
-    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dz, grid->dzi, grid->dzhi, fields->visc);
+    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->z, grid->dz, grid->dzi, grid->dzhi, fields->visc);
     dn = diff_les_g2->getdn((*fields->evisc).data, grid->dzi);
   }
   else
