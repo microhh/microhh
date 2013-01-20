@@ -116,7 +116,7 @@ int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * rest
                - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
             // du/dz + dw/dx
             + (  evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
-               - fluxbot[ij] ) * dzi[kstart];
+               + fluxbot[ij] ) * dzi[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; k++)
@@ -160,7 +160,7 @@ int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * rest
             + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
             // du/dz + dw/dx
-            + (  fluxtop[ij]
+            + (- fluxtop[ij]
                - eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) * dzi[kend-1];
     }
 
@@ -202,7 +202,7 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
                - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
             // dv/dz + dw/dy
             + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
-               - fluxbot[ij] ) * dzi[kstart];
+               + fluxbot[ij] ) * dzi[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; k++)
@@ -246,7 +246,7 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
                - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
             // dv/dz + dw/dy
-            + (  fluxtop[ij]
+            + (- fluxtop[ij]
                - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[kend-1];
     }
 
@@ -326,8 +326,7 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
             + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
                - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
             + (  evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
-               //- fluxbot[ij] ) * dzi[kstart];
-               + 0.1 ) * dzi[kstart];
+               + fluxbot[ij] ) * dzi[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; k++)
@@ -371,7 +370,7 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
                - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
             + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
                - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-            + (  fluxtop[ij]
+            + (- fluxtop[ij]
                - eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1]  ) * dzi[kend-1];
     }
 

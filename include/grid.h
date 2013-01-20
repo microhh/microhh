@@ -69,6 +69,8 @@ class cgrid
     double *yh;
     double *zh;
 
+    int spatialorder;
+
     // MPI functions
     int initmpi();
     int exitmpi();

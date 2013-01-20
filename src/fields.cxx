@@ -84,6 +84,7 @@ int cfields::init()
   tmp2 = new cfield3d(grid, mpi, "tmp2");
 
   // for LES mode
+  // CvH this can be done with the temporary array later
   evisc = new cfield3d(grid, mpi, "evisc");
 
   u->init();
