@@ -326,7 +326,8 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
             + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
                - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
             + (  evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
-               - fluxbot[ij] ) * dzi[kstart];
+               //- fluxbot[ij] ) * dzi[kstart];
+               + 0.1 ) * dzi[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; k++)
@@ -377,3 +378,30 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
   return 0;
 }
 
+double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi)
+{
+  int    ijk,ij,ii,jj,kk;
+  double dxidxi,dyidyi;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  dxidxi = 1./(grid->dx * grid->dx);
+  dyidyi = 1./(grid->dy * grid->dy);
+
+  double viscmax = std::max(fields->visc, fields->viscs);
+  double dnmul = 0;
+
+  // get the maximum time step for diffusion
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        dnmul = std::max(dnmul, std::abs((evisc[ijk] + viscmax) * (dxidxi + dyidyi + dzi[k]*dzi[k])));
+      }
+
+  return dnmul;
+}

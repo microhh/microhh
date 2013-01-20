@@ -65,6 +65,12 @@ double cdiff::getdn(double dt)
   // in case of no diffusion set dn to a small number to avoid zero divisions
   if(idiff == 0)
     dn = dsmall;
+  if(idiff == 22)
+  {
+    // calculate eddy viscosity
+    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dz, grid->dzi, grid->dzhi, fields->visc);
+    dn = diff_les_g2->getdn((*fields->evisc).data, grid->dzi);
+  }
   else
     dn = dnmul*dt;
 
@@ -104,7 +110,6 @@ int cdiff::exec()
 
   else if(idiff == 22)
   {
-    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dz, grid->dzi, grid->dzhi, fields->visc);
     diff_les_g2->diffu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->u).datafluxbot, (*fields->u).datafluxtop);
     diff_les_g2->diffv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->v).datafluxbot, (*fields->v).datafluxtop);
     diff_les_g2->diffw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data);

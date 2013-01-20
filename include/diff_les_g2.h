@@ -17,6 +17,8 @@ class cdiff_les_g2
     int diffw(double *, double *, double *, double *, double *, double *, double *);
     int diffc(double *, double *, double *, double *, double *, double *, double *);
 
+    double getdn(double *, double *);
+
   private:
     cgrid   *grid;
     cfields *fields;
