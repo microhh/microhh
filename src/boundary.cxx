@@ -79,6 +79,10 @@ int cboundary::exec()
 {
   if(iboundary == 2)
   {
+    // CvH temporary hack for fluxes 
+    for(int n=0; n<grid->icells*grid->jcells; n++)
+      (*fields->s).datafluxbot[n] = 0.1;
+
     // bottom boundary conditions
     setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
     setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
