@@ -631,7 +631,7 @@ int cstats::calcdiff_les_2nd(double * restrict data, double * restrict evisc, do
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk  = i + j*jj;
+      ij = i + j*jj;
       prof[kstart] += fluxbot[ij];
     }
 
@@ -653,7 +653,7 @@ int cstats::calcdiff_les_2nd(double * restrict data, double * restrict evisc, do
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk  = i + j*jj;
+      ij = i + j*jj;
       prof[kend] += fluxtop[ij];
     }
 
