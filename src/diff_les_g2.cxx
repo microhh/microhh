@@ -20,7 +20,7 @@ cdiff_les_g2::~cdiff_les_g2()
   // std::printf("Destroying instance of object diff_les_g2\n");
 }
 
-int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * restrict v, double * restrict w,  double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi, double visc)
+int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * restrict v, double * restrict w,  double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
   double dx,dy,dxi,dyi;
@@ -52,7 +52,7 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        evisc[ijk] = visc + fac * std::sqrt( 
+        evisc[ijk] = fac * std::sqrt(
           // du/dx + du/dx
           + std::pow((u[ijk+ii]-u[ijk])*dxi, 2.)
 
@@ -297,7 +297,7 @@ int cdiff_les_g2::diffw(double * restrict wt, double * restrict u, double * rest
   return 0;
 }
 
-int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop)
+int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double tPr)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxidxi,dyidyi;
@@ -319,12 +319,12 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii]);
-      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ]);
-      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj]);
-      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ]);
-      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk]);
-      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ]);
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
 
       at[ijk] +=
             + (  evisce*(a[ijk+ii]-a[ijk   ]) 
@@ -341,12 +341,12 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii]);
-        eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ]);
-        eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj]);
-        eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ]);
-        evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk]);
-        eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ]);
+        evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+        eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+        eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+        eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+        evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+        eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
 
         at[ijk] +=
               + (  evisce*(a[ijk+ii]-a[ijk   ]) 
@@ -364,12 +364,12 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk;
-      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii]);
-      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ]);
-      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj]);
-      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ]);
-      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk]);
-      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ]);
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
 
       at[ijk] +=
             + (  evisce*(a[ijk+ii]-a[ijk   ]) 

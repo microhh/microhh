@@ -68,7 +68,7 @@ double cdiff::getdn(double dt)
   if(idiff == 22)
   {
     // calculate eddy viscosity
-    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->z, grid->dz, grid->dzi, grid->dzhi, fields->visc);
+    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->z, grid->dz, grid->dzi, grid->dzhi);
     dn = diff_les_g2->getdn((*fields->evisc).data, grid->dzi);
   }
   else
@@ -114,7 +114,7 @@ int cdiff::exec()
     diff_les_g2->diffv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->v).datafluxbot, (*fields->v).datafluxtop);
     diff_les_g2->diffw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data);
 
-    diff_les_g2->diffc((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->s).datafluxbot, (*fields->s).datafluxtop);
+    diff_les_g2->diffc((*fields->st).data, (*fields->s).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->s).datafluxbot, (*fields->s).datafluxtop, fields->tPr);
   }
 
   return 0;

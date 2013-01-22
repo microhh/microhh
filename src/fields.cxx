@@ -57,6 +57,9 @@ int cfields::readinifile(cinput *inputin)
   n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
   n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , 1    );
 
+  // LES
+  n += inputin->getItem(&tPr, "fields", "tPr", 1./3.);
+
   if(n > 0)
     return 1;
 

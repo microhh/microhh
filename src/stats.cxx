@@ -260,9 +260,9 @@ int cstats::exec(int iteration, double time)
   // CvH this check is incomplete, no dns/les difference yet!
   if(grid->spatialorder == 2)
   {
-    calcdiff_les_2nd((*fields->u).data, (*fields->evisc).data, udiff, grid->dzhi, (*fields->u).datafluxbot, (*fields->u).datafluxtop, fields->visc );
-    calcdiff_les_2nd((*fields->v).data, (*fields->evisc).data, vdiff, grid->dzhi, (*fields->v).datafluxbot, (*fields->v).datafluxtop, fields->visc );
-    calcdiff_les_2nd((*fields->s).data, (*fields->evisc).data, sdiff, grid->dzhi, (*fields->s).datafluxbot, (*fields->s).datafluxtop, fields->viscs);
+    calcdiff_les_2nd((*fields->u).data, (*fields->evisc).data, udiff, grid->dzhi, (*fields->u).datafluxbot, (*fields->u).datafluxtop, 1.);
+    calcdiff_les_2nd((*fields->v).data, (*fields->evisc).data, vdiff, grid->dzhi, (*fields->v).datafluxbot, (*fields->v).datafluxtop, 1.);
+    calcdiff_les_2nd((*fields->s).data, (*fields->evisc).data, sdiff, grid->dzhi, (*fields->s).datafluxbot, (*fields->s).datafluxtop, fields->tPr);
   }
   else
   {
@@ -614,7 +614,7 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double * re
   return 0;
 }
 
-int cstats::calcdiff_les_2nd(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi, double * restrict fluxbot, double * restrict fluxtop, double visc)
+int cstats::calcdiff_les_2nd(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi, double * restrict fluxbot, double * restrict fluxtop, double tPr)
 {
   int ijk,ij,ii,jj,kk,kstart,kend;
 
@@ -643,7 +643,7 @@ int cstats::calcdiff_les_2nd(double * restrict data, double * restrict evisc, do
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += -0.5*(evisc[ijk-kk]+evisc[ijk])*(data[ijk]-data[ijk-kk])*dzhi[k];
+        prof[k] += -0.5*(evisc[ijk-kk]+evisc[ijk])/tPr*(data[ijk]-data[ijk-kk])*dzhi[k];
       }
   }
 
