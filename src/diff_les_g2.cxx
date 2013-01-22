@@ -27,7 +27,7 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
 
   // wall damping
   double mlen,mlen0,fac;
-  const double cs = 0.22;
+  const double cs = 0.23;
   const double z0 = 0.1;
   const double n  = 2.;
 
@@ -42,8 +42,7 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
 
   for(int k=grid->kstart; k<grid->kend; k++)
   {
-    // calculate smagorinsky constant times filter width squared
-    
+    // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
     mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
     fac = std::pow(mlen, 2.);
@@ -206,7 +205,7 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
                - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
             // dv/dy + dv/dy
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-               - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
+               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
             // dv/dz + dw/dy
             + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                + fluxbot[ij] ) * dzi[kstart];
@@ -228,7 +227,7 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
                  - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
               // dv/dy + dv/dy
               + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                 - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
+                 - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
               // dv/dz + dw/dy
               + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                  - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[k];
@@ -251,7 +250,7 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
                - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
             // dv/dy + dv/dy
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-               - evisc[ijk-ii]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
+               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
             // dv/dz + dw/dy
             + (- fluxtop[ij]
                - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[kend-1];
