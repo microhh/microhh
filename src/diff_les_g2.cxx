@@ -20,7 +20,7 @@ cdiff_les_g2::~cdiff_les_g2()
   // std::printf("Destroying instance of object diff_les_g2\n");
 }
 
-int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * restrict v, double * restrict w,  double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi)
+int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * restrict v, double * restrict w, double * restrict s, double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi, double tPr)
 {
   int    ijk,ii,jj,kk;
   double dx,dy,dxi,dyi;
@@ -30,6 +30,8 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
   const double cs = 0.23;
   const double z0 = 0.1;
   const double n  = 2.;
+
+  double twostrain2, RitPrratio;
 
   ii = 1;
   jj = grid->icells;
@@ -52,7 +54,7 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        evisc[ijk] = fac * std::sqrt(
+        twostrain2 = (
           // du/dx + du/dx
           + std::pow((u[ijk+ii]-u[ijk])*dxi, 2.)
 
@@ -79,6 +81,12 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
           + 0.125*std::pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, 2.)
           + 0.125*std::pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2.)
           + 0.125*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2.) );
+
+        // CvH use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
+        // Add the buoyancy production to the TKE
+        RitPrratio = (9.81/300.)*(s[ijk+kk]-s[ijk-kk])/(z[k+1]-z[k-1]) / (0.5*twostrain2) / tPr;
+        RitPrratio = std::min(RitPrratio, 1.-dsmall);
+        evisc[ijk] = fac * std::sqrt(twostrain2) * std::sqrt(1.-RitPrratio);
       }
   }
 
@@ -383,7 +391,7 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
   return 0;
 }
 
-double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi)
+double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi, double tPr)
 {
   int    ijk,ij,ii,jj,kk;
   double dxidxi,dyidyi;
@@ -395,7 +403,7 @@ double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi)
   dxidxi = 1./(grid->dx * grid->dx);
   dyidyi = 1./(grid->dy * grid->dy);
 
-  double viscmax = std::max(fields->visc, fields->viscs);
+  double tPrfac = std::min(1., tPr);
   double dnmul = 0;
 
   // get the maximum time step for diffusion
@@ -405,7 +413,7 @@ double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        dnmul = std::max(dnmul, std::abs((evisc[ijk] + viscmax) * (dxidxi + dyidyi + dzi[k]*dzi[k])));
+        dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
       }
 
   return dnmul;
