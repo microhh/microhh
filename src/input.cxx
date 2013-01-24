@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include <cctype>
 #include <map>
 #include "input.h"
 #include "mpiinterface.h"
