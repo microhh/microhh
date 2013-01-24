@@ -56,6 +56,11 @@ int cmpi::startup()
   if(checkerror(n))
     return 1;
 
+  // store a temporary copy of COMM_WORLD in commxy
+  n = MPI_Comm_dup(MPI_COMM_WORLD, &commxy);
+  if(checkerror(n))
+    return 1;
+
   if(mpiid == 0) std::printf("Starting run on %d processes\n", nprocs);
 
   return 0;
@@ -80,7 +85,12 @@ int cmpi::init()
     return 1;
 
   // create a 2-D grid communicator that is optimized for grid to grid transfer
-  n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, true , &commxy);
+  // first, free our temporary copy of COMM_WORLD
+  n = MPI_Comm_free(&commxy);
+  if(checkerror(n))
+    return 1;
+  // for now, do not reorder processes, blizzard gives large performance loss
+  n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
   if(checkerror(n))
     return 1;
   n = MPI_Comm_rank(commxy, &mpiid);
@@ -160,26 +170,26 @@ int cmpi::waitall()
 // do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
 int cmpi::broadcast(char *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Bcast(data, datasize, MPI_CHAR, 0, commxy);
   return 0;
 }
 
 // overloaded broadcast functions
 int cmpi::broadcast(int *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(data, datasize, MPI_INT, 0, commxy);
   return 0;
 }
 
 int cmpi::broadcast(unsigned long *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+  MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, commxy);
   return 0;
 }
 
 int cmpi::broadcast(double *data, int datasize)
 {
-  MPI_Bcast(data, datasize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(data, datasize, MPI_DOUBLE, 0, commxy);
   return 0;
 }
 #endif
