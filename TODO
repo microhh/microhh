@@ -1,3 +1,6 @@
+[urgent]
+implement consistent LES/DNS boundary handling, such that 4th order LES can be made
+
 [bugs]
 implement default option for randomnization such that it is applied over whole field
 
