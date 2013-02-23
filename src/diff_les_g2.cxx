@@ -54,7 +54,7 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        twostrain2 = (
+        twostrain2 = 2.*(
           // du/dx + du/dx
           + std::pow((u[ijk+ii]-u[ijk])*dxi, 2.)
 
