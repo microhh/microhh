@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <cmath>
-#include <netcdfcpp.h>
+#include "netcdfinterface.h"
 #include "grid.h"
 #include "fields.h"
 #include "cross.h"

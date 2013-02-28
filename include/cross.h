@@ -1,7 +1,7 @@
 #ifndef CROSS
 #define CROSS
 
-#include <netcdfcpp.h>
+#include "netcdfinterface.h"
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
