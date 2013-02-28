@@ -44,7 +44,7 @@ elseif (C_COMPILER_NAME STREQUAL "XL")
     set (C_COMPILER_WRAPPER mpcc)
     set (CXX_COMPILER_WRAPPER mpCC)
   endif()
-  set(CMAKE_CXX_FLAGS_RELEASE "-O4 -qnoipa -qmaxmem=-1 -qarch=450d -qtune=450 -qnostrict -qhot=simd")
+  set(CMAKE_CXX_FLAGS_RELEASE "-qarch=pwr6 -qtune=pwr6 -O3 -qhot=simd -qenablevmx")
 endif ()
 # Set the compiler name to the wrapper, if necessary
 MESSAGE(STATUS "Compiler " ${CMAKE_CXX_COMPILER})
@@ -58,7 +58,7 @@ endif ()
 MESSAGE(STATUS "Compiler " ${CMAKE_CXX_COMPILER})
 
 if (SYST STREQUAL "mpipc")
-  # # MPI PC
+  # MPI PC
   set(FFTW_INCLUDE_DIR   "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/include")
   set(FFTW_LIB           "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/lib/libfftw3.a")
   set(NETCDF_INCLUDE_DIR "/sw/squeeze-x64/netcdf-latest-static-gcc46/include")
@@ -67,9 +67,20 @@ if (SYST STREQUAL "mpipc")
   set(HDF5_LIB_1         "/sw/squeeze-x64/hdf5-latest-static/lib/libhdf5.a")
   set(HDF5_LIB_2         "/sw/squeeze-x64/hdf5-latest-static/lib/libhdf5_hl.a")
   set(SZIP_LIB           "/sw/squeeze-x64/szip-latest-static/lib/libsz.a")
-
+  set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
+elseif (SYST STREQUAL "blizzard")
+  # Thunder
+  set(FFTW_INCLUDE_DIR   "/pf/zmaw/m300041/local/include")
+  set(FFTW_LIB           "/pf/zmaw/m300041/local/lib/libfftw3.a")
+  set(NETCDF_INCLUDE_DIR "/sw/aix61/netcdf-4.1.3/include")
+  set(NETCDF_LIB_C       "/sw/aix61/netcdf-4.1.3/lib/libnetcdf.a")
+  set(NETCDF_LIB_CPP     "/sw/aix61/netcdf-4.1.3/lib/libnetcdf_c++.a")
+  set(HDF5_LIB_1         "/sw/aix61/hdf5-1.8.8/lib/libhdf5.a")
+  set(HDF5_LIB_2         "/sw/aix61/hdf5-1.8.8/lib/libhdf5_hl.a")
+  set(SZIP_LIB           "/sw/aix53/szip-2.1/lib/libsz.a")
+  set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z)
 elseif (SYST STREQUAL "thunder")
-  # # Thunder
+  # Thunder
   set(FFTW_INCLUDE_DIR   "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/include")
   set(FFTW_LIB           "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/lib/libfftw3.a")
   set(NETCDF_INCLUDE_DIR "/sw/squeeze-x64/netcdf-latest-static-gcc46/include")
@@ -78,6 +89,7 @@ elseif (SYST STREQUAL "thunder")
   set(HDF5_LIB_1         "/sw/squeeze-x64/hdf5-latest-static/lib/libhdf5.a")
   set(HDF5_LIB_2         "/sw/squeeze-x64/hdf5-latest-static/lib/libhdf5_hl.a")
   set(SZIP_LIB           "/sw/squeeze-x64/szip-latest-static/lib/libsz.a")
+  set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
 elseif (SYST STREQUAL "macbook")
   # Macbook
   set(FFTW_INCLUDE_DIR   "/usr/include")
@@ -88,6 +100,7 @@ elseif (SYST STREQUAL "macbook")
   set(HDF5_LIB_1         "/usr/lib64/libhdf5.a")
   set(HDF5_LIB_2         "/usr/lib64/libhdf5_hl.a")
   set(SZIP_LIB           "")
+  set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
 elseif (SYST STREQUAL "fedora")
   # Macbook
   set(FFTW_INCLUDE_DIR   "/usr/include")
@@ -98,7 +111,7 @@ elseif (SYST STREQUAL "fedora")
   set(HDF5_LIB_1         "/usr/lib64/libhdf5.a")
   set(HDF5_LIB_2         "/usr/lib64/libhdf5_hl.a")
   set(SZIP_LIB           "")
-
+  set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
 elseif (SYST STREQUAL "supermuc")
   # SuperMUC
   set(FFTW_INCLUDE_DIR   "/lrz/sys/libraries/fftw/3.3.2/sse/include")
@@ -109,17 +122,11 @@ elseif (SYST STREQUAL "supermuc")
   set(HDF5_LIB_1         "/lrz/sys/libraries/netcdf/hdf5_1.8.9/lib/libhdf5.a")
   set(HDF5_LIB_2         "/lrz/sys/libraries/netcdf/hdf5_1.8.9/lib/libhdf5_hl.a")
   set(SZIP_LIB           "/lrz/sys/libraries/hdf5/szip_2.1_u1/lib/libsz.a")
-
-elseif (SYST STREQUAL "jugene")
-set(FFTW_INCLUDE_DIR "/bgsys/local/fftw3/3.3/fftw_450/include")
+  set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
+endif()
 set(FFTW_LIB         "/bgsys/local/fftw3/3.3/fftw_450/lib/libfftw3.a")
 
-set(FFTW_INCLUDE_DIR "/bgsys/local/fftw3/3.3.2/fftw_g/include")
-set(FFTW_LIB         "/bgsys/local/fftw3/3.3.2/fftw_g/lib/libfftw3.a")
-endif()
-
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
-set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB})
 
 add_subdirectory(src)
 add_subdirectory(main)
@@ -134,20 +141,20 @@ add_subdirectory(test)
 #                   COMMAND grep -Rin \\todo  src | sed 's/!.*TODO//I' >>  TODO
 #                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 #                   )
-find_package(Doxygen)
-IF (DOXYGEN_FOUND)
-  CONFIGURE_FILE(config/doxygen.conf.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-  ADD_CUSTOM_TARGET(doc
-          ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf
-          COMMENT "Generating API documentation with Doxygen" VERBATIM
-          DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-  add_custom_target(install-doc
-          cp -r ${CMAKE_CURRENT_BINARY_DIR}/doc ${CMAKE_SOURCE_DIR}
-          DEPENDS doc)
-#   add_dependencies(doc-install doc)
-
-  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_SOURCE_DIR})
-ELSE (DOXYGEN)
-    MESSAGE(STATUS "WARNING: Doxygen not found - Reference manual will
-not be created")
-ENDIF ()
+# find_package(Doxygen)
+# IF (DOXYGEN_FOUND)
+#   CONFIGURE_FILE(config/doxygen.conf.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
+#   ADD_CUSTOM_TARGET(doc
+#           ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf
+#           COMMENT "Generating API documentation with Doxygen" VERBATIM
+#           DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
+#   add_custom_target(install-doc
+#           cp -r ${CMAKE_CURRENT_BINARY_DIR}/doc ${CMAKE_SOURCE_DIR}
+#           DEPENDS doc)
+# #   add_dependencies(doc-install doc)
+# 
+#   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_SOURCE_DIR})
+# ELSE (DOXYGEN)
+#     MESSAGE(STATUS "WARNING: Doxygen not found - Reference manual will
+# not be created")
+# ENDIF ()
