@@ -15,7 +15,8 @@ class cfields
     int readinifile(cinput *);
     int init();
     int create(cinput *);
-
+    int initpfld(cfield3d*&, cfield3d*&, std::string, std::string);
+    
     int save(int);
     int load(int);
 
@@ -38,6 +39,9 @@ class cfields
 
     cfield3d *s;
     cfield3d *st;
+    
+    cfield3d **pfld;
+    cfield3d **pfldt;
 
     // temporary arrays
     cfield3d *tmp1;
@@ -45,6 +49,8 @@ class cfields
 
     double visc;
     double viscs;
+    
+    int npfld;
 
   private:
     // variables
@@ -60,6 +66,8 @@ class cfields
     double vortexamp;
     int nvortexpair;
     int vortexaxis;
+    
+    int npfldcur;
 
     // functions
     double calcmom_2nd(double *, double *, double *, double *);

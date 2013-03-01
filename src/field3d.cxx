@@ -1,11 +1,14 @@
 #include <cstdio>
+#include <iostream>
 #include "grid.h"
 #include "field3d.h"
 #include "defines.h"
+// #include "../netcdf-4.1.3/ncgen/ncgen.y"
+using namespace std;
 
 cfield3d::cfield3d(cgrid *gridin, cmpi *mpiin, std::string namein)
 {
-  // std::printf("Creating instance of object field3d\n");
+  std::printf("Creating instance of object field3d\n");
   grid = gridin;
   name = namein;
   mpi  = mpiin;
@@ -30,7 +33,8 @@ int cfield3d::init()
   // allocate the memory
   if(mpi->mpiid == 0) std::printf("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
   data    = new double[grid->ncells];
-
+  data[10] = 20.;
+  cout << "init"<< data[10]<<" " << grid->ncells<<"\n";
   // allocate the boundary cells
   databot = new double[grid->icells*grid->jcells];
   datatop = new double[grid->icells*grid->jcells];

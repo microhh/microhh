@@ -4,6 +4,8 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
+#include <iostream>
+using namespace std;
 
 cfields::cfields(cgrid *gridin, cmpi *mpiin)
 {
@@ -65,34 +67,24 @@ int cfields::init()
 {
   if(mpi->mpiid == 0) std::printf("Initializing fields\n");
 
-  // set pointers to correct location
-  u  = new cfield3d(grid, mpi, "u" );
-  v  = new cfield3d(grid, mpi, "v" );
-  w  = new cfield3d(grid, mpi, "w" );
+  npfld = 4;
+  npfldcur = 0;
+  pfld  = new cfield3d*[npfld];
+  pfldt = new cfield3d*[npfld];
+  
+  initpfld(u, ut, "u","ut");
+  initpfld(v, vt, "v","vt");
+  initpfld(w, wt, "w","wt");
+  initpfld(s, st, "s","st");
+  
+//   cout << &u << " " << u << bla<<"\n";
+
   p  = new cfield3d(grid, mpi, "p" );
-
-  ut = new cfield3d(grid, mpi, "ut");
-  vt = new cfield3d(grid, mpi, "vt");
-  wt = new cfield3d(grid, mpi, "wt");
-
-  s  = new cfield3d(grid, mpi, "s" );
-  st = new cfield3d(grid, mpi, "st");
 
   tmp1 = new cfield3d(grid, mpi, "tmp1");
   tmp2 = new cfield3d(grid, mpi, "tmp2");
 
-  u->init();
-  v->init();
-  w->init();
   p->init();
-
-  ut->init();
-  vt->init();
-  wt->init();
-
-  s ->init();
-  st->init();
-
   tmp1->init();
   tmp2->init();
 
@@ -101,6 +93,20 @@ int cfields::init()
   return 0;
 }
 
+int cfields::initpfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, std::string fldtname)
+{
+  fld = new cfield3d(grid, mpi, fldname );
+  fld->init();
+  
+  fldt  = new cfield3d(grid, mpi, fldtname );
+  fldt->init();
+
+  pfld[npfldcur]  = fld;
+  pfldt[npfldcur] = fldt;
+  npfldcur++;
+  return 0;
+
+}
 int cfields::create(cinput *inputin)
 {
   if(mpi->mpiid == 0) std::printf("Creating fields\n");
@@ -163,14 +169,14 @@ int cfields::create(cinput *inputin)
   double uproftemp[grid->kmax];
   double vproftemp[grid->kmax];
   double sproftemp[grid->kmax];
-
+printf("Creating fields\n");
   if(inputin->getProf(uproftemp, "u", grid->kmax))
     return 1;
   if(inputin->getProf(vproftemp, "v", grid->kmax))
     return 1;
   if(inputin->getProf(sproftemp, "s", grid->kmax))
     return 1;
-
+printf("Creating fields\n");
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
@@ -180,7 +186,7 @@ int cfields::create(cinput *inputin)
         v->data[ijk] += vproftemp[k-grid->kstart];
         s->data[ijk] += sproftemp[k-grid->kstart];
       }
-
+printf("Csreating fields\n");
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;
   int ntop = grid->kend  *grid->icells*grid->jcells;
@@ -189,7 +195,7 @@ int cfields::create(cinput *inputin)
     w->data[nbot + n] = 0.;
     w->data[ntop + n] = 0.;
   }
-
+printf("Creating fields\n");
   return 0;
 }
 
