@@ -1,7 +1,7 @@
 #ifndef STATS
 #define STATS
 
-#include "netcdfinterface.h"
+#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
