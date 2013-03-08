@@ -55,21 +55,21 @@ int cboundary::readinifile(cinput *inputin)
 
 int cboundary::setvalues()
 {
-  setbc((*fields->u).databot, (*fields->u).datagradbot, bcbotmom , 0.  );
-  setbc((*fields->v).databot, (*fields->v).datagradbot, bcbotmom , 0.  );
+  setbc((*fields->u).databot, (*fields->u).datagradbot, (*fields->u).datafluxbot, bcbotmom, 0., fields->visc);
+  setbc((*fields->v).databot, (*fields->v).datagradbot, (*fields->v).datafluxbot, bcbotmom, 0., fields->visc);
 
-  setbc((*fields->u).datatop, (*fields->u).datagradtop, bctopmom , 0.  );
-  setbc((*fields->v).datatop, (*fields->v).datagradtop, bctopmom , 0.  );
+  setbc((*fields->u).datatop, (*fields->u).datagradtop, (*fields->u).datafluxtop, bctopmom, 0., fields->visc);
+  setbc((*fields->v).datatop, (*fields->v).datagradtop, (*fields->v).datafluxtop, bctopmom, 0., fields->visc);
 
   if(iboundarytype == 0)
   {
-    setbc((*fields->s).databot, (*fields->s).datagradbot, bcbotscal, sbot);
-    setbc((*fields->s).datatop, (*fields->s).datagradtop, bctopscal, stop);
+    setbc((*fields->s).databot, (*fields->s).datagradbot, (*fields->s).datafluxbot, bcbotscal, sbot, fields->viscs);
+    setbc((*fields->s).datatop, (*fields->s).datagradtop, (*fields->s).datafluxtop, bctopscal, stop, fields->viscs);
   }
   if(iboundarytype == 1)
   {
     setbc_patch((*fields->s).datagradbot, patch_facl, patch_facr, sbot);
-    setbc      ((*fields->s).datatop, (*fields->s).datagradtop, bctopscal, stop);
+    setbc      ((*fields->s).datatop, (*fields->s).datagradtop, (*fields->s).datafluxtop, bctopscal, stop, fields->viscs);
   }
 
   return 0;
@@ -79,19 +79,17 @@ int cboundary::exec()
 {
   if(iboundary == 2)
   {
-    // CvH temporary hack for fluxes 
-    for(int n=0; n<grid->icells*grid->jcells; n++)
-      (*fields->s).datafluxbot[n] = 0.1;
-
     // bottom boundary conditions
     setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
     setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
-    setgcbot_2nd((*fields->s).data, grid->dzh, bcbotscal, sbot);
+    // setgcbot_2nd((*fields->s).data, grid->dzh, bcbotscal, sbot);
+    setgcbot_2nd((*fields->s).data, grid->dzh, bcbotscal, (*fields->s).datagradbot);
 
     // top boundary conditions
     setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
     setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
     setgctop_2nd((*fields->s).data, grid->dzh, bctopscal, stop);
+    //setgctop_2nd((*fields->s).data, grid->dzh, bctopscal, (*fields->s).datagradtop);
   }
   else if(iboundary == 4)
   {
@@ -169,7 +167,7 @@ int cboundary::setbc_patch(double * restrict a, double facl, double facr, double
   return 0;
 }
 
-int cboundary::setbc(double * restrict a, double * restrict agrad, int sw, double aval)
+int cboundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc)
 {
   int ij,jj;
   jj = grid->icells;
@@ -192,6 +190,18 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, int sw, doubl
       {
         ij = i + j*jj;
         agrad[ij] = aval;
+        aflux[ij] = -aval*visc;
+      }
+  }
+  else if(sw == 2)
+  {
+    for(int j=0; j<grid->jcells; j++)
+#pragma ivdep
+      for(int i=0; i<grid->icells; i++)
+      {
+        ij = i + j*jj;
+        aflux[ij] = aval;
+        agrad[ij] = -aval/visc;
       }
   }
 
@@ -218,7 +228,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, 
         a[ijk-kk] = 2.*abot - a[ijk];
       }
   }
-  else if(sw == 1)
+  else if(sw == 1 || sw == 2)
   {
     for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
@@ -247,18 +257,16 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, 
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
-        // add the bcvalues later
         ijk = i + j*jj + (kend-1)*kk;
         a[ijk+kk] = 2.*atop - a[ijk];
       }
   }
-  else if(sw == 1)
+  else if(sw == 1 || sw == 2)
   {
     for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
       for(int i=0; i<grid->icells; i++)
       {
-        // add the bcvalues later
         ijk = i + j*jj + (kend-1)*kk;
         a[ijk+kk] = atop*dzh[kend] + a[ijk];
       }
@@ -288,7 +296,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
         a[ijk-kk2] = 8.*abot - 9.*a[ijk] + 2.*a[ijk+kk1];
       }
   }
-  else if(sw == 1)
+  else if(sw == 1 || sw == 2)
   {
     for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
@@ -324,7 +332,7 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
         a[ijk+kk2] = 8.*atop - 9.*a[ijk] + 2.*a[ijk-kk1];
       }
   }
-  else if(sw == 1)
+  else if(sw == 1 || sw == 2)
   {
     for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
@@ -360,7 +368,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, 
         a[ijk-kk] = 2.*abot[ij] - a[ijk];
       }
   }
-  else if(sw == 1)
+  else if(sw == 1 || sw == 2)
   {
     for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
@@ -395,7 +403,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, 
         a[ijk+kk] = 2.*atop[ij] - a[ijk];
       }
   }
-  else if(sw == 1)
+  else if(sw == 1 || sw == 2)
   {
     for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
@@ -432,7 +440,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
         a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
       }
   }
-  else if(sw == 1)
+  else if(sw == 1 || sw == 2)
   {
     for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
@@ -470,7 +478,7 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
         a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
       }
   }
-  else if(sw == 1)
+  else if(sw == 1 || sw == 2)
   {
     for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
