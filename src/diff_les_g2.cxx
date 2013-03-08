@@ -31,7 +31,7 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
   const double z0 = 0.1;
   const double n  = 2.;
 
-  double twostrain2, RitPrratio;
+  double strain2, RitPrratio;
 
   ii = 1;
   jj = grid->icells;
@@ -47,14 +47,14 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
     mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
-    fac = std::pow(mlen, 2.);
+    fac   = std::pow(mlen, 2.);
 
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        twostrain2 = 2.*(
+        strain2 = 2.*(
           // du/dx + du/dx
           + std::pow((u[ijk+ii]-u[ijk])*dxi, 2.)
 
@@ -84,9 +84,9 @@ int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * r
 
         // CvH use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
         // Add the buoyancy production to the TKE
-        RitPrratio = (9.81/300.)*(s[ijk+kk]-s[ijk-kk])/(z[k+1]-z[k-1]) / (0.5*twostrain2) / tPr;
-        RitPrratio = std::min(RitPrratio, 1.-dsmall);
-        evisc[ijk] = fac * std::sqrt(twostrain2) * std::sqrt(1.-RitPrratio);
+        RitPrratio = (9.81/300.)*(s[ijk+kk]-s[ijk-kk])*0.5*dzi[k] / strain2 / tPr;
+        RitPrratio = std::max(0., std::min(RitPrratio, 1.-dsmall));
+        evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
       }
   }
 
