@@ -67,46 +67,75 @@ int cfields::init()
 {
   if(mpi->mpiid == 0) std::printf("Initializing fields\n");
 
-  npfld = 4;
-  npfldcur = 0;
-  pfld  = new cfield3d*[npfld];
-  pfldt = new cfield3d*[npfld];
+  int err;
   
-  initpfld(u, ut, "u","ut");
-  initpfld(v, vt, "v","vt");
-  initpfld(w, wt, "w","wt");
-  initpfld(s, st, "s","st");
+  err += initmomfld(u, ut, "u");
+  err += initmomfld(v, vt, "v");
+  err += initmomfld(w, wt, "w");
+  err += initpfld(s, st, "s");
   
-//   cout << &u << " " << u << bla<<"\n";
-
-  p  = new cfield3d(grid, mpi, "p" );
-
-  tmp1 = new cfield3d(grid, mpi, "tmp1");
-  tmp2 = new cfield3d(grid, mpi, "tmp2");
-
-  p->init();
-  tmp1->init();
-  tmp2->init();
+  err += initdfld(p, "p");
+  err += initdfld(p, "p");
+  err += initdfld(tmp1, "tmp1");
+  err += initdfld(tmp2, "tmp2");
 
   allocated = true;
 
-  return 0;
+  return err;
 }
 
-int cfields::initpfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, std::string fldtname)
+int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
 {
+  string fldtname = fldname + "t";
   fld = new cfield3d(grid, mpi, fldname );
   fld->init();
   
   fldt  = new cfield3d(grid, mpi, fldtname );
   fldt->init();
 
-  pfld[npfldcur]  = fld;
-  pfldt[npfldcur] = fldt;
-  npfldcur++;
+  MomentumProg[fldname] = fld;
+  MomentumTend[fldname] = fldt;
   return 0;
 
 }
+
+
+int cfields::initpfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
+{
+  string fldtname = fldname + "t";
+  fld = new cfield3d(grid, mpi, fldname );
+  fld->init();
+  
+  fldt  = new cfield3d(grid, mpi, fldtname );
+  fldt->init();
+
+  Scalar[fldname]     = fld;
+  ScalarProg[fldname] = fld;
+  ScalarTend[fldname] = fldt;
+  return 0;
+
+}
+
+int cfields::initdfld(cfield3d *&fld, std::string fldname)
+{
+  if (Scalar.find(fldname)!=Scalar.end())
+  {
+//     cout << "ERROR: " << fldname << " already exists\n"; 
+    std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
+    return 1;
+  }
+  ScalarDiag[fldname]  = new cfield3d(grid, mpi, fldname );
+  ScalarDiag[fldname]->init();
+
+  fld = Scalar[fldname];
+  
+  
+//   ScalarDiag[fldname] = fld;
+//   Scalar[fldname]     = fld;
+  return 0;
+
+}
+
 int cfields::create(cinput *inputin)
 {
   if(mpi->mpiid == 0) std::printf("Creating fields\n");

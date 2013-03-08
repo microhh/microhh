@@ -1,6 +1,6 @@
 #ifndef FIELDS
 #define FIELDS
-
+#include <map>
 #include "grid.h"
 #include "mpiinterface.h"
 #include "field3d.h"
@@ -11,11 +11,12 @@ class cfields
     // functions
     cfields(cgrid *, cmpi *);
     ~cfields();
-
     int readinifile(cinput *);
     int init();
     int create(cinput *);
-    int initpfld(cfield3d*&, cfield3d*&, std::string, std::string);
+    int initmomfld(cfield3d*&, cfield3d*&, std::string);
+    int initpfld(cfield3d*&, cfield3d*&, std::string);
+    int initdfld(cfield3d*&, std::string);
     
     int save(int);
     int load(int);
@@ -42,6 +43,14 @@ class cfields
     
     cfield3d **pfld;
     cfield3d **pfldt;
+    
+    std::map<std::string, cfield3d*> Scalar;
+    std::map<std::string, cfield3d*> ScalarDiag;
+    std::map<std::string, cfield3d*> ScalarProg;
+    std::map<std::string, cfield3d*> ScalarTend;
+    std::map<std::string, cfield3d*> MomentumProg;
+    std::map<std::string, cfield3d*> MomentumTend;
+    
 
     // temporary arrays
     cfield3d *tmp1;
