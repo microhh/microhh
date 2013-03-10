@@ -26,7 +26,7 @@ class cmodel
     int init();
     int load();
     int save();
-    int exec();
+    int exec(std::string);
 
   private:
     cgrid   *grid;

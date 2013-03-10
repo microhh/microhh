@@ -105,7 +105,7 @@ int cmodel::save()
   return 0;
 }
 
-int cmodel::exec()
+int cmodel::exec(std::string mode)
 {
   // initialize the check variables
   int    iter;
@@ -191,38 +191,40 @@ int cmodel::exec()
     if(!timeloop->loop)
       break;
 
-    // PROGNOSTIC MODE
-    // integrate in time
-    timeloop->exec();
-
-    // step the time step
-    if(!timeloop->insubstep())
-      timeloop->timestep();
-
-    // save the fields
-    if(timeloop->dosave() && !timeloop->insubstep())
+    // RUN MODE
+    if(mode == "run")
     {
-      timeloop->save(timeloop->iteration);
-      fields->save  (timeloop->iteration);
+      // integrate in time
+      timeloop->exec();
+
+      // step the time step
+      if(!timeloop->insubstep())
+        timeloop->timestep();
+
+      // save the fields
+      if(timeloop->dosave() && !timeloop->insubstep())
+      {
+        timeloop->save(timeloop->iteration);
+        fields->save  (timeloop->iteration);
+      }
     }
-    // END PROGNOSTIC MODE
 
-    /*
-    // DIAGNOSTIC MODE
-    // step to the next time step
-    timeloop.postprocstep();
+    // POST PROCESS MODE
+    else if(mode == "post")
+    {
+      // step to the next time step
+      timeloop->postprocstep();
 
-    // if simulation is done break
-    if(!timeloop.loop)
-      break;
+      // if simulation is done break
+      if(!timeloop->loop)
+        break;
 
-    // load the data
-    if(timeloop.load(timeloop.iteration))
-      return 1;
-    if(fields.load(timeloop.iteration))
-      return 1;
-    // END DIAGNOSTIC MODE
-    */
+      // load the data
+      if(timeloop->load(timeloop->iteration))
+        return 1;
+      if(fields->load(timeloop->iteration))
+        return 1;
+    }
 
     // boundary conditions
     boundary->exec();

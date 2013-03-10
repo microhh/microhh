@@ -6,10 +6,27 @@
 
 int main(int argc, char *argv[])
 {
-  // set the name of the simulation
+  // set the mode and the name of the simulation
+  std::string mode;
   std::string simname("microhh");
-  if(argc > 1)
-    simname = argv[1];
+  if(argc <= 1)
+  {
+    std::printf("ERROR: specify init, run or post mode\n");
+    return 1;
+  }
+  else
+  {
+    // check the execution mode
+    mode = argv[1];
+    if(mode != "init" && mode != "run" && mode != "post")
+    {
+      std::printf("ERROR: specify init, run or post mode\n");
+      return 1;
+    }
+    // set the name of the simulation
+    if(argc > 2)
+      simname = argv[2];
+  }
 
   // start up the message passing interface
   cmpi mpi;
@@ -25,6 +42,10 @@ int main(int argc, char *argv[])
   // read the input data
   if(input.readinifile(simname))
     return 1;
+  if(mode == "init")
+    if(input.readproffile(simname))
+      return 1;
+
   if(mpi.readinifile(&input))
     return 1;
   if(grid.readinifile(&input))
@@ -44,18 +65,39 @@ int main(int argc, char *argv[])
   if(model.init())
     return 1;
 
+  if(mode == "init")
+  {
+    // read the grid from the input
+    if(grid.create(&input))
+      return 1;
+    if(fields.create(&input))
+      return 1;
+
+    // save the data
+    if(grid.save())
+      return 1;
+    // CvH, the model saves the fields now, not good...
+    if(model.save())
+      return 1;
+  }
+  else
+  {
   // fill the fields with data
   if(grid.load())
     return 1;
   // CvH, the model loads the fields now, not good...
   if(model.load())
     return 1;
+  }
 
   // free the memory of the input
   input.clear();
 
-  // run the model
-  model.exec();
+  if(mode != "init")
+  {
+    // run the model
+    model.exec(mode);
+  }
 
   return 0;
 }
