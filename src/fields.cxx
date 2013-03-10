@@ -21,18 +21,16 @@ cfields::~cfields()
 {
   if(allocated)
   {
-    delete u;
-    delete v;
-    delete w;
-    delete p;
+    for (std::map<std::string,cfield3d*>::iterator it = MomentumTend.begin(); it!=MomentumTend.end(); it++)
+    {
+      delete MomentumProg[it->first];
+      delete MomentumTend[it->first];
+    }
+    for (std::map<std::string,cfield3d*>::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
+      delete Scalar[it->first];
 
-    delete ut;
-    delete vt;
-    delete wt;
-
-    delete tmp1;
-    delete tmp2;
-    
+    for (std::map<std::string,cfield3d*>::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
+      delete ScalarTend[it->first];
   }
 
   // std::printf("Destroying instance of object fields\n");
