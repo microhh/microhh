@@ -138,12 +138,21 @@ int ctimeloop::settimestep(double cfl, double dn)
 
 int ctimeloop::exec()
 {
+  std::map<std::string, cfield3d*>::iterator itTend, itProg;
+
   if(rkorder == 3)
   {
     rk3((*fields->u).data, (*fields->ut).data, dt);
     rk3((*fields->v).data, (*fields->vt).data, dt);
     rk3((*fields->w).data, (*fields->wt).data, dt);
-    rk3((*fields->s).data, (*fields->st).data, dt);
+    
+    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
+    {
+      itProg = fields->Scalar.find(itTend->first);
+      rk3((*itProg->second).data, (*itTend->second).data, dt);
+    }
+
+//     rk3((*fields->s).data, (*fields->st).data, dt);
     substep = (substep+1) % 3;
   }
 
@@ -152,7 +161,11 @@ int ctimeloop::exec()
     rk4((*fields->u).data, (*fields->ut).data, dt);
     rk4((*fields->v).data, (*fields->vt).data, dt);
     rk4((*fields->w).data, (*fields->wt).data, dt);
-    rk4((*fields->s).data, (*fields->st).data, dt);
+    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
+    {
+      itProg = fields->Scalar.find(itTend->first);
+      rk3((*itProg->second).data, (*itTend->second).data, dt);
+    }
     substep = (substep+1) % 5;
   }
 

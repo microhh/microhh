@@ -17,8 +17,8 @@ cbuffer::cbuffer(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cbuffer::~cbuffer()
 {
-  if(allocated)
-    delete[] bufferprofs;
+//   if(allocated)
+//     delete bufferprofs;
 }
 
 int cbuffer::readinifile(cinput *inputin)
@@ -45,8 +45,13 @@ int cbuffer::init()
     // allocate the buffer array 
     bufferkcells = grid->kmax-bufferkstart-1;
 
-    // CvH fix this later with flexible number of scalars
-    bufferprofs = new double[4*bufferkcells];
+    std::map<std::string, cfield3d*>::iterator itProg;
+
+    for (std::map<std::string,cfield3d*>::iterator itProg = fields->MomentumProg.begin(); itProg!=fields->MomentumProg.end(); itProg++)
+      bufferprofs[itProg->first] = new double[bufferkcells];
+
+    for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+      bufferprofs[itProg->first] = new double[bufferkcells];
 
     allocated = true;
 
@@ -62,10 +67,12 @@ int cbuffer::setbuffers()
   if(ibuffer)
   {
     // set the buffers according to the initial profiles
-    setbuffer((*fields->u).data, &bufferprofs[0*bufferkcells]);
-    setbuffer((*fields->v).data, &bufferprofs[1*bufferkcells]);
-    setbuffer((*fields->w).data, &bufferprofs[2*bufferkcells]);
-    setbuffer((*fields->s).data, &bufferprofs[3*bufferkcells]);
+
+    for (std::map<std::string,cfield3d*>::iterator itProg = fields->MomentumProg.begin(); itProg!=fields->MomentumProg.end(); itProg++)
+      setbuffer((*itProg->second).data, &*bufferprofs[itProg->first]);
+ 
+    for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+      setbuffer((*itProg->second).data, &*bufferprofs[itProg->first]);
   }
 
   return 0;
@@ -73,13 +80,16 @@ int cbuffer::setbuffers()
 
 int cbuffer::exec()
 {
-  if(ibuffer == 1)
+  if(ibuffer)
   {
     // calculate the buffer tendencies
-    buffer((*fields->ut).data, (*fields->u).data, &bufferprofs[0*bufferkcells], grid->z );
-    buffer((*fields->vt).data, (*fields->v).data, &bufferprofs[1*bufferkcells], grid->z );
-    buffer((*fields->wt).data, (*fields->w).data, &bufferprofs[2*bufferkcells], grid->zh);
-    buffer((*fields->st).data, (*fields->s).data, &bufferprofs[3*bufferkcells], grid->z );
+
+    buffer((*fields->MomentumTend["u"]).data, (*fields->MomentumProg["u"]).data, &*bufferprofs["u"], grid->z );
+    buffer((*fields->MomentumTend["v"]).data, (*fields->MomentumProg["v"]).data, &*bufferprofs["v"], grid->z );
+    buffer((*fields->MomentumTend["w"]).data, (*fields->MomentumProg["w"]).data, &*bufferprofs["w"], grid->zh );
+ 
+    for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+      buffer((*fields->ScalarTend[itProg->first]).data, (*itProg->second).data, &*bufferprofs[itProg->first], grid->z );
   }
 
   return 0;
@@ -164,7 +174,9 @@ int cbuffer::save()
       return 1;
     }
 
-    fwrite(bufferprofs, sizeof(double), 4*bufferkcells, pFile);
+    for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
+      fwrite(itBuffer->second, sizeof(double), bufferkcells, pFile);
+    
     fclose(pFile);
   }
 
@@ -192,12 +204,15 @@ int cbuffer::load()
       return 1;
     }
 
-    fread(bufferprofs, sizeof(double), 4*bufferkcells, pFile);
+    for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
+      fread(itBuffer->second, sizeof(double), bufferkcells, pFile);
+    
     fclose(pFile);
   }
 
   // send the buffers to all processes
-  mpi->broadcast(bufferprofs, 4*bufferkcells);
+  for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
+    mpi->broadcast(itBuffer->second, bufferkcells);
 
   return 0;
 }

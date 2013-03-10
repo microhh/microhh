@@ -61,33 +61,42 @@ int cboundary::setvalues()
   setbc((*fields->u).datatop, (*fields->u).datagradtop, bctopmom , 0.  );
   setbc((*fields->v).datatop, (*fields->v).datagradtop, bctopmom , 0.  );
 
-  if(iboundarytype == 0)
+  
+  std::map<std::string, cfield3d*>::iterator itProg;  
+  for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
   {
-    setbc((*fields->s).databot, (*fields->s).datagradbot, bcbotscal, sbot);
-    setbc((*fields->s).datatop, (*fields->s).datagradtop, bctopscal, stop);
+    if(iboundarytype == 0)
+    {
+      setbc((*itProg->second).databot, (*itProg->second).datagradbot, bcbotscal, sbot);
+      setbc((*itProg->second).datatop, (*itProg->second).datagradtop, bctopscal, stop);
+    }
+    if(iboundarytype == 1)
+    {
+      setbc_patch((*itProg->second).datagradbot, patch_facl, patch_facr, sbot);
+      setbc      ((*itProg->second).datatop, (*itProg->second).datagradtop, bctopscal, stop);
+    }
   }
-  if(iboundarytype == 1)
-  {
-    setbc_patch((*fields->s).datagradbot, patch_facl, patch_facr, sbot);
-    setbc      ((*fields->s).datatop, (*fields->s).datagradtop, bctopscal, stop);
-  }
-
   return 0;
 }
 
 int cboundary::exec()
 {
+  std::map<std::string, cfield3d*>::iterator itProg;  
   if(iboundary == 2)
   {
     // bottom boundary conditions
     setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
     setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
-    setgcbot_2nd((*fields->s).data, grid->dzh, bcbotscal, sbot);
 
     // top boundary conditions
     setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
     setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
-    setgctop_2nd((*fields->s).data, grid->dzh, bctopscal, stop);
+    
+    for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+    {
+      setgctop_2nd((*itProg->second).data, grid->dzh, bctopscal, stop);
+      setgcbot_2nd((*itProg->second).data, grid->dzh, bcbotscal, sbot);
+    }
   }
   else if(iboundary == 4)
   {
@@ -95,22 +104,30 @@ int cboundary::exec()
     setgcbot_4th ((*fields->u).data, grid->z, bcbotmom, 0.);
     setgcbot_4th ((*fields->v).data, grid->z, bcbotmom, 0.);
     //setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, sbot);
-    setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, (*fields->s).datagradbot);
     setgcbotw_4th((*fields->w).data);
 
     // top boundary conditions
     setgctop_4th((*fields->u).data, grid->z, bctopmom, 0.);
     setgctop_4th((*fields->v).data, grid->z, bctopmom, 0.);
     //setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
-    setgctop_4th ((*fields->s).data, grid->z, bctopscal, (*fields->s).datagradtop);
     setgctopw_4th((*fields->w).data);
+    
+    for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+    {
+      setgcbot_4th ((*itProg->second).data, grid->z, bcbotscal, (*itProg->second).datagradbot);
+      setgctop_4th ((*itProg->second).data, grid->z, bctopscal, (*itProg->second).datagradtop);
+    }
   }
 
   // cyclic boundary conditions
   grid->boundary_cyclic((*fields->u).data);
   grid->boundary_cyclic((*fields->v).data);
   grid->boundary_cyclic((*fields->w).data);
-  grid->boundary_cyclic((*fields->s).data);
+  
+  for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+  {
+    grid->boundary_cyclic((*itProg->second).data);
+  }
 
   return 0;
 }

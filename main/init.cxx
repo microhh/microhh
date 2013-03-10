@@ -4,6 +4,7 @@
 #include "fields.h"
 #include "buffer.h"
 #include "timeloop.h"
+#include <iostream>
 
 int main(int argc, char *argv[])
 {

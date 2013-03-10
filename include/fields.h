@@ -14,8 +14,9 @@ class cfields
     int readinifile(cinput *);
     int init();
     int create(cinput *);
+
     int initmomfld(cfield3d*&, cfield3d*&, std::string);
-    int initpfld(cfield3d*&, cfield3d*&, std::string);
+    int initpfld(std::string);
     int initdfld(cfield3d*&, std::string);
     
     int save(int);
@@ -37,12 +38,6 @@ class cfields
     cfield3d *ut;
     cfield3d *vt;
     cfield3d *wt;
-
-    cfield3d *s;
-    cfield3d *st;
-    
-    cfield3d **pfld;
-    cfield3d **pfldt;
     
     std::map<std::string, cfield3d*> Scalar;
     std::map<std::string, cfield3d*> ScalarDiag;
@@ -59,7 +54,7 @@ class cfields
     double visc;
     double viscs;
     
-    int npfld;
+    int nProgScalar;
 
   private:
     // variables

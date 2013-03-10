@@ -210,34 +210,34 @@ int cstats::exec(int iteration, double time)
   calcmean((*fields->u).data, u);
   calcmean((*fields->v).data, v);
   calcmean((*fields->w).data, w);
-  calcmean((*fields->s).data, s);
+  calcmean((*fields->Scalar["s"]).data, s);
 
   // calc variances
   calcmoment((*fields->u).data, u, u2, 2., 0);
   calcmoment((*fields->v).data, v, v2, 2., 0);
   calcmoment((*fields->w).data, w, w2, 2., 1);
-  calcmoment((*fields->s).data, s, s2, 2., 0);
+  calcmoment((*fields->ScalarProg["s"]).data, s, s2, 2., 0);
 
   // calc skewnesses
   calcmoment((*fields->u).data, u, u3, 3., 0);
   calcmoment((*fields->v).data, v, v3, 3., 0);
   calcmoment((*fields->w).data, w, w3, 3., 1);
-  calcmoment((*fields->s).data, s, s3, 3., 0);
+  calcmoment((*fields->Scalar["s"]).data, s, s3, 3., 0);
 
   // calculate gradients
   calcgrad((*fields->u).data, ugrad, grid->dzhi4);
   calcgrad((*fields->v).data, vgrad, grid->dzhi4);
-  calcgrad((*fields->s).data, sgrad, grid->dzhi4);
+  calcgrad((*fields->Scalar["s"]).data, sgrad, grid->dzhi4);
 
   // calculate turbulent fluxes
   calcflux((*fields->u).data, (*fields->w).data, wu, (*fields->tmp1).data, 1, 0);
   calcflux((*fields->v).data, (*fields->w).data, wv, (*fields->tmp1).data, 0, 1);
-  calcflux((*fields->s).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
+  calcflux((*fields->Scalar["s"]).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
 
   // calculate diffusive fluxes
   calcdiff((*fields->u).data, udiff, grid->dzhi4, fields->visc );
   calcdiff((*fields->v).data, vdiff, grid->dzhi4, fields->visc );
-  calcdiff((*fields->s).data, sdiff, grid->dzhi4, fields->viscs);
+  calcdiff((*fields->Scalar["s"]).data, sdiff, grid->dzhi4, fields->viscs);
 
   // add the turbulent and diffusive fluxes
   for(int k=grid->kstart; k<grid->kend+1; k++)
@@ -248,7 +248,7 @@ int cstats::exec(int iteration, double time)
   }
 
   // calculate the TKE budget
-  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->p).data, (*fields->s).data,
+  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->Scalar["p"]).data, (*fields->Scalar["s"]).data,
                 (*fields->tmp1).data, (*fields->tmp2).data,
                 u, v,
                 u2_shear, v2_shear, tke_shear,
@@ -324,7 +324,7 @@ int cstats::exec(int iteration, double time)
   }
 
   // calculate variance and higher order moments
-  // save variances
+  // save variance*fields->ss
 
   // calculate flux
   // save flux
