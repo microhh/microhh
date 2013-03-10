@@ -73,8 +73,6 @@ int cdiff::exec()
   if(idiff == 0)
     return 0;
 
-  std::map<std::string, cfield3d*>::iterator itTend, itProg;
-
   // diffuse the flow
   if(idiff == 2)
   {
@@ -82,11 +80,8 @@ int cdiff::exec()
     diff_g2->diffc((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi, fields->visc);
     diff_g2->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
-    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
-    {
-      itProg = fields->Scalar.find(itTend->first);
-      diff_g2->diffc((*itTend->second).data, (*itProg->second).data, grid->dzi, grid->dzhi, fields->viscs);
-    }
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      diff_g2->diffc((*it->second).data, (*fields->Scalar[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
   }
   else if(idiff == 42)
   {
@@ -95,11 +90,8 @@ int cdiff::exec()
     diff_g42->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
 
-    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
-    {
-      itProg = fields->Scalar.find(itTend->first);
-      diff_g42->diffc((*itTend->second).data, (*itProg->second).data, grid->dzi, grid->dzhi, fields->viscs);
-    }
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      diff_g42->diffc((*it->second).data, (*fields->Scalar[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
   }
   else if(idiff == 4)
   {
@@ -108,11 +100,8 @@ int cdiff::exec()
     diff_g4->diffw((*fields->wt).data, (*fields->w).data, grid->dzi4, grid->dzhi4, fields->visc);
 
 
-    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
-    {
-      itProg = fields->Scalar.find(itTend->first);
-      diff_g4->diffc((*itTend->second).data, (*itProg->second).data, grid->dzi4, grid->dzhi4, fields->viscs);
-    }
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      diff_g4->diffc((*it->second).data, (*fields->Scalar[it->first]).data, grid->dzi4, grid->dzhi4, fields->viscs);
   }
 
   return 0;

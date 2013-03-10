@@ -75,18 +75,14 @@ int cadvec::exec()
   if(iadvec == 0)
     return 0;
 
-  std::map<std::string, cfield3d*>::iterator itTend, itProg;
   if(iadvec == 2)
   {
     advec_g2->advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
     advec_g2->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
     advec_g2->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
 
-    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
-    {
-      itProg = fields->Scalar.find(itTend->first);
-      advec_g2->advecs((*itTend->second).data, (*itProg->second).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
-    }
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      advec_g2->advecs((*it->second).data, (*fields->Scalar[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   }
   else if(iadvec == 24)
   {
@@ -94,11 +90,8 @@ int cadvec::exec()
     advec_g2i4->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
     advec_g2i4->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
 
-    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
-    {
-      itProg = fields->Scalar.find(itTend->first);
-      advec_g2i4->advecs((*itTend->second).data, (*itProg->second).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
-    }    
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      advec_g2i4->advecs((*it->second).data, (*fields->Scalar[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   }
   else if(iadvec == 42)
   {
@@ -106,11 +99,8 @@ int cadvec::exec()
     advec_g42->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
     advec_g42->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
 
-    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
-    {
-      itProg = fields->Scalar.find(itTend->first);
-      advec_g42->advecs((*itTend->second).data, (*itProg->second).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
-    }    
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      advec_g42->advecs((*it->second).data, (*fields->Scalar[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   }
   else if(iadvec == 4)
   {
@@ -118,11 +108,8 @@ int cadvec::exec()
     advec_g4->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
     advec_g4->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
 
-    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
-    {
-      itProg = fields->Scalar.find(itTend->first);
-      advec_g4->advecs((*itTend->second).data, (*itProg->second).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
-    }    
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      advec_g4->advecs((*it->second).data, (*fields->Scalar[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   }
   else if(iadvec == 44)
   {
@@ -130,11 +117,8 @@ int cadvec::exec()
     advec_g4m->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
     advec_g4m->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
 
-    for (std::map<std::string,cfield3d*>::iterator itTend = fields->ScalarTend.begin(); itTend!=fields->ScalarTend.end(); itTend++)
-    {
-      itProg = fields->Scalar.find(itTend->first);
-      advec_g4m->advecs((*itTend->second).data, (*itProg->second).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
-    }    
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      advec_g4m->advecs((*it->second).data, (*fields->Scalar[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   }
 
   return 0;

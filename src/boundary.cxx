@@ -61,8 +61,6 @@ int cboundary::setvalues()
   setbc((*fields->u).datatop, (*fields->u).datagradtop, bctopmom , 0.  );
   setbc((*fields->v).datatop, (*fields->v).datagradtop, bctopmom , 0.  );
 
-  
-  std::map<std::string, cfield3d*>::iterator itProg;  
   for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
   {
     if(iboundarytype == 0)
@@ -81,7 +79,6 @@ int cboundary::setvalues()
 
 int cboundary::exec()
 {
-  std::map<std::string, cfield3d*>::iterator itProg;  
   if(iboundary == 2)
   {
     // bottom boundary conditions

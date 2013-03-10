@@ -45,8 +45,6 @@ int cbuffer::init()
     // allocate the buffer array 
     bufferkcells = grid->kmax-bufferkstart-1;
 
-    std::map<std::string, cfield3d*>::iterator itProg;
-
     for (std::map<std::string,cfield3d*>::iterator itProg = fields->MomentumProg.begin(); itProg!=fields->MomentumProg.end(); itProg++)
       bufferprofs[itProg->first] = new double[bufferkcells];
 
@@ -69,10 +67,10 @@ int cbuffer::setbuffers()
     // set the buffers according to the initial profiles
 
     for (std::map<std::string,cfield3d*>::iterator itProg = fields->MomentumProg.begin(); itProg!=fields->MomentumProg.end(); itProg++)
-      setbuffer((*itProg->second).data, &*bufferprofs[itProg->first]);
+      setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
  
     for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
-      setbuffer((*itProg->second).data, &*bufferprofs[itProg->first]);
+      setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
   }
 
   return 0;
@@ -84,12 +82,12 @@ int cbuffer::exec()
   {
     // calculate the buffer tendencies
 
-    buffer((*fields->MomentumTend["u"]).data, (*fields->MomentumProg["u"]).data, &*bufferprofs["u"], grid->z );
-    buffer((*fields->MomentumTend["v"]).data, (*fields->MomentumProg["v"]).data, &*bufferprofs["v"], grid->z );
-    buffer((*fields->MomentumTend["w"]).data, (*fields->MomentumProg["w"]).data, &*bufferprofs["w"], grid->zh );
+    buffer((*fields->MomentumTend["u"]).data, (*fields->MomentumProg["u"]).data, bufferprofs["u"], grid->z );
+    buffer((*fields->MomentumTend["v"]).data, (*fields->MomentumProg["v"]).data, bufferprofs["v"], grid->z );
+    buffer((*fields->MomentumTend["w"]).data, (*fields->MomentumProg["w"]).data, bufferprofs["w"], grid->zh );
  
     for (std::map<std::string,cfield3d*>::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
-      buffer((*fields->ScalarTend[itProg->first]).data, (*itProg->second).data, &*bufferprofs[itProg->first], grid->z );
+      buffer((*fields->ScalarTend[itProg->first]).data, (*itProg->second).data, bufferprofs[itProg->first], grid->z );
   }
 
   return 0;
