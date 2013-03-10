@@ -44,15 +44,15 @@ int main(int argc, char *argv[])
   if(model.init())
     return 1;
 
-  // free the memory of the input
-  input.clear();
-
   // fill the fields with data
   if(grid.load())
     return 1;
   // CvH, the model loads the fields now, not good...
   if(model.load())
     return 1;
+
+  // free the memory of the input
+  input.clear();
 
   // run the model
   model.exec();

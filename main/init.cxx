@@ -25,6 +25,9 @@ int main(int argc, char *argv[])
   // read the input data
   if(input.readinifile(simname))
     return 1;
+  if(input.readproffile(simname))
+    return 1;
+
   if(mpi.readinifile(&input))
     return 1;
   if(grid.readinifile(&input))
@@ -44,8 +47,11 @@ int main(int argc, char *argv[])
   if(model.init())
     return 1;
 
-  // free the memory of the input
-  input.clear();
+  // read the grid from the input
+  if(grid.create(&input))
+    return 1;
+  if(fields.create(&input))
+    return 1;
 
   // save the data
   if(grid.save())
@@ -53,6 +59,9 @@ int main(int argc, char *argv[])
   // CvH, the model saves the fields now, not good...
   if(model.save())
     return 1;
+
+  // free the memory of the input
+  input.clear();
 
   return 0;
 }
