@@ -93,6 +93,8 @@ int cmodel::load()
 
 int cmodel::save()
 {
+  if(buffer->setbuffers())
+    return 1;
   if(buffer->save())
     return 1;
   if(fields->save(timeloop->iteration))
