@@ -6,12 +6,16 @@
 
 int main(int argc, char *argv[])
 {
+  // start up the message passing interface
+  cmpi mpi;
+  mpi.startup();
+
   // set the mode and the name of the simulation
   std::string mode;
   std::string simname("microhh");
   if(argc <= 1)
   {
-    std::printf("ERROR: specify init, run or post mode\n");
+    if(mpi.mpiid == 0) std::printf("ERROR: specify init, run or post mode\n");
     return 1;
   }
   else
@@ -20,17 +24,13 @@ int main(int argc, char *argv[])
     mode = argv[1];
     if(mode != "init" && mode != "run" && mode != "post")
     {
-      std::printf("ERROR: specify init, run or post mode\n");
+      if(mpi.mpiid == 0) std::printf("ERROR: specify init, run or post mode\n");
       return 1;
     }
     // set the name of the simulation
     if(argc > 2)
       simname = argv[2];
   }
-
-  // start up the message passing interface
-  cmpi mpi;
-  mpi.startup();
 
   // create the instances of the objects
   cinput  input (&mpi);
