@@ -5,6 +5,9 @@
 #include "model.h"
 #include "defines.h"
 
+#include "advec_g2.h"
+#include "advec_g4.h"
+
 cmodel::cmodel(cgrid *gridin, cfields *fieldsin, cmpi *mpiin, std::string simnamein)
 {
   grid    = gridin;
@@ -17,7 +20,7 @@ cmodel::cmodel(cgrid *gridin, cfields *fieldsin, cmpi *mpiin, std::string simnam
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
-  advec    = new cadvec   (grid, fields, mpi);
+  // advec    = new cadvec   (grid, fields, mpi);
   diff     = new cdiff    (grid, fields, mpi);
   pres     = new cpres    (grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
@@ -35,6 +38,26 @@ cmodel::~cmodel()
 
 int cmodel::readinifile(cinput *inputin)
 {
+  // input parameters
+  int n = 0;
+
+  // get the advection scheme
+  n += inputin->getItem(&iadvec, "physics", "iadvec");
+  if(iadvec == 2)
+  {
+    cadvec_g2 advectemp(grid, fields, mpi);
+    advec = (cadvec*) &advectemp;
+  }
+  if(iadvec == 4)
+    advec = new cadvec_g4(grid, fields, mpi);
+  else
+    advec = new cadvec   (grid, fields, mpi);
+
+
+  // if one argument fails, then crash
+  if(n > 0)
+    return 1;
+
   if(boundary->readinifile(inputin))
     return 1;
   if(advec->readinifile(inputin))
@@ -55,6 +78,8 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
   if(cross->readinifile(inputin))
     return 1;
+
+  return 0;
 }
 
 int cmodel::init()

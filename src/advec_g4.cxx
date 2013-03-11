@@ -6,9 +6,8 @@
 #include "advec_g4.h"
 #include "defines.h"
 
-cadvec_g4::cadvec_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cadvec_g4::cadvec_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
 {
-  // std::printf("Creating instance of object advec_g4\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -16,8 +15,27 @@ cadvec_g4::cadvec_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cadvec_g4::~cadvec_g4()
 {
-  // std::printf("Destroying instance of object advec_g4\n");
 }
+
+int cadvec_g4::exec()
+{
+  advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
+  advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
+  advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
+  advecs((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
+
+  return 0;
+}
+
+double cadvec_g4::getcfl(double dt)
+{
+  double cfl;
+
+  cfl = calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+
+  return cfl;
+}
+
 
 double cadvec_g4::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
@@ -430,46 +448,4 @@ int cadvec_g4::advecs(double * restrict st, double * restrict s, double * restri
 
   return 0;
 }
-
-/*
-inline double cadvec_g4::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
-
-inline double cadvec_g4::interp4(const double a, const double b, const double c, const double d)
-{
-  return (-a + 9.*b + 9.*c - d) / 16.;
-}
-
-inline double cadvec_g4::interp4biasbot(const double a, const double b, const double c, const double d)
-{
-  return ((5./16.)*a + (15./16.)*b - (5./16.)*c + (1./16)*d);
-}
-
-inline double cadvec_g4::interp4biastop(const double a, const double b, const double c, const double d)
-{
-  return ((5./16.)*d + (15./16.)*c - (5./16.)*b + (1./16)*a);
-}
-
-inline double cadvec_g4::grad4(const double a, const double b, const double c, const double d, const double dxi)
-{
-  return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
-}
-
-inline double cadvec_g4::grad4x(const double a, const double b, const double c, const double d)
-{
-  return (-(d-a) + 27.*(c-b)); 
-}
-
-inline double cadvec_g4::grad4xbiasbot(const double a, const double b, const double c, const double d)
-{
-  return (-23.*a + 21.*b + 3.*c - d);
-}
-
-inline double cadvec_g4::grad4xbiastop(const double a, const double b, const double c, const double d)
-{
-  return ( 23.*d - 21.*c - 3.*b + a);
-}
-*/
 

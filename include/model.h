@@ -34,6 +34,9 @@ class cmodel
     cmpi    *mpi;
     std::string simname;
 
+    // switches for included schemes
+    int iadvec;
+
     // create the boundary conditions class
     cboundary *boundary;
 
