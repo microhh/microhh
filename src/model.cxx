@@ -44,10 +44,7 @@ int cmodel::readinifile(cinput *inputin)
   // get the advection scheme
   n += inputin->getItem(&iadvec, "physics", "iadvec");
   if(iadvec == 2)
-  {
-    cadvec_g2 advectemp(grid, fields, mpi);
-    advec = (cadvec*) &advectemp;
-  }
+    advec = new cadvec_g2(grid, fields, mpi);
   if(iadvec == 4)
     advec = new cadvec_g4(grid, fields, mpi);
   else
