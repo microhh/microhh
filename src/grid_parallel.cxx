@@ -380,7 +380,7 @@ int cgrid::save()
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR %s cannot be written\n", filename);
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
     return 1;
   }
 

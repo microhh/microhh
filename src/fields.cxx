@@ -4,8 +4,6 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
-#include <iostream>
-using namespace std;
 
 cfields::cfields(cgrid *gridin, cmpi *mpiin)
 {
@@ -13,7 +11,6 @@ cfields::cfields(cgrid *gridin, cmpi *mpiin)
   grid = gridin;
   mpi  = mpiin;
 
-  nProgScalar = 0;
   allocated = false;
 }
 
@@ -88,7 +85,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
     return 1;
   }
   
-  string fldtname = fldname + "t";
+  std::string fldtname = fldname + "t";
   
   MomentumProg[fldname] = new cfield3d(grid, mpi, fldname );
   MomentumProg[fldname]->init();
@@ -112,7 +109,7 @@ int cfields::initpfld(std::string fldname)
     return 1;
   }
   
-  string fldtname = fldname + "t";
+  std::string fldtname = fldname + "t";
   
   ScalarProg[fldname] = new cfield3d(grid, mpi, fldname );
   ScalarProg[fldname]->init();
@@ -121,8 +118,6 @@ int cfields::initpfld(std::string fldname)
   ScalarTend[fldname]->init();
 
   Scalar[fldname]     = ScalarProg[fldname];
-  
-  nProgScalar++;
   
   return 0;
 
@@ -143,7 +138,7 @@ int cfields::initdfld(cfield3d *&fld, std::string fldname)
   
   fld = Scalar[fldname];
   
-  return 0;  std:cout << "aa\n";
+  return 0;  
 
 
 }
@@ -210,14 +205,13 @@ int cfields::create(cinput *inputin)
   double uproftemp[grid->kmax];
   double vproftemp[grid->kmax];
   double sproftemp[grid->kmax];
-printf("Creating fields\n");
+  
   if(inputin->getProf(uproftemp, "u", grid->kmax))
     return 1;
   if(inputin->getProf(vproftemp, "v", grid->kmax))
     return 1;
   if(inputin->getProf(sproftemp, "s", grid->kmax))
     return 1;
-printf("Creating fields\n");
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
@@ -227,7 +221,6 @@ printf("Creating fields\n");
         v->data[ijk] += vproftemp[k-grid->kstart];
         ScalarProg["s"]->data[ijk] += sproftemp[k-grid->kstart];
       }
-printf("Csreating fields\n");
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;
   int ntop = grid->kend  *grid->icells*grid->jcells;
@@ -236,7 +229,6 @@ printf("Csreating fields\n");
     w->data[nbot + n] = 0.;
     w->data[ntop + n] = 0.;
   }
-printf("Creating fields\n");
   return 0;
 }
 

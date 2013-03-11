@@ -54,8 +54,6 @@ class cfields
     double visc;
     double viscs;
     
-    int nProgScalar;
-
   private:
     // variables
     cgrid *grid;
@@ -71,8 +69,6 @@ class cfields
     int nvortexpair;
     int vortexaxis;
     
-    int npfldcur;
-
     // functions
     double calcmom_2nd(double *, double *, double *, double *);
     double calctke_2nd(double *, double *, double *, double *);

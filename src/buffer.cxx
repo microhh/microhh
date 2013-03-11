@@ -17,8 +17,9 @@ cbuffer::cbuffer(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cbuffer::~cbuffer()
 {
-//   if(allocated)
-//     delete bufferprofs;
+  if(allocated)
+    for (std::map<std::string,double*>::iterator it = bufferprofs.begin(); it!=bufferprofs.end(); it++)
+      delete it->second;
 }
 
 int cbuffer::readinifile(cinput *inputin)

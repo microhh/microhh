@@ -20,7 +20,6 @@ class cbuffer
 
     // CvH make private later
     int ibuffer;
-    double* bufferMomProfs;
 
   private:
     cgrid   *grid;
