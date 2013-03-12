@@ -46,9 +46,9 @@ int cmodel::readinifile(cinput *inputin)
   n += inputin->getItem(&iadvec, "physics", "iadvec");
   if(iadvec == 2)
     advec = new cadvec_g2 (grid, fields, mpi);
-  if(iadvec == 4)
+  else if(iadvec == 4)
     advec = new cadvec_g4 (grid, fields, mpi);
-  if(iadvec == 44)
+  else if(iadvec == 44)
     advec = new cadvec_g4m(grid, fields, mpi);
   else
     advec = new cadvec    (grid, fields, mpi);
