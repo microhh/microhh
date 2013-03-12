@@ -25,7 +25,7 @@ int cinput::clear()
 
 int cinput::readinifile(std::string inputfilename)
 {
-  char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256];
+  char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256], element[256];
 
   // read the input file
   FILE *inputfile;
@@ -98,8 +98,9 @@ int cinput::readinifile(std::string inputfilename)
     n = std::sscanf(inputline, "%[^=] = %[^\n]", temp1, rhs);
     if(n == 2)
     {
-      n = std::sscanf(temp1, " %[a-zA-Z0-9_()] %s", lhs, dummy);
-      if(n == 1)
+      
+      n = std::sscanf(temp1, " %[a-zA-Z0-9_()][%[^]]] %s", lhs, element,dummy);
+      if(n <= 2)
       {
         if(!blockset)
         {
@@ -108,11 +109,20 @@ int cinput::readinifile(std::string inputfilename)
           continue;
         }
 
-        if(mpi->mpiid == 0) std::printf("Found item  [%s][%s] = \"%s\"\n", block, lhs, rhs);
+        if(n ==1)
+        {
+          if(mpi->mpiid == 0) std::printf("Found item  [%s][%s] = \"%s\"\n", block, lhs, rhs);
+          std::strcpy(element,"default");
+        }
+        else
+        {
+          if(mpi->mpiid == 0) std::printf("Found item  [%s][%s][%s] = \"%s\"\n", block, lhs,element, rhs);
+        }
         std::string blockstring(block);
         std::string itemstring(lhs);
+        std::string elementstring(element);
         std::string valuestring(rhs);
-        inputlist[blockstring][itemstring] = valuestring;
+        inputlist[blockstring][itemstring][elementstring] = valuestring;
       }
       else
       {
@@ -320,7 +330,7 @@ int cinput::readproffile(std::string inputfilename)
 }
 
 
-int cinput::checkItemExists(std::string cat, std::string item)
+int cinput::checkItemExists(std::string cat, std::string item, std::string el)
 {  
   inputmap::const_iterator it1 = inputlist.find(cat);
 
@@ -328,9 +338,15 @@ int cinput::checkItemExists(std::string cat, std::string item)
 
   if(it1 != inputlist.end())
   {
-    inputmapinner::const_iterator it2 = it1->second.find(item);
+    inputmap2D::const_iterator it2 = it1->second.find(item);
 
-    if(it2 == it1->second.end())
+    if(it2 != it1->second.end())
+    {
+      inputmap1D::const_iterator it3 = it2->second.find(el);
+      if(it3 == it2->second.end())
+        readerror = true;
+    }
+    else
       readerror = true;
   }
   else
@@ -343,39 +359,61 @@ int cinput::checkItemExists(std::string cat, std::string item)
 }
 
 // overloaded return functions
-int cinput::getItem(int *value, std::string cat, std::string item)
+int cinput::getItem(int *value, std::string cat, std::string item, std::string el)
 {
-  if(checkItemExists(cat, item))
+  if(el.compare("default"))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-    return 1;
+    if(!checkItemExists(cat, item,el))
+    {
+      if(!checkItem(value, cat, item,el))
+        return 0;
+    }
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
   else
-    if(checkItem(value, cat, item))
+  {
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
       return 1;
-  
+    }
+    else
+      if(checkItem(value, cat, item))
+        return 1;
+  }
   return 0;
 }
 
-int cinput::getItem(int *value, std::string cat, std::string item, int def)
+int cinput::getItem(int *value, std::string cat, std::string item, int def, std::string el)
 {
-  if(checkItemExists(cat, item))
+  if(el.compare("default"))
   {
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
-    *value = def;
-    return 0;
+    if(!checkItemExists(cat, item,el))
+    {
+      if(!checkItem(value, cat, item,el))
+        return 0;
+    }
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
   else
-    if(checkItem(value, cat, item))
-      return 1;
-  
+  {
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
+      *value = def;
+      return 0;
+    }
+    else
+      if(checkItem(value, cat, item))
+        return 1;
+  }
   return 0;
 }
 
-int cinput::checkItem(int *value, std::string cat, std::string item)
+int cinput::checkItem(int *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], temp[256];
-  std::strcpy(inputstring, inputlist[cat][item].c_str());
+  std::strcpy(inputstring, inputlist[cat][item][el].c_str());
 
   int inputint;
   int n = std::sscanf(inputstring, " %d %[^\n] ", &inputint, temp);
@@ -386,7 +424,7 @@ int cinput::checkItem(int *value, std::string cat, std::string item)
   {
     if(std::strcmp(inputstring,""))
     {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(),el.c_str(), inputstring);
       return 1;
     }
   }
@@ -394,76 +432,45 @@ int cinput::checkItem(int *value, std::string cat, std::string item)
   return 0;
 }
 
-int cinput::getItem(double *value, std::string cat, std::string item)
+int cinput::getItem(double *value, std::string cat, std::string item, std::string el)
 {
-  if(checkItemExists(cat, item))
+  if(el.compare("default"))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-    return 1;
-  }
-  else
-    if(checkItem(value, cat, item))
-      return 1;
-  
-  return 0;
-}
-
-int cinput::getItem(double *value, std::string cat, std::string item, double def)
-{
-  if(checkItemExists(cat, item))
-  {
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %f used\n", cat.c_str(), item.c_str(), def);
-    *value = def;
-    return 0;
-  }
-  else
-    if(checkItem(value, cat, item))
-      return 1;
-  
-  return 0;
-}
-
-int cinput::checkItem(double *value, std::string cat, std::string item)
-{
-  char inputstring[256], temp[256];
-  std::strcpy(inputstring, inputlist[cat][item].c_str());
-
-  double inputdouble;
-  int n = std::sscanf(inputstring, " %lf %[^\n] ", &inputdouble, temp);
-
-  // catch the situation where a double is closed with a ".", which is not read by sscanf's %f
-  if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
-    *value = inputdouble;
-  else
-  {
-    if(std::strcmp(inputstring,""))
+    if(!checkItemExists(cat, item,el))
     {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
-      return 1;
+      if(!checkItem(value, cat, item,el))
+        return 0;
     }
-  }
-
-  return 0;
-}
-
-int cinput::getItem(bool *value, std::string cat, std::string item)
-{
-  if(checkItemExists(cat, item))
-  {
-    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-    return 1;
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
   else
-    if(checkItem(value, cat, item))
+  {
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
       return 1;
-  
+    }
+    else
+      if(checkItem(value, cat, item))
+        return 1;
+  }
   return 0;
 }
 
-int cinput::getItem(bool *value, std::string cat, std::string item, bool def)
+int cinput::getItem(double *value, std::string cat, std::string item, double def, std::string el)
 {
+  if(el.compare("default"))
+  {
+    if(!checkItemExists(cat, item,el))
+    {
+      if(!checkItem(value, cat, item,el))
+        return 0;
+    }
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
+  }
   if(checkItemExists(cat, item))
   {
+
     if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
     *value = def;
     return 0;
@@ -471,14 +478,87 @@ int cinput::getItem(bool *value, std::string cat, std::string item, bool def)
   else
     if(checkItem(value, cat, item))
       return 1;
-  
+
   return 0;
 }
 
-int cinput::checkItem(bool *value, std::string cat, std::string item)
+int cinput::checkItem(double *value, std::string cat, std::string item, std::string el)
+{
+  char inputstring[256], temp[256];
+  std::strcpy(inputstring, inputlist[cat][item][el].c_str());
+
+  double inputdouble;
+  int n = std::sscanf(inputstring, " %lf %[^\n] ", &inputdouble, temp);
+  // catch the situation where a double is closed with a ".", which is not read by sscanf's %f
+  if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
+    *value = inputdouble;
+  else
+  {
+    if(std::strcmp(inputstring,""))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+int cinput::getItem(bool *value, std::string cat, std::string item, std::string el)
+{
+  if(el.compare("default"))
+  {
+    if(!checkItemExists(cat, item,el))
+    {
+      if(!checkItem(value, cat, item,el))
+        return 0;
+    }
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
+  }
+  else
+  {
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+      return 1;
+    }
+    else
+      if(checkItem(value, cat, item))
+        return 1;
+  }
+  return 0;
+}
+
+int cinput::getItem(bool *value, std::string cat, std::string item, bool def, std::string el)
+{
+  if(el.compare("default"))
+  {
+    if(!checkItemExists(cat, item,el))
+    {
+      if(!checkItem(value, cat, item,el))
+        return 0;
+    }
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
+  }
+  else
+  {
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
+      *value = def;
+      return 0;
+    }
+    else
+      if(checkItem(value, cat, item))
+        return 1;
+  }
+  return 0;
+}
+
+int cinput::checkItem(bool *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], inputbool[256], temp[256];
-  std::strcpy(inputstring, inputlist[cat][item].c_str());
+  std::strcpy(inputstring, inputlist[cat][item][el].c_str());
 
   int n = std::sscanf(inputstring, " %s %[^\n] ", inputbool, temp);
 
@@ -504,11 +584,68 @@ int cinput::checkItem(bool *value, std::string cat, std::string item)
   {
     if(std::strcmp(inputstring,""))
     {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(),el.c_str(), inputstring);
       return 1;
     }
   }
 
+  return 0;
+}
+
+int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el)
+{
+  if(el.compare("default"))
+  {
+    if(!checkItemExists(cat, item,el))
+    {
+      if(!checkItem(value, cat, item,el))
+        return 0;
+    }
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
+  }
+  else
+  {
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+      return 1;
+    }
+    else
+      if(checkItem(value, cat, item))
+        return 1;
+  }
+  return 0;
+}
+
+int cinput::getItem(std::string *value, std::string cat, std::string item, std::string def, std::string el)
+{
+  if(el.compare("default"))
+  {
+    if(!checkItemExists(cat, item,el))
+    {
+      if(!checkItem(value, cat, item,el))
+        return 0;
+    }
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
+  }
+  else
+  {
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def.c_str());
+      *value = def;
+      return 0;
+    }
+    else
+      if(checkItem(value, cat, item))
+        return 1;
+  }
+  return 0;
+}
+
+int cinput::checkItem(std::string *value, std::string cat, std::string item, std::string el)
+{
+  *value = inputlist[cat][item][el];
   return 0;
 }
 
