@@ -23,7 +23,7 @@ cfields::~cfields()
       delete MomentumProg[it->first];
       delete MomentumTend[it->first];
     }
-    for (std::map<std::string,cfield3d*>::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
+    for (std::map<std::string,cfield3d*>::iterator it = Scalar.begin(); it!=Scalar.end(); it++)
       delete Scalar[it->first];
 
     for (std::map<std::string,cfield3d*>::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
