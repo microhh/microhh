@@ -17,6 +17,25 @@ cadvec_g2i4::~cadvec_g2i4()
 {
 }
 
+int cadvec_g2i4::exec()
+{
+  advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
+  advecs((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
+
+  return 0;
+}
+
+double cadvec_g2i4::getcfl(double dt)
+{
+  double cfl;
+
+  cfl = calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+
+  return cfl;
+}
+
 double cadvec_g2i4::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii1,jj1,kk1,ii2,jj2,kk2,kk3;
