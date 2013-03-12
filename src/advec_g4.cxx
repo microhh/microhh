@@ -36,7 +36,6 @@ double cadvec_g4::getcfl(double dt)
   return cfl;
 }
 
-
 double cadvec_g4::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk;

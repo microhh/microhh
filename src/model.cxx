@@ -7,6 +7,7 @@
 
 #include "advec_g2.h"
 #include "advec_g4.h"
+#include "advec_g4m.h"
 
 cmodel::cmodel(cgrid *gridin, cfields *fieldsin, cmpi *mpiin, std::string simnamein)
 {
@@ -44,11 +45,13 @@ int cmodel::readinifile(cinput *inputin)
   // get the advection scheme
   n += inputin->getItem(&iadvec, "physics", "iadvec");
   if(iadvec == 2)
-    advec = new cadvec_g2(grid, fields, mpi);
+    advec = new cadvec_g2 (grid, fields, mpi);
   if(iadvec == 4)
-    advec = new cadvec_g4(grid, fields, mpi);
+    advec = new cadvec_g4 (grid, fields, mpi);
+  if(iadvec == 44)
+    advec = new cadvec_g4m(grid, fields, mpi);
   else
-    advec = new cadvec   (grid, fields, mpi);
+    advec = new cadvec    (grid, fields, mpi);
 
 
   // if one argument fails, then crash

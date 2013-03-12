@@ -9,12 +9,12 @@ class cadvec
 {
   public:
     cadvec(cgrid *, cfields *, cmpi *);
-    ~cadvec();
+    virtual ~cadvec();
 
-    int readinifile(cinput *);
+    virtual int readinifile(cinput *);
 
-    double getcfl(double);
-    int exec();
+    virtual double getcfl(double);
+    virtual int exec();
 
   private:
     cgrid   *grid;
