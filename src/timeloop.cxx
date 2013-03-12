@@ -141,12 +141,17 @@ int ctimeloop::settimestep(double cfl, double dn)
 
 int ctimeloop::exec()
 {
+
   if(rkorder == 3)
   {
     rk3((*fields->u).data, (*fields->ut).data, dt);
     rk3((*fields->v).data, (*fields->vt).data, dt);
     rk3((*fields->w).data, (*fields->wt).data, dt);
-    rk3((*fields->s).data, (*fields->st).data, dt);
+    
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      rk3((*fields->Scalar[it->first]).data, (*it->second).data, dt);
+
+//     rk3((*fields->s).data, (*fields->st).data, dt);
     substep = (substep+1) % 3;
   }
 
@@ -155,7 +160,10 @@ int ctimeloop::exec()
     rk4((*fields->u).data, (*fields->ut).data, dt);
     rk4((*fields->v).data, (*fields->vt).data, dt);
     rk4((*fields->w).data, (*fields->wt).data, dt);
-    rk4((*fields->s).data, (*fields->st).data, dt);
+
+    for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+      rk3((*fields->Scalar[it->first]).data, (*it->second).data, dt);
+
     substep = (substep+1) % 5;
   }
 

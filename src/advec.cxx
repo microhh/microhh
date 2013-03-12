@@ -6,6 +6,8 @@
 #include "advec.h"
 #include "defines.h"
 
+#include <map>
+
 cadvec::cadvec(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   grid   = gridin;
@@ -35,4 +37,3 @@ int cadvec::exec()
 {
   return 0;
 }
-

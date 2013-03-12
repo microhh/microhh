@@ -43,8 +43,8 @@ int ccross::exec(int iteration)
 
   if(mpi->mpiid == 0) std::printf("Saving cross sections for iteration %d\n", iteration);
 
-  crosssimple((*fields->s).data, (*fields->tmp1).data, "s", iteration);
-  crosslngrad((*fields->s).data, (*fields->tmp1).data, (*fields->tmp2).data, grid->dzi4, "slngrad", iteration);
+  crosssimple((*fields->Scalar["s"]).data, (*fields->tmp1).data, (*fields->Scalar["s"]).name, iteration);
+  crosslngrad((*fields->Scalar["s"]).data, (*fields->tmp1).data, (*fields->tmp2).data, grid->dzi4, (*fields->Scalar["s"]).name + "lngrad", iteration);
   
   return 0;
 }

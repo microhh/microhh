@@ -32,7 +32,7 @@ class cbuffer
     int bufferkstart;
     int bufferkcells;
 
-    double *bufferprofs;
+    std::map<std::string, double*> bufferprofs;
 
     bool allocated;
 

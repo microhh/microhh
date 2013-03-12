@@ -7,7 +7,6 @@
 
 cfields::cfields(cgrid *gridin, cmpi *mpiin)
 {
-  // std::printf("Creating instance of object fields\n");
   grid = gridin;
   mpi  = mpiin;
 
@@ -18,25 +17,17 @@ cfields::~cfields()
 {
   if(allocated)
   {
-    delete u;
-    delete v;
-    delete w;
-    delete p;
+    for (std::map<std::string,cfield3d*>::iterator it = MomentumTend.begin(); it!=MomentumTend.end(); it++)
+    {
+      delete MomentumProg[it->first];
+      delete MomentumTend[it->first];
+    }
+    for (std::map<std::string,cfield3d*>::iterator it = Scalar.begin(); it!=Scalar.end(); it++)
+      delete Scalar[it->first];
 
-    delete ut;
-    delete vt;
-    delete wt;
-
-    delete s;
-    delete st;
-
-    delete tmp1;
-    delete tmp2;
-
-    delete evisc;
+    for (std::map<std::string,cfield3d*>::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
+      delete ScalarTend[it->first];
   }
-
-  // std::printf("Destroying instance of object fields\n");
 }
 
 int cfields::readinifile(cinput *inputin)
@@ -70,46 +61,83 @@ int cfields::init()
 {
   if(mpi->mpiid == 0) std::printf("Initializing fields\n");
 
-  // set pointers to correct location
-  u  = new cfield3d(grid, mpi, "u" );
-  v  = new cfield3d(grid, mpi, "v" );
-  w  = new cfield3d(grid, mpi, "w" );
-  p  = new cfield3d(grid, mpi, "p" );
-
-  ut = new cfield3d(grid, mpi, "ut");
-  vt = new cfield3d(grid, mpi, "vt");
-  wt = new cfield3d(grid, mpi, "wt");
-
-  s  = new cfield3d(grid, mpi, "s" );
-  st = new cfield3d(grid, mpi, "st");
-
-  tmp1 = new cfield3d(grid, mpi, "tmp1");
-  tmp2 = new cfield3d(grid, mpi, "tmp2");
-
-  // for LES mode
-  // CvH this can be done with the temporary array later
-  evisc = new cfield3d(grid, mpi, "evisc");
-
-  u->init();
-  v->init();
-  w->init();
-  p->init();
-
-  ut->init();
-  vt->init();
-  wt->init();
-
-  s ->init();
-  st->init();
-
-  tmp1->init();
-  tmp2->init();
-
-  evisc->init();
+  int err = 0;
+  
+  err += initmomfld(u, ut, "u");
+  err += initmomfld(v, vt, "v");
+  err += initmomfld(w, wt, "w");
+  err += initpfld("s");
+  
+  err += initdfld(p, "p");
+  err += initdfld(tmp1, "tmp1");
+  err += initdfld(tmp2, "tmp2");
+  
+  err += initdfld(evisc, "evisc");
 
   allocated = true;
 
+  return err;
+}
+
+int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
+{
+  if (MomentumProg.find(fldname)!=MomentumProg.end())
+  {
+    std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
+    return 1;
+  }
+  
+  std::string fldtname = fldname + "t";
+  
+  MomentumProg[fldname] = new cfield3d(grid, mpi, fldname );
+  MomentumProg[fldname]->init();
+
+  MomentumTend[fldname] = new cfield3d(grid, mpi, fldtname );
+  MomentumTend[fldname]->init();
+
+  fld = MomentumProg[fldname];
+  fldt = MomentumTend[fldname];
+
   return 0;
+}
+
+int cfields::initpfld(std::string fldname)
+{
+  if (Scalar.find(fldname)!=Scalar.end())
+  {
+    std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
+    return 1;
+  }
+  
+  std::string fldtname = fldname + "t";
+  
+  ScalarProg[fldname] = new cfield3d(grid, mpi, fldname );
+  ScalarProg[fldname]->init();
+  
+  ScalarTend[fldname] = new cfield3d(grid, mpi, fldtname );
+  ScalarTend[fldname]->init();
+
+  Scalar[fldname]     = ScalarProg[fldname];
+  
+  return 0;
+}
+
+int cfields::initdfld(cfield3d *&fld, std::string fldname)
+{
+  if (Scalar.find(fldname)!=Scalar.end())
+  {
+    std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
+    return 1;
+  }
+
+  ScalarDiag[fldname]  = new cfield3d(grid, mpi, fldname );
+  ScalarDiag[fldname]->init();
+
+  Scalar[fldname] = ScalarDiag[fldname];
+  
+  fld = Scalar[fldname];
+  
+  return 0;  
 }
 
 int cfields::create(cinput *inputin)
@@ -142,7 +170,7 @@ int cfields::create(cinput *inputin)
         u->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
         v->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
         w->data[ijk] = rndfach * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
-        s->data[ijk] = rndfac  * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
+        ScalarProg["s"]->data[ijk] = rndfac  * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
       }
   }
 
@@ -174,14 +202,13 @@ int cfields::create(cinput *inputin)
   double uproftemp[grid->kmax];
   double vproftemp[grid->kmax];
   double sproftemp[grid->kmax];
-
+  
   if(inputin->getProf(uproftemp, "u", grid->kmax))
     return 1;
   if(inputin->getProf(vproftemp, "v", grid->kmax))
     return 1;
   if(inputin->getProf(sproftemp, "s", grid->kmax))
     return 1;
-
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
@@ -189,9 +216,8 @@ int cfields::create(cinput *inputin)
         ijk = i + j*jj + k*kk;
         u->data[ijk] += uproftemp[k-grid->kstart];
         v->data[ijk] += vproftemp[k-grid->kstart];
-        s->data[ijk] += sproftemp[k-grid->kstart];
+        ScalarProg["s"]->data[ijk] += sproftemp[k-grid->kstart];
       }
-
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;
   int ntop = grid->kend  *grid->icells*grid->jcells;
@@ -200,7 +226,6 @@ int cfields::create(cinput *inputin)
     w->data[nbot + n] = 0.;
     w->data[ntop + n] = 0.;
   }
-
   return 0;
 }
 
@@ -211,7 +236,8 @@ int cfields::load(int n)
   nerror += u->load(n, tmp1->data, tmp2->data);
   nerror += v->load(n, tmp1->data, tmp2->data);
   nerror += w->load(n, tmp1->data, tmp2->data);
-  nerror += s->load(n, tmp1->data, tmp2->data);
+  for (std::map<std::string,cfield3d*>::iterator itProg = ScalarProg.begin(); itProg!=ScalarProg.end(); itProg++)
+    nerror += itProg->second->load(n, tmp1->data, tmp2->data);
 
   if(nerror > 0)
     return 1;
@@ -225,7 +251,8 @@ int cfields::save(int n)
   v->save(n, tmp1->data, tmp2->data);
   w->save(n, tmp1->data, tmp2->data);
   // p->save(n);
-  s->save(n, tmp1->data, tmp2->data);
+  for (std::map<std::string,cfield3d*>::iterator itProg = ScalarProg.begin(); itProg!=ScalarProg.end(); itProg++)
+    itProg->second->save(n, tmp1->data, tmp2->data);
 
   return 0;
 }
@@ -268,7 +295,7 @@ double cfields::checktke()
 
 double cfields::checkmass()
 {
-  return calcmass(s->data, grid->dz);
+  return calcmass(ScalarProg["s"]->data, grid->dz);
 }
 
 double cfields::calcmass(double * restrict s, double * restrict dz)

@@ -22,7 +22,9 @@ int cadvec_g4::exec()
   advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
   advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
   advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
-  advecs((*fields->st).data, (*fields->s).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
+
+  for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    advecs((*it->second).data, (*fields->Scalar[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
 
   return 0;
 }
