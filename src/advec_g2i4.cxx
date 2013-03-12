@@ -6,9 +6,8 @@
 #include "advec_g2i4.h"
 #include "defines.h"
 
-cadvec_g2i4::cadvec_g2i4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cadvec_g2i4::cadvec_g2i4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
 {
-  // std::printf("Creating instance of object advec_g2i4\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -16,7 +15,6 @@ cadvec_g2i4::cadvec_g2i4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cadvec_g2i4::~cadvec_g2i4()
 {
-  // std::printf("Destroying instance of object advec_g2i4\n");
 }
 
 double cadvec_g2i4::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)

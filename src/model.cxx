@@ -45,13 +45,17 @@ int cmodel::readinifile(cinput *inputin)
   // get the advection scheme
   n += inputin->getItem(&iadvec, "physics", "iadvec");
   if(iadvec == 2)
-    advec = new cadvec_g2 (grid, fields, mpi);
+    advec = new cadvec_g2  (grid, fields, mpi);
+  else if(iadvec == 24)
+    advec = new cadvec_g2i4(grid, fields, mpi);
+  else if(iadvec == 42)
+    advec = new cadvec_g2  (grid, fields, mpi);
   else if(iadvec == 4)
-    advec = new cadvec_g4 (grid, fields, mpi);
+    advec = new cadvec_g4  (grid, fields, mpi);
   else if(iadvec == 44)
-    advec = new cadvec_g4m(grid, fields, mpi);
+    advec = new cadvec_g4m (grid, fields, mpi);
   else
-    advec = new cadvec    (grid, fields, mpi);
+    advec = new cadvec     (grid, fields, mpi);
 
 
   // if one argument fails, then crash
