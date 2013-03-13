@@ -35,7 +35,7 @@ project (microhhc)
 get_filename_component (C_COMPILER_NAME ${CMAKE_C_COMPILER_ID} NAME)
 get_filename_component (CXX_COMPILER_NAME ${CMAKE_CXX_COMPILER_ID} NAME)
 MESSAGE(STATUS "Compiler " ${CMAKE_CXX_COMPILER})
-MESSAGE(STATUS "Compiler Wrapper" ${C_COMPILER_WRAPPER})
+MESSAGE(STATUS "Compiler " ${C_COMPILER_WRAPPER})
 
 
 if (NOT ${C_COMPILER_WRAPPER}  STREQUAL "")
@@ -70,7 +70,7 @@ add_subdirectory(test)
 #           cp -r ${CMAKE_CURRENT_BINARY_DIR}/doc ${CMAKE_SOURCE_DIR}
 #           DEPENDS doc)
 # #   add_dependencies(doc-install doc)
-# 
+#
 #   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_SOURCE_DIR})
 # ELSE (DOXYGEN)
 #     MESSAGE(STATUS "WARNING: Doxygen not found - Reference manual will
