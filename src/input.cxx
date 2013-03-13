@@ -4,6 +4,8 @@
 #include <map>
 #include "input.h"
 #include "mpiinterface.h"
+#include <algorithm>
+#include <string>
 
 cinput::cinput(cmpi *mpiin)
 {
@@ -67,6 +69,10 @@ int cinput::readinifile(std::string inputfilename)
       std::fgets(inputline, 256, inputfile);
     }
     mpi->broadcast(inputline, 256);
+
+    for(int i = 0; inputline[i] != '\0'; i++){
+      inputline[i] = tolower(inputline[i]);
+    }
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
@@ -424,7 +430,10 @@ int cinput::checkItem(int *value, std::string cat, std::string item, std::string
   {
     if(std::strcmp(inputstring,""))
     {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(),el.c_str(), inputstring);
+      if (el == "default")
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
+      else
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       return 1;
     }
   }
@@ -471,7 +480,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, double def
   if(checkItemExists(cat, item))
   {
 
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %f used\n", cat.c_str(), item.c_str(), def);
     *value = def;
     return 0;
   }
@@ -496,7 +505,10 @@ int cinput::checkItem(double *value, std::string cat, std::string item, std::str
   {
     if(std::strcmp(inputstring,""))
     {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+      if (el == "default")
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
+      else
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       return 1;
     }
   }
@@ -566,14 +578,10 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
 
   if(n == 1)
   {
-    if(std::strcmp("true", inputbool) == 0 || 
-       std::strcmp("True", inputbool) == 0 || 
-       std::strcmp("TRUE", inputbool) == 0 || 
+    if(std::strcmp("true", inputbool) == 0 ||
        std::strcmp("1"   , inputbool) == 0 )
       *value = true;
     else if(std::strcmp("false", inputbool) == 0 ||
-            std::strcmp("False", inputbool) == 0 || 
-            std::strcmp("FALSE", inputbool) == 0 || 
             std::strcmp("0    ", inputbool) == 0 )
       *value = false;
     else 
@@ -584,7 +592,10 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
   {
     if(std::strcmp(inputstring,""))
     {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(),el.c_str(), inputstring);
+      if (el == "default")
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
+      else
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       return 1;
     }
   }
@@ -645,7 +656,28 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
 
 int cinput::checkItem(std::string *value, std::string cat, std::string item, std::string el)
 {
-  *value = inputlist[cat][item][el];
+  std::string inputstring, dummy;
+  inputstring = inputlist[cat][item][el];
+
+  int n = std::sscanf(inputstring.c_str(), "%s %s",value->c_str(), dummy.c_str());
+
+  if(n == 1)
+    *value = inputstring;
+  else
+  {
+    if(!inputstring.empty())
+    {
+      if (el == "default")
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), inputstring.c_str());
+      else
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring.c_str());
+      return 1;
+    }
+  }
+
+  std::printf("%d q %s %s\n",n, value->c_str(),dummy.c_str());
+//   *value = inputstring;
+  
   return 0;
 }
 
