@@ -1,6 +1,6 @@
 # MPI-PC
-set(CMAKE_C_COMPILER   "/usr/bin/cc")
-set(CMAKE_CXX_COMPILER "/usr/bin/c++")
+set(CMAKE_C_COMPILER   "cc")
+set(CMAKE_CXX_COMPILER "c++")
 set (CXX_COMPILER_WRAPPER mpicxx)
 set (C_COMPILER_WRAPPER mpicc)
 
