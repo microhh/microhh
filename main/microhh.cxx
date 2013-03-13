@@ -1,6 +1,5 @@
 #include <cstdio>
 #include "grid.h"
-#include "fields.h"
 #include "mpiinterface.h"
 #include "model.h"
 
@@ -35,9 +34,7 @@ int main(int argc, char *argv[])
   // create the instances of the objects
   cinput  input (&mpi);
   cgrid   grid  (&mpi);
-  cfields fields(&grid, &mpi);
-
-  cmodel  model (&grid, &fields, &mpi, simname);
+  cmodel  model (&grid, &mpi, simname);
 
   // read the input data
   if(input.readinifile(simname))
@@ -50,8 +47,6 @@ int main(int argc, char *argv[])
     return 1;
   if(grid.readinifile(&input))
     return 1;
-  if(fields.readinifile(&input))
-    return 1;
   if(model.readinifile(&input))
     return 1;
 
@@ -59,8 +54,6 @@ int main(int argc, char *argv[])
   if(mpi.init())
     return 1;
   if(grid.init())
-    return 1;
-  if(fields.init())
     return 1;
   if(model.init())
     return 1;
@@ -70,22 +63,17 @@ int main(int argc, char *argv[])
     // read the grid from the input
     if(grid.create(&input))
       return 1;
-    if(fields.create(&input))
-      return 1;
 
     // save the data
     if(grid.save())
       return 1;
-    // CvH, the model saves the fields now, not good...
-    if(model.save())
+    if(model.save(&input))
       return 1;
   }
   else
   {
-  // fill the fields with data
   if(grid.load())
     return 1;
-  // CvH, the model loads the fields now, not good...
   if(model.load())
     return 1;
   }

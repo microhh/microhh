@@ -12,19 +12,20 @@
 #include "advec_g4.h"
 #include "advec_g4m.h"
 
-cmodel::cmodel(cgrid *gridin, cfields *fieldsin, cmpi *mpiin, std::string simnamein)
+cmodel::cmodel(cgrid *gridin, cmpi *mpiin, std::string simnamein)
 {
   grid    = gridin;
-  fields  = fieldsin;
   mpi     = mpiin;
   simname = simnamein;
+
+  // create the fields class
+  fields   = new cfields  (grid, mpi);
 
   // create the boundary conditions class
   boundary = new cboundary(grid, fields, mpi);
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
-  // advec    = new cadvec   (grid, fields, mpi);
   diff     = new cdiff    (grid, fields, mpi);
   pres     = new cpres    (grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
@@ -45,6 +46,9 @@ int cmodel::readinifile(cinput *inputin)
   // input parameters
   int n = 0;
 
+  if(fields->readinifile(inputin))
+    return 1;
+
   // get the advection scheme
   n += inputin->getItem(&iadvec, "physics", "iadvec");
   if(iadvec == 2)
@@ -59,11 +63,6 @@ int cmodel::readinifile(cinput *inputin)
     advec = new cadvec_g4m (grid, fields, mpi);
   else
     advec = new cadvec     (grid, fields, mpi);
-
-
-  // if one argument fails, then crash
-  if(n > 0)
-    return 1;
 
   if(boundary->readinifile(inputin))
     return 1;
@@ -86,11 +85,17 @@ int cmodel::readinifile(cinput *inputin)
   if(cross->readinifile(inputin))
     return 1;
 
+  // if one or more arguments fails, then crash
+  if(n > 0)
+    return 1;
+
   return 0;
 }
 
 int cmodel::init()
 {
+  if(fields->init())
+    return 1;
   if(buffer->init())
     return 1;
   if(pres->init())
@@ -123,13 +128,15 @@ int cmodel::load()
   return 0;
 }
 
-int cmodel::save()
+int cmodel::save(cinput *inputin)
 {
+  if(fields->create(inputin))
+    return 1;
+  if(fields->save(timeloop->iteration))
+    return 1;
   if(buffer->setbuffers())
     return 1;
   if(buffer->save())
-    return 1;
-  if(fields->save(timeloop->iteration))
     return 1;
   if(timeloop->save(timeloop->iteration))
     return 1;

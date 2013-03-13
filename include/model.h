@@ -20,27 +20,27 @@
 class cmodel
 {
   public:
-    cmodel(cgrid *, cfields *, cmpi *, std::string);
+    cmodel(cgrid *, cmpi *, std::string);
     ~cmodel();
     int readinifile(cinput *);
     int init();
     int load();
-    int save();
+    int save(cinput *);
     int exec(std::string);
 
   private:
     cgrid   *grid;
-    cfields *fields;
     cmpi    *mpi;
     std::string simname;
 
     // switches for included schemes
     int iadvec;
 
-    // create the boundary conditions class
-    cboundary *boundary;
+    // fields to be created
+    cfields   *fields;
 
-    // create the instances of the model operations
+    // model operators
+    cboundary *boundary;
     ctimeloop *timeloop;
     cadvec    *advec;
     cdiff     *diff;
