@@ -7,7 +7,6 @@
 
 cfields::cfields(cgrid *gridin, cmpi *mpiin)
 {
-  // std::printf("Creating instance of object fields\n");
   grid = gridin;
   mpi  = mpiin;
 
@@ -29,8 +28,6 @@ cfields::~cfields()
     for (std::map<std::string,cfield3d*>::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
       delete ScalarTend[it->first];
   }
-
-  // std::printf("Destroying instance of object fields\n");
 }
 
 int cfields::readinifile(cinput *inputin)
@@ -50,6 +47,9 @@ int cfields::readinifile(cinput *inputin)
   n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", 0    );
   n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
   n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , 1    );
+
+  // LES
+  n += inputin->getItem(&tPr, "fields", "tPr", 1./3.);
 
   if(n > 0)
     return 1;
@@ -71,6 +71,8 @@ int cfields::init()
   err += initdfld(p, "p");
   err += initdfld(tmp1, "tmp1");
   err += initdfld(tmp2, "tmp2");
+  
+  err += initdfld(evisc, "evisc");
 
   allocated = true;
 
@@ -89,7 +91,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   
   MomentumProg[fldname] = new cfield3d(grid, mpi, fldname );
   MomentumProg[fldname]->init();
-  
+
   MomentumTend[fldname] = new cfield3d(grid, mpi, fldtname );
   MomentumTend[fldname]->init();
 
@@ -97,9 +99,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   fldt = MomentumTend[fldname];
 
   return 0;
-
 }
-
 
 int cfields::initpfld(std::string fldname)
 {
@@ -120,7 +120,6 @@ int cfields::initpfld(std::string fldname)
   Scalar[fldname]     = ScalarProg[fldname];
   
   return 0;
-
 }
 
 int cfields::initdfld(cfield3d *&fld, std::string fldname)
@@ -139,8 +138,6 @@ int cfields::initdfld(cfield3d *&fld, std::string fldname)
   fld = Scalar[fldname];
   
   return 0;  
-
-
 }
 
 int cfields::create(cinput *inputin)

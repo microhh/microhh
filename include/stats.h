@@ -28,6 +28,7 @@ class cstats
     NcDim  *z_dim, *zh_dim, *t_dim;
     NcVar  *z_var, *zh_var, *t_var, *iter_var;
     NcVar  *u_var , *v_var , *w_var , *s_var;
+    NcVar  *evisc_var;
     NcVar  *u2_var, *v2_var, *w2_var, *s2_var;
     NcVar  *u3_var, *v3_var, *w3_var, *s3_var;
     NcVar  *ugrad_var, *vgrad_var, *sgrad_var;
@@ -43,6 +44,7 @@ class cstats
     NcVar  *w2_buoy_var, *tke_buoy_var;
 
     double *u , *v , *w , *s ;
+    double *evisc;
     double *u2, *v2, *w2, *s2;
     double *u3, *v3, *w3, *s3;
     double *wu , *wv , *ws ;
@@ -73,6 +75,12 @@ class cstats
                       double *, double *, double *,
                       double *, double *,
                       double *, double *, double);
+
+    // 2nd order statistics
+    int calcdiff_les_2nd(double *, double *, double *, double *, double *, double *, double);
+    int calcgrad_2nd    (double *, double *, double *);
+    int calcflux_2nd    (double *, double *, double *, double *, int, int);
+
     int nstats;
 };
 #endif

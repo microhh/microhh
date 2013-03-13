@@ -49,6 +49,10 @@ int cstats::init()
   w3 = new double[grid->kcells];
   s3 = new double[grid->kcells];
 
+  // LES averages
+  evisc = new double[grid->kcells];
+
+
   ugrad = new double[grid->kcells];
   vgrad = new double[grid->kcells];
   sgrad = new double[grid->kcells];
@@ -144,9 +148,9 @@ int cstats::create(std::string simname, int n)
     vgrad_var = dataFile->add_var("vgrad", ncDouble, t_dim, zh_dim );
     sgrad_var = dataFile->add_var("sgrad", ncDouble, t_dim, zh_dim );
 
-    wu_var = dataFile->add_var("wu", ncDouble, t_dim, zh_dim );
-    wv_var = dataFile->add_var("wv", ncDouble, t_dim, zh_dim );
-    ws_var = dataFile->add_var("ws", ncDouble, t_dim, zh_dim );
+    wu_var = dataFile->add_var("uw", ncDouble, t_dim, zh_dim );
+    wv_var = dataFile->add_var("vw", ncDouble, t_dim, zh_dim );
+    ws_var = dataFile->add_var("sw", ncDouble, t_dim, zh_dim );
 
     udiff_var = dataFile->add_var("udiff", ncDouble, t_dim, zh_dim );
     vdiff_var = dataFile->add_var("vdiff", ncDouble, t_dim, zh_dim );
@@ -185,6 +189,9 @@ int cstats::create(std::string simname, int n)
     w2_buoy_var  = dataFile->add_var("w2_buoy" , ncDouble, t_dim, z_dim );
     tke_buoy_var = dataFile->add_var("tke_buoy", ncDouble, t_dim, z_dim );
 
+    // LES variables
+    evisc_var = dataFile->add_var("evisc", ncDouble, t_dim, z_dim );
+
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
     zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
@@ -211,12 +218,13 @@ int cstats::exec(int iteration, double time)
   calcmean((*fields->v).data, v);
   calcmean((*fields->w).data, w);
   calcmean((*fields->Scalar["s"]).data, s);
+  calcmean((*fields->evisc).data, evisc);
 
   // calc variances
   calcmoment((*fields->u).data, u, u2, 2., 0);
   calcmoment((*fields->v).data, v, v2, 2., 0);
   calcmoment((*fields->w).data, w, w2, 2., 1);
-  calcmoment((*fields->ScalarProg["s"]).data, s, s2, 2., 0);
+  calcmoment((*fields->Scalar["s"]).data, s, s2, 2., 0);
 
   // calc skewnesses
   calcmoment((*fields->u).data, u, u3, 3., 0);
@@ -225,19 +233,43 @@ int cstats::exec(int iteration, double time)
   calcmoment((*fields->Scalar["s"]).data, s, s3, 3., 0);
 
   // calculate gradients
-  calcgrad((*fields->u).data, ugrad, grid->dzhi4);
-  calcgrad((*fields->v).data, vgrad, grid->dzhi4);
-  calcgrad((*fields->Scalar["s"]).data, sgrad, grid->dzhi4);
+  if(grid->spatialorder == 2)
+  {
+    calcgrad_2nd((*fields->u).data, ugrad, grid->dzhi);
+    calcgrad_2nd((*fields->v).data, vgrad, grid->dzhi);
+    calcgrad_2nd((*fields->Scalar["s"]).data, sgrad, grid->dzhi);
 
-  // calculate turbulent fluxes
-  calcflux((*fields->u).data, (*fields->w).data, wu, (*fields->tmp1).data, 1, 0);
-  calcflux((*fields->v).data, (*fields->w).data, wv, (*fields->tmp1).data, 0, 1);
-  calcflux((*fields->Scalar["s"]).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
+    // calculate turbulent fluxes
+    calcflux_2nd((*fields->u).data, (*fields->w).data, wu, (*fields->tmp1).data, 1, 0);
+    calcflux_2nd((*fields->v).data, (*fields->w).data, wv, (*fields->tmp1).data, 0, 1);
+    calcflux_2nd((*fields->Scalar["s"]).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
+  }
+  else
+  {
+    calcgrad((*fields->u).data, ugrad, grid->dzhi4);
+    calcgrad((*fields->v).data, vgrad, grid->dzhi4);
+    calcgrad((*fields->Scalar["s"]).data, sgrad, grid->dzhi4);
+
+    // calculate turbulent fluxes
+    calcflux((*fields->u).data, (*fields->w).data, wu, (*fields->tmp1).data, 1, 0);
+    calcflux((*fields->v).data, (*fields->w).data, wv, (*fields->tmp1).data, 0, 1);
+    calcflux((*fields->Scalar["s"]).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
+  }
 
   // calculate diffusive fluxes
-  calcdiff((*fields->u).data, udiff, grid->dzhi4, fields->visc );
-  calcdiff((*fields->v).data, vdiff, grid->dzhi4, fields->visc );
-  calcdiff((*fields->Scalar["s"]).data, sdiff, grid->dzhi4, fields->viscs);
+  // CvH this check is incomplete, no dns/les difference yet!
+  if(grid->spatialorder == 2)
+  {
+    calcdiff_les_2nd((*fields->u).data, (*fields->evisc).data, udiff, grid->dzhi, (*fields->u).datafluxbot, (*fields->u).datafluxtop, 1.);
+    calcdiff_les_2nd((*fields->v).data, (*fields->evisc).data, vdiff, grid->dzhi, (*fields->v).datafluxbot, (*fields->v).datafluxtop, 1.);
+    calcdiff_les_2nd((*fields->Scalar["s"]).data, (*fields->evisc).data, sdiff, grid->dzhi, (*fields->Scalar["s"]).datafluxbot, (*fields->Scalar["s"]).datafluxtop, fields->tPr);
+  }
+  else
+  {
+    calcdiff((*fields->u).data, udiff, grid->dzhi4, fields->visc );
+    calcdiff((*fields->v).data, vdiff, grid->dzhi4, fields->visc );
+    calcdiff((*fields->Scalar["s"]).data, sdiff, grid->dzhi4, fields->viscs);
+  }
 
   // add the turbulent and diffusive fluxes
   for(int k=grid->kstart; k<grid->kend+1; k++)
@@ -266,6 +298,8 @@ int cstats::exec(int iteration, double time)
     v_var->put_rec(&v[grid->kstart], nstats);
     w_var->put_rec(&w[grid->kstart], nstats);
     s_var->put_rec(&s[grid->kstart], nstats);
+
+    evisc_var->put_rec(&evisc[grid->kstart], nstats);
 
     u2_var->put_rec(&u2[grid->kstart], nstats);
     v2_var->put_rec(&v2[grid->kstart], nstats);
@@ -324,7 +358,7 @@ int cstats::exec(int iteration, double time)
   }
 
   // calculate variance and higher order moments
-  // save variance*fields->ss
+  // save variance*fields->Scalar["s"]s
 
   // calculate flux
   // save flux
@@ -444,6 +478,50 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
   return 0;
 }
 
+int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
+{
+  int ijk,ii,jj,kk;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  // CvH create 2nd order interpolation function
+  // set a pointer to the field that contains w, either interpolated or the original
+  double * restrict calcw = w;
+  if(locx == 1)
+  {
+    grid->interpolatex_4th(tmp1, w, 0);
+    calcw = tmp1;
+  }
+  else if(locy == 1)
+  {
+    grid->interpolatey_4th(tmp1, w, 0);
+    calcw = tmp1;
+  }
+  
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        prof[k] += 0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
 int cstats::calcgrad(double * restrict data, double * restrict prof, double * restrict dzhi4)
 {
   int ijk,ii,jj,kk1,kk2;
@@ -462,6 +540,36 @@ int cstats::calcgrad(double * restrict data, double * restrict prof, double * re
       {
         ijk  = i + j*jj + k*kk1;
         prof[k] += (cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
+{
+  int ijk,ii,jj,kk;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        prof[k] += (data[ijk]-data[ijk-kk])*dzhi[k];
       }
   }
 
@@ -495,6 +603,59 @@ int cstats::calcdiff(double * restrict data, double * restrict prof, double * re
         prof[k] += -visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcdiff_les_2nd(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi, double * restrict fluxbot, double * restrict fluxtop, double tPr)
+{
+  int ijk,ij,ii,jj,kk,kstart,kend;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+  kend   = grid->kend;
+
+  // CvH add horizontal interpolation for u and v and interpolate the eddy viscosity properly
+  // bottom boundary
+  prof[kstart] = 0.;
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij = i + j*jj;
+      prof[kstart] += fluxbot[ij];
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend; k++)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        prof[k] += -0.5*(evisc[ijk-kk]+evisc[ijk])/tPr*(data[ijk]-data[ijk-kk])*dzhi[k];
+      }
+  }
+
+  // top boundary
+  prof[kend] = 0.;
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij = i + j*jj;
+      prof[kend] += fluxtop[ij];
+    }
 
   double n = grid->imax*grid->jmax;
 

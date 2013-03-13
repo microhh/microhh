@@ -57,9 +57,12 @@ int cgrid::readinifile(cinput *inputin)
   n += inputin->getItem(&jtot, "grid", "jtot");
   n += inputin->getItem(&ktot, "grid", "ktot");
 
+  n += inputin->getItem(&spatialorder, "grid", "spatialorder");
+
   if(n > 0)
     return 1;
-  
+ 
+  // CvH treat this correctly later, for now keep it because there are no 2nd order stats
   igc = 3;
   jgc = 3;
   kgc = 3;
@@ -180,33 +183,47 @@ int cgrid::calculate()
   }
 
   // THE CALCULATION OF GHOST CELLS AND FLUX LEVELS HAS TO GO ACCORDING TO NUMERICAL SCHEME!!!
-  // CvH 2nd order is missing now...
+  if(spatialorder == 2)
+  {
+    z[kstart-3] = -z[kstart+2];
+    z[kstart-2] = -z[kstart+1];
+    z[kstart-1] = -z[kstart  ];
 
-  // calculate the height of the ghost cell
-  z[kstart-1] = -2.*z[kstart] + (1./3.)*z[kstart+1];
-  z[kstart-2] = -9.*z[kstart] +      2.*z[kstart+1];
+    z[kend  ] = 2.*zsize - z[kend-1];
+    z[kend+1] = 2.*zsize - z[kend-2];
+    z[kend+2] = 2.*zsize - z[kend-3];
 
-  z[kend  ] = (8./3.)*zsize - 2.*z[kend-1] + (1./3.)*z[kend-2];
-  z[kend+1] =      8.*zsize - 9.*z[kend-1] +      2.*z[kend-2];
+    for(k=kstart+1; k<kend; k++)
+      zh[k] = 0.5*(z[k-1]+z[k]);
+    zh[kstart  ] = 0.;
+    zh[kend] = zsize;
 
-  // z[kstart-3] = -z[kstart+2];
-  // z[kend+2] = 2.*zsize - z[kend-3];
+    zh[kstart-1] = -zh[kstart+1];
+    zh[kstart-2] = -zh[kstart+2];
+    zh[kstart-3] = -zh[kstart+3];
+    zh[kend+1] = 2.*zsize - zh[kend-1];
+    zh[kend+2] = 2.*zsize - zh[kend-2];
+  }
+
+  if(spatialorder == 4)
+  {
+    // calculate the height of the ghost cell
+    z[kstart-1] = -2.*z[kstart] + (1./3.)*z[kstart+1];
+    z[kstart-2] = -9.*z[kstart] +      2.*z[kstart+1];
+
+    z[kend  ] = (8./3.)*zsize - 2.*z[kend-1] + (1./3.)*z[kend-2];
+    z[kend+1] =      8.*zsize - 9.*z[kend-1] +      2.*z[kend-2];
+
+    zh[kstart  ] = 0.;
+    for(k=kstart+1; k<kend; k++)
+      zh[k] = ci0*z[k-2] + ci1*z[k-1] + ci2*z[k] + ci3*z[k+1];
+    zh[kend] = zsize;
+
+    zh[kstart-1] = bi0*z[kstart-2] + bi1*z[kstart-1] + bi2*z[kstart] + bi3*z[kstart+1];
+    zh[kend+1]   = ti0*z[kend-2  ] + ti1*z[kend-1  ] + ti2*z[kend  ] + ti3*z[kend+1  ];
+  }
 
   // calculate the half levels according to the numerical scheme
-  zh[kstart  ] = 0.;
-  for(k=kstart+1; k<kend; k++)
-    zh[k] = ci0*z[k-2] + ci1*z[k-1] + ci2*z[k] + ci3*z[k+1];
-  zh[kend] = zsize;
-
-  // zh[kstart-1] = -zh[kstart+1];
-  // zh[kend+1]   = 2.*zsize - zh[kend-1];
-  zh[kstart-1] = bi0*z[kstart-2] + bi1*z[kstart-1] + bi2*z[kstart] + bi3*z[kstart+1];
-  zh[kend+1]   = ti0*z[kend-2  ] + ti1*z[kend-1  ] + ti2*z[kend  ] + ti3*z[kend+1  ];
-
-  // zh[kstart-2] = -zh[kstart+2];
-  // zh[kstart-3] = -zh[kstart+3];
-  // zh[kend+2] = 2.*zsize - zh[kend-2];
-
   // compute the height of the grid cells
   for(k=1; k<kcells; k++)
   {

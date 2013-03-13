@@ -33,6 +33,7 @@ int ctimeloop::readinifile(cinput *inputin)
   // optional parameters
   n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true);
   n += inputin->getItem(&dt          , "time", "dt"          , 0.1 );
+  n += inputin->getItem(&dtmax       , "time", "dtmax"       , dbig);
   n += inputin->getItem(&cflmax      , "time", "cflmax"      , 1.  );
   n += inputin->getItem(&dnmax       , "time", "dnmax"       , 0.5 );
   n += inputin->getItem(&rkorder     , "time", "rkorder"     , 4   );
@@ -62,8 +63,9 @@ int ctimeloop::readinifile(cinput *inputin)
   loop      = true;
   time      = 0.;
 
-  itime    = (long)(ifactor * time);
-  idt      = (long)(ifactor * dt);
+  itime    = (unsigned long)(ifactor * time);
+  idt      = (unsigned long)(ifactor * dt);
+  idtmax   = (unsigned long)(ifactor * dtmax);
 
   gettimeofday(&start, NULL);
 
@@ -130,6 +132,7 @@ int ctimeloop::settimestep(double cfl, double dn)
   if(adaptivestep)
   {
     idt = (long)(std::min((double)idt * cflmax/cfl, (double)idt * dnmax/dn));
+    idt = std::min(idt, idtmax);
     dt  = (double)idt / ifactor;
   }
 

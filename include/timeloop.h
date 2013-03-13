@@ -38,6 +38,7 @@ class ctimeloop
 
     double time;
     double dt;
+    double dtmax;
     double cflmax;
     double dnmax;
     double runtime;
@@ -59,6 +60,7 @@ class ctimeloop
     unsigned long itime;
     unsigned long iruntime;
     unsigned long idt;
+    unsigned long idtmax;
 
     int startiter;
     int outputiter;

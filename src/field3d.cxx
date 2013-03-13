@@ -6,7 +6,6 @@
 
 cfield3d::cfield3d(cgrid *gridin, cmpi *mpiin, std::string namein)
 {
-  std::printf("Creating instance of object field3d\n");
   grid = gridin;
   name = namein;
   mpi  = mpiin;
@@ -21,9 +20,9 @@ cfield3d::~cfield3d()
     delete[] datatop;
     delete[] datagradbot;
     delete[] datagradtop;
+    delete[] datafluxbot;
+    delete[] datafluxtop;
   }
-
-  // std::printf("Destroying instance of object field3d\n");
 }
 
 int cfield3d::init()
@@ -37,6 +36,8 @@ int cfield3d::init()
   datatop = new double[grid->icells*grid->jcells];
   datagradbot = new double[grid->icells*grid->jcells];
   datagradtop = new double[grid->icells*grid->jcells];
+  datafluxbot = new double[grid->icells*grid->jcells];
+  datafluxtop = new double[grid->icells*grid->jcells];
 
   allocated = true;
 
@@ -50,6 +51,8 @@ int cfield3d::init()
     datatop    [n] = 0.;
     datagradbot[n] = 0.;
     datagradtop[n] = 0.;
+    datafluxbot[n] = 0.;
+    datafluxtop[n] = 0.;
   }
 
   return 0;

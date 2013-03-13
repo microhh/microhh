@@ -23,7 +23,7 @@ class cboundary
     cfields *fields;
     cmpi    *mpi;
 
-    int setbc      (double *, double *, int, double);
+    int setbc      (double *, double *, double *, int, double, double);
     int setbc_patch(double *, double, double, double);
 
     int setgcbot_2nd(double *, double *, int, double);

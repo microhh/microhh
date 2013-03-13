@@ -51,6 +51,10 @@ class cfields
     cfield3d *tmp1;
     cfield3d *tmp2;
 
+    // eddy viscosity for LES
+    cfield3d *evisc;
+    double tPr;
+
     double visc;
     double viscs;
     

@@ -17,6 +17,8 @@ cdiff::cdiff(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   diff_g2  = new cdiff_g2 (grid, fields, mpi);
   diff_g42 = new cdiff_g42(grid, fields, mpi);
   diff_g4  = new cdiff_g4 (grid, fields, mpi);
+
+  diff_les_g2  = new cdiff_les_g2(grid, fields, mpi);
 }
 
 cdiff::~cdiff()
@@ -25,6 +27,7 @@ cdiff::~cdiff()
   delete diff_g42;
   delete diff_g4;
 
+  delete diff_les_g2;
   // std::printf("Destroying instance of object diff\n");
 }
 
@@ -62,6 +65,12 @@ double cdiff::getdn(double dt)
   // in case of no diffusion set dn to a small number to avoid zero divisions
   if(idiff == 0)
     dn = dsmall;
+  if(idiff == 22)
+  {
+    // calculate eddy viscosity
+    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->Scalar["s"]).data, grid->z, grid->dz, grid->dzi, grid->dzhi, fields->tPr);
+    dn = diff_les_g2->getdn((*fields->evisc).data, grid->dzi, fields->tPr);
+  }
   else
     dn = dnmul*dt;
 
@@ -102,6 +111,15 @@ int cdiff::exec()
 
     for (std::map<std::string,cfield3d*>::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
       diff_g4->diffc((*it->second).data, (*fields->Scalar[it->first]).data, grid->dzi4, grid->dzhi4, fields->viscs);
+  }
+
+  else if(idiff == 22)
+  {
+    diff_les_g2->diffu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->u).datafluxbot, (*fields->u).datafluxtop);
+    diff_les_g2->diffv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->v).datafluxbot, (*fields->v).datafluxtop);
+    diff_les_g2->diffw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data);
+
+    diff_les_g2->diffc((*fields->ScalarTend["s"]).data, (*fields->Scalar["s"]).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->Scalar["s"]).datafluxbot, (*fields->Scalar["s"]).datafluxtop, fields->tPr);
   }
 
   return 0;
