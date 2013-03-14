@@ -675,9 +675,6 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
     }
   }
 
-  std::printf("%d q %s %s\n",n, value->c_str(),dummy.c_str());
-//   *value = inputstring;
-  
   return 0;
 }
 
