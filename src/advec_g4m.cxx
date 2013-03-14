@@ -6,7 +6,7 @@
 #include "advec_g4m.h"
 #include "defines.h"
 
-cadvec_g4m::cadvec_g4m(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
+cadvec_g4m::cadvec_g4m(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   grid   = gridin;
   fields = fieldsin;
@@ -15,27 +15,6 @@ cadvec_g4m::cadvec_g4m(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(g
 
 cadvec_g4m::~cadvec_g4m()
 {
-}
-
-int cadvec_g4m::exec()
-{
-  advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
-  advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
-  advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
-
-  for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
-    advecs((*it->second).data, (*fields->Scalar[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
-
-  return 0;
-}
-
-double cadvec_g4m::getcfl(double dt)
-{
-  double cfl;
-
-  cfl = calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
-
-  return cfl;
 }
 
 double cadvec_g4m::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)

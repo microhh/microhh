@@ -26,6 +26,7 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin, std::string simnamein)
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
+  advec    = new cadvec   (grid, fields, mpi);
   diff     = new cdiff    (grid, fields, mpi);
   pres     = new cpres    (grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
@@ -48,21 +49,6 @@ int cmodel::readinifile(cinput *inputin)
 
   if(fields->readinifile(inputin))
     return 1;
-
-  // get the advection scheme
-  n += inputin->getItem(&iadvec, "physics", "iadvec");
-  if(iadvec == 2)
-    advec = new cadvec_g2  (grid, fields, mpi);
-  else if(iadvec == 24)
-    advec = new cadvec_g2i4(grid, fields, mpi);
-  else if(iadvec == 42)
-    advec = new cadvec_g42 (grid, fields, mpi);
-  else if(iadvec == 4)
-    advec = new cadvec_g4  (grid, fields, mpi);
-  else if(iadvec == 44)
-    advec = new cadvec_g4m (grid, fields, mpi);
-  else
-    advec = new cadvec     (grid, fields, mpi);
 
   if(boundary->readinifile(inputin))
     return 1;
