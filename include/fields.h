@@ -42,8 +42,9 @@ class cfields
     fieldmap sd;
     fieldmap sp;
     fieldmap st;
-    fieldmap MomentumProg;
-    fieldmap MomentumTend;
+    fieldmap m;
+    fieldmap mp;
+    fieldmap mt;
     
     // temporary arrays
     cfield3d *tmp1;

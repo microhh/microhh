@@ -46,7 +46,7 @@ int cbuffer::init()
     // allocate the buffer array 
     bufferkcells = grid->kmax-bufferkstart-1;
 
-    for(fieldmap::iterator itProg = fields->MomentumProg.begin(); itProg!=fields->MomentumProg.end(); itProg++)
+    for(fieldmap::iterator itProg = fields->mp.begin(); itProg!=fields->mp.end(); itProg++)
       bufferprofs[itProg->first] = new double[bufferkcells];
 
     for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
@@ -66,7 +66,7 @@ int cbuffer::setbuffers()
   if(ibuffer)
   {
     // set the buffers according to the initial profiles
-    for(fieldmap::iterator itProg = fields->MomentumProg.begin(); itProg!=fields->MomentumProg.end(); itProg++)
+    for(fieldmap::iterator itProg = fields->mp.begin(); itProg!=fields->mp.end(); itProg++)
       setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
  
     for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
@@ -81,9 +81,9 @@ int cbuffer::exec()
   if(ibuffer)
   {
     // calculate the buffer tendencies
-    buffer((*fields->MomentumTend["u"]).data, (*fields->MomentumProg["u"]).data, bufferprofs["u"], grid->z );
-    buffer((*fields->MomentumTend["v"]).data, (*fields->MomentumProg["v"]).data, bufferprofs["v"], grid->z );
-    buffer((*fields->MomentumTend["w"]).data, (*fields->MomentumProg["w"]).data, bufferprofs["w"], grid->zh );
+    buffer((*fields->mt["u"]).data, (*fields->mp["u"]).data, bufferprofs["u"], grid->z );
+    buffer((*fields->mt["v"]).data, (*fields->mp["v"]).data, bufferprofs["v"], grid->z );
+    buffer((*fields->mt["w"]).data, (*fields->mp["w"]).data, bufferprofs["w"], grid->zh );
  
     for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
       buffer((*fields->st[itProg->first]).data, (*itProg->second).data, bufferprofs[itProg->first], grid->z );

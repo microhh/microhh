@@ -17,10 +17,10 @@ cfields::~cfields()
 {
   if(allocated)
   {
-    for(fieldmap::iterator it = MomentumTend.begin(); it!=MomentumTend.end(); it++)
+    for(fieldmap::iterator it = mt.begin(); it!=mt.end(); it++)
     {
-      delete MomentumProg[it->first];
-      delete MomentumTend[it->first];
+      delete mp[it->first];
+      delete mt[it->first];
     }
     for(fieldmap::iterator it = s.begin(); it!=s.end(); it++)
       delete s[it->first];
@@ -67,21 +67,24 @@ int cfields::init()
   err += initmomfld(v, vt, "v");
   err += initmomfld(w, wt, "w");
   err += initpfld("s");
-  
+
   err += initdfld(p, "p");
   err += initdfld(tmp1, "tmp1");
   err += initdfld(tmp2, "tmp2");
-  
+
   err += initdfld(evisc, "evisc");
+
+  if(err > 0)
+    return 1;
 
   allocated = true;
 
-  return err;
+  return 0;
 }
 
 int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
 {
-  if (MomentumProg.find(fldname)!=MomentumProg.end())
+  if (mp.find(fldname)!=mp.end())
   {
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
@@ -89,14 +92,16 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   
   std::string fldtname = fldname + "t";
   
-  MomentumProg[fldname] = new cfield3d(grid, mpi, fldname );
-  MomentumProg[fldname]->init();
+  mp[fldname] = new cfield3d(grid, mpi, fldname);
+  mp[fldname]->init();
 
-  MomentumTend[fldname] = new cfield3d(grid, mpi, fldtname );
-  MomentumTend[fldname]->init();
+  mt[fldname] = new cfield3d(grid, mpi, fldtname);
+  mt[fldname]->init();
 
-  fld = MomentumProg[fldname];
-  fldt = MomentumTend[fldname];
+  m[fldname] = mp[fldname];
+
+  fld  = mp[fldname];
+  fldt = mt[fldname];
 
   return 0;
 }
@@ -111,13 +116,13 @@ int cfields::initpfld(std::string fldname)
   
   std::string fldtname = fldname + "t";
   
-  sp[fldname] = new cfield3d(grid, mpi, fldname );
+  sp[fldname] = new cfield3d(grid, mpi, fldname);
   sp[fldname]->init();
   
-  st[fldname] = new cfield3d(grid, mpi, fldtname );
+  st[fldname] = new cfield3d(grid, mpi, fldtname);
   st[fldname]->init();
 
-  s[fldname]     = sp[fldname];
+  s[fldname] = sp[fldname];
   
   return 0;
 }
