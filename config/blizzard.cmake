@@ -4,7 +4,7 @@ set(CMAKE_CXX_COMPILER "xlc++")
 set (C_COMPILER_WRAPPER mpcc)
 set (CXX_COMPILER_WRAPPER mpCC)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-qarch=pwr6 -qtune=pwr6 -O3 -qhot=simd -qenablevmx")
+set(USER_CXX_FLAGS_RELEASE "-qarch=pwr6 -qtune=pwr6 -O3 -qhot=simd -qenablevmx")
 
 set(FFTW_INCLUDE_DIR   "/pf/zmaw/m300041/local/include")
 set(FFTW_LIB           "/pf/zmaw/m300041/local/lib/libfftw3.a")

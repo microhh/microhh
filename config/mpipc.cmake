@@ -4,9 +4,9 @@ set(CMAKE_CXX_COMPILER "c++")
 set (CXX_COMPILER_WRAPPER mpicxx)
 set (C_COMPILER_WRAPPER mpicc)
 
-set(CMAKE_CXX_FLAGS "")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
+set(USER_CXX_FLAGS "")
+set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
+set(USER_CXX_FLAGS_DEBUG "-O0 -g")
 
 set(FFTW_INCLUDE_DIR   "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/include")
 set(FFTW_LIB           "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/lib/libfftw3.a")

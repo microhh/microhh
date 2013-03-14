@@ -4,9 +4,9 @@ set(CMAKE_CXX_COMPILER "bgxlC")
 set(C_COMPILER_WRAPPER mpixlc)
 set(CXX_COMPILER_WRAPPER mpixlcxx)
 
-set(CMAKE_CXX_FLAGS "")
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -qarch=qp -qtune=qp -qhot")
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
+set(USER_CXX_FLAGS "")
+set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -qarch=qp -qtune=qp -qhot")
+set(USER_CXX_FLAGS_DEBUG "-O0 -g")
 
 set(FFTW_INCLUDE_DIR   "/bgsys/local/fftw3/3.3.2/fftw/include")
 set(FFTW_LIB           "/bgsys/local/fftw3/3.3.2/fftw/lib/libfftw3.a")
