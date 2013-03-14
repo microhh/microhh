@@ -111,13 +111,13 @@ int cfields::initpfld(std::string fldname)
   
   std::string fldtname = fldname + "t";
   
-  ScalarProg[fldname] = new cfield3d(grid, mpi, fldname );
-  ScalarProg[fldname]->init();
+  sp[fldname] = new cfield3d(grid, mpi, fldname );
+  sp[fldname]->init();
   
   ScalarTend[fldname] = new cfield3d(grid, mpi, fldtname );
   ScalarTend[fldname]->init();
 
-  s[fldname]     = ScalarProg[fldname];
+  s[fldname]     = sp[fldname];
   
   return 0;
 }
@@ -130,10 +130,10 @@ int cfields::initdfld(cfield3d *&fld, std::string fldname)
     return 1;
   }
 
-  ScalarDiag[fldname]  = new cfield3d(grid, mpi, fldname );
-  ScalarDiag[fldname]->init();
+  sd[fldname]  = new cfield3d(grid, mpi, fldname );
+  sd[fldname]->init();
 
-  s[fldname] = ScalarDiag[fldname];
+  s[fldname] = sd[fldname];
   
   fld = s[fldname];
   
@@ -170,7 +170,7 @@ int cfields::create(cinput *inputin)
         u->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
         v->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
         w->data[ijk] = rndfach * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
-        ScalarProg["s"]->data[ijk] = rndfac  * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
+        sp["s"]->data[ijk] = rndfac  * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
       }
   }
 
@@ -216,7 +216,7 @@ int cfields::create(cinput *inputin)
         ijk = i + j*jj + k*kk;
         u->data[ijk] += uproftemp[k-grid->kstart];
         v->data[ijk] += vproftemp[k-grid->kstart];
-        ScalarProg["s"]->data[ijk] += sproftemp[k-grid->kstart];
+        sp["s"]->data[ijk] += sproftemp[k-grid->kstart];
       }
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;
@@ -236,7 +236,7 @@ int cfields::load(int n)
   nerror += u->load(n, tmp1->data, tmp2->data);
   nerror += v->load(n, tmp1->data, tmp2->data);
   nerror += w->load(n, tmp1->data, tmp2->data);
-  for(fieldmap::iterator itProg = ScalarProg.begin(); itProg!=ScalarProg.end(); itProg++)
+  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
     nerror += itProg->second->load(n, tmp1->data, tmp2->data);
 
   if(nerror > 0)
@@ -251,7 +251,7 @@ int cfields::save(int n)
   v->save(n, tmp1->data, tmp2->data);
   w->save(n, tmp1->data, tmp2->data);
   // p->save(n);
-  for(fieldmap::iterator itProg = ScalarProg.begin(); itProg!=ScalarProg.end(); itProg++)
+  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
     itProg->second->save(n, tmp1->data, tmp2->data);
 
   return 0;
@@ -295,7 +295,7 @@ double cfields::checktke()
 
 double cfields::checkmass()
 {
-  return calcmass(ScalarProg["s"]->data, grid->dz);
+  return calcmass(sp["s"]->data, grid->dz);
 }
 
 double cfields::calcmass(double * restrict s, double * restrict dz)

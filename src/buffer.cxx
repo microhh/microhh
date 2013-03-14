@@ -49,7 +49,7 @@ int cbuffer::init()
     for(fieldmap::iterator itProg = fields->MomentumProg.begin(); itProg!=fields->MomentumProg.end(); itProg++)
       bufferprofs[itProg->first] = new double[bufferkcells];
 
-    for(fieldmap::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
       bufferprofs[itProg->first] = new double[bufferkcells];
 
     allocated = true;
@@ -69,7 +69,7 @@ int cbuffer::setbuffers()
     for(fieldmap::iterator itProg = fields->MomentumProg.begin(); itProg!=fields->MomentumProg.end(); itProg++)
       setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
  
-    for(fieldmap::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
       setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
   }
 
@@ -85,7 +85,7 @@ int cbuffer::exec()
     buffer((*fields->MomentumTend["v"]).data, (*fields->MomentumProg["v"]).data, bufferprofs["v"], grid->z );
     buffer((*fields->MomentumTend["w"]).data, (*fields->MomentumProg["w"]).data, bufferprofs["w"], grid->zh );
  
-    for(fieldmap::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
       buffer((*fields->ScalarTend[itProg->first]).data, (*itProg->second).data, bufferprofs[itProg->first], grid->z );
   }
 

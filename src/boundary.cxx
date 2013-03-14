@@ -61,7 +61,7 @@ int cboundary::setvalues()
   setbc((*fields->u).datatop, (*fields->u).datagradtop, (*fields->u).datafluxtop, bctopmom, 0., fields->visc);
   setbc((*fields->v).datatop, (*fields->v).datagradtop, (*fields->v).datafluxtop, bctopmom, 0., fields->visc);
 
-  for(fieldmap::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+  for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
   {
     if(iboundarytype == 0)
     {
@@ -89,7 +89,7 @@ int cboundary::exec()
     setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
     setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
     
-    for(fieldmap::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
     {
       setgctop_2nd((*itProg->second).data, grid->dzh, bctopscal, (*itProg->second).datagradbot);
       setgcbot_2nd((*itProg->second).data, grid->dzh, bcbotscal, (*itProg->second).datagradtop);
@@ -109,7 +109,7 @@ int cboundary::exec()
     //setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
     setgctopw_4th((*fields->w).data);
     
-    for(fieldmap::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
     {
       setgcbot_4th ((*itProg->second).data, grid->z, bcbotscal, (*itProg->second).datagradbot);
       setgctop_4th ((*itProg->second).data, grid->z, bctopscal, (*itProg->second).datagradtop);
@@ -121,7 +121,7 @@ int cboundary::exec()
   grid->boundary_cyclic((*fields->v).data);
   grid->boundary_cyclic((*fields->w).data);
   
-  for(fieldmap::iterator itProg = fields->ScalarProg.begin(); itProg!=fields->ScalarProg.end(); itProg++)
+  for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
   {
     grid->boundary_cyclic((*itProg->second).data);
   }
