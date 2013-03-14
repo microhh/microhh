@@ -17,15 +17,15 @@ cfields::~cfields()
 {
   if(allocated)
   {
-    for (std::map<std::string,cfield3d*>::iterator it = MomentumTend.begin(); it!=MomentumTend.end(); it++)
+    for(fieldmap::iterator it = MomentumTend.begin(); it!=MomentumTend.end(); it++)
     {
       delete MomentumProg[it->first];
       delete MomentumTend[it->first];
     }
-    for (std::map<std::string,cfield3d*>::iterator it = Scalar.begin(); it!=Scalar.end(); it++)
+    for(fieldmap::iterator it = Scalar.begin(); it!=Scalar.end(); it++)
       delete Scalar[it->first];
 
-    for (std::map<std::string,cfield3d*>::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
+    for(fieldmap::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
       delete ScalarTend[it->first];
   }
 }
@@ -236,7 +236,7 @@ int cfields::load(int n)
   nerror += u->load(n, tmp1->data, tmp2->data);
   nerror += v->load(n, tmp1->data, tmp2->data);
   nerror += w->load(n, tmp1->data, tmp2->data);
-  for (std::map<std::string,cfield3d*>::iterator itProg = ScalarProg.begin(); itProg!=ScalarProg.end(); itProg++)
+  for(fieldmap::iterator itProg = ScalarProg.begin(); itProg!=ScalarProg.end(); itProg++)
     nerror += itProg->second->load(n, tmp1->data, tmp2->data);
 
   if(nerror > 0)
@@ -251,7 +251,7 @@ int cfields::save(int n)
   v->save(n, tmp1->data, tmp2->data);
   w->save(n, tmp1->data, tmp2->data);
   // p->save(n);
-  for (std::map<std::string,cfield3d*>::iterator itProg = ScalarProg.begin(); itProg!=ScalarProg.end(); itProg++)
+  for(fieldmap::iterator itProg = ScalarProg.begin(); itProg!=ScalarProg.end(); itProg++)
     itProg->second->save(n, tmp1->data, tmp2->data);
 
   return 0;
