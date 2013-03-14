@@ -89,7 +89,7 @@ int cdiff::exec()
     diff_g2->diffc((*fields->vt).data, (*fields->v).data, grid->dzi, grid->dzhi, fields->visc);
     diff_g2->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
-    for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       diff_g2->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
   }
   else if(idiff == 42)
@@ -99,7 +99,7 @@ int cdiff::exec()
     diff_g42->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
 
-    for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       diff_g42->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
   }
   else if(idiff == 4)
@@ -109,7 +109,7 @@ int cdiff::exec()
     diff_g4->diffw((*fields->wt).data, (*fields->w).data, grid->dzi4, grid->dzhi4, fields->visc);
 
 
-    for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       diff_g4->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi4, grid->dzhi4, fields->viscs);
   }
 
@@ -119,7 +119,7 @@ int cdiff::exec()
     diff_les_g2->diffv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->v).datafluxbot, (*fields->v).datafluxtop);
     diff_les_g2->diffw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data);
 
-    diff_les_g2->diffc((*fields->ScalarTend["s"]).data, (*fields->s["s"]).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->s["s"]).datafluxbot, (*fields->s["s"]).datafluxtop, fields->tPr);
+    diff_les_g2->diffc((*fields->st["s"]).data, (*fields->s["s"]).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->s["s"]).datafluxbot, (*fields->s["s"]).datafluxtop, fields->tPr);
   }
 
   return 0;

@@ -25,8 +25,8 @@ cfields::~cfields()
     for(fieldmap::iterator it = s.begin(); it!=s.end(); it++)
       delete s[it->first];
 
-    for(fieldmap::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
-      delete ScalarTend[it->first];
+    for(fieldmap::iterator it = st.begin(); it!=st.end(); it++)
+      delete st[it->first];
   }
 }
 
@@ -114,8 +114,8 @@ int cfields::initpfld(std::string fldname)
   sp[fldname] = new cfield3d(grid, mpi, fldname );
   sp[fldname]->init();
   
-  ScalarTend[fldname] = new cfield3d(grid, mpi, fldtname );
-  ScalarTend[fldname]->init();
+  st[fldname] = new cfield3d(grid, mpi, fldtname );
+  st[fldname]->init();
 
   s[fldname]     = sp[fldname];
   

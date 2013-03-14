@@ -41,7 +41,7 @@ class cfields
     fieldmap s;
     fieldmap sd;
     fieldmap sp;
-    fieldmap ScalarTend;
+    fieldmap st;
     fieldmap MomentumProg;
     fieldmap MomentumTend;
     

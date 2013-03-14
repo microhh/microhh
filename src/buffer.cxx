@@ -86,7 +86,7 @@ int cbuffer::exec()
     buffer((*fields->MomentumTend["w"]).data, (*fields->MomentumProg["w"]).data, bufferprofs["w"], grid->zh );
  
     for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
-      buffer((*fields->ScalarTend[itProg->first]).data, (*itProg->second).data, bufferprofs[itProg->first], grid->z );
+      buffer((*fields->st[itProg->first]).data, (*itProg->second).data, bufferprofs[itProg->first], grid->z );
   }
 
   return 0;

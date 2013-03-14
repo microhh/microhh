@@ -76,7 +76,7 @@ int cadvec::exec()
     advec_g2->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
     advec_g2->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
 
-    for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       advec_g2->advecs((*it->second).data, (*fields->s[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   }
   else if(iadvec == 24)
@@ -85,7 +85,7 @@ int cadvec::exec()
     advec_g2i4->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
     advec_g2i4->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
 
-    for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       advec_g2i4->advecs((*it->second).data, (*fields->s[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   }
   else if(iadvec == 42)
@@ -94,7 +94,7 @@ int cadvec::exec()
     advec_g42->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
     advec_g42->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
 
-    for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       advec_g42->advecs((*it->second).data, (*fields->s[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
   }
   else if(iadvec == 4)
@@ -103,7 +103,7 @@ int cadvec::exec()
     advec_g4->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
     advec_g4->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
 
-    for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       advec_g4->advecs((*it->second).data, (*fields->s[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
   }
   else if(iadvec == 44)
@@ -112,7 +112,7 @@ int cadvec::exec()
     advec_g4m->advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
     advec_g4m->advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
 
-    for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       advec_g4m->advecs((*it->second).data, (*fields->s[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
   }
 
