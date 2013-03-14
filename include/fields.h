@@ -5,6 +5,8 @@
 #include "mpiinterface.h"
 #include "field3d.h"
 
+typedef std::map<std::string, cfield3d *> fieldmap;
+
 class cfields
 {
   public:
@@ -22,9 +24,6 @@ class cfields
     int save(int);
     int load(int);
 
-    // int resettend();
-    // int boundary();
-
     double checkmom ();
     double checktke ();
     double checkmass();
@@ -39,14 +38,14 @@ class cfields
     cfield3d *vt;
     cfield3d *wt;
     
-    std::map<std::string, cfield3d*> Scalar;
-    std::map<std::string, cfield3d*> ScalarDiag;
-    std::map<std::string, cfield3d*> ScalarProg;
-    std::map<std::string, cfield3d*> ScalarTend;
-    std::map<std::string, cfield3d*> MomentumProg;
-    std::map<std::string, cfield3d*> MomentumTend;
+    fieldmap s;
+    fieldmap sd;
+    fieldmap sp;
+    fieldmap st;
+    fieldmap m;
+    fieldmap mp;
+    fieldmap mt;
     
-
     // temporary arrays
     cfield3d *tmp1;
     cfield3d *tmp2;
