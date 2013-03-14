@@ -217,43 +217,43 @@ int cstats::exec(int iteration, double time)
   calcmean((*fields->u).data, u);
   calcmean((*fields->v).data, v);
   calcmean((*fields->w).data, w);
-  calcmean((*fields->Scalar["s"]).data, s);
+  calcmean((*fields->s["s"]).data, s);
   calcmean((*fields->evisc).data, evisc);
 
   // calc variances
   calcmoment((*fields->u).data, u, u2, 2., 0);
   calcmoment((*fields->v).data, v, v2, 2., 0);
   calcmoment((*fields->w).data, w, w2, 2., 1);
-  calcmoment((*fields->Scalar["s"]).data, s, s2, 2., 0);
+  calcmoment((*fields->s["s"]).data, s, s2, 2., 0);
 
   // calc skewnesses
   calcmoment((*fields->u).data, u, u3, 3., 0);
   calcmoment((*fields->v).data, v, v3, 3., 0);
   calcmoment((*fields->w).data, w, w3, 3., 1);
-  calcmoment((*fields->Scalar["s"]).data, s, s3, 3., 0);
+  calcmoment((*fields->s["s"]).data, s, s3, 3., 0);
 
   // calculate gradients
   if(grid->spatialorder == 2)
   {
     calcgrad_2nd((*fields->u).data, ugrad, grid->dzhi);
     calcgrad_2nd((*fields->v).data, vgrad, grid->dzhi);
-    calcgrad_2nd((*fields->Scalar["s"]).data, sgrad, grid->dzhi);
+    calcgrad_2nd((*fields->s["s"]).data, sgrad, grid->dzhi);
 
     // calculate turbulent fluxes
     calcflux_2nd((*fields->u).data, (*fields->w).data, wu, (*fields->tmp1).data, 1, 0);
     calcflux_2nd((*fields->v).data, (*fields->w).data, wv, (*fields->tmp1).data, 0, 1);
-    calcflux_2nd((*fields->Scalar["s"]).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
+    calcflux_2nd((*fields->s["s"]).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
   }
   else
   {
     calcgrad((*fields->u).data, ugrad, grid->dzhi4);
     calcgrad((*fields->v).data, vgrad, grid->dzhi4);
-    calcgrad((*fields->Scalar["s"]).data, sgrad, grid->dzhi4);
+    calcgrad((*fields->s["s"]).data, sgrad, grid->dzhi4);
 
     // calculate turbulent fluxes
     calcflux((*fields->u).data, (*fields->w).data, wu, (*fields->tmp1).data, 1, 0);
     calcflux((*fields->v).data, (*fields->w).data, wv, (*fields->tmp1).data, 0, 1);
-    calcflux((*fields->Scalar["s"]).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
+    calcflux((*fields->s["s"]).data, (*fields->w).data, ws, (*fields->tmp1).data, 0, 0);
   }
 
   // calculate diffusive fluxes
@@ -262,13 +262,13 @@ int cstats::exec(int iteration, double time)
   {
     calcdiff_les_2nd((*fields->u).data, (*fields->evisc).data, udiff, grid->dzhi, (*fields->u).datafluxbot, (*fields->u).datafluxtop, 1.);
     calcdiff_les_2nd((*fields->v).data, (*fields->evisc).data, vdiff, grid->dzhi, (*fields->v).datafluxbot, (*fields->v).datafluxtop, 1.);
-    calcdiff_les_2nd((*fields->Scalar["s"]).data, (*fields->evisc).data, sdiff, grid->dzhi, (*fields->Scalar["s"]).datafluxbot, (*fields->Scalar["s"]).datafluxtop, fields->tPr);
+    calcdiff_les_2nd((*fields->s["s"]).data, (*fields->evisc).data, sdiff, grid->dzhi, (*fields->s["s"]).datafluxbot, (*fields->s["s"]).datafluxtop, fields->tPr);
   }
   else
   {
     calcdiff((*fields->u).data, udiff, grid->dzhi4, fields->visc );
     calcdiff((*fields->v).data, vdiff, grid->dzhi4, fields->visc );
-    calcdiff((*fields->Scalar["s"]).data, sdiff, grid->dzhi4, fields->viscs);
+    calcdiff((*fields->s["s"]).data, sdiff, grid->dzhi4, fields->viscs);
   }
 
   // add the turbulent and diffusive fluxes
@@ -280,7 +280,7 @@ int cstats::exec(int iteration, double time)
   }
 
   // calculate the TKE budget
-  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->Scalar["p"]).data, (*fields->Scalar["s"]).data,
+  calctkebudget((*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->s["p"]).data, (*fields->s["s"]).data,
                 (*fields->tmp1).data, (*fields->tmp2).data,
                 u, v,
                 u2_shear, v2_shear, tke_shear,
@@ -358,7 +358,7 @@ int cstats::exec(int iteration, double time)
   }
 
   // calculate variance and higher order moments
-  // save variance*fields->Scalar["s"]s
+  // save variance*fields->s["s"]s
 
   // calculate flux
   // save flux

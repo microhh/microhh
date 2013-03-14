@@ -68,7 +68,7 @@ double cdiff::getdn(double dt)
   if(idiff == 22)
   {
     // calculate eddy viscosity
-    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->Scalar["s"]).data, grid->z, grid->dz, grid->dzi, grid->dzhi, fields->tPr);
+    diff_les_g2->evisc((*fields->evisc).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, (*fields->s["s"]).data, grid->z, grid->dz, grid->dzi, grid->dzhi, fields->tPr);
     dn = diff_les_g2->getdn((*fields->evisc).data, grid->dzi, fields->tPr);
   }
   else
@@ -90,7 +90,7 @@ int cdiff::exec()
     diff_g2->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
     for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
-      diff_g2->diffc((*it->second).data, (*fields->Scalar[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
+      diff_g2->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
   }
   else if(idiff == 42)
   {
@@ -100,7 +100,7 @@ int cdiff::exec()
 
 
     for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
-      diff_g42->diffc((*it->second).data, (*fields->Scalar[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
+      diff_g42->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
   }
   else if(idiff == 4)
   {
@@ -110,7 +110,7 @@ int cdiff::exec()
 
 
     for(fieldmap::iterator it = fields->ScalarTend.begin(); it!=fields->ScalarTend.end(); it++)
-      diff_g4->diffc((*it->second).data, (*fields->Scalar[it->first]).data, grid->dzi4, grid->dzhi4, fields->viscs);
+      diff_g4->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi4, grid->dzhi4, fields->viscs);
   }
 
   else if(idiff == 22)
@@ -119,7 +119,7 @@ int cdiff::exec()
     diff_les_g2->diffv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->v).datafluxbot, (*fields->v).datafluxtop);
     diff_les_g2->diffw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, grid->dzhi, (*fields->evisc).data);
 
-    diff_les_g2->diffc((*fields->ScalarTend["s"]).data, (*fields->Scalar["s"]).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->Scalar["s"]).datafluxbot, (*fields->Scalar["s"]).datafluxtop, fields->tPr);
+    diff_les_g2->diffc((*fields->ScalarTend["s"]).data, (*fields->s["s"]).data, grid->dzi, grid->dzhi, (*fields->evisc).data, (*fields->s["s"]).datafluxbot, (*fields->s["s"]).datafluxtop, fields->tPr);
   }
 
   return 0;

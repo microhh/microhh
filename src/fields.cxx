@@ -22,8 +22,8 @@ cfields::~cfields()
       delete MomentumProg[it->first];
       delete MomentumTend[it->first];
     }
-    for(fieldmap::iterator it = Scalar.begin(); it!=Scalar.end(); it++)
-      delete Scalar[it->first];
+    for(fieldmap::iterator it = s.begin(); it!=s.end(); it++)
+      delete s[it->first];
 
     for(fieldmap::iterator it = ScalarTend.begin(); it!=ScalarTend.end(); it++)
       delete ScalarTend[it->first];
@@ -103,7 +103,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
 
 int cfields::initpfld(std::string fldname)
 {
-  if (Scalar.find(fldname)!=Scalar.end())
+  if (s.find(fldname)!=s.end())
   {
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
@@ -117,14 +117,14 @@ int cfields::initpfld(std::string fldname)
   ScalarTend[fldname] = new cfield3d(grid, mpi, fldtname );
   ScalarTend[fldname]->init();
 
-  Scalar[fldname]     = ScalarProg[fldname];
+  s[fldname]     = ScalarProg[fldname];
   
   return 0;
 }
 
 int cfields::initdfld(cfield3d *&fld, std::string fldname)
 {
-  if (Scalar.find(fldname)!=Scalar.end())
+  if (s.find(fldname)!=s.end())
   {
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
@@ -133,9 +133,9 @@ int cfields::initdfld(cfield3d *&fld, std::string fldname)
   ScalarDiag[fldname]  = new cfield3d(grid, mpi, fldname );
   ScalarDiag[fldname]->init();
 
-  Scalar[fldname] = ScalarDiag[fldname];
+  s[fldname] = ScalarDiag[fldname];
   
-  fld = Scalar[fldname];
+  fld = s[fldname];
   
   return 0;  
 }

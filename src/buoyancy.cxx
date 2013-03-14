@@ -38,9 +38,9 @@ int cbuoyancy::exec()
 
   // extend later for gravity vector not normal to surface
   if(ibuoyancy == 2)
-    buoyancy_2nd((*fields->wt).data, (*fields->Scalar["s"]).data);
+    buoyancy_2nd((*fields->wt).data, (*fields->s["s"]).data);
   else if(ibuoyancy == 4)
-    buoyancy_4th((*fields->wt).data, (*fields->Scalar["s"]).data);
+    buoyancy_4th((*fields->wt).data, (*fields->s["s"]).data);
 
   return 0;
 }

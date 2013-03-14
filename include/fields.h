@@ -38,7 +38,7 @@ class cfields
     cfield3d *vt;
     cfield3d *wt;
     
-    fieldmap Scalar;
+    fieldmap s;
     fieldmap ScalarDiag;
     fieldmap ScalarProg;
     fieldmap ScalarTend;
