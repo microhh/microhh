@@ -15,9 +15,6 @@ class cboundary
     int setvalues();
     int exec();
 
-    // CvH make private later
-    int iboundary;
-
   private:
     cgrid   *grid;
     cfields *fields;
@@ -39,6 +36,7 @@ class cboundary
     int setgcbotw_4th(double *);
     int setgctopw_4th(double *);
 
+    int iboundary;
     int iboundarytype;
 
     int bcbotmom;
