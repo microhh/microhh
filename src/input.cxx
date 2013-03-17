@@ -679,28 +679,17 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
 }
 
 // list retrieval function
-int cinput::getItem(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
+int cinput::getItem(std::vector<std::string> *value, std::string cat, std::string item, std::string def)
 {
-  if(el.compare("default"))
+  if(checkItemExists(cat, item))
   {
-    if(!checkItemExists(cat, item, el))
-    {
-      if(!checkItem(value, cat, item, el))
-        return 0;
-    }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, list is set empty\n", cat.c_str(), item.c_str());
+    return 1;
   }
   else
-  {
-    if(checkItemExists(cat, item))
-    {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+    if(checkItem(value, cat, item))
       return 1;
-    }
-    else
-      if(checkItem(value, cat, item))
-        return 1;
-  }
+
   return 0;
 }
 
