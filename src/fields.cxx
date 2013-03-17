@@ -51,6 +51,13 @@ int cfields::readinifile(cinput *inputin)
   // LES
   n += inputin->getItem(&tPr, "fields", "tPr", 1./3.);
 
+  // CvH
+  std::vector<std::string> testvec;
+  n += inputin->getItem(&testvec, "fields", "slist");
+
+  for(std::vector<std::string>::iterator it = testvec.begin(); it!=testvec.end(); it++)
+    std::printf("CvH: %s\n", it->c_str());
+
   if(n > 0)
     return 1;
 

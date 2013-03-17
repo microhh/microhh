@@ -344,11 +344,11 @@ int cinput::checkItemExists(std::string cat, std::string item, std::string el)
 
   if(it1 != inputlist.end())
   {
-    inputmap2D::const_iterator it2 = it1->second.find(item);
+    inputmap2d::const_iterator it2 = it1->second.find(item);
 
     if(it2 != it1->second.end())
     {
-      inputmap1D::const_iterator it3 = it2->second.find(el);
+      inputmap1d::const_iterator it3 = it2->second.find(el);
       if(it3 == it2->second.end())
         readerror = true;
     }
@@ -673,6 +673,71 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
         if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring.c_str());
       return 1;
     }
+  }
+
+  return 0;
+}
+
+// list retrieval function
+int cinput::getItem(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
+{
+  if(el.compare("default"))
+  {
+    if(!checkItemExists(cat, item, el))
+    {
+      if(!checkItem(value, cat, item, el))
+        return 0;
+    }
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
+  }
+  else
+  {
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+      return 1;
+    }
+    else
+      if(checkItem(value, cat, item))
+        return 1;
+  }
+  return 0;
+}
+
+int cinput::checkItem(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
+{
+  std::string inputstring, dummy;
+  inputstring = inputlist[cat][item][el];
+
+  char temp1[256];
+  char * temp2;
+  std::strcpy(temp1, inputstring.c_str());
+
+  // first, split string on the delimiter
+  temp2 = std::strtok(temp1, ",");
+
+  while(temp2 != NULL)
+  {
+    // read in the string part in temp1
+    int n = std::sscanf(temp2, "%s %s", temp1, dummy.c_str());
+
+    // store the contents in the vector, or throw exception
+    if(n == 1)
+      value->push_back(temp1);
+    else
+    {
+      if(!inputstring.empty())
+      {
+        if (el == "default")
+          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), inputstring.c_str());
+        else
+          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring.c_str());
+        return 1;
+      }
+    }
+
+    // retrieve the next raw substring
+    temp2 = std::strtok(NULL, ",");
   }
 
   return 0;
