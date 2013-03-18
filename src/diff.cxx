@@ -92,7 +92,7 @@ int cdiff::exec()
     diff_g2->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      diff_g2->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, (*it->second).visc);
+      diff_g2->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->s[it->first]->visc);
   }
   else if(idiff == 42)
   {
@@ -102,7 +102,7 @@ int cdiff::exec()
 
 
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      diff_g42->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, (*it->second).visc);
+      diff_g42->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->s[it->first]->visc);
   }
   else if(idiff == 4)
   {
@@ -110,9 +110,8 @@ int cdiff::exec()
     diff_g4->diffc((*fields->vt).data, (*fields->v).data, grid->dzi4, grid->dzhi4, fields->visc);
     diff_g4->diffw((*fields->wt).data, (*fields->w).data, grid->dzi4, grid->dzhi4, fields->visc);
 
-
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      diff_g4->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi4, grid->dzhi4, (*it->second).visc);
+      diff_g4->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi4, grid->dzhi4, fields->s[it->first]->visc);
   }
 
   else if(idiff == 22)

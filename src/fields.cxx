@@ -61,7 +61,7 @@ int cfields::readinifile(cinput *inputin)
     if(initpfld(*it))
       return 1;
 
-    n += inputin->getItem(&(sp[*it]->visc), "fields", "svisc", *it);
+    n += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
   if(n > 0)
