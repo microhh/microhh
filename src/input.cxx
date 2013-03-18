@@ -684,7 +684,7 @@ int cinput::getItem(std::vector<std::string> *value, std::string cat, std::strin
   if(checkItemExists(cat, item))
   {
     if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, list is set empty\n", cat.c_str(), item.c_str());
-    return 1;
+    return 0;
   }
   else
     if(checkItem(value, cat, item))

@@ -324,11 +324,11 @@ double cfields::checktke()
 double cfields::checkmass()
 {
   // CvH for now, do the mass check on the first scalar... Do we want to change this?
-  for(fieldmap::iterator itProg=sp.begin(); itProg!=sp.end(); itProg++)
+  fieldmap::iterator itProg=sp.begin();
+  if(sp.begin() != sp.end())
     return calcmass(itProg->second->data, grid->dz);
-
-  // In case there are no scalars, return zero mass
-  return 0.;
+  else
+    return 0.;
 }
 
 double cfields::calcmass(double * restrict s, double * restrict dz)
