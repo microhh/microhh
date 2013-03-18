@@ -40,11 +40,11 @@ int cmodel::readinifile(cinput *inputin)
   // input parameters
   int n = 0;
 
+  // fields
   if(fields->readinifile(inputin))
     return 1;
 
-  if(boundary->readinifile(inputin))
-    return 1;
+  // model operations
   if(advec->readinifile(inputin))
     return 1;
   if(diff->readinifile(inputin))
@@ -53,12 +53,18 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
   if(buoyancy->readinifile(inputin))
     return 1;
-  if(buffer->readinifile(inputin))
-    return 1;
   if(pres->readinifile(inputin))
     return 1;
   if(timeloop->readinifile(inputin))
     return 1;
+
+  // model classes that need to know prognostic fields
+  if(boundary->readinifile(inputin))
+    return 1;
+  if(buffer->readinifile(inputin))
+    return 1;
+
+  // statistics
   if(stats->readinifile(inputin))
     return 1;
   if(cross->readinifile(inputin))

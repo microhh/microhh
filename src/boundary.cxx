@@ -29,11 +29,23 @@ int cboundary::readinifile(cinput *inputin)
   n += inputin->getItem(&bcbotmom, "fields", "bcbotmom");
   n += inputin->getItem(&bctopmom, "fields", "bctopmom");
 
-  n += inputin->getItem(&bcbotscal, "fields", "bcbotscal");
-  n += inputin->getItem(&bctopscal, "fields", "bctopscal");
+  // n += inputin->getItem(&bcbotscal, "fields", "bcbotscal");
+  // n += inputin->getItem(&bctopscal, "fields", "bctopscal");
 
-  n += inputin->getItem(&sbot, "fields", "sbot");
-  n += inputin->getItem(&stop, "fields", "stop");
+  // n += inputin->getItem(&sbot, "fields", "sbot");
+  // n += inputin->getItem(&stop, "fields", "stop");
+
+  // read the boundaries per field
+  for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); it++)
+  {
+    sbc[it->first] = new field3dbc;
+    n += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
+    n += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
+    n += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
+    n += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
+  }
+  for(bcmap::iterator it=sbc.begin(); it!=sbc.end(); it++)
+    std::printf("CvH: %s:, %d, %d, %E, %E\n", it->first.c_str(), it->second->bcbot, it->second->bctop, it->second->bot, it->second->top);
 
   // optional parameters
   n += inputin->getItem(&iboundarytype, "boundary", "iboundarytype", 0);
@@ -61,17 +73,17 @@ int cboundary::setvalues()
   setbc((*fields->u).datatop, (*fields->u).datagradtop, (*fields->u).datafluxtop, bctopmom, 0., fields->visc);
   setbc((*fields->v).datatop, (*fields->v).datagradtop, (*fields->v).datafluxtop, bctopmom, 0., fields->visc);
 
-  for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
+  for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); it++)
   {
     if(iboundarytype == 0)
     {
-      setbc((*itProg->second).databot, (*itProg->second).datagradbot, (*itProg->second).datafluxbot, bcbotscal, sbot, (*itProg->second).visc);
-      setbc((*itProg->second).datatop, (*itProg->second).datagradtop, (*itProg->second).datafluxtop, bctopscal, stop, (*itProg->second).visc);
+      setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc);
+      setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc);
     }
     if(iboundarytype == 1)
     {
-      setbc_patch((*itProg->second).datagradbot, patch_facl, patch_facr, sbot);
-      setbc((*itProg->second).datatop, (*itProg->second).datagradtop, (*itProg->second).datafluxtop, bctopscal, stop, (*itProg->second).visc);
+      setbc_patch(it->second->datagradbot, patch_facl, patch_facr, sbc[it->first]->bot);
+      setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc);
     }
   }
   return 0;
@@ -89,10 +101,10 @@ int cboundary::exec()
     setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
     setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
     
-    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
+    for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); it++)
     {
-      setgctop_2nd((*itProg->second).data, grid->dzh, bctopscal, (*itProg->second).datagradbot);
-      setgcbot_2nd((*itProg->second).data, grid->dzh, bcbotscal, (*itProg->second).datagradtop);
+      setgctop_2nd(it->second->data, grid->dzh, sbc[it->first]->bctop, it->second->datagradbot);
+      setgcbot_2nd(it->second->data, grid->dzh, sbc[it->first]->bcbot, it->second->datagradtop);
     }
   }
   else if(iboundary == 4)
@@ -109,10 +121,10 @@ int cboundary::exec()
     //setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
     setgctopw_4th((*fields->w).data);
     
-    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
+    for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); it++)
     {
-      setgcbot_4th ((*itProg->second).data, grid->z, bcbotscal, (*itProg->second).datagradbot);
-      setgctop_4th ((*itProg->second).data, grid->z, bctopscal, (*itProg->second).datagradtop);
+      setgcbot_4th ((*it->second).data, grid->z, sbc[it->first]->bctop, (*it->second).datagradbot);
+      setgctop_4th ((*it->second).data, grid->z, sbc[it->first]->bcbot, (*it->second).datagradtop);
     }
   }
 
@@ -121,10 +133,8 @@ int cboundary::exec()
   grid->boundary_cyclic((*fields->v).data);
   grid->boundary_cyclic((*fields->w).data);
   
-  for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
-  {
-    grid->boundary_cyclic((*itProg->second).data);
-  }
+  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+    grid->boundary_cyclic((*it->second).data);
 
   return 0;
 }
