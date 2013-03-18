@@ -179,7 +179,7 @@ int cfields::create(cinput *inputin)
   while(grid->z[kendrnd] <= rndz)
     kendrnd++;
 
-  // CvH: this doesn't work yet properly for multiple scalars. Move this to separate function calls
+  // CvH all scalars have the same perturbation, do we need to make it flexible?
   for(int k=grid->kstart; k<kendrnd; k++)
   {
     rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
@@ -221,20 +221,12 @@ int cfields::create(cinput *inputin)
           }
   }
 
-  // CvH: this doesn't work yet properly for multiple scalars. Move this to separate function calls
   double uproftemp[grid->kmax];
   double vproftemp[grid->kmax];
-  double sproftemp[grid->kmax];
-  
   if(inputin->getProf(uproftemp, "u", grid->kmax))
     return 1;
   if(inputin->getProf(vproftemp, "v", grid->kmax))
     return 1;
-  // if(inputin->getProf(sproftemp, "s", grid->kmax))
-  //   return 1;
-  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
-    if(inputin->getProf(sproftemp, itProg->first, grid->kmax))
-      return 1;
 
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -243,9 +235,24 @@ int cfields::create(cinput *inputin)
         ijk = i + j*jj + k*kk;
         u->data[ijk] += uproftemp[k-grid->kstart];
         v->data[ijk] += vproftemp[k-grid->kstart];
-        for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
-          itProg->second->data[ijk] += sproftemp[k-grid->kstart];
       }
+
+  // loop over the scalar profiles
+  double sproftemp[grid->kmax];
+  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+  {
+    if(inputin->getProf(sproftemp, itProg->first, grid->kmax))
+      return 1;
+
+    for(int k=grid->kstart; k<grid->kend; k++)
+      for(int j=grid->jstart; j<grid->jend; j++)
+        for(int i=grid->istart; i<grid->iend; i++)
+        {
+          ijk = i + j*jj + k*kk;
+          itProg->second->data[ijk] += sproftemp[k-grid->kstart];
+        }
+  }
+
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;
   int ntop = grid->kend  *grid->icells*grid->jcells;
