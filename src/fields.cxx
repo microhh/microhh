@@ -84,7 +84,10 @@ int cfields::init()
   err += initdfld(evisc, "evisc");
 
   for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+  {
     err += itProg->second->init();
+    err += st[itProg->first]->init();
+  }
 
   if(err > 0)
     return 1;
