@@ -51,12 +51,14 @@ int cfields::readinifile(cinput *inputin)
   // LES
   n += inputin->getItem(&tPr, "fields", "tPr", 1./3.);
 
-  // CvH read the fields
-  std::vector<std::string> testvec;
-  n += inputin->getItem(&testvec, "fields", "slist", "");
+  // read the name of the passive scalars
+  std::vector<std::string> slist;
+  n += inputin->getItem(&slist, "fields", "slist", "");
 
-  for(std::vector<std::string>::iterator it = testvec.begin(); it!=testvec.end(); it++)
-    std::printf("CvH: %s\n", it->c_str());
+  // initialize the scalars
+  for(std::vector<std::string>::iterator it = slist.begin(); it!=slist.end(); it++)
+    if(initpfld(*it))
+      return 1;
 
   if(n > 0)
     return 1;
@@ -73,13 +75,16 @@ int cfields::init()
   err += initmomfld(u, ut, "u");
   err += initmomfld(v, vt, "v");
   err += initmomfld(w, wt, "w");
-  err += initpfld("s");
+  //err += initpfld("s");
 
   err += initdfld(p, "p");
   err += initdfld(tmp1, "tmp1");
   err += initdfld(tmp2, "tmp2");
 
   err += initdfld(evisc, "evisc");
+
+  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+    err += itProg->second->init();
 
   if(err > 0)
     return 1;
@@ -124,10 +129,10 @@ int cfields::initpfld(std::string fldname)
   std::string fldtname = fldname + "t";
   
   sp[fldname] = new cfield3d(grid, mpi, fldname);
-  sp[fldname]->init();
+  //sp[fldname]->init();
   
   st[fldname] = new cfield3d(grid, mpi, fldtname);
-  st[fldname]->init();
+  //st[fldname]->init();
 
   s[fldname] = sp[fldname];
   
@@ -171,6 +176,7 @@ int cfields::create(cinput *inputin)
   while(grid->z[kendrnd] <= rndz)
     kendrnd++;
 
+  // CvH: this doesn't work yet properly for multiple scalars. Move this to separate function calls
   for(int k=grid->kstart; k<kendrnd; k++)
   {
     rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
@@ -179,10 +185,11 @@ int cfields::create(cinput *inputin)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        u->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
-        v->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
-        w->data[ijk] = rndfach * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
-        sp["s"]->data[ijk] = rndfac  * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
+        u->data[ijk] = rndfac  * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+        v->data[ijk] = rndfac  * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+        w->data[ijk] = rndfach * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+        for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+          itProg->second->data[ijk] = rndfac * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
       }
   }
 
@@ -211,6 +218,7 @@ int cfields::create(cinput *inputin)
           }
   }
 
+  // CvH: this doesn't work yet properly for multiple scalars. Move this to separate function calls
   double uproftemp[grid->kmax];
   double vproftemp[grid->kmax];
   double sproftemp[grid->kmax];
@@ -219,8 +227,12 @@ int cfields::create(cinput *inputin)
     return 1;
   if(inputin->getProf(vproftemp, "v", grid->kmax))
     return 1;
-  if(inputin->getProf(sproftemp, "s", grid->kmax))
-    return 1;
+  // if(inputin->getProf(sproftemp, "s", grid->kmax))
+  //   return 1;
+  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+    if(inputin->getProf(sproftemp, itProg->first, grid->kmax))
+      return 1;
+
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
@@ -228,7 +240,8 @@ int cfields::create(cinput *inputin)
         ijk = i + j*jj + k*kk;
         u->data[ijk] += uproftemp[k-grid->kstart];
         v->data[ijk] += vproftemp[k-grid->kstart];
-        sp["s"]->data[ijk] += sproftemp[k-grid->kstart];
+        for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+          itProg->second->data[ijk] += sproftemp[k-grid->kstart];
       }
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;
@@ -307,7 +320,12 @@ double cfields::checktke()
 
 double cfields::checkmass()
 {
-  return calcmass(sp["s"]->data, grid->dz);
+  // CvH for now, do the mass check on the first scalar... Do we want to change this?
+  for(fieldmap::iterator itProg=sp.begin(); itProg!=sp.end(); itProg++)
+    return calcmass(itProg->second->data, grid->dz);
+
+  // In case there are no scalars, return zero mass
+  return 0.;
 }
 
 double cfields::calcmass(double * restrict s, double * restrict dz)

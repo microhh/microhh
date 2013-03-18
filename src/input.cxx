@@ -721,6 +721,8 @@ int cinput::checkItem(std::vector<std::string> *value, std::string cat, std::str
           if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), inputstring.c_str());
         else
           if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring.c_str());
+        // empty the vector
+        value->clear();
         return 1;
       }
     }
