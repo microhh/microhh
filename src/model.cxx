@@ -5,13 +5,6 @@
 #include "model.h"
 #include "defines.h"
 
-// advection schemes
-#include "advec_g2.h"
-#include "advec_g2i4.h"
-#include "advec_g42.h"
-#include "advec_g4.h"
-#include "advec_g4m.h"
-
 cmodel::cmodel(cgrid *gridin, cmpi *mpiin, std::string simnamein)
 {
   grid    = gridin;
