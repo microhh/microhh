@@ -55,7 +55,7 @@ class cfields
     double tPr;
 
     double visc;
-    double viscs;
+    // double viscs;
     
   private:
     // variables

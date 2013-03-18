@@ -65,13 +65,13 @@ int cboundary::setvalues()
   {
     if(iboundarytype == 0)
     {
-      setbc((*itProg->second).databot, (*itProg->second).datagradbot, (*itProg->second).datafluxbot, bcbotscal, sbot, fields->viscs);
-      setbc((*itProg->second).datatop, (*itProg->second).datagradtop, (*itProg->second).datafluxtop, bctopscal, stop, fields->viscs);
+      setbc((*itProg->second).databot, (*itProg->second).datagradbot, (*itProg->second).datafluxbot, bcbotscal, sbot, (*itProg->second).visc);
+      setbc((*itProg->second).datatop, (*itProg->second).datagradtop, (*itProg->second).datafluxtop, bctopscal, stop, (*itProg->second).visc);
     }
     if(iboundarytype == 1)
     {
       setbc_patch((*itProg->second).datagradbot, patch_facl, patch_facr, sbot);
-      setbc((*itProg->second).datatop, (*itProg->second).datagradtop, (*itProg->second).datafluxtop, bctopscal, stop, fields->viscs);
+      setbc((*itProg->second).datatop, (*itProg->second).datagradtop, (*itProg->second).datafluxtop, bctopscal, stop, (*itProg->second).visc);
     }
   }
   return 0;

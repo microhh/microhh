@@ -452,7 +452,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     }
     if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  else
+  //else
   {
     if(checkItemExists(cat, item))
     {

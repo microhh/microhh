@@ -268,7 +268,7 @@ int cstats::exec(int iteration, double time)
   {
     calcdiff((*fields->u).data, udiff, grid->dzhi4, fields->visc );
     calcdiff((*fields->v).data, vdiff, grid->dzhi4, fields->visc );
-    calcdiff((*fields->s["s"]).data, sdiff, grid->dzhi4, fields->viscs);
+    calcdiff((*fields->s["s"]).data, sdiff, grid->dzhi4, fields->s["s"]->visc);
   }
 
   // add the turbulent and diffusive fluxes

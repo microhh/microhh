@@ -49,7 +49,9 @@ int cdiff::readinifile(cinput *inputin)
 int cdiff::setvalues()
 {
   // get the maximum time step for diffusion
-  double viscmax = std::max(fields->visc, fields->viscs);
+  double viscmax = fields->visc;
+  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+    viscmax = std::max(it->second->visc, viscmax);
 
   dnmul = 0;
   for(int k=grid->kstart; k<grid->kend; k++)
@@ -90,7 +92,7 @@ int cdiff::exec()
     diff_g2->diffw((*fields->wt).data, (*fields->w).data, grid->dzi, grid->dzhi, fields->visc);
 
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      diff_g2->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
+      diff_g2->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, (*it->second).visc);
   }
   else if(idiff == 42)
   {
@@ -100,7 +102,7 @@ int cdiff::exec()
 
 
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      diff_g42->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->viscs);
+      diff_g42->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, (*it->second).visc);
   }
   else if(idiff == 4)
   {
@@ -110,7 +112,7 @@ int cdiff::exec()
 
 
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      diff_g4->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi4, grid->dzhi4, fields->viscs);
+      diff_g4->diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi4, grid->dzhi4, (*it->second).visc);
   }
 
   else if(idiff == 22)

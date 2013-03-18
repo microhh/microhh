@@ -37,7 +37,7 @@ int cfields::readinifile(cinput *inputin)
 
   // obligatory parameters
   n += inputin->getItem(&visc , "fields", "visc" );
-  n += inputin->getItem(&viscs, "fields", "viscs");
+  // n += inputin->getItem(&viscs, "fields", "viscs");
 
   // optional parameters
   n += inputin->getItem(&rndamp     , "fields", "rndamp"     , 0.   );
@@ -57,8 +57,12 @@ int cfields::readinifile(cinput *inputin)
 
   // initialize the scalars
   for(std::vector<std::string>::iterator it = slist.begin(); it!=slist.end(); it++)
+  {
     if(initpfld(*it))
       return 1;
+
+    n += inputin->getItem(&(sp[*it]->visc), "fields", "svisc", *it);
+  }
 
   if(n > 0)
     return 1;
