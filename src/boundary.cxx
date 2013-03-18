@@ -47,8 +47,6 @@ int cboundary::readinifile(cinput *inputin)
     n += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
     n += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
   }
-  for(bcmap::iterator it=sbc.begin(); it!=sbc.end(); it++)
-    std::printf("CvH: %s:, %d, %d, %E, %E\n", it->first.c_str(), it->second->bcbot, it->second->bctop, it->second->bot, it->second->top);
 
   // optional parameters
   n += inputin->getItem(&iboundarytype, "boundary", "iboundarytype", 0);

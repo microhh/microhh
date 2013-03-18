@@ -25,6 +25,15 @@ int cbuoyancy::readinifile(cinput *inputin)
   n += inputin->getItem(&gravity    , "physics", "gravity", 9.81);
   n += inputin->getItem(&buoyancyref, "physics", "buoyancyref", 0.);
 
+  // request buoyancy field
+  // CvH reconsider usage of the name s
+  // CvH ibuoyancy should point to model for buoyancy not to order
+  if(ibuoyancy == 2 || ibuoyancy == 4)
+  {
+    n += fields->initpfld("s");
+    n += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
+  }
+
   if(n > 0)
     return 1;
 
@@ -38,9 +47,9 @@ int cbuoyancy::exec()
 
   // extend later for gravity vector not normal to surface
   if(ibuoyancy == 2)
-    buoyancy_2nd((*fields->wt).data, (*fields->s["s"]).data);
+    buoyancy_2nd(fields->wt->data, fields->s["s"]->data);
   else if(ibuoyancy == 4)
-    buoyancy_4th((*fields->wt).data, (*fields->s["s"]).data);
+    buoyancy_4th(fields->wt->data, fields->s["s"]->data);
 
   return 0;
 }
