@@ -40,6 +40,8 @@ cgrid::~cgrid()
     fftw_destroy_plan(iplanb);
     fftw_destroy_plan(jplanf);
     fftw_destroy_plan(jplanb);
+
+    fftw_cleanup();
   }
 
   exitmpi();

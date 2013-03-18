@@ -11,12 +11,80 @@ cstats::cstats(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
+
+  allocated = false;
 }
 
 cstats::~cstats()
 {
-  if(mpi->mpiid == 0)
-    delete dataFile;
+  //if(mpi->mpiid == 0)
+  //  dataFile->close();
+
+  if(allocated)
+  {
+    delete[] u;
+    delete[] v;
+    delete[] w;
+    delete[] s;
+
+    delete[] u2;
+    delete[] v2;
+    delete[] w2;
+    delete[] s2;
+
+    delete[] u3;
+    delete[] v3;
+    delete[] w3;
+    delete[] s3;
+
+    // LES averages
+    delete[] evisc;
+
+    delete[] ugrad;
+    delete[] vgrad;
+    delete[] sgrad;
+
+    delete[] wu;
+    delete[] wv;
+    delete[] ws;
+
+    delete[] udiff;
+    delete[] vdiff;
+    delete[] sdiff;
+
+    delete[] uflux;
+    delete[] vflux;
+    delete[] sflux;
+
+    delete[] u2_shear;
+    delete[] v2_shear;
+    delete[] tke_shear;
+
+    delete[] u2_turb; 
+    delete[] v2_turb; 
+    delete[] w2_turb;
+    delete[] tke_turb;
+
+    delete[] u2_visc; 
+    delete[] v2_visc; 
+    delete[] w2_visc; 
+    delete[] tke_visc;
+
+    delete[] u2_diss; 
+    delete[] v2_diss; 
+    delete[] w2_diss; 
+    delete[] tke_diss;
+
+    delete[] w2_pres; 
+    delete[] tke_pres;
+
+    delete[] u2_rdstr;
+    delete[] v2_rdstr;
+    delete[] w2_rdstr;
+
+    delete[] w2_buoy;
+    delete[] tke_buoy;
+  }
 }
 
 int cstats::readinifile(cinput *inputin)
@@ -97,6 +165,8 @@ int cstats::init()
 
   w2_buoy  = new double[grid->kcells];
   tke_buoy = new double[grid->kcells];
+
+  allocated = true;
 
   // set the number of stats to zero
   nstats = 0;

@@ -33,6 +33,19 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin, std::string simnamein)
 
 cmodel::~cmodel()
 {
+  // delete the components in reversed order
+  delete cross;
+  delete stats;
+  delete buffer;
+  delete buoyancy;
+  delete force;
+  delete pres;
+  delete diff;
+  delete advec;
+  delete timeloop;
+
+  delete boundary;
+  delete fields;
 }
 
 int cmodel::readinifile(cinput *inputin)

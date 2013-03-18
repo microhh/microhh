@@ -14,7 +14,12 @@ cmpi::cmpi()
 cmpi::~cmpi()
 {
   if(allocated)
+  {
     delete[] reqs;
+    MPI_Comm_free(&commxy);
+    MPI_Comm_free(&commx);
+    MPI_Comm_free(&commy);
+  }
 
   if(mpiid == 0) std::printf("Finished run on %d processes\n", nprocs);
 

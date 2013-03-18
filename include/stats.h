@@ -22,6 +22,8 @@ class cstats
     cfields *fields;
     cmpi    *mpi;
 
+    bool allocated;
+
     int istats;
 
     NcFile *dataFile;

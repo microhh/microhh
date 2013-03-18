@@ -114,6 +114,7 @@ int cgrid::exitmpi()
     MPI_Type_free(&subi);
     MPI_Type_free(&subj);
     MPI_Type_free(&subarray);
+    MPI_Type_free(&subxzslice);
 
     delete[] profl;
   }
