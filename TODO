@@ -1,5 +1,6 @@
 [urgent]
-implement consistent LES/DNS boundary handling, such that 4th order LES can be made
+clean up boundary conditions
+clean up statistics
 
 [bugs]
 implement default option for randomnization such that it is applied over whole field
@@ -9,12 +10,6 @@ implement fftw_many
 vectorize 4th order pressure solver
 integrate advection and diffusion
 
-[structure]
-handle field registration properly
-
-[extensions]
-compute basic statistics
-
 [dynamical core]
 loop on time or on iterations
 
@@ -23,4 +18,3 @@ implement CUDA
 
 [LES]
 implement surface model
-implement smagorinsky 
