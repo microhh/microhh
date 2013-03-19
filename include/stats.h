@@ -23,6 +23,7 @@ class cstats
     cmpi    *mpi;
 
     bool allocated;
+    bool initialized;
 
     int istats;
 

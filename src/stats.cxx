@@ -12,13 +12,15 @@ cstats::cstats(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   fields = fieldsin;
   mpi    = mpiin;
 
-  allocated = false;
+  allocated   = false;
+  initialized = false;
 }
 
 cstats::~cstats()
 {
-  //if(mpi->mpiid == 0)
-  //  dataFile->close();
+  if(initialized)
+    //dataFile->close();
+    delete dataFile;
 
   if(allocated)
   {
@@ -187,6 +189,8 @@ int cstats::create(std::string simname, int n)
       std::printf("ERROR cannot write statistics file\n");
       return 1;
     }
+    else
+      initialized = true;
 
     // create dimensions
     z_dim  = dataFile->add_dim("z" , grid->kmax);
