@@ -1,11 +1,11 @@
 # SuperMUC
 set(CMAKE_C_COMPILER   "icc")
 set(CMAKE_CXX_COMPILER "icc")
-set (CXX_COMPILER_WRAPPER mpicxx)
-set (C_COMPILER_WRAPPER mpicc)
+set(CXX_COMPILER_WRAPPER mpCC)
+set(C_COMPILER_WRAPPER mpcc)
 
-set(USER_CXX_FLAGS "-restrict")
-set(USER_CXX_FLAGS_RELEASE "-xAVX -O3")
+set(USER_CXX_FLAGS "-restrict -DMPICH_IGNORE_CXX_SEEK")
+set(USER_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -xHOST -fno-alias -restrict -vec-report1 -no-prec-div")
 set(USER_CXX_FLAGS_DEBUG "-traceback -check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common ")
 
 
