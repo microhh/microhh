@@ -1,0 +1,5 @@
+# vbitrate = 50 * 25 * width * height / 256
+opt="vbitrate=10000000:mbd=2:keyint=132:v4mv:vqmin=3:lumi_mask=0.07:dark_mask=0.2:mpeg_quant:scplx_mask=0.1:tcplx_mask=0.1:naq"
+mencoder -ovc lavc -lavcopts vcodec=mpeg4:vpass=1:$opt -mf w=1920:h=916:fps=6:type=png -nosound -o /dev/null mf://figs/*.png
+mencoder -ovc lavc -lavcopts vcodec=mpeg4:vpass=2:$opt -mf w=1920:h=916:fps=6:type=png -nosound -o slngrad.xzcross.avi mf://figs/*.png
+
