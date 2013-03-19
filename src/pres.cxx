@@ -75,50 +75,50 @@ int cpres::exec(double dt)
   if(ipres == 2)
   {
     // create the input for the pressure solver
-    pres_g2->pres_in((*fields->p ).data,
-                     (*fields->u ).data, (*fields->v ).data, (*fields->w ).data,
-                     (*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
+    pres_g2->pres_in(fields->sd["p"]->data,
+                     fields->u ->data, fields->v ->data, fields->w ->data,
+                     fields->ut->data, fields->vt->data, fields->wt->data, 
                      grid->dzi, dt);
 
     // solve the system
-    pres_g2->pres_solve((*fields->p).data, (*fields->tmp1).data, (*fields->tmp2).data, grid->dz,
+    pres_g2->pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
                         grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
     // get the pressure tendencies from the pressure field
-    pres_g2->pres_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
-                      (*fields->p ).data, grid->dzhi);
+    pres_g2->pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
+                      fields->sd["p"]->data, grid->dzhi);
   }
   else if(ipres == 42)
   {
     // create the input for the pressure solver
-    pres_g42->pres_in((*fields->p ).data,
-                      (*fields->u ).data, (*fields->v ).data, (*fields->w ).data,
-                      (*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
+    pres_g42->pres_in(fields->sd["p"]->data,
+                      fields->u ->data, fields->v ->data, fields->w ->data,
+                      fields->ut->data, fields->vt->data, fields->wt->data, 
                       grid->dzi, dt);
 
     // solve the system
-    pres_g42->pres_solve((*fields->p).data, (*fields->tmp1).data, (*fields->tmp2).data, grid->dz,
+    pres_g42->pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
                          grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
     // get the pressure tendencies from the pressure field
-    pres_g42->pres_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
-                       (*fields->p ).data, grid->dzhi);
+    pres_g42->pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
+                       fields->sd["p"]->data, grid->dzhi);
   }
   else if(ipres == 4)
   {
     // create the input for the pressure solver
-    pres_g4->pres_in((*fields->p ).data,
-                     (*fields->u ).data, (*fields->v ).data, (*fields->w ).data,
-                     (*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
+    pres_g4->pres_in(fields->sd["p"]->data,
+                     fields->u ->data, fields->v ->data, fields->w ->data,
+                     fields->ut->data, fields->vt->data, fields->wt->data, 
                      grid->dzi4, dt);
 
     // solve the system
-    pres_g4->pres_solve((*fields->p).data, (*fields->tmp1).data, (*fields->tmp2).data, grid->dz,
+    pres_g4->pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
                         grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
     // get the pressure tendencies from the pressure field
-    pres_g4->pres_out((*fields->ut).data, (*fields->vt).data, (*fields->wt).data, 
-                      (*fields->p ).data, grid->dzhi4);
+    pres_g4->pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
+                      fields->sd["p"]->data, grid->dzhi4);
   }
 
   return 0;

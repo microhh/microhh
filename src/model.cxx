@@ -216,7 +216,7 @@ int cmodel::exec(std::string mode)
     // pressure
     pres->exec(timeloop->getsubdt());
     if(timeloop->dosave() && !timeloop->insubstep())
-      (*fields->p).save(timeloop->iteration, (*fields->tmp1).data, (*fields->tmp2).data);
+      fields->s["p"]->save(timeloop->iteration, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
 
     if(timeloop->dostats() && !timeloop->insubstep())
     {
