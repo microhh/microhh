@@ -93,8 +93,8 @@ int cstats::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  // optional, by default switch stats on
-  n += inputin->getItem(&istats, "postproc", "stats", 1);
+  // optional, by default switch stats off
+  n += inputin->getItem(&istats, "postproc", "istats", 0);
 
   if(n > 0)
     return 1;
@@ -104,6 +104,9 @@ int cstats::readinifile(cinput *inputin)
 
 int cstats::init()
 {
+  if(istats == 0)
+    return 0;
+
   u = new double[grid->kcells];
   v = new double[grid->kcells];
   w = new double[grid->kcells];
@@ -178,6 +181,9 @@ int cstats::init()
 
 int cstats::create(std::string simname, int n)
 {
+  if(istats == 0)
+    return 0;
+
   // create a NetCDF file for the statistics
   if(mpi->mpiid == 0)
   {
@@ -278,6 +284,9 @@ int cstats::create(std::string simname, int n)
 
 int cstats::exec(int iteration, double time)
 {
+  if(istats == 0)
+    return 0;
+
   if(mpi->mpiid == 0) std::printf("Saving stats for iteration %d\n", iteration);
 
   if(mpi->mpiid == 0)
