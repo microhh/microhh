@@ -4,6 +4,7 @@
 #ifdef PARALLEL
 #include <mpi.h>
 #endif
+#include <string>
 #include "input.h"
 
 class cmpi
@@ -12,7 +13,7 @@ class cmpi
     cmpi();
     ~cmpi();
 
-    int startup();
+    int startup(int, char**);
     int readinifile(cinput *);
     int init();
 
@@ -24,6 +25,9 @@ class cmpi
     int broadcast(int *, int);
     int broadcast(double *, int);
     int broadcast(unsigned long *, int);
+
+    std::string mode;
+    std::string simname;
 
     int nprocs;
     int npx;

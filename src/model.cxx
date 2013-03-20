@@ -5,11 +5,10 @@
 #include "model.h"
 #include "defines.h"
 
-cmodel::cmodel(cgrid *gridin, cmpi *mpiin, std::string simnamein)
+cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
 {
   grid    = gridin;
   mpi     = mpiin;
-  simname = simnamein;
 
   // create the fields class
   fields   = new cfields  (grid, mpi);
@@ -112,7 +111,7 @@ int cmodel::load()
     return 1;
   if(buffer->load())
     return 1;
-  if(stats->create(simname, timeloop->iteration))
+  if(stats->create(timeloop->iteration))
     return 1;
 
   // initialize the diffusion to get the time step requirement
@@ -142,7 +141,7 @@ int cmodel::save(cinput *inputin)
   return 0;
 }
 
-int cmodel::exec(std::string mode)
+int cmodel::exec()
 {
   // initialize the check variables
   int    iter;
@@ -156,7 +155,7 @@ int cmodel::exec(std::string mode)
   FILE *dnsout = NULL;
   if(mpi->mpiid == 0)
   {
-    std::string outputname = simname + ".out";
+    std::string outputname = mpi->simname + ".out";
     dnsout = std::fopen(outputname.c_str(), "a");
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
@@ -229,7 +228,7 @@ int cmodel::exec(std::string mode)
       break;
 
     // RUN MODE
-    if(mode == "run")
+    if(mpi->mode == "run")
     {
       // integrate in time
       timeloop->exec();
@@ -247,7 +246,7 @@ int cmodel::exec(std::string mode)
     }
 
     // POST PROCESS MODE
-    else if(mode == "post")
+    else if(mpi->mode == "post")
     {
       // step to the next time step
       timeloop->postprocstep();

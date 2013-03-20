@@ -9,13 +9,11 @@
 
 cinput::cinput(cmpi *mpiin)
 {
-  // if(mpi->mpiid == 0) std::printf("Creating instance of object input\n");
   mpi = mpiin;
 }
 
 cinput::~cinput()
 {
-  // if(mpi->mpiid == 0) std::printf("Destroying instance of object input\n");
 }
 
 int cinput::clear()
@@ -25,13 +23,13 @@ int cinput::clear()
   return 0;
 }
 
-int cinput::readinifile(std::string inputfilename)
+int cinput::readinifile()
 {
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256], element[256];
 
   // read the input file
   FILE *inputfile;
-  inputfilename += ".ini";
+  std::string inputfilename = mpi->simname + ".ini";
 
   if(mpi->mpiid == 0)
   {
@@ -159,7 +157,7 @@ int cinput::readinifile(std::string inputfilename)
   return nerrors;
 }
 
-int cinput::readproffile(std::string inputfilename)
+int cinput::readproffile()
 {
   char inputline[256], temp1[256];
   char *substring;
@@ -167,7 +165,7 @@ int cinput::readproffile(std::string inputfilename)
 
   // read the input file
   FILE *inputfile;
-  inputfilename += ".prof";
+  std::string inputfilename = mpi->simname + ".prof";
 
   if(mpi->mpiid == 0)
   {

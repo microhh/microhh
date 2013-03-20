@@ -20,18 +20,17 @@
 class cmodel
 {
   public:
-    cmodel(cgrid *, cmpi *, std::string);
+    cmodel(cgrid *, cmpi *);
     ~cmodel();
     int readinifile(cinput *);
     int init();
     int load();
     int save(cinput *);
-    int exec(std::string);
+    int exec();
 
   private:
     cgrid   *grid;
     cmpi    *mpi;
-    std::string simname;
 
     // switches for included schemes
     int iadvec;

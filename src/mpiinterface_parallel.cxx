@@ -40,7 +40,7 @@ int cmpi::readinifile(cinput *inputin)
   return 0;
 }
 
-int cmpi::startup()
+int cmpi::startup(int argc, char *argv[])
 {
   int n;
 
@@ -67,6 +67,28 @@ int cmpi::startup()
     return 1;
 
   if(mpiid == 0) std::printf("Starting run on %d processes\n", nprocs);
+
+  // process the command line options
+  if(argc <= 1)
+  {
+    if(mpiid == 0) std::printf("ERROR: specify init, run or post mode\n");
+    return 1;
+  }
+  else
+  {
+    // check the execution mode
+    mode = argv[1];
+    if(mode != "init" && mode != "run" && mode != "post")
+    {
+      if(mpiid == 0) std::printf("ERROR: specify init, run or post mode\n");
+      return 1;
+    }
+    // set the name of the simulation
+    if(argc > 2)
+      simname = argv[2];
+    else
+      simname = "microhh";
+  }
 
   return 0;
 }

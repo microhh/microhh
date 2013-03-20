@@ -179,7 +179,7 @@ int cstats::init()
   return 0;
 }
 
-int cstats::create(std::string simname, int n)
+int cstats::create(int n)
 {
   if(istats == 0)
     return 0;
@@ -188,7 +188,7 @@ int cstats::create(std::string simname, int n)
   if(mpi->mpiid == 0)
   {
     char filename[256];
-    std::sprintf(filename, "%s.%07d.nc", simname.c_str(), n);
+    std::sprintf(filename, "%s.%07d.nc", mpi->simname.c_str(), n);
     dataFile = new NcFile(filename, NcFile::New);
     if(!dataFile->is_valid())
     {

@@ -13,8 +13,8 @@ class cinput
   public:
     cinput(cmpi *);
     ~cinput();
-    int readinifile (std::string);
-    int readproffile(std::string);
+    int readinifile ();
+    int readproffile();
     int getItem(int *        , std::string, std::string, std::string el="default");
     int getItem(double *     , std::string, std::string, std::string el="default");
     int getItem(bool *       , std::string, std::string, std::string el="default");
