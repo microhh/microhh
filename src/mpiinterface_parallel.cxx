@@ -31,6 +31,9 @@ int cmpi::readinifile(cinput *inputin)
 {
   int n = 0;
 
+  // obligatory argument
+  n += inputin->getItem(&sw_model, "master", "sw_model");
+
   n += inputin->getItem(&npx, "grid", "npx", 1);
   n += inputin->getItem(&npy, "grid", "npy", 1);
 

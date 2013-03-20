@@ -28,6 +28,7 @@ class cmpi
 
     std::string mode;
     std::string simname;
+    std::string sw_model;
 
     int nprocs;
     int npx;
