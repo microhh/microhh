@@ -51,20 +51,19 @@ int main(int argc, char *argv[])
   }
   else
   {
-  if(grid.load())
-    return 1;
-  if(model.load())
-    return 1;
+    if(grid.load())
+      return 1;
+    if(model.load())
+      return 1;
   }
 
   // free the memory of the input
   input.clear();
 
+  // run the model
   if(mpi.mode != "init")
-  {
-    // run the model
-    model.exec();
-  }
+    if(model.exec())
+      return 1;
 
   return 0;
 }
