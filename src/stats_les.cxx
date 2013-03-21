@@ -223,6 +223,43 @@ int cstats_les::exec(int iteration, double time)
     sflux[k] = ws[k] + sdiff[k];
   }
 
+  // put the data into the NetCDF file
+  if(mpi->mpiid == 0)
+  {
+    u_var->put_rec(&u[grid->kstart], nstats);
+    v_var->put_rec(&v[grid->kstart], nstats);
+    w_var->put_rec(&w[grid->kstart], nstats);
+    s_var->put_rec(&s[grid->kstart], nstats);
+
+    evisc_var->put_rec(&evisc[grid->kstart], nstats);
+
+    u2_var->put_rec(&u2[grid->kstart], nstats);
+    v2_var->put_rec(&v2[grid->kstart], nstats);
+    w2_var->put_rec(&w2[grid->kstart], nstats);
+    s2_var->put_rec(&s2[grid->kstart], nstats);
+
+    u3_var->put_rec(&u3[grid->kstart], nstats);
+    v3_var->put_rec(&v3[grid->kstart], nstats);
+    w3_var->put_rec(&w3[grid->kstart], nstats);
+    s3_var->put_rec(&s3[grid->kstart], nstats);
+
+    ugrad_var->put_rec(&ugrad[grid->kstart], nstats);
+    vgrad_var->put_rec(&vgrad[grid->kstart], nstats);
+    sgrad_var->put_rec(&sgrad[grid->kstart], nstats);
+
+    wu_var->put_rec(&wu[grid->kstart], nstats);
+    wv_var->put_rec(&wv[grid->kstart], nstats);
+    ws_var->put_rec(&ws[grid->kstart], nstats);
+
+    udiff_var->put_rec(&udiff[grid->kstart], nstats);
+    vdiff_var->put_rec(&vdiff[grid->kstart], nstats);
+    sdiff_var->put_rec(&sdiff[grid->kstart], nstats);
+
+    uflux_var->put_rec(&uflux[grid->kstart], nstats);
+    vflux_var->put_rec(&vflux[grid->kstart], nstats);
+    sflux_var->put_rec(&sflux[grid->kstart], nstats);
+  }
+
   // sync the data
   if(mpi->mpiid == 0) 
     dataFile->sync();

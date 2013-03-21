@@ -316,6 +316,7 @@ int cstats_dns::exec(int iteration, double time)
                 w2_buoy, tke_buoy,
                 grid->dzi4, grid->dzhi4, fields->visc);
 
+  // put the data into the NetCDF file
   if(mpi->mpiid == 0)
   {
     u_var->put_rec(&u[grid->kstart], nstats);
