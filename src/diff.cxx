@@ -39,8 +39,8 @@ int cdiff::readinifile(cinput *inputin)
   // obligatory parameters
   n += inputin->getItem(&idiff, "physics", "idiff");
 
-  // CvH fix this as soon as statistics is fixed
-  // if(idiff == 22)
+  // initialize the eddy viscosity field for LES
+  if(idiff == 22)
     n += fields->initdfld("evisc");
 
   // if one argument fails, then crash
