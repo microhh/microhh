@@ -3,26 +3,24 @@
 \usepackage{amsmath}
 \usepackage{supertabular}
 \usepackage{longtable}
-%\usepackage{pxfonts}
+\usepackage{txfonts}
 
 \begin{document}
-\section{Default options for ini file MicroHH}
-\subsection{[advec]}
+\section*{MicroHH cheat sheet}
+\subsection*{[advec]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[advec]                 \\
+\begin{supertabular}{lcll}
 iadvec        & n/a   & \\
 \end{supertabular}
-\subsection{[boundary]}
+\subsection*{[boundary]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[boundary]              \\
+\begin{supertabular}{lcll}
 iboundary     & n/a   & \\
 bcbotmom      & n/a   & \\
 bctopmom      & n/a   & \\
@@ -38,60 +36,52 @@ patch\_xi     & 0.    & \\
 patch\_facr   & 1.    & \\
 patch\_facl   & 0.    & \\
 \end{supertabular}
-\subsection{[buffer]}
+\subsection*{[buffer]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
+\begin{supertabular}{lcll}
 %[buffer]                \\
 ibuffer       & 0     & \\
 bufferkstart  & 0     & \\
 buffersigma   & 2.    & \\
 bufferbeta    & 2.    & \\
-\hline
 \end{supertabular}
-\subsection{[buoyancy]}
+\subsection*{[buoyancy]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[buoyancy]              \\
+\begin{supertabular}{lcll}
 ibuoyancy     & n/a   & \\
 gravity       & 9.81  & \\
 buoyancyref   & 0.    & \\
 svisc["s"]    & n/a   & \\
-\hline
 \end{supertabular}
-\subsection{[cross]}
+\subsection*{[cross]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[cross]                 \\
+\begin{supertabular}{lcll}
 icross        & 0     & \\
 jxz           & 0     & \\
-\hline
 \end{supertabular}
-\subsection{[diff]}
+\subsection*{[diff]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[diff]                  \\
+\begin{supertabular}{lcll}
 idiff         & n/a   & \\
-\hline
 \end{supertabular}
-\subsection{[fields]}
+\subsection*{[fields]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[fields]                \\
+\begin{supertabular}{lcll}
 visc          &       & \\
 rndamp        & 0.    & \\
 rndamps       & 0.    & \\
@@ -103,26 +93,22 @@ vortexaxis    & 1     & \\
 tPr           & 1./3. & \\
 slist         & ""    & \\
 svisc[slist]  & n/a   & \\
-\hline
 \end{supertabular}
-\subsection{[force]}
+\subsection*{[force]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[force]                 \\
+\begin{supertabular}{lcll}
 iforce        & n/a   & \\
 uflow         & 0.    & \\
-\hline
 \end{supertabular}
-\subsection{[grid]}
+\subsection*{[grid]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[grid]                  \\
+\begin{supertabular}{lcll}
 xsize         & n/a   & \\
 ysize         & n/a   & \\
 zsize         & n/a   & \\
@@ -130,46 +116,38 @@ itot          & n/a   & \\
 jtot          & n/a   & \\
 ktot          & n/a   & \\
 spatialorder  & n/a   & \\
-\hline
 \end{supertabular}
-\subsection{[mpi]}
+\subsection*{[mpi]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[mpi]                   \\
+\begin{supertabular}{lcll}
 npx           & 1     & \\
 npy           & 1     & \\ 
-\hline
 \end{supertabular}
-\subsection{[pres]}
+\subsection*{[pres]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[pres]                  \\
+\begin{supertabular}{lcll}
 ipres         & n/a   & \\
-\hline
 \end{supertabular}
-\subsection{[stats]}
+\subsection*{[stats]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[stats]                 \\
+\begin{supertabular}{lcll}
 istats        & 0     & \\
-\hline
 \end{supertabular}
-\subsection{[timeloop]}
+\subsection*{[timeloop]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\textit{Continued on next page ...} \\} 
+\tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
-\begin{supertabular}{llll}
-%[timeloop]              \\
+\begin{supertabular}{lcll}
 maxiter       & n/a   & \\
 startiter     & n/a   & \\
 adaptivestep  & true  & \\
