@@ -1,6 +1,8 @@
-[urgent]
-clean up boundary conditions
-clean up statistics
+[model structure]
+decide on the input options
+decide on the name of the functions
+decide on the existence of switch loops, such as advec.cxx
+decide on the location of the stats
 
 [bugs]
 implement default option for randomnization such that it is applied over whole field
