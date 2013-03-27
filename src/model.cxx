@@ -12,6 +12,12 @@
 #include "advec_g4.h"
 #include "advec_g4m.h"
 
+// diffusion schemes
+#include "diff_g2.h"
+#include "diff_g42.h"
+#include "diff_g4.h"
+#include "diff_les_g2.h"
+
 cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
 {
   grid    = gridin;
@@ -26,7 +32,7 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
   // advec    = new cadvec   (grid, fields, mpi);
-  diff     = new cdiff    (grid, fields, mpi);
+  // diff     = new cdiff    (grid, fields, mpi);
   pres     = new cpres    (grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
   buoyancy = new cbuoyancy(grid, fields, mpi);
@@ -61,7 +67,9 @@ int cmodel::readinifile(cinput *inputin)
 
   // check the advection scheme
   n += inputin->getItem(&iadvec, "physics", "iadvec");
-  if(iadvec == 2)
+  if(iadvec == 0)
+    advec = new cadvec     (grid, fields, mpi);
+  else if(iadvec == 2)
     advec = new cadvec_g2  (grid, fields, mpi);
   else if(iadvec == 24)
     advec = new cadvec_g2i4(grid, fields, mpi);
@@ -73,16 +81,32 @@ int cmodel::readinifile(cinput *inputin)
     advec = new cadvec_g4m (grid, fields, mpi);
   else
     return 1;
+  if(advec->readinifile(inputin))
+    return 1;
+
+  // check the diffusion scheme
+  n += inputin->getItem(&idiff, "physics", "idiff");
+  if(idiff == 0)
+    diff = new cdiff    (grid, fields, mpi);
+  else if(idiff == 2)
+    diff = new cdiff_g2 (grid, fields, mpi);
+  else if(idiff == 42)
+    diff = new cdiff_g42(grid, fields, mpi);
+  else if(idiff == 4)
+    diff = new cdiff_g4 (grid, fields, mpi);
+  // CvH move to new model file later
+  else if(idiff == 22)
+    diff = new cdiff_les_g2(grid, fields, mpi);
+  else
+    return 1;
+  if(diff->readinifile(inputin))
+    return 1;
 
   // fields
   if(fields->readinifile(inputin))
     return 1;
 
   // model operations
-  if(advec->readinifile(inputin))
-    return 1;
-  if(diff->readinifile(inputin))
-    return 1;
   if(force->readinifile(inputin))
     return 1;
   if(buoyancy->readinifile(inputin))
