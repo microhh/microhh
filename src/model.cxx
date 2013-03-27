@@ -18,6 +18,11 @@
 #include "diff_g4.h"
 #include "diff_les_g2.h"
 
+// pressure schemes
+#include "pres_g2.h"
+#include "pres_g42.h"
+#include "pres_g4.h"
+
 cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
 {
   grid    = gridin;
@@ -33,7 +38,7 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   timeloop = new ctimeloop(grid, fields, mpi);
   // advec    = new cadvec   (grid, fields, mpi);
   // diff     = new cdiff    (grid, fields, mpi);
-  pres     = new cpres    (grid, fields, mpi);
+  // pres     = new cpres    (grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
   buoyancy = new cbuoyancy(grid, fields, mpi);
   buffer   = new cbuffer  (grid, fields, mpi);
@@ -64,6 +69,10 @@ int cmodel::readinifile(cinput *inputin)
 {
   // input parameters
   int n = 0;
+
+  // fields
+  if(fields->readinifile(inputin))
+    return 1;
 
   // check the advection scheme
   n += inputin->getItem(&iadvec, "physics", "iadvec");
@@ -102,16 +111,25 @@ int cmodel::readinifile(cinput *inputin)
   if(diff->readinifile(inputin))
     return 1;
 
-  // fields
-  if(fields->readinifile(inputin))
+  // check the pressure scheme
+  n += inputin->getItem(&ipres, "physics", "ipres");
+  if(ipres == 0)
+    pres = new cpres    (grid, fields, mpi);
+  else if(ipres == 2)
+    pres = new cpres_g2 (grid, fields, mpi);
+  else if(ipres == 42)
+    pres = new cpres_g42(grid, fields, mpi);
+  else if(ipres == 4)
+    pres = new cpres_g4 (grid, fields, mpi);
+  else
+    return 1;
+  if(pres->readinifile(inputin))
     return 1;
 
   // model operations
   if(force->readinifile(inputin))
     return 1;
   if(buoyancy->readinifile(inputin))
-    return 1;
-  if(pres->readinifile(inputin))
     return 1;
   if(timeloop->readinifile(inputin))
     return 1;

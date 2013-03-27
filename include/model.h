@@ -35,6 +35,7 @@ class cmodel
     // switches for included schemes
     int iadvec;
     int idiff;
+    int ipres;
 
     // fields to be created
     cfields   *fields;
