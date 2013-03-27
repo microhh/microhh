@@ -5,6 +5,13 @@
 #include "model.h"
 #include "defines.h"
 
+// advection schemes
+#include "advec_g2.h"
+#include "advec_g2i4.h"
+#include "advec_g42.h"
+#include "advec_g4.h"
+#include "advec_g4m.h"
+
 cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
 {
   grid    = gridin;
@@ -18,7 +25,7 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
-  advec    = new cadvec   (grid, fields, mpi);
+  // advec    = new cadvec   (grid, fields, mpi);
   diff     = new cdiff    (grid, fields, mpi);
   pres     = new cpres    (grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
@@ -51,6 +58,21 @@ int cmodel::readinifile(cinput *inputin)
 {
   // input parameters
   int n = 0;
+
+  // check the advection scheme
+  n += inputin->getItem(&iadvec, "physics", "iadvec");
+  if(iadvec == 2)
+    advec = new cadvec_g2  (grid, fields, mpi);
+  else if(iadvec == 24)
+    advec = new cadvec_g2i4(grid, fields, mpi);
+  else if(iadvec == 42)
+    advec = new cadvec_g42 (grid, fields, mpi);
+  else if(iadvec == 4)
+    advec = new cadvec_g4  (grid, fields, mpi);
+  else if(iadvec == 44)
+    advec = new cadvec_g4m (grid, fields, mpi);
+  else
+    return 1;
 
   // fields
   if(fields->readinifile(inputin))
