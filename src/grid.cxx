@@ -61,6 +61,12 @@ int cgrid::readinifile(cinput *inputin)
 
   n += inputin->getItem(&swspatialorder, "grid", "swspatialorder");
 
+  if(!(swspatialorder == "2" || swspatialorder == "4"))
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+    return 1;
+  }
+
   if(n > 0)
     return 1;
  

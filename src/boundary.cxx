@@ -27,7 +27,7 @@ int cboundary::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&swboundary, "boundary", "swboundary");
+  n += inputin->getItem(&swboundary, "boundary", "swboundary", grid->swspatialorder, "default");
 
   n += inputin->getItem(&mbcbot, "boundary", "mbcbot");
   n += inputin->getItem(&mbctop, "boundary", "mbctop");
