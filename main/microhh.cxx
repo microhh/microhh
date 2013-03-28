@@ -42,11 +42,13 @@ int main(int argc, char *argv[])
     // read the grid from the input
     if(grid.create(&input))
       return 1;
+    if(model.create(&input))
+      return 1;
 
     // save the data
     if(grid.save())
       return 1;
-    if(model.save(&input))
+    if(model.save())
       return 1;
   }
   else

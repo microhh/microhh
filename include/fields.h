@@ -75,6 +75,9 @@ class cfields
     // functions
     double calcmom_2nd(double *, double *, double *, double *);
     double calctke_2nd(double *, double *, double *, double *);
+    int addmeanprofile(cinput *, std::string, double *);
+    int randomnize(cinput *, std::string, double *);
+    int addvortexpair(cinput* inputin);
     double calcmass   (double *, double *);
     inline double interp2(const double, const double);
 };

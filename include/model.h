@@ -24,8 +24,9 @@ class cmodel
     ~cmodel();
     int readinifile(cinput *);
     int init();
+    int create(cinput *);
     int load();
-    int save(cinput *);
+    int save();
     int exec();
 
   private:

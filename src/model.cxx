@@ -189,13 +189,19 @@ int cmodel::load()
   return 0;
 }
 
-int cmodel::save(cinput *inputin)
+int cmodel::create(cinput *inputin)
 {
   if(fields->create(inputin))
     return 1;
-  if(fields->save(timeloop->iteration))
-    return 1;
   if(buffer->setbuffers())
+    return 1;
+
+  return 0;
+}
+
+int cmodel::save()
+{
+  if(fields->save(timeloop->iteration))
     return 1;
   if(buffer->save())
     return 1;

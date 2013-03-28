@@ -48,15 +48,6 @@ int cfields::readinifile(cinput *inputin)
   // obligatory parameters
   n += inputin->getItem(&visc , "fields", "visc" );
 
-  // optional parameters
-  n += inputin->getItem(&rndamp     , "fields", "rndamp"     , 0.   );
-  n += inputin->getItem(&rndamps    , "fields", "rndamps"    , 0.   );
-  n += inputin->getItem(&rndz       , "fields", "rndz"       , 0.   );
-  n += inputin->getItem(&rndbeta    , "fields", "rndbeta"    , 2.   );
-  n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", 0    );
-  n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
-  n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , 1    );
-
   // LES
   n += inputin->getItem(&tPr, "fields", "tPr", 1./3.);
 
@@ -188,22 +179,66 @@ int cfields::create(cinput *inputin)
 {
   if(mpi->mpiid == 0) std::printf("Creating fields\n");
   
-  // set mpiid as random seed to avoid having the same field at all procs
-  std::srand(mpi->mpiid);
+  int n = 0;
+  
+  // Randomnize the momentum
+  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); it++)
+    n +=  randomnize(inputin, it->first, it->second->data);
+  
+  // Randomnize the scalars
+  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); it++)
+    n +=  addmeanprofile(inputin, it->first, it->second->data);
+  
+  // Add Vortices
+  n += addvortexpair(inputin);
+  
+  // Add the mean profiles to the fields
+  n +=  addmeanprofile(inputin, "u", mp["u"]->data);
+  n +=  addmeanprofile(inputin, "v", mp["v"]->data);
+ 
+  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); it++)
+    n +=  addmeanprofile(inputin, it->first, it->second->data);
+  
+  // set w equal to zero at the boundaries, just to be sure
+  int lbot = grid->kstart*grid->icells*grid->jcells;
+  int ltop = grid->kend  *grid->icells*grid->jcells;
+  for(int l=0; l<grid->icells*grid->jcells; l++)
+  {
+    w->data[lbot + l] = 0.;
+    w->data[ltop + l] = 0.;
+  }
+  
+  return (n>0);
+}
 
+int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data)
+{
+  int n = 0;
+    // set mpiid as random seed to avoid having the same field at all procs
+  int static seed = 0;
+  if (seed)
+  {
+    seed = mpi->mpiid;
+    std::srand(seed);
+  }
+  
   int ijk,jj,kk;
   int kendrnd;
   double rndfac, rndfach;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+  
+  // look up the specific randomnizer variables
+  n += inputin->getItem(&rndamp , "fields", "rndamp" , 0.,fld);
+  n += inputin->getItem(&rndz   , "fields", "rndz"   , 0.,fld);
+  n += inputin->getItem(&rndbeta, "fields", "rndbeta", 2.,fld);
 
   // find the location of the randomizer height
   kendrnd = grid->kstart;
   while(grid->z[kendrnd] <= rndz)
     kendrnd++;
 
-  // CvH all scalars have the same perturbation, do we need to make it flexible?
   for(int k=grid->kstart; k<kendrnd; k++)
   {
     rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
@@ -212,16 +247,23 @@ int cfields::create(cinput *inputin)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        u->data[ijk] = rndfac  * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
-        v->data[ijk] = rndfac  * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
-        w->data[ijk] = rndfach * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
-        for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
-          itProg->second->data[ijk] = rndfac * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
+        data[ijk] = rndfac  * rndamp * ((double) std::rand() / (double) RAND_MAX - 0.5);
       }
   }
 
+  return (n>0);
+}
+
+int cfields::addvortexpair(cinput *inputin)
+{
   // add a double vortex to the initial conditions
   const double pi = std::acos((double)-1.);
+  int n, ijk, jj, kk;
+  
+  // optional parameters
+  n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", 0    );
+  n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
+  n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , 1    );
 
   if(nvortexpair > 0)
   {
@@ -244,12 +286,17 @@ int cfields::create(cinput *inputin)
             w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->y [j])/grid->ysize)*std::sin(pi*grid->zh[k]/grid->zsize);
           }
   }
+  
+  return (n>0);
+}
 
-  double uproftemp[grid->kmax];
-  double vproftemp[grid->kmax];
-  if(inputin->getProf(uproftemp, "u", grid->kmax))
-    return 1;
-  if(inputin->getProf(vproftemp, "v", grid->kmax))
+int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict data)
+{
+  int n;
+  int ijk, jj, kk;
+  double proftemp[grid->kmax];
+  
+  if(inputin->getProf(proftemp, fld, grid->kmax))
     return 1;
 
   for(int k=grid->kstart; k<grid->kend; k++)
@@ -257,35 +304,10 @@ int cfields::create(cinput *inputin)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        u->data[ijk] += uproftemp[k-grid->kstart];
-        v->data[ijk] += vproftemp[k-grid->kstart];
+        data[ijk] += proftemp[k-grid->kstart];
       }
-
-  // loop over the scalar profiles
-  double sproftemp[grid->kmax];
-  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
-  {
-    if(inputin->getProf(sproftemp, itProg->first, grid->kmax))
-      return 1;
-
-    for(int k=grid->kstart; k<grid->kend; k++)
-      for(int j=grid->jstart; j<grid->jend; j++)
-        for(int i=grid->istart; i<grid->iend; i++)
-        {
-          ijk = i + j*jj + k*kk;
-          itProg->second->data[ijk] += sproftemp[k-grid->kstart];
-        }
-  }
-
-  // set w equal to zero at the boundaries
-  int nbot = grid->kstart*grid->icells*grid->jcells;
-  int ntop = grid->kend  *grid->icells*grid->jcells;
-  for(int n=0; n<grid->icells*grid->jcells; n++)
-  {
-    w->data[nbot + n] = 0.;
-    w->data[ntop + n] = 0.;
-  }
-  return 0;
+      
+  return (n>0);
 }
 
 int cfields::load(int n)
