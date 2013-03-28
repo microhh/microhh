@@ -13,8 +13,6 @@ else()
   string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
   set(CMAKE_BUILD_TYPE ${TEMP} CACHE STRING
       "Choose the type of build, options are: None Debug Release."  FORCE)
-   MESSAGE(STATUS${CMAKE_BUILD_TYPE} ${TEMP})
-
 endif ()
 
 # Set MPI on or off. By default it is on.
