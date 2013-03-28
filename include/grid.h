@@ -110,6 +110,7 @@ class cgrid
     cmpi *mpi;
     bool allocated;
     bool mpitypes;
+    bool fftwplan;
 
 #ifdef PARALLEL
     // MPI Datatypes

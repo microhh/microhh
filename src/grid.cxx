@@ -12,10 +12,19 @@ cgrid::cgrid(cmpi *mpiin)
 
   allocated = false;
   mpitypes  = false;
+  fftwplan  = false;
 }
 
 cgrid::~cgrid()
 {
+  if(fftwplan)
+  {
+    fftw_destroy_plan(iplanf);
+    fftw_destroy_plan(iplanb);
+    fftw_destroy_plan(jplanf);
+    fftw_destroy_plan(jplanb);
+  }
+
   if(allocated)
   { 
     delete[] x;
@@ -35,11 +44,6 @@ cgrid::~cgrid()
     fftw_free(fftouti);
     fftw_free(fftinj);
     fftw_free(fftoutj);
-
-    fftw_destroy_plan(iplanf);
-    fftw_destroy_plan(iplanb);
-    fftw_destroy_plan(jplanf);
-    fftw_destroy_plan(jplanb);
 
     fftw_cleanup();
   }
