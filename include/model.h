@@ -33,9 +33,9 @@ class cmodel
     cmpi    *mpi;
 
     // switches for included schemes
-    int iadvec;
-    int idiff;
-    int ipres;
+    std::string swadvec;
+    std::string swdiff;
+    std::string swpres;
 
     // fields to be created
     cfields   *fields;

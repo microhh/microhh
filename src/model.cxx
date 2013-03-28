@@ -75,18 +75,18 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // check the advection scheme
-  n += inputin->getItem(&iadvec, "physics", "iadvec");
-  if(iadvec == 0)
+  n += inputin->getItem(&swadvec, "advec", "swadvec");
+  if(swadvec == "0")
     advec = new cadvec     (grid, fields, mpi);
-  else if(iadvec == 2)
+  else if(swadvec == "2")
     advec = new cadvec_g2  (grid, fields, mpi);
-  else if(iadvec == 24)
+  else if(swadvec == "24")
     advec = new cadvec_g2i4(grid, fields, mpi);
-  else if(iadvec == 42)
+  else if(swadvec == "42")
     advec = new cadvec_g42 (grid, fields, mpi);
-  else if(iadvec == 4)
+  else if(swadvec == "4")
     advec = new cadvec_g4  (grid, fields, mpi);
-  else if(iadvec == 44)
+  else if(swadvec == "44")
     advec = new cadvec_g4m (grid, fields, mpi);
   else
     return 1;
@@ -94,17 +94,17 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // check the diffusion scheme
-  n += inputin->getItem(&idiff, "physics", "idiff");
-  if(idiff == 0)
+  n += inputin->getItem(&swdiff, "diff", "swdiff");
+  if(swdiff == "0")
     diff = new cdiff    (grid, fields, mpi);
-  else if(idiff == 2)
+  else if(swdiff == "2")
     diff = new cdiff_g2 (grid, fields, mpi);
-  else if(idiff == 42)
+  else if(swdiff == "42")
     diff = new cdiff_g42(grid, fields, mpi);
-  else if(idiff == 4)
+  else if(swdiff == "4")
     diff = new cdiff_g4 (grid, fields, mpi);
   // CvH move to new model file later
-  else if(idiff == 22)
+  else if(swdiff == "22")
     diff = new cdiff_les_g2(grid, fields, mpi);
   else
     return 1;
@@ -112,14 +112,14 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // check the pressure scheme
-  n += inputin->getItem(&ipres, "physics", "ipres");
-  if(ipres == 0)
+  n += inputin->getItem(&swpres, "pres", "swpres");
+  if(swpres == "0")
     pres = new cpres    (grid, fields, mpi);
-  else if(ipres == 2)
+  else if(swpres == "2")
     pres = new cpres_g2 (grid, fields, mpi);
-  else if(ipres == 42)
+  else if(swpres == "42")
     pres = new cpres_g42(grid, fields, mpi);
-  else if(ipres == 4)
+  else if(swpres == "4")
     pres = new cpres_g4 (grid, fields, mpi);
   else
     return 1;
