@@ -69,7 +69,7 @@ class cgrid
     double *yh;
     double *zh;
 
-    int spatialorder;
+    std::string swspatialorder;
 
     // MPI functions
     int initmpi();
