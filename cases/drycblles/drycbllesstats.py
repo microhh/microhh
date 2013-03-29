@@ -7,8 +7,6 @@ from pylab import *
 start = 0
 end   = 19
 step  = 2
-plotens = False
-dx = 6400./256
 
 stats = netCDF4.Dataset("drycblles.0000000.nc","r")
 t  = stats.variables["t"][start:end]
@@ -39,15 +37,10 @@ sflux = numpy.mean(sfluxt,0)
 
 ht     = zeros(t.size)
 wstart = zeros(t.size)
-Ret    = zeros(t.size)
-etat   = zeros(t.size)
 for n in range(t.size):
   hindex    = find(sgradt[n,:] == max(sgradt[n,:]))
   ht[n]     = z[hindex[0]]
   wstart[n] = ((9.81/300.)*sfluxt[n,0]*ht[n])**(1./3.)
-  Ret[n]    = wstart[n]*ht[n] / max(evisct[n,:])
-  etat[n]   = (max(evisct[n,:])**3./((9.81/300.)*sfluxt[n,0]))**.25
-  
 
 # enable LaTeX plotting
 rc('font',**{'family':'serif','serif':['Palatino']})
@@ -57,44 +50,43 @@ close('all')
 figure()
 for n in range(start,end,step):
   plot(st[n,:], z)
+xlabel(r'$\theta [K]$')
+ylabel(r'$z [m]$')
 
 figure()
 for n in range(start,end,step):
   plot(evisct[n,:], z)
+xlabel(r'$K_m [m^2 s^{-1}]$')
+ylabel(r'$z [m]$')
 
 figure()
 for n in range(start,end,step):
   plot(u2t[n,:], z)
+xlabel(r'$u^2 [m^2 s^{-2}]$')
+ylabel(r'$z [m]$')
 
 figure()
 for n in range(start,end,step):
   plot(w2t[n,:], zh)
+xlabel(r'$w^2 [m^2 s^{-2}]$')
+ylabel(r'$z [m]$')
 
 figure()
 for n in range(start,end,step):
   plot(sfluxt[n,:], zh)
+xlabel(r'$\overline{w\theta} [K m s^{-1}]$')
+ylabel(r'$z [m]$')
 
 figure()
 plot(numpy.mean(sfluxt[-5:-1,:],0), zh, 'b-' )
 plot(numpy.mean(sturbt[-5:-1,:],0), zh, 'b--')
 plot(numpy.mean(sdifft[-5:-1,:],0), zh, 'b:' )
 ylim(0., 1500.)
-
-tlog   = linspace(1000.,8000.,100)
-reflog = 8.*tlog**.5
-figure()
-loglog(t, ht, 'bo' )
-loglog(tlog, reflog, 'k--')
-xlabel(r'time')
-ylabel(r'h')
+xlabel(r'$\overline{w\theta} [K m s^{-1}]$')
+ylabel(r'$z [m]$')
 
 figure()
-loglog(t, Ret     , 'bo', label=r'$Re$')
-loglog(t, Ret**.75, 'ro', label=r'$h / \eta$')
-xlabel(r'time')
-legend(loc=0, frameon=False)
+plot(t, ht)
+xlabel(r'$time [s]$')
+ylabel(r'$h [m]$')
 
-figure()
-plot(t, etat/dx, 'bo', label=r'$\eta / \Delta x$')
-xlabel(r'time')
-legend(loc=0, frameon=False)

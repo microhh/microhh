@@ -7,9 +7,8 @@
 #include "pres_g4.h"
 #include "defines.h"
 
-cpres_g4::cpres_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cpres_g4::cpres_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cpres(gridin, fieldsin, mpiin)
 {
-  // std::printf("Creating instance of object pres_g4\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -48,8 +47,34 @@ cpres_g4::~cpres_g4()
     delete[] m8temp;
     delete[] ptemp;
   }
+}
 
-  // std::printf("Destroying instance of object pres_g4\n");
+int cpres_g4::exec(double dt)
+{
+  // create the input for the pressure solver
+  pres_in(fields->sd["p"]->data,
+          fields->u ->data, fields->v ->data, fields->w ->data,
+          fields->ut->data, fields->vt->data, fields->wt->data, 
+          grid->dzi4, dt);
+
+  // solve the system
+  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
+             grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+
+  // get the pressure tendencies from the pressure field
+  pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
+           fields->sd["p"]->data, grid->dzhi4);
+
+  return 0;
+}
+
+double cpres_g4::check()
+{
+  double divmax = 0.;
+
+  divmax = calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
+
+  return divmax;
 }
 
 int cpres_g4::init()

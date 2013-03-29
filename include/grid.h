@@ -69,7 +69,7 @@ class cgrid
     double *yh;
     double *zh;
 
-    int spatialorder;
+    std::string swspatialorder;
 
     // MPI functions
     int initmpi();
@@ -110,6 +110,7 @@ class cgrid
     cmpi *mpi;
     bool allocated;
     bool mpitypes;
+    bool fftwplan;
 
 #ifdef PARALLEL
     // MPI Datatypes

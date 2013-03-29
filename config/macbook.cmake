@@ -1,8 +1,8 @@
 # MacBook
 set(CMAKE_C_COMPILER   "cc")
 set(CMAKE_CXX_COMPILER "c++")
-set (CXX_COMPILER_WRAPPER mpicxx)
-set (C_COMPILER_WRAPPER mpicc)
+set(CXX_COMPILER_WRAPPER mpicxx)
+set(C_COMPILER_WRAPPER mpicc)
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")

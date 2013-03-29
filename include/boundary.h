@@ -5,6 +5,14 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
+struct field3dbc
+{
+  double bot;
+  double top;
+  int bcbot;
+  int bctop;
+};
+
 class cboundary
 {
   public:
@@ -36,17 +44,14 @@ class cboundary
     int setgcbotw_4th(double *);
     int setgctopw_4th(double *);
 
-    int iboundary;
-    int iboundarytype;
+    std::string swboundary;
+    std::string swboundarytype;
 
-    int bcbotmom;
-    int bctopmom;
+    int mbcbot;
+    int mbctop;
 
-    int bcbotscal;
-    int bctopscal;
-
-    double sbot;
-    double stop;
+    typedef std::map<std::string, field3dbc *> bcmap;
+    bcmap sbc;
 
     // patch type
     int    patch_dim;

@@ -27,12 +27,16 @@ int cbuffer::readinifile(cinput *inputin)
   int n = 0;
 
   // optional parameters
-  n += inputin->getItem(&ibuffer,      "fields", "ibuffer"     , 0 );
-  n += inputin->getItem(&bufferkstart, "fields", "bufferkstart", 0 );
-  n += inputin->getItem(&buffersigma,  "fields", "buffersigma" , 2.);
-  n += inputin->getItem(&bufferbeta,   "fields", "bufferbeta"  , 2.);
+  n += inputin->getItem(&swbuffer, "buffer", "swbuffer", "0", "default");
 
-    // if one argument fails, then crash
+  if(swbuffer == "1")
+  {
+    n += inputin->getItem(&bufferkstart, "buffer", "bufferkstart", 0 );
+    n += inputin->getItem(&buffersigma,  "buffer", "buffersigma" , 2.);
+    n += inputin->getItem(&bufferbeta,   "buffer", "bufferbeta"  , 2.);
+  }
+
+  // if one argument fails, then crash
   if(n > 0)
     return 1;
 
@@ -41,8 +45,14 @@ int cbuffer::readinifile(cinput *inputin)
 
 int cbuffer::init()
 {
-  if(ibuffer == 1)
+  if(swbuffer == "1")
   {
+    if(bufferkstart > grid->kmax-2)
+    {
+      std::printf("ERROR bufferkstart has to be less than kmax - 2\n");
+      return 1;
+    }
+
     // allocate the buffer array 
     bufferkcells = grid->kmax-bufferkstart-1;
 
@@ -63,7 +73,7 @@ int cbuffer::init()
 
 int cbuffer::setbuffers()
 {
-  if(ibuffer)
+  if(swbuffer == "1")
   {
     // set the buffers according to the initial profiles
     for(fieldmap::iterator itProg = fields->mp.begin(); itProg!=fields->mp.end(); itProg++)
@@ -78,7 +88,7 @@ int cbuffer::setbuffers()
 
 int cbuffer::exec()
 {
-  if(ibuffer)
+  if(swbuffer == "1")
   {
     // calculate the buffer tendencies
     buffer((*fields->mt["u"]).data, (*fields->mp["u"]).data, bufferprofs["u"], grid->z );
@@ -153,7 +163,7 @@ int cbuffer::setbuffer(double * restrict a, double * restrict abuf)
 
 int cbuffer::save()
 {
-  if(ibuffer != 1)
+  if(swbuffer != "1")
     return 0;
 
   char filename[256];
@@ -182,7 +192,7 @@ int cbuffer::save()
 
 int cbuffer::load()
 {
-  if(ibuffer != 1)
+  if(swbuffer != "1")
     return 0;
 
   char filename[256];

@@ -1,8 +1,8 @@
 # Blizzard
 set(CMAKE_C_COMPILER   "xlc")
 set(CMAKE_CXX_COMPILER "xlc++")
-set (C_COMPILER_WRAPPER mpcc)
-set (CXX_COMPILER_WRAPPER mpCC)
+set(C_COMPILER_WRAPPER mpcc)
+set(CXX_COMPILER_WRAPPER mpCC)
 
 set(USER_CXX_FLAGS_RELEASE "-qarch=pwr6 -qtune=pwr6 -O3 -qhot=simd -qenablevmx")
 

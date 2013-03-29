@@ -19,7 +19,7 @@ class cfields
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string);
     int initpfld(std::string);
-    int initdfld(cfield3d*&, std::string);
+    int initdfld(std::string);
     
     int save(int);
     int load(int);
@@ -32,7 +32,7 @@ class cfields
     cfield3d *u;
     cfield3d *v;
     cfield3d *w;
-    cfield3d *p;
+    // cfield3d *p;
 
     cfield3d *ut;
     cfield3d *vt;
@@ -42,20 +42,20 @@ class cfields
     fieldmap sd;
     fieldmap sp;
     fieldmap st;
-    fieldmap m;
+    // fieldmap m;
     fieldmap mp;
     fieldmap mt;
     
     // temporary arrays
-    cfield3d *tmp1;
-    cfield3d *tmp2;
+    // cfield3d *tmp1;
+    // cfield3d *tmp2;
 
     // eddy viscosity for LES
-    cfield3d *evisc;
+    // cfield3d *evisc;
     double tPr;
 
     double visc;
-    double viscs;
+    // double viscs;
     
   private:
     // variables

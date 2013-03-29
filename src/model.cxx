@@ -12,11 +12,21 @@
 #include "advec_g4.h"
 #include "advec_g4m.h"
 
-cmodel::cmodel(cgrid *gridin, cmpi *mpiin, std::string simnamein)
+// diffusion schemes
+#include "diff_g2.h"
+#include "diff_g42.h"
+#include "diff_g4.h"
+#include "diff_les_g2.h"
+
+// pressure schemes
+#include "pres_g2.h"
+#include "pres_g42.h"
+#include "pres_g4.h"
+
+cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
 {
   grid    = gridin;
   mpi     = mpiin;
-  simname = simnamein;
 
   // create the fields class
   fields   = new cfields  (grid, mpi);
@@ -26,9 +36,6 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin, std::string simnamein)
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
-  advec    = new cadvec   (grid, fields, mpi);
-  diff     = new cdiff    (grid, fields, mpi);
-  pres     = new cpres    (grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
   buoyancy = new cbuoyancy(grid, fields, mpi);
   buffer   = new cbuffer  (grid, fields, mpi);
@@ -36,10 +43,28 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin, std::string simnamein)
   // load the postprocessing moduls
   stats    = new cstats   (grid, fields, mpi);
   cross    = new ccross   (grid, fields, mpi);
+
+  // set null pointers for classes that will be initialized later
+  advec = NULL;
+  diff  = NULL;
+  pres  = NULL;
 }
 
 cmodel::~cmodel()
 {
+  // delete the components in reversed order
+  delete cross;
+  delete stats;
+  delete buffer;
+  delete buoyancy;
+  delete force;
+  delete pres;
+  delete diff;
+  delete advec;
+  delete timeloop;
+
+  delete boundary;
+  delete fields;
 }
 
 int cmodel::readinifile(cinput *inputin)
@@ -47,25 +72,87 @@ int cmodel::readinifile(cinput *inputin)
   // input parameters
   int n = 0;
 
+  // fields
   if(fields->readinifile(inputin))
     return 1;
 
-  if(boundary->readinifile(inputin))
+  // check the advection scheme
+  n += inputin->getItem(&swadvec, "advec", "swadvec", grid->swspatialorder, "default");
+  if(swadvec == "0")
+    advec = new cadvec     (grid, fields, mpi);
+  else if(swadvec == "2")
+    advec = new cadvec_g2  (grid, fields, mpi);
+  else if(swadvec == "24")
+    advec = new cadvec_g2i4(grid, fields, mpi);
+  else if(swadvec == "42")
+    advec = new cadvec_g42 (grid, fields, mpi);
+  else if(swadvec == "4")
+    advec = new cadvec_g4  (grid, fields, mpi);
+  else if(swadvec == "44")
+    advec = new cadvec_g4m (grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     return 1;
+  }
   if(advec->readinifile(inputin))
     return 1;
+
+  // check the diffusion scheme
+  n += inputin->getItem(&swdiff, "diff", "swdiff", grid->swspatialorder, "default");
+  if(swdiff == "0")
+    diff = new cdiff    (grid, fields, mpi);
+  else if(swdiff == "2")
+    diff = new cdiff_g2 (grid, fields, mpi);
+  else if(swdiff == "42")
+    diff = new cdiff_g42(grid, fields, mpi);
+  else if(swdiff == "4")
+    diff = new cdiff_g4 (grid, fields, mpi);
+  // CvH move to new model file later
+  else if(swdiff == "22")
+    diff = new cdiff_les_g2(grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
+    return 1;
+  }
   if(diff->readinifile(inputin))
     return 1;
+
+
+  // check the pressure scheme
+  n += inputin->getItem(&swpres, "pres", "swpres", grid->swspatialorder, "default");
+  if(swpres == "0")
+    pres = new cpres    (grid, fields, mpi);
+  else if(swpres == "2")
+    pres = new cpres_g2 (grid, fields, mpi);
+  else if(swpres == "42")
+    pres = new cpres_g42(grid, fields, mpi);
+  else if(swpres == "4")
+    pres = new cpres_g4 (grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());
+    return 1;
+  }
+  if(pres->readinifile(inputin))
+    return 1;
+
+  // model operations
   if(force->readinifile(inputin))
     return 1;
   if(buoyancy->readinifile(inputin))
     return 1;
-  if(buffer->readinifile(inputin))
-    return 1;
-  if(pres->readinifile(inputin))
-    return 1;
   if(timeloop->readinifile(inputin))
     return 1;
+
+  // model classes that need to know prognostic fields
+  if(boundary->readinifile(inputin))
+    return 1;
+  if(buffer->readinifile(inputin))
+    return 1;
+
+  // statistics
   if(stats->readinifile(inputin))
     return 1;
   if(cross->readinifile(inputin))
@@ -100,7 +187,7 @@ int cmodel::load()
     return 1;
   if(buffer->load())
     return 1;
-  if(stats->create(simname, timeloop->iteration))
+  if(stats->create(timeloop->iteration))
     return 1;
 
   // initialize the diffusion to get the time step requirement
@@ -130,7 +217,7 @@ int cmodel::save(cinput *inputin)
   return 0;
 }
 
-int cmodel::exec(std::string mode)
+int cmodel::exec()
 {
   // initialize the check variables
   int    iter;
@@ -144,7 +231,7 @@ int cmodel::exec(std::string mode)
   FILE *dnsout = NULL;
   if(mpi->mpiid == 0)
   {
-    std::string outputname = simname + ".out";
+    std::string outputname = mpi->simname + ".out";
     dnsout = std::fopen(outputname.c_str(), "a");
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
@@ -204,7 +291,7 @@ int cmodel::exec(std::string mode)
     // pressure
     pres->exec(timeloop->getsubdt());
     if(timeloop->dosave() && !timeloop->insubstep())
-      (*fields->p).save(timeloop->iteration, (*fields->tmp1).data, (*fields->tmp2).data);
+      fields->s["p"]->save(timeloop->iteration, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
 
     if(timeloop->dostats() && !timeloop->insubstep())
     {
@@ -217,7 +304,7 @@ int cmodel::exec(std::string mode)
       break;
 
     // RUN MODE
-    if(mode == "run")
+    if(mpi->mode == "run")
     {
       // integrate in time
       timeloop->exec();
@@ -235,7 +322,7 @@ int cmodel::exec(std::string mode)
     }
 
     // POST PROCESS MODE
-    else if(mode == "post")
+    else if(mpi->mode == "post")
     {
       // step to the next time step
       timeloop->postprocstep();

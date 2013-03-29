@@ -6,7 +6,7 @@
 #include "advec_g42.h"
 #include "defines.h"
 
-cadvec_g42::cadvec_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cadvec_g42::cadvec_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
 {
   grid   = gridin;
   fields = fieldsin;
@@ -15,6 +15,27 @@ cadvec_g42::cadvec_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cadvec_g42::~cadvec_g42()
 {
+}
+
+double cadvec_g42::getcfl(double dt)
+{
+  double cfl;
+
+  cfl = calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+
+  return cfl;
+}
+
+int cadvec_g42::exec()
+{
+  advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
+  advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
+
+  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    advecs((*it->second).data, (*fields->s[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
+
+  return 0;
 }
 
 double cadvec_g42::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)

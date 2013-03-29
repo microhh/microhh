@@ -17,16 +17,26 @@ cfields::~cfields()
 {
   if(allocated)
   {
-    for(fieldmap::iterator it = mt.begin(); it!=mt.end(); it++)
-    {
-      delete mp[it->first];
-      delete mt[it->first];
-    }
-    for(fieldmap::iterator it = s.begin(); it!=s.end(); it++)
-      delete s[it->first];
+    // DEALLOCATE ALL THE FIELDS
+    // deallocate the prognostic velocity fields
+    for(fieldmap::iterator it=mp.begin(); it!=mp.end(); it++)
+      delete it->second;
 
-    for(fieldmap::iterator it = st.begin(); it!=st.end(); it++)
-      delete st[it->first];
+    // deallocate the velocity tendency fields
+    for(fieldmap::iterator it=mt.begin(); it!=mt.end(); it++)
+      delete it->second;
+
+    // deallocate the prognostic scalar fields
+    for(fieldmap::iterator it=sp.begin(); it!=sp.end(); it++)
+      delete it->second;
+
+    // deallocate the scalar tendency fields
+    for(fieldmap::iterator it=st.begin(); it!=st.end(); it++)
+      delete it->second;
+
+    // deallocate the diagnostic scalars
+    for(fieldmap::iterator it=sd.begin(); it!=sd.end(); it++)
+      delete it->second;
   }
 }
 
@@ -37,7 +47,6 @@ int cfields::readinifile(cinput *inputin)
 
   // obligatory parameters
   n += inputin->getItem(&visc , "fields", "visc" );
-  n += inputin->getItem(&viscs, "fields", "viscs");
 
   // optional parameters
   n += inputin->getItem(&rndamp     , "fields", "rndamp"     , 0.   );
@@ -51,6 +60,26 @@ int cfields::readinifile(cinput *inputin)
   // LES
   n += inputin->getItem(&tPr, "fields", "tPr", 1./3.);
 
+  // read the name of the passive scalars
+  std::vector<std::string> slist;
+  n += inputin->getItem(&slist, "fields", "slist", "");
+
+  // initialize the scalars
+  for(std::vector<std::string>::iterator it = slist.begin(); it!=slist.end(); it++)
+  {
+    if(initpfld(*it))
+      return 1;
+    n += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
+  }
+
+  // initialize the basic set of fields
+  n += initmomfld(u, ut, "u");
+  n += initmomfld(v, vt, "v");
+  n += initmomfld(w, wt, "w");
+  n += initdfld("p");
+  n += initdfld("tmp1");
+  n += initdfld("tmp2");
+
   if(n > 0)
     return 1;
 
@@ -61,20 +90,30 @@ int cfields::init()
 {
   if(mpi->mpiid == 0) std::printf("Initializing fields\n");
 
-  int err = 0;
-  
-  err += initmomfld(u, ut, "u");
-  err += initmomfld(v, vt, "v");
-  err += initmomfld(w, wt, "w");
-  err += initpfld("s");
+  int n = 0;
 
-  err += initdfld(p, "p");
-  err += initdfld(tmp1, "tmp1");
-  err += initdfld(tmp2, "tmp2");
+  // ALLOCATE ALL THE FIELDS
+  // allocate the prognostic velocity fields
+  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); it++)
+    n += it->second->init();
 
-  err += initdfld(evisc, "evisc");
+  // allocate the velocity tendency fields
+  for(fieldmap::iterator it=mt.begin(); it!=mt.end(); it++)
+    n += it->second->init();
 
-  if(err > 0)
+  // allocate the prognostic scalar fields
+  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); it++)
+    n += it->second->init();
+
+  // allocate the scalar tendency fields
+  for(fieldmap::iterator it=st.begin(); it!=st.end(); it++)
+    n += it->second->init();
+
+  // allocate the diagnostic scalars
+  for(fieldmap::iterator it=sd.begin(); it!=sd.end(); it++)
+    n += it->second->init();
+
+  if(n > 0)
     return 1;
 
   allocated = true;
@@ -93,12 +132,12 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   std::string fldtname = fldname + "t";
   
   mp[fldname] = new cfield3d(grid, mpi, fldname);
-  mp[fldname]->init();
+  // mp[fldname]->init();
 
   mt[fldname] = new cfield3d(grid, mpi, fldtname);
-  mt[fldname]->init();
+  // mt[fldname]->init();
 
-  m[fldname] = mp[fldname];
+  //m[fldname] = mp[fldname];
 
   fld  = mp[fldname];
   fldt = mt[fldname];
@@ -117,17 +156,17 @@ int cfields::initpfld(std::string fldname)
   std::string fldtname = fldname + "t";
   
   sp[fldname] = new cfield3d(grid, mpi, fldname);
-  sp[fldname]->init();
+  //sp[fldname]->init();
   
   st[fldname] = new cfield3d(grid, mpi, fldtname);
-  st[fldname]->init();
+  //st[fldname]->init();
 
   s[fldname] = sp[fldname];
   
   return 0;
 }
 
-int cfields::initdfld(cfield3d *&fld, std::string fldname)
+int cfields::initdfld(std::string fldname)
 {
   if (s.find(fldname)!=s.end())
   {
@@ -135,12 +174,12 @@ int cfields::initdfld(cfield3d *&fld, std::string fldname)
     return 1;
   }
 
-  sd[fldname]  = new cfield3d(grid, mpi, fldname );
-  sd[fldname]->init();
+  sd[fldname] = new cfield3d(grid, mpi, fldname );
+  // sd[fldname]->init();
 
   s[fldname] = sd[fldname];
   
-  fld = s[fldname];
+  // fld = s[fldname];
   
   return 0;  
 }
@@ -164,6 +203,7 @@ int cfields::create(cinput *inputin)
   while(grid->z[kendrnd] <= rndz)
     kendrnd++;
 
+  // CvH all scalars have the same perturbation, do we need to make it flexible?
   for(int k=grid->kstart; k<kendrnd; k++)
   {
     rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
@@ -172,10 +212,11 @@ int cfields::create(cinput *inputin)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        u->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
-        v->data[ijk] = rndfac  * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
-        w->data[ijk] = rndfach * rndamp  * (double)(std::rand() % 10000 - 5000) / 10000.;
-        sp["s"]->data[ijk] = rndfac  * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
+        u->data[ijk] = rndfac  * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+        v->data[ijk] = rndfac  * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+        w->data[ijk] = rndfach * rndamp * (double)(std::rand() % 10000 - 5000) / 10000.;
+        for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+          itProg->second->data[ijk] = rndfac * rndamps * (double)(std::rand() % 10000 - 5000) / 10000.;
       }
   }
 
@@ -206,14 +247,11 @@ int cfields::create(cinput *inputin)
 
   double uproftemp[grid->kmax];
   double vproftemp[grid->kmax];
-  double sproftemp[grid->kmax];
-  
   if(inputin->getProf(uproftemp, "u", grid->kmax))
     return 1;
   if(inputin->getProf(vproftemp, "v", grid->kmax))
     return 1;
-  if(inputin->getProf(sproftemp, "s", grid->kmax))
-    return 1;
+
   for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
       for(int i=grid->istart; i<grid->iend; i++)
@@ -221,8 +259,24 @@ int cfields::create(cinput *inputin)
         ijk = i + j*jj + k*kk;
         u->data[ijk] += uproftemp[k-grid->kstart];
         v->data[ijk] += vproftemp[k-grid->kstart];
-        sp["s"]->data[ijk] += sproftemp[k-grid->kstart];
       }
+
+  // loop over the scalar profiles
+  double sproftemp[grid->kmax];
+  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+  {
+    if(inputin->getProf(sproftemp, itProg->first, grid->kmax))
+      return 1;
+
+    for(int k=grid->kstart; k<grid->kend; k++)
+      for(int j=grid->jstart; j<grid->jend; j++)
+        for(int i=grid->istart; i<grid->iend; i++)
+        {
+          ijk = i + j*jj + k*kk;
+          itProg->second->data[ijk] += sproftemp[k-grid->kstart];
+        }
+  }
+
   // set w equal to zero at the boundaries
   int nbot = grid->kstart*grid->icells*grid->jcells;
   int ntop = grid->kend  *grid->icells*grid->jcells;
@@ -238,11 +292,11 @@ int cfields::load(int n)
 {
   // check them all before returning error
   int nerror = 0;
-  nerror += u->load(n, tmp1->data, tmp2->data);
-  nerror += v->load(n, tmp1->data, tmp2->data);
-  nerror += w->load(n, tmp1->data, tmp2->data);
+  nerror += u->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
+  nerror += v->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
+  nerror += w->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
   for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
-    nerror += itProg->second->load(n, tmp1->data, tmp2->data);
+    nerror += itProg->second->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
 
   if(nerror > 0)
     return 1;
@@ -252,12 +306,12 @@ int cfields::load(int n)
 
 int cfields::save(int n)
 {
-  u->save(n, tmp1->data, tmp2->data);
-  v->save(n, tmp1->data, tmp2->data);
-  w->save(n, tmp1->data, tmp2->data);
+  u->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
+  v->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
+  w->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
   // p->save(n);
   for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
-    itProg->second->save(n, tmp1->data, tmp2->data);
+    itProg->second->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
 
   return 0;
 }
@@ -300,7 +354,12 @@ double cfields::checktke()
 
 double cfields::checkmass()
 {
-  return calcmass(sp["s"]->data, grid->dz);
+  // CvH for now, do the mass check on the first scalar... Do we want to change this?
+  fieldmap::iterator itProg=sp.begin();
+  if(sp.begin() != sp.end())
+    return calcmass(itProg->second->data, grid->dz);
+  else
+    return 0.;
 }
 
 double cfields::calcmass(double * restrict s, double * restrict dz)

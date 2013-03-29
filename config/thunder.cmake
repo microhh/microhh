@@ -1,8 +1,8 @@
 # Thunder
 set(CMAKE_C_COMPILER   "icc")
 set(CMAKE_CXX_COMPILER "icc")
-set (CXX_COMPILER_WRAPPER mpicxx)
-set (C_COMPILER_WRAPPER mpicc)
+set(CXX_COMPILER_WRAPPER mpicxx)
+set(C_COMPILER_WRAPPER mpicc)
 
 set(USER_CXX_FLAGS "-restrict")
 set(USER_CXX_FLAGS_RELEASE "-xAVX -O3")

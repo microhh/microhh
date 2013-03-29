@@ -1,7 +1,7 @@
 import numpy
 
 # set the height
-kmax  = 64
+kmax  = 32
 zsize = 3200.
 dz = zsize / kmax
 
@@ -10,7 +10,6 @@ dthetadz = 0.003
 # set the height
 z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
 s = numpy.zeros(numpy.size(z))
-
 
 for k in range(kmax):
   s[k] = dthetadz*z[k]

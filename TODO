@@ -1,5 +1,8 @@
-[urgent]
-implement consistent LES/DNS boundary handling, such that 4th order LES can be made
+[model structure]
+decide on the input options
+decide on the name of the functions
+decide on the existence of switch loops, such as advec.cxx
+decide on the location of the stats
 
 [bugs]
 implement default option for randomnization such that it is applied over whole field
@@ -9,12 +12,6 @@ implement fftw_many
 vectorize 4th order pressure solver
 integrate advection and diffusion
 
-[structure]
-handle field registration properly
-
-[extensions]
-compute basic statistics
-
 [dynamical core]
 loop on time or on iterations
 
@@ -23,4 +20,3 @@ implement CUDA
 
 [LES]
 implement surface model
-implement smagorinsky 

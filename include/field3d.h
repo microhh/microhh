@@ -27,6 +27,7 @@ class cfield3d
     double *datafluxbot;
     double *datafluxtop;
     std::string name;
+    double visc;
 
   private:
     cgrid *grid;

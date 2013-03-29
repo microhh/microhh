@@ -18,9 +18,8 @@ class cbuoyancy
     cfields *fields;
     cmpi    *mpi;
 
-    int ibuoyancy;
-    double gravity;
-    double buoyancyref;
+    std::string swbuoyancy;
+    double gravitybeta; // gravity multiplied with thermal expansion coefficient
 
     int buoyancy_2nd(double *, double *);
     int buoyancy_4th(double *, double *);

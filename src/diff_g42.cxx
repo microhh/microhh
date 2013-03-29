@@ -7,9 +7,8 @@
 #include "diff_g42.h"
 #include "defines.h"
 
-cdiff_g42::cdiff_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cdiff_g42::cdiff_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
 {
-  // std::printf("Creating instance of object diff_g42\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -17,7 +16,41 @@ cdiff_g42::cdiff_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cdiff_g42::~cdiff_g42()
 {
-  // std::printf("Destroying instance of object diff_g42\n");
+}
+
+int cdiff_g42::setvalues()
+{
+  // get the maximum time step for diffusion
+  double viscmax = fields->visc;
+  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+    viscmax = std::max(it->second->visc, viscmax);
+
+  dnmul = 0;
+  for(int k=grid->kstart; k<grid->kend; k++)
+    dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
+
+  return 0;
+}
+
+double cdiff_g42::getdn(double dt)
+{
+  double dn;
+
+  dn = dnmul*dt;
+
+  return dn;
+}
+
+int cdiff_g42::exec()
+{
+  diffc(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
+  diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
+  diffw(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
+
+  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->s[it->first]->visc);
+
+  return 0;
 }
 
 int cdiff_g42::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)

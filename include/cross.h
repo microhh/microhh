@@ -21,8 +21,8 @@ class ccross
     cfields *fields;
     cmpi    *mpi;
 
-    int  icross;
-    int  jxz;
+    std::string swcross;
+    int jxz;
 
     int crosssimple(double *, double *, std::string, int);
     int crosslngrad(double *, double *, double *, double *, std::string, int);

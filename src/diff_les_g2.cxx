@@ -7,9 +7,8 @@
 #include "diff_les_g2.h"
 #include "defines.h"
 
-cdiff_les_g2::cdiff_les_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cdiff_les_g2::cdiff_les_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
 {
-  // std::printf("Creating instance of object diff_les_g2\n");
   grid   = gridin;
   fields = fieldsin;
   mpi    = mpiin;
@@ -17,7 +16,43 @@ cdiff_les_g2::cdiff_les_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 cdiff_les_g2::~cdiff_les_g2()
 {
-  // std::printf("Destroying instance of object diff_les_g2\n");
+}
+
+int cdiff_les_g2::readinifile(cinput *inputin)
+{
+  int n = 0;
+
+  n += fields->initdfld("evisc");
+
+  // if one argument fails, then crash
+  if(n > 0)
+    return 1;
+
+  return 0;
+}
+
+double cdiff_les_g2::getdn(double dt)
+{
+  double dn;
+
+  // calculate eddy viscosity
+  // CvH this will crash in the absense of temperature, fix
+  evisc(fields->s["evisc"]->data, fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data, grid->z, grid->dz, grid->dzi, grid->dzhi, fields->tPr);
+  dn = getdn(fields->s["evisc"]->data, grid->dzi, fields->tPr);
+
+  return dn;
+}
+
+int cdiff_les_g2::exec()
+{
+  diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop);
+  diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop);
+  diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data);
+
+  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, fields->tPr);
+
+  return 0;
 }
 
 int cdiff_les_g2::evisc(double * restrict evisc, double * restrict u, double * restrict v, double * restrict w, double * restrict s, double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi, double tPr)
