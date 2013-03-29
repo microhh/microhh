@@ -21,15 +21,14 @@ int cbuoyancy::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&ibuoyancy  , "physics", "ibuoyancy");
-  n += inputin->getItem(&gravity    , "physics", "gravity", 9.81);
-  n += inputin->getItem(&buoyancyref, "physics", "buoyancyref", 0.);
+  n += inputin->getItem(&swbuoyancy , "buoyancy", "swbuoyancy");
 
   // request buoyancy field
   // CvH reconsider usage of the name s
-  // CvH ibuoyancy should point to model for buoyancy not to order
-  if(ibuoyancy == 2 || ibuoyancy == 4)
+  if(swbuoyancy == "2" || swbuoyancy == "4")
   {
+    n += inputin->getItem(&gravitybeta, "buoyancy", "gravitybeta");
+
     n += fields->initpfld("s");
     n += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
   }
@@ -42,13 +41,13 @@ int cbuoyancy::readinifile(cinput *inputin)
 
 int cbuoyancy::exec()
 {
-  if(ibuoyancy == 0)
+  if(swbuoyancy == "0")
     return 0;
 
   // extend later for gravity vector not normal to surface
-  if(ibuoyancy == 2)
+  if(swbuoyancy == "2")
     buoyancy_2nd(fields->wt->data, fields->s["s"]->data);
-  else if(ibuoyancy == 4)
+  else if(swbuoyancy == "4")
     buoyancy_4th(fields->wt->data, fields->s["s"]->data);
 
   return 0;
@@ -68,7 +67,7 @@ int cbuoyancy::buoyancy_2nd(double * restrict wt, double * restrict s)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        wt[ijk] += gravity * interp2(s[ijk-kk], s[ijk]);
+        wt[ijk] += gravitybeta * interp2(s[ijk-kk], s[ijk]);
       }
 
   return 0;
@@ -89,7 +88,7 @@ int cbuoyancy::buoyancy_4th(double * restrict wt, double * restrict s)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk1;
-        wt[ijk] += gravity * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
+        wt[ijk] += gravitybeta * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
       }
 
   return 0;
