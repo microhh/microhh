@@ -239,6 +239,15 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   while(grid->z[kendrnd] <= rndz)
     kendrnd++;
 
+  if(kendrnd > grid->kend)
+  {
+    printf("ERROR: Randomnizer height kendrnd (%d) higher than domain top (%d)\n", kendrnd, grid->kend);
+    return 1;
+  }
+  
+  if(kendrnd == grid->kstart)
+    kendrnd = grid->kend;
+
   for(int k=grid->kstart; k<kendrnd; k++)
   {
     rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
