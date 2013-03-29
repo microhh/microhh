@@ -169,7 +169,7 @@ int cfields::initdfld(std::string fldname)
   // sd[fldname]->init();
 
   s[fldname] = sd[fldname];
-  
+
   // fld = s[fldname];
   
   return 0;  
@@ -232,7 +232,7 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   // look up the specific randomnizer variables
   n += inputin->getItem(&rndamp , "fields", "rndamp" , 0.,fld);
   n += inputin->getItem(&rndz   , "fields", "rndz"   , 0.,fld);
-  n += inputin->getItem(&rndbeta, "fields", "rndbeta", 2.,fld);
+  n += inputin->getItem(&rndbeta, "fields", "rndbeta", 0.,fld);
 
   // find the location of the randomizer height
   kendrnd = grid->kstart;
