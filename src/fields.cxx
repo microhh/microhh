@@ -259,7 +259,10 @@ int cfields::addvortexpair(cinput *inputin)
   // add a double vortex to the initial conditions
   const double pi = std::acos((double)-1.);
   int n, ijk, jj, kk;
-  
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+    
   // optional parameters
   n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", 0    );
   n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
