@@ -18,7 +18,7 @@ class cforce
     cfields *fields;
     cmpi    *mpi;
 
-    int iforce;
+    std::string swforce;
     double uflow;
 
     int flux(double *, double *, double *, double);

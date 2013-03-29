@@ -23,9 +23,6 @@ class cboundary
     int setvalues();
     int exec();
 
-    // CvH make private later
-    int iboundary;
-
   private:
     cgrid   *grid;
     cfields *fields;
@@ -47,15 +44,11 @@ class cboundary
     int setgcbotw_4th(double *);
     int setgctopw_4th(double *);
 
-    int iboundarytype;
+    std::string swboundary;
+    std::string swboundarytype;
 
-    int bcbotmom;
-    int bctopmom;
-
-    // int bcbotscal;
-    // int bctopscal;
-    // double sbot;
-    // double stop;
+    int mbcbot;
+    int mbctop;
 
     typedef std::map<std::string, field3dbc *> bcmap;
     bcmap sbc;

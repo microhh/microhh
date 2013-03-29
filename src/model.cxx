@@ -36,9 +36,6 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
-  // advec    = new cadvec   (grid, fields, mpi);
-  // diff     = new cdiff    (grid, fields, mpi);
-  // pres     = new cpres    (grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
   buoyancy = new cbuoyancy(grid, fields, mpi);
   buffer   = new cbuffer  (grid, fields, mpi);
@@ -46,6 +43,11 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   // load the postprocessing moduls
   stats    = new cstats   (grid, fields, mpi);
   cross    = new ccross   (grid, fields, mpi);
+
+  // set null pointers for classes that will be initialized later
+  advec = NULL;
+  diff  = NULL;
+  pres  = NULL;
 }
 
 cmodel::~cmodel()
@@ -75,54 +77,64 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // check the advection scheme
-  n += inputin->getItem(&iadvec, "physics", "iadvec");
-  if(iadvec == 0)
+  n += inputin->getItem(&swadvec, "advec", "swadvec", grid->swspatialorder, "default");
+  if(swadvec == "0")
     advec = new cadvec     (grid, fields, mpi);
-  else if(iadvec == 2)
+  else if(swadvec == "2")
     advec = new cadvec_g2  (grid, fields, mpi);
-  else if(iadvec == 24)
+  else if(swadvec == "24")
     advec = new cadvec_g2i4(grid, fields, mpi);
-  else if(iadvec == 42)
+  else if(swadvec == "42")
     advec = new cadvec_g42 (grid, fields, mpi);
-  else if(iadvec == 4)
+  else if(swadvec == "4")
     advec = new cadvec_g4  (grid, fields, mpi);
-  else if(iadvec == 44)
+  else if(swadvec == "44")
     advec = new cadvec_g4m (grid, fields, mpi);
   else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     return 1;
+  }
   if(advec->readinifile(inputin))
     return 1;
 
   // check the diffusion scheme
-  n += inputin->getItem(&idiff, "physics", "idiff");
-  if(idiff == 0)
+  n += inputin->getItem(&swdiff, "diff", "swdiff", grid->swspatialorder, "default");
+  if(swdiff == "0")
     diff = new cdiff    (grid, fields, mpi);
-  else if(idiff == 2)
+  else if(swdiff == "2")
     diff = new cdiff_g2 (grid, fields, mpi);
-  else if(idiff == 42)
+  else if(swdiff == "42")
     diff = new cdiff_g42(grid, fields, mpi);
-  else if(idiff == 4)
+  else if(swdiff == "4")
     diff = new cdiff_g4 (grid, fields, mpi);
   // CvH move to new model file later
-  else if(idiff == 22)
+  else if(swdiff == "22")
     diff = new cdiff_les_g2(grid, fields, mpi);
   else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
     return 1;
+  }
   if(diff->readinifile(inputin))
     return 1;
 
+
   // check the pressure scheme
-  n += inputin->getItem(&ipres, "physics", "ipres");
-  if(ipres == 0)
+  n += inputin->getItem(&swpres, "pres", "swpres", grid->swspatialorder, "default");
+  if(swpres == "0")
     pres = new cpres    (grid, fields, mpi);
-  else if(ipres == 2)
+  else if(swpres == "2")
     pres = new cpres_g2 (grid, fields, mpi);
-  else if(ipres == 42)
+  else if(swpres == "42")
     pres = new cpres_g42(grid, fields, mpi);
-  else if(ipres == 4)
+  else if(swpres == "4")
     pres = new cpres_g4 (grid, fields, mpi);
   else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());
     return 1;
+  }
   if(pres->readinifile(inputin))
     return 1;
 

@@ -27,7 +27,7 @@ class cstats
     cstats_dns *stats_dns;
     cstats_les *stats_les;
 
-    int istats;
+    std::string swstats;
 };
 #endif
 

@@ -654,7 +654,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
   }
   if(checkItemExists(cat, item))
   {
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def.c_str());
+    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of \"%s\" used\n", cat.c_str(), item.c_str(), def.c_str());
     *value = def;
     return 0;
   }

@@ -27,16 +27,10 @@ int cboundary::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&iboundary, "physics", "iboundary");
+  n += inputin->getItem(&swboundary, "boundary", "swboundary", grid->swspatialorder, "default");
 
-  n += inputin->getItem(&bcbotmom, "fields", "bcbotmom");
-  n += inputin->getItem(&bctopmom, "fields", "bctopmom");
-
-  // n += inputin->getItem(&bcbotscal, "fields", "bcbotscal");
-  // n += inputin->getItem(&bctopscal, "fields", "bctopscal");
-
-  // n += inputin->getItem(&sbot, "fields", "sbot");
-  // n += inputin->getItem(&stop, "fields", "stop");
+  n += inputin->getItem(&mbcbot, "boundary", "mbcbot");
+  n += inputin->getItem(&mbctop, "boundary", "mbctop");
 
   // read the boundaries per field
   for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); it++)
@@ -49,7 +43,7 @@ int cboundary::readinifile(cinput *inputin)
   }
 
   // optional parameters
-  n += inputin->getItem(&iboundarytype, "boundary", "iboundarytype", 0);
+  n += inputin->getItem(&swboundarytype, "boundary", "swboundarytype", "0", "default");
 
   // patch type
   n += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , 2 );
@@ -68,20 +62,20 @@ int cboundary::readinifile(cinput *inputin)
 
 int cboundary::setvalues()
 {
-  setbc((*fields->u).databot, (*fields->u).datagradbot, (*fields->u).datafluxbot, bcbotmom, 0., fields->visc);
-  setbc((*fields->v).databot, (*fields->v).datagradbot, (*fields->v).datafluxbot, bcbotmom, 0., fields->visc);
+  setbc((*fields->u).databot, (*fields->u).datagradbot, (*fields->u).datafluxbot, mbcbot, 0., fields->visc);
+  setbc((*fields->v).databot, (*fields->v).datagradbot, (*fields->v).datafluxbot, mbcbot, 0., fields->visc);
 
-  setbc((*fields->u).datatop, (*fields->u).datagradtop, (*fields->u).datafluxtop, bctopmom, 0., fields->visc);
-  setbc((*fields->v).datatop, (*fields->v).datagradtop, (*fields->v).datafluxtop, bctopmom, 0., fields->visc);
+  setbc((*fields->u).datatop, (*fields->u).datagradtop, (*fields->u).datafluxtop, mbctop, 0., fields->visc);
+  setbc((*fields->v).datatop, (*fields->v).datagradtop, (*fields->v).datafluxtop, mbctop, 0., fields->visc);
 
   for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); it++)
   {
-    if(iboundarytype == 0)
+    if(swboundarytype == "0")
     {
       setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc);
       setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc);
     }
-    if(iboundarytype == 1)
+    if(swboundarytype == "1")
     {
       setbc_patch(it->second->datagradbot, patch_facl, patch_facr, sbc[it->first]->bot);
       setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc);
@@ -92,15 +86,15 @@ int cboundary::setvalues()
 
 int cboundary::exec()
 {
-  if(iboundary == 2)
+  if(swboundary == "2")
   {
     // bottom boundary conditions
-    setgcbot_2nd((*fields->u).data, grid->dzh, bcbotmom, 0.);
-    setgcbot_2nd((*fields->v).data, grid->dzh, bcbotmom, 0.);
+    setgcbot_2nd((*fields->u).data, grid->dzh, mbcbot, 0.);
+    setgcbot_2nd((*fields->v).data, grid->dzh, mbcbot, 0.);
 
     // top boundary conditions
-    setgctop_2nd((*fields->u).data, grid->dzh, bctopmom, 0.);
-    setgctop_2nd((*fields->v).data, grid->dzh, bctopmom, 0.);
+    setgctop_2nd((*fields->u).data, grid->dzh, mbctop, 0.);
+    setgctop_2nd((*fields->v).data, grid->dzh, mbctop, 0.);
     
     for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); it++)
     {
@@ -108,17 +102,17 @@ int cboundary::exec()
       setgcbot_2nd(it->second->data, grid->dzh, sbc[it->first]->bcbot, it->second->datagradtop);
     }
   }
-  else if(iboundary == 4)
+  else if(swboundary == "4")
   {
     // bottom boundary conditions
-    setgcbot_4th ((*fields->u).data, grid->z, bcbotmom, 0.);
-    setgcbot_4th ((*fields->v).data, grid->z, bcbotmom, 0.);
+    setgcbot_4th ((*fields->u).data, grid->z, mbcbot, 0.);
+    setgcbot_4th ((*fields->v).data, grid->z, mbcbot, 0.);
     //setgcbot_4th ((*fields->s).data, grid->z, bcbotscal, sbot);
     setgcbotw_4th((*fields->w).data);
 
     // top boundary conditions
-    setgctop_4th((*fields->u).data, grid->z, bctopmom, 0.);
-    setgctop_4th((*fields->v).data, grid->z, bctopmom, 0.);
+    setgctop_4th((*fields->u).data, grid->z, mbctop, 0.);
+    setgctop_4th((*fields->v).data, grid->z, mbctop, 0.);
     //setgctop_4th((*fields->s).data, grid->z, bctopscal, stop);
     setgctopw_4th((*fields->w).data);
     

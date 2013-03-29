@@ -12,10 +12,19 @@ cgrid::cgrid(cmpi *mpiin)
 
   allocated = false;
   mpitypes  = false;
+  fftwplan  = false;
 }
 
 cgrid::~cgrid()
 {
+  if(fftwplan)
+  {
+    fftw_destroy_plan(iplanf);
+    fftw_destroy_plan(iplanb);
+    fftw_destroy_plan(jplanf);
+    fftw_destroy_plan(jplanb);
+  }
+
   if(allocated)
   { 
     delete[] x;
@@ -36,11 +45,6 @@ cgrid::~cgrid()
     fftw_free(fftinj);
     fftw_free(fftoutj);
 
-    fftw_destroy_plan(iplanf);
-    fftw_destroy_plan(iplanb);
-    fftw_destroy_plan(jplanf);
-    fftw_destroy_plan(jplanb);
-
     fftw_cleanup();
   }
 
@@ -59,15 +63,33 @@ int cgrid::readinifile(cinput *inputin)
   n += inputin->getItem(&jtot, "grid", "jtot");
   n += inputin->getItem(&ktot, "grid", "ktot");
 
-  n += inputin->getItem(&spatialorder, "grid", "spatialorder");
+  n += inputin->getItem(&swspatialorder, "grid", "swspatialorder");
+
+  if(!(swspatialorder == "2" || swspatialorder == "4"))
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+    return 1;
+  }
 
   if(n > 0)
     return 1;
  
-  // CvH treat this correctly later, for now keep it because there are no 2nd order stats
-  igc = 3;
-  jgc = 3;
-  kgc = 3;
+  // 2nd order scheme requires only 1 ghost cell, a 4th order requires 2
+  // CvH fix this later...
+  // if(swspatialorder == "2")
+  // {
+  //   igc = 1;
+  //   jgc = 1;
+  //   kgc = 1;
+  // }
+  // else if(swspatialorder == "4")
+  // {
+    igc = 3;
+    jgc = 3;
+    kgc = 3;
+  // }
+  // else
+  //   return 1;
 
   return 0;
 }
@@ -184,8 +206,8 @@ int cgrid::calculate()
     yh[j] = (j-jgc)*dy + yoff;
   }
 
-  // THE CALCULATION OF GHOST CELLS AND FLUX LEVELS HAS TO GO ACCORDING TO NUMERICAL SCHEME!!!
-  if(spatialorder == 2)
+  // the calculation of ghost cells and flux levels has to go according to numerical scheme
+  if(swspatialorder == "2")
   {
     z[kstart-3] = -z[kstart+2];
     z[kstart-2] = -z[kstart+1];
@@ -207,7 +229,7 @@ int cgrid::calculate()
     zh[kend+2] = 2.*zsize - zh[kend-2];
   }
 
-  if(spatialorder == 4)
+  if(swspatialorder == "4")
   {
     // calculate the height of the ghost cell
     z[kstart-1] = -2.*z[kstart] + (1./3.)*z[kstart+1];

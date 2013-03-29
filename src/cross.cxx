@@ -22,8 +22,10 @@ int ccross::readinifile(cinput *inputin)
   int n = 0;
 
   // optional, by default switch cross off
-  n += inputin->getItem(&icross, "postproc", "icross", 0);
-  n += inputin->getItem(&jxz   , "postproc", "jxz"   , 0);
+  n += inputin->getItem(&swcross, "cross", "swcross", 0, "default");
+
+  if(swcross == "1")
+    n += inputin->getItem(&jxz, "cross", "jxz", 0);
 
   if(n > 0)
     return 1;
@@ -31,14 +33,9 @@ int ccross::readinifile(cinput *inputin)
   return 0;
 }
 
-// int ccross::init()
-// {
-//   return 0;
-// }
-
 int ccross::exec(int iteration)
 {
-  if(icross == 0)
+  if(swcross == "0")
     return 0;
 
   if(mpi->mpiid == 0) std::printf("Saving cross sections for iteration %d\n", iteration);
