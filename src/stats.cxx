@@ -27,7 +27,7 @@ int cstats::readinifile(cinput *inputin)
   int n = 0;
 
   // optional, by default switch stats off
-  n += inputin->getItem(&istats, "postproc", "istats", 0);
+  n += inputin->getItem(&swstats, "stats", "swstats", "0", "default");
 
   if(n > 0)
     return 1;
@@ -37,16 +37,16 @@ int cstats::readinifile(cinput *inputin)
 
 int cstats::init()
 {
-  if(istats == 0)
+  if(swstats == "0")
     return 0;
 
-  else if(istats == 4)
+  else if(swstats == "4")
   {
     if(stats_dns->init())
       return 1;
   }
 
-  else if(istats == 22)
+  else if(swstats == "22")
   {
     if(stats_les->init())
       return 1;
@@ -57,16 +57,16 @@ int cstats::init()
 
 int cstats::create(int n)
 {
-  if(istats == 0)
+  if(swstats == "0")
     return 0;
 
-  else if(istats == 4)
+  else if(swstats == "4")
   {
     if(stats_dns->create(n))
       return 1;
   }
 
-  else if(istats == 22)
+  else if(swstats == "22")
   {
     if(stats_les->create(n))
       return 1;
@@ -77,16 +77,16 @@ int cstats::create(int n)
 
 int cstats::exec(int iteration, double time)
 {
-  if(istats == 0)
+  if(swstats == "0")
     return 0;
 
-  else if(istats == 4)
+  else if(swstats == "4")
   {
     if(stats_dns->exec(iteration, time))
       return 1;
   }
 
-  else if(istats == 22)
+  else if(swstats == "22")
   {
     if(stats_les->exec(iteration, time))
       return 1;
