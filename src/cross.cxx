@@ -22,7 +22,7 @@ int ccross::readinifile(cinput *inputin)
   int n = 0;
 
   // optional, by default switch cross off
-  n += inputin->getItem(&swcross, "cross", "swcross", 0, "default");
+  n += inputin->getItem(&swcross, "cross", "swcross", "0", "default");
 
   if(swcross == "1")
     n += inputin->getItem(&jxz, "cross", "jxz", 0);
