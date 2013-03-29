@@ -19,23 +19,23 @@ cfields::~cfields()
   {
     // DEALLOCATE ALL THE FIELDS
     // deallocate the prognostic velocity fields
-    for(fieldmap::iterator it=mp.begin(); it!=mp.end(); it++)
+    for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
       delete it->second;
 
     // deallocate the velocity tendency fields
-    for(fieldmap::iterator it=mt.begin(); it!=mt.end(); it++)
+    for(fieldmap::iterator it=mt.begin(); it!=mt.end(); ++it)
       delete it->second;
 
     // deallocate the prognostic scalar fields
-    for(fieldmap::iterator it=sp.begin(); it!=sp.end(); it++)
+    for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
       delete it->second;
 
     // deallocate the scalar tendency fields
-    for(fieldmap::iterator it=st.begin(); it!=st.end(); it++)
+    for(fieldmap::iterator it=st.begin(); it!=st.end(); ++it)
       delete it->second;
 
     // deallocate the diagnostic scalars
-    for(fieldmap::iterator it=sd.begin(); it!=sd.end(); it++)
+    for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
       delete it->second;
   }
 }
@@ -56,7 +56,7 @@ int cfields::readinifile(cinput *inputin)
   n += inputin->getItem(&slist, "fields", "slist", "");
 
   // initialize the scalars
-  for(std::vector<std::string>::iterator it = slist.begin(); it!=slist.end(); it++)
+  for(std::vector<std::string>::iterator it = slist.begin(); it!=slist.end(); ++it)
   {
     if(initpfld(*it))
       return 1;
@@ -85,23 +85,23 @@ int cfields::init()
 
   // ALLOCATE ALL THE FIELDS
   // allocate the prognostic velocity fields
-  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); it++)
+  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
     n += it->second->init();
 
   // allocate the velocity tendency fields
-  for(fieldmap::iterator it=mt.begin(); it!=mt.end(); it++)
+  for(fieldmap::iterator it=mt.begin(); it!=mt.end(); ++it)
     n += it->second->init();
 
   // allocate the prognostic scalar fields
-  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); it++)
+  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
     n += it->second->init();
 
   // allocate the scalar tendency fields
-  for(fieldmap::iterator it=st.begin(); it!=st.end(); it++)
+  for(fieldmap::iterator it=st.begin(); it!=st.end(); ++it)
     n += it->second->init();
 
   // allocate the diagnostic scalars
-  for(fieldmap::iterator it=sd.begin(); it!=sd.end(); it++)
+  for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
     n += it->second->init();
 
   if(n > 0)
@@ -182,12 +182,12 @@ int cfields::create(cinput *inputin)
   int n = 0;
   
   // Randomnize the momentum
-  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); it++)
+  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
     n +=  randomnize(inputin, it->first, it->second->data);
   
   // Randomnize the scalars
-  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); it++)
-    n +=  addmeanprofile(inputin, it->first, it->second->data);
+  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+    n +=  randomnize(inputin, it->first, it->second->data);
   
   // Add Vortices
   n += addvortexpair(inputin);
@@ -196,13 +196,13 @@ int cfields::create(cinput *inputin)
   n +=  addmeanprofile(inputin, "u", mp["u"]->data);
   n +=  addmeanprofile(inputin, "v", mp["v"]->data);
  
-  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); it++)
+  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
     n +=  addmeanprofile(inputin, it->first, it->second->data);
   
   // set w equal to zero at the boundaries, just to be sure
   int lbot = grid->kstart*grid->icells*grid->jcells;
   int ltop = grid->kend  *grid->icells*grid->jcells;
-  for(int l=0; l<grid->icells*grid->jcells; l++)
+  for(int l=0; l<grid->icells*grid->jcells; ++l)
   {
     w->data[lbot + l] = 0.;
     w->data[ltop + l] = 0.;
@@ -236,24 +236,24 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
 
   // find the location of the randomizer height
   kendrnd = grid->kstart;
-  while(grid->z[kendrnd] <= rndz)
-    kendrnd++;
+  while(grid->zh[kendrnd+1] < rndz)
+    ++kendrnd;
 
   if(kendrnd > grid->kend)
   {
-    printf("ERROR: Randomnizer height kendrnd (%d) higher than domain top (%d)\n", kendrnd, grid->kend);
+    printf("ERROR: Randomnizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
     return 1;
   }
   
-  if(kendrnd == grid->kstart)
+  if((int) kendrnd == grid->kstart)
     kendrnd = grid->kend;
 
-  for(int k=grid->kstart; k<kendrnd; k++)
+  for(int k=grid->kstart; k<kendrnd; ++k)
   {
     rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
     rndfach = std::pow((rndz-grid->zh[k])/rndz, rndbeta);
-    for(int j=grid->jstart; j<grid->jend; j++)
-      for(int i=grid->istart; i<grid->iend; i++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         data[ijk] = rndfac  * rndamp * ((double) std::rand() / (double) RAND_MAX - 0.5);
@@ -280,18 +280,18 @@ int cfields::addvortexpair(cinput *inputin)
   if(nvortexpair > 0)
   {
     if(vortexaxis == 0)
-      for(int k=grid->kstart; k<grid->kend; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
-          for(int i=grid->istart; i<grid->iend; i++)
+      for(int k=grid->kstart; k<grid->kend; ++k)
+        for(int j=grid->jstart; j<grid->jend; ++j)
+          for(int i=grid->istart; i<grid->iend; ++i)
           {
             ijk = i + j*jj + k*kk;
             u->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->xh[i])/grid->xsize)*std::cos(pi*grid->z [k]/grid->zsize);
             w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->x [i])/grid->xsize)*std::sin(pi*grid->zh[k]/grid->zsize);
           }
     else if(vortexaxis == 1)
-      for(int k=grid->kstart; k<grid->kend; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
-          for(int i=grid->istart; i<grid->iend; i++)
+      for(int k=grid->kstart; k<grid->kend; ++k)
+        for(int j=grid->jstart; j<grid->jend; ++j)
+          for(int i=grid->istart; i<grid->iend; ++i)
           {
             ijk = i + j*jj + k*kk;
             v->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->yh[j])/grid->ysize)*std::cos(pi*grid->z [k]/grid->zsize);
@@ -307,13 +307,16 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
   int n;
   int ijk, jj, kk;
   double proftemp[grid->kmax];
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
   
   if(inputin->getProf(proftemp, fld, grid->kmax))
     return 1;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
-      for(int i=grid->istart; i<grid->iend; i++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         data[ijk] += proftemp[k-grid->kstart];
@@ -329,7 +332,7 @@ int cfields::load(int n)
   nerror += u->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
   nerror += v->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
   nerror += w->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); ++itProg)
     nerror += itProg->second->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
 
   if(nerror > 0)
@@ -344,7 +347,7 @@ int cfields::save(int n)
   v->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
   w->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
   // p->save(n);
-  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); itProg++)
+  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); ++itProg)
     itProg->second->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
 
   return 0;
@@ -369,7 +372,7 @@ int cfields::boundary()
   grid->boundary_cyclic(s->data);
   mpi->waitall();
 
-  // for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; k++)
+  // for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; ++k)
   //   std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
 
   return 0;
@@ -405,10 +408,10 @@ double cfields::calcmass(double * restrict s, double * restrict dz)
 
   double mass = 0;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         mass += s[ijk]*dz[k];
@@ -432,10 +435,10 @@ double cfields::calcmom_2nd(double * restrict u, double * restrict v, double * r
   double momentum;
   momentum = 0;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
@@ -458,10 +461,10 @@ double cfields::calctke_2nd(double * restrict u, double * restrict v, double * r
 
   double tke = 0;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         tke += ( interp2(u[ijk]*u[ijk], u[ijk+ii]*u[ijk+ii]) 
