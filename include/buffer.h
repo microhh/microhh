@@ -18,9 +18,6 @@ class cbuffer
     int save();
     int load();
 
-    // CvH make private later
-    int ibuffer;
-
   private:
     cgrid   *grid;
     cfields *fields;
@@ -35,6 +32,7 @@ class cbuffer
     std::map<std::string, double*> bufferprofs;
 
     bool allocated;
+    std::string swbuffer;
 
     int setbuffer(double *, double *);
     int buffer   (double *, double *, double *, double *);
