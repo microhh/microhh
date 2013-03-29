@@ -47,6 +47,12 @@ int cbuffer::init()
 {
   if(swbuffer == "1")
   {
+    if(bufferkstart > grid->kmax-2)
+    {
+      std::printf("ERROR bufferkstart has to be less than kmax - 2\n");
+      return 1;
+    }
+
     // allocate the buffer array 
     bufferkcells = grid->kmax-bufferkstart-1;
 
