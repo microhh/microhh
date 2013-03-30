@@ -213,6 +213,29 @@ int cgrid::calculate()
       zh[k] = 0.5*(z[k-1]+z[k]);
     zh[kstart] = 0.;
     zh[kend]   = zsize;
+
+    // calculate the half levels according to the numerical scheme
+    // compute the height of the grid cells
+    for(k=1; k<kcells; k++)
+    {
+      dzh [k] = z[k] - z[k-1];
+      dzhi[k] = 1./dzh[k];
+    }
+    dzh [kstart-1] = dzh [kstart+1];
+    dzhi[kstart-1] = dzhi[kstart+1];
+
+    // compute the height of the grid cells
+    for(k=1; k<kcells-1; k++)
+    {
+      dz [k] = zh[k+1] - zh[k];
+      dzi[k] = 1./dz[k];
+    }
+    dz [kstart-1] = dz [kstart];
+    dzi[kstart-1] = dzi[kstart];
+    dz [kend]     = dz [kend-1];
+    dzi[kend]     = dzi[kend-1];
+
+    // do not calculate 4th order gradients for 2nd order
   }
 
   if(swspatialorder == "4")
@@ -231,55 +254,43 @@ int cgrid::calculate()
 
     zh[kstart-1] = bi0*z[kstart-2] + bi1*z[kstart-1] + bi2*z[kstart] + bi3*z[kstart+1];
     zh[kend+1]   = ti0*z[kend-2  ] + ti1*z[kend-1  ] + ti2*z[kend  ] + ti3*z[kend+1  ];
+
+    // calculate the half levels according to the numerical scheme
+    // compute the height of the grid cells
+    for(k=1; k<kcells; k++)
+    {
+      dzh [k] = z[k] - z[k-1];
+      dzhi[k] = 1./dzh[k];
+    }
+    dzh [kstart-3] = dzh [kstart+3];
+    dzhi[kstart-3] = dzhi[kstart+3];
+
+    // compute the height of the grid cells
+    for(k=1; k<kcells-1; k++)
+    {
+      dz [k] = zh[k+1] - zh[k];
+      dzi[k] = 1./dz[k];
+    }
+    dz [kstart-3] = dz [kstart+2];
+    dzi[kstart-3] = dzi[kstart+2];
+    dz [kend+2] = dz [kend-3];
+    dzi[kend+2] = dzi[kend-3];
+
+    // calculate the fourth order gradients
+    for(k=kstart; k<kend; k++)
+    {
+      dzi4 [k] = 1./(cg0*zh[k-1] + cg1*zh[k  ] + cg2*zh[k+1] + cg3*zh[k+2]);
+      dzhi4[k] = 1./(cg0*z [k-2] + cg1*z [k-1] + cg2*z [k  ] + cg3*z [k+1]);
+    }
+    dzhi4[kend  ] = 1./(cg0*z[kend-2] + cg1*z[kend-1] + cg2*z[kend] + cg3*z[kend+1]);
+
+    // bc's
+    dzi4 [kstart-1] = 1./(bg0*zh[kstart-1] + bg1*zh[kstart  ] + bg2*zh[kstart+1] + bg3*zh[kstart+2]);
+    dzhi4[kstart-1] = 1./(bg0*z [kstart-2] + bg1*z [kstart-1] + bg2*z [kstart  ] + bg3*z [kstart+1]);
+
+    dzi4 [kend  ] = 1./(tg0*zh[kend-2] + tg1*zh[kend-1] + tg2*zh[kend] + tg3*zh[kend+1]);
+    dzhi4[kend+1] = 1./(tg0*z [kend-2] + tg1*z [kend-1] + tg2*z [kend] + tg3*z [kend+1]);
   }
-
-  // calculate the half levels according to the numerical scheme
-  // compute the height of the grid cells
-  for(k=1; k<kcells; k++)
-  {
-    dzh [k] = z[k] - z[k-1];
-    dzhi[k] = 1./dzh[k];
-  }
-  dzh [kstart-3] = dzh [kstart+3];
-  dzhi[kstart-3] = dzhi[kstart+3];
-
-  // compute the height of the grid cells
-  for(k=1; k<kcells-1; k++)
-  {
-    dz [k] = zh[k+1] - zh[k];
-    dzi[k] = 1./dz[k];
-  }
-  dz [kstart-3] = dz [kstart+2];
-  dzi[kstart-3] = dzi[kstart+2];
-  dz [kend+2] = dz [kend-2];
-  dzi[kend+2] = dzi[kend-2];
-
-  // calculate the fourth order gradients
-  for(k=kstart; k<kend; k++)
-  {
-    dzi4 [k] = 1./(cg0*zh[k-1] + cg1*zh[k  ] + cg2*zh[k+1] + cg3*zh[k+2]);
-    dzhi4[k] = 1./(cg0*z [k-2] + cg1*z [k-1] + cg2*z [k  ] + cg3*z [k+1]);
-  }
-  dzhi4[kend  ] = 1./(cg0*z[kend-2] + cg1*z[kend-1] + cg2*z[kend] + cg3*z[kend+1]);
-
-  // bc's
-  // dzi4 [kstart-1] = dzi4 [kstart  ];
-  // dzhi4[kstart-1] = dzhi4[kstart+1];
-  dzi4 [kstart-1] = 1./(bg0*zh[kstart-1] + bg1*zh[kstart  ] + bg2*zh[kstart+1] + bg3*zh[kstart+2]);
-  dzhi4[kstart-1] = 1./(bg0*z [kstart-2] + bg1*z [kstart-1] + bg2*z [kstart  ] + bg3*z [kstart+1]);
-
-  // dzi4 [kend  ] = dzi4 [kend-1];
-  // dzhi4[kend+1] = dzhi4[kend-1];
-  dzi4 [kend  ] = 1./(tg0*zh[kend-2] + tg1*zh[kend-1] + tg2*zh[kend] + tg3*zh[kend+1]);
-  dzhi4[kend+1] = 1./(tg0*z [kend-2] + tg1*z [kend-1] + tg2*z [kend] + tg3*z [kend+1]);
-
-  // dzi4 [kstart-3] = dzi4 [kstart+2];
-  // dzhi4[kstart-3] = dzhi4[kstart+3];
-  // dzi4 [kstart-2] = dzi4 [kstart+1];
-  // dzhi4[kstart-2] = dzhi4[kstart+2];
-  // dzi4 [kend+1] = dzi4 [kend-2];
-  // dzi4 [kend+2] = dzi4 [kend-3];
-  // dzhi4[kend+2] = dzhi4[kend-2];
 
   return 0;
 }
