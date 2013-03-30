@@ -20,8 +20,8 @@ int cmpi::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&npx, "grid", "npx", 1);
-  n += inputin->getItem(&npy, "grid", "npy", 1);
+  n += inputin->getItem(&npx, "mpi", "npx", 1);
+  n += inputin->getItem(&npy, "mpi", "npy", 1);
 
   if(n > 0)
     return 1;
