@@ -6,7 +6,7 @@ set(C_COMPILER_WRAPPER mpicc)
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
-set(USER_CXX_FLAGS_DEBUG "-O0 -g")
+set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 set(FFTW_INCLUDE_DIR   "/usr/include")
 set(FFTW_LIB           "/usr/lib64/libfftw3.a")

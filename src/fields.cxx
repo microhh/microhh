@@ -183,29 +183,29 @@ int cfields::create(cinput *inputin)
   
   // Randomnize the momentum
   for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
-    n +=  randomnize(inputin, it->first, it->second->data);
+    n += randomnize(inputin, it->first, it->second->data);
   
   // Randomnize the scalars
   for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    n +=  randomnize(inputin, it->first, it->second->data);
+    n += randomnize(inputin, it->first, it->second->data);
   
   // Add Vortices
   n += addvortexpair(inputin);
   
   // Add the mean profiles to the fields
-  n +=  addmeanprofile(inputin, "u", mp["u"]->data);
-  n +=  addmeanprofile(inputin, "v", mp["v"]->data);
+  n += addmeanprofile(inputin, "u", mp["u"]->data);
+  n += addmeanprofile(inputin, "v", mp["v"]->data);
  
   for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    n +=  addmeanprofile(inputin, it->first, it->second->data);
+    n += addmeanprofile(inputin, it->first, it->second->data);
   
   // set w equal to zero at the boundaries, just to be sure
   int lbot = grid->kstart*grid->icells*grid->jcells;
   int ltop = grid->kend  *grid->icells*grid->jcells;
   for(int l=0; l<grid->icells*grid->jcells; ++l)
   {
-    w->data[lbot + l] = 0.;
-    w->data[ltop + l] = 0.;
+    w->data[lbot+l] = 0.;
+    w->data[ltop+l] = 0.;
   }
   
   return (n>0);
@@ -214,9 +214,10 @@ int cfields::create(cinput *inputin)
 int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data)
 {
   int n = 0;
-    // set mpiid as random seed to avoid having the same field at all procs
+
+  // set mpiid as random seed to avoid having the same field at all procs
   int static seed = 0;
-  if (seed)
+  if(seed)
   {
     seed = mpi->mpiid;
     std::srand(seed);
@@ -267,10 +268,12 @@ int cfields::addvortexpair(cinput *inputin)
 {
   // add a double vortex to the initial conditions
   const double pi = std::acos((double)-1.);
-  int n, ijk, jj, kk;
+  int ijk, jj, kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+
+  int n = 0;
     
   // optional parameters
   n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", "", 0    );
@@ -304,7 +307,6 @@ int cfields::addvortexpair(cinput *inputin)
 
 int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict data)
 {
-  int n;
   int ijk, jj, kk;
   double proftemp[grid->kmax];
 
@@ -322,7 +324,7 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
         data[ijk] += proftemp[k-grid->kstart];
       }
       
-  return (n>0);
+  return 0;
 }
 
 int cfields::load(int n)
