@@ -75,21 +75,18 @@ int cgrid::readinifile(cinput *inputin)
     return 1;
  
   // 2nd order scheme requires only 1 ghost cell, a 4th order requires 2
-  // CvH fix this later...
-  // if(swspatialorder == "2")
-  // {
-  //   igc = 1;
-  //   jgc = 1;
-  //   kgc = 1;
-  // }
-  // else if(swspatialorder == "4")
-  // {
+  if(swspatialorder == "2")
+  {
+    igc = 1;
+    jgc = 1;
+    kgc = 1;
+  }
+  else if(swspatialorder == "4")
+  {
     igc = 3;
     jgc = 3;
     kgc = 3;
-  // }
-  // else
-  //   return 1;
+  }
 
   return 0;
 }
@@ -209,24 +206,13 @@ int cgrid::calculate()
   // the calculation of ghost cells and flux levels has to go according to numerical scheme
   if(swspatialorder == "2")
   {
-    z[kstart-3] = -z[kstart+2];
-    z[kstart-2] = -z[kstart+1];
-    z[kstart-1] = -z[kstart  ];
-
-    z[kend  ] = 2.*zsize - z[kend-1];
-    z[kend+1] = 2.*zsize - z[kend-2];
-    z[kend+2] = 2.*zsize - z[kend-3];
+    z[kstart-1] = -z[kstart];
+    z[kend]     = 2.*zsize - z[kend-1];
 
     for(k=kstart+1; k<kend; k++)
       zh[k] = 0.5*(z[k-1]+z[k]);
-    zh[kstart  ] = 0.;
-    zh[kend] = zsize;
-
-    zh[kstart-1] = -zh[kstart+1];
-    zh[kstart-2] = -zh[kstart+2];
-    zh[kstart-3] = -zh[kstart+3];
-    zh[kend+1] = 2.*zsize - zh[kend-1];
-    zh[kend+2] = 2.*zsize - zh[kend-2];
+    zh[kstart] = 0.;
+    zh[kend]   = zsize;
   }
 
   if(swspatialorder == "4")
@@ -294,6 +280,56 @@ int cgrid::calculate()
   // dzi4 [kend+1] = dzi4 [kend-2];
   // dzi4 [kend+2] = dzi4 [kend-3];
   // dzhi4[kend+2] = dzhi4[kend-2];
+
+  return 0;
+}
+
+// interpolation functions
+// CvH merge interpolate functions later to something more consise but still vectorizable
+int cgrid::interpolatex_2nd(double * restrict out, double * restrict in, int locx)
+{
+  // interpolation function, locx = 1 indicates that the reference is at the half level
+  int ijk,ii,jj,kk,ihlf;
+
+  ii = 1;
+  jj = icells;
+  kk = icells*jcells;
+
+  ihlf = locx*ii;
+
+  // interpolate in x
+  for(int k=0; k<kcells; k++)
+    for(int j=jstart; j<jend; j++)
+#pragma ivdep
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        out[ijk] = 0.5*(in[ijk-ii+ihlf] + in[ijk+ihlf]);
+      }
+
+  return 0;
+}
+
+int cgrid::interpolatey_2nd(double * restrict out, double * restrict in, int locy)
+{
+  // interpolation function, locy = 1 indicates that the reference is at the half level
+  int ijk,ii,jj,kk,jhlf;
+
+  ii = 1;
+  jj = icells;
+  kk = icells*jcells;
+
+  jhlf = locy*jj;
+
+  // interpolate in y
+  for(int k=0; k<kcells; k++)
+    for(int j=jstart; j<jend; j++)
+#pragma ivdep
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        out[ijk] = 0.5*(in[ijk-jj+jhlf] + in[ijk+jhlf]);
+      }
 
   return 0;
 }
@@ -384,13 +420,3 @@ int cgrid::interpolatez_4th(double * restrict out, double * restrict in, int loc
 */
 // end of interpolation functions
 
-// CvH remove these two...
-inline double cgrid::interp4(const double a, const double b, const double c, const double d)
-{
-  return (-a + 9.*b + 9.*c - d) / 16.;
-}
-
-inline double cgrid::grad4x(const double a, const double b, const double c, const double d)
-{
-  return (-(d-a) + 27.*(c-b)); 
-}

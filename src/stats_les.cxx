@@ -337,17 +337,16 @@ int cstats_les::calcflux(double * restrict data, double * restrict w, double * r
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  // CvH create 2nd order interpolation function
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
   if(locx == 1)
   {
-    grid->interpolatex_4th(tmp1, w, 0);
+    grid->interpolatex_2nd(tmp1, w, 0);
     calcw = tmp1;
   }
   else if(locy == 1)
   {
-    grid->interpolatey_4th(tmp1, w, 0);
+    grid->interpolatey_2nd(tmp1, w, 0);
     calcw = tmp1;
   }
   
@@ -455,3 +454,4 @@ int cstats_les::calcdiff(double * restrict data, double * restrict evisc, double
 
   return 0;
 }
+

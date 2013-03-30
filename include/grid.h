@@ -101,7 +101,8 @@ class cgrid
     int fftbackward(double *, double *, double *, double *, double *, double *);
 
     // interpolation functions
-    // CvH 2nd order functions are necessary
+    int interpolatex_2nd(double *, double *, int);
+    int interpolatey_2nd(double *, double *, int);
     int interpolatex_4th(double *, double *, int);
     int interpolatey_4th(double *, double *, int);
     // int interpolatez_4th(double *, double *, int);
@@ -128,8 +129,5 @@ class cgrid
     MPI_Datatype subxzslice;
     double *profl;
 #endif
-
-    inline double interp4       (const double, const double, const double, const double);
-    inline double grad4x        (const double, const double, const double, const double);
 };
 #endif
