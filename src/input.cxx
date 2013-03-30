@@ -366,7 +366,7 @@ int cinput::checkItemExists(std::string cat, std::string item, std::string el)
 // overloaded return functions
 int cinput::getItem(int *value, std::string cat, std::string item, std::string el)
 {
-  if(el.compare("default"))
+  if(!el.empty())
   {
     if(!checkItemExists(cat, item, el))
     {
@@ -389,9 +389,9 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
   return 0;
 }
 
-int cinput::getItem(int *value, std::string cat, std::string item, int def, std::string el)
+int cinput::getItem(int *value, std::string cat, std::string item, std::string el, int def)
 {
-  if(el.compare("default"))
+  if(!el.empty())
   {
     if(!checkItemExists(cat, item, el))
     {
@@ -447,7 +447,7 @@ int cinput::checkItem(int *value, std::string cat, std::string item, std::string
 
 int cinput::getItem(double *value, std::string cat, std::string item, std::string el)
 {
-  if(el.compare("default"))
+  if(!el.empty())
   {
     if(!checkItemExists(cat, item, el))
     {
@@ -470,9 +470,9 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
   return 0;
 }
 
-int cinput::getItem(double *value, std::string cat, std::string item, double def, std::string el)
+int cinput::getItem(double *value, std::string cat, std::string item, std::string el, double def)
 {
-  if(el.compare("default"))
+  if(!el.empty())
   {
     if(!checkItemExists(cat, item, el))
     {
@@ -528,7 +528,7 @@ int cinput::checkItem(double *value, std::string cat, std::string item, std::str
 
 int cinput::getItem(bool *value, std::string cat, std::string item, std::string el)
 {
-  if(el.compare("default"))
+  if(!el.empty())
   {
     if(!checkItemExists(cat, item, el))
     {
@@ -551,9 +551,9 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
   return 0;
 }
 
-int cinput::getItem(bool *value, std::string cat, std::string item, bool def, std::string el)
+int cinput::getItem(bool *value, std::string cat, std::string item, std::string el, bool def)
 {
-  if(el.compare("default"))
+  if(!el.empty())
   {
     if(!checkItemExists(cat, item, el))
     {
@@ -620,7 +620,7 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
 
 int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el)
 {
-  if(el.compare("default"))
+  if(!el.empty())
   {
     if(!checkItemExists(cat, item, el))
     {
@@ -643,9 +643,9 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
   return 0;
 }
 
-int cinput::getItem(std::string *value, std::string cat, std::string item, std::string def, std::string el)
+int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el, std::string def)
 {
-  if(el.compare("default"))
+  if(!el.empty())
   {
     if(!checkItemExists(cat, item, el))
     {

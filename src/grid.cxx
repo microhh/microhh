@@ -55,15 +55,15 @@ int cgrid::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&xsize, "grid", "xsize");
-  n += inputin->getItem(&ysize, "grid", "ysize");
-  n += inputin->getItem(&zsize, "grid", "zsize");
+  n += inputin->getItem(&xsize, "grid", "xsize", "");
+  n += inputin->getItem(&ysize, "grid", "ysize", "");
+  n += inputin->getItem(&zsize, "grid", "zsize", "");
 
-  n += inputin->getItem(&itot, "grid", "itot");
-  n += inputin->getItem(&jtot, "grid", "jtot");
-  n += inputin->getItem(&ktot, "grid", "ktot");
+  n += inputin->getItem(&itot, "grid", "itot", "");
+  n += inputin->getItem(&jtot, "grid", "jtot", "");
+  n += inputin->getItem(&ktot, "grid", "ktot", "");
 
-  n += inputin->getItem(&swspatialorder, "grid", "swspatialorder");
+  n += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
 
   if(!(swspatialorder == "2" || swspatialorder == "4"))
   {

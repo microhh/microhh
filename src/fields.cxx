@@ -46,10 +46,10 @@ int cfields::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&visc , "fields", "visc" );
+  n += inputin->getItem(&visc , "fields", "visc", "" );
 
   // LES
-  n += inputin->getItem(&tPr, "fields", "tPr", 1./3.);
+  n += inputin->getItem(&tPr, "fields", "tPr", "", 1./3.);
 
   // read the name of the passive scalars
   std::vector<std::string> slist;
@@ -60,7 +60,7 @@ int cfields::readinifile(cinput *inputin)
   {
     if(initpfld(*it))
       return 1;
-    n += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
+    n += inputin->getItem(&sp[*it]->visc, "fields", *it, "svisc");
   }
 
   // initialize the basic set of fields
@@ -230,9 +230,9 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   kk = grid->icells*grid->jcells;
   
   // look up the specific randomnizer variables
-  n += inputin->getItem(&rndamp , "fields", "rndamp" , 0.,fld);
-  n += inputin->getItem(&rndz   , "fields", "rndz"   , 0.,fld);
-  n += inputin->getItem(&rndbeta, "fields", "rndbeta", 0.,fld);
+  n += inputin->getItem(&rndamp , "fields", "rndamp" , fld, 0.);
+  n += inputin->getItem(&rndz   , "fields", "rndz"   , fld, 0.);
+  n += inputin->getItem(&rndbeta, "fields", "rndbeta", fld, 0.);
 
   // find the location of the randomizer height
   kendrnd = grid->kstart;
@@ -273,9 +273,9 @@ int cfields::addvortexpair(cinput *inputin)
   kk = grid->icells*grid->jcells;
     
   // optional parameters
-  n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", 0    );
-  n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , 1.e-3);
-  n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , 1    );
+  n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", "", 0    );
+  n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , "", 1.e-3);
+  n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , "", 1    );
 
   if(nvortexpair > 0)
   {

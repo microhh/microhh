@@ -27,7 +27,7 @@ int cstats::readinifile(cinput *inputin)
   int n = 0;
 
   // optional, by default switch stats off
-  n += inputin->getItem(&swstats, "stats", "swstats", "0", "default");
+  n += inputin->getItem(&swstats, "stats", "swstats", "", "0");
 
   if(n > 0)
     return 1;

@@ -27,13 +27,13 @@ int cbuffer::readinifile(cinput *inputin)
   int n = 0;
 
   // optional parameters
-  n += inputin->getItem(&swbuffer, "buffer", "swbuffer", "0", "default");
+  n += inputin->getItem(&swbuffer, "buffer", "swbuffer", "", "0");
 
   if(swbuffer == "1")
   {
-    n += inputin->getItem(&bufferkstart, "buffer", "bufferkstart", 0 );
-    n += inputin->getItem(&buffersigma,  "buffer", "buffersigma" , 2.);
-    n += inputin->getItem(&bufferbeta,   "buffer", "bufferbeta"  , 2.);
+    n += inputin->getItem(&bufferkstart, "buffer", "bufferkstart", "", 0 );
+    n += inputin->getItem(&buffersigma,  "buffer", "buffersigma" , "", 2.);
+    n += inputin->getItem(&bufferbeta,   "buffer", "bufferbeta"  , "", 2.);
   }
 
   // if one argument fails, then crash

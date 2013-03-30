@@ -21,13 +21,13 @@ int cbuoyancy::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&swbuoyancy , "buoyancy", "swbuoyancy");
+  n += inputin->getItem(&swbuoyancy , "buoyancy", "swbuoyancy", "");
 
   // request buoyancy field
   // CvH reconsider usage of the name s
   if(swbuoyancy == "2" || swbuoyancy == "4")
   {
-    n += inputin->getItem(&gravitybeta, "buoyancy", "gravitybeta");
+    n += inputin->getItem(&gravitybeta, "buoyancy", "gravitybeta", "");
 
     n += fields->initpfld("s");
     n += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");

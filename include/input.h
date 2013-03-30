@@ -15,17 +15,17 @@ class cinput
     ~cinput();
     int readinifile ();
     int readproffile();
-    int getItem(int *        , std::string, std::string, std::string el="default");
-    int getItem(double *     , std::string, std::string, std::string el="default");
-    int getItem(bool *       , std::string, std::string, std::string el="default");
-    int getItem(std::string *, std::string, std::string, std::string el="default");
-    int getItem(int *        , std::string, std::string, int        , std::string el="default");
-    int getItem(double *     , std::string, std::string, double     , std::string el="default");
-    int getItem(bool *       , std::string, std::string, bool       , std::string el="default");
-    int getItem(std::string *, std::string, std::string, std::string, std::string el="default");
+    int getItem(int *        , std::string, std::string, std::string);
+    int getItem(int *        , std::string, std::string, std::string, int);
+    int getItem(double *     , std::string, std::string, std::string);
+    int getItem(double *     , std::string, std::string, std::string, double);
+    int getItem(bool *       , std::string, std::string, std::string);
+    int getItem(bool *       , std::string, std::string, std::string, bool);
+    int getItem(std::string *, std::string, std::string, std::string);
+    int getItem(std::string *, std::string, std::string, std::string, std::string);
 
     // list retrieval
-    int getItem(std::vector<std::string> *, std::string, std::string, std::string el="default");
+    int getItem(std::vector<std::string> *, std::string, std::string, std::string);
 
     int getProf(double *     , std::string, int size);
     int clear();
