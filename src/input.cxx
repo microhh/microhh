@@ -396,7 +396,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %7d\t (%s)\n", cwho, *value, cwhy);
+  std::printf("%s= %9d\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -438,7 +438,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %7d\t (%s)\n", cwho, *value, cwhy);
+  std::printf("%s= %9d\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -510,7 +510,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %7.4G\t (%s)\n", cwho, *value, cwhy);
+  std::printf("%s= %9.4G\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -552,7 +552,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %7.4G\t (%s)\n", cwho,*value, cwhy);
+  std::printf("%s= %9.4G\t (%s)\n", cwho,*value, cwhy);
   return 0;
 }
 
@@ -624,7 +624,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "   true" : "  false", cwhy);
+  std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
   return 0;
 }
 
@@ -666,7 +666,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "   true" : "  false", cwhy);
+  std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
   return 0;
 }
 
@@ -749,7 +749,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %7s\t (%s)\n", cwho,value->c_str(), cwhy);
+  std::printf("%s= %9s\t (%s)\n", cwho,value->c_str(), cwhy);
   return 0;
 }
 
@@ -791,7 +791,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %7s\t (%s)\n", cwho, value->c_str(), cwhy);
+  std::printf("%s= %9s\t (%s)\n", cwho, value->c_str(), cwhy);
   return 0;
 }
 
@@ -827,20 +827,28 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
 // list retrieval function
 int cinput::getItem(std::vector<std::string> *value, std::string cat, std::string item, std::string def)
 {
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+  strncat(cwho,"                          ",30-strlen(cwho));
   if(checkItemExists(cat, item))
   {
-    std::printf("[%s][%s]\t NOT FOUND\n",cat.c_str(),item.c_str());
+    std::printf("%s\t NOT FOUND\n",cwho);
   }
   else
   {
     if(checkItem(value, cat, item))
       return 1;
-    std::printf("[%s][%s]\t=",cat.c_str(),item.c_str());
+    std::printf("%s= ",cwho);
     for(std::vector<std::string>::iterator it = value->begin(); it !=value->end()-1; ++it)
     {
-      std::cout << *it << ",";
+      std::printf("%s, ",it->c_str());
     }
-    std::cout << *(value->end()-1)<< std::endl;
+    std::printf("%s\n",(value->end()-1)->c_str());
   }
 
   return 0;
