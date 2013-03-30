@@ -126,7 +126,8 @@ int cinput::readinifile()
         std::string itemstring(lhs);
         std::string elementstring(element);
         std::string valuestring(rhs);
-        inputlist[blockstring][itemstring][elementstring] = valuestring;
+        inputlist[blockstring][itemstring][elementstring].data   = valuestring;
+        inputlist[blockstring][itemstring][elementstring].isused = false;
       }
       else
       {
@@ -417,7 +418,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, int def, std:
 int cinput::checkItem(int *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], temp[256];
-  std::strcpy(inputstring, inputlist[cat][item][el].c_str());
+  std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
 
   int inputint;
   int n = std::sscanf(inputstring, " %d %[^\n] ", &inputint, temp);
@@ -439,6 +440,7 @@ int cinput::checkItem(int *value, std::string cat, std::string item, std::string
       return 1;
     }
   }
+  inputlist[cat][item][el].isused = true;
 
   return 0;
 }
@@ -497,7 +499,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, double def
 int cinput::checkItem(double *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], temp[256];
-  std::strcpy(inputstring, inputlist[cat][item][el].c_str());
+  std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
 
   double inputdouble;
   int n = std::sscanf(inputstring, " %lf %[^\n] ", &inputdouble, temp);
@@ -519,6 +521,7 @@ int cinput::checkItem(double *value, std::string cat, std::string item, std::str
       return 1;
     }
   }
+  inputlist[cat][item][el].isused = true;
 
   return 0;
 }
@@ -577,7 +580,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, bool def, st
 int cinput::checkItem(bool *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], inputbool[256], temp[256];
-  std::strcpy(inputstring, inputlist[cat][item][el].c_str());
+  std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
 
   int n = std::sscanf(inputstring, " %s %[^\n] ", inputbool, temp);
 
@@ -610,6 +613,7 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
       return 1;
     }
   }
+  inputlist[cat][item][el].isused = true;
 
   return 0;
 }
@@ -668,7 +672,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
 int cinput::checkItem(std::string *value, std::string cat, std::string item, std::string el)
 {
   std::string inputstring, dummy;
-  inputstring = inputlist[cat][item][el];
+  inputstring = inputlist[cat][item][el].data;
 
   int n = std::sscanf(inputstring.c_str(), "%s %s",value->c_str(), dummy.c_str());
 
@@ -689,6 +693,7 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
       return 1;
     }
   }
+  inputlist[cat][item][el].isused = true;
 
   return 0;
 }
@@ -711,7 +716,7 @@ int cinput::getItem(std::vector<std::string> *value, std::string cat, std::strin
 int cinput::checkItem(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
   std::string inputstring, dummy;
-  inputstring = inputlist[cat][item][el];
+  inputstring = inputlist[cat][item][el].data;
 
   char temp1[256];
   char * temp2;
@@ -745,7 +750,33 @@ int cinput::checkItem(std::vector<std::string> *value, std::string cat, std::str
     // retrieve the next raw substring
     temp2 = std::strtok(NULL, ",");
   }
+  inputlist[cat][item][el].isused = true;
 
+  return 0;
+}
+
+int cinput::printUnused()
+{
+  for(inputmap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
+  {
+    for(inputmap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
+    {
+      for(inputmap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
+      {
+	if(!it3->second.isused)
+	{
+	  if(it3->first == "default")
+	  {
+	    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
+	  }
+	  else
+	  {
+	    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
+	  }
+	}
+      }
+    }
+  }
   return 0;
 }
 

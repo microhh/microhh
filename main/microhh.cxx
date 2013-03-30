@@ -60,6 +60,7 @@ int main(int argc, char *argv[])
   }
 
   // free the memory of the input
+  input.printUnused();
   input.clear();
 
   // run the model

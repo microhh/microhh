@@ -29,6 +29,7 @@ class cinput
 
     int getProf(double *     , std::string, int size);
     int clear();
+    int printUnused();
 
   private:
     cmpi *mpi;
@@ -41,7 +42,12 @@ class cinput
     // list retrieval
     int checkItem(std::vector<std::string> *, std::string, std::string, std::string el="default");
 
-    typedef std::map<std::string, std::string> inputmap1d;
+    struct inputtype
+    {
+      std::string data;
+      bool isused;
+    };
+    typedef std::map<std::string, inputtype> inputmap1d;
     typedef std::map<std::string, inputmap1d> inputmap2d;
     typedef std::map<std::string, inputmap2d> inputmap;
     inputmap inputlist;
@@ -49,5 +55,6 @@ class cinput
     profmap proflist;
     std::vector<std::string> varnames;
     std::vector<double> varvalues;
+    std::string isused;
 };
 #endif
