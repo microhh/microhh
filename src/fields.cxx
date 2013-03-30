@@ -217,9 +217,11 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
 
   // set mpiid as random seed to avoid having the same field at all procs
   int static seed = 0;
-  if(seed)
+
+  if(!seed)
   {
-    seed = mpi->mpiid;
+    n += inputin->getItem(&seed, "fields", "rndseed" , "", 2);
+    seed += mpi->mpiid;
     std::srand(seed);
   }
   
@@ -238,7 +240,9 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   // find the location of the randomizer height
   kendrnd = grid->kstart;
   while(grid->zh[kendrnd+1] < rndz)
+  {
     ++kendrnd;
+  }
 
   if(kendrnd > grid->kend)
   {
@@ -247,7 +251,9 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   }
   
   if((int) kendrnd == grid->kstart)
+  {
     kendrnd = grid->kend;
+  }
 
   for(int k=grid->kstart; k<kendrnd; ++k)
   {
