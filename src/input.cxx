@@ -68,7 +68,8 @@ int cinput::readinifile()
     }
     mpi->broadcast(inputline, 256);
 
-    for(int i = 0; inputline[i] != '\0'; i++){
+    for(int i = 0; inputline[i] != '\0'; i++)
+    {
       inputline[i] = tolower(inputline[i]);
     }
 
@@ -93,7 +94,7 @@ int cinput::readinifile()
       else
       {
         if(mpi->mpiid == 0) std::printf("ERROR line %d: illegal block specification [%s]\n", nline, temp1);
-        nerrors++;
+        return 1;
       }
       continue;
     }
@@ -109,7 +110,7 @@ int cinput::readinifile()
         {
           if(mpi->mpiid == 0) std::printf("ERROR line %d: illegal item [?][%s] = \"%s\"\n", nline, lhs, rhs);
           nerrors++;
-          continue;
+          return 1;
         }
 
         if(n ==1)
@@ -120,8 +121,16 @@ int cinput::readinifile()
         std::string itemstring(lhs);
         std::string elementstring(element);
         std::string valuestring(rhs);
-        inputlist[blockstring][itemstring][elementstring].data   = valuestring;
-        inputlist[blockstring][itemstring][elementstring].isused = false;
+	if(checkItemExists(blockstring,itemstring,elementstring))
+	{
+	  inputlist[blockstring][itemstring][elementstring].data   = valuestring;
+	  inputlist[blockstring][itemstring][elementstring].isused = false;
+	}
+	else
+	{
+	  if(mpi->mpiid == 0) std::printf("ERROR line %d: Item [%s][%s][%s] defined for the second time\n", nline, block, lhs, element);
+	  return 1;
+	}
       }
       else
       {
@@ -396,7 +405,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %9d\t (%s)\n", cwho, *value, cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9d\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -438,7 +447,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %9d\t (%s)\n", cwho, *value, cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9d\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -510,7 +519,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %9.4G\t (%s)\n", cwho, *value, cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9.4G\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -552,7 +561,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %9.4G\t (%s)\n", cwho,*value, cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9.4G\t (%s)\n", cwho,*value, cwhy);
   return 0;
 }
 
@@ -624,7 +633,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
   return 0;
 }
 
@@ -666,7 +675,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
   return 0;
 }
 
