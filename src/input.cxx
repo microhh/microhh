@@ -88,7 +88,6 @@ int cinput::readinifile()
       n = std::sscanf(temp1, "%s %s", block, dummy);
       if(n == 1)
       {
-        if(mpi->mpiid == 0) std::printf("Found block [%s]\n", block);
         blockset = true;
       }
       else
@@ -115,12 +114,7 @@ int cinput::readinifile()
 
         if(n ==1)
         {
-          if(mpi->mpiid == 0) std::printf("Found item  [%s][%s] = \"%s\"\n", block, lhs, rhs);
           std::strcpy(element,"default");
-        }
-        else
-        {
-          if(mpi->mpiid == 0) std::printf("Found item  [%s][%s][%s] = \"%s\"\n", block, lhs,element, rhs);
         }
         std::string blockstring(block);
         std::string itemstring(lhs);
@@ -366,52 +360,85 @@ int cinput::checkItemExists(std::string cat, std::string item, std::string el)
 // overloaded return functions
 int cinput::getItem(int *value, std::string cat, std::string item, std::string el)
 {
+  char cwhy[256]="";
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+
   if(!el.empty())
   {
+    strcat(cwho,"[");
+    strcat(cwho,el.c_str());
+    strcat(cwho,"]");
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-        return 1;
-      else
-        return 0;
+	return 1;
+      strcpy(cwhy, "element specific value");
     }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  if(checkItemExists(cat, item))
+  if(!strcmp(cwhy,""))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-    return 1;
-  }
-  else
-    if(checkItem(value, cat, item))
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
       return 1;
-
+    }
+    else
+    {
+      if(checkItem(value, cat, item))
+	return 1;
+      strcpy(cwhy, "global value");
+    }
+  }
+  strncat(cwho,"                          ",30-strlen(cwho));
+  std::printf("%s= %7d\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
 int cinput::getItem(int *value, std::string cat, std::string item, std::string el, int def)
 {
+  char cwhy[256]="";
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+
   if(!el.empty())
   {
+    strcat(cwho,"[");
+    strcat(cwho,el.c_str());
+    strcat(cwho,"]");
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-        return 1;
-      else
-        return 0;
+	return 1;
+      strcpy(cwhy, "element specific value");
     }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  if(checkItemExists(cat, item))
+  if(!strcmp(cwhy,""))
   {
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
-    *value = def;
-    return 0;
+    if(checkItemExists(cat, item))
+    {
+      *value = def;
+      strcpy(cwhy, "default value");
+    }
+    else
+    {
+      if(checkItem(value, cat, item))
+	return 1;
+      strcpy(cwhy, "global value");
+    }
   }
-  else
-    if(checkItem(value, cat, item))
-      return 1;
-
+  strncat(cwho,"                          ",30-strlen(cwho));
+  std::printf("%s= %7d\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -447,52 +474,85 @@ int cinput::checkItem(int *value, std::string cat, std::string item, std::string
 
 int cinput::getItem(double *value, std::string cat, std::string item, std::string el)
 {
+  char cwhy[256]="";
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+
   if(!el.empty())
   {
+    strcat(cwho,"[");
+    strcat(cwho,el.c_str());
+    strcat(cwho,"]");
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-        return 1;
-      else
-        return 0;
+	return 1;
+      strcpy(cwhy, "element specific value");
     }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  if(checkItemExists(cat, item))
+  if(!strcmp(cwhy,""))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-    return 1;
-  }
-  else
-    if(checkItem(value, cat, item))
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
       return 1;
-
+    }
+    else
+    {
+      if(checkItem(value, cat, item))
+	return 1;
+      strcpy(cwhy, "global value");
+    }
+  }
+  strncat(cwho,"                          ",30-strlen(cwho));
+  std::printf("%s= %7.4G\t (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
 int cinput::getItem(double *value, std::string cat, std::string item, std::string el, double def)
 {
+  char cwhy[256]="";
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+
   if(!el.empty())
   {
+    strcat(cwho,"[");
+    strcat(cwho,el.c_str());
+    strcat(cwho,"]");
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-        return 1;
-      else
-        return 0;
+	return 1;
+      strcpy(cwhy, "element specific value");
     }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  if(checkItemExists(cat, item))
+  if(!strcmp(cwhy,""))
   {
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %f used\n", cat.c_str(), item.c_str(), def);
-    *value = def;
-    return 0;
+    if(checkItemExists(cat, item))
+    {
+      *value = def;
+      strcpy(cwhy, "default value");
+    }
+    else
+    {
+      if(checkItem(value, cat, item))
+	return 1;
+      strcpy(cwhy, "global value");
+    }
   }
-  else
-    if(checkItem(value, cat, item))
-      return 1;
-
+  strncat(cwho,"                          ",30-strlen(cwho));
+  std::printf("%s= %7.4G\t (%s)\n", cwho,*value, cwhy);
   return 0;
 }
 
@@ -528,52 +588,85 @@ int cinput::checkItem(double *value, std::string cat, std::string item, std::str
 
 int cinput::getItem(bool *value, std::string cat, std::string item, std::string el)
 {
+  char cwhy[256]="";
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+
   if(!el.empty())
   {
+    strcat(cwho,"[");
+    strcat(cwho,el.c_str());
+    strcat(cwho,"]");
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-        return 1;
-      else
-        return 0;
+	return 1;
+      strcpy(cwhy, "element specific value");
     }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  if(checkItemExists(cat, item))
+  if(!strcmp(cwhy,""))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-    return 1;
-  }
-  else
-    if(checkItem(value, cat, item))
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
       return 1;
-
+    }
+    else
+    {
+      if(checkItem(value, cat, item))
+	return 1;
+      strcpy(cwhy, "global value");
+    }
+  }
+  strncat(cwho,"                          ",30-strlen(cwho));
+  std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "   true" : "  false", cwhy);
   return 0;
 }
 
 int cinput::getItem(bool *value, std::string cat, std::string item, std::string el, bool def)
 {
+  char cwhy[256]="";
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+
   if(!el.empty())
   {
+    strcat(cwho,"[");
+    strcat(cwho,el.c_str());
+    strcat(cwho,"]");
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-        return 1;
-      else
-        return 0;
+	return 1;
+      strcpy(cwhy, "element specific value");
     }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  if(checkItemExists(cat, item))
+  if(!strcmp(cwhy,""))
   {
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of %d used\n", cat.c_str(), item.c_str(), def);
-    *value = def;
-    return 0;
+    if(checkItemExists(cat, item))
+    {
+      *value = def;
+      strcpy(cwhy, "default value");
+    }
+    else
+    {
+      if(checkItem(value, cat, item))
+	return 1;
+      strcpy(cwhy, "global value");
+    }
   }
-  else
-    if(checkItem(value, cat, item))
-      return 1;
-
+  strncat(cwho,"                          ",30-strlen(cwho));
+  std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "   true" : "  false", cwhy);
   return 0;
 }
 
@@ -620,52 +713,85 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
 
 int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el)
 {
+  char cwhy[256]="";
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+
   if(!el.empty())
   {
+    strcat(cwho,"[");
+    strcat(cwho,el.c_str());
+    strcat(cwho,"]");
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-        return 1;
-      else
-        return 0;
+	return 1;
+      strcpy(cwhy, "element specific value");
     }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  if(checkItemExists(cat, item))
+  if(!strcmp(cwhy,""))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-    return 1;
-  }
-  else
-    if(checkItem(value, cat, item))
+    if(checkItemExists(cat, item))
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
       return 1;
-
+    }
+    else
+    {
+      if(checkItem(value, cat, item))
+	return 1;
+      strcpy(cwhy, "global value");
+    }
+  }
+  strncat(cwho,"                          ",30-strlen(cwho));
+  std::printf("%s= %7s\t (%s)\n", cwho,value->c_str(), cwhy);
   return 0;
 }
 
 int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el, std::string def)
 {
+  char cwhy[256]="";
+  char cwho[256]="";
+
+  strcat(cwho, "[");
+  strcat(cwho,cat.c_str());
+  strcat(cwho,"][");
+  strcat(cwho,item.c_str());
+  strcat(cwho,"]");
+
   if(!el.empty())
   {
+    strcat(cwho,"[");
+    strcat(cwho,el.c_str());
+    strcat(cwho,"]");
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-        return 1;
-      else
-        return 0;
+	return 1;
+      strcpy(cwhy, "element specific value");
     }
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] does not exist, searching for the global value \n", cat.c_str(), item.c_str(), el.c_str());
   }
-  if(checkItemExists(cat, item))
+  if(!strcmp(cwhy,""))
   {
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, default value of \"%s\" used\n", cat.c_str(), item.c_str(), def.c_str());
-    *value = def;
-    return 0;
+    if(checkItemExists(cat, item))
+    {
+      *value = def;
+      strcpy(cwhy, "default value");
+    }
+    else
+    {
+      if(checkItem(value, cat, item))
+	return 1;
+      strcpy(cwhy, "global value");
+    }
   }
-  else
-    if(checkItem(value, cat, item))
-      return 1;
-
+  strncat(cwho,"                          ",30-strlen(cwho));
+  std::printf("%s= %7s\t (%s)\n", cwho, value->c_str(), cwhy);
   return 0;
 }
 
@@ -703,12 +829,19 @@ int cinput::getItem(std::vector<std::string> *value, std::string cat, std::strin
 {
   if(checkItemExists(cat, item))
   {
-    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] does not exist, list is set empty\n", cat.c_str(), item.c_str());
-    return 0;
+    std::printf("[%s][%s]\t NOT FOUND\n",cat.c_str(),item.c_str());
   }
   else
+  {
     if(checkItem(value, cat, item))
       return 1;
+    std::printf("[%s][%s]\t=",cat.c_str(),item.c_str());
+    for(std::vector<std::string>::iterator it = value->begin(); it !=value->end()-1; ++it)
+    {
+      std::cout << *it << ",";
+    }
+    std::cout << *(value->end()-1)<< std::endl;
+  }
 
   return 0;
 }
