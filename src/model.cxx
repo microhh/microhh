@@ -77,7 +77,7 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // check the advection scheme
-  n += inputin->getItem(&swadvec, "advec", "swadvec", grid->swspatialorder, "default");
+  n += inputin->getItem(&swadvec, "advec", "swadvec", "", grid->swspatialorder);
   if(swadvec == "0")
     advec = new cadvec     (grid, fields, mpi);
   else if(swadvec == "2")
@@ -99,7 +99,7 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // check the diffusion scheme
-  n += inputin->getItem(&swdiff, "diff", "swdiff", grid->swspatialorder, "default");
+  n += inputin->getItem(&swdiff, "diff", "swdiff", "", grid->swspatialorder);
   if(swdiff == "0")
     diff = new cdiff    (grid, fields, mpi);
   else if(swdiff == "2")
@@ -121,7 +121,7 @@ int cmodel::readinifile(cinput *inputin)
 
 
   // check the pressure scheme
-  n += inputin->getItem(&swpres, "pres", "swpres", grid->swspatialorder, "default");
+  n += inputin->getItem(&swpres, "pres", "swpres", "", grid->swspatialorder);
   if(swpres == "0")
     pres = new cpres    (grid, fields, mpi);
   else if(swpres == "2")

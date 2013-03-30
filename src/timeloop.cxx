@@ -27,20 +27,20 @@ int ctimeloop::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&maxiter     , "time", "maxiter"  );
-  n += inputin->getItem(&startiter   , "time", "startiter");
+  n += inputin->getItem(&maxiter     , "time", "maxiter"  , "");
+  n += inputin->getItem(&startiter   , "time", "startiter", "");
 
   // optional parameters
-  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", true);
-  n += inputin->getItem(&dt          , "time", "dt"          , 0.1 );
-  n += inputin->getItem(&dtmax       , "time", "dtmax"       , dbig);
-  n += inputin->getItem(&cflmax      , "time", "cflmax"      , 1.  );
-  n += inputin->getItem(&dnmax       , "time", "dnmax"       , 0.5 );
-  n += inputin->getItem(&rkorder     , "time", "rkorder"     , 4   );
-  n += inputin->getItem(&outputiter  , "time", "outputiter"  , 100 );
-  n += inputin->getItem(&saveiter    , "time", "saveiter"    , 500 );
-  n += inputin->getItem(&statsiter   , "time", "statsiter"   , 100 );
-  n += inputin->getItem(&postprociter, "time", "postprociter", 100 );
+  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", "", true);
+  n += inputin->getItem(&dt          , "time", "dt"          , "", 0.1 );
+  n += inputin->getItem(&dtmax       , "time", "dtmax"       , "", dbig);
+  n += inputin->getItem(&cflmax      , "time", "cflmax"      , "", 1.  );
+  n += inputin->getItem(&dnmax       , "time", "dnmax"       , "", 0.5 );
+  n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 4   );
+  n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 100 );
+  n += inputin->getItem(&saveiter    , "time", "saveiter"    , "", 500 );
+  n += inputin->getItem(&statsiter   , "time", "statsiter"   , "", 100 );
+  n += inputin->getItem(&postprociter, "time", "postprociter", "", 100 );
 
   // if one argument fails, then crash
   if(n > 0)

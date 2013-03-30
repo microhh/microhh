@@ -21,10 +21,10 @@ int cforce::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&swforce, "force", "swforce");
+  n += inputin->getItem(&swforce, "force", "swforce", "");
   
   if(swforce == "1")
-    n += inputin->getItem(&uflow, "force", "uflow");
+    n += inputin->getItem(&uflow, "force", "uflow", "");
 
   if(n > 0)
     return 1;
