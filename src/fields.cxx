@@ -60,7 +60,7 @@ int cfields::readinifile(cinput *inputin)
   {
     if(initpfld(*it))
       return 1;
-    n += inputin->getItem(&sp[*it]->visc, "fields", *it, "svisc");
+    n += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
   // initialize the basic set of fields
