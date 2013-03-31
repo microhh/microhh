@@ -121,16 +121,16 @@ int cinput::readinifile()
         std::string itemstring(lhs);
         std::string elementstring(element);
         std::string valuestring(rhs);
-	if(checkItemExists(blockstring,itemstring,elementstring))
-	{
-	  inputlist[blockstring][itemstring][elementstring].data   = valuestring;
-	  inputlist[blockstring][itemstring][elementstring].isused = false;
-	}
-	else
-	{
-	  if(mpi->mpiid == 0) std::printf("ERROR line %d: Item [%s][%s][%s] defined for the second time\n", nline, block, lhs, element);
-	  return 1;
-	}
+        if(checkItemExists(blockstring,itemstring,elementstring))
+        {
+          inputlist[blockstring][itemstring][elementstring].data   = valuestring;
+          inputlist[blockstring][itemstring][elementstring].isused = false;
+        }
+        else
+        {
+          if(mpi->mpiid == 0) std::printf("ERROR line %d: Item [%s][%s][%s] defined for the second time\n", nline, block, lhs, element);
+          return 1;
+        }
       }
       else
       {
@@ -386,7 +386,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-	return 1;
+        return 1;
       strcpy(cwhy, "element specific value");
     }
   }
@@ -400,7 +400,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     else
     {
       if(checkItem(value, cat, item))
-	return 1;
+        return 1;
       strcpy(cwhy, "global value");
     }
   }
@@ -428,7 +428,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-	return 1;
+        return 1;
       strcpy(cwhy, "element specific value");
     }
   }
@@ -442,12 +442,12 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     else
     {
       if(checkItem(value, cat, item))
-	return 1;
+        return 1;
       strcpy(cwhy, "global value");
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9d\t (%s)\n", cwho, *value, cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9d   (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -500,7 +500,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-	return 1;
+        return 1;
       strcpy(cwhy, "element specific value");
     }
   }
@@ -514,12 +514,12 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     else
     {
       if(checkItem(value, cat, item))
-	return 1;
+        return 1;
       strcpy(cwhy, "global value");
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9.4G\t (%s)\n", cwho, *value, cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9.4G   (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
@@ -542,7 +542,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-	return 1;
+        return 1;
       strcpy(cwhy, "element specific value");
     }
   }
@@ -556,12 +556,12 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
     else
     {
       if(checkItem(value, cat, item))
-	return 1;
+        return 1;
       strcpy(cwhy, "global value");
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9.4G\t (%s)\n", cwho,*value, cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9.4G   (%s)\n", cwho,*value, cwhy);
   return 0;
 }
 
@@ -614,7 +614,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-	return 1;
+        return 1;
       strcpy(cwhy, "element specific value");
     }
   }
@@ -628,12 +628,12 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
     else
     {
       if(checkItem(value, cat, item))
-	return 1;
+        return 1;
       strcpy(cwhy, "global value");
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %s   (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
   return 0;
 }
 
@@ -656,7 +656,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-	return 1;
+        return 1;
       strcpy(cwhy, "element specific value");
     }
   }
@@ -670,12 +670,12 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
     else
     {
       if(checkItem(value, cat, item))
-	return 1;
+        return 1;
       strcpy(cwhy, "global value");
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %s\t (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %s   (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
   return 0;
 }
 
@@ -739,7 +739,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-	return 1;
+        return 1;
       strcpy(cwhy, "element specific value");
     }
   }
@@ -753,12 +753,12 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
     else
     {
       if(checkItem(value, cat, item))
-	return 1;
+        return 1;
       strcpy(cwhy, "global value");
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %9s\t (%s)\n", cwho,value->c_str(), cwhy);
+  std::printf("%s= %9s   (%s)\n", cwho,value->c_str(), cwhy);
   return 0;
 }
 
@@ -781,7 +781,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
-	return 1;
+        return 1;
       strcpy(cwhy, "element specific value");
     }
   }
@@ -795,12 +795,12 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
     else
     {
       if(checkItem(value, cat, item))
-	return 1;
+        return 1;
       strcpy(cwhy, "global value");
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %9s\t (%s)\n", cwho, value->c_str(), cwhy);
+  std::printf("%s= %9s   (%s)\n", cwho, value->c_str(), cwhy);
   return 0;
 }
 
@@ -846,7 +846,7 @@ int cinput::getItem(std::vector<std::string> *value, std::string cat, std::strin
   strncat(cwho,"                          ",30-strlen(cwho));
   if(checkItemExists(cat, item))
   {
-    std::printf("%s\t NOT FOUND\n",cwho);
+    std::printf("%s   NOT FOUND\n",cwho);
   }
   else
   {
@@ -913,17 +913,17 @@ int cinput::printUnused()
     {
       for(inputmap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
       {
-	if(!it3->second.isused)
-	{
-	  if(it3->first == "default")
-	  {
-	    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
-	  }
-	  else
-	  {
-	    if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
-	  }
-	}
+        if(!it3->second.isused)
+        {
+          if(it3->first == "default")
+          {
+            if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
+          }
+          else
+          {
+            if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
+          }
+        }
       }
     }
   }
