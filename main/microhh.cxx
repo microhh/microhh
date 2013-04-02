@@ -6,6 +6,7 @@
 int main(int argc, char *argv[])
 {
   // start up the message passing interface
+  std::printf("Running microhh git-hash: " GITHASH "\n");
   cmpi mpi;
   if(mpi.startup(argc, argv))
     return 1;
