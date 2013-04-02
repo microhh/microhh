@@ -5,7 +5,7 @@ find_package(Git)
 if(GIT_EXECUTABLE)
   exec_program(git ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --verify HEAD" OUTPUT_VARIABLE GITHASH)
 else()
-  set(GITHASH "n/a, installed from source")
+  set(GITHASH "not available")
 endif()
 
 message(STATUS "Git hash " ${GITHASH})
