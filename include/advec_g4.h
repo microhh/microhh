@@ -6,24 +6,27 @@
 #include "advec.h"
 #include "mpiinterface.h"
 
+/**
+ * Derived class for 4th order advection scheme.
+ */
 class cadvec_g4 : public cadvec
 {
   public:
-    cadvec_g4(cgrid *, cfields *, cmpi *);
-    ~cadvec_g4();
+    cadvec_g4(cgrid *, cfields *, cmpi *); ///< Constructor of the advection class.
+    ~cadvec_g4();                          ///< Destructor of the advection class.
 
-    double getcfl(double);
-    int exec();
+    double getcfl(double); ///< Retrieve the CFL number.
+    int exec();            ///< Trigger calculation of the advection tendencies.
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
+    cgrid   *grid;   ///< Pointer to grid class.
+    cfields *fields; ///< Pointer to fields class.
+    cmpi    *mpi;    ///< Pointer to mpi class.
 
-    double calccfl(double *, double *, double *, double *, double);
-    int advecu(double *, double *, double *, double *, double *);
-    int advecv(double *, double *, double *, double *, double *);
-    int advecw(double *, double *, double *, double *, double *);
-    int advecs(double *, double *, double *, double *, double *, double *);
+    double calccfl(double *, double *, double *, double *, double);         ///< Calculate the CFL number.
+    int advecu(double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
+    int advecv(double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
+    int advecw(double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
+    int advecs(double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
 };
 #endif
