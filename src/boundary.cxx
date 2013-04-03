@@ -45,13 +45,17 @@ int cboundary::readinifile(cinput *inputin)
   // optional parameters
   n += inputin->getItem(&swboundarytype, "boundary", "swboundarytype", "", "0");
 
-  // patch type
-  n += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , "", 2 );
-  n += inputin->getItem(&patch_xh,   "boundary", "patch_xh"  , "", 1.);
-  n += inputin->getItem(&patch_xr,   "boundary", "patch_xr"  , "", 1.);
-  n += inputin->getItem(&patch_xi,   "boundary", "patch_xi"  , "", 0.);
-  n += inputin->getItem(&patch_facr, "boundary", "patch_facr", "", 1.);
-  n += inputin->getItem(&patch_facl, "boundary", "patch_facl", "", 0.);
+  // read the options for the patch type
+  if(swboundarytype == "1")
+  {
+    // patch type
+    n += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , "", 2 );
+    n += inputin->getItem(&patch_xh,   "boundary", "patch_xh"  , "", 1.);
+    n += inputin->getItem(&patch_xr,   "boundary", "patch_xr"  , "", 1.);
+    n += inputin->getItem(&patch_xi,   "boundary", "patch_xi"  , "", 0.);
+    n += inputin->getItem(&patch_facr, "boundary", "patch_facr", "", 1.);
+    n += inputin->getItem(&patch_facl, "boundary", "patch_facl", "", 0.);
+  }
 
     // if one argument fails, then crash
   if(n > 0)
