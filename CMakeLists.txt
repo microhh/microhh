@@ -66,28 +66,28 @@ add_subdirectory(main)
 add_subdirectory(test)
 
 
-###documentation
-# add_custom_target(todo ALL)
-# ADD_CUSTOM_COMMAND(TARGET todo POST_BUILD
-#                   COMMAND echo "MICROHH TODO LIST" > TODO
-#                   COMMAND date  >> TODO
-#                   COMMAND grep -Rin \\todo  src | sed 's/!.*TODO//I' >>  TODO
-#                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-#                   )
-# find_package(Doxygen)
-# IF (DOXYGEN_FOUND)
-#   CONFIGURE_FILE(config/doxygen.conf.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-#   ADD_CUSTOM_TARGET(doc
-#           ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf
-#           COMMENT "Generating API documentation with Doxygen" VERBATIM
-#           DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-#   add_custom_target(install-doc
-#           cp -r ${CMAKE_CURRENT_BINARY_DIR}/doc ${CMAKE_SOURCE_DIR}
-#           DEPENDS doc)
-# #   add_dependencies(doc-install doc)
-#
-#   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_SOURCE_DIR})
-# ELSE (DOXYGEN)
-#     MESSAGE(STATUS "WARNING: Doxygen not found - Reference manual will
-# not be created")
-# ENDIF ()
+##documentation
+add_custom_target(todo ALL)
+ADD_CUSTOM_COMMAND(TARGET todo POST_BUILD
+                  COMMAND echo "MICROHH TODO LIST" > TODO
+                  COMMAND date  >> TODO
+                  COMMAND grep -Rin \\todo  src include main| sed 's/\\/\\/.*TODO//I' >>  TODO
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                  )
+find_package(Doxygen)
+IF (DOXYGEN_FOUND)
+  CONFIGURE_FILE(config/doxygen.conf.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
+  ADD_CUSTOM_TARGET(doc
+          ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf
+          COMMENT "Generating API documentation with Doxygen" VERBATIM
+          DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
+  add_custom_target(install-doc
+          cp -r ${CMAKE_CURRENT_BINARY_DIR}/doc ${CMAKE_SOURCE_DIR}
+          DEPENDS doc)
+#   add_dependencies(doc-install doc)
+
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_SOURCE_DIR})
+ELSE (DOXYGEN)
+    MESSAGE(STATUS "WARNING: Doxygen not found - Reference manual will
+not be created")
+ENDIF ()

@@ -405,7 +405,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9d\t (%s)\n", cwho, *value, cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9d   (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
