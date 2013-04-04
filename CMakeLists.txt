@@ -68,10 +68,14 @@ add_subdirectory(test)
 
 ##documentation
 add_custom_target(todo ALL)
+# if a non-default sed is not set revert to standard sed
+if(NOT DEFINED GNU_SED)
+  set(GNU_SED "sed")
+endif()
 ADD_CUSTOM_COMMAND(TARGET todo POST_BUILD
                   COMMAND echo "MICROHH TODO LIST" > TODO
                   COMMAND date  >> TODO
-                  COMMAND grep -Rin \\todo  src include main| sed 's/\\/\\/.*TODO//I' >>  TODO
+                  COMMAND grep -Rin \\todo  src include main| ${GNU_SED} 's/\\/\\/.*TODO//I' >>  TODO
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                   )
 find_package(Doxygen)
