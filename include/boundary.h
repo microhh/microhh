@@ -20,6 +20,7 @@ class cboundary
     ~cboundary();
 
     int readinifile(cinput *);
+    int init();
     int setvalues();
     int exec();
 
@@ -62,5 +63,27 @@ class cboundary
     double patch_facl;
 
     inline double grad4x(const double, const double, const double, const double);
+
+    //todo move this later
+    // surface scheme
+    int surface();
+    int stability(double *, double *, double *,
+                  double *, double *, double *,
+                  double *, double *, double *,
+                  double *, double *, double *);
+    int surfvalues(double *, double *, double *,
+                   double *, double *, double *,
+                   double);
+    // double ribtol(double, double, bool, bool);
+    inline double fm(double, double, double);
+    inline double fh(double, double, double);
+    inline double psim(double);
+    inline double psih(double);
+    inline double phim(double);
+    inline double phih(double);
+    double *obuk;
+    double *ustar;
+    double z0m;
+    double z0h;
 };
 #endif

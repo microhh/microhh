@@ -169,6 +169,9 @@ int cmodel::init()
 {
   if(fields->init())
     return 1;
+  // TODO change this to surface init
+  if(boundary->init())
+    return 1;
   if(buffer->init())
     return 1;
   if(pres->init())
