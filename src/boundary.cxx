@@ -106,8 +106,23 @@ int cboundary::setvalues()
     {
       setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc);
       setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc);
+
+      // TODO temporary assignment of ustar, to yield z/L of -z/Ltemp
+      int ij,jj;
+      jj = grid->icells;
+
+      double Ltemp = -10.;
+
+      for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+        for(int i=grid->istart; i<grid->iend; ++i)
+        {
+          ij = i + j*jj;
+          ustar[ij] = std::pow(-grid->z[grid->kstart]*kappa*9.81/300.*fields->sp["s"]->datafluxbot[ij]/Ltemp, 1./3.);
+        }
     }
   }
+
   return 0;
 }
 
@@ -641,8 +656,7 @@ int cboundary::stability(double * restrict obuk, double * restrict ustar, double
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ij  = i + j*jj;
-      obuk[ij] = -std::pow(ustar[ij], 3.) / (gravitybeta*kappa*z[kstart]*bfluxbot[ij]);
-      if(i==3 && j==3) std::printf("CvH stab %d, %d, %E, %E, %E\n", i, j, ustar[ij], obuk[ij], bfluxbot[ij]);
+      obuk[ij] = -std::pow(ustar[ij], 3.) / (gravitybeta*kappa*bfluxbot[ij]);
     }
 
   return 0;
@@ -666,8 +680,9 @@ int cboundary::surfvalues(double * restrict ustar, double * restrict obuk, doubl
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      varbot[ij] = varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
-      if(i==3 && j==3) std::printf("CvH vars %d, %d, %E, %E, %E\n", i, j, ustar[ij], fh(zsl, z0h, obuk[ij]), var[ijk]);
+      varbot[ij]     = varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
+      vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+      //if(i==3 && j==3) std::printf("CvH (ustar, bot, fluxbot, gradbot): %d, %d, %E, %E, %E, %E\n", i, j, ustar[ij], varbot[ij], varfluxbot[ij], vargradbot[ij]);
     }
 
   return 0;
@@ -730,8 +745,8 @@ inline double cboundary::psim(double zeta)
   if(zeta <= 0.)
   {
     // Businger-Dyer functions
-    //x     = (1. - 16. * zeta) ** (0.25)
-    //psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
+    // x     = (1. - 16. * zeta) ** (0.25)
+    // psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
     // Wilson functions
     x    = std::pow(1. + std::pow(3.6 * std::abs(zeta),2./3.), -0.5);
     psim = 3.*std::log( (1. + 1./x) / 2.);
@@ -753,8 +768,8 @@ inline double cboundary::psih(double zeta)
     // x     = (1. - 16. * zeta) ** (0.25)
     // psih  = 2. * log( (1. + x ** 2.) / 2. )
     // Wilson functions
-    x     = std::pow(1. + std::pow(7.9*std::abs(zeta), (2./3.)), -0.5);
-    psih  = 3. * std::log( (1. + 1. / x) / 2.);
+    x    = std::pow(1. + std::pow(7.9*std::abs(zeta), (2./3.)), -0.5);
+    psih = 3. * std::log( (1. + 1. / x) / 2.);
   }
   else
   {
@@ -772,7 +787,7 @@ inline double cboundary::phim(double zeta)
     //x     = (1. - 16. * zeta) ** (0.25)
     //psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
     // Wilson functions
-    phim = std::pow(1. - 3.6*std::pow(zeta, 2./3.), -1./2.);
+    phim = std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
   }
   else
     phim = 1. + 5.*zeta;
@@ -789,7 +804,7 @@ inline double cboundary::phih(double zeta)
     // x     = (1. - 16. * zeta) ** (0.25)
     // psih  = 2. * log( (1. + x ** 2.) / 2. )
     // Wilson functions
-    phih = std::pow(1. - 7.9*std::pow(zeta, 2./3.), -1./2.);
+    phih = std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
   }
   else
     phih = 1. + 5.*zeta;
