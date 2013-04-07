@@ -71,10 +71,13 @@ class cboundary
                   double *, double *, double *,
                   double *, double *, double *,
                   double *, double *, double *);
-    int surfvalues(double *, double *, double *,
-                   double *, double *, double *,
-                   double);
-    // double ribtol(double, double, bool, bool);
+    int surfm(double *, double *, double *,
+              double *, double *, double *,
+              double);
+    int surfs(double *, double *, double *,
+              double *, double *, double *,
+              double);
+    double calcobuk(double, double, double);
     inline double fm(double, double, double);
     inline double fh(double, double, double);
     inline double psim(double);
