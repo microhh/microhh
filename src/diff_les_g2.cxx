@@ -94,7 +94,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  // bottom boundary
+  // bottom boundary, here strain is fully parametrized using MO
   // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
   mlen0 = cs*std::pow(dx*dy*dz[kstart], 1./3.);
   mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[kstart]+z0), n))), 1./n);
@@ -107,31 +107,15 @@ int cdiff_les_g2::evisc(double * restrict evisc,
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
       strain2 = 2.*(
-        // // du/dx + du/dx
-        // + std::pow((u[ijk+ii]-u[ijk])*dxi, 2.)
-
-        // // dv/dy + dv/dy
-        // + std::pow((v[ijk+jj]-v[ijk])*dyi, 2.)
-
-        // // dw/dz + dw/dz
-        // + std::pow((w[ijk+kk]-w[ijk])*dzi[k], 2.)
-
-        // // du/dy + dv/dx
-        // + 0.125*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2.)
-        // + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2.)
-        // + 0.125*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2.)
-        // + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2.)
-
         // du/dz
         + 0.5*std::pow(-ufluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.)
 
         // dv/dz
         + 0.5*std::pow(-vfluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.) );
 
-      // CvH use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
+      // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
       // Add the buoyancy production to the TKE
       RitPrratio = -(9.81/300.)*bfluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phih(z[kstart]/obuk[ij])*0.5*dzi[kstart] / strain2 / tPr;
-      // RitPrratio = std::max(0., std::min(RitPrratio, 1.-dsmall));
       RitPrratio = std::min(RitPrratio, 1.-dsmall);
       evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
     }
