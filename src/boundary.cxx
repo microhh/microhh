@@ -779,7 +779,9 @@ int cboundary::surfs(double * restrict ustar, double * restrict obuk, double * r
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
-        vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+        // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+        // use the linearly interpolated grad, rather than the MO grad, to prevent giving unresolvable gradients to advection schemes
+        vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
   }
   else if(bcbot == 2)
@@ -792,7 +794,9 @@ int cboundary::surfs(double * restrict ustar, double * restrict obuk, double * r
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
-        vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+        // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+        // use the linearly interpolated grad, rather than the MO grad, to prevent giving unresolvable gradients to advection schemes
+        vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
   }
 
