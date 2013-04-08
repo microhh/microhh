@@ -73,10 +73,10 @@ class cboundary
                   double *, double *, double *);
     int surfm(double *, double *, double *,
               double *, double *, double *,
-              double);
+              double, int);
     int surfs(double *, double *, double *,
               double *, double *, double *,
-              double);
+              double, int);
     double calcobuk(double, double, double);
     inline double fm(double, double, double);
     inline double fh(double, double, double);
@@ -86,7 +86,12 @@ class cboundary
     inline double phih(double);
     double *obuk;
     double *ustar;
+    double ustarin;
     double z0m;
     double z0h;
+
+    typedef std::map<std::string, int> bcbotmap;
+    int surfmbcbot;
+    bcbotmap surfsbcbot;
 };
 #endif

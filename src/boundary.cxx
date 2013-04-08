@@ -60,6 +60,17 @@ int cboundary::readinifile(cinput *inputin)
   {
     n += inputin->getItem(&z0m, "surface", "z0m", "");
     n += inputin->getItem(&z0h, "surface", "z0h", "");
+    n += inputin->getItem(&ustarin, "surface", "ustar", "");
+
+    // copy all the boundary options and set the model ones to flux type
+    surfmbcbot = mbcbot;
+    mbcbot = 2;
+
+    for(bcmap::iterator it=sbc.begin(); it!=sbc.end(); ++it)
+    {
+      surfsbcbot[it->first] = it->second->bcbot;
+      it->second->bcbot = 2;
+    }
   }
 
   // if one argument fails, then crash
@@ -107,19 +118,30 @@ int cboundary::setvalues()
       setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc);
       setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc);
 
-      // TODO temporary assignment of ustar, to yield z/L of -z/Ltemp
       int ij,jj;
       jj = grid->icells;
 
-      double Ltemp = -10.;
-
-      for(int j=grid->jstart; j<grid->jend; ++j)
+      if(surfmbcbot == 2)
+      {
+        for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; ++i)
-        {
-          ij = i + j*jj;
-          ustar[ij] = std::pow(-grid->z[grid->kstart]*kappa*9.81/300.*fields->sp["s"]->datafluxbot[ij]/Ltemp, 1./3.);
-        }
+          for(int i=grid->istart; i<grid->iend; ++i)
+          {
+            ij = i + j*jj;
+            ustar[ij] = ustarin;
+          }
+      }
+      // default value of ustar is 0.1
+      else if(surfmbcbot == 0)
+      {
+        for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+          for(int i=grid->istart; i<grid->iend; ++i)
+          {
+            ij = i + j*jj;
+            ustar[ij] = 0.1;
+          }
+      }
     }
   }
 
@@ -620,15 +642,15 @@ int cboundary::surface()
   // calculate the surface value, gradient and flux depending on the chosen boundary condition
   surfm(ustar, obuk, fields->u->data,
         fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
-        grid->z[grid->kstart]);
+        grid->z[grid->kstart], surfmbcbot);
 
   surfm(ustar, obuk, fields->v->data,
         fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
-        grid->z[grid->kstart]);
+        grid->z[grid->kstart], surfmbcbot);
 
   surfs(ustar, obuk, fields->sp["s"]->data,
         fields->sp["s"]->databot, fields->sp["s"]->datagradbot, fields->sp["s"]->datafluxbot,
-        grid->z[grid->kstart]);
+        grid->z[grid->kstart], surfsbcbot["s"]);
 
   return 0;
 }
@@ -662,7 +684,7 @@ int cboundary::stability(double * restrict obuk, double * restrict ustar, double
 
   // calculate Obukhov length
   // case 1: fixed buoyancy flux and fixed ustar
-  if(mbcbot == 2 && sbc["s"]->bcbot == 2)
+  if(surfmbcbot == 2 && surfsbcbot["s"] == 2)
   {
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -670,10 +692,11 @@ int cboundary::stability(double * restrict obuk, double * restrict ustar, double
       {
         ij  = i + j*jj;
         obuk[ij] = -std::pow(ustar[ij], 3.) / (gravitybeta*kappa*bfluxbot[ij]);
+        if(i==3 && j==3) std::printf("CvH fixed (ustar, obuk): %E, %E\n", ustar[ij], obuk[ij]);
       }
   }
-  // case 2: fixed buoyancy flux and free ustar
-  if(mbcbot == 2 && sbc["s"]->bcbot == 2)
+  // case 2: fixed buoyancy surface value and free ustar
+  if(surfmbcbot == 0 && surfsbcbot["s"] == 2)
   {
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -682,7 +705,7 @@ int cboundary::stability(double * restrict obuk, double * restrict ustar, double
         ij  = i + j*jj;
         obuk[ij]  = calcobuk(std::max(utot[ij]-ubottot[ij], 0.1), bfluxbot[ij], z[kstart]);
         ustar[ij] = std::max(utot[ij]-ubottot[ij], 0.1) * fm(z[kstart], z0m, obuk[ij]);
-        if(i==3 && j==3) std::printf("CvH (ustar, obuk): %d, %d, %E, %E\n", i, j, ustar[ij], obuk[ij]);
+        if(i==3 && j==3) std::printf("CvH free (ustar, obuk): %E, %E\n", ustar[ij], obuk[ij]);
       }
   }
 
@@ -691,7 +714,7 @@ int cboundary::stability(double * restrict obuk, double * restrict ustar, double
 
 int cboundary::surfm(double * restrict ustar, double * restrict obuk, double * restrict var,
                      double * restrict varbot, double * restrict vargradbot, double * restrict varfluxbot, 
-                     double zsl)
+                     double zsl, int bcbot)
 {
   int ij,ijk,jj,kk,kstart;
 
@@ -700,24 +723,40 @@ int cboundary::surfm(double * restrict ustar, double * restrict obuk, double * r
 
   kstart = grid->kstart;
 
-  // first calculate the surface value
-  for(int j=grid->jstart; j<grid->jend; j++)
+  // the surface value is known, calculate the flux and gradient
+  if(bcbot == 0)
+  {
+    // first calculate the surface value
+    for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ij  = i + j*jj;
-      ijk = i + j*jj + kstart*kk;
-      varfluxbot[ij] =  -(var[ijk]-varbot[ij])*ustar[ij]*fm(zsl, z0m, obuk[ij]);
-      // varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fm(zsl, z0m, obuk[ij])) + var[ijk];
-      vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
-    }
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk;
+        varfluxbot[ij] =  -(var[ijk]-varbot[ij])*ustar[ij]*fm(zsl, z0m, obuk[ij]);
+        vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
+      }
+  }
+  // the flux is known, calculate the surface value and gradient
+  else if(bcbot == 2)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk;
+        varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fm(zsl, z0m, obuk[ij])) + var[ijk];
+        vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
+      }
+  }
 
   return 0;
 }
 
 int cboundary::surfs(double * restrict ustar, double * restrict obuk, double * restrict var,
                      double * restrict varbot, double * restrict vargradbot, double * restrict varfluxbot, 
-                     double zsl)
+                     double zsl, int bcbot)
 {
   int ij,ijk,jj,kk,kstart;
 
@@ -726,16 +765,32 @@ int cboundary::surfs(double * restrict ustar, double * restrict obuk, double * r
 
   kstart = grid->kstart;
 
-  // first calculate the surface value
-  for(int j=grid->jstart; j<grid->jend; j++)
+  // the surface value is known, calculate the flux and gradient
+  if(bcbot == 0)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ij  = i + j*jj;
-      ijk = i + j*jj + kstart*kk;
-      varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
-      vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
-    }
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk;
+        varfluxbot[ij] =  -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
+        vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+      }
+  }
+  else if(bcbot == 2)
+  {
+    // the flux is known, calculate the surface value and gradient
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk;
+        varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
+        vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
+      }
+  }
 
   return 0;
 }
@@ -774,7 +829,7 @@ double cboundary::calcobuk(double du, double bfluxbot, double zsl)
     L      = L - fx/fxdif;
     ++n;
   }
-  // std::printf("CvH fm, z/L: %E, %E\n", fm(zsl, z0m, L), zsl/L);
+  std::printf("CvH n, du, z/L: %d, %E, %E\n", n, du, zsl/L);
 
   return L;
 }
