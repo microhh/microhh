@@ -734,9 +734,7 @@ int cboundary::surfm(double * restrict ustar, double * restrict obuk, double * r
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fm(zsl, z0m, obuk[ij]);
-        // use the linearly interpolated grad, rather than the MO grad, to prevent giving unresolvable gradients to advection schemes
-        // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
-        vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+        vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
       }
   }
   // the flux is known, calculate the surface value and gradient
@@ -749,9 +747,7 @@ int cboundary::surfm(double * restrict ustar, double * restrict obuk, double * r
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fm(zsl, z0m, obuk[ij])) + var[ijk];
-        // use the linearly interpolated grad, rather than the MO grad, to prevent giving unresolvable gradients to advection schemes
-        // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
-        vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+        vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
       }
   }
 
