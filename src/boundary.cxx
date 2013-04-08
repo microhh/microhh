@@ -636,7 +636,7 @@ int cboundary::surface()
   stability(obuk, ustar, fields->sp["s"]->datafluxbot,
             fields->u->data, fields->v->data, fields->sp["s"]->data,
             fields->u->databot, fields->v->databot, fields->sp["s"]->databot,
-            fields->s["tmp1"]->data, fields->s["tmp1"]->data,
+            fields->s["tmp1"]->data, fields->s["tmp2"]->data,
             grid->z);
 
   // calculate the surface value, gradient and flux depending on the chosen boundary condition
@@ -692,7 +692,7 @@ int cboundary::stability(double * restrict obuk, double * restrict ustar, double
       {
         ij  = i + j*jj;
         obuk[ij] = -std::pow(ustar[ij], 3.) / (gravitybeta*kappa*bfluxbot[ij]);
-        if(i==3 && j==3) std::printf("CvH fixed (ustar, obuk): %E, %E\n", ustar[ij], obuk[ij]);
+        // if(i==3 && j==3) std::printf("CvH fixed (ustar, obuk): %E, %E\n", ustar[ij], obuk[ij]);
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
@@ -705,7 +705,7 @@ int cboundary::stability(double * restrict obuk, double * restrict ustar, double
         ij  = i + j*jj;
         obuk[ij]  = calcobuk(std::max(utot[ij]-ubottot[ij], 0.1), bfluxbot[ij], z[kstart]);
         ustar[ij] = std::max(utot[ij]-ubottot[ij], 0.1) * fm(z[kstart], z0m, obuk[ij]);
-        if(i==3 && j==3) std::printf("CvH free (ustar, obuk): %E, %E\n", ustar[ij], obuk[ij]);
+        // if(i==3 && j==3) std::printf("CvH free (ustar, obuk): %E, %E\n", ustar[ij], obuk[ij]);
       }
   }
 
@@ -733,7 +733,7 @@ int cboundary::surfm(double * restrict ustar, double * restrict obuk, double * r
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
-        varfluxbot[ij] =  -(var[ijk]-varbot[ij])*ustar[ij]*fm(zsl, z0m, obuk[ij]);
+        varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fm(zsl, z0m, obuk[ij]);
         vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
       }
   }
@@ -774,7 +774,7 @@ int cboundary::surfs(double * restrict ustar, double * restrict obuk, double * r
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
-        varfluxbot[ij] =  -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
+        varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
         vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
       }
   }
@@ -829,7 +829,7 @@ double cboundary::calcobuk(double du, double bfluxbot, double zsl)
     L      = L - fx/fxdif;
     ++n;
   }
-  std::printf("CvH n, du, z/L: %d, %E, %E\n", n, du, zsl/L);
+  // std::printf("CvH n, du, z/L: %d, %E, %E\n", n, du, zsl/L);
 
   return L;
 }
