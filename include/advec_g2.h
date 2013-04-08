@@ -12,6 +12,7 @@ class cadvec_g2 : public cadvec
     cadvec_g2(cgrid *, cfields *, cmpi *);
     ~cadvec_g2();
 
+    unsigned long gettimelim(long unsigned int idt, double ifactor);
     double getcfl(double);
     int exec();
 
@@ -19,7 +20,7 @@ class cadvec_g2 : public cadvec
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
-
+    
     double calccfl(double *, double *, double *, double *, double);
     int advecu(double *, double *, double *, double *, double *);
     int advecv(double *, double *, double *, double *, double *);

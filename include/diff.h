@@ -15,8 +15,10 @@ class cdiff
     virtual int setvalues();
     virtual int exec();
 
+    virtual unsigned long gettimelim(unsigned long);
     virtual double getdn(double);
 
+    double dnmax;
   private:
     cgrid   *grid;
     cfields *fields;

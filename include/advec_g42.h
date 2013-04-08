@@ -12,6 +12,7 @@ class cadvec_g42 : public cadvec
     cadvec_g42(cgrid *, cfields *, cmpi *);
     ~cadvec_g42();
 
+    unsigned long gettimelim(long unsigned int idt, double ifactor);
     double getcfl(double);
     int exec();
 

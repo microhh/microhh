@@ -15,6 +15,7 @@ class cdiff_les_g2 : public cdiff
     int readinifile(cinput *);
     int exec();
 
+    unsigned long gettimelim(unsigned long);
     double getdn(double);
 
   private:

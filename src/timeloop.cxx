@@ -27,30 +27,28 @@ int ctimeloop::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&maxiter     , "time", "maxiter"  , "");
-  n += inputin->getItem(&startiter   , "time", "startiter", "");
-
+  n += inputin->getItem(&runtime     , "time", "runtime"  , "");
+  if(mpi->mode=="init")
+  {
+    starttime = 0.;
+  }
+  else
+  {
+    n += inputin->getItem(&starttime   , "time", "starttime", "");
+  }
   // optional parameters
-  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", "", true);
-  n += inputin->getItem(&dt          , "time", "dt"          , "", 0.1 );
-  n += inputin->getItem(&dtmax       , "time", "dtmax"       , "", dbig);
-  n += inputin->getItem(&cflmax      , "time", "cflmax"      , "", 1.  );
-  n += inputin->getItem(&dnmax       , "time", "dnmax"       , "", 0.5 );
-  n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 4   );
-  n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 100 );
-  n += inputin->getItem(&saveiter    , "time", "saveiter"    , "", 500 );
-  n += inputin->getItem(&statsiter   , "time", "statsiter"   , "", 100 );
-  n += inputin->getItem(&postprociter, "time", "postprociter", "", 100 );
+  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", "", true );
+  n += inputin->getItem(&dtmax       , "time", "dtmax"       , "", dbig );
+  n += inputin->getItem(&dt          , "time", "dt"          , "", dtmax);
+  n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 4    );
+  n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 100  );
+  n += inputin->getItem(&savetime    , "time", "savetime"    , "", 3600 );
+  n += inputin->getItem(&postproctime, "time", "postproctime", "", 3600 );
+  n += inputin->getItem(&precision   , "time", "precision   ", "", 1.   );
 
   // if one argument fails, then crash
   if(n > 0)
     return 1;
-
-  // the maximum iteration is relative to the start iteration
-  maxiter += startiter;
-
-  // the current iteration is set to the start iteration
-  iteration = startiter;
 
   // 3 and 4 are the only valid values for the rkorder
   if(!(rkorder == 3 || rkorder == 4))
@@ -63,11 +61,25 @@ int ctimeloop::readinifile(cinput *inputin)
   loop      = true;
   time      = 0.;
 
-  itime    = (unsigned long)(ifactor * time);
+  iruntime = (unsigned long)(ifactor * runtime);
+  itime    = (unsigned long)0;
   idt      = (unsigned long)(ifactor * dt);
   idtmax   = (unsigned long)(ifactor * dtmax);
+  isavetime= (unsigned long)(ifactor * savetime);
+  idtlim   = idt;
+
+  istarttime= (int)(precision * starttime);
 
   gettimeofday(&start, NULL);
+
+  return 0;
+}
+
+int ctimeloop::settimelim()
+{
+  idtlim = idtmax;
+  idtlim = std::min(idtlim,iruntime-itime);
+  idtlim = std::min(idtlim,isavetime -  itime % isavetime);
 
   return 0;
 }
@@ -79,9 +91,10 @@ int ctimeloop::timestep()
 
   iteration++;
 
-  if(iteration >= maxiter)
+  if(itime >= iruntime)
+  {
     loop = false;
-
+  }
   return 0;
 }
 
@@ -96,26 +109,13 @@ int ctimeloop::docheck()
 int ctimeloop::dosave()
 {
   // do not save directly after the start of the simulation
-  if(iteration % saveiter == 0 && iteration != startiter)
-    return 1;
-
-  return 0;
-}
-
-int ctimeloop::dostats()
-{
-  if(iteration % statsiter == 0)
+  if(itime % isavetime == 0 && iteration != 0)
   {
-    // do not save directly after the start of the simulation, because it has been done
-    // at the end of the previous run, except for iteration 0
-    if(iteration == startiter && iteration != 0)
-      return 0;
+    istarttime = (int) 1./precision*itime/ifactor;
     return 1;
   }
-
   return 0;
 }
-
 
 double ctimeloop::check()
 {
@@ -127,12 +127,11 @@ double ctimeloop::check()
   return timeelapsed;
 }
 
-int ctimeloop::settimestep(double cfl, double dn)
+int ctimeloop::settimestep()
 {
   if(adaptivestep)
   {
-    idt = (long)(std::min((double)idt * cflmax/cfl, (double)idt * dnmax/dn));
-    idt = std::min(idt, idtmax);
+    idt = idtlim;
     dt  = (double)idt / ifactor;
   }
 
@@ -144,12 +143,12 @@ int ctimeloop::exec()
 
   if(rkorder == 3)
   {
-    rk3((*fields->u).data, (*fields->ut).data, dt);
-    rk3((*fields->v).data, (*fields->vt).data, dt);
-    rk3((*fields->w).data, (*fields->wt).data, dt);
+    rk3(fields->u->data, fields->ut->data, dt);
+    rk3(fields->v->data, fields->vt->data, dt);
+    rk3(fields->w->data, fields->wt->data, dt);
     
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      rk3((*fields->s[it->first]).data, (*it->second).data, dt);
+      rk3(fields->s[it->first]->data, it->second->data, dt);
 
 //     rk3((*fields->s).data, (*fields->st).data, dt);
     substep = (substep+1) % 3;
@@ -157,12 +156,12 @@ int ctimeloop::exec()
 
   if(rkorder == 4)
   {
-    rk4((*fields->u).data, (*fields->ut).data, dt);
-    rk4((*fields->v).data, (*fields->vt).data, dt);
-    rk4((*fields->w).data, (*fields->wt).data, dt);
+    rk4(fields->u->data, fields->ut->data, dt);
+    rk4(fields->v->data, fields->vt->data, dt);
+    rk4(fields->w->data, fields->wt->data, dt);
 
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      rk3((*fields->s[it->first]).data, (*it->second).data, dt);
+      rk3(fields->s[it->first]->data, it->second->data, dt);
 
     substep = (substep+1) % 5;
   }
@@ -288,12 +287,12 @@ bool ctimeloop::insubstep()
     return false;
 }
 
-int ctimeloop::save(int n)
+int ctimeloop::save(int starttime)
 {
   if(mpi->mpiid == 0)
   {
     char filename[256];
-    std::sprintf(filename, "time.%07d", n);
+    std::sprintf(filename, "time.%07d", starttime);
 
     std::printf("Saving \"%s\"\n", filename);
 
@@ -315,12 +314,12 @@ int ctimeloop::save(int n)
   return 0;
 }
 
-int ctimeloop::load(int n)
+int ctimeloop::load(int starttime)
 {
   if(mpi->mpiid == 0)
   {
     char filename[256];
-    std::sprintf(filename, "time.%07d", n);
+    std::sprintf(filename, "time.%07d", starttime);
 
     std::printf("Loading \"%s\"\n", filename);
 
@@ -352,9 +351,9 @@ int ctimeloop::load(int n)
 
 int ctimeloop::postprocstep()
 {
-  iteration += postprociter;
+  itime += ipostproctime;
 
-  if(iteration > maxiter)
+  if(itime > iruntime)
     loop = false;
 
   return 0;

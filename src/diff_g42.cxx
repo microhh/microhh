@@ -32,6 +32,15 @@ int cdiff_g42::setvalues()
   return 0;
 }
 
+unsigned long cdiff_g42::gettimelim(unsigned long idt)
+{
+  unsigned long idtlim;
+
+  idtlim = idt * dnmax / dnmul;
+
+  return idtlim;
+}
+
 double cdiff_g42::getdn(double dt)
 {
   double dn;

@@ -17,6 +17,15 @@ cadvec_g2i4::~cadvec_g2i4()
 {
 }
 
+unsigned long cadvec_g2i4::gettimelim(unsigned long idt, double dt)
+{
+  unsigned long idtlim;
+
+  idtlim = idt * cflmax / calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+
+  return idtlim;
+}
+
 double cadvec_g2i4::getcfl(double dt)
 {
   double cfl;

@@ -19,7 +19,17 @@ cadvec::~cadvec()
 
 int cadvec::readinifile(cinput *inputin)
 {
-  return 0;
+  int n = 0;
+  n += inputin->getItem(&cflmax      , "advec", "cflmax"      , "", 1.   );
+
+  return (n>0);
+}
+
+unsigned long cadvec::gettimelim(unsigned long idt, double dt)
+{
+  unsigned long idtlim = (unsigned long) dbig;
+
+  return idtlim;
 }
 
 double cadvec::getcfl(double dt)
@@ -27,7 +37,7 @@ double cadvec::getcfl(double dt)
   double cfl;
 
   cfl = dsmall;
-  
+
   return cfl;
 }
 

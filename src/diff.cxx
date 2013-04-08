@@ -18,9 +18,17 @@ cdiff::~cdiff()
 {
 }
 
+
 int cdiff::readinifile(cinput *inputin)
 {
   return 0;
+}
+
+unsigned long cdiff::gettimelim(unsigned long idtlim)
+{
+  idtlim = (unsigned long) dbig;
+
+  return idtlim;
 }
 
 int cdiff::setvalues()
