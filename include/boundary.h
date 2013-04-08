@@ -24,6 +24,10 @@ class cboundary
     int setvalues();
     int exec();
 
+    // TODO surface pointers
+    double *obuk;
+    double *ustar;
+
   private:
     cgrid   *grid;
     cfields *fields;
@@ -84,8 +88,6 @@ class cboundary
     inline double psih(double);
     inline double phim(double);
     inline double phih(double);
-    double *obuk;
-    double *ustar;
     double ustarin;
     double z0m;
     double z0h;
