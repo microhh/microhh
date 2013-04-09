@@ -758,7 +758,8 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %9s   (%s)\n", cwho,value->c_str(), cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9s   (%s)\n", cwho,value->c_str(), cwhy);
+
   return 0;
 }
 
@@ -800,7 +801,8 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
     }
   }
   strncat(cwho,"                          ",30-strlen(cwho));
-  std::printf("%s= %9s   (%s)\n", cwho, value->c_str(), cwhy);
+  if(mpi->mpiid == 0) std::printf("%s= %9s   (%s)\n", cwho, value->c_str(), cwhy);
+
   return 0;
 }
 
@@ -846,18 +848,18 @@ int cinput::getItem(std::vector<std::string> *value, std::string cat, std::strin
   strncat(cwho,"                          ",30-strlen(cwho));
   if(checkItemExists(cat, item))
   {
-    std::printf("%s   NOT FOUND\n",cwho);
+    if(mpi->mpiid == 0) std::printf("%s   NOT FOUND\n",cwho);
   }
   else
   {
     if(checkItem(value, cat, item))
       return 1;
-    std::printf("%s= ",cwho);
+    if(mpi->mpiid == 0) std::printf("%s= ",cwho);
     for(std::vector<std::string>::iterator it = value->begin(); it !=value->end()-1; ++it)
     {
-      std::printf("%s, ",it->c_str());
+      if(mpi->mpiid == 0) std::printf("%s, ",it->c_str());
     }
-    std::printf("%s\n",(value->end()-1)->c_str());
+    if(mpi->mpiid == 0) std::printf("%s\n",(value->end()-1)->c_str());
   }
 
   return 0;
