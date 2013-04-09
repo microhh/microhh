@@ -65,14 +65,14 @@ int cgrid::readinifile(cinput *inputin)
 
   n += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
 
-  if(!(swspatialorder == "2" || swspatialorder == "4"))
-  {
-    std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
-    return 1;
-  }
-
   if(n > 0)
     return 1;
+
+  if(!(swspatialorder == "2" || swspatialorder == "4"))
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+    return 1;
+  }
  
   // 2nd order scheme requires only 1 ghost cell, a 4th order requires 2
   if(swspatialorder == "2")
