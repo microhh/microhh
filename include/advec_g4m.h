@@ -6,35 +6,40 @@
 #include "advec.h"
 #include "mpiinterface.h"
 
+/**
+ * Derived class for fully conservative 4th order advection scheme.
+ * Fully mass, momentum and energy conserving advection scheme based on the paper
+ * of Morinishi et al., (1998).
+ */
 class cadvec_g4m : public cadvec
 {
   public:
-    cadvec_g4m(cgrid *, cfields *, cmpi *);
-    ~cadvec_g4m();
+    cadvec_g4m(cgrid *, cfields *, cmpi *); ///< Constructor of the advection class.
+    ~cadvec_g4m();                          ///< Destructor of the advection class.
 
     unsigned long gettimelim(long unsigned int idt, double ifactor);
     double getcfl(double);
     int exec();
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
+    cgrid   *grid;   ///< Pointer to grid class.
+    cfields *fields; ///< Pointer to fields class.
+    cmpi    *mpi;    ///< Pointer to mpi class.
 
-    double calccfl(double *, double *, double *, double *, double);
-    int advecu(double *, double *, double *, double *, double *);
-    int advecv(double *, double *, double *, double *, double *);
-    int advecw(double *, double *, double *, double *, double *);
-    int advecs(double *, double *, double *, double *, double *, double *);
+    double calccfl(double *, double *, double *, double *, double);         ///< Calculate the CFL number.
+    int advecu(double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
+    int advecv(double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
+    int advecw(double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
+    int advecs(double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
 
-    inline double interp2(const double, const double);
-    inline double interp4(const double, const double, const double, const double);
-    inline double grad4  (const double, const double, const double, const double, const double);
-    inline double grad4x (const double, const double, const double, const double);
+    inline double interp2(const double, const double);                                           ///< 2nd order interpolation.
+    inline double interp4(const double, const double, const double, const double);               ///< 4th order interpolation.
+    inline double grad4  (const double, const double, const double, const double, const double); ///< 4th order gradient.
+    inline double grad4x (const double, const double, const double, const double);               ///< 4th order gradient (only numerator).
 
-    inline double interp4biasbot(const double, const double, const double, const double);
-    inline double interp4biastop(const double, const double, const double, const double);
-    inline double grad4xbiasbot (const double, const double, const double, const double);
-    inline double grad4xbiastop (const double, const double, const double, const double);
+    inline double interp4biasbot(const double, const double, const double, const double); ///< 4th order interpolation (bottom boundary).
+    inline double interp4biastop(const double, const double, const double, const double); ///< 4th order interpolation (top boundary).
+    inline double grad4xbiasbot (const double, const double, const double, const double); ///< 4th order interpolation (bottom boundary, only numerator).
+    inline double grad4xbiastop (const double, const double, const double, const double); ///< 4th order interpolation (top boundary, only numerator).
 };
 #endif

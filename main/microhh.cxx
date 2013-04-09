@@ -5,11 +5,11 @@
 
 int main(int argc, char *argv[])
 {
-  // start up the message passing interface
-  std::printf("Running microhh git-hash: " GITHASH "\n");
   cmpi mpi;
   if(mpi.startup(argc, argv))
     return 1;
+  // start up the message passing interface
+  if(mpi.mpiid == 0) std::printf("Microhh git-hash: " GITHASH "\n");
 
   // create the instances of the objects
   cinput  input (&mpi);

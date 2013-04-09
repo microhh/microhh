@@ -170,6 +170,9 @@ int cmodel::init()
 {
   if(fields->init())
     return 1;
+  // TODO change this to surface init
+  if(boundary->init())
+    return 1;
   if(buffer->init())
     return 1;
   if(pres->init())
@@ -247,6 +250,10 @@ int cmodel::exec()
 
   // set the boundary conditions
   boundary->exec();
+
+  // TODO very ugly!!!
+  if(swdiff == "22")
+    (*(cdiff_les_g2 *)diff).execvisc(boundary);
 
   // set the initial cfl and dn
   if(timeloop->settimelim())
@@ -353,6 +360,10 @@ int cmodel::exec()
     }
 
     // boundary conditions
+    // TODO UGLY!!
+    if(swdiff == "22")
+      (*(cdiff_les_g2 *)diff).execvisc(boundary);
+
     boundary->exec();
 
     if(timeloop->docheck() && !timeloop->insubstep())
