@@ -15,9 +15,9 @@ class cadvec_g2i4 : public cadvec
     cadvec_g2i4(cgrid *, cfields *, cmpi *); ///< Constructor of the advection class.
     ~cadvec_g2i4();                          ///< Destructor of the advection class.
 
-    unsigned long gettimelim(long unsigned int idt, double ifactor);
-    double getcfl(double);
-    int exec();
+    unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
+    double getcfl(double);                               ///< Get the CFL number.
+    int exec();                                          ///< Execute the advection scheme.
 
   private:
     cgrid   *grid;   ///< Pointer to grid class.
