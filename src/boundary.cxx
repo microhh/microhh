@@ -710,6 +710,9 @@ int cboundary::stability(double * restrict ustar, double * restrict obuk   , dou
       }
   }
 
+  grid->boundary_cyclic2d(ustar);
+  grid->boundary_cyclic2d(obuk);
+
   return 0;
 }
 
