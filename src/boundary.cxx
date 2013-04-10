@@ -631,7 +631,7 @@ int cboundary::surface()
 {
   // TODO replace this later to the right location
   // start with retrieving the stability information
-  
+
   // TODO make this working properly with buoyancy
   stability(ustar, obuk, fields->sp["s"]->datafluxbot,
             fields->u->data, fields->v->data, fields->sp["s"]->data,
@@ -678,8 +678,8 @@ int cboundary::stability(double * restrict ustar, double * restrict obuk   , dou
       ijk = i + j*jj + kstart*kk;
       ubottot[ij] = std::pow(  0.5*(std::pow(ubot[ij], 2.) + std::pow(ubot[ij+ii], 2.))
                              + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
-      utot[ij] = std::pow(  0.5*(std::pow(u[ij], 2.) + std::pow(u[ij+ii], 2.))
-                          + 0.5*(std::pow(v[ij], 2.) + std::pow(v[ij+jj], 2.)), 0.5);
+      utot[ij] = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
+                          + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
     }
 
   // TODO replace by value from boundary
@@ -719,6 +719,7 @@ int cboundary::surfm(double * restrict ustar, double * restrict obuk, double * r
 {
   int ij,ijk,ii,jj,kk,kstart;
 
+  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
