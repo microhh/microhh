@@ -49,7 +49,7 @@ int cbuffer::init()
   {
     if(bufferkstart > grid->kmax-2)
     {
-      std::printf("ERROR bufferkstart has to be less than kmax - 2\n");
+      if(mpi->mpiid == 0) std::printf("ERROR bufferkstart has to be less than kmax - 2\n");
       return 1;
     }
 

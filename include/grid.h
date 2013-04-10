@@ -74,7 +74,8 @@ class cgrid
     // MPI functions
     int initmpi();
     int exitmpi();
-    int boundary_cyclic(double *);
+    int boundary_cyclic  (double *);
+    int boundary_cyclic2d(double *);
     int transposezx(double *, double *);
     int transposexz(double *, double *);
     int transposexy(double *, double *);
@@ -117,6 +118,8 @@ class cgrid
     // MPI Datatypes
     MPI_Datatype eastwestedge;
     MPI_Datatype northsouthedge;
+    MPI_Datatype eastwestedge2d;
+    MPI_Datatype northsouthedge2d;
     MPI_Datatype transposez;
     MPI_Datatype transposez2;
     MPI_Datatype transposex;

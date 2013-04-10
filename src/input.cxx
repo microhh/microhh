@@ -808,24 +808,24 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
 
 int cinput::checkItem(std::string *value, std::string cat, std::string item, std::string el)
 {
-  std::string inputstring, dummy;
-  inputstring = inputlist[cat][item][el].data;
+  char inputstring[256], temp[256], dummy[256];
+  std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
 
-  int n = std::sscanf(inputstring.c_str(), "%s %s",value->c_str(), dummy.c_str());
+  int n = std::sscanf(inputstring, "%s %s", temp, dummy);
 
   if(n == 1)
     *value = inputstring;
   else
   {
-    if(!inputstring.empty())
+    if(std::strcmp(inputstring,""))
     {
       if (el == "default")
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), inputstring.c_str());
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring.c_str());
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -867,12 +867,12 @@ int cinput::getItem(std::vector<std::string> *value, std::string cat, std::strin
 
 int cinput::checkItem(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
-  std::string inputstring, dummy;
-  inputstring = inputlist[cat][item][el].data;
+  char inputstring[256], dummy[256];
+  std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
 
   char temp1[256];
   char * temp2;
-  std::strcpy(temp1, inputstring.c_str());
+  std::strcpy(temp1, inputstring);
 
   // first, split string on the delimiter
   temp2 = std::strtok(temp1, ",");
@@ -880,19 +880,23 @@ int cinput::checkItem(std::vector<std::string> *value, std::string cat, std::str
   while(temp2 != NULL)
   {
     // read in the string part in temp1
-    int n = std::sscanf(temp2, "%s %s", temp1, dummy.c_str());
+    int n = std::sscanf(temp2, "%s %s", temp1, dummy);
 
     // store the contents in the vector, or throw exception
     if(n == 1)
       value->push_back(temp1);
     else
     {
-      if(!inputstring.empty())
+      if(std::strcmp(inputstring,""))
       {
         if (el == "default")
-          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), inputstring.c_str());
+        {
+          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), inputstring);
+        }
         else
-          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring.c_str());
+        {
+          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        }
         // empty the vector
         value->clear();
         return 1;

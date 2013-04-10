@@ -130,7 +130,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
       evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
     }
 
-  for(int k=grid->kstart+1; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; k++)
   {
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
