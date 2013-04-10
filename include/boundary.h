@@ -77,7 +77,7 @@ class cboundary
                   double *, double *, double *);
     int surfm(double *, double *, double *,
               double *, double *, double *,
-              double, int);
+              double, int, std::string);
     int surfs(double *, double *, double *,
               double *, double *, double *,
               double, int);

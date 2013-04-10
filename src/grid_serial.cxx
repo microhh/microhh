@@ -94,6 +94,76 @@ int cgrid::boundary_cyclic(double * restrict data)
   return 0;
 }
 
+int cgrid::boundary_cyclic2d(double * restrict data)
+{
+  int ij0,ij1,jj;
+
+  jj = icells;
+
+  // first, east west boundaries
+  for(int j=0; j<jcells; j++)
+#pragma ivdep
+    for(int i=0; i<igc; i++)
+    {
+      ij0 = i          + j*jj;
+      ij1 = iend-igc+i + j*jj;
+      data[ij0] = data[ij1];
+    }
+
+  for(int j=0; j<jcells; j++)
+#pragma ivdep
+    for(int i=0; i<igc; i++)
+    {
+      ij0 = i+iend   + j*jj;
+      ij1 = i+istart + j*jj;
+      data[ij0] = data[ij1];
+    }
+
+  // if the run is 3D, apply the BCs
+  if(jtot > 1)
+  {
+    // second, send and receive the ghost cells in the north-south direction
+    for(int j=0; j<jgc; j++)
+#pragma ivdep
+      for(int i=0; i<icells; i++)
+      {
+        ij0 = i + j           *jj;
+        ij1 = i + (jend-jgc+j)*jj;
+        data[ij0] = data[ij1];
+      }
+
+    for(int j=0; j<jgc; j++)
+#pragma ivdep
+      for(int i=0; i<icells; i++)
+      {
+        ij0 = i + (j+jend  )*jj;
+        ij1 = i + (j+jstart)*jj;
+        data[ij0] = data[ij1];
+      }
+  }
+  // in case of 2D, fill all the ghost cells with the current value
+  else
+  {
+    // 2d essential variables
+    int ijref,ijnorth,ijsouth,jj;
+
+    jj = icells;
+
+    for(int j=0; j<jgc; j++)
+#pragma ivdep
+      for(int i=istart; i<iend; i++)
+      {
+        ijref   = i + jstart*jj;
+        ijnorth = i + j*jj;
+        ijsouth = i + (jend+j)*jj;
+        data[ijnorth] = data[ijref];
+        data[ijsouth] = data[ijref];
+      }
+  }
+
+  return 0;
+}
+
 int cgrid::transposezx(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;

@@ -375,6 +375,8 @@ int cmodel::exec()
       mom     = fields->checkmom();
       tke     = fields->checktke();
       mass    = fields->checkmass();
+      cfl     = advec->getcfl(timeloop->dt);
+      dn      = diff->getdn(timeloop->dt);
 
       end     = mpi->gettime();
       cputime = end - start;
