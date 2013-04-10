@@ -108,10 +108,10 @@ int cdiff_les_g2::evisc(double * restrict evisc,
       ijk = i + j*jj + kstart*kk;
       strain2 = 2.*(
         // du/dz
-        + 0.5*std::pow(-ufluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.)
+        + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.)
 
         // dv/dz
-        + 0.5*std::pow(-vfluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.) );
+        + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.) );
 
       // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
       // Add the buoyancy production to the TKE
@@ -120,7 +120,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
       evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
     }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart+1; k<grid->kend; k++)
   {
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
