@@ -123,9 +123,9 @@ int cboundary::setvalues()
 
       if(surfmbcbot == 2)
       {
-        for(int j=grid->jstart; j<grid->jend; ++j)
+        for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-          for(int i=grid->istart; i<grid->iend; ++i)
+          for(int i=0; i<grid->icells; ++i)
           {
             ij = i + j*jj;
             ustar[ij] = ustarin;
@@ -134,9 +134,9 @@ int cboundary::setvalues()
       // default value of ustar is 0.1
       else if(surfmbcbot == 0)
       {
-        for(int j=grid->jstart; j<grid->jend; ++j)
+        for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-          for(int i=grid->istart; i<grid->iend; ++i)
+          for(int i=0; i<grid->icells; ++i)
           {
             ij = i + j*jj;
             ustar[ij] = 0.1;
@@ -633,7 +633,7 @@ int cboundary::surface()
   // start with retrieving the stability information
   
   // TODO make this working properly with buoyancy
-  stability(obuk, ustar, fields->sp["s"]->datafluxbot,
+  stability(ustar, obuk, fields->sp["s"]->datafluxbot,
             fields->u->data, fields->v->data, fields->sp["s"]->data,
             fields->u->databot, fields->v->databot, fields->sp["s"]->databot,
             fields->s["tmp1"]->data, fields->s["tmp2"]->data,
@@ -655,10 +655,10 @@ int cboundary::surface()
   return 0;
 }
 
-int cboundary::stability(double * restrict obuk, double * restrict ustar, double * restrict bfluxbot,
-                         double * restrict u   , double * restrict v    , double * restrict b, 
-                         double * restrict ubot, double * restrict vbot , double * restrict bbot,
-                         double * restrict utot, double * restrict ubottot, double * restrict z)
+int cboundary::stability(double * restrict ustar, double * restrict obuk   , double * restrict bfluxbot,
+                         double * restrict u    , double * restrict v      , double * restrict b       ,
+                         double * restrict ubot , double * restrict vbot   , double * restrict bbot    ,
+                         double * restrict utot , double * restrict ubottot, double * restrict z       )
 {
   int ij,ijk,ii,jj,kk,kstart;
 
