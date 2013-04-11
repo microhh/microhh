@@ -44,7 +44,7 @@ int ctimeloop::readinifile(cinput *inputin)
   n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 100  );
   n += inputin->getItem(&savetime    , "time", "savetime"    , "", 3600 );
   n += inputin->getItem(&postproctime, "time", "postproctime", "", 3600 );
-  n += inputin->getItem(&precision   , "time", "precision   ", "", 1.   );
+  n += inputin->getItem(&precision   , "time", "precision"   , "", 1.   );
 
   // if one argument fails, then crash
   if(n > 0)
