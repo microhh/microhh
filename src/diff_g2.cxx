@@ -32,11 +32,11 @@ int cdiff_g2::setvalues()
   return 0;
 }
 
-unsigned long cdiff_g2::gettimelim(unsigned long idt)
+unsigned long cdiff_g2::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
-  idtlim = idt * dnmax / dnmul;
+  idtlim = idt * dnmax / (dt * dnmul);
 
   return idtlim;
 }

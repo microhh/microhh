@@ -68,7 +68,7 @@ int ctimeloop::readinifile(cinput *inputin)
   isavetime= (unsigned long)(ifactor * savetime);
   idtlim   = idt;
 
-  istarttime= (int)(precision * starttime);
+  istarttime= (int)(starttime / precision);
 
   gettimeofday(&start, NULL);
 

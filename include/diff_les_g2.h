@@ -17,7 +17,7 @@ class cdiff_les_g2 : public cdiff
     int exec();
     int execvisc(cboundary *);
 
-    unsigned long gettimelim(unsigned long);
+    unsigned long gettimelim(unsigned long, double);
     double getdn(double);
 
   private:

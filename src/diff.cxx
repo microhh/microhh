@@ -21,10 +21,14 @@ cdiff::~cdiff()
 
 int cdiff::readinifile(cinput *inputin)
 {
-  return 0;
+  int n = 0;
+
+  n += inputin->getItem(&dnmax      , "diff", "dnmax"      , "", 0.5   );
+
+  return (n>0);
 }
 
-unsigned long cdiff::gettimelim(unsigned long idtlim)
+unsigned long cdiff::gettimelim(unsigned long idtlim, double dt)
 {
   idtlim = (unsigned long) dbig;
 

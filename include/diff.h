@@ -15,7 +15,7 @@ class cdiff
     virtual int setvalues();
     virtual int exec();
 
-    virtual unsigned long gettimelim(unsigned long);
+    virtual unsigned long gettimelim(unsigned long, double);
     virtual double getdn(double);
 
     double dnmax;

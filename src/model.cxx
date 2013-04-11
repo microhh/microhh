@@ -259,8 +259,9 @@ int cmodel::exec()
   if(timeloop->settimelim())
     return 1;
   timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt));
-//   timeloop->dtlim = std::min(timeloop->dtlim,stat->gettimelim());
+  timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
+  timeloop->settimestep();
 
   // print the initial information
   if(timeloop->docheck() && !timeloop->insubstep())
@@ -294,7 +295,7 @@ int cmodel::exec()
       if(timeloop->settimelim())
         return 1;
       timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
-      timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt));
+      timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
       timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
       timeloop->settimestep();
     }

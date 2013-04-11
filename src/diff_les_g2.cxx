@@ -32,11 +32,11 @@ int cdiff_les_g2::readinifile(cinput *inputin)
   return 0;
 }
 
-unsigned long cdiff_les_g2::gettimelim(unsigned long idt)
+unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
-  idtlim = idt * dnmax / getdn(1.);
+  idtlim = idt * dnmax / getdn(dt);
 
   return idtlim;
 }
