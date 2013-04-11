@@ -38,6 +38,8 @@ int cstats::readinifile(cinput *inputin)
 
 int cstats::init(double ifactor)
 {
+  istatstime = (unsigned long)(ifactor * statstime);
+
   if(swstats == "0")
     return 0;
 
@@ -52,8 +54,6 @@ int cstats::init(double ifactor)
     if(stats_les->init())
       return 1;
   }
-
-  istatstime = (unsigned long)(ifactor * statstime);
 
   return 0;
 }
