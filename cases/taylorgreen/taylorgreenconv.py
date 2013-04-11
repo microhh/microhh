@@ -1,7 +1,7 @@
 from pylab import *
 from taylorgreenfunc import *
 
-t    = 400
+t    = 1
 time = 1.
 visc = (8.*pi**2. * 100.)**(-1.)
 
