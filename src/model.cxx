@@ -48,9 +48,9 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
 
   // set null pointers for classes that will be initialized later
   boundary = NULL;
-  advec = NULL;
-  diff  = NULL;
-  pres  = NULL;
+  advec    = NULL;
+  diff     = NULL;
+  pres     = NULL;
 }
 
 cmodel::~cmodel()
@@ -150,12 +150,12 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // initialize the proper boundary class
-  n += inputin->getItem(&swboundary, "boundary", "swboundary", "", grid->swspatialorder);
+  n += inputin->getItem(&swboundary, "boundary", "swboundary", "", "");
   if(swboundary == "surface")
     boundary = new cboundary_surface(grid, fields, mpi);
   else if(swboundary == "user")
     boundary = new cboundary_user(grid, fields, mpi);
-  else if(swboundary == grid->swspatialorder)
+  else if(swboundary == "")
     boundary = new cboundary(grid, fields, mpi);
   else
   {
