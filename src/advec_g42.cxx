@@ -8,9 +8,6 @@
 
 cadvec_g42::cadvec_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cadvec_g42::~cadvec_g42()

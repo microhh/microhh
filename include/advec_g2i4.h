@@ -19,10 +19,6 @@ class cadvec_g2i4 : public cadvec
     int exec();            ///< Trigger calculation of the advection tendencies.
 
   private:
-    cgrid   *grid;   ///< Pointer to grid class.
-    cfields *fields; ///< Pointer to fields class.
-    cmpi    *mpi;    ///< Pointer to mpi class.
-
     double calccfl(double *, double *, double *, double *, double);         ///< Calculate the CFL number.
     int advecu(double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
     int advecv(double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.

@@ -18,10 +18,6 @@ class cdiff_g42 : public cdiff
     double getdn(double);
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     double dnmul;
 
     inline double divgrad4(const double, const double, const double, const double,

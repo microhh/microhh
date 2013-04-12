@@ -17,7 +17,7 @@ class cdiff
 
     virtual double getdn(double);
 
-  private:
+  protected:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;

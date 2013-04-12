@@ -8,9 +8,6 @@
 
 cadvec_g4m::cadvec_g4m(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cadvec_g4m::~cadvec_g4m()

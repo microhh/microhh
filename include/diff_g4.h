@@ -18,10 +18,6 @@ class cdiff_g4 : public cdiff
     double getdn(double);
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     double dnmul;
 
     int diffc(double *, double *, double *, double *, double);

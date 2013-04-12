@@ -20,10 +20,6 @@ class cdiff_les_g2 : public cdiff
     double getdn(double);
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     // int evisc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
     int evisc(double *,
               double *, double *, double *, double *,
