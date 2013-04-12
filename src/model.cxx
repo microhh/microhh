@@ -314,8 +314,9 @@ int cmodel::exec()
     // pressure
     pres->exec(timeloop->getsubdt());
     if(timeloop->dosave() && !timeloop->insubstep())
+    {
       fields->s["p"]->save(timeloop->istarttime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
-
+    }
     if(stats->dostats(timeloop->iteration, timeloop->itime) && !timeloop->insubstep())
     {
       stats->exec(timeloop->iteration, timeloop->time);

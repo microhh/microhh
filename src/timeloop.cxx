@@ -78,7 +78,6 @@ int ctimeloop::readinifile(cinput *inputin)
 int ctimeloop::settimelim()
 {
   idtlim = idtmax;
-  idtlim = std::min(idtlim,iruntime-itime);
   idtlim = std::min(idtlim,isavetime -  itime % isavetime);
 
   return 0;

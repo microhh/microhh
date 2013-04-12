@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <iostream>
+#include <cmath>
 #include "grid.h"
 #include "field3d.h"
 #include "defines.h"
@@ -266,4 +267,39 @@ int cfield3d::load(int n, double * restrict tmp1, double * restrict tmp2)
   }
 
   return 0;
+}
+
+int cfield3d::checkfornan()
+{
+  int    ijk,ii,jj,kk;
+  double dxi,dyi;
+  int nerror=0;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+
+  double cfl = 0;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    {
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        if (data[ijk]!=data[ijk])
+        {
+          nerror++;
+          std::printf("Cell %d %d %d of %s is %f\n", i,j,k, name.c_str(),data[ijk]);
+        }
+      }
+    }
+  }
+  return (nerror>0);
 }
