@@ -37,6 +37,7 @@ class cmodel
     std::string swadvec;
     std::string swdiff;
     std::string swpres;
+    std::string swboundary;
 
     // fields to be created
     cfields   *fields;

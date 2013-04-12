@@ -5,6 +5,10 @@
 #include "model.h"
 #include "defines.h"
 
+// boundary schemes
+#include "boundary_surface.h"
+#include "boundary_user.h"
+
 // advection schemes
 #include "advec_g2.h"
 #include "advec_g2i4.h"
@@ -31,8 +35,6 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   // create the fields class
   fields   = new cfields  (grid, mpi);
 
-  // create the boundary conditions class
-  boundary = new cboundary(grid, fields, mpi);
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
@@ -45,6 +47,7 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   cross    = new ccross   (grid, fields, mpi);
 
   // set null pointers for classes that will be initialized later
+  boundary = NULL;
   advec = NULL;
   diff  = NULL;
   pres  = NULL;
@@ -146,9 +149,22 @@ int cmodel::readinifile(cinput *inputin)
   if(timeloop->readinifile(inputin))
     return 1;
 
-  // model classes that need to know prognostic fields
+  // initialize the proper boundary class
+  n += inputin->getItem(&swboundary, "boundary", "swboundary", "", grid->swspatialorder);
+  if(swboundary == "surface")
+    boundary = new cboundary_surface(grid, fields, mpi);
+  else if(swboundary == "user")
+    boundary = new cboundary_user(grid, fields, mpi);
+  else if(swboundary == grid->swspatialorder)
+    boundary = new cboundary(grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+    return 1;
+  }
   if(boundary->readinifile(inputin))
     return 1;
+
   if(buffer->readinifile(inputin))
     return 1;
 
@@ -169,7 +185,6 @@ int cmodel::init()
 {
   if(fields->init())
     return 1;
-  // TODO change this to surface init
   if(boundary->init())
     return 1;
   if(buffer->init())
