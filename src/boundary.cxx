@@ -132,6 +132,15 @@ int cboundary::setvalues()
             ustar[ij] = ustarin;
           }
       }
+
+      // set the initial obukhov length to a very small number
+      for(int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+        for(int i=0; i<grid->icells; ++i)
+        {
+          ij = i + j*jj;
+          obuk[ij] = dsmall;
+        }
     }
   }
 
@@ -700,7 +709,7 @@ int cboundary::stability(double * restrict ustar, double * restrict obuk   , dou
       for(int i=0; i<grid->icells; i++)
       {
         ij  = i + j*jj;
-        obuk [ij] = calcobuk(dutot[ij], bfluxbot[ij], z[kstart]);
+        obuk [ij] = calcobuk(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
@@ -765,7 +774,8 @@ int cboundary::surfm(double * restrict ustar, double * restrict obuk, double * r
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      // use the linearly interpolated grad, rather than the MO grad, to prevent giving unresolvable gradients to advection schemes
+      // use the linearly interpolated grad, rather than the MO grad,
+      // to prevent giving unresolvable gradients to advection schemes
       // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
       vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
     }
@@ -795,7 +805,8 @@ int cboundary::surfs(double * restrict ustar, double * restrict obuk, double * r
         ijk = i + j*jj + kstart*kk;
         varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
-        // use the linearly interpolated grad, rather than the MO grad, to prevent giving unresolvable gradients to advection schemes
+        // use the linearly interpolated grad, rather than the MO grad,
+        // to prevent giving unresolvable gradients to advection schemes
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
   }
@@ -810,7 +821,8 @@ int cboundary::surfs(double * restrict ustar, double * restrict obuk, double * r
         ijk = i + j*jj + kstart*kk;
         varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
-        // use the linearly interpolated grad, rather than the MO grad, to prevent giving unresolvable gradients to advection schemes
+        // use the linearly interpolated grad, rather than the MO grad,
+        // to prevent giving unresolvable gradients to advection schemes
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
   }
@@ -818,29 +830,32 @@ int cboundary::surfs(double * restrict ustar, double * restrict obuk, double * r
   return 0;
 }
 
-double cboundary::calcobuk(double du, double bfluxbot, double zsl)
+double cboundary::calcobuk(double L, double du, double bfluxbot, double zsl)
 {
-  double L, L0;
+  double L0;
   double Lstart, Lend;
   double fx, fxdif;
 
-  if(bfluxbot < 0.)
+  // if L and bfluxbot are of the same sign, or the last calculation did not converge,
+  // the stability has changed and the procedure needs to be reset
+  if(L*bfluxbot > 0. || std::abs(L) > 1.e6)
   {
-    L  = dsmall;
-    L0 = dbig;
+    if(bfluxbot > 0.)
+      L  = -dsmall;
+    else
+      L  = dsmall;
   }
-  else
-  {
-    L  = -dsmall;
+  if(bfluxbot > 0.)
     L0 = -dbig;
-  }
+  else
+    L0 = dbig;
 
   // TODO replace by value from boundary
   double gravitybeta = 9.81/300.;
   int n = 0;
 
   // exit on convergence (first condition) or on neutral limit (last condition)
-  while(std::abs((L - L0)/L0) > 0.01 && std::abs(L) < 1e9)
+  while(std::abs((L - L0)/L0) > 0.001 && std::abs(L) < 1.e6)
   {
     L0     = L;
     // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
@@ -853,7 +868,6 @@ double cboundary::calcobuk(double du, double bfluxbot, double zsl)
     L      = L - fx/fxdif;
     ++n;
   }
-  // std::printf("CvH n, L: %d, %E, %E, %E\n", n, L, du, bfluxbot);
 
   return L;
 }
