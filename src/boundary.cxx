@@ -121,6 +121,7 @@ int cboundary::setvalues()
       int ij,jj;
       jj = grid->icells;
 
+      // in case the momentum has a fixed ustar, set the value to that of the input
       if(surfmbcbot == 2)
       {
         for(int j=0; j<grid->jcells; ++j)
@@ -129,17 +130,6 @@ int cboundary::setvalues()
           {
             ij = i + j*jj;
             ustar[ij] = ustarin;
-          }
-      }
-      // default value of ustar is 0.1
-      else if(surfmbcbot == 0)
-      {
-        for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-          for(int i=0; i<grid->icells; ++i)
-          {
-            ij = i + j*jj;
-            ustar[ij] = 0.1;
           }
       }
     }
@@ -681,8 +671,8 @@ int cboundary::stability(double * restrict ustar, double * restrict obuk   , dou
                          + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
       utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
                          + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
-      // prevent the absolute wind gradient from reaching values less than 0.1
-      dutot[ij] = std::max(std::abs(utot - ubottot), 0.1);
+      // prevent the absolute wind gradient from reaching values less than 0.01 m/s
+      dutot[ij] = std::max(std::abs(utot - ubottot), 0.01);
     }
 
   grid->boundary_cyclic2d(dutot);
