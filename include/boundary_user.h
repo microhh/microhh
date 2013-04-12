@@ -15,10 +15,6 @@ class cboundary_user : public cboundary
     int setvalues();
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     int setbc_patch(double *, double, double, double);
 
     // patch type

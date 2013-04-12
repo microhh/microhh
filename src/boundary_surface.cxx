@@ -8,9 +8,6 @@
 
 cboundary_surface::cboundary_surface(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cboundary(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 int cboundary_surface::readinifile(cinput *inputin)

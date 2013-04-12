@@ -17,10 +17,6 @@ class cboundary_surface : public cboundary
     int exec();
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     // surface scheme
     int bcvalues();
     int stability(double *, double *, double *,
