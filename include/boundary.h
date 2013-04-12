@@ -74,7 +74,7 @@ class cboundary
     int stability(double *, double *, double *,
                   double *, double *, double *,
                   double *, double *, double *,
-                  double *, double *, double *);
+                  double *, double *);
     int surfm(double *, double *, double *,
               double *, double *, double *,
               double, int, std::string);
