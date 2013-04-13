@@ -173,7 +173,7 @@ int cstats_les::create(int n)
 
 int cstats_les::exec(int iteration, double time)
 {
-  if(mpi->mpiid == 0) std::printf("Saving stats for iteration %d\n", iteration);
+  if(mpi->mpiid == 0) std::printf("Saving stats for time %f\n", time);
 
   if(mpi->mpiid == 0)
   {

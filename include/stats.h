@@ -15,9 +15,11 @@ class cstats
     ~cstats();
 
     int readinifile(cinput *);
-    int init();
+    int init(double);
     int create(int);
+    unsigned long gettimelim(unsigned long);
     int exec(int, double);
+    int dostats(int, unsigned long );
 
   private:
     cgrid   *grid;
@@ -28,6 +30,10 @@ class cstats
     cstats_les *stats_les;
 
     std::string swstats;
+
+    double statstime;
+    unsigned long istatstime;
+
 };
 #endif
 

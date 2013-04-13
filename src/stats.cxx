@@ -27,7 +27,8 @@ int cstats::readinifile(cinput *inputin)
   int n = 0;
 
   // optional, by default switch stats off
-  n += inputin->getItem(&swstats, "stats", "swstats", "", "0");
+  n += inputin->getItem(&swstats  , "stats", "swstats"  , "", "0");
+  n += inputin->getItem(&statstime, "stats", "statstime", "", 60.);
 
   if(n > 0)
     return 1;
@@ -35,8 +36,10 @@ int cstats::readinifile(cinput *inputin)
   return 0;
 }
 
-int cstats::init()
+int cstats::init(double ifactor)
 {
+  istatstime = (unsigned long)(ifactor * statstime);
+
   if(swstats == "0")
     return 0;
 
@@ -70,6 +73,27 @@ int cstats::create(int n)
   {
     if(stats_les->create(n))
       return 1;
+  }
+
+  return 0;
+}
+
+unsigned long cstats::gettimelim(unsigned long itime)
+{
+  unsigned long idtlim = istatstime -  itime % istatstime;
+
+  return idtlim;
+}
+
+int cstats::dostats(int iteration, long unsigned itime)
+{
+  if(itime % istatstime == 0)
+  {
+    // do not save directly after the start of the simulation, because it has been done
+    // at the end of the previous run, except for iteration 0
+    if(iteration == 0 && itime != 0)
+      return 0;
+    return 1;
   }
 
   return 0;

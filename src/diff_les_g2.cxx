@@ -19,6 +19,7 @@ int cdiff_les_g2::readinifile(cinput *inputin)
 {
   int n = 0;
 
+  n += inputin->getItem(&dnmax      , "diff", "dnmax"      , "", 0.5   );
   n += fields->initdfld("evisc");
 
   // if one argument fails, then crash
@@ -26,6 +27,15 @@ int cdiff_les_g2::readinifile(cinput *inputin)
     return 1;
 
   return 0;
+}
+
+unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
+{
+  unsigned long idtlim;
+
+  idtlim = idt * dnmax / getdn(dt);
+
+  return idtlim;
 }
 
 int cdiff_les_g2::execvisc(cboundary *boundaryin)

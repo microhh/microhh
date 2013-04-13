@@ -1,5 +1,6 @@
 #include <string>
 #include <cstdio>
+#include <algorithm>
 #include "grid.h"
 #include "fields.h"
 #include "model.h"
@@ -191,7 +192,7 @@ int cmodel::init()
     return 1;
   if(pres->init())
     return 1;
-  if(stats->init())
+  if(stats->init(timeloop->ifactor))
     return 1;
 
   return 0;
@@ -199,13 +200,13 @@ int cmodel::init()
 
 int cmodel::load()
 {
-  if(timeloop->load(timeloop->iteration))
+  if(timeloop->load(timeloop->istarttime))
     return 1;
-  if(fields->load(timeloop->iteration))
+  if(fields->load(timeloop->istarttime))
     return 1;
   if(buffer->load())
     return 1;
-  if(stats->create(timeloop->iteration))
+  if(stats->create(timeloop->istarttime))
     return 1;
 
   // initialize the diffusion to get the time step requirement
@@ -231,11 +232,11 @@ int cmodel::create(cinput *inputin)
 
 int cmodel::save()
 {
-  if(fields->save(timeloop->iteration))
+  if(fields->save(timeloop->istarttime))
     return 1;
   if(buffer->save())
     return 1;
-  if(timeloop->save(timeloop->iteration))
+  if(timeloop->save(timeloop->istarttime))
     return 1;
 
   return 0;
@@ -270,8 +271,12 @@ int cmodel::exec()
     (*(cdiff_les_g2 *)diff).execvisc(boundary);
 
   // set the initial cfl and dn
-  cfl = advec->getcfl(timeloop->dt);
-  dn  = diff->getdn(timeloop->dt);
+  if(timeloop->settimelim())
+    return 1;
+  timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
+  timeloop->settimestep();
 
   // print the initial information
   if(timeloop->docheck() && !timeloop->insubstep())
@@ -284,6 +289,8 @@ int cmodel::exec()
     mom     = fields->checkmom();
     tke     = fields->checktke();
     mass    = fields->checkmass();
+    cfl     = advec->getcfl(timeloop->dt);
+    dn      = diff->getdn(timeloop->dt);
 
     // write the output to file
     if(mpi->mpiid == 0)
@@ -300,9 +307,12 @@ int cmodel::exec()
     // determine the time step
     if(!timeloop->insubstep())
     {
-      cfl = advec->getcfl(timeloop->dt);
-      dn  = diff->getdn(timeloop->dt);
-      timeloop->settimestep(cfl, dn);
+      if(timeloop->settimelim())
+        return 1;
+      timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
+      timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
+      timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
+      timeloop->settimestep();
     }
 
     // advection
@@ -319,14 +329,14 @@ int cmodel::exec()
     // pressure
     pres->exec(timeloop->getsubdt());
     if(timeloop->dosave() && !timeloop->insubstep())
-      fields->s["p"]->save(timeloop->iteration, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
-
-    if(timeloop->dostats() && !timeloop->insubstep())
+    {
+      fields->s["p"]->save(timeloop->istarttime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
+    }
+    if(stats->dostats(timeloop->iteration, timeloop->itime) && !timeloop->insubstep())
     {
       stats->exec(timeloop->iteration, timeloop->time);
       cross->exec(timeloop->iteration);
     }
-
     // exit the simulation when the runtime has been hit after the pressure calculation
     if(!timeloop->loop)
       break;
@@ -344,8 +354,8 @@ int cmodel::exec()
       // save the fields
       if(timeloop->dosave() && !timeloop->insubstep())
       {
-        timeloop->save(timeloop->iteration);
-        fields->save  (timeloop->iteration);
+        timeloop->save(timeloop->istarttime);
+        fields->save  (timeloop->istarttime);
       }
     }
 
@@ -360,9 +370,9 @@ int cmodel::exec()
         break;
 
       // load the data
-      if(timeloop->load(timeloop->iteration))
+      if(timeloop->load(timeloop->istarttime))
         return 1;
-      if(fields->load(timeloop->iteration))
+      if(fields->load(timeloop->istarttime))
         return 1;
     }
 
@@ -382,6 +392,8 @@ int cmodel::exec()
       mom     = fields->checkmom();
       tke     = fields->checktke();
       mass    = fields->checkmass();
+      cfl     = advec->getcfl(timeloop->dt);
+      dn      = diff->getdn(timeloop->dt);
 
       end     = mpi->gettime();
       cputime = end - start;

@@ -254,7 +254,7 @@ int cstats_dns::create(int n)
 
 int cstats_dns::exec(int iteration, double time)
 {
-  if(mpi->mpiid == 0) std::printf("Saving stats for iteration %d\n", iteration);
+  if(mpi->mpiid == 0) std::printf("Saving stats for time %f\n", time);
 
   if(mpi->mpiid == 0)
   {

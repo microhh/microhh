@@ -15,6 +15,7 @@ class cdiff_g4 : public cdiff
     int setvalues();
     int exec();
 
+    unsigned long gettimelim(unsigned long, double);
     double getdn(double);
 
   private:
