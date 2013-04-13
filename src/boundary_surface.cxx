@@ -31,9 +31,9 @@ int cboundary_surface::readinifile(cinput *inputin)
     n += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
   }
 
-  n += inputin->getItem(&z0m, "surface", "z0m", "");
-  n += inputin->getItem(&z0h, "surface", "z0h", "");
-  n += inputin->getItem(&ustarin, "surface", "ustar", "");
+  n += inputin->getItem(&z0m, "boundary", "z0m", "");
+  n += inputin->getItem(&z0h, "boundary", "z0h", "");
+  n += inputin->getItem(&ustarin, "boundary", "ustar", "");
 
   // copy all the boundary options and set the model ones to flux type
   surfmbcbot = mbcbot;
