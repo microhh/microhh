@@ -19,7 +19,9 @@ int cdiff_les_g2::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&dnmax      , "diff", "dnmax"      , "", 0.5   );
+  n += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5 );
+  n += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23);
+
   n += fields->initdfld("evisc");
 
   // if one argument fails, then crash
@@ -85,7 +87,6 @@ int cdiff_les_g2::evisc(double * restrict evisc,
 
   // wall damping
   double mlen,mlen0,fac;
-  const double cs = 0.23;
   const double z0 = 0.1;
   const double n  = 2.;
 

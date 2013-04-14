@@ -80,8 +80,13 @@ int cmodel::readinifile(cinput *inputin)
   if(fields->readinifile(inputin))
     return 1;
 
+  // first, get the switches for the schemes
+  n += inputin->getItem(&swadvec   , "advec"    , "swadvec"   , "", grid->swspatialorder);
+  n += inputin->getItem(&swdiff    , "diff"     , "swdiff"    , "", grid->swspatialorder);
+  n += inputin->getItem(&swpres    , "pres"     , "swpres"    , "", grid->swspatialorder);
+  n += inputin->getItem(&swboundary, "boundary", "swboundary" , "", ""                  );
+
   // check the advection scheme
-  n += inputin->getItem(&swadvec, "advec", "swadvec", "", grid->swspatialorder);
   if(swadvec == "0")
     advec = new cadvec     (grid, fields, mpi);
   else if(swadvec == "2")
@@ -103,7 +108,6 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // check the diffusion scheme
-  n += inputin->getItem(&swdiff, "diff", "swdiff", "", grid->swspatialorder);
   if(swdiff == "0")
     diff = new cdiff    (grid, fields, mpi);
   else if(swdiff == "2")
@@ -112,9 +116,17 @@ int cmodel::readinifile(cinput *inputin)
     diff = new cdiff_g42(grid, fields, mpi);
   else if(swdiff == "4")
     diff = new cdiff_g4 (grid, fields, mpi);
-  // CvH move to new model file later
+  // TODO move to new model file later
   else if(swdiff == "22")
+  {
     diff = new cdiff_les_g2(grid, fields, mpi);
+    // the subgrid model requires a surface model because of the MO matching at first level
+    if(swboundary != "surface")
+    {
+      std::printf("ERROR swdiff == \"22\" requires swboundary == \"surface\"\n");
+      return 1;
+    }
+  }
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
@@ -123,9 +135,7 @@ int cmodel::readinifile(cinput *inputin)
   if(diff->readinifile(inputin))
     return 1;
 
-
   // check the pressure scheme
-  n += inputin->getItem(&swpres, "pres", "swpres", "", grid->swspatialorder);
   if(swpres == "0")
     pres = new cpres    (grid, fields, mpi);
   else if(swpres == "2")
@@ -150,8 +160,7 @@ int cmodel::readinifile(cinput *inputin)
   if(timeloop->readinifile(inputin))
     return 1;
 
-  // initialize the proper boundary class
-  n += inputin->getItem(&swboundary, "boundary", "swboundary", "", "");
+  // read the boundary and buffer in the end because they need to know the requested fields
   if(swboundary == "surface")
     boundary = new cboundary_surface(grid, fields, mpi);
   else if(swboundary == "user")
@@ -265,10 +274,7 @@ int cmodel::exec()
 
   // set the boundary conditions
   boundary->exec();
-
-  // TODO very ugly!!!
-  if(swdiff == "22")
-    (*(cdiff_les_g2 *)diff).execvisc(boundary);
+  diff->execvisc(boundary);
 
   // set the initial cfl and dn
   if(timeloop->settimelim())
@@ -377,11 +383,8 @@ int cmodel::exec()
     }
 
     // boundary conditions
-    // TODO UGLY!!
-    if(swdiff == "22")
-      (*(cdiff_les_g2 *)diff).execvisc(boundary);
-
     boundary->exec();
+    diff->execvisc(boundary);
 
     if(timeloop->docheck() && !timeloop->insubstep())
     {

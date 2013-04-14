@@ -4,6 +4,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
+#include "boundary.h"
 
 class cdiff
 {
@@ -13,6 +14,7 @@ class cdiff
 
     virtual int readinifile(cinput *);
     virtual int setvalues();
+    virtual int execvisc(cboundary *);
     virtual int exec();
 
     virtual unsigned long gettimelim(unsigned long, double);

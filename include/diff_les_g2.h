@@ -37,5 +37,7 @@ class cdiff_les_g2 : public cdiff
 
     inline double phim(double);
     inline double phih(double);
+
+    double cs;
 };
 #endif

@@ -49,6 +49,11 @@ double cdiff::getdn(double dt)
   return dn;
 }
 
+int cdiff::execvisc(cboundary *boundaryin)
+{
+  return 0;
+}
+
 int cdiff::exec()
 {
   return 0;
