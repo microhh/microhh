@@ -19,11 +19,6 @@ class cpres_g4 : public cpres
     double check();
 
   private:
-    // variables
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     bool allocated;
 
     double *bmati, *bmatj;

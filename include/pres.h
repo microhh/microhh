@@ -19,8 +19,7 @@ class cpres
     virtual int exec(double);
     virtual double check();
 
-  private:
-    // variables
+  protected:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;

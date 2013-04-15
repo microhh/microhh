@@ -17,6 +17,7 @@ class cfield3d
     // int boundary_cyclic();
     int save(int, double *, double *);
     int load(int, double *, double *);
+    int checkfornan();
 
     // variables
     double *data;

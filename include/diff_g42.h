@@ -15,13 +15,10 @@ class cdiff_g42 : public cdiff
     int setvalues();
     int exec();
 
+    unsigned long gettimelim(unsigned long, double);
     double getdn(double);
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     double dnmul;
 
     inline double divgrad4(const double, const double, const double, const double,

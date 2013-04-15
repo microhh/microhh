@@ -17,13 +17,10 @@ class cdiff_les_g2 : public cdiff
     int exec();
     int execvisc(cboundary *);
 
+    unsigned long gettimelim(unsigned long, double);
     double getdn(double);
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     // int evisc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
     int evisc(double *,
               double *, double *, double *, double *,
@@ -40,5 +37,7 @@ class cdiff_les_g2 : public cdiff
 
     inline double phim(double);
     inline double phih(double);
+
+    double cs;
 };
 #endif

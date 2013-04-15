@@ -15,17 +15,6 @@ else()
       "Choose the type of build, options are: None Debug Release."  FORCE)
 endif ()
 
-# Set MPI on or off. By default it is on.
-set (MPI TRUE CACHE BOOL "Choose to enable MPI or not.")
-if(MPI)
- MESSAGE(STATUS "MPI is Enabled.")
- ADD_DEFINITIONS("-DPARALLEL")  # Set precompiler flag
- set (CXX_COMPILER_WRAPPER mpicxx)
- set (C_COMPILER_WRAPPER mpicc)
-else()
-  MESSAGE(STATUS "MPI is Disabled.")
-endif()
-
 #Load system specific settings
 if (NOT SYST)
   set (SYST default CACHE STRING
@@ -36,17 +25,26 @@ include (${SYST} OPTIONAL)
 #Start the project only after all the variables are set
 project (microhhc)
 
+# Set MPI on or off. By default it is on.
+set (MPI TRUE CACHE BOOL "Choose to enable MPI or not.")
+if(MPI)
+ MESSAGE(STATUS "MPI is Enabled.")
+ ADD_DEFINITIONS("-DPARALLEL")  # Set precompiler flag
+else()
+ set (CXX_COMPILER_WRAPPER "")
+ set (C_COMPILER_WRAPPER "")
+ MESSAGE(STATUS "MPI is Disabled.")
+endif()
+
 get_filename_component (C_COMPILER_NAME ${CMAKE_C_COMPILER_ID} NAME)
 get_filename_component (CXX_COMPILER_NAME ${CMAKE_CXX_COMPILER_ID} NAME)
-MESSAGE(STATUS "Compiler " ${CMAKE_CXX_COMPILER})
-MESSAGE(STATUS "Compiler " ${C_COMPILER_WRAPPER})
-
 
 if (NOT ${C_COMPILER_WRAPPER}  STREQUAL "")
   CMAKE_FORCE_C_COMPILER(${C_COMPILER_WRAPPER} ${C_COMPILER_NAME})
   CMAKE_FORCE_CXX_COMPILER(${CXX_COMPILER_WRAPPER} ${CXX_COMPILER_NAME})
 endif ()
-MESSAGE(STATUS "Compiler " ${CMAKE_CXX_COMPILER})
+MESSAGE(STATUS "C Compiler " ${CMAKE_C_COMPILER})
+MESSAGE(STATUS "CXX Compiler " ${CMAKE_CXX_COMPILER})
 
 set(CMAKE_CXX_FLAGS ${USER_CXX_FLAGS} )
 set(CMAKE_CXX_FLAGS_RELEASE ${USER_CXX_FLAGS_RELEASE} )
@@ -75,7 +73,8 @@ endif()
 ADD_CUSTOM_COMMAND(TARGET todo POST_BUILD
                   COMMAND echo "MICROHH TODO LIST" > TODO
                   COMMAND date  >> TODO
-                  COMMAND grep -Rin \\todo  src include main| ${GNU_SED} 's/\\/\\/.*TODO//I' >>  TODO
+                  COMMAND grep -Rin \\todo  src include main| ${GNU_SED} 's/ *\\/\\/.*TODO */ /I' >>  TODO
+#                   COMMAND grep -Rin \\todo  src include main| ${GNU_SED} 's/\\/\\/.*TODO  *//I' >>  TODO
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                   )
 find_package(Doxygen)

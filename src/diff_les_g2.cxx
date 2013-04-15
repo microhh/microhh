@@ -9,9 +9,6 @@
 
 cdiff_les_g2::cdiff_les_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cdiff_les_g2::~cdiff_les_g2()
@@ -22,6 +19,9 @@ int cdiff_les_g2::readinifile(cinput *inputin)
 {
   int n = 0;
 
+  n += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5 );
+  n += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23);
+
   n += fields->initdfld("evisc");
 
   // if one argument fails, then crash
@@ -29,6 +29,15 @@ int cdiff_les_g2::readinifile(cinput *inputin)
     return 1;
 
   return 0;
+}
+
+unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
+{
+  unsigned long idtlim;
+
+  idtlim = idt * dnmax / getdn(dt);
+
+  return idtlim;
 }
 
 int cdiff_les_g2::execvisc(cboundary *boundaryin)
@@ -78,7 +87,6 @@ int cdiff_les_g2::evisc(double * restrict evisc,
 
   // wall damping
   double mlen,mlen0,fac;
-  const double cs = 0.23;
   const double z0 = 0.1;
   const double n  = 2.;
 

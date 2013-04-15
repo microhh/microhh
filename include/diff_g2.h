@@ -15,13 +15,10 @@ class cdiff_g2 : public cdiff
     int setvalues();
     int exec();
 
+    unsigned long gettimelim(unsigned long, double);
     double getdn(double);
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     double dnmul;
 
     int diffc(double *, double *, double *, double *, double);

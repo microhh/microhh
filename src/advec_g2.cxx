@@ -8,9 +8,6 @@
 
 cadvec_g2::cadvec_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cadvec_g2::~cadvec_g2()
@@ -21,19 +18,28 @@ double cadvec_g2::getcfl(double dt)
 {
   double cfl;
 
-  cfl = calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+  cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
 
   return cfl;
 }
 
+unsigned long cadvec_g2::gettimelim(unsigned long idt, double dt)
+{
+  unsigned long idtlim;
+
+  idtlim = idt * cflmax / calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+
+  return idtlim;
+}
+
 int cadvec_g2::exec()
 {
-  advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
-  advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi );
-  advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi);
+  advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
+  advecv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
+  advecw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi);
 
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advecs((*it->second).data, (*fields->s[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
+    advecs((*it->second).data, (*fields->s[it->first]).data, fields->u->data, fields->v->data, fields->w->data, grid->dzi);
 
   return 0;
 }

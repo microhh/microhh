@@ -1,9 +1,14 @@
 #include <string>
 #include <cstdio>
+#include <algorithm>
 #include "grid.h"
 #include "fields.h"
 #include "model.h"
 #include "defines.h"
+
+// boundary schemes
+#include "boundary_surface.h"
+#include "boundary_user.h"
 
 // advection schemes
 #include "advec_g2.h"
@@ -31,8 +36,6 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   // create the fields class
   fields   = new cfields  (grid, mpi);
 
-  // create the boundary conditions class
-  boundary = new cboundary(grid, fields, mpi);
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
@@ -45,9 +48,10 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   cross    = new ccross   (grid, fields, mpi);
 
   // set null pointers for classes that will be initialized later
-  advec = NULL;
-  diff  = NULL;
-  pres  = NULL;
+  boundary = NULL;
+  advec    = NULL;
+  diff     = NULL;
+  pres     = NULL;
 }
 
 cmodel::~cmodel()
@@ -76,8 +80,13 @@ int cmodel::readinifile(cinput *inputin)
   if(fields->readinifile(inputin))
     return 1;
 
+  // first, get the switches for the schemes
+  n += inputin->getItem(&swadvec   , "advec"    , "swadvec"   , "", grid->swspatialorder);
+  n += inputin->getItem(&swdiff    , "diff"     , "swdiff"    , "", grid->swspatialorder);
+  n += inputin->getItem(&swpres    , "pres"     , "swpres"    , "", grid->swspatialorder);
+  n += inputin->getItem(&swboundary, "boundary", "swboundary" , "", ""                  );
+
   // check the advection scheme
-  n += inputin->getItem(&swadvec, "advec", "swadvec", "", grid->swspatialorder);
   if(swadvec == "0")
     advec = new cadvec     (grid, fields, mpi);
   else if(swadvec == "2")
@@ -99,7 +108,6 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // check the diffusion scheme
-  n += inputin->getItem(&swdiff, "diff", "swdiff", "", grid->swspatialorder);
   if(swdiff == "0")
     diff = new cdiff    (grid, fields, mpi);
   else if(swdiff == "2")
@@ -108,9 +116,17 @@ int cmodel::readinifile(cinput *inputin)
     diff = new cdiff_g42(grid, fields, mpi);
   else if(swdiff == "4")
     diff = new cdiff_g4 (grid, fields, mpi);
-  // CvH move to new model file later
+  // TODO move to new model file later
   else if(swdiff == "22")
+  {
     diff = new cdiff_les_g2(grid, fields, mpi);
+    // the subgrid model requires a surface model because of the MO matching at first level
+    if(swboundary != "surface")
+    {
+      std::printf("ERROR swdiff == \"22\" requires swboundary == \"surface\"\n");
+      return 1;
+    }
+  }
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
@@ -119,9 +135,7 @@ int cmodel::readinifile(cinput *inputin)
   if(diff->readinifile(inputin))
     return 1;
 
-
   // check the pressure scheme
-  n += inputin->getItem(&swpres, "pres", "swpres", "", grid->swspatialorder);
   if(swpres == "0")
     pres = new cpres    (grid, fields, mpi);
   else if(swpres == "2")
@@ -146,9 +160,21 @@ int cmodel::readinifile(cinput *inputin)
   if(timeloop->readinifile(inputin))
     return 1;
 
-  // model classes that need to know prognostic fields
+  // read the boundary and buffer in the end because they need to know the requested fields
+  if(swboundary == "surface")
+    boundary = new cboundary_surface(grid, fields, mpi);
+  else if(swboundary == "user")
+    boundary = new cboundary_user(grid, fields, mpi);
+  else if(swboundary == "")
+    boundary = new cboundary(grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+    return 1;
+  }
   if(boundary->readinifile(inputin))
     return 1;
+
   if(buffer->readinifile(inputin))
     return 1;
 
@@ -169,14 +195,13 @@ int cmodel::init()
 {
   if(fields->init())
     return 1;
-  // TODO change this to surface init
   if(boundary->init())
     return 1;
   if(buffer->init())
     return 1;
   if(pres->init())
     return 1;
-  if(stats->init())
+  if(stats->init(timeloop->ifactor))
     return 1;
 
   return 0;
@@ -184,13 +209,13 @@ int cmodel::init()
 
 int cmodel::load()
 {
-  if(timeloop->load(timeloop->iteration))
+  if(timeloop->load(timeloop->istarttime))
     return 1;
-  if(fields->load(timeloop->iteration))
+  if(fields->load(timeloop->istarttime))
     return 1;
   if(buffer->load())
     return 1;
-  if(stats->create(timeloop->iteration))
+  if(stats->create(timeloop->istarttime))
     return 1;
 
   // initialize the diffusion to get the time step requirement
@@ -216,11 +241,11 @@ int cmodel::create(cinput *inputin)
 
 int cmodel::save()
 {
-  if(fields->save(timeloop->iteration))
+  if(fields->save(timeloop->istarttime))
     return 1;
   if(buffer->save())
     return 1;
-  if(timeloop->save(timeloop->iteration))
+  if(timeloop->save(timeloop->istarttime))
     return 1;
 
   return 0;
@@ -249,14 +274,15 @@ int cmodel::exec()
 
   // set the boundary conditions
   boundary->exec();
-
-  // TODO very ugly!!!
-  if(swdiff == "22")
-    (*(cdiff_les_g2 *)diff).execvisc(boundary);
+  diff->execvisc(boundary);
 
   // set the initial cfl and dn
-  cfl = advec->getcfl(timeloop->dt);
-  dn  = diff->getdn(timeloop->dt);
+  if(timeloop->settimelim())
+    return 1;
+  timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
+  timeloop->settimestep();
 
   // print the initial information
   if(timeloop->docheck() && !timeloop->insubstep())
@@ -269,6 +295,8 @@ int cmodel::exec()
     mom     = fields->checkmom();
     tke     = fields->checktke();
     mass    = fields->checkmass();
+    cfl     = advec->getcfl(timeloop->dt);
+    dn      = diff->getdn(timeloop->dt);
 
     // write the output to file
     if(mpi->mpiid == 0)
@@ -285,9 +313,12 @@ int cmodel::exec()
     // determine the time step
     if(!timeloop->insubstep())
     {
-      cfl = advec->getcfl(timeloop->dt);
-      dn  = diff->getdn(timeloop->dt);
-      timeloop->settimestep(cfl, dn);
+      if(timeloop->settimelim())
+        return 1;
+      timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
+      timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
+      timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
+      timeloop->settimestep();
     }
 
     // advection
@@ -304,14 +335,14 @@ int cmodel::exec()
     // pressure
     pres->exec(timeloop->getsubdt());
     if(timeloop->dosave() && !timeloop->insubstep())
-      fields->s["p"]->save(timeloop->iteration, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
-
-    if(timeloop->dostats() && !timeloop->insubstep())
+    {
+      fields->s["p"]->save(timeloop->istarttime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
+    }
+    if(stats->dostats(timeloop->iteration, timeloop->itime) && !timeloop->insubstep())
     {
       stats->exec(timeloop->iteration, timeloop->time);
       cross->exec(timeloop->iteration);
     }
-
     // exit the simulation when the runtime has been hit after the pressure calculation
     if(!timeloop->loop)
       break;
@@ -329,8 +360,8 @@ int cmodel::exec()
       // save the fields
       if(timeloop->dosave() && !timeloop->insubstep())
       {
-        timeloop->save(timeloop->iteration);
-        fields->save  (timeloop->iteration);
+        timeloop->save(timeloop->istarttime);
+        fields->save  (timeloop->istarttime);
       }
     }
 
@@ -345,18 +376,15 @@ int cmodel::exec()
         break;
 
       // load the data
-      if(timeloop->load(timeloop->iteration))
+      if(timeloop->load(timeloop->istarttime))
         return 1;
-      if(fields->load(timeloop->iteration))
+      if(fields->load(timeloop->istarttime))
         return 1;
     }
 
     // boundary conditions
-    // TODO UGLY!!
-    if(swdiff == "22")
-      (*(cdiff_les_g2 *)diff).execvisc(boundary);
-
     boundary->exec();
+    diff->execvisc(boundary);
 
     if(timeloop->docheck() && !timeloop->insubstep())
     {
@@ -367,6 +395,8 @@ int cmodel::exec()
       mom     = fields->checkmom();
       tke     = fields->checktke();
       mass    = fields->checkmass();
+      cfl     = advec->getcfl(timeloop->dt);
+      dn      = diff->getdn(timeloop->dt);
 
       end     = mpi->gettime();
       cputime = end - start;

@@ -6,6 +6,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
+#include <string>
 
 class ctimeloop
 {
@@ -16,20 +17,23 @@ class ctimeloop
     int readinifile(cinput *);
     int timestep();
     int postprocstep();
-    int settimestep(double, double);
+    int settimestep();
 
     int exec();
     bool insubstep();
     double getsubdt();
 
-    int save(int);
-    int load(int);
+    int settimelim();
+
+    unsigned long settimelim(unsigned long);
+
+    int save(int starttime);
+    int load(int starttime);
 
     int docheck();
     double check();
 
     int dosave();
-    int dostats();
 
     // variables
     int substep;
@@ -39,35 +43,37 @@ class ctimeloop
     double time;
     double dt;
     double dtmax;
-    double cflmax;
-    double dnmax;
     double runtime;
+    double postproctime;
+    double savetime;
+    double starttime;
+    double dtlim;
 
+    int istarttime;
     int iteration;
+
+    unsigned long itime;
+    unsigned long iruntime;
+    unsigned long idt;
+    unsigned long idtmax;
+    unsigned long ipostproctime;
+    unsigned long isavetime;
+    unsigned long idtlim;
+
+    double ifactor;
+    double precision;
 
   private:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
 
-    double ifactor;
-
     timeval start;
     timeval end;
 
     int rkorder;
 
-    unsigned long itime;
-    unsigned long iruntime;
-    unsigned long idt;
-    unsigned long idtmax;
-
-    int startiter;
     int outputiter;
-    int saveiter;
-    int statsiter;
-    int maxiter;
-    int postprociter;
 
     int rk3(double *, double *, double);
     int rk4(double *, double *, double);

@@ -9,9 +9,6 @@
 
 cdiff_g4::cdiff_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cdiff_g4::~cdiff_g4()
@@ -30,6 +27,15 @@ int cdiff_g4::setvalues()
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 
   return 0;
+}
+
+unsigned long cdiff_g4::gettimelim(unsigned long idt, double dt)
+{
+  unsigned long idtlim;
+
+  idtlim = idt * dnmax / (dt * dnmul);
+
+  return idtlim;
 }
 
 double cdiff_g4::getdn(double dt)
