@@ -16,6 +16,9 @@ class cboundary_surface : public cboundary
     int setvalues();
     int exec();
 
+    double *obuk;
+    double *ustar;
+
   private:
     // surface scheme
     int bcvalues();

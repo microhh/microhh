@@ -5,7 +5,7 @@
 #include "fields.h"
 #include "diff.h"
 #include "mpiinterface.h"
-#include "boundary.h"
+#include "boundary_surface.h"
 
 class cdiff_les_g2 : public cdiff
 {
@@ -15,7 +15,7 @@ class cdiff_les_g2 : public cdiff
 
     int readinifile(cinput *);
     int exec();
-    int execvisc(cboundary *);
+    int execvisc(cboundary_surface *);
 
     unsigned long gettimelim(unsigned long, double);
     double getdn(double);

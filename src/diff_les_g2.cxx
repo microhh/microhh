@@ -40,7 +40,7 @@ unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-int cdiff_les_g2::execvisc(cboundary *boundaryin)
+int cdiff_les_g2::execvisc(cboundary_surface *boundaryin)
 {
   // CvH this will crash in the absense of temperature, fix
   evisc(fields->s["evisc"]->data,

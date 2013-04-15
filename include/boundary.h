@@ -24,10 +24,6 @@ class cboundary
     virtual int setvalues();
     int exec();
 
-    // TODO this is an annoying situation, how to put these in boundary_surface?
-    double *obuk;
-    double *ustar;
-
   protected:
     cgrid   *grid;
     cfields *fields;
