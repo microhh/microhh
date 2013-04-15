@@ -86,6 +86,10 @@ int cmodel::readinifile(cinput *inputin)
   n += inputin->getItem(&swpres    , "pres"     , "swpres"    , "", grid->swspatialorder);
   n += inputin->getItem(&swboundary, "boundary", "swboundary" , "", ""                  );
 
+  // if one or more arguments fails, then crash
+  if(n > 0)
+    return 1;
+
   // check the advection scheme
   if(swadvec == "0")
     advec = new cadvec     (grid, fields, mpi);
@@ -184,10 +188,6 @@ int cmodel::readinifile(cinput *inputin)
   if(cross->readinifile(inputin))
     return 1;
 
-  // if one or more arguments fails, then crash
-  if(n > 0)
-    return 1;
-
   return 0;
 }
 
@@ -218,7 +218,6 @@ int cmodel::load()
   if(stats->create(timeloop->istarttime))
     return 1;
 
-  // initialize the diffusion to get the time step requirement
   if(boundary->setvalues())
     return 1;
   if(diff->setvalues())
@@ -386,6 +385,7 @@ int cmodel::outputfile(bool doclose)
     end     = mpi->gettime();
     cputime = end - start;
     start   = end;
+
     // write the output to file
     if(mpi->mpiid == 0)
     {
@@ -401,8 +401,9 @@ int cmodel::outputfile(bool doclose)
     std::fclose(dnsout);
   }
 
-  return (nerror>0);
+  return(nerror>0);
 }
+
 int cmodel::settimestep()
 {
   if(timeloop->settimelim())
