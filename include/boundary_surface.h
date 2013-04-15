@@ -26,9 +26,10 @@ class cboundary_surface : public cboundary
                   double *, double *, double *,
                   double *, double *, double *,
                   double *, double *);
-    int surfm(double *, double *, double *,
-              double *, double *, double *,
-              double, int, std::string);
+    int surfm(double *, double *,
+              double *, double *, double *, double *,
+              double *, double *, double *, double *,
+              double, int);
     int surfs(double *, double *, double *,
               double *, double *, double *,
               double, int);

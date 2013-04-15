@@ -112,13 +112,10 @@ int cboundary_surface::bcvalues()
             fields->s["tmp1"]->data, grid->z);
 
   // calculate the surface value, gradient and flux depending on the chosen boundary condition
-  surfm(ustar, obuk, fields->u->data,
-        fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
-        grid->z[grid->kstart], surfmbcbot, "u");
-
-  surfm(ustar, obuk, fields->v->data,
-        fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
-        grid->z[grid->kstart], surfmbcbot, "v");
+  surfm(ustar, obuk,
+        fields->u->data, fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
+        fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
+        grid->z[grid->kstart], surfmbcbot);
 
   surfs(ustar, obuk, fields->sp["s"]->data,
         fields->sp["s"]->databot, fields->sp["s"]->datagradbot, fields->sp["s"]->datafluxbot,
@@ -191,9 +188,10 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   return 0;
 }
 
-int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk, double * restrict var,
-                             double * restrict varbot, double * restrict vargradbot, double * restrict varfluxbot, 
-                             double zsl, int bcbot, std::string varname)
+int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk, 
+                             double * restrict u, double * restrict ubot, double * restrict ugradbot, double * restrict ufluxbot, 
+                             double * restrict v, double * restrict vbot, double * restrict vgradbot, double * restrict vfluxbot, 
+                             double zsl, int bcbot)
 {
   int ij,ijk,ii,jj,kk,kstart;
 
@@ -202,13 +200,6 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk, do
   kk = grid->icells*grid->jcells;
 
   kstart = grid->kstart;
-
-  // interpolate depending on u or v location
-  int shift;
-  if(varname == "u")
-    shift = ii;
-  else if(varname == "v")
-    shift = jj;
 
   // the surface value is known, calculate the flux and gradient
   if(bcbot == 0)
@@ -221,14 +212,37 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk, do
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         // interpolate the whole stability function rather than ustar or obuk
-        varfluxbot[ij] = -(var[ijk]-varbot[ij])*0.5*(ustar[ij-shift]*fm(zsl, z0m, obuk[ij-shift]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
+        ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
+        vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
       }
 
-    grid->boundary_cyclic2d(varfluxbot);
+    grid->boundary_cyclic2d(ufluxbot);
+    grid->boundary_cyclic2d(vfluxbot);
   }
   // the flux is known, calculate the surface value and gradient
   else if(bcbot == 2)
   {
+    // first redistribute ustar over the two flux components
+    double vonu2,uonv2,ustaronu4,ustaronv4;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk;
+        vonu2 = 0.25*(std::pow(v[ijk-ii], 2.) + std::pow(v[ijk-ii+jj], 2.) + std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.));
+        uonv2 = 0.25*(std::pow(u[ijk-jj], 2.) + std::pow(u[ijk+ii-jj], 2.) + std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.));
+        ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4.) + std::pow(ustar[ij], 4.));
+        ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4.) + std::pow(ustar[ij], 4.));
+        // TODO add sign
+        ufluxbot[ij] = std::pow(ustaronu4 / (vonu2 / std::pow(u[ijk], 2.) + 1.), 0.5);
+        vfluxbot[ij] = std::pow(ustaronv4 / (uonv2 / std::pow(v[ijk], 2.) + 1.), 0.5);
+
+        std::printf("CvH %d, %d, %E, %E, %E\n", i, j, ustaronu4, ustaronv4, 
+          std::pow(std::pow(ufluxbot[ij], 2.) + std::pow(vfluxbot[ij], 2.), 0.25));
+      }
+    
+    // calculate the surface values
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -236,10 +250,12 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk, do
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         // interpolate the whole stability function rather than ustar or obuk
-        varbot[ij] =  varfluxbot[ij] / (0.5*(ustar[ij-shift]*fm(zsl, z0m, obuk[ij-shift]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + var[ijk];
+        ubot[ij] = ufluxbot[ij] / (0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + u[ijk];
+        vbot[ij] = vfluxbot[ij] / (0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + v[ijk];
       }
 
-    grid->boundary_cyclic2d(varbot);
+    grid->boundary_cyclic2d(ubot);
+    grid->boundary_cyclic2d(vbot);
   }
 
   for(int j=0; j<grid->jcells; j++)
@@ -251,7 +267,8 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk, do
       // use the linearly interpolated grad, rather than the MO grad,
       // to prevent giving unresolvable gradients to advection schemes
       // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0m*ustar[ij]) * phih(zsl/obuk[ij]);
-      vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+      ugradbot[ij] = (u[ijk]-ubot[ij])/zsl;
+      vgradbot[ij] = (v[ijk]-vbot[ij])/zsl;
     }
 
   return 0;
