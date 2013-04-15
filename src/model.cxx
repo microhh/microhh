@@ -81,10 +81,10 @@ int cmodel::readinifile(cinput *inputin)
     return 1;
 
   // first, get the switches for the schemes
-  n += inputin->getItem(&swadvec   , "advec"    , "swadvec"   , "", grid->swspatialorder);
-  n += inputin->getItem(&swdiff    , "diff"     , "swdiff"    , "", grid->swspatialorder);
-  n += inputin->getItem(&swpres    , "pres"     , "swpres"    , "", grid->swspatialorder);
-  n += inputin->getItem(&swboundary, "boundary", "swboundary" , "", ""                  );
+  n += inputin->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
+  n += inputin->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
+  n += inputin->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
+  n += inputin->getItem(&swboundary, "boundary", "swboundary", "", "base"              );
 
   // if one or more arguments fails, then crash
   if(n > 0)
@@ -169,7 +169,7 @@ int cmodel::readinifile(cinput *inputin)
     boundary = new cboundary_surface(grid, fields, mpi);
   else if(swboundary == "user")
     boundary = new cboundary_user(grid, fields, mpi);
-  else if(swboundary == "")
+  else if(swboundary == "base")
     boundary = new cboundary(grid, fields, mpi);
   else
   {

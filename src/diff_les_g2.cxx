@@ -5,6 +5,7 @@
 #include "fields.h"
 #include "mpiinterface.h"
 #include "diff_les_g2.h"
+#include "boundary_surface.h"
 #include "defines.h"
 
 cdiff_les_g2::cdiff_les_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
@@ -40,13 +41,16 @@ unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-int cdiff_les_g2::execvisc(cboundary_surface *boundaryin)
+int cdiff_les_g2::execvisc(cboundary *boundaryin)
 {
+  // boundary is of type boundary_surface
+  cboundary_surface *boundaryptr = static_cast<cboundary_surface*>(boundaryin);
+
   // CvH this will crash in the absense of temperature, fix
   evisc(fields->s["evisc"]->data,
         fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
         fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
-        boundaryin->ustar, boundaryin->obuk,
+        boundaryptr->ustar, boundaryptr->obuk,
         grid->z, grid->dz, grid->dzi, grid->dzhi, 
         fields->tPr);
 
