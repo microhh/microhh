@@ -253,59 +253,17 @@ int cmodel::save()
 
 int cmodel::exec()
 {
-  // initialize the check variables
-  int    iter;
-  double time, dt;
-  double mom, tke, mass;
-  double div;
-  double cfl, dn;
-  double cputime, start, end;
-
-  // write output file header to the main processor and set the time
-  FILE *dnsout = NULL;
-  if(mpi->mpiid == 0)
-  {
-    std::string outputname = mpi->simname + ".out";
-    dnsout = std::fopen(outputname.c_str(), "a");
-    std::setvbuf(dnsout, NULL, _IOLBF, 1024);
-    std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
-      "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
-  }
 
   // set the boundary conditions
   boundary->exec();
   diff->execvisc(boundary);
 
-  // set the initial cfl and dn
-  if(timeloop->settimelim())
+  if(settimestep())
     return 1;
-  timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
-  timeloop->settimestep();
 
   // print the initial information
-  if(timeloop->docheck() && !timeloop->insubstep())
-  {
-    iter    = timeloop->iteration;
-    time    = timeloop->time;
-    cputime = 0;
-    dt      = timeloop->dt;
-    div     = pres->check();
-    mom     = fields->checkmom();
-    tke     = fields->checktke();
-    mass    = fields->checkmass();
-    cfl     = advec->getcfl(timeloop->dt);
-    dn      = diff->getdn(timeloop->dt);
-
-    // write the output to file
-    if(mpi->mpiid == 0)
-      std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
-        iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
-    }
-
-  // catch the start time for the first iteration
-  start = mpi->gettime();
+  if(outputfile(!timeloop->loop))
+    return 1;
 
   // start the time loop
   while(true)
@@ -313,14 +271,9 @@ int cmodel::exec()
     // determine the time step
     if(!timeloop->insubstep())
     {
-      if(timeloop->settimelim())
+      if(settimestep())
         return 1;
-      timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
-      timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
-      timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
-      timeloop->settimestep();
     }
-
     // advection
     advec->exec();
     // diffusion
@@ -386,32 +339,79 @@ int cmodel::exec()
     boundary->exec();
     diff->execvisc(boundary);
 
-    if(timeloop->docheck() && !timeloop->insubstep())
+    if(outputfile(!timeloop->loop))
+      return 1;
+
+  }
+
+  return 0;
+}
+
+int cmodel::outputfile(bool doclose)
+{
+  // initialize the check variables
+  int    nerror=0;
+  int    iter;
+  double time, dt;
+  double mom, tke, mass;
+  double div;
+  double cfl, dn;
+  double cputime, end;
+  static double start;
+  static FILE *dnsout = NULL;
+
+  // write output file header to the main processor and set the time
+  if(mpi->mpiid == 0 && dnsout == NULL)
+  {
+    std::string outputname = mpi->simname + ".out";
+    dnsout = std::fopen(outputname.c_str(), "a");
+    std::setvbuf(dnsout, NULL, _IOLBF, 1024);
+    std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
+      "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
+    start = mpi->gettime();
+  }
+
+  if(timeloop->docheck() && !timeloop->insubstep())
+  {
+    iter    = timeloop->iteration;
+    time    = timeloop->time;
+    dt      = timeloop->dt;
+    div     = pres->check();
+    mom     = fields->checkmom();
+    tke     = fields->checktke();
+    mass    = fields->checkmass();
+    cfl     = advec->getcfl(timeloop->dt);
+    dn      = diff->getdn(timeloop->dt);
+
+    end     = mpi->gettime();
+    cputime = end - start;
+    start   = end;
+    // write the output to file
+    if(mpi->mpiid == 0)
     {
-      iter    = timeloop->iteration;
-      time    = timeloop->time;
-      dt      = timeloop->dt;
-      div     = pres->check();
-      mom     = fields->checkmom();
-      tke     = fields->checktke();
-      mass    = fields->checkmass();
-      cfl     = advec->getcfl(timeloop->dt);
-      dn      = diff->getdn(timeloop->dt);
-
-      end     = mpi->gettime();
-      cputime = end - start;
-      start   = end;
-
-      // write the output to file
-      if(mpi->mpiid == 0)
-        std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
-          iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
+      std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
+        iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
     }
   }
 
-  // close the output file
-  if(mpi->mpiid == 0)
+  if(doclose)
+  {
+    // close the output file
+    if(mpi->mpiid == 0)
     std::fclose(dnsout);
-  
+  }
+
+  return (nerror>0);
+}
+int cmodel::settimestep()
+{
+  if(timeloop->settimelim())
+    return 1;
+
+  timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
+  timeloop->settimestep();
+
   return 0;
 }

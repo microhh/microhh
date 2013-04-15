@@ -55,5 +55,8 @@ class cmodel
     // load the postprocessing modules
     cstats    *stats;
     ccross    *cross;
+
+    int outputfile(bool);
+    int settimestep();
 };
 #endif
