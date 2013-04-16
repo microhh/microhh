@@ -6,6 +6,9 @@
 #include "boundary_surface.h"
 #include "defines.h"
 
+// a sign function
+inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
+
 cboundary_surface::cboundary_surface(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cboundary(gridin, fieldsin, mpiin)
 {
 }
@@ -138,7 +141,6 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   kstart = grid->kstart;
 
   // calculate total wind
-  //
   double utot, ubottot;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; j++)
@@ -157,7 +159,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
 
   grid->boundary_cyclic2d(dutot);
 
-  // TODO replace by value from boundary
+  // TODO replace by value from buoyancy
   double gravitybeta = 9.81/300.;
 
   // calculate Obukhov length
@@ -223,24 +225,29 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
   else if(bcbot == 2)
   {
     // first redistribute ustar over the two flux components
-    double vonu2,uonv2,ustaronu4,ustaronv4;
+    double u2, v2, vonu2,uonv2,ustaronu4,ustaronv4;
+    const double minval = 0.0001;
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
-        vonu2 = 0.25*(std::pow(v[ijk-ii], 2.) + std::pow(v[ijk-ii+jj], 2.) + std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.));
-        uonv2 = 0.25*(std::pow(u[ijk-jj], 2.) + std::pow(u[ijk+ii-jj], 2.) + std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.));
+        // minimize the wind at 0.01, thus the wind speed squared at 0.0001
+        vonu2 = std::max(minval, 0.25*( std::pow(v[ijk-ii]-vbot[ij-ii], 2.) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2.)
+                                      + std::pow(v[ijk   ]-vbot[ij   ], 2.) + std::pow(v[ijk   +jj]-vbot[ij   +jj], 2.)) );
+        uonv2 = std::max(minval, 0.25*( std::pow(u[ijk-jj]-ubot[ij-jj], 2.) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2.)
+                                      + std::pow(u[ijk   ]-ubot[ij   ], 2.) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], 2.)) );
+        u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], 2.) );
+        v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2.) );
         ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4.) + std::pow(ustar[ij], 4.));
         ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4.) + std::pow(ustar[ij], 4.));
-        // TODO add sign
-        ufluxbot[ij] = std::pow(ustaronu4 / (vonu2 / std::pow(u[ijk], 2.) + 1.), 0.5);
-        vfluxbot[ij] = std::pow(ustaronv4 / (uonv2 / std::pow(v[ijk], 2.) + 1.), 0.5);
-
-        std::printf("CvH %d, %d, %E, %E, %E\n", i, j, ustaronu4, ustaronv4, 
-          std::pow(std::pow(ufluxbot[ij], 2.) + std::pow(vfluxbot[ij], 2.), 0.25));
+        ufluxbot[ij] = -sign(u[ijk]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
+        vfluxbot[ij] = -sign(v[ijk]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
       }
+
+    grid->boundary_cyclic2d(ufluxbot);
+    grid->boundary_cyclic2d(vfluxbot);
     
     // calculate the surface values
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -330,18 +337,11 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
   // if L and bfluxbot are of the same sign, or the last calculation did not converge,
   // the stability has changed and the procedure needs to be reset
   if(L*bfluxbot > 0. || std::abs(L) > 1.e6)
-  {
-    if(bfluxbot > 0.)
-      L  = -dsmall;
-    else
-      L  = dsmall;
-  }
-  if(bfluxbot > 0.)
-    L0 = -dbig;
-  else
-    L0 = dbig;
+    L = -sign(bfluxbot) * dsmall;
 
-  // TODO replace by value from boundary
+  L0 = -sign(bfluxbot) * dbig;
+
+  // TODO replace by value from buoyancy
   double gravitybeta = 9.81/300.;
   int n = 0;
 
