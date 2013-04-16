@@ -129,7 +129,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
       // Add the buoyancy production to the TKE
       RitPrratio = -(9.81/300.)*bfluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phih(z[kstart]/obuk[ij]) / strain2 / tPr;
       RitPrratio = std::min(RitPrratio, 1.-dsmall);
-      evisc[ijk] = std::max(dsmall, fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio));
+      evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
     }
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -176,7 +176,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
         // Add the buoyancy production to the TKE
         RitPrratio = (9.81/300.)*(b[ijk+kk]-b[ijk-kk])*0.5*dzi[k] / strain2 / tPr;
         RitPrratio = std::min(RitPrratio, 1.-dsmall);
-        evisc[ijk] = std::max(dsmall, fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio));
+        evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
       }
   }
 
