@@ -88,7 +88,8 @@ int cboundary_surface::setvalues()
       for(int i=0; i<grid->icells; ++i)
         {
           ij = i + j*jj;
-          ustar[ij] = ustarin;
+          // limit ustar at 1e-4 to avoid zero divisions
+          ustar[ij] = std::max(0.0001, ustarin);
         }
    }
 
@@ -143,9 +144,9 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   // calculate total wind
   double utot, ubottot;
   // first, interpolate the wind to the scalar location
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -166,9 +167,9 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   // case 1: fixed buoyancy flux and fixed ustar
   if(surfmbcbot == 2 && surfsbcbot["s"] == 2)
   {
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
         obuk[ij] = -std::pow(ustar[ij], 3.) / (gravitybeta*kappa*bfluxbot[ij]);
@@ -177,9 +178,9 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   // case 2: fixed buoyancy surface value and free ustar
   if(surfmbcbot == 0 && surfsbcbot["s"] == 2)
   {
-    for(int j=0; j<grid->jcells; j++)
+    for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-      for(int i=0; i<grid->icells; i++)
+      for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         obuk [ij] = calcobuk(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
@@ -207,9 +208,9 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
   if(bcbot == 0)
   {
     // first calculate the surface value
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
@@ -227,9 +228,9 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
     // first redistribute ustar over the two flux components
     double u2, v2, vonu2,uonv2,ustaronu4,ustaronv4;
     const double minval = 0.0001;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
@@ -250,9 +251,9 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
     grid->boundary_cyclic2d(vfluxbot);
     
     // calculate the surface values
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
@@ -265,9 +266,9 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
     grid->boundary_cyclic2d(vbot);
   }
 
-  for(int j=0; j<grid->jcells; j++)
+  for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-    for(int i=0; i<grid->icells; i++)
+    for(int i=0; i<grid->icells; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -295,9 +296,9 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
   // the surface value is known, calculate the flux and gradient
   if(bcbot == 0)
   {
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
@@ -311,9 +312,9 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
   else if(bcbot == 2)
   {
     // the flux is known, calculate the surface value and gradient
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
