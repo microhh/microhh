@@ -36,7 +36,10 @@ int cboundary_surface::readinifile(cinput *inputin)
 
   n += inputin->getItem(&z0m, "boundary", "z0m", "");
   n += inputin->getItem(&z0h, "boundary", "z0h", "");
-  n += inputin->getItem(&ustarin, "boundary", "ustar", "");
+
+  // read the ustar value only if fixed fluxes are prescribed
+  if(mbctop == 2)
+    n += inputin->getItem(&ustarin, "boundary", "ustar", "");
 
   // copy all the boundary options and set the model ones to flux type
   surfmbcbot = mbcbot;
