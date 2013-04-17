@@ -73,6 +73,14 @@ int cboundary::setvalues()
 
 int cboundary::exec()
 {
+  // cyclic boundary conditions, do this before the bottom BC's
+  grid->boundary_cyclic(fields->u->data);
+  grid->boundary_cyclic(fields->v->data);
+  grid->boundary_cyclic(fields->w->data);
+
+  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
+    grid->boundary_cyclic(it->second->data);
+
   // calculate boundary values
   bcvalues();
 
@@ -107,14 +115,6 @@ int cboundary::exec()
       setgctop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
     }
   }
-
-  // cyclic boundary conditions
-  grid->boundary_cyclic(fields->u->data);
-  grid->boundary_cyclic(fields->v->data);
-  grid->boundary_cyclic(fields->w->data);
-
-  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
-    grid->boundary_cyclic(it->second->data);
 
   return 0;
 }
