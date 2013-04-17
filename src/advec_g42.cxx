@@ -17,12 +17,15 @@ cadvec_g42::~cadvec_g42()
 unsigned long cadvec_g42::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
+  double cfl;
 
-  idtlim = idt * cflmax / calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+  cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+  // avoid zero divisons
+  cfl = std::max(dsmall, cfl);
+  idtlim = idt * cflmax / cfl;
 
   return idtlim;
 }
-
 
 double cadvec_g42::getcfl(double dt)
 {
