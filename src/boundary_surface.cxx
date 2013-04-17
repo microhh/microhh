@@ -337,10 +337,18 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
 
   // if L and bfluxbot are of the same sign, or the last calculation did not converge,
   // the stability has changed and the procedure needs to be reset
-  if(L*bfluxbot > 0. || std::abs(L) > 1.e6)
-    L = -sign(bfluxbot) * dsmall;
+  if(L*bfluxbot >= 0. || std::abs(L) > 1.e6)
+  {
+    if(bfluxbot >= 0.)
+      L = -dsmall;
+    else
+      L = dsmall;
+  }
 
-  L0 = -sign(bfluxbot) * dbig;
+  if(bfluxbot >= 0.)
+    L0 = -dbig;
+  else
+    L0 = dbig;
 
   // TODO replace by value from buoyancy
   double gravitybeta = 9.81/300.;
