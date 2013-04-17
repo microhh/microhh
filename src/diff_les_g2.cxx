@@ -514,6 +514,8 @@ double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi, doubl
         dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
       }
 
+  grid->getmax(&dnmul);
+
   return dnmul;
 }
 
