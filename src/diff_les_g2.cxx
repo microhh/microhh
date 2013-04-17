@@ -35,12 +35,12 @@ int cdiff_les_g2::readinifile(cinput *inputin)
 unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
-  double dn;
+  double dnmul;
 
-  dn = getdn(dt);
+  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, fields->tPr);
   // avoid zero division
-  dn = std::max(dsmall, dn);
-  idtlim = idt * dnmax / dn;
+  dnmul = std::max(dsmall, dnmul);
+  idtlim = idt * dnmax/(dnmul*dt);
 
   return idtlim;
 }
@@ -63,12 +63,12 @@ int cdiff_les_g2::execvisc(cboundary *boundaryin)
 
 double cdiff_les_g2::getdn(double dt)
 {
-  double dn;
+  double dnmul;
 
   // calculate eddy viscosity
-  dn = getdn(fields->s["evisc"]->data, grid->dzi, fields->tPr);
+  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, fields->tPr);
 
-  return dn;
+  return dnmul*dt;
 }
 
 int cdiff_les_g2::exec()
@@ -489,7 +489,7 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
   return 0;
 }
 
-double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi, double tPr)
+double cdiff_les_g2::calcdnmul(double * restrict evisc, double * restrict dzi, double tPr)
 {
   int    ijk,ij,ii,jj,kk;
   double dxidxi,dyidyi;

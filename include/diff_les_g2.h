@@ -33,7 +33,7 @@ class cdiff_les_g2 : public cdiff
     int diffw(double *, double *, double *, double *, double *, double *, double *);
     int diffc(double *, double *, double *, double *, double *, double *, double *, double);
 
-    double getdn(double *, double *, double);
+    double calcdnmul(double *, double *, double);
 
     inline double phim(double);
     inline double phih(double);
