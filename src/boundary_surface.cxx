@@ -146,7 +146,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
 
   // calculate total wind
   double utot, ubottot;
-  const double minval = 1.e-2;
+  const double minval = 1.e-1;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -232,7 +232,7 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
   {
     // first redistribute ustar over the two flux components
     double u2, v2, vonu2,uonv2,ustaronu4,ustaronv4;
-    const double minval = 1.e4;
+    const double minval = 1.e-2;
 
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
