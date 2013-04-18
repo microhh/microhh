@@ -131,9 +131,9 @@ int cboundary_surface::bcvalues()
   return 0;
 }
 
-int cboundary_surface::stability(double * restrict ustar, double * restrict obuk   , double * restrict bfluxbot,
-                                 double * restrict u    , double * restrict v      , double * restrict b       ,
-                                 double * restrict ubot , double * restrict vbot   , double * restrict bbot    ,
+int cboundary_surface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
+                                 double * restrict u    , double * restrict v   , double * restrict b       ,
+                                 double * restrict ubot , double * restrict vbot, double * restrict bbot    ,
                                  double * restrict dutot, double * restrict z)
 {
   int ij,ijk,ii,jj,kk,kstart;
@@ -146,6 +146,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
 
   // calculate total wind
   double utot, ubottot;
+  const double minval = 1.e-2;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -157,8 +158,9 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
                          + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
       utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
                          + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
-      // prevent the absolute wind gradient from reaching values less than 0.01 m/s
-      dutot[ij] = std::max(std::abs(utot - ubottot), 0.01);
+      // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
+      // otherwise evisc at k = kstart blows up
+      dutot[ij] = std::max(std::abs(utot - ubottot), minval);
     }
 
   grid->boundary_cyclic2d(dutot);
@@ -230,7 +232,8 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
   {
     // first redistribute ustar over the two flux components
     double u2, v2, vonu2,uonv2,ustaronu4,ustaronv4;
-    const double minval = 0.0001;
+    const double minval = 1.e4;
+
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
@@ -338,39 +341,63 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
   double Lstart, Lend;
   double fx, fxdif;
 
-  // if L and bfluxbot are of the same sign, or the last calculation did not converge,
-  // the stability has changed and the procedure needs to be reset
-  if(L*bfluxbot >= 0. || std::abs(L) > 1.e6)
+  int m = 0;
+  int nlim = 10;
+
+  // avoid bfluxbot to be zero
+  bfluxbot = std::max(dsmall, bfluxbot);
+
+  // allow for one restart
+  while(m <= 1)
   {
+    // if L and bfluxbot are of the same sign, or the last calculation did not converge,
+    // the stability has changed and the procedure needs to be reset
+    if(L*bfluxbot >= 0.)
+    {
+      nlim = 100;
+      if(bfluxbot >= 0.)
+        L = -dsmall;
+      else
+        L = dsmall;
+    }
+
     if(bfluxbot >= 0.)
-      L = -dsmall;
+      L0 = -dbig;
     else
-      L = dsmall;
+      L0 = dbig;
+
+    // TODO replace by value from buoyancy
+    double gravitybeta = 9.81/300.;
+    int n = 0;
+
+    // exit on convergence or on iteration count
+    while(std::abs((L - L0)/L0) > 0.001 && n < nlim)
+    {
+      L0     = L;
+      // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
+      fx     = zsl/L + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3.);
+      Lstart = L - 0.001*L;
+      Lend   = L + 0.001*L;
+      fxdif  = ( (zsl/Lend + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3.))
+               - (zsl/Lstart + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3.)) )
+             / (Lend - Lstart);
+      L      = L - fx/fxdif;
+      ++n;
+    }
+
+    // convergence has been reached
+    if(n < nlim)
+      break;
+    // convergence has not been reached, procedure restarted once
+    else
+    {
+      ++m;
+      nlim = 100;
+    }
   }
 
-  if(bfluxbot >= 0.)
-    L0 = -dbig;
-  else
-    L0 = dbig;
-
-  // TODO replace by value from buoyancy
-  double gravitybeta = 9.81/300.;
-  int n = 0;
-
-  // exit on convergence (first condition) or on neutral limit (last condition)
-  while(std::abs((L - L0)/L0) > 0.001 && std::abs(L) < 1.e6)
-  {
-    L0     = L;
-    // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-    fx     = zsl/L + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3.);
-    Lstart = L - 0.001*L;
-    Lend   = L + 0.001*L;
-    fxdif  = ( (zsl/Lend + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3.)) 
-             - (zsl/Lstart + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3.)) ) 
-           / (Lend - Lstart);
-    L      = L - fx/fxdif;
-    ++n;
-  }
+  if(m > 1)
+    std::printf("WARNING convergence has not been reached in Obukhov length calculation\n");
 
   return L;
 }
