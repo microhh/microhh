@@ -354,7 +354,7 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
     // the stability has changed and the procedure needs to be reset
     if(L*bfluxbot >= 0.)
     {
-      nlim = 100;
+      nlim = 200;
       if(bfluxbot >= 0.)
         L = -dsmall;
       else
@@ -371,7 +371,7 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
     int n = 0;
 
     // exit on convergence or on iteration count
-    while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < dbig)
+    while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < dhuge)
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
@@ -386,14 +386,14 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
     }
 
     // convergence has been reached
-    if(n < nlim && std::abs(L) < dbig)
+    if(n < nlim && std::abs(L) < dhuge)
       break;
     // convergence has not been reached, procedure restarted once
     else
     {
       L = dsmall;
       ++m;
-      nlim = 100;
+      nlim = 200;
     }
   }
 
