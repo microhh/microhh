@@ -371,7 +371,7 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
     int n = 0;
 
     // exit on convergence or on iteration count
-    while(std::abs((L - L0)/L0) > 0.001 && n < nlim)
+    while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < dbig)
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
@@ -386,18 +386,19 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
     }
 
     // convergence has been reached
-    if(n < nlim)
+    if(n < nlim && std::abs(L) < dbig)
       break;
     // convergence has not been reached, procedure restarted once
     else
     {
+      L = dsmall;
       ++m;
       nlim = 100;
     }
   }
 
   if(m > 1)
-    std::printf("WARNING convergence has not been reached in Obukhov length calculation\n");
+    std::printf("ERROR convergence has not been reached in Obukhov length calculation\n");
 
   return L;
 }
