@@ -344,6 +344,8 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
   int m = 0;
   int nlim = 10;
 
+  const double Lmax = 1.e20;
+
   // avoid bfluxbot to be zero
   bfluxbot = std::max(dsmall, bfluxbot);
 
@@ -362,16 +364,16 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
     }
 
     if(bfluxbot >= 0.)
-      L0 = -dbig;
+      L0 = -dhuge;
     else
-      L0 = dbig;
+      L0 = dhuge;
 
     // TODO replace by value from buoyancy
     double gravitybeta = 9.81/300.;
     int n = 0;
 
     // exit on convergence or on iteration count
-    while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < dhuge)
+    while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
@@ -386,7 +388,7 @@ double cboundary_surface::calcobuk(double L, double du, double bfluxbot, double 
     }
 
     // convergence has been reached
-    if(n < nlim && std::abs(L) < dhuge)
+    if(n < nlim && std::abs(L) < Lmax)
       break;
     // convergence has not been reached, procedure restarted once
     else

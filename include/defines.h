@@ -4,7 +4,7 @@
 
 #define dsmall 1.e-9
 #define dbig   1.e9
-#define dhuge  1.e20
+#define dhuge  1.e30
 
 // finite difference coefficients
 
