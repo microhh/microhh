@@ -390,7 +390,8 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
   return 0;
 }
 
-int cinput::parseItem(int *value, std::string cat, std::string item, std::string el, bool optional, int def)
+template <class valuetype>
+int cinput::parseItem(valuetype *value, std::string cat, std::string item, std::string el, bool optional, valuetype def)
 {
   std::string itemout, itemtype;
   itemout = "[" + cat + "][" + item + "]";
@@ -487,51 +488,6 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
   return 0;
 }
 
-int cinput::parseItem(double *value, std::string cat, std::string item, std::string el, bool optional, double def)
-{
-  std::string itemout, itemtype;
-  itemout = "[" + cat + "][" + item + "]";
-
-  if(!el.empty())
-  {
-    itemout += "[" + el + "]";
-    if(!checkItemExists(cat, item, el))
-    {
-      if(checkItem(value, cat, item, el))
-        return 1;
-      itemtype = "(element specific)";
-    }
-  }
-  if(itemtype.empty())
-  {
-    if(checkItemExists(cat, item))
-    {
-      if(optional)
-      {
-        *value = def;
-        itemtype = "(default)";
-      }
-      else
-      {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-        return 1;
-      }
-    }
-    else
-    {
-      if(checkItem(value, cat, item))
-        return 1;
-      itemtype = "(global)";
-    }
-  }
-  if(mpi->mpiid == 0) 
-    std::cout << std::left  << std::setw(30) << itemout << "= " 
-              << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
-              << "   " << itemtype << std::endl;
-
-  return 0;
-}
-
 int cinput::checkItem(double *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], temp[256];
@@ -579,51 +535,6 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
 
   if(parseItem(value, cat, item, el, optional, def))
     return 1;
-
-  return 0;
-}
-
-int cinput::parseItem(bool *value, std::string cat, std::string item, std::string el, bool optional, bool def)
-{
-  std::string itemout, itemtype;
-  itemout = "[" + cat + "][" + item + "]";
-
-  if(!el.empty())
-  {
-    itemout += "[" + el + "]";
-    if(!checkItemExists(cat, item, el))
-    {
-      if(checkItem(value, cat, item, el))
-        return 1;
-      itemtype = "(element specific)";
-    }
-  }
-  if(itemtype.empty())
-  {
-    if(checkItemExists(cat, item))
-    {
-      if(optional)
-      {
-        *value = def;
-        itemtype = "(default)";
-      }
-      else
-      {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-        return 1;
-      }
-    }
-    else
-    {
-      if(checkItem(value, cat, item))
-        return 1;
-      itemtype = "(global)";
-    }
-  }
-  if(mpi->mpiid == 0) 
-    std::cout << std::left  << std::setw(30) << itemout << "= " 
-              << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
-              << "   " << itemtype << std::endl;
 
   return 0;
 }
@@ -687,51 +598,6 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
 
   if(parseItem(value, cat, item, el, optional, def))
     return 1;
-
-  return 0;
-}
-
-int cinput::parseItem(std::string *value, std::string cat, std::string item, std::string el, bool optional, std::string def)
-{
-  std::string itemout, itemtype;
-  itemout = "[" + cat + "][" + item + "]";
-
-  if(!el.empty())
-  {
-    itemout += "[" + el + "]";
-    if(!checkItemExists(cat, item, el))
-    {
-      if(checkItem(value, cat, item, el))
-        return 1;
-      itemtype = "(element specific)";
-    }
-  }
-  if(itemtype.empty())
-  {
-    if(checkItemExists(cat, item))
-    {
-      if(optional)
-      {
-        *value = def;
-        itemtype = "(default)";
-      }
-      else
-      {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-        return 1;
-      }
-    }
-    else
-    {
-      if(checkItem(value, cat, item))
-        return 1;
-      itemtype = "(global)";
-    }
-  }
-  if(mpi->mpiid == 0) 
-    std::cout << std::left  << std::setw(30) << itemout << "= " 
-              << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
-              << "   " << itemtype << std::endl;
 
   return 0;
 }
