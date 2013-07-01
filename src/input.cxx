@@ -8,6 +8,7 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 cinput::cinput(cmpi *mpiin)
 {
@@ -632,36 +633,44 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
 }
 
 // list retrieval function
-int cinput::getItem(std::vector<std::string> *value, std::string cat, std::string item, std::string def)
+int cinput::getList(std::vector<std::string> *value, std::string cat, std::string item, std::string def)
 {
-  char cwho[256]="";
+  if(parseList(value, cat, item, def))
+    return 1;
 
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
-  strncat(cwho,"                          ",30-strlen(cwho));
+  return 0;
+}
+
+int cinput::parseList(std::vector<std::string> *value, std::string cat, std::string item, std::string def)
+{
+  std::string itemout, listout;
+  std::stringstream liststream;
+
+  itemout = "[" + cat + "][" + item + "]";
   if(checkItemExists(cat, item))
   {
-    if(mpi->mpiid == 0) std::printf("%s   NOT FOUND\n",cwho);
+    if(mpi->mpiid == 0)
+      std::cout << std::left  << std::setw(30) << itemout << "= "
+                << std::right << std::setw(11) << "EMPTY LIST" << std::endl;
   }
   else
   {
-    if(checkItem(value, cat, item))
+    if(checkList(value, cat, item))
       return 1;
-    if(mpi->mpiid == 0) std::printf("%s= ",cwho);
     for(std::vector<std::string>::iterator it = value->begin(); it !=value->end()-1; ++it)
     {
-      if(mpi->mpiid == 0) std::printf("%s, ",it->c_str());
+      liststream << *it << ", ";
     }
-    if(mpi->mpiid == 0) std::printf("%s\n",(value->end()-1)->c_str());
+    liststream << *(value->end()-1);
+    if(mpi->mpiid == 0)
+      std::cout << std::left  << std::setw(30) << itemout << "= "
+                << std::right << std::setw(11) << liststream.str() << std::endl;
   }
 
   return 0;
 }
 
-int cinput::checkItem(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
+int cinput::checkList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());

@@ -25,7 +25,7 @@ class cinput
     int getItem(std::string *, std::string, std::string, std::string, std::string);
 
     // list retrieval
-    int getItem(std::vector<std::string> *, std::string, std::string, std::string);
+    int getList(std::vector<std::string> *, std::string, std::string, std::string);
 
     int getProf(double *     , std::string, int size);
     int clear();
@@ -36,10 +36,8 @@ class cinput
 
     template <class valuetype>
     int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);
-    // int parseItem(int *        , std::string, std::string, std::string, bool, int);
-    // int parseItem(double *     , std::string, std::string, std::string, bool, double);
-    // int parseItem(bool *       , std::string, std::string, std::string, bool, bool);
-    // int parseItem(std::string *, std::string, std::string, std::string, bool, std::string);
+
+    int parseList(std::vector<std::string> *, std::string, std::string, std::string);
 
     int checkItemExists(std::string, std::string, std::string el="default");
     int checkItem(int *        , std::string, std::string, std::string el="default");
@@ -48,7 +46,7 @@ class cinput
     int checkItem(std::string *, std::string, std::string, std::string el="default");
 
     // list retrieval
-    int checkItem(std::vector<std::string> *, std::string, std::string, std::string el="default");
+    int checkList(std::vector<std::string> *, std::string, std::string, std::string el="default");
 
     struct inputtype
     {
