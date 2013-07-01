@@ -33,6 +33,12 @@ class cinput
 
   private:
     cmpi *mpi;
+
+    int parseItem(int *        , std::string, std::string, std::string, bool, int);
+    int parseItem(double *     , std::string, std::string, std::string, bool, double);
+    int parseItem(bool *       , std::string, std::string, std::string, bool, bool);
+    int parseItem(std::string *, std::string, std::string, std::string, bool, std::string);
+
     int checkItemExists(std::string, std::string, std::string el="default");
     int checkItem(int *        , std::string, std::string, std::string el="default");
     int checkItem(double *     , std::string, std::string, std::string el="default");

@@ -75,8 +75,8 @@ int cinput::readinifile()
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
-    if(n == 0) 
-      continue; 
+    if(n == 0)
+      continue;
 
     // check for comments
     n = std::sscanf(inputline, " #%[^\n]", temp1);
@@ -102,8 +102,8 @@ int cinput::readinifile()
     n = std::sscanf(inputline, "%[^=] = %[^\n]", temp1, rhs);
     if(n == 2)
     {
-      
-      n = std::sscanf(temp1, " %[a-zA-Z0-9_()][%[^]]] %s", lhs, element,dummy);
+
+      n = std::sscanf(temp1, " %[a-zA-Z0-9_()][%[^]]] %s", lhs, element, dummy);
       if(n <= 2)
       {
         if(!blockset)
@@ -121,7 +121,7 @@ int cinput::readinifile()
         std::string itemstring(lhs);
         std::string elementstring(element);
         std::string valuestring(rhs);
-        if(checkItemExists(blockstring,itemstring,elementstring))
+        if(checkItemExists(blockstring, itemstring, elementstring))
         {
           inputlist[blockstring][itemstring][elementstring].data   = valuestring;
           inputlist[blockstring][itemstring][elementstring].isused = false;
@@ -211,8 +211,8 @@ int cinput::readproffile()
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
-    if(n == 0) 
-      continue; 
+    if(n == 0)
+      continue;
 
     // check for comments
     n = std::sscanf(inputline, " #%[^\n]", temp1);
@@ -235,7 +235,7 @@ int cinput::readproffile()
         }
         return 1;
       }
-        
+
       if(mpi->mpiid == 0) std::printf("Found variable \"%s\"\n", substring);
 
       // temporarily store the variable name
@@ -258,7 +258,7 @@ int cinput::readproffile()
     // step out of the fgets loop
     break;
   }
-  
+
   // second read the data
   // continue reading
   int ncols;
@@ -279,8 +279,8 @@ int cinput::readproffile()
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
-    if(n == 0) 
-      continue; 
+    if(n == 0)
+      continue;
 
     // check for comments
     n = std::sscanf(inputline, " #%[^\n]", temp1);
@@ -311,7 +311,7 @@ int cinput::readproffile()
 
       // temporarily store the data
       varvalues.push_back(datavalue);
-        
+
       // read the next substring
       substring = std::strtok(NULL, " ,;\t\n");
     }
@@ -337,9 +337,8 @@ int cinput::readproffile()
   return 0;
 }
 
-
 int cinput::checkItemExists(std::string cat, std::string item, std::string el)
-{  
+{
   inputmap::const_iterator it1 = inputlist.find(cat);
 
   bool readerror = false;
@@ -367,50 +366,30 @@ int cinput::checkItemExists(std::string cat, std::string item, std::string el)
 }
 
 // overloaded return functions
+// int functions
 int cinput::getItem(int *value, std::string cat, std::string item, std::string el)
 {
-  char cwhy[256]="";
-  char cwho[256]="";
+  bool optional = false;
+  int dummy = 0;
 
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
+  if(parseItem(value, cat, item, el, optional, dummy))
+    return 1;
 
-  if(!el.empty())
-  {
-    strcat(cwho,"[");
-    strcat(cwho,el.c_str());
-    strcat(cwho,"]");
-    if(!checkItemExists(cat, item, el))
-    {
-      if(checkItem(value, cat, item, el))
-        return 1;
-      strcpy(cwhy, "element specific value");
-    }
-  }
-  if(!strcmp(cwhy,""))
-  {
-    if(checkItemExists(cat, item))
-    {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-      return 1;
-    }
-    else
-    {
-      if(checkItem(value, cat, item))
-        return 1;
-      strcpy(cwhy, "global value");
-    }
-  }
-  strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9d   (%s)\n", cwho, *value, cwhy);
   return 0;
 }
 
 int cinput::getItem(int *value, std::string cat, std::string item, std::string el, int def)
 {
+  bool optional = true;
+
+  if(parseItem(value, cat, item, el, optional, def))
+    return 1;
+
+  return 0;
+}
+
+int cinput::parseItem(int *value, std::string cat, std::string item, std::string el, bool optional, int def)
+{
   char cwhy[256]="";
   char cwho[256]="";
 
@@ -436,8 +415,16 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
   {
     if(checkItemExists(cat, item))
     {
-      *value = def;
-      strcpy(cwhy, "default value");
+      if(optional)
+      {
+        *value = def;
+        strcpy(cwhy, "default value");
+      }
+      else
+      {
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+        return 1;
+      }
     }
     else
     {
@@ -448,6 +435,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
   }
   strncat(cwho,"                          ",30-strlen(cwho));
   if(mpi->mpiid == 0) std::printf("%s= %9d   (%s)\n", cwho, *value, cwhy);
+
   return 0;
 }
 
@@ -481,7 +469,29 @@ int cinput::checkItem(int *value, std::string cat, std::string item, std::string
   return 0;
 }
 
+// double functions
 int cinput::getItem(double *value, std::string cat, std::string item, std::string el)
+{
+  bool optional = false;
+  double dummy = 0.;
+
+  if(parseItem(value, cat, item, el, optional, dummy))
+    return 1;
+
+  return 0;
+}
+
+int cinput::getItem(double *value, std::string cat, std::string item, std::string el, double def)
+{
+  bool optional = true;
+
+  if(parseItem(value, cat, item, el, optional, def))
+    return 1;
+
+  return 0;
+}
+
+int cinput::parseItem(double *value, std::string cat, std::string item, std::string el, bool optional, double def)
 {
   char cwhy[256]="";
   char cwho[256]="";
@@ -508,8 +518,16 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
   {
     if(checkItemExists(cat, item))
     {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-      return 1;
+      if(optional)
+      {
+        *value = def;
+        strcpy(cwhy, "default value");
+      }
+      else
+      {
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+        return 1;
+      }
     }
     else
     {
@@ -520,48 +538,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
   }
   strncat(cwho,"                          ",30-strlen(cwho));
   if(mpi->mpiid == 0) std::printf("%s= %9.4G   (%s)\n", cwho, *value, cwhy);
-  return 0;
-}
 
-int cinput::getItem(double *value, std::string cat, std::string item, std::string el, double def)
-{
-  char cwhy[256]="";
-  char cwho[256]="";
-
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
-
-  if(!el.empty())
-  {
-    strcat(cwho,"[");
-    strcat(cwho,el.c_str());
-    strcat(cwho,"]");
-    if(!checkItemExists(cat, item, el))
-    {
-      if(checkItem(value, cat, item, el))
-        return 1;
-      strcpy(cwhy, "element specific value");
-    }
-  }
-  if(!strcmp(cwhy,""))
-  {
-    if(checkItemExists(cat, item))
-    {
-      *value = def;
-      strcpy(cwhy, "default value");
-    }
-    else
-    {
-      if(checkItem(value, cat, item))
-        return 1;
-      strcpy(cwhy, "global value");
-    }
-  }
-  strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9.4G   (%s)\n", cwho,*value, cwhy);
   return 0;
 }
 
@@ -595,50 +572,29 @@ int cinput::checkItem(double *value, std::string cat, std::string item, std::str
   return 0;
 }
 
+// booleans
 int cinput::getItem(bool *value, std::string cat, std::string item, std::string el)
 {
-  char cwhy[256]="";
-  char cwho[256]="";
+  bool optional = false;
+  bool dummy = false;
 
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
-
-  if(!el.empty())
-  {
-    strcat(cwho,"[");
-    strcat(cwho,el.c_str());
-    strcat(cwho,"]");
-    if(!checkItemExists(cat, item, el))
-    {
-      if(checkItem(value, cat, item, el))
-        return 1;
-      strcpy(cwhy, "element specific value");
-    }
-  }
-  if(!strcmp(cwhy,""))
-  {
-    if(checkItemExists(cat, item))
-    {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-      return 1;
-    }
-    else
-    {
-      if(checkItem(value, cat, item))
-        return 1;
-      strcpy(cwhy, "global value");
-    }
-  }
-  strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %s   (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
+  if(parseItem(value, cat, item, el, optional, dummy))
+    return 1;
   return 0;
 }
 
 int cinput::getItem(bool *value, std::string cat, std::string item, std::string el, bool def)
 {
+  bool optional = true;
+
+  if(parseItem(value, cat, item, el, optional, def))
+    return 1;
+
+  return 0;
+}
+
+int cinput::parseItem(bool *value, std::string cat, std::string item, std::string el, bool optional, bool def)
+{
   char cwhy[256]="";
   char cwho[256]="";
 
@@ -664,8 +620,16 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
   {
     if(checkItemExists(cat, item))
     {
-      *value = def;
-      strcpy(cwhy, "default value");
+      if(optional)
+      {
+        *value = def;
+        strcpy(cwhy, "default value");
+      }
+      else
+      {
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+        return 1;
+      }
     }
     else
     {
@@ -676,6 +640,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
   }
   strncat(cwho,"                          ",30-strlen(cwho));
   if(mpi->mpiid == 0) std::printf("%s= %s   (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
+
   return 0;
 }
 
@@ -696,10 +661,10 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
     else if(std::strcmp("false", inputbool) == 0 ||
             std::strcmp("0    ", inputbool) == 0 )
       *value = false;
-    else 
+    else
       boolerror = true;
   }
-  
+
   if(n != 1 || boolerror)
   {
     if(std::strcmp(inputstring,""))
@@ -720,51 +685,30 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
   return 0;
 }
 
+// strings
 int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el)
 {
-  char cwhy[256]="";
-  char cwho[256]="";
+  bool optional = false;
+  std::string dummy = "";
 
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
-
-  if(!el.empty())
-  {
-    strcat(cwho,"[");
-    strcat(cwho,el.c_str());
-    strcat(cwho,"]");
-    if(!checkItemExists(cat, item, el))
-    {
-      if(checkItem(value, cat, item, el))
-        return 1;
-      strcpy(cwhy, "element specific value");
-    }
-  }
-  if(!strcmp(cwhy,""))
-  {
-    if(checkItemExists(cat, item))
-    {
-      if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
-      return 1;
-    }
-    else
-    {
-      if(checkItem(value, cat, item))
-        return 1;
-      strcpy(cwhy, "global value");
-    }
-  }
-  strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9s   (%s)\n", cwho,value->c_str(), cwhy);
+  if(parseItem(value, cat, item, el, optional, dummy))
+    return 1;
 
   return 0;
 }
 
 int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el, std::string def)
 {
+  bool optional = true;
+
+  if(parseItem(value, cat, item, el, optional, def))
+    return 1;
+
+  return 0;
+}
+
+int cinput::parseItem(std::string *value, std::string cat, std::string item, std::string el, bool optional, std::string def)
+{
   char cwhy[256]="";
   char cwho[256]="";
 
@@ -790,8 +734,16 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
   {
     if(checkItemExists(cat, item))
     {
-      *value = def;
-      strcpy(cwhy, "default value");
+      if(optional)
+      {
+        *value = def;
+        strcpy(cwhy, "default value");
+      }
+      else
+      {
+        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+        return 1;
+      }
     }
     else
     {
@@ -957,7 +909,7 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
     if(mpi->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
   }
   else
-  { 
+  {
     if(mpi->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
     for(int k=0; k<kmaxin; k++)
       data[k] = 0.;
