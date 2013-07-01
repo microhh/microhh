@@ -6,6 +6,8 @@
 #include "mpiinterface.h"
 #include <algorithm>
 #include <string>
+#include <iostream>
+#include <iomanip>
 
 cinput::cinput(cmpi *mpiin)
 {
@@ -390,35 +392,27 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
 
 int cinput::parseItem(int *value, std::string cat, std::string item, std::string el, bool optional, int def)
 {
-  char cwhy[256]="";
-  char cwho[256]="";
-
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
+  std::string itemout, itemtype;
+  itemout = "[" + cat + "][" + item + "]";
 
   if(!el.empty())
   {
-    strcat(cwho,"[");
-    strcat(cwho,el.c_str());
-    strcat(cwho,"]");
+    itemout += "[" + el + "]";
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
         return 1;
-      strcpy(cwhy, "element specific value");
+      itemtype = "(element specific)";
     }
   }
-  if(!strcmp(cwhy,""))
+  if(itemtype.empty())
   {
     if(checkItemExists(cat, item))
     {
       if(optional)
       {
         *value = def;
-        strcpy(cwhy, "default value");
+        itemtype = "(default)";
       }
       else
       {
@@ -430,11 +424,13 @@ int cinput::parseItem(int *value, std::string cat, std::string item, std::string
     {
       if(checkItem(value, cat, item))
         return 1;
-      strcpy(cwhy, "global value");
+      itemtype = "(global)";
     }
   }
-  strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9d   (%s)\n", cwho, *value, cwhy);
+  if(mpi->mpiid == 0) 
+    std::cout << std::left  << std::setw(30) << itemout << "= " 
+              << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
+              << "   " << itemtype << std::endl;
 
   return 0;
 }
@@ -493,35 +489,27 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
 
 int cinput::parseItem(double *value, std::string cat, std::string item, std::string el, bool optional, double def)
 {
-  char cwhy[256]="";
-  char cwho[256]="";
-
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
+  std::string itemout, itemtype;
+  itemout = "[" + cat + "][" + item + "]";
 
   if(!el.empty())
   {
-    strcat(cwho,"[");
-    strcat(cwho,el.c_str());
-    strcat(cwho,"]");
+    itemout += "[" + el + "]";
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
         return 1;
-      strcpy(cwhy, "element specific value");
+      itemtype = "(element specific)";
     }
   }
-  if(!strcmp(cwhy,""))
+  if(itemtype.empty())
   {
     if(checkItemExists(cat, item))
     {
       if(optional)
       {
         *value = def;
-        strcpy(cwhy, "default value");
+        itemtype = "(default)";
       }
       else
       {
@@ -533,11 +521,13 @@ int cinput::parseItem(double *value, std::string cat, std::string item, std::str
     {
       if(checkItem(value, cat, item))
         return 1;
-      strcpy(cwhy, "global value");
+      itemtype = "(global)";
     }
   }
-  strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9.4G   (%s)\n", cwho, *value, cwhy);
+  if(mpi->mpiid == 0) 
+    std::cout << std::left  << std::setw(30) << itemout << "= " 
+              << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
+              << "   " << itemtype << std::endl;
 
   return 0;
 }
@@ -595,35 +585,27 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
 
 int cinput::parseItem(bool *value, std::string cat, std::string item, std::string el, bool optional, bool def)
 {
-  char cwhy[256]="";
-  char cwho[256]="";
-
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
+  std::string itemout, itemtype;
+  itemout = "[" + cat + "][" + item + "]";
 
   if(!el.empty())
   {
-    strcat(cwho,"[");
-    strcat(cwho,el.c_str());
-    strcat(cwho,"]");
+    itemout += "[" + el + "]";
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
         return 1;
-      strcpy(cwhy, "element specific value");
+      itemtype = "(element specific)";
     }
   }
-  if(!strcmp(cwhy,""))
+  if(itemtype.empty())
   {
     if(checkItemExists(cat, item))
     {
       if(optional)
       {
         *value = def;
-        strcpy(cwhy, "default value");
+        itemtype = "(default)";
       }
       else
       {
@@ -635,11 +617,13 @@ int cinput::parseItem(bool *value, std::string cat, std::string item, std::strin
     {
       if(checkItem(value, cat, item))
         return 1;
-      strcpy(cwhy, "global value");
+      itemtype = "(global)";
     }
   }
-  strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %s   (%s)\n", cwho,(*value) ? "     true" : "    false", cwhy);
+  if(mpi->mpiid == 0) 
+    std::cout << std::left  << std::setw(30) << itemout << "= " 
+              << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
+              << "   " << itemtype << std::endl;
 
   return 0;
 }
@@ -709,35 +693,27 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
 
 int cinput::parseItem(std::string *value, std::string cat, std::string item, std::string el, bool optional, std::string def)
 {
-  char cwhy[256]="";
-  char cwho[256]="";
-
-  strcat(cwho, "[");
-  strcat(cwho,cat.c_str());
-  strcat(cwho,"][");
-  strcat(cwho,item.c_str());
-  strcat(cwho,"]");
+  std::string itemout, itemtype;
+  itemout = "[" + cat + "][" + item + "]";
 
   if(!el.empty())
   {
-    strcat(cwho,"[");
-    strcat(cwho,el.c_str());
-    strcat(cwho,"]");
+    itemout += "[" + el + "]";
     if(!checkItemExists(cat, item, el))
     {
       if(checkItem(value, cat, item, el))
         return 1;
-      strcpy(cwhy, "element specific value");
+      itemtype = "(element specific)";
     }
   }
-  if(!strcmp(cwhy,""))
+  if(itemtype.empty())
   {
     if(checkItemExists(cat, item))
     {
       if(optional)
       {
         *value = def;
-        strcpy(cwhy, "default value");
+        itemtype = "(default)";
       }
       else
       {
@@ -749,11 +725,13 @@ int cinput::parseItem(std::string *value, std::string cat, std::string item, std
     {
       if(checkItem(value, cat, item))
         return 1;
-      strcpy(cwhy, "global value");
+      itemtype = "(global)";
     }
   }
-  strncat(cwho,"                          ",30-strlen(cwho));
-  if(mpi->mpiid == 0) std::printf("%s= %9s   (%s)\n", cwho, value->c_str(), cwhy);
+  if(mpi->mpiid == 0) 
+    std::cout << std::left  << std::setw(30) << itemout << "= " 
+              << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
+              << "   " << itemtype << std::endl;
 
   return 0;
 }
