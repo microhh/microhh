@@ -25,7 +25,15 @@ int ccross::readinifile(cinput *inputin)
   n += inputin->getItem(&swcross, "cross", "swcross", "", "0");
 
   if(swcross == "1")
-    n += inputin->getItem(&jxz, "cross", "", "jxz");
+  {
+    // get the list of indices at which to take cross sections
+    n += inputin->getList(&jxz, "cross", "jxz", "");
+    n += inputin->getList(&kxy, "cross", "kxy", "");
+
+    // get the list of variables per type of cross
+    n += inputin->getList(&simple, "cross", "simple", "");
+    n += inputin->getList(&lngrad, "cross", "lngrad", "");
+  }
 
   if(n > 0)
     return 1;
@@ -40,13 +48,20 @@ int ccross::exec(int iteration)
 
   if(mpi->mpiid == 0) std::printf("Saving cross sections for iteration %d\n", iteration);
 
-  crosssimple(fields->s["s"]->data, fields->s["tmp1"]->data, fields->s["s"]->name, iteration);
-  crosslngrad(fields->s["s"]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s["s"]->name + "lngrad", iteration);
+  // loop over chosen indices in order to make xz cross sections
+  for(std::vector<int>::iterator itn = jxz.begin(); itn < jxz.end(); ++itn)
+  {
+    for(std::vector<std::string>::iterator itc = simple.begin(); itc < simple.end(); ++itc)
+      crosssimple(fields->s[*itc]->data, fields->s["tmp1"]->data, fields->s[*itc]->name, *itn, iteration);
+
+    for(std::vector<std::string>::iterator itc = lngrad.begin(); itc < lngrad.end(); ++itc)
+      crosslngrad(fields->s[*itc]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*itc]->name + "lngrad", *itn, iteration);
+  }
   
   return 0;
 }
 
-int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name, int iteration)
+int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name, int index, int iteration)
 {
   // define the file name
   char filename[256];
@@ -54,12 +69,12 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
   // save the slice with the correct index
-  grid->savexzslice(data, tmp, jxz, filename);
+  grid->savexzslice(data, tmp, index, filename);
 
   return 0;
 }
  
-int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name, int iteration)
+int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name, int index, int iteration)
 {
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
 
@@ -107,7 +122,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
   // save the slice with the correct index
-  grid->savexzslice(lngrad, tmp, jxz, filename);
+  grid->savexzslice(lngrad, tmp, index, filename);
 
   return 0;
 }
