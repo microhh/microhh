@@ -24,6 +24,8 @@ int ccross::readinifile(cinput *inputin)
   // optional, by default switch cross off
   n += inputin->getItem(&swcross, "cross", "swcross", "", "0");
 
+  n += inputin->getItem(&crosstime, "cross", "crosstime", "");
+
   if(swcross == "1")
   {
     // get the list of indices at which to take cross sections
@@ -41,21 +43,48 @@ int ccross::readinifile(cinput *inputin)
   return 0;
 }
 
-int ccross::exec(int iteration)
+int ccross::init(int ifactor)
 {
+  icrosstime = (unsigned long)(ifactor * crosstime);
+
+  return 0;
+}
+
+unsigned long ccross::gettimelim(unsigned long itime)
+{
+  unsigned long idtlim = icrosstime - itime % icrosstime;
+
+  return idtlim;
+}
+
+int ccross::exec(double time, int itime, int iotime)
+{
+  // check if switched on
   if(swcross == "0")
     return 0;
 
-  if(mpi->mpiid == 0) std::printf("Saving cross sections for iteration %d\n", iteration);
+  // check if time for execution
+  if(itime % icrosstime != 0)
+    return 1;
+
+  if(mpi->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);
 
   // loop over chosen indices in order to make xz cross sections
   for(std::vector<int>::iterator itn = jxz.begin(); itn < jxz.end(); ++itn)
   {
+    // cross section of variables
     for(std::vector<std::string>::iterator itc = simple.begin(); itc < simple.end(); ++itc)
-      crosssimple(fields->s[*itc]->data, fields->s["tmp1"]->data, fields->s[*itc]->name, *itn, iteration);
-
-    for(std::vector<std::string>::iterator itc = lngrad.begin(); itc < lngrad.end(); ++itc)
-      crosslngrad(fields->s[*itc]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*itc]->name + "lngrad", *itn, iteration);
+    {
+      // catch the momentum fields from the correct list
+      if(*itc == "u" || *itc == "v" || *itc == "w")
+        crosssimple(fields->mp[*itc]->data, fields->s["tmp1"]->data, fields->mp[*itc]->name, *itn, iotime);
+      else
+        crosssimple(fields->s[*itc]->data, fields->s["tmp1"]->data, fields->s[*itc]->name, *itn, iotime);
+    }
+    // cross section of scalar gradients
+    for(std::vector<std::string>::iterator itc = simple.begin(); itc < simple.end(); ++itc)
+      for(std::vector<std::string>::iterator itc = lngrad.begin(); itc < lngrad.end(); ++itc)
+        crosslngrad(fields->s[*itc]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*itc]->name + "lngrad", *itn, iotime);
   }
   
   return 0;

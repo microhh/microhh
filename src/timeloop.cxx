@@ -28,7 +28,7 @@ int ctimeloop::readinifile(cinput *inputin)
 
   // obligatory parameters
   n += inputin->getItem(&runtime     , "time", "runtime"  , "");
-  if(mpi->mode=="init")
+  if(mpi->mode == "init")
   {
     starttime = 0.;
   }
@@ -60,15 +60,17 @@ int ctimeloop::readinifile(cinput *inputin)
   // initializations
   loop      = true;
   time      = 0.;
+  iteration = 0;
 
-  iruntime = (unsigned long)(ifactor * runtime);
-  itime    = (unsigned long)0;
-  idt      = (unsigned long)(ifactor * dt);
-  idtmax   = (unsigned long)(ifactor * dtmax);
-  isavetime= (unsigned long)(ifactor * savetime);
-  idtlim   = idt;
+  iruntime   = (unsigned long)(ifactor * runtime);
+  istarttime = (unsigned long)(ifactor * starttime);
+  itime      = (unsigned long)0;
+  idt        = (unsigned long)(ifactor * dt);
+  idtmax     = (unsigned long)(ifactor * dtmax);
+  isavetime  = (unsigned long)(ifactor * savetime);
+  idtlim     = idt;
 
-  istarttime= (int)(starttime / precision);
+  iotime = (int)(starttime / precision);
 
   gettimeofday(&start, NULL);
 
@@ -85,8 +87,9 @@ int ctimeloop::settimelim()
 
 int ctimeloop::timestep()
 {
-  time  += dt;
-  itime += idt;
+  time   += dt;
+  itime  += idt;
+  iotime = (int)(1./precision*itime/ifactor);
 
   iteration++;
 
@@ -109,10 +112,8 @@ int ctimeloop::dosave()
 {
   // do not save directly after the start of the simulation
   if(itime % isavetime == 0 && iteration != 0)
-  {
-    istarttime = (int) 1./precision*itime/ifactor;
     return 1;
-  }
+
   return 0;
 }
 
@@ -304,8 +305,9 @@ int ctimeloop::save(int starttime)
       return 1;
     }
 
-    fwrite(&itime, sizeof(long), 1, pFile);
-    fwrite(&idt  , sizeof(long), 1, pFile);
+    fwrite(&itime    , sizeof(long), 1, pFile);
+    fwrite(&idt      , sizeof(long), 1, pFile);
+    fwrite(&iteration, sizeof(long), 1, pFile);
 
     fclose(pFile);
   }
@@ -332,8 +334,9 @@ int ctimeloop::load(int starttime)
       return 1;
     }
 
-    fread(&itime, sizeof(long), 1, pFile);
-    fread(&idt  , sizeof(long), 1, pFile);
+    fread(&itime    , sizeof(long), 1, pFile);
+    fread(&idt      , sizeof(long), 1, pFile);
+    fread(&iteration, sizeof(long), 1, pFile);
 
     fclose(pFile);
   }

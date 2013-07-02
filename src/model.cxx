@@ -36,7 +36,6 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   // create the fields class
   fields   = new cfields  (grid, mpi);
 
-
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
@@ -201,7 +200,10 @@ int cmodel::init()
     return 1;
   if(pres->init())
     return 1;
+
   if(stats->init(timeloop->ifactor))
+    return 1;
+  if(cross->init(timeloop->ifactor))
     return 1;
 
   return 0;
@@ -209,13 +211,13 @@ int cmodel::init()
 
 int cmodel::load()
 {
-  if(timeloop->load(timeloop->istarttime))
+  if(timeloop->load(timeloop->iotime))
     return 1;
-  if(fields->load(timeloop->istarttime))
+  if(fields->load(timeloop->iotime))
     return 1;
   if(buffer->load())
     return 1;
-  if(stats->create(timeloop->istarttime))
+  if(stats->create(timeloop->iotime))
     return 1;
 
   if(boundary->setvalues())
@@ -240,11 +242,11 @@ int cmodel::create(cinput *inputin)
 
 int cmodel::save()
 {
-  if(fields->save(timeloop->istarttime))
+  if(fields->save(timeloop->iotime))
     return 1;
   if(buffer->save())
     return 1;
-  if(timeloop->save(timeloop->istarttime))
+  if(timeloop->save(timeloop->iotime))
     return 1;
 
   return 0;
@@ -288,13 +290,16 @@ int cmodel::exec()
     pres->exec(timeloop->getsubdt());
     if(timeloop->dosave() && !timeloop->insubstep())
     {
-      fields->s["p"]->save(timeloop->istarttime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
+      fields->s["p"]->save(timeloop->iotime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
     }
-    if(stats->dostats(timeloop->iteration, timeloop->itime) && !timeloop->insubstep())
+    
+    // statistics when not in substep and not directly after restart
+    if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))
     {
-      stats->exec(timeloop->iteration, timeloop->time);
-      cross->exec(timeloop->iteration);
+      stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
+      cross->exec(timeloop->time, timeloop->itime, timeloop->iotime);
     }
+
     // exit the simulation when the runtime has been hit after the pressure calculation
     if(!timeloop->loop)
       break;
@@ -312,8 +317,8 @@ int cmodel::exec()
       // save the fields
       if(timeloop->dosave() && !timeloop->insubstep())
       {
-        timeloop->save(timeloop->istarttime);
-        fields->save  (timeloop->istarttime);
+        timeloop->save(timeloop->iotime);
+        fields->save  (timeloop->iotime);
       }
     }
 
@@ -328,9 +333,9 @@ int cmodel::exec()
         break;
 
       // load the data
-      if(timeloop->load(timeloop->istarttime))
+      if(timeloop->load(timeloop->iotime))
         return 1;
-      if(fields->load(timeloop->istarttime))
+      if(fields->load(timeloop->iotime))
         return 1;
     }
 
@@ -409,9 +414,10 @@ int cmodel::settimestep()
   if(timeloop->settimelim())
     return 1;
 
-  timeloop->idtlim = std::min(timeloop->idtlim,advec->gettimelim(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim,diff->gettimelim(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim,stats->gettimelim(timeloop->itime));
+  timeloop->idtlim = std::min(timeloop->idtlim, advec->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim, diff ->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim, stats->gettimelim(timeloop->itime));
+  timeloop->idtlim = std::min(timeloop->idtlim, cross->gettimelim(timeloop->itime));
   timeloop->settimestep();
 
   return 0;

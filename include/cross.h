@@ -13,13 +13,17 @@ class ccross
     ~ccross();
 
     int readinifile(cinput *);
-    int init();
-    int exec(int);
+    int init(int);
+    unsigned long gettimelim(unsigned long);
+    int exec(double, int, int);
 
   private:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
+
+    double crosstime;
+    unsigned long icrosstime;
 
     std::string swcross;
 
