@@ -33,8 +33,8 @@ class ccross
     std::vector<std::string> simple;
     std::vector<std::string> lngrad;
 
-    int crosssimple(double *, double *, std::string, int, int);
-    int crosslngrad(double *, double *, double *, double *, std::string, int, int);
+    int crosssimple(double *, double *, std::string, std::vector<int>, std::vector<int>, int);
+    int crosslngrad(double *, double *, double *, double *, std::string, std::vector<int>, std::vector<int>, int);
 };
 #endif
 

@@ -69,41 +69,48 @@ int ccross::exec(double time, int itime, int iotime)
 
   if(mpi->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);
 
-  // loop over chosen indices in order to make xz cross sections
-  for(std::vector<int>::iterator itn = jxz.begin(); itn < jxz.end(); ++itn)
+  // cross section of variables
+  for(std::vector<std::string>::iterator it = simple.begin(); it < simple.end(); ++it)
   {
-    // cross section of variables
-    for(std::vector<std::string>::iterator itc = simple.begin(); itc < simple.end(); ++itc)
-    {
-      // catch the momentum fields from the correct list
-      if(*itc == "u" || *itc == "v" || *itc == "w")
-        crosssimple(fields->mp[*itc]->data, fields->s["tmp1"]->data, fields->mp[*itc]->name, *itn, iotime);
-      else
-        crosssimple(fields->s[*itc]->data, fields->s["tmp1"]->data, fields->s[*itc]->name, *itn, iotime);
-    }
-    // cross section of scalar gradients
-    for(std::vector<std::string>::iterator itc = simple.begin(); itc < simple.end(); ++itc)
-      for(std::vector<std::string>::iterator itc = lngrad.begin(); itc < lngrad.end(); ++itc)
-        crosslngrad(fields->s[*itc]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*itc]->name + "lngrad", *itn, iotime);
+    // catch the momentum fields from the correct list
+    if(*it == "u" || *it == "v" || *it == "w")
+      crosssimple(fields->mp[*it]->data, fields->s["tmp1"]->data, fields->mp[*it]->name, jxz, kxy, iotime);
+    else
+      crosssimple(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s[*it]->name, jxz, kxy, iotime);
   }
-  
+  // cross section of scalar gradients
+  for(std::vector<std::string>::iterator it = lngrad.begin(); it < lngrad.end(); ++it)
+    crosslngrad(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*it]->name + "lngrad", jxz, kxy, iotime);
+
   return 0;
 }
 
-int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name, int index, int iteration)
+int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name, std::vector<int> jxz, std::vector<int> kxy, int iotime)
 {
   // define the file name
   char filename[256];
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xzcross", iteration);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
-  // save the slice with the correct index
-  grid->savexzslice(data, tmp, index, filename);
+  // loop over the index arrays to save all xz cross sections
+  for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
+  {
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    grid->savexzslice(data, tmp, *it, filename);
+  }
+
+  // loop over the index arrays to save all xy cross sections
+  for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
+  {
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    grid->savexyslice(data, tmp, *it, filename);
+  }
 
   return 0;
 }
  
-int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name, int index, int iteration)
+int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, 
+                        std::string name, std::vector<int> jxz, std::vector<int> kxy, int iotime)
 {
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
 
@@ -147,11 +154,22 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
 
   // define the file name
   char filename[256];
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xzcross", iteration);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
-  // save the slice with the correct index
-  grid->savexzslice(lngrad, tmp, index, filename);
+  // loop over the index arrays to save all xz cross sections
+  for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
+  {
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    grid->savexzslice(lngrad, tmp, *it, filename);
+  }
+
+  // loop over the index arrays to save all xy cross sections
+  for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
+  {
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    grid->savexyslice(lngrad, tmp, *it, filename);
+  }
 
   return 0;
 }

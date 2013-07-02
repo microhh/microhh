@@ -9,11 +9,11 @@ nz = 64
 timestart = 0
 timestep  = 300
 timeend   = 1500
-index     = 20
+index     = 15
 
 precision = 1
 nxsave = 64
-nzsave = 64
+nysave = 64
 
 niter = (timeend-timestart) / timestep + 1
 
@@ -36,24 +36,24 @@ raw = fin.read(nz*8)
 zh = numpy.array(struct.unpack('<{}d'.format(nz), raw))
 fin.close()
  
-crossfile = netCDF4.Dataset("{0}.xz.{1:05d}.nc".format(crossname, index), "w")
+crossfile = netCDF4.Dataset("{0}.xy.{1:05d}.nc".format(crossname, index), "w")
 # create dimensions in netCDF file
 dim_x = crossfile.createDimension('x'   , nxsave)
-dim_z = crossfile.createDimension('z'   , nzsave)
+dim_y = crossfile.createDimension('y'   , nysave)
 dim_t = crossfile.createDimension('time', niter)
 
 # create dimension variables
 var_t = crossfile.createVariable('time','f4',('time',))
 var_x = crossfile.createVariable('x'   ,'f4',('x',))
-var_z = crossfile.createVariable('z'   ,'f4',('z',))
+var_y = crossfile.createVariable('y'   ,'f4',('y',))
 var_t.units = "{0:07d} time since {1:07d}".format(timeend, timestart)
 
 # save the data
 var_x[:] = x[0:nxsave]
-var_z[:] = z[0:nzsave]
+var_y[:] = y[0:nysave]
 
 # create the variable
-var_s = crossfile.createVariable(crossname,'f4',('time','z','x',))
+var_s = crossfile.createVariable(crossname,'f4',('time','y','x',))
 
 for i in range(niter):
   iter = timestart + i*timestep
@@ -61,13 +61,13 @@ for i in range(niter):
 
   var_t[i] = iter*precision
 
-  fin = open("{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, iter),"rb")
-  raw = fin.read(nx*nz*8)
-  tmp = numpy.array(struct.unpack('<{}d'.format(nx*nz), raw))
+  fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, iter),"rb")
+  raw = fin.read(nx*ny*8)
+  tmp = numpy.array(struct.unpack('<{}d'.format(nx*ny), raw))
   del(raw)
-  s = tmp.reshape((nz, nx))
+  s = tmp.reshape((ny, nx))
   del(tmp)
-  var_s[i,:,:] = s[0:nzsave,0:nxsave]
+  var_s[i,:,:] = s[0:nysave,0:nxsave]
   del(s)
 
   fin.close()
