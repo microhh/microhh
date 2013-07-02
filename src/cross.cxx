@@ -57,7 +57,7 @@ unsigned long ccross::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int ccross::exec(double time, int itime, int iotime)
+int ccross::exec(double time, unsigned long itime, int iotime)
 {
   // check if switched on
   if(swcross == "0")

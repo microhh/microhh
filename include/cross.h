@@ -15,7 +15,7 @@ class ccross
     int readinifile(cinput *);
     int init(int);
     unsigned long gettimelim(unsigned long);
-    int exec(double, int, int);
+    int exec(double, unsigned long, int);
 
   private:
     cgrid   *grid;

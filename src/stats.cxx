@@ -85,7 +85,7 @@ unsigned long cstats::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int cstats::exec(int iteration, double time, int itime)
+int cstats::exec(int iteration, double time, unsigned long itime)
 {
   if(swstats == "0")
     return 0;
