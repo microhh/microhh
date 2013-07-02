@@ -341,8 +341,9 @@ int ctimeloop::load(int starttime)
     fclose(pFile);
   }
 
-  mpi->broadcast(&itime, 1);
-  mpi->broadcast(&idt  , 1);
+  mpi->broadcast(&itime    , 1);
+  mpi->broadcast(&idt      , 1);
+  mpi->broadcast(&iteration, 1);
 
   // calculate the double precision time from the integer time
   time = (double)itime / ifactor;
