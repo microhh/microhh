@@ -2,23 +2,22 @@ import numpy
 import struct
 import netCDF4
 
-nx = 64
-ny = 64
-nz = 64
+nx = 512
+ny = 512
+nz = 512
+crossname = "slngrad"
 
 timestart = 0
-timestep  = 300
-timeend   = 1500
-index     = 20
+timestep  = 10
+timeend   = 2100
+index     = 0
 
-precision = 1
-nxsave = 64
-nzsave = 64
+precision = 0.01
+nxsave = 512
+nzsave = 400
 
+# calculate the number of iterations
 niter = (timeend-timestart) / timestep + 1
-
-crossname = "s"
-#crossname = "slngrad"
 
 # load the dimensions
 fin = open("grid.{:07d}".format(0),"rb")
@@ -36,6 +35,9 @@ raw = fin.read(nz*8)
 zh = numpy.array(struct.unpack('<{}d'.format(nz), raw))
 fin.close()
  
+ycross = y[index]
+print('Creating cross at y = {0}'.format(ycross))
+
 crossfile = netCDF4.Dataset("{0}.xz.{1:05d}.nc".format(crossname, index), "w")
 # create dimensions in netCDF file
 dim_x = crossfile.createDimension('x'   , nxsave)
@@ -61,7 +63,7 @@ for i in range(niter):
 
   var_t[i] = iter*precision
 
-  fin = open("{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, iter),"rb")
+  fin = open("cross/{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, iter),"rb")
   raw = fin.read(nx*nz*8)
   tmp = numpy.array(struct.unpack('<{}d'.format(nx*nz), raw))
   del(raw)
