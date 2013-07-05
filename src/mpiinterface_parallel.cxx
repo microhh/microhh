@@ -71,7 +71,7 @@ int cmpi::startup(int argc, char *argv[])
   // process the command line options
   if(argc <= 1)
   {
-    if(mpiid == 0) std::printf("ERROR: specify init, run or post mode\n");
+    if(mpiid == 0) std::printf("ERROR specify init, run or post mode\n");
     return 1;
   }
   else
@@ -80,7 +80,7 @@ int cmpi::startup(int argc, char *argv[])
     mode = argv[1];
     if(mode != "init" && mode != "run" && mode != "post")
     {
-      if(mpiid == 0) std::printf("ERROR: specify init, run or post mode\n");
+      if(mpiid == 0) std::printf("ERROR specify init, run or post mode\n");
       return 1;
     }
     // set the name of the simulation

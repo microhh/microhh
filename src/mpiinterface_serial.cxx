@@ -69,7 +69,7 @@ int cmpi::init()
 {
   if(nprocs != npx*npy)
   {
-    if(mpiid == 0) std::printf("ERROR nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
+    if(mpiid == 0) std::printf("ERROR npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
     return 1;
   }
 
