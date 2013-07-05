@@ -586,4 +586,37 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice
 
   return 0;
 }
+
+int cgrid::savexyslice(double * restrict data, double * restrict tmp, int kslice, char *filename)
+{
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+
+  int count = imax*jmax;
+
+  for(int j=0; j<jmax; j++)
+#pragma ivdep
+    for(int i=0; i<imax; i++)
+    {
+      // take the modulus of jslice and jmax to have the right offset within proc
+      ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
+      ijkb = i + j*jjb;
+      tmp[ijkb] = data[ijk];
+    }
+
+  FILE *pFile;
+  pFile = fopen(filename, "wb");
+  if(pFile == NULL)
+    return 1;
+
+  fwrite(tmp, sizeof(double), count, pFile);
+  fclose(pFile);
+
+  return 0;
+}
 #endif
