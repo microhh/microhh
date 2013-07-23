@@ -317,6 +317,8 @@ int ctimeloop::save(int starttime)
 
 int ctimeloop::load(int starttime)
 {
+  int nerror = 0;
+
   if(mpi->mpiid == 0)
   {
     char filename[256];
@@ -330,16 +332,21 @@ int ctimeloop::load(int starttime)
     if(pFile == NULL)
     {
       if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
-
-      return 1;
+      ++nerror;
     }
+    else
+    {
+      fread(&itime    , sizeof(long), 1, pFile);
+      fread(&idt      , sizeof(long), 1, pFile);
+      fread(&iteration, sizeof(long), 1, pFile);
 
-    fread(&itime    , sizeof(long), 1, pFile);
-    fread(&idt      , sizeof(long), 1, pFile);
-    fread(&iteration, sizeof(long), 1, pFile);
-
-    fclose(pFile);
+      fclose(pFile);
+    }
   }
+
+  mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
 
   mpi->broadcast(&itime    , 1);
   mpi->broadcast(&idt      , 1);

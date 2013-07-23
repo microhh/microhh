@@ -540,6 +540,8 @@ int cgrid::save()
 
 int cgrid::load()
 {
+  int nerror = 0;
+
   // LOAD THE GRID
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
@@ -552,14 +554,22 @@ int cgrid::load()
     if(pFile == NULL)
     {
       std::printf("ERROR \"%s\" does not exist\n", filename);
-      return 1;
+      ++nerror;
     }
-    int n = (2*itot+2*jtot)*sizeof(double);
-    fseek(pFile, n, SEEK_SET);
-    fread(&z [kstart], sizeof(double), kmax, pFile);
-    fread(&zh[kstart], sizeof(double), kmax, pFile);
-    fclose(pFile);
+    else
+    {
+      int n = (2*itot+2*jtot)*sizeof(double);
+      fseek(pFile, n, SEEK_SET);
+      fread(&z [kstart], sizeof(double), kmax, pFile);
+      fread(&zh[kstart], sizeof(double), kmax, pFile);
+      fclose(pFile);
+    }
   }
+
+  // communicate the file read error over all procs
+  mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
 
   mpi->broadcast(&z [kstart], kmax);
   mpi->broadcast(&zh[kstart], kmax);
