@@ -54,7 +54,7 @@ int ccross::init(int ifactor)
 unsigned long ccross::gettimelim(unsigned long itime)
 {
   if(swcross == "0")
-    return dhuge;
+    return ulhuge;
 
   unsigned long idtlim = icrosstime - itime % icrosstime;
 
