@@ -43,8 +43,8 @@ int ctimeloop::readinifile(cinput *inputin)
   n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 4    );
   n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 100  );
   n += inputin->getItem(&savetime    , "time", "savetime"    , "", 3600 );
-  n += inputin->getItem(&postproctime, "time", "postproctime", "", 3600 );
   n += inputin->getItem(&precision   , "time", "precision"   , "", 1.   );
+  n += inputin->getItem(&postproctime, "time", "postproctime", "", 3600 );
 
   // if one argument fails, then crash
   if(n > 0)
@@ -62,13 +62,16 @@ int ctimeloop::readinifile(cinput *inputin)
   time      = 0.;
   iteration = 0;
 
-  iruntime   = (unsigned long)(ifactor * runtime);
-  istarttime = (unsigned long)(ifactor * starttime);
-  itime      = (unsigned long)0;
-  idt        = (unsigned long)(ifactor * dt);
-  idtmax     = (unsigned long)(ifactor * dtmax);
-  isavetime  = (unsigned long)(ifactor * savetime);
-  idtlim     = idt;
+  // calculate all the integer times
+  iruntime      = (unsigned long)(ifactor * runtime);
+  istarttime    = (unsigned long)(ifactor * starttime);
+  itime         = (unsigned long) 0;
+  idt           = (unsigned long)(ifactor * dt);
+  idtmax        = (unsigned long)(ifactor * dtmax);
+  isavetime     = (unsigned long)(ifactor * savetime);
+  ipostproctime = (unsigned long)(ifactor * postproctime);
+
+  idtlim = idt;
 
   iotime = (int)(starttime / precision);
 
@@ -362,6 +365,7 @@ int ctimeloop::load(int starttime)
 int ctimeloop::postprocstep()
 {
   itime += ipostproctime;
+  iotime = (int)(1./precision*itime/ifactor);
 
   if(itime > iruntime)
     loop = false;
