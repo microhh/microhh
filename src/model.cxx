@@ -217,6 +217,8 @@ int cmodel::load()
     return 1;
   if(buffer->load())
     return 1;
+  if(boundary->load(timeloop->iotime))
+    return 1;
   if(stats->create(timeloop->iotime))
     return 1;
 
@@ -247,6 +249,8 @@ int cmodel::save()
   if(buffer->save())
     return 1;
   if(timeloop->save(timeloop->iotime))
+    return 1;
+  if(boundary->save(timeloop->iotime))
     return 1;
 
   return 0;

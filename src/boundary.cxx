@@ -54,6 +54,16 @@ int cboundary::init()
   return 0;
 }
 
+int cboundary::save(int iotime)
+{
+  return 0;
+}
+
+int cboundary::load(int iotime)
+{
+  return 0;
+}
+
 int cboundary::setvalues()
 {
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, 0., fields->visc);
