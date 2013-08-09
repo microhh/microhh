@@ -8,132 +8,142 @@
 #include "input.h"
 #include "mpiinterface.h"
 
+/**
+ * Class for the grid settings and operators.
+ * This class contains the grid properties, such as dimensions and resolution.
+ * The public funcions in this class contain operations that are called from many routines
+ * in order to interpolate, transpose and save data. The MPI operations that work over multiple
+ * processes on the entire grid are contained in this class.
+ */
+
 class cgrid
 {
   public:
-    // functions
-    cgrid(cmpi *);
-    ~cgrid();
-    int readinifile(cinput *);
-    int init();
-    int create(cinput *);
-    int calculate();
-    int save();
-    int load();
+    cgrid(cmpi *); ///< Constructor of the grid class.
+    ~cgrid();      ///< Destructor of the grid class.
 
-    // variables
-    int itot;
-    int jtot;
-    int ktot;
+    int readinifile(cinput *); ///< Processes data from the input file.
+    int init();                ///< Initialization of the grid arrays.
+    int create(cinput *);      ///< Creation of the grid data.
+    int calculate();           ///< Computation of dimensions, faces and ghost cells.
+    int save();                ///< Saves grid data to file.
+    int load();                ///< Loads grid data to file.
 
-    int imax;
-    int jmax;
-    int kmax;
+    int itot; ///< Total number of grid cells in the x-direction.
+    int jtot; ///< Total number of grid cells in the y-direction.
+    int ktot; ///< Total number of grid cells in the z-direction.
 
-    int iblock;
-    int jblock;
-    int kblock;
+    int imax; ///< Number of grid cells in the x-direction for one process.
+    int jmax; ///< Number of grid cells in the y-direction for one process.
+    int kmax; ///< Number of grid cells in the z-direction for one process.
 
-    int igc;
-    int jgc;
-    int kgc;
+    int iblock; ///< Number of grid cells in the x-direction for calculation blocks in transposes.
+    int jblock; ///< Number of grid cells in the y-direction for calculation blocks in transposes.
+    int kblock; ///< Number of grid cells in the z-direction for calculation blocks in transposes.
 
-    int icells;
-    int jcells;
-    int kcells;
-    int ncells;
-    int istart;
-    int jstart;
-    int kstart;
-    int iend;
-    int jend;
-    int kend;
+    int igc; ///< Number of ghost cells in the x-direction.
+    int jgc; ///< Number of ghost cells in the y-direction.
+    int kgc; ///< Number of ghost cells in the z-direction.
 
-    double xsize;
-    double ysize;
-    double zsize;
+    int icells; ///< Number of grid cells in the x-direction for one process including ghost cells.
+    int jcells; ///< Number of grid cells in the y-direction for one process including ghost cells.
+    int kcells; ///< Number of grid cells in the z-direction for one process including ghost cells.
+    int ncells; ///< Total number of grid cells for one process including ghost cells.
+    int istart; ///< Index of the first grid point in the x-direction.
+    int jstart; ///< Index of the first grid point in the y-direction.
+    int kstart; ///< Index of the first grid point in the z-direction.
+    int iend;   ///< Index of the last gridpoint+1 in the x-direction.
+    int jend;   ///< Index of the last gridpoint+1 in the y-direction.
+    int kend;   ///< Index of the last gridpoint+1 in the z-direction.
 
-    double dx;
-    double dy;
-    double *dz;
-    double *dzh;
-    double *dzi;
-    double *dzhi;
-    double *dzi4;
-    double *dzhi4;
+    double xsize; ///< Size of the domain in the x-direction.
+    double ysize; ///< Size of the domain in the y-direction.
+    double zsize; ///< Size of the domain in the z-direction.
+
+    double dx;     ///< Distance between the center of two grid cell in the x-direction.
+    double dy;     ///< Distance between the center of two grid cell in the y-direction.
+    double *dz;    ///< Distance between the center of two grid cell in the z-direction.
+    double *dzh;   ///< Distance between the two grid cell faces in the z-direction.
+    double *dzi;   ///< Reciprocal of dz.
+    double *dzhi;  ///< Reciprocal of dzh.
+    double *dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
+    double *dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
     
-    double *x;
-    double *y;
-    double *z;
-    double *xh;
-    double *yh;
-    double *zh;
+    double *x;  ///< Grid coordinate of cell center in x-direction.
+    double *y;  ///< Grid coordinate of cell center in y-direction.
+    double *z;  ///< Grid coordinate of cell center in z-direction.
+    double *xh; ///< Grid coordinate of cell faces in x-direction.
+    double *yh; ///< Grid coordinate of cell faces in x-direction.
+    double *zh; ///< Grid coordinate of cell faces in x-direction.
 
-    std::string swspatialorder;
+    std::string swspatialorder; ///< Default spatial order of the operators to be used on this grid.
 
     // MPI functions
-    int initmpi();
-    int exitmpi();
-    int boundary_cyclic  (double *);
-    int boundary_cyclic2d(double *);
-    int transposezx(double *, double *);
-    int transposexz(double *, double *);
-    int transposexy(double *, double *);
-    int transposeyx(double *, double *);
-    int transposeyz(double *, double *);
-    int transposezy(double *, double *);
+    int initmpi(); ///< Creates the MPI data types used in grid operations.
+    int exitmpi(); ///< Destructs the MPI data types used in grid operations.
+    int boundary_cyclic  (double *); ///< Fills the ghost cells in the periodic directions.
+    int boundary_cyclic2d(double *); ///< Fills the ghost cells of one slice in the periodic direction.
+    int transposezx(double *, double *); ///< Changes the transpose orientation from z to x.
+    int transposexz(double *, double *); ///< Changes the transpose orientation from x to z.
+    int transposexy(double *, double *); ///< Changes the transpose orientation from x to y.
+    int transposeyx(double *, double *); ///< Changes the transpose orientation from y to x.
+    int transposeyz(double *, double *); ///< Changes the transpose orientation from y to z.
+    int transposezy(double *, double *); ///< Changes the transpose orientation from z to y.
 
-    int getmax (double *);
-    int getsum (double *);
-    int getprof(double *, int);
+    int getmax (double *);      ///< Gets the maximum of a number over all processes.
+    int getsum (double *);      ///< Gets the sum of a number over all processes.
+    int getprof(double *, int); ///< Averages a vertical profile over all processes.
 
-    int savefield3d(double *, double *, double *, char *);
-    int loadfield3d(double *, double *, double *, char *);
+    // IO functions
+    int savefield3d(double *, double *, double *, char *); ///< Saves a full 3d field.
+    int loadfield3d(double *, double *, double *, char *); ///< Loads a full 3d field.
 
-    int savexzslice(double *, double *, char *, int);
-    int savexyslice(double *, double *, char *, int kslice=-1);
-    int loadxyslice(double *, double *, char *, int kslice=-1);
+    int savexzslice(double *, double *, char *, int);           ///< Saves a xz-slice from a 3d field.
+    int savexyslice(double *, double *, char *, int kslice=-1); ///< Saves a xy-slice from a 3d field.
+    int loadxyslice(double *, double *, char *, int kslice=-1); ///< Loads a xy-slice.
 
-    // variables for the fast fourier transforms
-    double *fftini, *fftouti;
-    double *fftinj, *fftoutj;
-    fftw_plan iplanf, iplanb;
-    fftw_plan jplanf, jplanb;
+    // Fourier tranforms
+    double *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
+    double *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
+    fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
+    fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
-    int fftforward (double *, double *, double *, double *, double *, double *);
-    int fftbackward(double *, double *, double *, double *, double *, double *);
+    int fftforward (double *, double *, double *, double *, double *, double *); ///< Forward fast-fourier transform.
+    int fftbackward(double *, double *, double *, double *, double *, double *); ///< Backward fast-fourier transform.
 
     // interpolation functions
-    int interpolatex_2nd(double *, double *, int);
-    int interpolatey_2nd(double *, double *, int);
-    int interpolatex_4th(double *, double *, int);
-    int interpolatey_4th(double *, double *, int);
-    // int interpolatez_4th(double *, double *, int);
+    int interpolatex_2nd(double *, double *, int); ///< Second order interpolation in the x-direction.
+    int interpolatey_2nd(double *, double *, int); ///< Second order interpolation in the y-direction.
+    int interpolatex_4th(double *, double *, int); ///< Fourth order interpolation in the x-direction.
+    int interpolatey_4th(double *, double *, int); ///< Fourth order interpolation in the y-direction.
 
   private:
-    cmpi *mpi;
-    bool allocated;
-    bool mpitypes;
-    bool fftwplan;
+    cmpi *mpi;      ///< Pointer to mpi class.
+    bool allocated; ///< Boolean to check whether grid data is allocated.
+    bool mpitypes;  ///< Boolean to check whether MPI datatypes are created.
+    bool fftwplan;  ///< Boolean to check whether FFTW3 plans are created.
 
 #ifdef PARALLEL
     // MPI Datatypes
-    MPI_Datatype eastwestedge;
-    MPI_Datatype northsouthedge;
-    MPI_Datatype eastwestedge2d;
-    MPI_Datatype northsouthedge2d;
-    MPI_Datatype transposez;
-    MPI_Datatype transposez2;
-    MPI_Datatype transposex;
-    MPI_Datatype transposex2;
-    MPI_Datatype transposey;
-    MPI_Datatype transposey2;
-    MPI_Datatype subi;
-    MPI_Datatype subj;
-    MPI_Datatype subarray;
-    MPI_Datatype subxzslice;
-    MPI_Datatype subxyslice;
-    double *profl;
+    MPI_Datatype eastwestedge;     ///< MPI datatype containing the ghostcells at the east-west sides.
+    MPI_Datatype northsouthedge;   ///< MPI datatype containing the ghostcells at the north-south sides.
+    MPI_Datatype eastwestedge2d;   ///< MPI datatype containing the ghostcells for one slice at the east-west sides.
+    MPI_Datatype northsouthedge2d; ///< MPI datatype containing the ghostcells for one slice at the north-south sides.
+
+    MPI_Datatype transposez;  ///< MPI datatype containing base blocks for z-orientation in zx-transpose.
+    MPI_Datatype transposez2; ///< MPI datatype containing base blocks for z-orientation in zy-transpose.
+    MPI_Datatype transposex;  ///< MPI datatype containing base blocks for x-orientation in zx-transpose.
+    MPI_Datatype transposex2; ///< MPI datatype containing base blocks for x-orientation in xy-transpose.
+    MPI_Datatype transposey;  ///< MPI datatype containing base blocks for y-orientation in xy-transpose.
+    MPI_Datatype transposey2; ///< MPI datatype containing base blocks for y-orientation in zy-transpose.
+
+    MPI_Datatype subi;       ///< MPI datatype containing a subset of the entire x-axis.
+    MPI_Datatype subj;       ///< MPI datatype containing a subset of the entire y-axis.
+    MPI_Datatype subarray;   ///< MPI datatype containing the dimensions of the total array that is contained in one process.
+    MPI_Datatype subxzslice; ///< MPI datatype containing only one xz-slice.
+    MPI_Datatype subxyslice; ///< MPI datatype containing only one xy-slice.
+
+    double *profl; ///< Help array used in profile writing.
 #endif
 };
 #endif
