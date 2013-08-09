@@ -90,8 +90,9 @@ class cgrid
     int savefield3d(double *, double *, double *, char *);
     int loadfield3d(double *, double *, double *, char *);
 
-    int savexzslice(double *, double *, int, char *);
-    int savexyslice(double *, double *, int, char *);
+    int savexzslice(double *, double *, char *, int);
+    int savexyslice(double *, double *, char *, int kslice=-1);
+    int loadxyslice(double *, double *, char *, int kslice=-1);
 
     // variables for the fast fourier transforms
     double *fftini, *fftouti;

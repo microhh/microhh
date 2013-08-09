@@ -16,6 +16,9 @@ class cboundary_surface : public cboundary
     int setvalues();
     int exec();
 
+    int save(int);
+    int load(int);
+
     double *obuk;
     double *ustar;
 

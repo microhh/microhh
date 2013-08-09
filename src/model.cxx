@@ -318,11 +318,15 @@ int cmodel::exec()
       if(!timeloop->insubstep())
         timeloop->timestep();
 
-      // save the fields
+      // save the data for a restart
       if(timeloop->dosave() && !timeloop->insubstep())
       {
+        // save the time data
         timeloop->save(timeloop->iotime);
+        // save the fields
         fields->save  (timeloop->iotime);
+        // save the boundary data
+        boundary->save(timeloop->iotime);
       }
     }
 
@@ -340,6 +344,8 @@ int cmodel::exec()
       if(timeloop->load(timeloop->iotime))
         return 1;
       if(fields->load(timeloop->iotime))
+        return 1;
+      if(boundary->load(timeloop->iotime))
         return 1;
     }
 

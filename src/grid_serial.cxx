@@ -553,7 +553,7 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
   return 0;
 }
 
-int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice, char *filename)
+int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -587,7 +587,7 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice
   return 0;
 }
 
-int cgrid::savexyslice(double * restrict data, double * restrict tmp, int kslice, char *filename)
+int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;

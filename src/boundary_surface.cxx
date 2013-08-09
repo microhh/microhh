@@ -63,16 +63,44 @@ int cboundary_surface::init()
   obuk  = new double[grid->icells*grid->jcells];
   ustar = new double[grid->icells*grid->jcells];
 
+  int ij,jj;
+  jj = grid->icells;
+
+  // initialize the obukhov length on a small number
+  for(int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+   for(int i=0; i<grid->icells; ++i)
+   {
+     ij = i + j*jj;
+     obuk[ij] = dsmall;
+   }
+
   return 0;
 }
 
-int cboundary::save(int iotime)
+int cboundary_surface::save(int iotime)
 {
+  char filename[256];
+
+  std::sprintf(filename, "obuk.%07d", iotime);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+  if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
+    return 1;
+
   return 0;
 }
 
-int cboundary::load(int iotime)
+int cboundary_surface::load(int iotime)
 {
+  char filename[256];
+
+  std::sprintf(filename, "obuk.%07d", iotime);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
+  if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
+    return 1;
+
+  grid->boundary_cyclic2d(obuk);
+
   return 0;
 }
 
@@ -105,15 +133,6 @@ int cboundary_surface::setvalues()
           ustar[ij] = std::max(0.0001, ustarin);
         }
    }
-
-   // set the initial obukhov length to a very small number
-   for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-     for(int i=0; i<grid->icells; ++i)
-     {
-       ij = i + j*jj;
-       obuk[ij] = dsmall;
-     }
 
   return 0;
 }

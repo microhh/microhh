@@ -829,7 +829,7 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
   return 0;
 }
 
-int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice, char *filename)
+int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -879,15 +879,19 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice
   return 0;
 }
 
-int cgrid::savexyslice(double * restrict data, double * restrict tmp, int kslice, char *filename)
+int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
+  int ijkb,jjb;
 
   jj  = icells;
   kk  = icells*jcells;
   jjb = imax;
+
+  // in case the field to save is 2d, then the ghostcells need to be subtracted
+  if(kslice == -1)
+    kslice = -kgc;
 
   int count = imax*jmax;
 
@@ -922,6 +926,55 @@ int cgrid::savexyslice(double * restrict data, double * restrict tmp, int kslice
     return 1;
 
   MPI_Barrier(mpi->commxy);
+
+  return 0;
+}
+
+int cgrid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+{
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+
+  // in case the field to save is 2d, then the ghostcells need to be subtracted
+  if(kslice == -1)
+    kslice = -kgc;
+
+  int count = imax*jmax;
+
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+    return 1;
+
+  // only write at the procs that contain the slice
+  if(MPI_File_read_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    return 1;
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  MPI_Barrier(mpi->commxy);
+
+  for(int j=0; j<jmax; j++)
+#pragma ivdep
+    for(int i=0; i<imax; i++)
+    {
+      // take the modulus of jslice and jmax to have the right offset within proc
+      ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
+      ijkb = i + j*jjb;
+      data[ijk] = tmp[ijkb];
+    }
 
   return 0;
 }
