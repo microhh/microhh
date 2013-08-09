@@ -619,4 +619,36 @@ int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *file
 
   return 0;
 }
+
+int cgrid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+{
+  int count = imax*jmax;
+
+  FILE *pFile;
+  pFile = fopen(filename, "rb");
+  if(pFile == NULL)
+    return 1;
+
+  fread(tmp, sizeof(double), count, pFile);
+  fclose(pFile);
+
+  // put the data back into a field with ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+
+  for(int j=0; j<jmax; j++)
+#pragma ivdep
+    for(int i=0; i<imax; i++)
+    {
+      ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
+      ijkb = i + j*jjb;
+      data[ijk] = tmp[ijkb];
+    }
+
+  return 0;
+}
 #endif
