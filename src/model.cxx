@@ -198,6 +198,8 @@ int cmodel::init()
     return 1;
   if(buffer->init())
     return 1;
+  if(force->init())
+    return 1;
   if(pres->init())
     return 1;
 
@@ -219,6 +221,8 @@ int cmodel::load()
     return 1;
   if(boundary->load(timeloop->iotime))
     return 1;
+  if(force->load())
+    return 1;
   if(stats->create(timeloop->iotime))
     return 1;
 
@@ -238,6 +242,8 @@ int cmodel::create(cinput *inputin)
     return 1;
   if(buffer->setbuffers())
     return 1;
+  if(force->create(inputin))
+    return 1;
 
   return 0;
 }
@@ -247,6 +253,8 @@ int cmodel::save()
   if(fields->save(timeloop->iotime))
     return 1;
   if(buffer->save())
+    return 1;
+  if(force->save())
     return 1;
   if(timeloop->save(timeloop->iotime))
     return 1;
