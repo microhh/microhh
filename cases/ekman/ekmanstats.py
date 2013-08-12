@@ -2,8 +2,8 @@ from pylab import *
 import netCDF4
 
 # set the height
-kmax  = 96
-zsize = 4.
+kmax  = 64
+zsize = 5.
 
 # analytical solution
 ug = 1.
@@ -32,6 +32,9 @@ t = stats.variables["t"][:]
 z = stats.variables["z"][:]
 u = stats.variables["u"][:,:]
 v = stats.variables["v"][:,:]
+
+uerror = sqrt(dz*sum((u[-1,:] - uref)**2.))
+print("L2 error u = ", uerror)
 
 close('all')
 figure()

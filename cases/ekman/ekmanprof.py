@@ -3,23 +3,30 @@ from scipy.special import erf
 from pylab import *
 
 # set the height
-kmax  = 96
-zsize = 4.
-
+kmax  = 64
+zsize = 5.
 dz = zsize / kmax
 
-z  = zeros(kmax)
-u  = zeros(kmax)
-v  = zeros(kmax)
+z = zeros(kmax)
+u = zeros(kmax)
+v = zeros(kmax)
+s = zeros(kmax)
 ug = zeros(kmax)
 vg = zeros(kmax)
-s  = zeros(kmax)
 
-z = linspace(0.5*dz, zsize-0.5*dz, kmax)
-u [:] = 1.
-v [:] = 0.
 ug[:] = 1.
 vg[:] = 0.
+
+z = linspace(0.5*dz, zsize-0.5*dz, kmax)
+
+# analytical solution as the starting profile to reduce run time
+visc = 0.1
+fc   = 1.
+gamma = (fc / (2.*visc))**.5
+
+for k in range(kmax):
+  u[k] = ug[k]*(1. - exp(-gamma*z[k]) * cos(gamma*z[k]))
+  v[k] = ug[k]*(     exp(-gamma*z[k]) * sin(gamma*z[k]))
 
 # write the data to a file
 proffile = open('ekman.prof','w')
