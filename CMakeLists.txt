@@ -1,61 +1,46 @@
-set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/config)
-
-INCLUDE(CMakeForceCompiler) #Necessary to change between MPI/parallel/profiler compilers, without having to do a make clean
 cmake_minimum_required (VERSION 2.8.1)
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/config)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-
-#  make sure that the default is a RELEASE
-if (NOT CMAKE_BUILD_TYPE)
-  set (CMAKE_BUILD_TYPE RELEASE CACHE STRING
-      "Choose the type of build, options are: None Debug Release." FORCE )
+# set the default build type to RELEASE
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RELEASE CACHE STRING
+    "Choose the type of build, options are: None Debug Release." FORCE)
 else()
   string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
   set(CMAKE_BUILD_TYPE ${TEMP} CACHE STRING
-      "Choose the type of build, options are: None Debug Release."  FORCE)
-endif ()
-
-#Load system specific settings
-if (NOT SYST)
-  set (SYST default CACHE STRING
-      "Choose the location: mpipc thunder fedora archlinux supermuc jugene" FORCE )
-endif ()
-include (${SYST} OPTIONAL)
-
-#Start the project only after all the variables are set
-project (microhhc)
-
-# Set MPI on or off. By default it is on.
-set (MPI TRUE CACHE BOOL "Choose to enable MPI or not.")
-if(MPI)
- MESSAGE(STATUS "MPI is Enabled.")
- ADD_DEFINITIONS("-DPARALLEL")  # Set precompiler flag
-else()
- set (CXX_COMPILER_WRAPPER "")
- set (C_COMPILER_WRAPPER "")
- MESSAGE(STATUS "MPI is Disabled.")
+    "Choose the type of build, options are: None Debug Release." FORCE)
 endif()
 
-get_filename_component (C_COMPILER_NAME ${CMAKE_C_COMPILER_ID} NAME)
-get_filename_component (CXX_COMPILER_NAME ${CMAKE_CXX_COMPILER_ID} NAME)
+# load system specific settings
+if(NOT SYST)
+  set(SYST default CACHE STRING
+    "Choose system from: mpipc thunder fedora archlinux supermuc jugene." FORCE)
+endif()
+include(${SYST} OPTIONAL)
 
-if (NOT ${C_COMPILER_WRAPPER}  STREQUAL "")
-  CMAKE_FORCE_C_COMPILER(${C_COMPILER_WRAPPER} ${C_COMPILER_NAME})
-  CMAKE_FORCE_CXX_COMPILER(${CXX_COMPILER_WRAPPER} ${CXX_COMPILER_NAME})
-endif ()
-MESSAGE(STATUS "C Compiler " ${CMAKE_C_COMPILER})
-MESSAGE(STATUS "CXX Compiler " ${CMAKE_CXX_COMPILER})
+# start the project only after the system specific settings are loaded
+project(microhhc CXX)
+
+# enable or disable MPI, enabled by default
+set(MPI TRUE CACHE BOOL "Choose to enable MPI or not.")
+if(MPI)
+  message(STATUS "MPI is enabled.")
+  # add the necessary precompiler flag
+  add_definitions("-DPARALLEL")
+else()
+  message(STATUS "MPI is disabled.")
+endif()
 
 set(CMAKE_CXX_FLAGS ${USER_CXX_FLAGS} )
 set(CMAKE_CXX_FLAGS_RELEASE ${USER_CXX_FLAGS_RELEASE} )
 set(CMAKE_CXX_FLAGS_DEBUG ${USER_CXX_FLAGS_DEBUG})
-MESSAGE(STATUS "Build Type " ${CMAKE_BUILD_TYPE})
-if (CMAKE_BUILD_TYPE STREQUAL "RELEASE")
-  MESSAGE(STATUS "Compiler Flags " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE})
+message(STATUS "Build Type " ${CMAKE_BUILD_TYPE})
+if(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
+  message(STATUS "Compiler Flags " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE})
 else()
-  MESSAGE(STATUS "Compiler Flags " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG})
+  message(STATUS "Compiler Flags " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
-
 
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
@@ -63,34 +48,26 @@ add_subdirectory(src)
 add_subdirectory(main)
 add_subdirectory(test)
 
-
-##documentation
+# documentation
 add_custom_target(todo ALL)
 # if a non-default sed is not set revert to standard sed
 if(NOT DEFINED GNU_SED)
   set(GNU_SED "sed")
 endif()
-ADD_CUSTOM_COMMAND(TARGET todo POST_BUILD
-                  COMMAND echo "MICROHH TODO LIST" > TODO
-                  COMMAND date  >> TODO
-                  COMMAND grep -Rin \\todo  src include main| ${GNU_SED} 's/ *\\/\\/.*TODO */ /I' >>  TODO
-#                   COMMAND grep -Rin \\todo  src include main| ${GNU_SED} 's/\\/\\/.*TODO  *//I' >>  TODO
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                  )
-find_package(Doxygen)
-IF (DOXYGEN_FOUND)
-  CONFIGURE_FILE(config/doxygen.conf.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-  ADD_CUSTOM_TARGET(doc
-          ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf
-          COMMENT "Generating API documentation with Doxygen" VERBATIM
-          DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
-  add_custom_target(install-doc
-          cp -r ${CMAKE_CURRENT_BINARY_DIR}/doc ${CMAKE_SOURCE_DIR}
-          DEPENDS doc)
-#   add_dependencies(doc-install doc)
+add_custom_command(TARGET todo POST_BUILD
+  COMMAND echo "MICROHH TODO LIST" > TODO
+  COMMAND date >> TODO
+  COMMAND grep -Rin \\todo  src include main| ${GNU_SED} 's/ *\\/\\/.*TODO */ /I' >> TODO
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} )
 
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+  configure_file(config/doxygen.conf.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
+  add_custom_target(doc
+    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf
+    COMMENT "Generating API documentation with Doxygen." VERBATIM
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.conf)
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc DESTINATION ${CMAKE_SOURCE_DIR})
-ELSE (DOXYGEN)
-    MESSAGE(STATUS "WARNING: Doxygen not found - Reference manual will
-not be created")
-ENDIF ()
+else(DOXYGEN)
+  message(STATUS "WARNING: Doxygen not found - Reference manual will not be created.")
+endif()

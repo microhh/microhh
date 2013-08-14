@@ -1,6 +1,4 @@
 #include <cstdio>
-#include <cmath>
-#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "stats.h"

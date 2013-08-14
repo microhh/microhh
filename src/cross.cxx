@@ -1,10 +1,10 @@
 #include <cstdio>
 #include <cmath>
-#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "cross.h"
 #include "defines.h"
+#include <netcdfcpp.h>
 
 ccross::ccross(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {

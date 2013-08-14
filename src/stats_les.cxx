@@ -1,10 +1,10 @@
 #include <cstdio>
 #include <cmath>
-#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "stats.h"
 #include "defines.h"
+#include <netcdfcpp.h>
 
 cstats_les::cstats_les(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
