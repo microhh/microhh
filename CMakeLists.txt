@@ -25,23 +25,37 @@ project(microhhc CXX)
 # enable or disable MPI, enabled by default
 set(MPI TRUE CACHE BOOL "Choose to enable MPI or not.")
 if(MPI)
-  message(STATUS "MPI is enabled.")
+  message(STATUS "MPI: enabled.")
   # add the necessary precompiler flag
   add_definitions("-DPARALLEL")
 else()
-  message(STATUS "MPI is disabled.")
+  message(STATUS "MPI: disabled.")
 endif()
 
-set(CMAKE_CXX_FLAGS ${USER_CXX_FLAGS} )
-set(CMAKE_CXX_FLAGS_RELEASE ${USER_CXX_FLAGS_RELEASE} )
-set(CMAKE_CXX_FLAGS_DEBUG ${USER_CXX_FLAGS_DEBUG})
-message(STATUS "Build Type " ${CMAKE_BUILD_TYPE})
+# only set the compiler flags when the cache is created
+# to enable editing of the flags in the CMakeCache.txt file
+if(NOT HASCACHE)
+  set(CMAKE_CXX_FLAGS ${USER_CXX_FLAGS} CACHE STRING
+    "Flags used by the compiler during all build types." FORCE)
+  set(CMAKE_CXX_FLAGS_DEBUG ${USER_CXX_FLAGS_DEBUG} CACHE STRING
+    "Flags used by the compiler during debug builds." FORCE)
+  set(CMAKE_CXX_FLAGS_RELEASE ${USER_CXX_FLAGS_RELEASE} CACHE STRING
+    "Flags used by the compiler during release builds." FORCE)
+  message(STATUS "Build Type: " ${CMAKE_BUILD_TYPE})
+  set(HASCACHE TRUE CACHE BOOL "CMakeCache.txt created." FORCE)
+  # make sure that ccmake only contains build type and MPI setting
+  mark_as_advanced(HASCACHE)
+  mark_as_advanced(CMAKE_INSTALL_PREFIX)
+endif()
+
+# print the compiler flags to the screen
 if(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
-  message(STATUS "Compiler Flags " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE})
+  message(STATUS "Compiler Flags: " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE})
 else()
-  message(STATUS "Compiler Flags " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG})
+  message(STATUS "Compiler Flags: " ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
 
+# set the include dirs
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_subdirectory(src)
