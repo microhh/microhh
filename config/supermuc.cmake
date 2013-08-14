@@ -1,8 +1,6 @@
 # SuperMUC
-set(CMAKE_C_COMPILER   "icc")
-set(CMAKE_CXX_COMPILER "icc")
-set(CXX_COMPILER_WRAPPER mpCC)
-set(C_COMPILER_WRAPPER mpcc)
+# set(ENV{CXX} icc) # compiler for serial build
+set(ENV{CXX} mpCC) # compiler for parallel build
 
 set(USER_CXX_FLAGS "-restrict -DMPICH_IGNORE_CXX_SEEK")
 set(USER_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -xHOST -fno-alias -restrict -vec-report1 -no-prec-div")

@@ -1,8 +1,6 @@
 # MPI-PC
-set(CMAKE_C_COMPILER   "gcc")
-set(CMAKE_CXX_COMPILER "c++")
-set(CXX_COMPILER_WRAPPER mpicxx)
-set(C_COMPILER_WRAPPER mpicc)
+# set(ENV{CXX} g++) # compiler for serial build
+set(ENV{CXX} mpicxx) # compiler for parallel build
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")

@@ -1,8 +1,6 @@
 # Thunder
-set(CMAKE_C_COMPILER   "icc")
-set(CMAKE_CXX_COMPILER "icc")
-set(CXX_COMPILER_WRAPPER mpicxx)
-set(C_COMPILER_WRAPPER mpicc)
+# set(ENV{CXX} icc) # compiler for serial build
+set(ENV{CXX} mpicxx) # compiler for parallel build
 
 set(USER_CXX_FLAGS "-restrict")
 set(USER_CXX_FLAGS_RELEASE "-xAVX -O3")

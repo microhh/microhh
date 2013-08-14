@@ -12,12 +12,11 @@ else()
     "Choose the type of build, options are: None Debug Release." FORCE)
 endif()
 
-# load system specific settings
+# load system specific settings if not set, force default.cmake
 if(NOT SYST)
-  set(SYST default CACHE STRING
-    "Choose system from: mpipc thunder fedora archlinux supermuc jugene." FORCE)
+  set(SYST default)
 endif()
-include(${SYST} OPTIONAL)
+include(${SYST} FORCE)
 
 # start the project only after the system specific settings are loaded
 project(microhhc CXX)

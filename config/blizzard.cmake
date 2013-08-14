@@ -1,8 +1,6 @@
 # Blizzard
-set(CMAKE_C_COMPILER   "xlc")
-set(CMAKE_CXX_COMPILER "xlc++")
-set(C_COMPILER_WRAPPER mpcc)
-set(CXX_COMPILER_WRAPPER mpCC)
+# set(ENV{CXX} xlc++) # compiler for serial build
+set(ENV{CXX} mpCC) # compiler for parallel build
 
 set(USER_CXX_FLAGS_RELEASE "-qarch=pwr6 -qtune=pwr6 -O3 -qhot=simd -qenablevmx")
 

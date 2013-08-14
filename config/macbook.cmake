@@ -1,8 +1,7 @@
 # MacBook
-set(CMAKE_C_COMPILER   "cc")
-set(CMAKE_CXX_COMPILER "c++")
-set(CXX_COMPILER_WRAPPER mpicxx)
-set(C_COMPILER_WRAPPER mpicc)
+# set(ENV{CXX} g++-mp-4.6) # compiler for serial build
+set(ENV{CXX} mpicxx) # compiler for parallel build
+
 set(GNU_SED "gsed")
 
 set(USER_CXX_FLAGS "")

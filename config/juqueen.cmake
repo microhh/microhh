@@ -1,8 +1,6 @@
 # JUQUEEN
-set(CMAKE_C_COMPILER   "bgxlc")
-set(CMAKE_CXX_COMPILER "bgxlC")
-set(C_COMPILER_WRAPPER mpixlc)
-set(CXX_COMPILER_WRAPPER mpixlcxx)
+# set(ENV{CXX} bgxlC) # compiler for serial build
+set(ENV{CXX} mpixlcxx) # compiler for parallel build
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -qarch=qp -qtune=qp -qhot")
