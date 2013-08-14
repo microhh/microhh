@@ -2,6 +2,17 @@ cmake_minimum_required (VERSION 2.8.1)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/config)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+# load system specific settings if not set, force default.cmake
+if(NOT SYST)
+  set(SYST default)
+endif()
+include(${SYST} OPTIONAL RESULT_VARIABLE SYSTINC)
+
+# trigger fatal error if illegal module is loaded
+if(${SYSTINC} STREQUAL "NOTFOUND")
+  message(FATAL_ERROR "Config file config/" ${SYST} ".cmake does not exist.")
+endif()
+
 # set the default build type to RELEASE
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RELEASE CACHE STRING
@@ -11,12 +22,6 @@ else()
   set(CMAKE_BUILD_TYPE ${TEMP} CACHE STRING
     "Choose the type of build, options are: None Debug Release." FORCE)
 endif()
-
-# load system specific settings if not set, force default.cmake
-if(NOT SYST)
-  set(SYST default)
-endif()
-include(${SYST} FORCE)
 
 # start the project only after the system specific settings are loaded
 project(microhhc CXX)
