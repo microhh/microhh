@@ -60,8 +60,11 @@ int cforce::create(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getProf(&ug[grid->kstart], "ug", grid->kmax);
-  n += inputin->getProf(&vg[grid->kstart], "vg", grid->kmax);
+  if(swforce == "2")
+  {
+    n += inputin->getProf(&ug[grid->kstart], "ug", grid->kmax);
+    n += inputin->getProf(&vg[grid->kstart], "vg", grid->kmax);
+  }
 
   if(n > 0)
     return 1;
