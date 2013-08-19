@@ -19,7 +19,7 @@ cbuffer::~cbuffer()
 {
   if(allocated)
     for (std::map<std::string,double*>::iterator it = bufferprofs.begin(); it!=bufferprofs.end(); it++)
-      delete it->second;
+      delete[] it->second;
 }
 
 int cbuffer::readinifile(cinput *inputin)

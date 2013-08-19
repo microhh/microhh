@@ -11,6 +11,16 @@ inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
 
 cboundary_surface::cboundary_surface(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cboundary(gridin, fieldsin, mpiin)
 {
+  allocated = false;
+}
+
+cboundary_surface::~cboundary_surface()
+{
+  if(allocated)
+  {
+    delete[] ustar;
+    delete[] obuk;
+  }
 }
 
 int cboundary_surface::readinifile(cinput *inputin)
@@ -62,6 +72,8 @@ int cboundary_surface::init()
 {
   obuk  = new double[grid->icells*grid->jcells];
   ustar = new double[grid->icells*grid->jcells];
+
+  allocated = true;
 
   int ij,jj;
   jj = grid->icells;

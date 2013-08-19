@@ -127,6 +127,8 @@ int cgrid::exitmpi()
   {
     MPI_Type_free(&eastwestedge);
     MPI_Type_free(&northsouthedge);
+    MPI_Type_free(&eastwestedge2d);
+    MPI_Type_free(&northsouthedge2d);
     MPI_Type_free(&transposez);
     MPI_Type_free(&transposez2);
     MPI_Type_free(&transposex);
