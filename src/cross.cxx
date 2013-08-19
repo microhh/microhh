@@ -46,6 +46,9 @@ int ccross::readinifile(cinput *inputin)
 
 int ccross::init(int ifactor)
 {
+  if(swcross == "0")
+    return 0;
+
   icrosstime = (unsigned long)(ifactor * crosstime);
 
   return 0;

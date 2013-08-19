@@ -54,9 +54,9 @@ endif()
 
 # print the compiler flags to the screen
 if(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
-  message(STATUS "Compiler Flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_RELEASE})
+  message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_RELEASE})
 else()
-  message(STATUS "Compiler Flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
+  message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
 
 # set the include dirs
