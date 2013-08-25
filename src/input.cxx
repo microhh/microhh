@@ -28,6 +28,7 @@ int cinput::clear()
 
 int cinput::readinifile()
 {
+  int nerror = 0;
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256], element[256];
 
   // read the input file
@@ -40,9 +41,14 @@ int cinput::readinifile()
     if(inputfile == NULL)
     {
       std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
-      return 1;
+      ++nerror;
     }
   }
+
+  // broadcast the error count
+  mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
 
   int n;
   bool blockset = false;
@@ -166,6 +172,7 @@ int cinput::readinifile()
 
 int cinput::readproffile()
 {
+  int nerror = 0;
   char inputline[256], temp1[256];
   char *substring;
   int n;
@@ -180,9 +187,14 @@ int cinput::readproffile()
     if(inputfile == NULL)
     {
       std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
-      return 1;
+      nerror++;
     }
   }
+
+  // broadcast the error count
+  mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
 
   int nlines = 0;
   int nline;
