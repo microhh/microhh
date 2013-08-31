@@ -153,7 +153,7 @@ int cfields::initpfld(std::string fldname)
   //st[fldname]->init();
 
   s[fldname] = sp[fldname];
-  
+
   return 0;
 }
 
