@@ -89,6 +89,7 @@ int cgrid::initmpi()
   MPI_Type_create_subarray(1, &totsizej, &subsizej, &substartj, MPI_ORDER_C, MPI_DOUBLE, &subj);
   MPI_Type_commit(&subj);
 
+  // the lines below describe the array in case transposes are not used before saving
   // int totsize [3] = {kmax, jtot, itot};
   // int subsize [3] = {kmax, jmax, imax};
   // int substart[3] = {0, mpi->mpicoordy*jmax, mpi->mpicoordx*imax};
@@ -105,6 +106,13 @@ int cgrid::initmpi()
   MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, MPI_DOUBLE, &subxzslice);
   MPI_Type_commit(&subxzslice);
 
+  // save mpitype for a xy-slice for cross section processing
+  int totxysize [2] = {jtot, itot};
+  int subxysize [2] = {jmax, imax};
+  int subxystart[2] = {mpi->mpicoordy*jmax, mpi->mpicoordx*imax};
+  MPI_Type_create_subarray(2, totxysize, subxysize, subxystart, MPI_ORDER_C, MPI_DOUBLE, &subxyslice);
+  MPI_Type_commit(&subxyslice);
+
   // allocate the array for the profiles
   profl = new double[kcells];
 
@@ -119,6 +127,8 @@ int cgrid::exitmpi()
   {
     MPI_Type_free(&eastwestedge);
     MPI_Type_free(&northsouthedge);
+    MPI_Type_free(&eastwestedge2d);
+    MPI_Type_free(&northsouthedge2d);
     MPI_Type_free(&transposez);
     MPI_Type_free(&transposez2);
     MPI_Type_free(&transposex);
@@ -129,6 +139,7 @@ int cgrid::exitmpi()
     MPI_Type_free(&subj);
     MPI_Type_free(&subarray);
     MPI_Type_free(&subxzslice);
+    MPI_Type_free(&subxyslice);
 
     delete[] profl;
   }
@@ -532,6 +543,8 @@ int cgrid::save()
 
 int cgrid::load()
 {
+  int nerror = 0;
+
   // LOAD THE GRID
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
@@ -544,14 +557,22 @@ int cgrid::load()
     if(pFile == NULL)
     {
       std::printf("ERROR \"%s\" does not exist\n", filename);
-      return 1;
+      ++nerror;
     }
-    int n = (2*itot+2*jtot)*sizeof(double);
-    fseek(pFile, n, SEEK_SET);
-    fread(&z [kstart], sizeof(double), kmax, pFile);
-    fread(&zh[kstart], sizeof(double), kmax, pFile);
-    fclose(pFile);
+    else
+    {
+      int n = (2*itot+2*jtot)*sizeof(double);
+      fseek(pFile, n, SEEK_SET);
+      fread(&z [kstart], sizeof(double), kmax, pFile);
+      fread(&zh[kstart], sizeof(double), kmax, pFile);
+      fclose(pFile);
+    }
   }
+
+  // communicate the file read error over all procs
+  mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
 
   mpi->broadcast(&z [kstart], kmax);
   mpi->broadcast(&zh[kstart], kmax);
@@ -811,15 +832,14 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
   return 0;
 }
 
-int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice, char *filename)
+int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
+  int ijkb,kkb;
 
   jj  = icells;
   kk  = icells*jcells;
-  jjb = imax;
   kkb = imax;
 
   int count = imax*kmax;
@@ -858,6 +878,106 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice
   }
 
   MPI_Barrier(mpi->commxy);
+
+  return 0;
+}
+
+int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+{
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+
+  // in case the field to save is 2d, then the ghostcells need to be subtracted
+  if(kslice == -1)
+    kslice = -kgc;
+
+  int count = imax*jmax;
+
+  for(int j=0; j<jmax; j++)
+#pragma ivdep
+    for(int i=0; i<imax; i++)
+    {
+      // take the modulus of jslice and jmax to have the right offset within proc
+      ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
+      ijkb = i + j*jjb;
+      tmp[ijkb] = data[ijk];
+    }
+
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+    return 1;
+
+  // only write at the procs that contain the slice
+  if(MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    return 1;
+
+  MPI_File_sync(fh);
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  MPI_Barrier(mpi->commxy);
+
+  return 0;
+}
+
+int cgrid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+{
+  // extract the data from the 3d field without the ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+
+  // in case the field to save is 2d, then the ghostcells need to be subtracted
+  if(kslice == -1)
+    kslice = -kgc;
+
+  int count = imax*jmax;
+
+  MPI_File fh;
+  if(MPI_File_open(mpi->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+    return 1;
+
+  // select noncontiguous part of 3d array to store the selected data
+  MPI_Offset fileoff = 0; // the offset within the file (header size)
+  char name[] = "native";
+
+  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+    return 1;
+
+  // only write at the procs that contain the slice
+  if(MPI_File_read_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    return 1;
+
+  if(MPI_File_close(&fh))
+    return 1;
+
+  MPI_Barrier(mpi->commxy);
+
+  for(int j=0; j<jmax; j++)
+#pragma ivdep
+    for(int i=0; i<imax; i++)
+    {
+      // take the modulus of jslice and jmax to have the right offset within proc
+      ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
+      ijkb = i + j*jjb;
+      data[ijk] = tmp[ijkb];
+    }
 
   return 0;
 }

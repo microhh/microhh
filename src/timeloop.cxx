@@ -28,7 +28,7 @@ int ctimeloop::readinifile(cinput *inputin)
 
   // obligatory parameters
   n += inputin->getItem(&runtime     , "time", "runtime"  , "");
-  if(mpi->mode=="init")
+  if(mpi->mode == "init")
   {
     starttime = 0.;
   }
@@ -43,8 +43,8 @@ int ctimeloop::readinifile(cinput *inputin)
   n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 4    );
   n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 100  );
   n += inputin->getItem(&savetime    , "time", "savetime"    , "", 3600 );
-  n += inputin->getItem(&postproctime, "time", "postproctime", "", 3600 );
   n += inputin->getItem(&precision   , "time", "precision"   , "", 1.   );
+  n += inputin->getItem(&postproctime, "time", "postproctime", "", 3600 );
 
   // if one argument fails, then crash
   if(n > 0)
@@ -60,15 +60,20 @@ int ctimeloop::readinifile(cinput *inputin)
   // initializations
   loop      = true;
   time      = 0.;
+  iteration = 0;
 
-  iruntime = (unsigned long)(ifactor * runtime);
-  itime    = (unsigned long)0;
-  idt      = (unsigned long)(ifactor * dt);
-  idtmax   = (unsigned long)(ifactor * dtmax);
-  isavetime= (unsigned long)(ifactor * savetime);
-  idtlim   = idt;
+  // calculate all the integer times
+  iruntime      = (unsigned long)(ifactor * runtime);
+  istarttime    = (unsigned long)(ifactor * starttime);
+  itime         = (unsigned long) 0;
+  idt           = (unsigned long)(ifactor * dt);
+  idtmax        = (unsigned long)(ifactor * dtmax);
+  isavetime     = (unsigned long)(ifactor * savetime);
+  ipostproctime = (unsigned long)(ifactor * postproctime);
 
-  istarttime= (int)(starttime / precision);
+  idtlim = idt;
+
+  iotime = (int)(starttime / precision);
 
   gettimeofday(&start, NULL);
 
@@ -85,8 +90,9 @@ int ctimeloop::settimelim()
 
 int ctimeloop::timestep()
 {
-  time  += dt;
-  itime += idt;
+  time   += dt;
+  itime  += idt;
+  iotime = (int)(1./precision*itime/ifactor);
 
   iteration++;
 
@@ -109,10 +115,8 @@ int ctimeloop::dosave()
 {
   // do not save directly after the start of the simulation
   if(itime % isavetime == 0 && iteration != 0)
-  {
-    istarttime = (int) 1./precision*itime/ifactor;
     return 1;
-  }
+
   return 0;
 }
 
@@ -304,8 +308,9 @@ int ctimeloop::save(int starttime)
       return 1;
     }
 
-    fwrite(&itime, sizeof(long), 1, pFile);
-    fwrite(&idt  , sizeof(long), 1, pFile);
+    fwrite(&itime    , sizeof(long), 1, pFile);
+    fwrite(&idt      , sizeof(long), 1, pFile);
+    fwrite(&iteration, sizeof(long), 1, pFile);
 
     fclose(pFile);
   }
@@ -315,6 +320,8 @@ int ctimeloop::save(int starttime)
 
 int ctimeloop::load(int starttime)
 {
+  int nerror = 0;
+
   if(mpi->mpiid == 0)
   {
     char filename[256];
@@ -328,18 +335,25 @@ int ctimeloop::load(int starttime)
     if(pFile == NULL)
     {
       if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
-
-      return 1;
+      ++nerror;
     }
+    else
+    {
+      fread(&itime    , sizeof(long), 1, pFile);
+      fread(&idt      , sizeof(long), 1, pFile);
+      fread(&iteration, sizeof(long), 1, pFile);
 
-    fread(&itime, sizeof(long), 1, pFile);
-    fread(&idt  , sizeof(long), 1, pFile);
-
-    fclose(pFile);
+      fclose(pFile);
+    }
   }
 
-  mpi->broadcast(&itime, 1);
-  mpi->broadcast(&idt  , 1);
+  mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
+
+  mpi->broadcast(&itime    , 1);
+  mpi->broadcast(&idt      , 1);
+  mpi->broadcast(&iteration, 1);
 
   // calculate the double precision time from the integer time
   time = (double)itime / ifactor;
@@ -351,6 +365,7 @@ int ctimeloop::load(int starttime)
 int ctimeloop::postprocstep()
 {
   itime += ipostproctime;
+  iotime = (int)(1./precision*itime/ifactor);
 
   if(itime > iruntime)
     loop = false;

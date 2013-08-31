@@ -27,8 +27,8 @@ class ctimeloop
 
     unsigned long settimelim(unsigned long);
 
-    int save(int starttime);
-    int load(int starttime);
+    int save(int);
+    int load(int);
 
     int docheck();
     double check();
@@ -49,8 +49,8 @@ class ctimeloop
     double starttime;
     double dtlim;
 
-    int istarttime;
     int iteration;
+    int iotime;
 
     unsigned long itime;
     unsigned long iruntime;
@@ -58,6 +58,7 @@ class ctimeloop
     unsigned long idtmax;
     unsigned long ipostproctime;
     unsigned long isavetime;
+    unsigned long istarttime;
     unsigned long idtlim;
 
     double ifactor;

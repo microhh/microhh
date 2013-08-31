@@ -19,7 +19,7 @@ cbuffer::~cbuffer()
 {
   if(allocated)
     for (std::map<std::string,double*>::iterator it = bufferprofs.begin(); it!=bufferprofs.end(); it++)
-      delete it->second;
+      delete[] it->second;
 }
 
 int cbuffer::readinifile(cinput *inputin)
@@ -192,6 +192,8 @@ int cbuffer::save()
 
 int cbuffer::load()
 {
+  int nerror = 0;
+
   if(swbuffer != "1")
     return 0;
 
@@ -208,14 +210,20 @@ int cbuffer::load()
     if(pFile == NULL)
     {
       std::printf("ERROR \"%s\" does not exist\n", filename);
-      return 1;
+      ++nerror;
     }
-
-    for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
-      fread(itBuffer->second, sizeof(double), bufferkcells, pFile);
+    else
+    {
+      for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
+        fread(itBuffer->second, sizeof(double), bufferkcells, pFile);
     
-    fclose(pFile);
+      fclose(pFile);
+    }
   }
+
+  mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
 
   // send the buffers to all processes
   for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)

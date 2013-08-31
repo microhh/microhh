@@ -1,26 +1,64 @@
 import numpy
+from pylab import *
 
 # set the height
-kmax  = 1024
-zsize = 1.
+kmax = 1024
+dn   = 1./kmax
 
-dz = zsize / kmax
+n = numpy.linspace(dn, 1.-dn, kmax)
 
-# define the variables
-z = numpy.zeros(kmax)
-#z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
-s = numpy.zeros(kmax)
+nloc1 = 160.*dn
+nbuf1 = 32.*dn
 
-# create non-equidistant grid
-alpha = 0.7
+nloc2 = 1024.*dn
+nbuf2 = 144.*dn
+
+dz1 = 0.0005
+dz2 = 0.001
+dz3 = 0.01
+
+dzdn1 = dz1/dn
+dzdn2 = dz2/dn
+dzdn3 = dz3/dn
+
+dzdn = dzdn1 + 0.5*(dzdn2-dzdn1)*(1. + numpy.tanh((n-nloc1)/nbuf1)) + 0.5*(dzdn3-dzdn2)*(1. + numpy.tanh((n-nloc2)/nbuf2))
+
+dz = dzdn*dn
+
+z       = numpy.zeros(numpy.size(dz))
+stretch = numpy.zeros(numpy.size(dz))
+
+z      [0] = 0.5*dz[0]
+stretch[0] = 1.
+
+for k in range(1,kmax):
+  z      [k] = z[k-1] + 0.5*(dz[k-1]+dz[k])
+  stretch[k] = dz[k]/dz[k-1]
+
+zsize = z[kmax-1] + 0.5*dz[kmax-1]
+print('zsize = ', zsize)
+
+b0    = 1.
+delta = 4.407731e-3
+N2    = 3.
+
+s = numpy.zeros(numpy.size(z))
+
 for k in range(kmax):
-  eta  = -1. + 2.*((k+1)-0.5) / kmax
-  z[k] = zsize / (2.*alpha) * numpy.tanh(eta*0.5*(numpy.log(1.+alpha) - numpy.log(1.-alpha))) + 0.5*zsize
+  s[k] = N2*z[k]
 
 # write the data to a file
 proffile = open('strongscaling.prof','w')
-proffile.write('{0:^14s} {1:^14s}\n'.format('z','s'))
+proffile.write('{0:^20s} {1:^20s}\n'.format('z','s'))
 for k in range(kmax):
-  proffile.write('{0:1.20E} {1:1.20E}\n'.format(z[k], s[k]))
+  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], s[k]))
 proffile.close()
 
+#plot the grid
+figure()
+subplot(131)
+plot(n,z)
+subplot(132)
+plot(n,dz)
+subplot(133)
+plot(n,stretch)

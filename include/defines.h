@@ -1,10 +1,13 @@
-#define restrict __restrict__
+#include <climits>
+#define restrict RESTRICTKEYWORD
 
 #define kappa  0.4
 
 #define dsmall 1.e-9
 #define dbig   1.e9
 #define dhuge  1.e30
+
+#define ulhuge ULONG_MAX
 
 // finite difference coefficients
 

@@ -1,22 +1,22 @@
 import numpy
 from scipy.special import erf
-#from pylab import *
+from pylab import *
 
 # set the height
 kmax = 512
 dn   = 1./kmax
 
-n  = numpy.linspace(dn, 1.-dn, kmax)
+n = numpy.linspace(dn, 1.-dn, kmax)
 
 nloc1 = 80.*dn
 nbuf1 = 16.*dn
 
 nloc2 = 512.*dn
-nbuf2 = 128.*dn
+nbuf2 = 72.*dn
 
 dz1 = 0.001
 dz2 = 0.002
-dz3 = 0.01
+dz3 = 0.016
 
 dzdn1 = dz1/dn
 dzdn2 = dz2/dn
@@ -56,10 +56,13 @@ for k in range(kmax):
   proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], s[k]))
 proffile.close()
 
+"""
 #plot the grid
-#subplot(131)
-#plot(n,z)
-#subplot(132)
-#plot(n,dz)
-#subplot(133)
-#plot(n,stretch)
+figure()
+subplot(131)
+plot(n,z)
+subplot(132)
+plot(n,dz)
+subplot(133)
+plot(n,stretch)
+"""

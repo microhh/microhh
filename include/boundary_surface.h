@@ -10,11 +10,15 @@ class cboundary_surface : public cboundary
 {
   public:
     cboundary_surface(cgrid *, cfields *, cmpi *);
+    ~cboundary_surface();
 
     int readinifile(cinput *);
     int init();
     int setvalues();
     int exec();
+
+    int save(int);
+    int load(int);
 
     double *obuk;
     double *ustar;
@@ -43,6 +47,8 @@ class cboundary_surface : public cboundary
     double ustarin;
     double z0m;
     double z0h;
+
+    bool allocated;
 
     typedef std::map<std::string, int> bcbotmap;
     int surfmbcbot;

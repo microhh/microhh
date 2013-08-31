@@ -18,7 +18,7 @@ class cstats
     int init(double);
     int create(int);
     unsigned long gettimelim(unsigned long);
-    int exec(int, double);
+    int exec(int, double, unsigned long);
     int dostats(int, unsigned long );
 
   private:

@@ -22,6 +22,10 @@ class cboundary
     virtual int readinifile(cinput *);
     virtual int init();
     virtual int setvalues();
+
+    virtual int save(int);
+    virtual int load(int);
+
     int exec();
 
   protected:

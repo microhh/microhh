@@ -1,10 +1,10 @@
 #include <cstdio>
 #include <cmath>
-#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "cross.h"
 #include "defines.h"
+#include <netcdfcpp.h>
 
 ccross::ccross(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
@@ -25,7 +25,18 @@ int ccross::readinifile(cinput *inputin)
   n += inputin->getItem(&swcross, "cross", "swcross", "", "0");
 
   if(swcross == "1")
-    n += inputin->getItem(&jxz, "cross", "", "jxz");
+  {
+    // get the time at which the cross sections are triggered
+    n += inputin->getItem(&crosstime, "cross", "crosstime", "");
+
+    // get the list of indices at which to take cross sections
+    n += inputin->getList(&jxz, "cross", "jxz", "");
+    n += inputin->getList(&kxy, "cross", "kxy", "");
+
+    // get the list of variables per type of cross
+    n += inputin->getList(&simple, "cross", "simple", "");
+    n += inputin->getList(&lngrad, "cross", "lngrad", "");
+  }
 
   if(n > 0)
     return 1;
@@ -33,33 +44,80 @@ int ccross::readinifile(cinput *inputin)
   return 0;
 }
 
-int ccross::exec(int iteration)
+int ccross::init(int ifactor)
 {
   if(swcross == "0")
     return 0;
 
-  if(mpi->mpiid == 0) std::printf("Saving cross sections for iteration %d\n", iteration);
+  icrosstime = (unsigned long)(ifactor * crosstime);
 
-  crosssimple(fields->s["s"]->data, fields->s["tmp1"]->data, fields->s["s"]->name, iteration);
-  crosslngrad(fields->s["s"]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s["s"]->name + "lngrad", iteration);
-  
   return 0;
 }
 
-int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name, int iteration)
+unsigned long ccross::gettimelim(unsigned long itime)
+{
+  if(swcross == "0")
+    return ulhuge;
+
+  unsigned long idtlim = icrosstime - itime % icrosstime;
+
+  return idtlim;
+}
+
+int ccross::exec(double time, unsigned long itime, int iotime)
+{
+  // check if switched on
+  if(swcross == "0")
+    return 0;
+
+  // check if time for execution
+  if(itime % icrosstime != 0)
+    return 1;
+
+  if(mpi->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);
+
+  // cross section of variables
+  for(std::vector<std::string>::iterator it = simple.begin(); it < simple.end(); ++it)
+  {
+    // catch the momentum fields from the correct list
+    if(*it == "u" || *it == "v" || *it == "w")
+      crosssimple(fields->mp[*it]->data, fields->s["tmp1"]->data, fields->mp[*it]->name, jxz, kxy, iotime);
+    else
+      crosssimple(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s[*it]->name, jxz, kxy, iotime);
+  }
+  // cross section of scalar gradients
+  for(std::vector<std::string>::iterator it = lngrad.begin(); it < lngrad.end(); ++it)
+    crosslngrad(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*it]->name + "lngrad", jxz, kxy, iotime);
+
+  return 0;
+}
+
+int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name, std::vector<int> jxz, std::vector<int> kxy, int iotime)
 {
   // define the file name
   char filename[256];
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xzcross", iteration);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
-  // save the slice with the correct index
-  grid->savexzslice(data, tmp, jxz, filename);
+  // loop over the index arrays to save all xz cross sections
+  for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
+  {
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    grid->savexzslice(data, tmp, filename, *it);
+  }
+
+  // loop over the index arrays to save all xy cross sections
+  for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
+  {
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    grid->savexyslice(data, tmp, filename, *it);
+  }
 
   return 0;
 }
  
-int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name, int iteration)
+int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, 
+                        std::string name, std::vector<int> jxz, std::vector<int> kxy, int iotime)
 {
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
 
@@ -103,11 +161,22 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
 
   // define the file name
   char filename[256];
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xzcross", iteration);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
-  // save the slice with the correct index
-  grid->savexzslice(lngrad, tmp, jxz, filename);
+  // loop over the index arrays to save all xz cross sections
+  for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
+  {
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    grid->savexzslice(lngrad, tmp, filename, *it);
+  }
+
+  // loop over the index arrays to save all xy cross sections
+  for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
+  {
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    grid->savexyslice(lngrad, tmp, filename, *it);
+  }
 
   return 0;
 }

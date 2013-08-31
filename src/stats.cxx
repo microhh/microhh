@@ -1,6 +1,4 @@
 #include <cstdio>
-#include <cmath>
-#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "stats.h"
@@ -38,12 +36,12 @@ int cstats::readinifile(cinput *inputin)
 
 int cstats::init(double ifactor)
 {
-  istatstime = (unsigned long)(ifactor * statstime);
-
   if(swstats == "0")
     return 0;
 
-  else if(swstats == "4")
+  istatstime = (unsigned long)(ifactor * statstime);
+
+  if(swstats == "4")
   {
     if(stats_dns->init())
       return 1;
@@ -60,15 +58,15 @@ int cstats::init(double ifactor)
 
 int cstats::create(int n)
 {
+  // check if switched on
   if(swstats == "0")
     return 0;
 
-  else if(swstats == "4")
+  if(swstats == "4")
   {
     if(stats_dns->create(n))
       return 1;
   }
-
   else if(swstats == "22")
   {
     if(stats_les->create(n))
@@ -85,26 +83,16 @@ unsigned long cstats::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int cstats::dostats(int iteration, long unsigned itime)
-{
-  if(itime % istatstime == 0)
-  {
-    // do not save directly after the start of the simulation, because it has been done
-    // at the end of the previous run, except for iteration 0
-    if(iteration == 0 && itime != 0)
-      return 0;
-    return 1;
-  }
-
-  return 0;
-}
-
-int cstats::exec(int iteration, double time)
+int cstats::exec(int iteration, double time, unsigned long itime)
 {
   if(swstats == "0")
     return 0;
 
-  else if(swstats == "4")
+  // check if time for execution
+  if(itime % istatstime != 0)
+    return 0;
+
+  if(swstats == "4")
   {
     if(stats_dns->exec(iteration, time))
       return 1;

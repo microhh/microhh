@@ -1,8 +1,6 @@
 # ARCH Linux
-set(CMAKE_C_COMPILER   "/usr/bin/cc")
-set(CMAKE_CXX_COMPILER "/usr/bin/c++")
-set(CXX_COMPILER_WRAPPER mpicxx)
-set(C_COMPILER_WRAPPER mpicc)
+# set(ENV{CXX} g++) # compiler for serial build
+set(ENV{CXX} mpicxx) # compiler for parallel build
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
@@ -17,3 +15,5 @@ set(HDF5_LIB_1         "/usr/lib64/libhdf5.a")
 set(HDF5_LIB_2         "/usr/lib64/libhdf5_hl.a")
 set(SZIP_LIB           "")
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
+
+add_definitions(-DRESTRICTKEYWORD=__restrict__)
