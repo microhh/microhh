@@ -47,18 +47,45 @@ int cboundary_surface::readinifile(cinput *inputin)
   n += inputin->getItem(&z0m, "boundary", "z0m", "");
   n += inputin->getItem(&z0h, "boundary", "z0h", "");
 
-  // read the ustar value only if fixed fluxes are prescribed
-  if(mbctop == 2)
-    n += inputin->getItem(&ustarin, "boundary", "ustar", "");
-
   // copy all the boundary options and set the model ones to flux type
   surfmbcbot = mbcbot;
   mbcbot = 2;
 
+  // crash in case fixed gradient is prescribed
+  if(surfmbcbot == 1)
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR fixed gradient bc is not supported in surface model\n");
+    ++n;
+  }
+  // read the ustar value only if fixed fluxes are prescribed
+  else if(surfmbcbot == 2)
+    n += inputin->getItem(&ustarin, "boundary", "ustar", "");
+
+  // process the scalars
   for(bcmap::iterator it=sbc.begin(); it!=sbc.end(); ++it)
   {
     surfsbcbot[it->first] = it->second->bcbot;
     it->second->bcbot = 2;
+
+    // crash in case fixed gradient is prescribed
+    if(surfsbcbot[it->first] == 1)
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR fixed gradient bc is not supported in surface model\n");
+      ++n;
+    }
+
+    // crash in case of fixed momentum flux and dirichlet bc for scalar
+    if(surfsbcbot[it->first] == 0 && surfmbcbot == 2)
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR fixed ustar bc in combination with Dirichlet bc for scalars is not supported\n");
+      ++n;
+    }
+    // crash in case of no-slip bc for momentum and dirichlet bc for scalar
+    else if(surfsbcbot[it->first] == 0 && surfmbcbot == 0)
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR no-slip bc in combination with Dirichlet bc for scalars is not supported\n");
+      ++n;
+    }
   }
 
   // if one argument fails, then crash
