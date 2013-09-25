@@ -8,9 +8,6 @@
 
 cadvec_g2::cadvec_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cadvec_g2::~cadvec_g2()
@@ -29,8 +26,12 @@ double cadvec_g2::getcfl(double dt)
 unsigned long cadvec_g2::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
+  double cfl;
 
-  idtlim = idt * cflmax / calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+  cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+  // avoid zero divisons
+  cfl = std::max(dsmall, cfl);
+  idtlim = idt * cflmax / cfl;
 
   return idtlim;
 }

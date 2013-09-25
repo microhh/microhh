@@ -157,6 +157,8 @@ int cstats_dns::init()
 
 int cstats_dns::create(int n)
 {
+  int nerror = 0;
+
   // create a NetCDF file for the statistics
   if(mpi->mpiid == 0)
   {
@@ -166,90 +168,95 @@ int cstats_dns::create(int n)
     if(!dataFile->is_valid())
     {
       std::printf("ERROR cannot write statistics file\n");
-      return 1;
+      ++nerror;
     }
     else
+    {
       initialized = true;
 
-    // create dimensions
-    z_dim  = dataFile->add_dim("z" , grid->kmax);
-    zh_dim = dataFile->add_dim("zh", grid->kmax+1);
-    t_dim  = dataFile->add_dim("t");
+      // create dimensions
+      z_dim  = dataFile->add_dim("z" , grid->kmax);
+      zh_dim = dataFile->add_dim("zh", grid->kmax+1);
+      t_dim  = dataFile->add_dim("t");
 
-    // create variables
-    iter_var = dataFile->add_var("iter", ncInt   , t_dim );
-    t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
-    z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
-    zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
+      // create variables
+      iter_var = dataFile->add_var("iter", ncInt   , t_dim );
+      t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
+      z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
+      zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
 
-    u_var = dataFile->add_var("u", ncDouble, t_dim, z_dim );
-    v_var = dataFile->add_var("v", ncDouble, t_dim, z_dim );
-    w_var = dataFile->add_var("w", ncDouble, t_dim, zh_dim);
-    s_var = dataFile->add_var("s", ncDouble, t_dim, z_dim );
+      u_var = dataFile->add_var("u", ncDouble, t_dim, z_dim );
+      v_var = dataFile->add_var("v", ncDouble, t_dim, z_dim );
+      w_var = dataFile->add_var("w", ncDouble, t_dim, zh_dim);
+      s_var = dataFile->add_var("s", ncDouble, t_dim, z_dim );
 
-    u2_var = dataFile->add_var("u2", ncDouble, t_dim, z_dim );
-    v2_var = dataFile->add_var("v2", ncDouble, t_dim, z_dim );
-    w2_var = dataFile->add_var("w2", ncDouble, t_dim, zh_dim);
-    s2_var = dataFile->add_var("s2", ncDouble, t_dim, z_dim );
+      u2_var = dataFile->add_var("u2", ncDouble, t_dim, z_dim );
+      v2_var = dataFile->add_var("v2", ncDouble, t_dim, z_dim );
+      w2_var = dataFile->add_var("w2", ncDouble, t_dim, zh_dim);
+      s2_var = dataFile->add_var("s2", ncDouble, t_dim, z_dim );
 
-    u3_var = dataFile->add_var("u3", ncDouble, t_dim, z_dim );
-    v3_var = dataFile->add_var("v3", ncDouble, t_dim, z_dim );
-    w3_var = dataFile->add_var("w3", ncDouble, t_dim, zh_dim);
-    s3_var = dataFile->add_var("s3", ncDouble, t_dim, z_dim );
+      u3_var = dataFile->add_var("u3", ncDouble, t_dim, z_dim );
+      v3_var = dataFile->add_var("v3", ncDouble, t_dim, z_dim );
+      w3_var = dataFile->add_var("w3", ncDouble, t_dim, zh_dim);
+      s3_var = dataFile->add_var("s3", ncDouble, t_dim, z_dim );
 
-    ugrad_var = dataFile->add_var("ugrad", ncDouble, t_dim, zh_dim );
-    vgrad_var = dataFile->add_var("vgrad", ncDouble, t_dim, zh_dim );
-    sgrad_var = dataFile->add_var("sgrad", ncDouble, t_dim, zh_dim );
+      ugrad_var = dataFile->add_var("ugrad", ncDouble, t_dim, zh_dim );
+      vgrad_var = dataFile->add_var("vgrad", ncDouble, t_dim, zh_dim );
+      sgrad_var = dataFile->add_var("sgrad", ncDouble, t_dim, zh_dim );
 
-    wu_var = dataFile->add_var("uw", ncDouble, t_dim, zh_dim );
-    wv_var = dataFile->add_var("vw", ncDouble, t_dim, zh_dim );
-    ws_var = dataFile->add_var("sw", ncDouble, t_dim, zh_dim );
+      wu_var = dataFile->add_var("uw", ncDouble, t_dim, zh_dim );
+      wv_var = dataFile->add_var("vw", ncDouble, t_dim, zh_dim );
+      ws_var = dataFile->add_var("sw", ncDouble, t_dim, zh_dim );
 
-    udiff_var = dataFile->add_var("udiff", ncDouble, t_dim, zh_dim );
-    vdiff_var = dataFile->add_var("vdiff", ncDouble, t_dim, zh_dim );
-    sdiff_var = dataFile->add_var("sdiff", ncDouble, t_dim, zh_dim );
+      udiff_var = dataFile->add_var("udiff", ncDouble, t_dim, zh_dim );
+      vdiff_var = dataFile->add_var("vdiff", ncDouble, t_dim, zh_dim );
+      sdiff_var = dataFile->add_var("sdiff", ncDouble, t_dim, zh_dim );
 
-    uflux_var = dataFile->add_var("uflux", ncDouble, t_dim, zh_dim );
-    vflux_var = dataFile->add_var("vflux", ncDouble, t_dim, zh_dim );
-    sflux_var = dataFile->add_var("sflux", ncDouble, t_dim, zh_dim );
+      uflux_var = dataFile->add_var("uflux", ncDouble, t_dim, zh_dim );
+      vflux_var = dataFile->add_var("vflux", ncDouble, t_dim, zh_dim );
+      sflux_var = dataFile->add_var("sflux", ncDouble, t_dim, zh_dim );
 
-    u2_shear_var  = dataFile->add_var("u2_shear" , ncDouble, t_dim, z_dim );
-    v2_shear_var  = dataFile->add_var("v2_shear" , ncDouble, t_dim, z_dim );
-    tke_shear_var = dataFile->add_var("tke_shear", ncDouble, t_dim, z_dim );
+      u2_shear_var  = dataFile->add_var("u2_shear" , ncDouble, t_dim, z_dim );
+      v2_shear_var  = dataFile->add_var("v2_shear" , ncDouble, t_dim, z_dim );
+      tke_shear_var = dataFile->add_var("tke_shear", ncDouble, t_dim, z_dim );
 
-    u2_turb_var  = dataFile->add_var("u2_turb" , ncDouble, t_dim, z_dim );
-    v2_turb_var  = dataFile->add_var("v2_turb" , ncDouble, t_dim, z_dim );
-    w2_turb_var  = dataFile->add_var("w2_turb" , ncDouble, t_dim, z_dim );
-    tke_turb_var = dataFile->add_var("tke_turb", ncDouble, t_dim, z_dim );
+      u2_turb_var  = dataFile->add_var("u2_turb" , ncDouble, t_dim, z_dim );
+      v2_turb_var  = dataFile->add_var("v2_turb" , ncDouble, t_dim, z_dim );
+      w2_turb_var  = dataFile->add_var("w2_turb" , ncDouble, t_dim, z_dim );
+      tke_turb_var = dataFile->add_var("tke_turb", ncDouble, t_dim, z_dim );
 
-    u2_visc_var  = dataFile->add_var("u2_visc" , ncDouble, t_dim, z_dim );
-    v2_visc_var  = dataFile->add_var("v2_visc" , ncDouble, t_dim, z_dim );
-    w2_visc_var  = dataFile->add_var("w2_visc" , ncDouble, t_dim, z_dim );
-    tke_visc_var = dataFile->add_var("tke_visc", ncDouble, t_dim, z_dim );
+      u2_visc_var  = dataFile->add_var("u2_visc" , ncDouble, t_dim, z_dim );
+      v2_visc_var  = dataFile->add_var("v2_visc" , ncDouble, t_dim, z_dim );
+      w2_visc_var  = dataFile->add_var("w2_visc" , ncDouble, t_dim, z_dim );
+      tke_visc_var = dataFile->add_var("tke_visc", ncDouble, t_dim, z_dim );
 
-    u2_diss_var  = dataFile->add_var("u2_diss" , ncDouble, t_dim, z_dim );
-    v2_diss_var  = dataFile->add_var("v2_diss" , ncDouble, t_dim, z_dim );
-    w2_diss_var  = dataFile->add_var("w2_diss" , ncDouble, t_dim, z_dim );
-    tke_diss_var = dataFile->add_var("tke_diss", ncDouble, t_dim, z_dim );
+      u2_diss_var  = dataFile->add_var("u2_diss" , ncDouble, t_dim, z_dim );
+      v2_diss_var  = dataFile->add_var("v2_diss" , ncDouble, t_dim, z_dim );
+      w2_diss_var  = dataFile->add_var("w2_diss" , ncDouble, t_dim, z_dim );
+      tke_diss_var = dataFile->add_var("tke_diss", ncDouble, t_dim, z_dim );
 
-    w2_pres_var  = dataFile->add_var("w2_pres" , ncDouble, t_dim, z_dim );
-    tke_pres_var = dataFile->add_var("tke_pres", ncDouble, t_dim, z_dim );
+      w2_pres_var  = dataFile->add_var("w2_pres" , ncDouble, t_dim, z_dim );
+      tke_pres_var = dataFile->add_var("tke_pres", ncDouble, t_dim, z_dim );
 
-    u2_rdstr_var  = dataFile->add_var("u2_rdstr" , ncDouble, t_dim, z_dim );
-    v2_rdstr_var  = dataFile->add_var("v2_rdstr" , ncDouble, t_dim, z_dim );
-    w2_rdstr_var  = dataFile->add_var("w2_rdstr" , ncDouble, t_dim, z_dim );
+      u2_rdstr_var  = dataFile->add_var("u2_rdstr" , ncDouble, t_dim, z_dim );
+      v2_rdstr_var  = dataFile->add_var("v2_rdstr" , ncDouble, t_dim, z_dim );
+      w2_rdstr_var  = dataFile->add_var("w2_rdstr" , ncDouble, t_dim, z_dim );
 
-    w2_buoy_var  = dataFile->add_var("w2_buoy" , ncDouble, t_dim, z_dim );
-    tke_buoy_var = dataFile->add_var("tke_buoy", ncDouble, t_dim, z_dim );
+      w2_buoy_var  = dataFile->add_var("w2_buoy" , ncDouble, t_dim, z_dim );
+      tke_buoy_var = dataFile->add_var("tke_buoy", ncDouble, t_dim, z_dim );
 
-    // save the grid variables
-    z_var ->put(&grid->z [grid->kstart], grid->kmax  );
-    zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
+      // save the grid variables
+      z_var ->put(&grid->z [grid->kstart], grid->kmax  );
+      zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
 
-    dataFile->sync();
+      dataFile->sync();
+    }
   }
 
-  return 0;
+  // crash on all processes in case the file could not be written
+  mpi->broadcast(&nerror, 1);
+
+  return (nerror > 0);
 }
 
 int cstats_dns::exec(int iteration, double time)

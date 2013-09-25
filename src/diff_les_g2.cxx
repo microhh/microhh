@@ -5,13 +5,11 @@
 #include "fields.h"
 #include "mpiinterface.h"
 #include "diff_les_g2.h"
+#include "boundary_surface.h"
 #include "defines.h"
 
 cdiff_les_g2::cdiff_les_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cdiff_les_g2::~cdiff_les_g2()
@@ -22,7 +20,9 @@ int cdiff_les_g2::readinifile(cinput *inputin)
 {
   int n = 0;
 
-  n += inputin->getItem(&dnmax      , "diff", "dnmax"      , "", 0.5   );
+  n += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5 );
+  n += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23);
+
   n += fields->initdfld("evisc");
 
   // if one argument fails, then crash
@@ -35,19 +35,26 @@ int cdiff_les_g2::readinifile(cinput *inputin)
 unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
+  double dnmul;
 
-  idtlim = idt * dnmax / getdn(dt);
+  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, fields->tPr);
+  // avoid zero division
+  dnmul = std::max(dsmall, dnmul);
+  idtlim = idt * dnmax/(dnmul*dt);
 
   return idtlim;
 }
 
 int cdiff_les_g2::execvisc(cboundary *boundaryin)
 {
+  // boundary is of type boundary_surface
+  cboundary_surface *boundaryptr = static_cast<cboundary_surface*>(boundaryin);
+
   // CvH this will crash in the absense of temperature, fix
   evisc(fields->s["evisc"]->data,
         fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
         fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
-        boundaryin->ustar, boundaryin->obuk,
+        boundaryptr->ustar, boundaryptr->obuk,
         grid->z, grid->dz, grid->dzi, grid->dzhi, 
         fields->tPr);
 
@@ -56,12 +63,12 @@ int cdiff_les_g2::execvisc(cboundary *boundaryin)
 
 double cdiff_les_g2::getdn(double dt)
 {
-  double dn;
+  double dnmul;
 
   // calculate eddy viscosity
-  dn = getdn(fields->s["evisc"]->data, grid->dzi, fields->tPr);
+  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, fields->tPr);
 
-  return dn;
+  return dnmul*dt;
 }
 
 int cdiff_les_g2::exec()
@@ -71,7 +78,7 @@ int cdiff_les_g2::exec()
   diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data);
 
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, fields->tPr);
+    diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, fields->tPr);
 
   return 0;
 }
@@ -88,7 +95,6 @@ int cdiff_les_g2::evisc(double * restrict evisc,
 
   // wall damping
   double mlen,mlen0,fac;
-  const double cs = 0.23;
   const double z0 = 0.1;
   const double n  = 2.;
 
@@ -110,9 +116,9 @@ int cdiff_les_g2::evisc(double * restrict evisc,
   mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[kstart]+z0), n))), 1./n);
   fac   = std::pow(mlen, 2.);
 
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -122,6 +128,8 @@ int cdiff_les_g2::evisc(double * restrict evisc,
 
         // dv/dz
         + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.) );
+      // add a small number to avoid zero divisions
+      strain2 += dsmall;
 
       // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
       // Add the buoyancy production to the TKE
@@ -130,16 +138,16 @@ int cdiff_les_g2::evisc(double * restrict evisc,
       evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
     }
 
-  for(int k=grid->kstart+1; k<grid->kend; k++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
   {
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
     mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
     fac   = std::pow(mlen, 2.);
 
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         strain2 = 2.*(
@@ -169,6 +177,8 @@ int cdiff_les_g2::evisc(double * restrict evisc,
           + 0.125*std::pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, 2.)
           + 0.125*std::pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2.)
           + 0.125*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2.) );
+        // add a small number to avoid zero divisions
+        strain2 += dsmall;
 
         // CvH use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
         // Add the buoyancy production to the TKE
@@ -199,9 +209,9 @@ int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * rest
   dyi = 1./grid->dy;
 
   // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -221,10 +231,10 @@ int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * rest
                + fluxbot[ij] ) * dzi[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
@@ -244,9 +254,9 @@ int cdiff_les_g2::diffu(double * restrict ut, double * restrict u, double * rest
       }
 
   // top boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk;
@@ -285,9 +295,9 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
   dyi = 1./grid->dy;
 
   // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -301,16 +311,16 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
                - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
             // dv/dy + dv/dy
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
+               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
             // dv/dz + dw/dy
             + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                + fluxbot[ij] ) * dzi[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
@@ -323,16 +333,16 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
                  - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
               // dv/dy + dv/dy
               + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                 - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
+                 - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
               // dv/dz + dw/dy
               + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                  - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[k];
       }
 
   // top boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk;
@@ -346,7 +356,7 @@ int cdiff_les_g2::diffv(double * restrict vt, double * restrict u, double * rest
                - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
             // dv/dy + dv/dy
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi;
+               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
             // dv/dz + dw/dy
             + (- fluxtop[ij]
                - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[kend-1];
@@ -368,10 +378,10 @@ int cdiff_les_g2::diffw(double * restrict wt, double * restrict u, double * rest
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         evisce = 0.25*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+ii-kk] + evisc[ijk+ii]);
@@ -409,9 +419,9 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
   dyidyi = 1./(grid->dy * grid->dy);
 
   // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -431,10 +441,10 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
                + fluxbot[ij] ) * dzi[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
@@ -454,9 +464,9 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
       }
 
   // top boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk;
@@ -479,12 +489,11 @@ int cdiff_les_g2::diffc(double * restrict at, double * restrict a, double * rest
   return 0;
 }
 
-double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi, double tPr)
+double cdiff_les_g2::calcdnmul(double * restrict evisc, double * restrict dzi, double tPr)
 {
-  int    ijk,ij,ii,jj,kk;
+  int    ijk,jj,kk;
   double dxidxi,dyidyi;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
@@ -495,14 +504,16 @@ double cdiff_les_g2::getdn(double * restrict evisc, double * restrict dzi, doubl
   double dnmul = 0;
 
   // get the maximum time step for diffusion
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
       }
+
+  grid->getmax(&dnmul);
 
   return dnmul;
 }

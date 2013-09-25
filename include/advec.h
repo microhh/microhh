@@ -23,7 +23,8 @@ class cadvec
     virtual int exec();
 
     double cflmax;
-  private:
+
+  protected:
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
     cmpi    *mpi;    ///< Pointer to mpi class.

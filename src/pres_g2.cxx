@@ -9,10 +9,6 @@
 
 cpres_g2::cpres_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cpres(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
-
   allocated = false;
 }
 

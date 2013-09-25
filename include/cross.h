@@ -13,19 +13,28 @@ class ccross
     ~ccross();
 
     int readinifile(cinput *);
-    int init();
-    int exec(int);
+    int init(int);
+    unsigned long gettimelim(unsigned long);
+    int exec(double, unsigned long, int);
 
   private:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
 
-    std::string swcross;
-    int jxz;
+    double crosstime;
+    unsigned long icrosstime;
 
-    int crosssimple(double *, double *, std::string, int);
-    int crosslngrad(double *, double *, double *, double *, std::string, int);
+    std::string swcross;
+
+    std::vector<int> jxz;
+    std::vector<int> kxy;
+
+    std::vector<std::string> simple;
+    std::vector<std::string> lngrad;
+
+    int crosssimple(double *, double *, std::string, std::vector<int>, std::vector<int>, int);
+    int crosslngrad(double *, double *, double *, double *, std::string, std::vector<int>, std::vector<int>, int);
 };
 #endif
 

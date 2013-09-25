@@ -53,7 +53,7 @@ int cfields::readinifile(cinput *inputin)
 
   // read the name of the passive scalars
   std::vector<std::string> slist;
-  n += inputin->getItem(&slist, "fields", "slist", "");
+  n += inputin->getList(&slist, "fields", "slist", "");
 
   // initialize the scalars
   for(std::vector<std::string>::iterator it = slist.begin(); it!=slist.end(); ++it)

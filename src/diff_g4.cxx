@@ -9,9 +9,6 @@
 
 cdiff_g4::cdiff_g4(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cdiff_g4::~cdiff_g4()
