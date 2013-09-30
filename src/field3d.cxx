@@ -19,6 +19,7 @@ cfield3d::~cfield3d()
     delete[] data;
     delete[] databot;
     delete[] datatop;
+    delete[] datamean;
     delete[] datagradbot;
     delete[] datagradtop;
     delete[] datafluxbot;
@@ -35,6 +36,7 @@ int cfield3d::init()
   // allocate the boundary cells
   databot = new double[grid->icells*grid->jcells];
   datatop = new double[grid->icells*grid->jcells];
+  datamean = new double[grid->kcells];
   datagradbot = new double[grid->icells*grid->jcells];
   datagradtop = new double[grid->icells*grid->jcells];
   datafluxbot = new double[grid->icells*grid->jcells];
@@ -45,6 +47,9 @@ int cfield3d::init()
   // set all values to zero
   for(int n=0; n<grid->ncells; n++)
     data[n] = 0.;
+
+  for(int n=0; n<grid->kcells; n++)
+    datamean[n] = 0.;
 
   for(int n=0; n<grid->icells*grid->jcells; n++)
   {

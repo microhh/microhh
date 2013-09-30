@@ -4,7 +4,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
-
+#include <cmath>
 class cthermo_moist
 {
   public:
@@ -20,12 +20,12 @@ class cthermo_moist
 
 #define rd 287.04
 #define rv 461.5
-#define rm 461.5
-#define ep rd/rm
+#define ep rd/rv
 #define cp 1005
-#define latheat 2.5e6
+#define lv 2.5e6
 #define rhow    1.e3
-    
+#define tmelt   273.15
+#define p0 1.e5
   private:
     cgrid   *grid;
     cfields *fields;
@@ -38,6 +38,9 @@ class cthermo_moist
     int buoyancy_4th(double *, double *, double *, double *);
     inline double calcql(const double, const double, const double);
     inline double bu(const double, const double, const double);
+    inline double exner(const double);
+    inline double rslf(const double, const double);
+    inline double esl(const double);
 
     inline double interp2(const double, const double);
     inline double interp4(const double, const double, const double, const double);
