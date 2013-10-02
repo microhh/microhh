@@ -198,6 +198,8 @@ int cmodel::init()
     return 1;
   if(buffer->init())
     return 1;
+  if(force->init())
+    return 1;
   if(pres->init())
     return 1;
 
@@ -216,6 +218,10 @@ int cmodel::load()
   if(fields->load(timeloop->iotime))
     return 1;
   if(buffer->load())
+    return 1;
+  if(boundary->load(timeloop->iotime))
+    return 1;
+  if(force->load())
     return 1;
   if(stats->create(timeloop->iotime))
     return 1;
@@ -236,6 +242,8 @@ int cmodel::create(cinput *inputin)
     return 1;
   if(buffer->setbuffers())
     return 1;
+  if(force->create(inputin))
+    return 1;
 
   return 0;
 }
@@ -246,7 +254,11 @@ int cmodel::save()
     return 1;
   if(buffer->save())
     return 1;
+  if(force->save())
+    return 1;
   if(timeloop->save(timeloop->iotime))
+    return 1;
+  if(boundary->save(timeloop->iotime))
     return 1;
 
   return 0;
@@ -314,11 +326,15 @@ int cmodel::exec()
       if(!timeloop->insubstep())
         timeloop->timestep();
 
-      // save the fields
+      // save the data for a restart
       if(timeloop->dosave() && !timeloop->insubstep())
       {
+        // save the time data
         timeloop->save(timeloop->iotime);
+        // save the fields
         fields->save  (timeloop->iotime);
+        // save the boundary data
+        boundary->save(timeloop->iotime);
       }
     }
 
@@ -336,6 +352,8 @@ int cmodel::exec()
       if(timeloop->load(timeloop->iotime))
         return 1;
       if(fields->load(timeloop->iotime))
+        return 1;
+      if(boundary->load(timeloop->iotime))
         return 1;
     }
 

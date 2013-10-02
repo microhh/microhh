@@ -1,5 +1,5 @@
 #include <climits>
-#define restrict __restrict__
+#define restrict RESTRICTKEYWORD
 
 #define kappa  0.4
 

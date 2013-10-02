@@ -553,7 +553,7 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
   return 0;
 }
 
-int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice, char *filename)
+int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -587,7 +587,7 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, int jslice
   return 0;
 }
 
-int cgrid::savexyslice(double * restrict data, double * restrict tmp, int kslice, char *filename)
+int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -616,6 +616,38 @@ int cgrid::savexyslice(double * restrict data, double * restrict tmp, int kslice
 
   fwrite(tmp, sizeof(double), count, pFile);
   fclose(pFile);
+
+  return 0;
+}
+
+int cgrid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+{
+  int count = imax*jmax;
+
+  FILE *pFile;
+  pFile = fopen(filename, "rb");
+  if(pFile == NULL)
+    return 1;
+
+  fread(tmp, sizeof(double), count, pFile);
+  fclose(pFile);
+
+  // put the data back into a field with ghost cells
+  int ijk,jj,kk;
+  int ijkb,jjb,kkb;
+
+  jj  = icells;
+  kk  = icells*jcells;
+  jjb = imax;
+
+  for(int j=0; j<jmax; j++)
+#pragma ivdep
+    for(int i=0; i<imax; i++)
+    {
+      ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
+      ijkb = i + j*jjb;
+      data[ijk] = tmp[ijkb];
+    }
 
   return 0;
 }

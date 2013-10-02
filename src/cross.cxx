@@ -1,10 +1,10 @@
 #include <cstdio>
 #include <cmath>
-#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "cross.h"
 #include "defines.h"
+#include <netcdfcpp.h>
 
 ccross::ccross(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
@@ -46,6 +46,9 @@ int ccross::readinifile(cinput *inputin)
 
 int ccross::init(int ifactor)
 {
+  if(swcross == "0")
+    return 0;
+
   icrosstime = (unsigned long)(ifactor * crosstime);
 
   return 0;
@@ -99,7 +102,7 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
     if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
-    grid->savexzslice(data, tmp, *it, filename);
+    grid->savexzslice(data, tmp, filename, *it);
   }
 
   // loop over the index arrays to save all xy cross sections
@@ -107,7 +110,7 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
     if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
-    grid->savexyslice(data, tmp, *it, filename);
+    grid->savexyslice(data, tmp, filename, *it);
   }
 
   return 0;
@@ -164,7 +167,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
     if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
-    grid->savexzslice(lngrad, tmp, *it, filename);
+    grid->savexzslice(lngrad, tmp, filename, *it);
   }
 
   // loop over the index arrays to save all xy cross sections
@@ -172,7 +175,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
     if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
-    grid->savexyslice(lngrad, tmp, *it, filename);
+    grid->savexyslice(lngrad, tmp, filename, *it);
   }
 
   return 0;

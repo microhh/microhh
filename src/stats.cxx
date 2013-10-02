@@ -1,6 +1,4 @@
 #include <cstdio>
-#include <cmath>
-#include <netcdfcpp.h>
 #include "grid.h"
 #include "fields.h"
 #include "stats.h"
@@ -38,12 +36,12 @@ int cstats::readinifile(cinput *inputin)
 
 int cstats::init(double ifactor)
 {
-  istatstime = (unsigned long)(ifactor * statstime);
-
   if(swstats == "0")
     return 0;
 
-  else if(swstats == "4")
+  istatstime = (unsigned long)(ifactor * statstime);
+
+  if(swstats == "4")
   {
     if(stats_dns->init())
       return 1;

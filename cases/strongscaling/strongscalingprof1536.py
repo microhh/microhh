@@ -2,20 +2,20 @@ import numpy
 from pylab import *
 
 # set the height
-kmax = 1024
+kmax = 1536
 dn   = 1./kmax
 
 n = numpy.linspace(dn, 1.-dn, kmax)
 
-nloc1 = 160.*dn
-nbuf1 = 32.*dn
+nloc1 = 256.*dn
+nbuf1 = 64.*dn
 
-nloc2 = 1024.*dn
-nbuf2 = 144.*dn
+nloc2 = 1536.*dn
+nbuf2 = 192.*dn
 
-dz1 = 0.0005
-dz2 = 0.001
-dz3 = 0.01
+dz1 = 0.0004
+dz2 = 0.0008
+dz3 = 0.004
 
 dzdn1 = dz1/dn
 dzdn2 = dz2/dn
@@ -48,7 +48,7 @@ for k in range(kmax):
   s[k] = N2*z[k]
 
 # write the data to a file
-proffile = open('strongscaling.prof','w')
+proffile = open('strongscaling1536.prof','w')
 proffile.write('{0:^20s} {1:^20s}\n'.format('z','s'))
 for k in range(kmax):
   proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], s[k]))

@@ -1,8 +1,6 @@
 # JUQUEEN
-set(CMAKE_C_COMPILER   "bgxlc")
-set(CMAKE_CXX_COMPILER "bgxlC")
-set(C_COMPILER_WRAPPER mpixlc)
-set(CXX_COMPILER_WRAPPER mpixlcxx)
+# set(ENV{CXX} bgxlC) # compiler for serial build
+set(ENV{CXX} mpixlcxx) # compiler for parallel build
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -qarch=qp -qtune=qp -qhot")
@@ -16,5 +14,6 @@ set(NETCDF_LIB_CPP     "/bgsys/local/netcdf/lib/libnetcdf_c++.a")
 set(HDF5_LIB_1         "/bgsys/local/hdf5/lib/libhdf5.a")
 set(HDF5_LIB_2         "/bgsys/local/hdf5/lib/libhdf5_hl.a")
 set(SZIP_LIB           "")
-
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m)
+
+add_definitions(-DRESTRICTKEYWORD=__restrict__)

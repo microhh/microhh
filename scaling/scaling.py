@@ -65,3 +65,23 @@ legend(loc=0, frameon=False)
 grid()
 title('weak scaling SuperMUC')
 
+wsjuq = loadtxt("weakscaling.juqueen", skiprows=1);
+wsjuq_procs      = wsjuq[:,0]
+wsjuq_times      = wsjuq[:,1]
+wsjuq_eff        = wsjuq_times[0] / wsjuq_times[:]
+
+procsx      = array([512, 2048, 8192, 32768])
+linspeedupy = array([1, 4, 16, 64])
+effy        = ones(4)
+
+figure()
+semilogx(wsjuq_procs, wsjuq_eff, 'bo-', label='64x32x1024 per proc')
+semilogx(procsx, effy, 'k-' )
+xlim(procsx[0], procsx[-1])
+ylim(0., 1.5)
+xlabel('#processes')
+ylabel('efficiency')
+legend(loc=0, frameon=False)
+grid()
+title('weak scaling Juqueen')
+

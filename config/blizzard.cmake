@@ -1,8 +1,6 @@
 # Blizzard
-set(CMAKE_C_COMPILER   "xlc")
-set(CMAKE_CXX_COMPILER "xlc++")
-set(C_COMPILER_WRAPPER mpcc)
-set(CXX_COMPILER_WRAPPER mpCC)
+# set(ENV{CXX} xlc++) # compiler for serial build
+set(ENV{CXX} mpCC) # compiler for parallel build
 
 set(USER_CXX_FLAGS_RELEASE "-qarch=pwr6 -qtune=pwr6 -O3 -qhot=simd -qenablevmx")
 
@@ -15,3 +13,5 @@ set(HDF5_LIB_1         "/sw/aix61/hdf5-1.8.8/lib/libhdf5.a")
 set(HDF5_LIB_2         "/sw/aix61/hdf5-1.8.8/lib/libhdf5_hl.a")
 set(SZIP_LIB           "/sw/aix53/szip-2.1/lib/libsz.a")
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z)
+
+add_definitions(-DRESTRICTKEYWORD=__restrict__)
