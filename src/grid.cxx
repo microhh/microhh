@@ -401,6 +401,36 @@ int cgrid::interpolatey_4th(double * restrict out, double * restrict in, int loc
   return 0;
 }
 
+int cgrid::calcmean(double * restrict prof, const double * restrict data)
+{
+  int ijk,ii,jj,kk;
+
+  ii = 1;
+  jj = icells;
+  kk = icells*jcells;
+  
+  for(int k=0; k<kcells; k++)
+  {
+    prof[k] = 0.;
+    for(int j=jstart; j<jend; j++)
+#pragma ivdep
+      for(int i=istart; i<iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        prof[k] += data[ijk];
+      }
+  }
+
+  double n = imax*jmax;
+
+  for(int k=0; k<kcells; k++)
+    prof[k] /= n;
+
+  getprof(prof, kcells);
+
+  return 0;
+}
+
 /*
 int cgrid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
 {

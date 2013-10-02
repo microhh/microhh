@@ -86,6 +86,7 @@ class cgrid
     int getmax (double *);
     int getsum (double *);
     int getprof(double *, int);
+    int calcmean(double *, const double *);
 
     int savefield3d(double *, double *, double *, char *);
     int loadfield3d(double *, double *, double *, char *);
