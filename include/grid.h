@@ -93,7 +93,7 @@ class cgrid
     int getmax (double *);      ///< Gets the maximum of a number over all processes.
     int getsum (double *);      ///< Gets the sum of a number over all processes.
     int getprof(double *, int); ///< Averages a vertical profile over all processes.
-    int calcmean(double *, const double *);
+    int calcmean(double *, const double *, int);
 
     // IO functions
     int savefield3d(double *, double *, double *, char *); ///< Saves a full 3d field.
