@@ -31,7 +31,8 @@ int cthermo_moist::init(cinput *inputin)
   nerror += fields->initpfld("qt");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
   nerror += fields->initdfld("ql");
-
+  
+  return nerror;
 }
 
 int cthermo_moist::exec()
