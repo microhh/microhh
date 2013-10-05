@@ -37,7 +37,8 @@ class cboundary_surface : public cboundary
     int surfs(double *, double *, double *,
               double *, double *, double *,
               double, int);
-    double calcobuk(double, double, double, double);
+    double calcobuk_noslip_flux     (double, double, double, double);
+    double calcobuk_noslip_dirichlet(double, double, double, double);
     inline double fm(double, double, double);
     inline double fh(double, double, double);
     inline double psim(double);
