@@ -15,8 +15,8 @@ class cforce
     int create(cinput *);
     int exec(double);
 
-    int save();
-    int load();
+    std::vector<std::string> lslist;
+    std::map<std::string, double *> lsprofs;
 
   private:
     cgrid   *grid;
@@ -26,6 +26,7 @@ class cforce
     bool allocated;
 
     std::string swforce;
+    std::string swls;
 
     double uflow;
     double fc;
@@ -33,8 +34,14 @@ class cforce
     double *ug;
     double *vg;
 
-    int flux(double *, double *, double *, double);
-    int coriolis_2nd(double *, double *, double *, double *, double *, double *);
-    int coriolis_4th(double *, double *, double *, double *, double *, double *);
+    int flux(double * const, const double * const,
+             const double * const, const double);
+    int coriolis_2nd(double * const, double * const,
+                     const double * const, const double * const,
+                     const double * const, const double * const);
+    int coriolis_4th(double * const, double * const,
+                     const double * const, const double * const,
+                     const double * const, const double * const);
+    int lssource(double * const, const double * const);
 };
 #endif

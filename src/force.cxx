@@ -27,17 +27,20 @@ cforce::~cforce()
 
 int cforce::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
-  n += inputin->getItem(&swforce, "force", "swforce", "");
+  nerror += inputin->getItem(&swforce, "force", "swforce", "");
+  nerror += inputin->getItem(&swls, "force", "swls", "", "0");
   
   if(swforce == "1")
-    n += inputin->getItem(&uflow, "force", "uflow", "");
+    nerror += inputin->getItem(&uflow, "force", "uflow", "");
+  else if(swforce == "2")
+    nerror += inputin->getItem(&fc, "force", "fc", "");
 
-  if(swforce == "2")
-    n += inputin->getItem(&fc, "force", "fc", "");
+  if(swls == "1")
+    nerror += inputin->getList(&lslist, "force", "lslist", "");
 
-  if(n > 0)
+  if(nerror > 0)
     return 1;
 
   return 0;
@@ -51,6 +54,12 @@ int cforce::init()
     vg = new double[grid->kcells];
   }
 
+  if(swls == "1")
+  {
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+      lsprofs[*it] = new double[grid->kcells];
+  }
+
   allocated = true;
 
   return 0;
@@ -58,15 +67,22 @@ int cforce::init()
 
 int cforce::create(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
   if(swforce == "2")
   {
-    n += inputin->getProf(&ug[grid->kstart], "ug", grid->kmax);
-    n += inputin->getProf(&vg[grid->kstart], "vg", grid->kmax);
+    nerror += inputin->getProf(&ug[grid->kstart], "ug", grid->kmax);
+    nerror += inputin->getProf(&vg[grid->kstart], "vg", grid->kmax);
   }
 
-  if(n > 0)
+  if(swls == "1")
+  {
+    // read the large scale sources, which are the variable names with a "ls" suffix
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+      nerror += inputin->getProf(&lsprofs[*it][grid->kstart], *it+"ls", grid->kmax);
+  }
+
+  if(nerror > 0)
     return 1;
 
   return 0;
@@ -74,10 +90,7 @@ int cforce::create(cinput *inputin)
 
 int cforce::exec(double dt)
 {
-  if(swforce == "0")
-    return 0;
-
-  else if(swforce == "1")
+  if(swforce == "1")
     flux((*fields->ut).data, (*fields->u).data, grid->dz, dt);
 
   else if(swforce == "2")
@@ -88,9 +101,16 @@ int cforce::exec(double dt)
       coriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
   }
 
+  if(swls == "1")
+  {
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+      lssource(fields->st[*it]->data, lsprofs[*it]);
+  }
+
   return 0;
 }
 
+/*
 int cforce::save()
 {
   // TODO add subsidence to the same save file
@@ -162,8 +182,10 @@ int cforce::load()
 
   return 0;
 }
+*/
 
-int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz, double dt)
+int cforce::flux(double * const restrict ut, const double * const restrict u, 
+                 const double * const restrict dz, const double dt)
 {
   int ijk,jj,kk;
 
@@ -175,10 +197,10 @@ int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz
   uavg  = 0.;
   utavg = 0.;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         uavg  = uavg  + u [ijk]*dz[k];
@@ -200,9 +222,9 @@ int cforce::flux(double * restrict ut, double * restrict u, double * restrict dz
   return 0;
 }
 
-int cforce::coriolis_2nd(double * restrict ut, double * restrict vt,
-                         double * restrict u , double * restrict v ,
-                         double * restrict ug, double * restrict vg)
+int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
+                         const double * const restrict u , const double * const restrict v ,
+                         const double * const restrict ug, const double * const restrict vg)
 {
   int ijk,ii,jj,kk;
 
@@ -210,19 +232,19 @@ int cforce::coriolis_2nd(double * restrict ut, double * restrict vt,
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         ut[ijk] += fc * (0.25*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) - vg[k]);
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         vt[ijk] -= fc * (0.25*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) - ug[k]);
@@ -231,9 +253,9 @@ int cforce::coriolis_2nd(double * restrict ut, double * restrict vt,
   return 0;
 }
 
-int cforce::coriolis_4th(double * restrict ut, double * restrict vt,
-                         double * restrict u , double * restrict v ,
-                         double * restrict ug, double * restrict vg)
+int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
+                         const double * const restrict u , const double * const restrict v ,
+                         const double * const restrict ug, const double * const restrict vg)
 {
   int ijk,ii1,ii2,jj1,jj2,kk1;
 
@@ -243,10 +265,10 @@ int cforce::coriolis_4th(double * restrict ut, double * restrict vt,
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         ut[ijk] += fc * ( ( ci0*(ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1])
@@ -255,16 +277,34 @@ int cforce::coriolis_4th(double * restrict ut, double * restrict vt,
                           + ci3*(ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) ) - vg[k]);
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         vt[ijk] -= fc * ( ( ci0*(ci0*u[ijk-ii1-jj2] + ci1*u[ijk-jj2] + ci2*u[ijk+ii1-jj2] + ci3*u[ijk+ii2-jj2])
                           + ci1*(ci0*u[ijk-ii1-jj1] + ci1*u[ijk-jj1] + ci2*u[ijk+ii1-jj1] + ci3*u[ijk+ii2-jj1])
                           + ci2*(ci0*u[ijk-ii1    ] + ci1*u[ijk    ] + ci2*u[ijk+ii1    ] + ci3*u[ijk+ii2    ])
                           + ci3*(ci0*u[ijk-ii1+jj1] + ci1*u[ijk+jj1] + ci2*u[ijk+ii1+jj1] + ci3*u[ijk+ii2+jj1]) ) - ug[k]);
+      }
+
+  return 0;
+}
+
+int cforce::lssource(double * const restrict st, const double * const restrict sls)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        st[ijk] += sls[k];
       }
 
   return 0;
