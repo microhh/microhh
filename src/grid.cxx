@@ -7,7 +7,6 @@
 // build the grid
 cgrid::cgrid(cmpi *mpiin)
 {
-  // std::printf("Creating instance of object grid\n");
   mpi = mpiin;
 
   allocated = false;
