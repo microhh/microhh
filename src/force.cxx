@@ -30,7 +30,8 @@ int cforce::readinifile(cinput *inputin)
   int nerror = 0;
 
   nerror += inputin->getItem(&swforce, "force", "swforce", "");
-  nerror += inputin->getItem(&swls, "force", "swls", "", "0");
+  nerror += inputin->getItem(&swls   , "force", "swls"   , "", "0");
+  nerror += inputin->getItem(&swwls  , "force", "swwls"  , "", "0");
   
   if(swforce == "1")
     nerror += inputin->getItem(&uflow, "force", "uflow", "");
@@ -60,6 +61,9 @@ int cforce::init()
       lsprofs[*it] = new double[grid->kcells];
   }
 
+  if(swwls == "1")
+    wls = new double[grid->kcells];
+
   allocated = true;
 
   return 0;
@@ -81,6 +85,9 @@ int cforce::create(cinput *inputin)
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
       nerror += inputin->getProf(&lsprofs[*it][grid->kstart], *it+"ls", grid->kmax);
   }
+
+  if(swwls == "1")
+    nerror += inputin->getProf(&wls[grid->kstart], "wls", grid->kmax);
 
   if(nerror > 0)
     return 1;
@@ -105,6 +112,12 @@ int cforce::exec(double dt)
   {
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
       lssource(fields->st[*it]->data, lsprofs[*it]);
+  }
+
+  if(swwls == "1")
+  {
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+      advecwls_2nd(it->second->data, fields->s[it->first]->data, wls, grid->dzi);
   }
 
   return 0;
@@ -310,3 +323,27 @@ int cforce::lssource(double * const restrict st, const double * const restrict s
   return 0;
 }
 
+int cforce::advecwls_2nd(double * const restrict st, const double * const restrict s,
+                         const double * const restrict wls, const double * const dzi)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        st[ijk] -= (  wls[k+1] * interp2(s[ijk   ], s[ijk+kk])
+                    - wls[k  ] * interp2(s[ijk-kk], s[ijk   ]) ) * dzi[k];
+      }
+
+  return 0;
+}
+
+inline double cforce::interp2(const double a, const double b)
+{
+  return 0.5*(a + b);
+}

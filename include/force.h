@@ -27,12 +27,15 @@ class cforce
 
     std::string swforce;
     std::string swls;
+    std::string swwls;
 
     double uflow;
     double fc;
 
     double *ug;
     double *vg;
+
+    double *wls;
 
     int flux(double * const, const double * const,
              const double * const, const double);
@@ -43,5 +46,9 @@ class cforce
                      const double * const, const double * const,
                      const double * const, const double * const);
     int lssource(double * const, const double * const);
+    int advecwls_2nd(double * const, const double * const,
+                     const double * const, const double * const);
+
+    inline double interp2(const double, const double); ///< 2nd order interpolation function.
 };
 #endif
