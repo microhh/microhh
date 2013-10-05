@@ -22,13 +22,15 @@ cstats::~cstats()
 
 int cstats::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
   // optional, by default switch stats off
-  n += inputin->getItem(&swstats  , "stats", "swstats"  , "", "0");
-  n += inputin->getItem(&statstime, "stats", "statstime", "", 60.);
+  nerror += inputin->getItem(&swstats  , "stats", "swstats"  , "", "0");
 
-  if(n > 0)
+  if(swstats != "0")
+    nerror += inputin->getItem(&statstime, "stats", "statstime", "");
+
+  if(nerror > 0)
     return 1;
 
   return 0;
@@ -78,6 +80,9 @@ int cstats::create(int n)
 
 unsigned long cstats::gettimelim(unsigned long itime)
 {
+  if(swstats == "0")
+    return ulhuge;
+
   unsigned long idtlim = istatstime -  itime % istatstime;
 
   return idtlim;
