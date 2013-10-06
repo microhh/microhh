@@ -117,85 +117,11 @@ int cforce::exec(double dt)
   if(swwls == "1")
   {
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      advecwls_2nd(it->second->data, fields->s[it->first]->data, wls, grid->dzi);
+      advecwls_2nd(it->second->data, fields->s[it->first]->data, wls, grid->dzhi);
   }
 
   return 0;
 }
-
-/*
-int cforce::save()
-{
-  // TODO add subsidence to the same save file
-  if(swforce == "2")
-  {
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "force", 0);
-
-    if(mpi->mpiid == 0)
-    {
-      std::printf("Saving \"%s\"\n", filename);
-      FILE *pFile;
-      pFile = fopen(filename, "wb");
-
-      if(pFile == NULL)
-      {
-        std::printf("ERROR \"%s\" cannot be written", filename);
-        return 1;
-      }
-
-      fwrite(&ug[grid->kstart], sizeof(double), grid->kmax, pFile);
-      fwrite(&vg[grid->kstart], sizeof(double), grid->kmax, pFile);
-      
-      fclose(pFile);
-    }
-  }
-
-  return 0;
-}
-
-int cforce::load()
-{
-  int nerror = 0;
-
-  if(swforce == "2")
-  {
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", "force", 0);
-
-    if(mpi->mpiid == 0)
-    {
-      std::printf("Loading \"%s\"\n", filename);
-
-      FILE *pFile;
-      pFile = fopen(filename, "rb");
-
-      if(pFile == NULL)
-      {
-        std::printf("ERROR \"%s\" does not exist\n", filename);
-        ++nerror;
-      }
-      else
-      {
-        fread(&ug[grid->kstart], sizeof(double), grid->kmax, pFile);
-        fread(&vg[grid->kstart], sizeof(double), grid->kmax, pFile);
-      
-        fclose(pFile);
-      }
-    }
-
-    mpi->broadcast(&nerror, 1);
-    if(nerror)
-      return 1;
-
-    // send the buffers to all processes
-    mpi->broadcast(ug, grid->kmax);
-    mpi->broadcast(vg, grid->kmax);
-  }
-
-  return 0;
-}
-*/
 
 int cforce::flux(double * const restrict ut, const double * const restrict u, 
                  const double * const restrict dz, const double dt)
@@ -324,20 +250,35 @@ int cforce::lssource(double * const restrict st, const double * const restrict s
 }
 
 int cforce::advecwls_2nd(double * const restrict st, const double * const restrict s,
-                         const double * const restrict wls, const double * const dzi)
+                         const double * const restrict wls, const double * const dzhi)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
+  // use an upwind differentiation
   for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
-      for(int i=grid->istart; i<grid->iend; ++i)
-      {
-        ijk = i + j*jj + k*kk;
-        st[ijk] -=  wls[k] * (interp2(s[ijk], s[ijk+kk]) - interp2(s[ijk-kk], s[ijk])) * dzi[k];
-      }
+  {
+    if(wls[k] >= 0.)
+    {
+      for(int j=grid->jstart; j<grid->jend; ++j)
+        for(int i=grid->istart; i<grid->iend; ++i)
+        {
+          ijk = i + j*jj + k*kk;
+          st[ijk] -=  wls[k] * (s[ijk]-s[ijk-kk])*dzhi[k];
+        }
+    }
+    else
+    {
+      for(int j=grid->jstart; j<grid->jend; ++j)
+        for(int i=grid->istart; i<grid->iend; ++i)
+        {
+          ijk = i + j*jj + k*kk;
+          st[ijk] -=  wls[k] * (s[ijk+kk]-s[ijk])*dzhi[k+1];
+        }
+    }
+  }
 
   return 0;
 }
