@@ -256,8 +256,6 @@ int cmodel::create()
     return 1;
   if(buffer->setbuffers())
     return 1;
-  // if(force->create(input))
-  //   return 1;
 
   return 0;
 }
@@ -270,8 +268,6 @@ int cmodel::save()
     return 1;
   if(buffer->save())
     return 1;
-  // if(force->save())
-  //   return 1;
   if(timeloop->save(timeloop->iotime))
     return 1;
   if(boundary->save(timeloop->iotime))
@@ -307,12 +303,12 @@ int cmodel::exec()
     advec->exec();
     // diffusion
     diff->exec();
-    // large scale forcings
-    force->exec(timeloop->getsubdt());
     // buoyancy
     buoyancy->exec();
     // buffer
     buffer->exec();
+    // large scale forcings
+    force->exec(timeloop->getsubdt());
 
     // pressure
     pres->exec(timeloop->getsubdt());

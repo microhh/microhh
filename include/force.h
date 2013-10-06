@@ -5,50 +5,63 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
+/**
+ * Class for the right-hand side terms that contain large-scale forcings
+ * This class contains the large-scale pressure forcings, either in flux for or through a
+ * geostrophic wind and a coriolis force. Furthermore, a large scale vertical velocity can
+ * be imposed that advects the scalars through the domain. Profiles of sources/sinks can be
+ * assigned to all scalars.
+ */
+
 class cforce
 {
   public:
-    cforce(cgrid *, cfields *, cmpi *);
-    ~cforce();
-    int readinifile(cinput *);
-    int init();
-    int create(cinput *);
-    int exec(double);
+    cforce(cgrid *, cfields *, cmpi *); ///< Constructor of the force class.
+    ~cforce();                          ///< Destructor of the force class.
+    int readinifile(cinput *);          ///< Processing data of the input file.
+    int init();                         ///< Initialize the arrays that contain the profiles.
+    int create(cinput *);               ///< Read the profiles of the forces from the input.
+    int exec(double);                   ///< Add the tendencies belonging to the large-scale processes.
 
-    std::vector<std::string> lslist;
-    std::map<std::string, double *> lsprofs;
+    std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
+    std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
+    cgrid   *grid;   ///< Pointer to grid class.
+    cfields *fields; ///< Pointer to fields class.
+    cmpi    *mpi;    ///< Pointer to mpi class.
 
-    bool allocated;
+    bool allocated; ///< Boolean flag to indicate allocation of arrays.
 
-    std::string swforce;
-    std::string swls;
-    std::string swwls;
+    std::string swforce; ///< Switch for the large scale pressure force.
+    std::string swls;    ///< Switch for large scale scalar tendencies.
+    std::string swwls;   ///< Switch for large-scale vertical transport of scalars.
 
-    double uflow;
-    double fc;
+    double uflow; ///< Mean velocity used to enforce constant flux.
+    double fc;    ///< Coriolis parameter.
 
-    double *ug;
-    double *vg;
+    double *ug; ///< Pointer to array u-component geostrophic wind.
+    double *vg; ///< Pointer to array v-component geostrophic wind.
 
-    double *wls;
+
+    double *wls; ///< Pointer to array large-scale vertical velocity.
 
     int flux(double * const, const double * const,
-             const double * const, const double);
+             const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
+
     int coriolis_2nd(double * const, double * const,
                      const double * const, const double * const,
-                     const double * const, const double * const);
+                     const double * const, const double * const); ///< Calculates Coriolis force with 2nd-order accuracy.
     int coriolis_4th(double * const, double * const,
                      const double * const, const double * const,
-                     const double * const, const double * const);
-    int lssource(double * const, const double * const);
+                     const double * const, const double * const); ///< Calculates Coriolis force with 4th-order accuracy.
+
+    int lssource(double * const, const double * const); ///< Applies the large scale scalar tendency.
+
     int advecwls_2nd(double * const, const double * const,
-                     const double * const, const double * const);
+                     const double * const, const double * const); ///< Calculates the large-scale vertical transport.
 
     inline double interp2(const double, const double); ///< 2nd order interpolation function.
 };
 #endif
+
