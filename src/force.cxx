@@ -87,7 +87,27 @@ int cforce::create(cinput *inputin)
   }
 
   if(swwls == "1")
-    nerror += inputin->getProf(&wls[grid->kstart], "wls", grid->kmax);
+  {
+    // store the data in a temporary array, because interpolation is required
+    double * tempprof;
+    tempprof = new double[grid->kcells];
+
+    nerror += inputin->getProf(&tempprof[grid->kstart], "wls", grid->kmax);
+
+    // interpolate the profile to the flux levels
+    for(int k=grid->kstart+1; k<grid->kend; ++k)
+      wls[k] = interp2(tempprof[k-1],tempprof[k]);
+
+    // extrapolate the boundaries using linear extrapolation
+    wls[grid->kstart] = tempprof[grid->kstart]
+                      - (tempprof[grid->kstart+1]-tempprof[grid->kstart])*grid->dzhi[grid->kstart+1]
+                        * (grid->z[grid->kstart]-grid->zh[grid->kstart]);
+    wls[grid->kend  ] = tempprof[grid->kend-1]
+                      + (tempprof[grid->kend-1]-tempprof[grid->kend-2])*grid->dzhi[grid->kend-1]
+                        * (grid->zh[grid->kend]-grid->z[grid->kend-1]);
+
+    delete[] tempprof;
+  }
 
   if(nerror > 0)
     return 1;

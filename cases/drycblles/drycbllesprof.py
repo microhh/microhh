@@ -16,7 +16,7 @@ wls = numpy.zeros(numpy.size(z))
 for k in range(kmax):
   s  [k] = dthetadz*z[k]
   sls[k] = 2.*(z[k]/zsize - 0.5) / 3600.
-  wls[k] = 0.01;
+  wls[k] = -0.01*(z[k]/zsize)
 
 # write the data to a file
 proffile = open('drycblles.prof','w')
