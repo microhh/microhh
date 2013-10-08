@@ -20,18 +20,18 @@
 class cmodel
 {
   public:
-    cmodel(cgrid *, cmpi *);
+    cmodel(cmpi *, cinput *);
     ~cmodel();
-    int readinifile(cinput *);
+    int readinifile();
     int init();
-    int create(cinput *);
+    int create();
     int load();
     int save();
     int exec();
 
   private:
-    cgrid   *grid;
     cmpi    *mpi;
+    cinput  *input;
 
     // switches for included schemes
     std::string swadvec;
@@ -39,8 +39,8 @@ class cmodel
     std::string swpres;
     std::string swboundary;
 
-    // fields to be created
-    cfields   *fields;
+    cgrid   *grid;
+    cfields *fields;
 
     // model operators
     cboundary *boundary;
