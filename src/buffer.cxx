@@ -55,21 +55,6 @@ int cbuffer::init()
       bufferprofs[it->first] = new double[grid->kcells];
 
     allocated = true;
-
-    bufferkstart  = grid->kstart;
-    bufferkstarth = grid->kstart;
-
-    // find the starting points
-    for(int k=grid->kstart; k<grid->kend; ++k)
-    {
-      // check if the cell center is in the buffer zone
-      if(grid->z[k] < bufferz)
-        ++bufferkstart;
-      // check if the cell face is in the buffer zone
-      if(grid->zh[k] < bufferz)
-        ++bufferkstarth;
-    }
-    std::printf("CvH: %d, %d\n", bufferkstart, bufferkstarth);
   }
 
   return 0;
@@ -87,9 +72,30 @@ int cbuffer::create(cinput *inputin)
  
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       nerror += inputin->getProf(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
-  }
 
-  return 0;
+    // find the starting points
+    bufferkstart  = grid->kstart;
+    bufferkstarth = grid->kstart;
+
+    for(int k=grid->kstart; k<grid->kend; ++k)
+    {
+      // check if the cell center is in the buffer zone
+      if(grid->z[k] < bufferz)
+        ++bufferkstart;
+      // check if the cell face is in the buffer zone
+      if(grid->zh[k] < bufferz)
+        ++bufferkstarth;
+
+    }
+
+    // check whether the lowest of the two levels is contained in the buffer layer
+    if(bufferkstarth == grid->kend)
+    {
+      ++nerror;
+      if(mpi->mpiid == 0) std::printf("ERROR buffer is too close to the model top\n");
+    }
+  }
+  return nerror;
 }
 
 int cbuffer::exec()
@@ -108,24 +114,22 @@ int cbuffer::exec()
   return 0;
 }
 
-int cbuffer::buffer(double * restrict at, double * restrict a, double * restrict abuf, double * restrict z)
+int cbuffer::buffer(double * const restrict at, const double * const restrict a, 
+                    const double * const restrict abuf, const double * const restrict z)
 { 
   int ijk,jj,kk;
-  int kloopstart;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  kloopstart = bufferkstart+1;
-
   double sigma;
   double zsizebuf;
 
-  zsizebuf = grid->zsize - z[bufferkstart];
+  zsizebuf = grid->zsize - bufferz;
 
-  for(int k=kloopstart; k<grid->kend; k++)
+  for(int k=bufferkstart; k<grid->kend; k++)
   {
-    sigma = buffersigma*std::pow((z[k]-z[bufferkstart])/zsizebuf, bufferbeta);
+    sigma = buffersigma*std::pow((z[k]-bufferz)/zsizebuf, bufferbeta);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -138,104 +142,3 @@ int cbuffer::buffer(double * restrict at, double * restrict a, double * restrict
   return 0;
 }
 
-/*
-int cbuffer::setbuffer(double * restrict a, double * restrict abuf)
-{
-  int ijk,jj,kk;
-  int kloopstart;
-
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
-
-  kloopstart = bufferkstart+1;
-
-  for(int k=kloopstart; k<grid->kend; k++)
-  {
-    abuf[k-kloopstart] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        abuf[k-kloopstart] += a[ijk];
-      }
-
-    abuf[k-kloopstart] /= grid->imax*grid->jmax;
-  }
-
-  grid->getprof(abuf, bufferkcells);
-
-  return 0;
-}
-
-int cbuffer::save()
-{
-  if(swbuffer != "1")
-    return 0;
-
-  char filename[256];
-  std::sprintf(filename, "%s.%07d", "buffer", 0);
-
-  if(mpi->mpiid == 0)
-  {
-    std::printf("Saving \"%s\"\n", filename);
-    FILE *pFile;
-    pFile = fopen(filename, "wb");
-
-    if(pFile == NULL)
-    {
-      std::printf("ERROR \"%s\" cannot be written", filename);
-      return 1;
-    }
-
-    for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
-      fwrite(itBuffer->second, sizeof(double), bufferkcells, pFile);
-    
-    fclose(pFile);
-  }
-
-  return 0;
-}
-
-int cbuffer::load()
-{
-  int nerror = 0;
-
-  if(swbuffer != "1")
-    return 0;
-
-  char filename[256];
-  std::sprintf(filename, "%s.%07d", "buffer", 0);
-
-  if(mpi->mpiid == 0)
-  {
-    std::printf("Loading \"%s\"\n", filename);
-
-    FILE *pFile;
-    pFile = fopen(filename, "rb");
-
-    if(pFile == NULL)
-    {
-      std::printf("ERROR \"%s\" does not exist\n", filename);
-      ++nerror;
-    }
-    else
-    {
-      for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
-        fread(itBuffer->second, sizeof(double), bufferkcells, pFile);
-    
-      fclose(pFile);
-    }
-  }
-
-  mpi->broadcast(&nerror, 1);
-  if(nerror)
-    return 1;
-
-  // send the buffers to all processes
-  for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
-    mpi->broadcast(itBuffer->second, bufferkcells);
-
-  return 0;
-}
-*/
