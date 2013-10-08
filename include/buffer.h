@@ -12,21 +12,21 @@ class cbuffer
     ~cbuffer();
 
     int readinifile(cinput *);
-    int setbuffers();
+    int create(cinput *);
     int init();
     int exec();
-    int save();
-    int load();
 
   private:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
 
+    double bufferz;     ///< Height above which the buffer is applied
     double buffersigma;
     double bufferbeta;
 
     int bufferkstart;
+    int bufferkstarth;
     int bufferkcells;
 
     std::map<std::string, double*> bufferprofs;
@@ -34,7 +34,7 @@ class cbuffer
     bool allocated;
     std::string swbuffer;
 
-    int setbuffer(double *, double *);
+    // int setbuffer(double *, double *);
     int buffer   (double *, double *, double *, double *);
 };
 #endif

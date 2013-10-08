@@ -31,9 +31,9 @@ int cbuffer::readinifile(cinput *inputin)
 
   if(swbuffer == "1")
   {
-    n += inputin->getItem(&bufferkstart, "buffer", "bufferkstart", "", 0 );
-    n += inputin->getItem(&buffersigma,  "buffer", "buffersigma" , "", 2.);
-    n += inputin->getItem(&bufferbeta,   "buffer", "bufferbeta"  , "", 2.);
+    n += inputin->getItem(&bufferz    , "buffer", "bufferz"     , "");
+    n += inputin->getItem(&buffersigma, "buffer", "buffersigma" , "", 2.);
+    n += inputin->getItem(&bufferbeta , "buffer", "bufferbeta"  , "", 2.);
   }
 
   // if one argument fails, then crash
@@ -47,40 +47,46 @@ int cbuffer::init()
 {
   if(swbuffer == "1")
   {
-    if(bufferkstart > grid->kmax-2)
-    {
-      if(mpi->mpiid == 0) std::printf("ERROR bufferkstart has to be less than kmax - 2\n");
-      return 1;
-    }
+    // allocate the buffer arrays
+    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+      bufferprofs[it->first] = new double[grid->kcells];
 
-    // allocate the buffer array 
-    bufferkcells = grid->kmax-bufferkstart-1;
-
-    for(fieldmap::iterator itProg = fields->mp.begin(); itProg!=fields->mp.end(); itProg++)
-      bufferprofs[itProg->first] = new double[bufferkcells];
-
-    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
-      bufferprofs[itProg->first] = new double[bufferkcells];
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      bufferprofs[it->first] = new double[grid->kcells];
 
     allocated = true;
 
-    // add the ghost cells to the starting point
-    bufferkstart += grid->kstart;
+    bufferkstart  = grid->kstart;
+    bufferkstarth = grid->kstart;
+
+    // find the starting points
+    for(int k=grid->kstart; k<grid->kend; ++k)
+    {
+      // check if the cell center is in the buffer zone
+      if(grid->z[k] < bufferz)
+        ++bufferkstart;
+      // check if the cell face is in the buffer zone
+      if(grid->zh[k] < bufferz)
+        ++bufferkstarth;
+    }
+    std::printf("CvH: %d, %d\n", bufferkstart, bufferkstarth);
   }
 
   return 0;
 }
 
-int cbuffer::setbuffers()
+int cbuffer::create(cinput *inputin)
 {
+  int nerror = 0;
+
   if(swbuffer == "1")
   {
-    // set the buffers according to the initial profiles
-    for(fieldmap::iterator itProg = fields->mp.begin(); itProg!=fields->mp.end(); itProg++)
-      setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
+    // set the buffers according to the initial profiles of the variables
+    nerror += inputin->getProf(&bufferprofs["u"][grid->kstart], "u", grid->kmax);
+    nerror += inputin->getProf(&bufferprofs["v"][grid->kstart], "v", grid->kmax);
  
-    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
-      setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      nerror += inputin->getProf(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
   }
 
   return 0;
@@ -93,10 +99,10 @@ int cbuffer::exec()
     // calculate the buffer tendencies
     buffer((*fields->mt["u"]).data, (*fields->mp["u"]).data, bufferprofs["u"], grid->z );
     buffer((*fields->mt["v"]).data, (*fields->mp["v"]).data, bufferprofs["v"], grid->z );
-    buffer((*fields->mt["w"]).data, (*fields->mp["w"]).data, bufferprofs["w"], grid->zh );
+    buffer((*fields->mt["w"]).data, (*fields->mp["w"]).data, bufferprofs["w"], grid->zh);
  
-    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
-      buffer((*fields->st[itProg->first]).data, (*itProg->second).data, bufferprofs[itProg->first], grid->z );
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      buffer(fields->st[it->first]->data, it->second->data, bufferprofs[it->first], grid->z);
   }
 
   return 0;
@@ -125,13 +131,14 @@ int cbuffer::buffer(double * restrict at, double * restrict a, double * restrict
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        at[ijk] -= sigma*(a[ijk]-abuf[k-kloopstart]);
+        at[ijk] -= sigma*(a[ijk]-abuf[k]);
       }
   }
 
   return 0;
 }
 
+/*
 int cbuffer::setbuffer(double * restrict a, double * restrict abuf)
 {
   int ijk,jj,kk;
@@ -231,3 +238,4 @@ int cbuffer::load()
 
   return 0;
 }
+*/
