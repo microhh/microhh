@@ -69,6 +69,10 @@ int cbuffer::create(cinput *inputin)
     // set the buffers according to the initial profiles of the variables
     nerror += inputin->getProf(&bufferprofs["u"][grid->kstart], "u", grid->kmax);
     nerror += inputin->getProf(&bufferprofs["v"][grid->kstart], "v", grid->kmax);
+
+    // allocate the buffer for w on 0
+    for(int k=0; k<grid->kcells; ++k)
+      bufferprofs["w"][k] = 0.;
  
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       nerror += inputin->getProf(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
