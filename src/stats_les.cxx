@@ -118,8 +118,6 @@ int cstats_les::create(int n)
     }
     else
     {
-      initialized = true;
-
       // create dimensions
       z_dim  = dataFile->add_dim("z" , grid->kmax);
       zh_dim = dataFile->add_dim("zh", grid->kmax+1);
@@ -170,6 +168,8 @@ int cstats_les::create(int n)
 
       dataFile->sync();
     }
+
+    initialized = true;
   }
 
   // crash on all processes in case the file could not be written
