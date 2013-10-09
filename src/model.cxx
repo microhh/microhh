@@ -229,9 +229,9 @@ int cmodel::load()
     return 1;
   if(fields->load(timeloop->iotime))
     return 1;
-  if(buffer->load())
-    return 1;
   if(boundary->load(timeloop->iotime))
+    return 1;
+  if(buffer->create(input))
     return 1;
   if(force->create(input))
     return 1;
@@ -254,8 +254,6 @@ int cmodel::create()
     return 1;
   if(fields->create(input))
     return 1;
-  if(buffer->setbuffers())
-    return 1;
 
   return 0;
 }
@@ -265,8 +263,6 @@ int cmodel::save()
   if(grid->save())
     return 1;
   if(fields->save(timeloop->iotime))
-    return 1;
-  if(buffer->save())
     return 1;
   if(timeloop->save(timeloop->iotime))
     return 1;

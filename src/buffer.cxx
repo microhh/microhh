@@ -31,9 +31,9 @@ int cbuffer::readinifile(cinput *inputin)
 
   if(swbuffer == "1")
   {
-    n += inputin->getItem(&bufferkstart, "buffer", "bufferkstart", "", 0 );
-    n += inputin->getItem(&buffersigma,  "buffer", "buffersigma" , "", 2.);
-    n += inputin->getItem(&bufferbeta,   "buffer", "bufferbeta"  , "", 2.);
+    n += inputin->getItem(&bufferz    , "buffer", "bufferz"     , "");
+    n += inputin->getItem(&buffersigma, "buffer", "buffersigma" , "", 2.);
+    n += inputin->getItem(&bufferbeta , "buffer", "bufferbeta"  , "", 2.);
   }
 
   // if one argument fails, then crash
@@ -47,43 +47,59 @@ int cbuffer::init()
 {
   if(swbuffer == "1")
   {
-    if(bufferkstart > grid->kmax-2)
-    {
-      if(mpi->mpiid == 0) std::printf("ERROR bufferkstart has to be less than kmax - 2\n");
-      return 1;
-    }
+    // allocate the buffer arrays
+    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+      bufferprofs[it->first] = new double[grid->kcells];
 
-    // allocate the buffer array 
-    bufferkcells = grid->kmax-bufferkstart-1;
-
-    for(fieldmap::iterator itProg = fields->mp.begin(); itProg!=fields->mp.end(); itProg++)
-      bufferprofs[itProg->first] = new double[bufferkcells];
-
-    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
-      bufferprofs[itProg->first] = new double[bufferkcells];
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      bufferprofs[it->first] = new double[grid->kcells];
 
     allocated = true;
-
-    // add the ghost cells to the starting point
-    bufferkstart += grid->kstart;
   }
 
   return 0;
 }
 
-int cbuffer::setbuffers()
+int cbuffer::create(cinput *inputin)
 {
+  int nerror = 0;
+
   if(swbuffer == "1")
   {
-    // set the buffers according to the initial profiles
-    for(fieldmap::iterator itProg = fields->mp.begin(); itProg!=fields->mp.end(); itProg++)
-      setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
- 
-    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
-      setbuffer((*itProg->second).data, bufferprofs[itProg->first]);
-  }
+    // set the buffers according to the initial profiles of the variables
+    nerror += inputin->getProf(&bufferprofs["u"][grid->kstart], "u", grid->kmax);
+    nerror += inputin->getProf(&bufferprofs["v"][grid->kstart], "v", grid->kmax);
 
-  return 0;
+    // allocate the buffer for w on 0
+    for(int k=0; k<grid->kcells; ++k)
+      bufferprofs["w"][k] = 0.;
+ 
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      nerror += inputin->getProf(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
+
+    // find the starting points
+    bufferkstart  = grid->kstart;
+    bufferkstarth = grid->kstart;
+
+    for(int k=grid->kstart; k<grid->kend; ++k)
+    {
+      // check if the cell center is in the buffer zone
+      if(grid->z[k] < bufferz)
+        ++bufferkstart;
+      // check if the cell face is in the buffer zone
+      if(grid->zh[k] < bufferz)
+        ++bufferkstarth;
+
+    }
+
+    // check whether the lowest of the two levels is contained in the buffer layer
+    if(bufferkstarth == grid->kend)
+    {
+      ++nerror;
+      if(mpi->mpiid == 0) std::printf("ERROR buffer is too close to the model top\n");
+    }
+  }
+  return nerror;
 }
 
 int cbuffer::exec()
@@ -93,141 +109,40 @@ int cbuffer::exec()
     // calculate the buffer tendencies
     buffer((*fields->mt["u"]).data, (*fields->mp["u"]).data, bufferprofs["u"], grid->z );
     buffer((*fields->mt["v"]).data, (*fields->mp["v"]).data, bufferprofs["v"], grid->z );
-    buffer((*fields->mt["w"]).data, (*fields->mp["w"]).data, bufferprofs["w"], grid->zh );
+    buffer((*fields->mt["w"]).data, (*fields->mp["w"]).data, bufferprofs["w"], grid->zh);
  
-    for(fieldmap::iterator itProg = fields->sp.begin(); itProg!=fields->sp.end(); itProg++)
-      buffer((*fields->st[itProg->first]).data, (*itProg->second).data, bufferprofs[itProg->first], grid->z );
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      buffer(fields->st[it->first]->data, it->second->data, bufferprofs[it->first], grid->z);
   }
 
   return 0;
 }
 
-int cbuffer::buffer(double * restrict at, double * restrict a, double * restrict abuf, double * restrict z)
+int cbuffer::buffer(double * const restrict at, const double * const restrict a, 
+                    const double * const restrict abuf, const double * const restrict z)
 { 
   int ijk,jj,kk;
-  int kloopstart;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-
-  kloopstart = bufferkstart+1;
 
   double sigma;
   double zsizebuf;
 
-  zsizebuf = grid->zsize - z[bufferkstart];
+  zsizebuf = grid->zsize - bufferz;
 
-  for(int k=kloopstart; k<grid->kend; k++)
+  for(int k=bufferkstart; k<grid->kend; k++)
   {
-    sigma = buffersigma*std::pow((z[k]-z[bufferkstart])/zsizebuf, bufferbeta);
+    sigma = buffersigma*std::pow((z[k]-bufferz)/zsizebuf, bufferbeta);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        at[ijk] -= sigma*(a[ijk]-abuf[k-kloopstart]);
+        at[ijk] -= sigma*(a[ijk]-abuf[k]);
       }
   }
 
   return 0;
 }
 
-int cbuffer::setbuffer(double * restrict a, double * restrict abuf)
-{
-  int ijk,jj,kk;
-  int kloopstart;
-
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
-
-  kloopstart = bufferkstart+1;
-
-  for(int k=kloopstart; k<grid->kend; k++)
-  {
-    abuf[k-kloopstart] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        abuf[k-kloopstart] += a[ijk];
-      }
-
-    abuf[k-kloopstart] /= grid->imax*grid->jmax;
-  }
-
-  grid->getprof(abuf, bufferkcells);
-
-  return 0;
-}
-
-int cbuffer::save()
-{
-  if(swbuffer != "1")
-    return 0;
-
-  char filename[256];
-  std::sprintf(filename, "%s.%07d", "buffer", 0);
-
-  if(mpi->mpiid == 0)
-  {
-    std::printf("Saving \"%s\"\n", filename);
-    FILE *pFile;
-    pFile = fopen(filename, "wb");
-
-    if(pFile == NULL)
-    {
-      std::printf("ERROR \"%s\" cannot be written", filename);
-      return 1;
-    }
-
-    for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
-      fwrite(itBuffer->second, sizeof(double), bufferkcells, pFile);
-    
-    fclose(pFile);
-  }
-
-  return 0;
-}
-
-int cbuffer::load()
-{
-  int nerror = 0;
-
-  if(swbuffer != "1")
-    return 0;
-
-  char filename[256];
-  std::sprintf(filename, "%s.%07d", "buffer", 0);
-
-  if(mpi->mpiid == 0)
-  {
-    std::printf("Loading \"%s\"\n", filename);
-
-    FILE *pFile;
-    pFile = fopen(filename, "rb");
-
-    if(pFile == NULL)
-    {
-      std::printf("ERROR \"%s\" does not exist\n", filename);
-      ++nerror;
-    }
-    else
-    {
-      for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
-        fread(itBuffer->second, sizeof(double), bufferkcells, pFile);
-    
-      fclose(pFile);
-    }
-  }
-
-  mpi->broadcast(&nerror, 1);
-  if(nerror)
-    return 1;
-
-  // send the buffers to all processes
-  for (std::map<std::string,double*>::iterator itBuffer = bufferprofs.begin(); itBuffer!=bufferprofs.end(); itBuffer++)
-    mpi->broadcast(itBuffer->second, bufferkcells);
-
-  return 0;
-}

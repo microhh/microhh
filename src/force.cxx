@@ -22,6 +22,15 @@ cforce::~cforce()
       delete[] ug;
       delete[] vg;
     }
+
+    if(swls == "1")
+    {
+      for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+        delete[] lsprofs[*it];
+    }
+
+    if(swwls == "1")
+      delete[] wls;
   }
 }
 
