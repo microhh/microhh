@@ -12,6 +12,7 @@ class cthermo_moist
     ~cthermo_moist();
     int readinifile(cinput *);
     int init(cinput *);
+    int create();
     int exec();
     int getbuoyancy();
     int getbuoyancyh();
@@ -26,14 +27,19 @@ class cthermo_moist
 #define rhow    1.e3
 #define tmelt   273.15
 #define p0 1.e5
+#define grav 9.81
   private:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
 
     std::string swbuoyancy;
-    double gravitybeta; // gravity multiplied with thermal expansion coefficient
 
+    double ps;
+    double thvs;
+    double rhos;
+    double *pmn;
+    
     int buoyancy_2nd(double *, double *, double *, double *);
     int buoyancy_4th(double *, double *, double *, double *);
     inline double calcql(const double, const double, const double);
