@@ -28,13 +28,16 @@
 #include "pres_g42.h"
 #include "pres_g4.h"
 
-cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
+cmodel::cmodel(cmpi * mpiin, cinput * inputin)
 {
-  grid    = gridin;
-  mpi     = mpiin;
+  mpi   = mpiin;
+  input = inputin;
+
+  // create the grid class
+  grid = new cgrid(mpi);
 
   // create the fields class
-  fields   = new cfields  (grid, mpi);
+  fields = new cfields(grid, mpi);
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
@@ -43,8 +46,8 @@ cmodel::cmodel(cgrid *gridin, cmpi *mpiin)
   buffer   = new cbuffer  (grid, fields, mpi);
 
   // load the postprocessing moduls
-  stats    = new cstats   (grid, fields, mpi);
-  cross    = new ccross   (grid, fields, mpi);
+  stats = new cstats   (grid, fields, mpi);
+  cross = new ccross   (grid, fields, mpi);
 
   // set null pointers for classes that will be initialized later
   boundary = NULL;
@@ -68,22 +71,27 @@ cmodel::~cmodel()
 
   delete boundary;
   delete fields;
+  delete grid;
 }
 
-int cmodel::readinifile(cinput *inputin)
+int cmodel::readinifile()
 {
   // input parameters
   int n = 0;
 
+  // grid
+  if(grid->readinifile(input))
+    return 1;
+
   // fields
-  if(fields->readinifile(inputin))
+  if(fields->readinifile(input))
     return 1;
 
   // first, get the switches for the schemes
-  n += inputin->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
-  n += inputin->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
-  n += inputin->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
-  n += inputin->getItem(&swboundary, "boundary", "swboundary", "", "base"              );
+  n += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
+  n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
+  n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
+  n += input->getItem(&swboundary, "boundary", "swboundary", "", "default"           );
 
   // if one or more arguments fails, then crash
   if(n > 0)
@@ -107,7 +115,7 @@ int cmodel::readinifile(cinput *inputin)
     std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     return 1;
   }
-  if(advec->readinifile(inputin))
+  if(advec->readinifile(input))
     return 1;
 
   // check the diffusion scheme
@@ -135,7 +143,7 @@ int cmodel::readinifile(cinput *inputin)
     std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
     return 1;
   }
-  if(diff->readinifile(inputin))
+  if(diff->readinifile(input))
     return 1;
 
   // check the pressure scheme
@@ -152,15 +160,15 @@ int cmodel::readinifile(cinput *inputin)
     std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());
     return 1;
   }
-  if(pres->readinifile(inputin))
+  if(pres->readinifile(input))
     return 1;
 
   // model operations
-  if(force->readinifile(inputin))
+  if(force->readinifile(input))
     return 1;
-  if(buoyancy->readinifile(inputin))
+  if(buoyancy->readinifile(input))
     return 1;
-  if(timeloop->readinifile(inputin))
+  if(timeloop->readinifile(input))
     return 1;
 
   // read the boundary and buffer in the end because they need to know the requested fields
@@ -168,23 +176,23 @@ int cmodel::readinifile(cinput *inputin)
     boundary = new cboundary_surface(grid, fields, mpi);
   else if(swboundary == "user")
     boundary = new cboundary_user(grid, fields, mpi);
-  else if(swboundary == "base")
+  else if(swboundary == "default")
     boundary = new cboundary(grid, fields, mpi);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
     return 1;
   }
-  if(boundary->readinifile(inputin))
+  if(boundary->readinifile(input))
     return 1;
 
-  if(buffer->readinifile(inputin))
+  if(buffer->readinifile(input))
     return 1;
 
   // statistics
-  if(stats->readinifile(inputin))
+  if(stats->readinifile(input))
     return 1;
-  if(cross->readinifile(inputin))
+  if(cross->readinifile(input))
     return 1;
 
   return 0;
@@ -192,6 +200,8 @@ int cmodel::readinifile(cinput *inputin)
 
 int cmodel::init()
 {
+  if(grid->init())
+    return 1;
   if(fields->init())
     return 1;
   if(boundary->init())
@@ -213,15 +223,17 @@ int cmodel::init()
 
 int cmodel::load()
 {
+  if(grid->load())
+    return 1;
   if(timeloop->load(timeloop->iotime))
     return 1;
   if(fields->load(timeloop->iotime))
     return 1;
-  if(buffer->load())
-    return 1;
   if(boundary->load(timeloop->iotime))
     return 1;
-  if(force->load())
+  if(buffer->create(input))
+    return 1;
+  if(force->create(input))
     return 1;
   if(stats->create(timeloop->iotime))
     return 1;
@@ -236,13 +248,11 @@ int cmodel::load()
   return 0;
 }
 
-int cmodel::create(cinput *inputin)
+int cmodel::create()
 {
-  if(fields->create(inputin))
+  if(grid->create(input))
     return 1;
-  if(buffer->setbuffers())
-    return 1;
-  if(force->create(inputin))
+  if(fields->create(input))
     return 1;
 
   return 0;
@@ -250,11 +260,9 @@ int cmodel::create(cinput *inputin)
 
 int cmodel::save()
 {
+  if(grid->save())
+    return 1;
   if(fields->save(timeloop->iotime))
-    return 1;
-  if(buffer->save())
-    return 1;
-  if(force->save())
     return 1;
   if(timeloop->save(timeloop->iotime))
     return 1;
@@ -291,12 +299,12 @@ int cmodel::exec()
     advec->exec();
     // diffusion
     diff->exec();
-    // large scale forcings
-    force->exec(timeloop->getsubdt());
     // buoyancy
     buoyancy->exec();
     // buffer
     buffer->exec();
+    // large scale forcings
+    force->exec(timeloop->getsubdt());
 
     // pressure
     pres->exec(timeloop->getsubdt());

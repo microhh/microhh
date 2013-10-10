@@ -35,6 +35,27 @@ int cthermo_moist::init(cinput *inputin)
   return nerror;
 }
 
+int cthermo_moist::create()
+{
+  int nerror = 0;
+  double qtsurf, ssurf;
+  
+  // Create hydrostatic profile
+  nerror += grid->calcmean(&ssurf, fields->s["s"]->databot,1);
+  nerror += grid->calcmean(&qtsurf, fields->s["qt"]->databot,1);
+
+  thvs = ssurf * (1. - (1. - rv/rd)*qtsurf);
+  double tvs  = exner(ps) * thvs;
+  rhos = ps / (rv * tvs);
+
+  pmn = new double[grid->kmax+2*grid->kgc];
+  for(int k=0; k<grid->kcells; k++)
+  {
+    pmn[k] = ps - rhos * grav * grid->z[k];
+  }
+  
+  return nerror;
+}
 int cthermo_moist::exec()
 {
   if(swbuoyancy == "0")
@@ -45,7 +66,7 @@ int cthermo_moist::exec()
   {
     for(int n=0; n<grid->icells*grid->jcells; n++)
     {
-      fields->s["tmp1"]->data[n] = fields->s["p"]->data[n] + fields->s["p"]->datamean[k];
+      fields->s["tmp1"]->data[n] = (fields->s["p"]->data[n] + pmn[k]) / rhos;
     }
   }
 
@@ -59,16 +80,6 @@ int cthermo_moist::exec()
   {
     buoyancy_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
   }
-
-  // add mean pressure to pressure fluctuations into tmp array
-  for(int k=0; k<grid->kcells; k++)
-  {
-    for(int n=0; n<grid->icells*grid->jcells; n++)
-    {
-      fields->s["p"]->data[n] = fields->s["tmp1"]->data[n] - fields->s["p"]->datamean[k];
-    }
-  }
-
 
   return 0;
 }
@@ -126,7 +137,7 @@ int cthermo_moist::buoyancy_4th(double * restrict wt, double * restrict s, doubl
 
 inline double cthermo_moist::bu(const double s, const double qt, const double ql)
 {
-  return gravitybeta * s * (1. - (1. - rv/rd)*qt - rv/rd*ql);
+  return grav * (s * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvs) / thvs;
 }
 
 inline double cthermo_moist::calcql(const double s, const double qt, const double p)
