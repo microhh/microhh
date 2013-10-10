@@ -227,7 +227,7 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   
   int ijk,jj,kk;
   int kendrnd;
-  double rndfac, rndfach;
+  double rndfac;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
@@ -257,8 +257,7 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
 
   for(int k=grid->kstart; k<kendrnd; ++k)
   {
-    rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
-    rndfach = std::pow((rndz-grid->zh[k])/rndz, rndbeta);
+    rndfac = std::pow((rndz-grid->z [k])/rndz, rndbeta);
     for(int j=grid->jstart; j<grid->jend; ++j)
       for(int i=grid->istart; i<grid->iend; ++i)
       {
@@ -335,13 +334,39 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
 
 int cfields::load(int n)
 {
-  // check them all before returning error
   int nerror = 0;
-  nerror += u->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  nerror += v->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  nerror += w->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); ++itProg)
-    nerror += itProg->second->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
+
+  for(fieldmap::const_iterator it=mp.begin(); it!=mp.end(); ++it)
+  {
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
+    if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename))
+    {
+      if(mpi->mpiid == 0) std::printf("FAILED\n");
+      ++nerror;
+    }
+    else
+    {
+      if(mpi->mpiid == 0) std::printf("OK\n");
+    }  
+  }
+
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+  {
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
+    if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename))
+    {
+      if(mpi->mpiid == 0) std::printf("FAILED\n");
+      ++nerror;
+    }
+    else
+    {
+      if(mpi->mpiid == 0) std::printf("OK\n");
+    }
+  }
 
   if(nerror > 0)
     return 1;
@@ -351,14 +376,40 @@ int cfields::load(int n)
 
 int cfields::save(int n)
 {
-  u->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  v->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  w->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  // p->save(n);
-  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); ++itProg)
-    itProg->second->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
+  int nerror = 0;
+  for(fieldmap::const_iterator it=mp.begin(); it!=mp.end(); ++it)
+  {
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
+    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename))
+    {
+      if(mpi->mpiid == 0) std::printf("FAILED\n");
+      ++nerror;
+    }  
+    else
+    {
+      if(mpi->mpiid == 0) std::printf("OK\n");
+    }
+  }
 
-  return 0;
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+  {
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
+    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename))
+    {
+      if(mpi->mpiid == 0) std::printf("FAILED\n");
+      ++nerror;
+    }
+    else
+    {
+      if(mpi->mpiid == 0) std::printf("OK\n");
+    }
+  }
+
+  return (nerror > 0);
 }
 
 /*

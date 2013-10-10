@@ -466,12 +466,12 @@ int cgrid::save()
 {
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
 
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
   }
 
@@ -515,6 +515,9 @@ int cgrid::save()
     fclose(pFile);
   }
 
+  // the saving procedure is a success
+  if(mpi->mpiid == 0) std::printf("OK\n");
+
   // SAVE THE FFTW PLAN
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
   iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
@@ -548,7 +551,7 @@ int cgrid::load()
   // LOAD THE GRID
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
 
   FILE *pFile;
   if(mpi->mpiid == 0)
@@ -556,7 +559,7 @@ int cgrid::load()
     pFile = fopen(filename, "rb");
     if(pFile == NULL)
     {
-      std::printf("ERROR \"%s\" does not exist\n", filename);
+      std::printf("FAILED\n");
       ++nerror;
     }
     else
@@ -572,7 +575,12 @@ int cgrid::load()
   // communicate the file read error over all procs
   mpi->broadcast(&nerror, 1);
   if(nerror)
+  {
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
+  }
+  else
+    if(mpi->mpiid == 0) std::printf("OK\n");
 
   mpi->broadcast(&z [kstart], kmax);
   mpi->broadcast(&zh[kstart], kmax);

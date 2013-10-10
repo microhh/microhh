@@ -308,10 +308,10 @@ int cmodel::exec()
 
     // pressure
     pres->exec(timeloop->getsubdt());
-    if(timeloop->dosave() && !timeloop->insubstep())
-    {
-      fields->s["p"]->save(timeloop->iotime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
-    }
+    // if(timeloop->dosave() && !timeloop->insubstep())
+    // {
+    //   fields->s["p"]->save(timeloop->iotime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
+    // }
     
     // statistics when not in substep and not directly after restart
     if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))
