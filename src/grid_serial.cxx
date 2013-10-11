@@ -295,14 +295,15 @@ int cgrid::save()
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "wb");
+  std::printf("Saving \"%s\" ... ", filename);
 
   if(pFile == NULL)
   {
-    std::printf("ERROR \"%s\" cannot be written\n", filename);
+    std::printf("FAILED\n");
     return 1;
   }
   else
-    std::printf("Saving \"%s\"\n", filename);
+    std::printf("OK\n");
 
   fwrite(&x [istart], sizeof(double), itot, pFile);
   fwrite(&xh[istart], sizeof(double), itot, pFile);
@@ -325,14 +326,16 @@ int cgrid::save()
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-    std::printf("Saving \"%s\"\n", filename);
+    std::printf("Saving \"%s\" ... ", filename);
 
     int n = fftw_export_wisdom_to_filename(filename);
     if(n == 0)
     {
-      std::printf("ERROR \"%s\" cannot be saved\n", filename);
+      std::printf("FAILED\n");
       return 1;
     }
+    else
+      std::printf("OK\n");
   }
 
   return 0;
@@ -345,14 +348,15 @@ int cgrid::load()
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "rb");
+  std::printf("Loading \"%s\" ... ", filename);
 
   if(pFile == NULL)
   {
-    std::printf("ERROR \"%s\" does not exist\n", filename);
+    std::printf("FAILED\n");
     return 1;
   }
   else
-    std::printf("Loading \"%s\"\n", filename);
+    std::printf("OK\n");
 
   fread(&x [istart], sizeof(double), itot, pFile);
   fread(&xh[istart], sizeof(double), itot, pFile);
@@ -369,15 +373,16 @@ int cgrid::load()
   std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
   if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
+    std::printf("Loading \"%s\" ... ", filename);
 
   int n = fftw_import_wisdom_from_filename(filename);
   if(n == 0)
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" does not exist\n", filename);
+    std::printf("FAILED\n");
     return 1;
   }
+  else
+    std::printf("OK\n");
 
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
   iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
