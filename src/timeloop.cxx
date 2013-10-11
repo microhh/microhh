@@ -297,7 +297,7 @@ int ctimeloop::save(int starttime)
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
 
-    std::printf("Saving \"%s\"\n", filename);
+    std::printf("Saving \"%s\" ... ", filename);
 
     FILE *pFile;
     pFile = fopen(filename, "wb");
@@ -313,6 +313,7 @@ int ctimeloop::save(int starttime)
     fwrite(&iteration, sizeof(long), 1, pFile);
 
     fclose(pFile);
+    std::printf("OK\n");
   }
 
   return 0;
@@ -327,14 +328,14 @@ int ctimeloop::load(int starttime)
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
 
-    std::printf("Loading \"%s\"\n", filename);
+    std::printf("Loading \"%s\" ... ", filename);
 
     FILE *pFile;
     pFile = fopen(filename, "rb");
 
     if(pFile == NULL)
     {
-      if(mpi->mpiid == 0) std::printf("ERROR \"%s\" does not exist\n", filename);
+      std::printf("ERROR \"%s\" does not exist\n", filename);
       ++nerror;
     }
     else
@@ -345,6 +346,7 @@ int ctimeloop::load(int starttime)
 
       fclose(pFile);
     }
+    std::printf("OK\n");
   }
 
   mpi->broadcast(&nerror, 1);

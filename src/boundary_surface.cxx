@@ -116,9 +116,14 @@ int cboundary_surface::save(int iotime)
   char filename[256];
 
   std::sprintf(filename, "obuk.%07d", iotime);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
   if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
+  {
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
+  }
+  else
+    if(mpi->mpiid == 0) std::printf("OK\n");
 
   return 0;
 }
@@ -128,9 +133,14 @@ int cboundary_surface::load(int iotime)
   char filename[256];
 
   std::sprintf(filename, "obuk.%07d", iotime);
-  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
   if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
+  {
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
+  }
+  else
+    if(mpi->mpiid == 0) std::printf("OK\n");
 
   grid->boundary_cyclic2d(obuk);
 
