@@ -24,7 +24,7 @@ class microhh:
     self.zh = array(struct.unpack('<{}d'.format(nz), raw))
     fin.close()
     
-    fin = open("{0:s}/u.{1:07d}".format(path, iter),"rb")
+    fin = open("{0:s}/u.xz.00000.{1:07d}".format(path, iter),"rb")
     raw = fin.read(n*8)
     tmp = array(struct.unpack('<{}d'.format(n), raw))
     del(raw)
@@ -32,15 +32,7 @@ class microhh:
     del(tmp)
     fin.close()
     
-    fin = open("{0:s}/v.{1:07d}".format(path, iter),"rb")
-    raw = fin.read(n*8)
-    tmp = array(struct.unpack('<{}d'.format(n), raw))
-    del(raw)
-    self.v = tmp.reshape((nz, ny, nx))
-    del(tmp)
-    fin.close()
-    
-    fin = open("{0:s}/w.{1:07d}".format(path, iter),"rb")
+    fin = open("{0:s}/w.xz.00000.{1:07d}".format(path, iter),"rb")
     raw = fin.read(n*8)
     tmp = array(struct.unpack('<{}d'.format(n), raw))
     del(raw)
@@ -48,7 +40,7 @@ class microhh:
     del(tmp)
     fin.close()
     
-    fin = open("{0:s}/p.{1:07d}".format(path, iter),"rb")
+    fin = open("{0:s}/p.xz.00000.{1:07d}".format(path, iter),"rb")
     raw = fin.read(n*8)
     tmp = array(struct.unpack('<{}d'.format(n), raw))
     del(raw)
