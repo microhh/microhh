@@ -23,75 +23,75 @@ cstats_les::~cstats_les()
 
   if(allocated)
   {
-    delete[] u;
-    delete[] v;
-    delete[] w;
-    delete[] s;
+    delete[] u.data;
+    delete[] v.data;
+    delete[] w.data;
+    delete[] s.data;
 
-    delete[] u2;
-    delete[] v2;
-    delete[] w2;
-    delete[] s2;
+    delete[] u2.data;
+    delete[] v2.data;
+    delete[] w2.data;
+    delete[] s2.data;
 
-    delete[] u3;
-    delete[] v3;
-    delete[] w3;
-    delete[] s3;
+    delete[] u3.data;
+    delete[] v3.data;
+    delete[] w3.data;
+    delete[] s3.data;
 
-    delete[] evisc;
+    delete[] evisc.data;
 
-    delete[] ugrad;
-    delete[] vgrad;
-    delete[] sgrad;
+    delete[] ugrad.data;
+    delete[] vgrad.data;
+    delete[] sgrad.data;
 
-    delete[] wu;
-    delete[] wv;
-    delete[] ws;
+    delete[] wu.data;
+    delete[] wv.data;
+    delete[] ws.data;
 
-    delete[] udiff;
-    delete[] vdiff;
-    delete[] sdiff;
+    delete[] udiff.data;
+    delete[] vdiff.data;
+    delete[] sdiff.data;
 
-    delete[] uflux;
-    delete[] vflux;
-    delete[] sflux;
+    delete[] uflux.data;
+    delete[] vflux.data;
+    delete[] sflux.data;
   }
 }
 
 int cstats_les::init()
 {
-  u = new double[grid->kcells];
-  v = new double[grid->kcells];
-  w = new double[grid->kcells];
-  s = new double[grid->kcells];
+  u.data = new double[grid->kcells];
+  v.data = new double[grid->kcells];
+  w.data = new double[grid->kcells];
+  s.data = new double[grid->kcells];
 
-  u2 = new double[grid->kcells];
-  v2 = new double[grid->kcells];
-  w2 = new double[grid->kcells];
-  s2 = new double[grid->kcells];
+  u2.data = new double[grid->kcells];
+  v2.data = new double[grid->kcells];
+  w2.data = new double[grid->kcells];
+  s2.data = new double[grid->kcells];
 
-  u3 = new double[grid->kcells];
-  v3 = new double[grid->kcells];
-  w3 = new double[grid->kcells];
-  s3 = new double[grid->kcells];
+  u3.data = new double[grid->kcells];
+  v3.data = new double[grid->kcells];
+  w3.data = new double[grid->kcells];
+  s3.data = new double[grid->kcells];
 
-  evisc = new double[grid->kcells];
+  evisc.data = new double[grid->kcells];
 
-  ugrad = new double[grid->kcells];
-  vgrad = new double[grid->kcells];
-  sgrad = new double[grid->kcells];
+  ugrad.data = new double[grid->kcells];
+  vgrad.data = new double[grid->kcells];
+  sgrad.data = new double[grid->kcells];
 
-  wu = new double[grid->kcells];
-  wv = new double[grid->kcells];
-  ws = new double[grid->kcells];
+  wu.data = new double[grid->kcells];
+  wv.data = new double[grid->kcells];
+  ws.data = new double[grid->kcells];
 
-  udiff = new double[grid->kcells];
-  vdiff = new double[grid->kcells];
-  sdiff = new double[grid->kcells];
+  udiff.data = new double[grid->kcells];
+  vdiff.data = new double[grid->kcells];
+  sdiff.data = new double[grid->kcells];
 
-  uflux = new double[grid->kcells];
-  vflux = new double[grid->kcells];
-  sflux = new double[grid->kcells];
+  uflux.data = new double[grid->kcells];
+  vflux.data = new double[grid->kcells];
+  sflux.data = new double[grid->kcells];
 
   allocated = true;
 
@@ -129,38 +129,38 @@ int cstats_les::create(int n)
       z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
       zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
 
-      u_var = dataFile->add_var("u", ncDouble, t_dim, z_dim );
-      v_var = dataFile->add_var("v", ncDouble, t_dim, z_dim );
-      w_var = dataFile->add_var("w", ncDouble, t_dim, zh_dim);
-      s_var = dataFile->add_var("s", ncDouble, t_dim, z_dim );
+      u.ncvar = dataFile->add_var("u", ncDouble, t_dim, z_dim );
+      v.ncvar = dataFile->add_var("v", ncDouble, t_dim, z_dim );
+      w.ncvar = dataFile->add_var("w", ncDouble, t_dim, zh_dim);
+      s.ncvar = dataFile->add_var("s", ncDouble, t_dim, z_dim );
 
-      u2_var = dataFile->add_var("u2", ncDouble, t_dim, z_dim );
-      v2_var = dataFile->add_var("v2", ncDouble, t_dim, z_dim );
-      w2_var = dataFile->add_var("w2", ncDouble, t_dim, zh_dim);
-      s2_var = dataFile->add_var("s2", ncDouble, t_dim, z_dim );
+      u2.ncvar = dataFile->add_var("u2", ncDouble, t_dim, z_dim );
+      v2.ncvar = dataFile->add_var("v2", ncDouble, t_dim, z_dim );
+      w2.ncvar = dataFile->add_var("w2", ncDouble, t_dim, zh_dim);
+      s2.ncvar = dataFile->add_var("s2", ncDouble, t_dim, z_dim );
 
-      u3_var = dataFile->add_var("u3", ncDouble, t_dim, z_dim );
-      v3_var = dataFile->add_var("v3", ncDouble, t_dim, z_dim );
-      w3_var = dataFile->add_var("w3", ncDouble, t_dim, zh_dim);
-      s3_var = dataFile->add_var("s3", ncDouble, t_dim, z_dim );
+      u3.ncvar = dataFile->add_var("u3", ncDouble, t_dim, z_dim );
+      v3.ncvar = dataFile->add_var("v3", ncDouble, t_dim, z_dim );
+      w3.ncvar = dataFile->add_var("w3", ncDouble, t_dim, zh_dim);
+      s3.ncvar = dataFile->add_var("s3", ncDouble, t_dim, z_dim );
 
-      ugrad_var = dataFile->add_var("ugrad", ncDouble, t_dim, zh_dim );
-      vgrad_var = dataFile->add_var("vgrad", ncDouble, t_dim, zh_dim );
-      sgrad_var = dataFile->add_var("sgrad", ncDouble, t_dim, zh_dim );
+      ugrad.ncvar = dataFile->add_var("ugrad", ncDouble, t_dim, zh_dim );
+      vgrad.ncvar = dataFile->add_var("vgrad", ncDouble, t_dim, zh_dim );
+      sgrad.ncvar = dataFile->add_var("sgrad", ncDouble, t_dim, zh_dim );
 
-      wu_var = dataFile->add_var("uw", ncDouble, t_dim, zh_dim );
-      wv_var = dataFile->add_var("vw", ncDouble, t_dim, zh_dim );
-      ws_var = dataFile->add_var("sw", ncDouble, t_dim, zh_dim );
+      wu.ncvar = dataFile->add_var("uw", ncDouble, t_dim, zh_dim );
+      wv.ncvar = dataFile->add_var("vw", ncDouble, t_dim, zh_dim );
+      ws.ncvar = dataFile->add_var("sw", ncDouble, t_dim, zh_dim );
 
-      udiff_var = dataFile->add_var("udiff", ncDouble, t_dim, zh_dim );
-      vdiff_var = dataFile->add_var("vdiff", ncDouble, t_dim, zh_dim );
-      sdiff_var = dataFile->add_var("sdiff", ncDouble, t_dim, zh_dim );
+      udiff.ncvar = dataFile->add_var("udiff", ncDouble, t_dim, zh_dim );
+      vdiff.ncvar = dataFile->add_var("vdiff", ncDouble, t_dim, zh_dim );
+      sdiff.ncvar = dataFile->add_var("sdiff", ncDouble, t_dim, zh_dim );
 
-      uflux_var = dataFile->add_var("uflux", ncDouble, t_dim, zh_dim );
-      vflux_var = dataFile->add_var("vflux", ncDouble, t_dim, zh_dim );
-      sflux_var = dataFile->add_var("sflux", ncDouble, t_dim, zh_dim );
+      uflux.ncvar = dataFile->add_var("uflux", ncDouble, t_dim, zh_dim );
+      vflux.ncvar = dataFile->add_var("vflux", ncDouble, t_dim, zh_dim );
+      sflux.ncvar = dataFile->add_var("sflux", ncDouble, t_dim, zh_dim );
 
-      evisc_var = dataFile->add_var("evisc", ncDouble, t_dim, z_dim );
+      evisc.ncvar = dataFile->add_var("evisc", ncDouble, t_dim, z_dim );
 
       // save the grid variables
       z_var ->put(&grid->z [grid->kstart], grid->kmax  );
@@ -190,81 +190,81 @@ int cstats_les::exec(int iteration, double time)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, u);
-  calcmean(fields->v->data, v);
-  calcmean(fields->w->data, w);
-  calcmean(fields->s["s"]->data, s);
-  calcmean(fields->s["evisc"]->data, evisc);
+  calcmean(fields->u->data, u.data);
+  calcmean(fields->v->data, v.data);
+  calcmean(fields->w->data, w.data);
+  calcmean(fields->s["s"]->data, s.data);
+  calcmean(fields->s["evisc"]->data, evisc.data);
 
   // calc variances
-  calcmoment(fields->u->data, u, u2, 2., 0);
-  calcmoment(fields->v->data, v, v2, 2., 0);
-  calcmoment(fields->w->data, w, w2, 2., 1);
-  calcmoment(fields->s["s"]->data, s, s2, 2., 0);
+  calcmoment(fields->u->data, u.data, u2.data, 2., 0);
+  calcmoment(fields->v->data, v.data, v2.data, 2., 0);
+  calcmoment(fields->w->data, w.data, w2.data, 2., 1);
+  calcmoment(fields->s["s"]->data, s.data, s2.data, 2., 0);
 
   // calc skewnesses
-  calcmoment(fields->u->data, u, u3, 3., 0);
-  calcmoment(fields->v->data, v, v3, 3., 0);
-  calcmoment(fields->w->data, w, w3, 3., 1);
-  calcmoment(fields->s["s"]->data, s, s3, 3., 0);
+  calcmoment(fields->u->data, u.data, u3.data, 3., 0);
+  calcmoment(fields->v->data, v.data, v3.data, 3., 0);
+  calcmoment(fields->w->data, w.data, w3.data, 3., 1);
+  calcmoment(fields->s["s"]->data, s.data, s3.data, 3., 0);
 
-  calcgrad(fields->u->data, ugrad, grid->dzhi);
-  calcgrad(fields->v->data, vgrad, grid->dzhi);
-  calcgrad(fields->s["s"]->data, sgrad, grid->dzhi);
+  calcgrad(fields->u->data, ugrad.data, grid->dzhi);
+  calcgrad(fields->v->data, vgrad.data, grid->dzhi);
+  calcgrad(fields->s["s"]->data, sgrad.data, grid->dzhi);
 
   // calculate turbulent fluxes
-  calcflux(fields->u->data, fields->w->data, wu, fields->s["tmp1"]->data, 1, 0);
-  calcflux(fields->v->data, fields->w->data, wv, fields->s["tmp1"]->data, 0, 1);
-  calcflux(fields->s["s"]->data, fields->w->data, ws, fields->s["tmp1"]->data, 0, 0);
+  calcflux(fields->u->data, fields->w->data, wu.data, fields->s["tmp1"]->data, 1, 0);
+  calcflux(fields->v->data, fields->w->data, wv.data, fields->s["tmp1"]->data, 0, 1);
+  calcflux(fields->s["s"]->data, fields->w->data, ws.data, fields->s["tmp1"]->data, 0, 0);
 
   // calculate diffusive fluxes
-  calcdiff(fields->u->data, fields->s["evisc"]->data, udiff, grid->dzhi, fields->u->datafluxbot, fields->u->datafluxtop, 1.);
-  calcdiff(fields->v->data, fields->s["evisc"]->data, vdiff, grid->dzhi, fields->v->datafluxbot, fields->v->datafluxtop, 1.);
-  calcdiff(fields->s["s"]->data, fields->s["evisc"]->data, sdiff, grid->dzhi, fields->s["s"]->datafluxbot, fields->s["s"]->datafluxtop, fields->tPr);
+  calcdiff(fields->u->data, fields->s["evisc"]->data, udiff.data, grid->dzhi, fields->u->datafluxbot, fields->u->datafluxtop, 1.);
+  calcdiff(fields->v->data, fields->s["evisc"]->data, vdiff.data, grid->dzhi, fields->v->datafluxbot, fields->v->datafluxtop, 1.);
+  calcdiff(fields->s["s"]->data, fields->s["evisc"]->data, sdiff.data, grid->dzhi, fields->s["s"]->datafluxbot, fields->s["s"]->datafluxtop, fields->tPr);
 
   // add the turbulent and diffusive fluxes
   for(int k=grid->kstart; k<grid->kend+1; k++)
   {
-    uflux[k] = wu[k] + udiff[k];
-    vflux[k] = wv[k] + vdiff[k];
-    sflux[k] = ws[k] + sdiff[k];
+    uflux.data[k] = wu.data[k] + udiff.data[k];
+    vflux.data[k] = wv.data[k] + vdiff.data[k];
+    sflux.data[k] = ws.data[k] + sdiff.data[k];
   }
 
   // put the data into the NetCDF file
   if(mpi->mpiid == 0)
   {
-    u_var->put_rec(&u[grid->kstart], nstats);
-    v_var->put_rec(&v[grid->kstart], nstats);
-    w_var->put_rec(&w[grid->kstart], nstats);
-    s_var->put_rec(&s[grid->kstart], nstats);
+    u.ncvar->put_rec(&u.data[grid->kstart], nstats);
+    v.ncvar->put_rec(&v.data[grid->kstart], nstats);
+    w.ncvar->put_rec(&w.data[grid->kstart], nstats);
+    s.ncvar->put_rec(&s.data[grid->kstart], nstats);
 
-    evisc_var->put_rec(&evisc[grid->kstart], nstats);
+    evisc.ncvar->put_rec(&evisc.data[grid->kstart], nstats);
 
-    u2_var->put_rec(&u2[grid->kstart], nstats);
-    v2_var->put_rec(&v2[grid->kstart], nstats);
-    w2_var->put_rec(&w2[grid->kstart], nstats);
-    s2_var->put_rec(&s2[grid->kstart], nstats);
+    u2.ncvar->put_rec(&u2.data[grid->kstart], nstats);
+    v2.ncvar->put_rec(&v2.data[grid->kstart], nstats);
+    w2.ncvar->put_rec(&w2.data[grid->kstart], nstats);
+    s2.ncvar->put_rec(&s2.data[grid->kstart], nstats);
 
-    u3_var->put_rec(&u3[grid->kstart], nstats);
-    v3_var->put_rec(&v3[grid->kstart], nstats);
-    w3_var->put_rec(&w3[grid->kstart], nstats);
-    s3_var->put_rec(&s3[grid->kstart], nstats);
+    u3.ncvar->put_rec(&u3.data[grid->kstart], nstats);
+    v3.ncvar->put_rec(&v3.data[grid->kstart], nstats);
+    w3.ncvar->put_rec(&w3.data[grid->kstart], nstats);
+    s3.ncvar->put_rec(&s3.data[grid->kstart], nstats);
 
-    ugrad_var->put_rec(&ugrad[grid->kstart], nstats);
-    vgrad_var->put_rec(&vgrad[grid->kstart], nstats);
-    sgrad_var->put_rec(&sgrad[grid->kstart], nstats);
+    ugrad.ncvar->put_rec(&ugrad.data[grid->kstart], nstats);
+    vgrad.ncvar->put_rec(&vgrad.data[grid->kstart], nstats);
+    sgrad.ncvar->put_rec(&sgrad.data[grid->kstart], nstats);
 
-    wu_var->put_rec(&wu[grid->kstart], nstats);
-    wv_var->put_rec(&wv[grid->kstart], nstats);
-    ws_var->put_rec(&ws[grid->kstart], nstats);
+    wu.ncvar->put_rec(&wu.data[grid->kstart], nstats);
+    wv.ncvar->put_rec(&wv.data[grid->kstart], nstats);
+    ws.ncvar->put_rec(&ws.data[grid->kstart], nstats);
 
-    udiff_var->put_rec(&udiff[grid->kstart], nstats);
-    vdiff_var->put_rec(&vdiff[grid->kstart], nstats);
-    sdiff_var->put_rec(&sdiff[grid->kstart], nstats);
+    udiff.ncvar->put_rec(&udiff.data[grid->kstart], nstats);
+    vdiff.ncvar->put_rec(&vdiff.data[grid->kstart], nstats);
+    sdiff.ncvar->put_rec(&sdiff.data[grid->kstart], nstats);
 
-    uflux_var->put_rec(&uflux[grid->kstart], nstats);
-    vflux_var->put_rec(&vflux[grid->kstart], nstats);
-    sflux_var->put_rec(&sflux[grid->kstart], nstats);
+    uflux.ncvar->put_rec(&uflux.data[grid->kstart], nstats);
+    vflux.ncvar->put_rec(&vflux.data[grid->kstart], nstats);
+    sflux.ncvar->put_rec(&sflux.data[grid->kstart], nstats);
   }
 
   // sync the data
@@ -276,6 +276,7 @@ int cstats_les::exec(int iteration, double time)
   return 0;
 }
 
+// BELOW ARE ALL COMPUTATIONAL KERNELS
 int cstats_les::calcmean(double * restrict data, double * restrict prof)
 {
   int ijk,ii,jj,kk;
