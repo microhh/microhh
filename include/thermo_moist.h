@@ -33,7 +33,7 @@ class cthermo_moist
     cfields *fields;
     cmpi    *mpi;
 
-    std::string swbuoyancy;
+//     std::string swbuoyancy;
 
     double ps;
     double thvs;

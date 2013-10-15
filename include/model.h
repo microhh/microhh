@@ -11,6 +11,7 @@
 #include "diff.h"
 #include "force.h"
 #include "buoyancy.h"
+#include "thermo_moist.h"
 #include "pres.h"
 #include "buffer.h"
 #include "timeloop.h"
@@ -38,6 +39,7 @@ class cmodel
     std::string swdiff;
     std::string swpres;
     std::string swboundary;
+    std::string swbuoyancy;
 
     cgrid   *grid;
     cfields *fields;

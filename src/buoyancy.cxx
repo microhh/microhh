@@ -19,35 +19,21 @@ cbuoyancy::~cbuoyancy()
 
 int cbuoyancy::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
+  nerror += inputin->getItem(&gravitybeta, "buoyancy", "gravitybeta", "");
 
-  n += inputin->getItem(&swbuoyancy , "buoyancy", "swbuoyancy", "");
+  nerror += fields->initpfld("s");
+  nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
 
-  // request buoyancy field
-  // CvH reconsider usage of the name s
-  if(swbuoyancy == "2" || swbuoyancy == "4")
-  {
-    n += inputin->getItem(&gravitybeta, "buoyancy", "gravitybeta", "");
-
-    n += fields->initpfld("s");
-    n += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
-  }
-
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return (nerror > 0);
 }
 
 int cbuoyancy::exec()
 {
-  if(swbuoyancy == "0")
-    return 0;
-
   // extend later for gravity vector not normal to surface
-  if(swbuoyancy == "2")
+  if(grid->swspatialorder== "2")
     buoyancy_2nd(fields->wt->data, fields->s["s"]->data);
-  else if(swbuoyancy == "4")
+  else if(grid->swspatialorder == "4")
     buoyancy_4th(fields->wt->data, fields->s["s"]->data);
 
   return 0;

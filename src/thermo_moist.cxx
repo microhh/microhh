@@ -15,24 +15,23 @@ cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 cthermo_moist::~cthermo_moist()
 {
   // std::printf("Destroying instance of object buoyancy\n");
+  delete[] pmn;
+  
 }
 
 int cthermo_moist::readinifile(cinput *inputin)
 {
-
-}
-
-int cthermo_moist::init(cinput *inputin)
-{
-  int nerror=0;
+  int nerror = 0;
+  nerror += inputin->getItem(&ps, "thermo", "ps", "");
 
   nerror += fields->initpfld("s");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
   nerror += fields->initpfld("qt");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
   nerror += fields->initdfld("ql");
-  
-  return nerror;
+
+  return (nerror > 0);
+
 }
 
 int cthermo_moist::create()
@@ -58,8 +57,6 @@ int cthermo_moist::create()
 }
 int cthermo_moist::exec()
 {
-  if(swbuoyancy == "0")
-    return 0;
 
   // add mean pressure to pressure fluctuations into tmp array
   for(int k=0; k<grid->kcells; k++)
@@ -72,11 +69,11 @@ int cthermo_moist::exec()
 
 
   // extend later for gravity vector not normal to surface
-  if(swbuoyancy == "2")
+  if(grid->swspatialorder == "2")
   {
     buoyancy_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
   }
-  else if(swbuoyancy == "4")
+  else if(grid->swspatialorder == "4")
   {
     buoyancy_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
   }

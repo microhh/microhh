@@ -28,6 +28,10 @@
 #include "pres_g42.h"
 #include "pres_g4.h"
 
+// thermo schemes
+#include "buoyancy.h"
+#include "thermo_moist.h"
+
 cmodel::cmodel(cmpi * mpiin, cinput * inputin)
 {
   mpi   = mpiin;
@@ -42,7 +46,6 @@ cmodel::cmodel(cmpi * mpiin, cinput * inputin)
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
-  buoyancy = new cbuoyancy(grid, fields, mpi);
   buffer   = new cbuffer  (grid, fields, mpi);
 
   // load the postprocessing moduls
@@ -92,6 +95,7 @@ int cmodel::readinifile()
   n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
   n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   n += input->getItem(&swboundary, "boundary", "swboundary", "", "default"           );
+  n += input->getItem(&swbuoyancy, "buoyancy", "swbuoyancy", "", "default"           );
 
   // if one or more arguments fails, then crash
   if(n > 0)
@@ -184,6 +188,19 @@ int cmodel::readinifile()
     return 1;
   }
   if(boundary->readinifile(input))
+    return 1;
+
+  // read the thermo and buffer in the end because they need to know the requested fields
+  if(swbuoyancy== "moist")
+    buoyancy = new cthermo_moist(grid, fields, mpi);
+  else if(swbuoyancy == "default")
+    buoyancy = new cbuoyancy(grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+    return 1;
+  }
+  if(buoyancy->readinifile(input))
     return 1;
 
   if(buffer->readinifile(input))
