@@ -396,7 +396,7 @@ int cgrid::load()
   return 0;
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
+int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "wb");
@@ -409,11 +409,21 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   jj = icells;
   kk = icells*jcells;
 
+  // first, add the offset to the data
+  for(int k=kstart; k<kend; k++)
+    for(int j=jstart; j<jend; j++)
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        tmp1[ijk] = data[ijk] + offset;
+      }
+
+  // second, save the data to disk
   for(int k=kstart; k<kend; k++)
     for(int j=jstart; j<jend; j++)
       {
         ijk = istart + j*jj + k*kk;
-        fwrite(&data[ijk], sizeof(double), imax, pFile);
+        fwrite(&tmp1[ijk], sizeof(double), imax, pFile);
       }
 
   fclose(pFile);
@@ -421,7 +431,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
+int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "rb");
@@ -434,14 +444,24 @@ int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * 
   jj = icells;
   kk = icells*jcells;
 
+  // first, load the data from disk
   for(int k=kstart; k<kend; k++)
     for(int j=jstart; j<jend; j++)
       {
         ijk = istart + j*jj + k*kk;
-        fread(&data[ijk], sizeof(double), imax, pFile);
+        fread(&tmp1[ijk], sizeof(double), imax, pFile);
       }
 
   fclose(pFile);
+
+  // second, remove the offset
+  for(int k=kstart; k<kend; k++)
+    for(int j=jstart; j<jend; j++)
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        data[ijk] = tmp1[ijk] - offset;
+      }
 
   return 0;
 }

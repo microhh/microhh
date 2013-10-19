@@ -1,5 +1,5 @@
 import numpy
-from scipy.special import erf
+#from scipy.special import erf
 #from pylab import *
 
 # set the height
@@ -46,8 +46,8 @@ N2    = 3.
 s = numpy.zeros(numpy.size(z))
 
 for k in range(kmax):
-  s[k] = N2*z[k] + b0*erf(-0.5*z[k]/delta) + b0
-  #s[k] = N2*z[k]
+  #s[k] = N2*z[k] + b0*erf(-0.5*z[k]/delta) + b0
+  s[k] = N2*z[k]
 
 # write the data to a file
 proffile = open('drycbl_flow.prof','w')
