@@ -176,10 +176,14 @@ int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
                          const double * const restrict ug, const double * const restrict vg)
 {
   int ijk,ii,jj,kk;
+  double ugrid, vgrid;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+
+  ugrid = grid->u;
+  vgrid = grid->v;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -187,7 +191,7 @@ int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        ut[ijk] += fc * (0.25*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) - vg[k]);
+        ut[ijk] += fc * (0.25*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
       }
 
   for(int k=grid->kstart; k<grid->kend; ++k)
@@ -196,7 +200,7 @@ int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        vt[ijk] -= fc * (0.25*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) - ug[k]);
+        vt[ijk] -= fc * (0.25*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
       }
 
   return 0;
@@ -207,12 +211,16 @@ int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
                          const double * const restrict ug, const double * const restrict vg)
 {
   int ijk,ii1,ii2,jj1,jj2,kk1;
+  double ugrid, vgrid;
 
   ii1 = 1;
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
+
+  ugrid = grid->u;
+  vgrid = grid->v;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -223,7 +231,8 @@ int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
         ut[ijk] += fc * ( ( ci0*(ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1])
                           + ci1*(ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ])
                           + ci2*(ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1])
-                          + ci3*(ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) ) - vg[k]);
+                          + ci3*(ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) )
+                        + vgrid - vg[k] );
       }
 
   for(int k=grid->kstart; k<grid->kend; ++k)
@@ -235,7 +244,8 @@ int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
         vt[ijk] -= fc * ( ( ci0*(ci0*u[ijk-ii1-jj2] + ci1*u[ijk-jj2] + ci2*u[ijk+ii1-jj2] + ci3*u[ijk+ii2-jj2])
                           + ci1*(ci0*u[ijk-ii1-jj1] + ci1*u[ijk-jj1] + ci2*u[ijk+ii1-jj1] + ci3*u[ijk+ii2-jj1])
                           + ci2*(ci0*u[ijk-ii1    ] + ci1*u[ijk    ] + ci2*u[ijk+ii1    ] + ci3*u[ijk+ii2    ])
-                          + ci3*(ci0*u[ijk-ii1+jj1] + ci1*u[ijk+jj1] + ci2*u[ijk+ii1+jj1] + ci3*u[ijk+ii2+jj1]) ) - ug[k]);
+                          + ci3*(ci0*u[ijk-ii1+jj1] + ci1*u[ijk+jj1] + ci2*u[ijk+ii1+jj1] + ci3*u[ijk+ii2+jj1]) )
+                        + ugrid - ug[k]);
       }
 
   return 0;
