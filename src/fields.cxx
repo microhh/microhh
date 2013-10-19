@@ -193,11 +193,11 @@ int cfields::create(cinput *inputin)
   n += addvortexpair(inputin);
   
   // Add the mean profiles to the fields
-  n += addmeanprofile(inputin, "u", mp["u"]->data);
-  n += addmeanprofile(inputin, "v", mp["v"]->data);
+  n += addmeanprofile(inputin, "u", mp["u"]->data, grid->u);
+  n += addmeanprofile(inputin, "v", mp["v"]->data, grid->v);
  
   for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    n += addmeanprofile(inputin, it->first, it->second->data);
+    n += addmeanprofile(inputin, it->first, it->second->data, 0.);
   
   // set w equal to zero at the boundaries, just to be sure
   int lbot = grid->kstart*grid->icells*grid->jcells;
@@ -310,7 +310,7 @@ int cfields::addvortexpair(cinput *inputin)
   return (n>0);
 }
 
-int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict data)
+int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict data, double offset)
 {
   int ijk, jj, kk;
   double proftemp[grid->kmax];
@@ -326,7 +326,7 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        data[ijk] += proftemp[k-grid->kstart];
+        data[ijk] += proftemp[k-grid->kstart] - offset;
       }
       
   return 0;
@@ -338,10 +338,16 @@ int cfields::load(int n)
 
   for(fieldmap::const_iterator it=mp.begin(); it!=mp.end(); ++it)
   {
+    double offset = 0.;
+    if(it->second->name == "u")
+      offset = grid->u;
+    else if(it->second->name == "v")
+      offset = grid->v;
+
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
-    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename))
+    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, offset))
     {
       if(mpi->mpiid == 0) std::printf("FAILED\n");
       ++nerror;
@@ -357,7 +363,7 @@ int cfields::load(int n)
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
-    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename))
+    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, 0.))
     {
       if(mpi->mpiid == 0) std::printf("FAILED\n");
       ++nerror;
@@ -382,7 +388,14 @@ int cfields::save(int n)
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
-    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename))
+
+    double offset = 0.;
+    if(it->second->name == "u")
+      offset = grid->u;
+    else if(it->second->name == "v")
+      offset = grid->v;
+
+    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, offset))
     {
       if(mpi->mpiid == 0) std::printf("FAILED\n");
       ++nerror;
@@ -398,7 +411,7 @@ int cfields::save(int n)
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
-    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename))
+    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, 0.))
     {
       if(mpi->mpiid == 0) std::printf("FAILED\n");
       ++nerror;

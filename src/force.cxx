@@ -140,10 +140,11 @@ int cforce::flux(double * const restrict ut, const double * const restrict u,
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  double uavg, utavg;
+  double uavg, utavg, ugrid;
 
   uavg  = 0.;
   utavg = 0.;
+  ugrid = grid->u;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -162,7 +163,7 @@ int cforce::flux(double * const restrict ut, const double * const restrict u,
   utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
 
   double fbody; 
-  fbody = (uflow - uavg) / dt - utavg;
+  fbody = (uflow - uavg - ugrid) / dt - utavg;
 
   for(int n=0; n<grid->ncells; n++)
     ut[n] += fbody;

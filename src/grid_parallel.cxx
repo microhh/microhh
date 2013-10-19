@@ -617,7 +617,7 @@ int cgrid::load()
   return 0;
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
+int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -640,7 +640,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
-        tmp1[ijkb] = data[ijk];
+        tmp1[ijkb] = data[ijk] + offset;
       }
 
   transposezx(tmp2, tmp1);
@@ -665,7 +665,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
+int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -707,7 +707,7 @@ int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * 
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
-        data[ijk] = tmp2[ijkb];
+        data[ijk] = tmp2[ijkb] - offset;
       }
 
   return 0;

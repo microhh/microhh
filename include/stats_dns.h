@@ -43,7 +43,8 @@ class cstats_dns
     NcVar  *u2_rdstr_var, *v2_rdstr_var, *w2_rdstr_var;
     NcVar  *w2_buoy_var, *tke_buoy_var;
 
-    double *u , *v , *w , *s ;
+    double *u, *v, *w, *s;
+    double *uabs, *vabs;
     double *evisc;
     double *u2, *v2, *w2, *s2;
     double *u3, *v3, *w3, *s3;
@@ -59,7 +60,7 @@ class cstats_dns
     double *u2_rdstr, *v2_rdstr, *w2_rdstr;
     double *w2_buoy, *tke_buoy;
 
-    int calcmean     (double *, double *);
+    int calcmean     (double *, double *, double);
     int calcmoment   (double *, double *, double *, double, int);
     int calcflux     (double *, double *, double *, double *, int, int);
     int calcdiff     (double *, double *, double *, double);

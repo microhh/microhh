@@ -6,6 +6,9 @@
 #include "boundary_user.h"
 #include "defines.h"
 
+#define NO_VELOCITY 0.
+#define NO_OFFSET 0.
+
 cboundary_user::cboundary_user(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cboundary(gridin, fieldsin, mpiin)
 {
 }
@@ -48,16 +51,16 @@ int cboundary_user::readinifile(cinput *inputin)
 
 int cboundary_user::setvalues()
 {
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, 0., fields->visc);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, 0., fields->visc);
+  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->u);
+  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->v);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, 0., fields->visc);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, 0., fields->visc);
+  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->u);
+  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->v);
 
   for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     setbc_patch(it->second->datagradbot, patch_facl, patch_facr, sbc[it->first]->bot);
-    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc);
+    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
   }
 
   return 0;
