@@ -31,7 +31,6 @@ int cboundary_surface::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  // n += inputin->getItem(&swboundary, "boundary", "swboundary", "", grid->swspatialorder);
   swspatialorder = grid->swspatialorder;
 
   n += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
@@ -152,15 +151,16 @@ int cboundary_surface::load(int iotime)
 
 int cboundary_surface::setvalues()
 {
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->u);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->v);
+  // grid transformation is properly taken into account by setting the databot and top values
+  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, surfmbcbot, NO_VELOCITY, fields->visc, grid->u);
+  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, surfmbcbot, NO_VELOCITY, fields->visc, grid->v);
 
   setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->u);
   setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->v);
 
   for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, NO_OFFSET);
+    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, surfsbcbot[it->first], sbc[it->first]->bot, it->second->visc, NO_OFFSET);
     setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
   }
 
@@ -320,7 +320,7 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
   else if(bcbot == 2)
   {
     // first redistribute ustar over the two flux components
-    double u2, v2, vonu2,uonv2,ustaronu4,ustaronv4;
+    double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
     const double minval = 1.e-2;
 
     for(int j=grid->jstart; j<grid->jend; ++j)
