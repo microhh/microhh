@@ -339,10 +339,12 @@ int cfields::load(int n)
   for(fieldmap::const_iterator it=mp.begin(); it!=mp.end(); ++it)
   {
     double offset = 0.;
-    if(it->second->name == "u")
-      offset = grid->u;
-    else if(it->second->name == "v")
-      offset = grid->v;
+    // the offset is kept at zero, because bitwise identical restarts is not possible
+    // when offset is saved in the file
+    // if(it->second->name == "u")
+    //   offset = grid->u;
+    // else if(it->second->name == "v")
+    //   offset = grid->v;
 
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
@@ -390,10 +392,12 @@ int cfields::save(int n)
     if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
 
     double offset = 0.;
-    if(it->second->name == "u")
-      offset = grid->u;
-    else if(it->second->name == "v")
-      offset = grid->v;
+    // the offset is kept at zero, because bitwise identical restarts is not possible
+    // when offset is saved in the file
+    // if(it->second->name == "u")
+    //   offset = grid->u;
+    // else if(it->second->name == "v")
+    //   offset = grid->v;
 
     if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, offset))
     {
