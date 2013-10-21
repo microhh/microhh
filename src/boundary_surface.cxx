@@ -413,7 +413,7 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
-        varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
+        varbot[ij] = varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
         // use the linearly interpolated grad, rather than the MO grad,
         // to prevent giving unresolvable gradients to advection schemes
@@ -436,7 +436,10 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
   const double Lmax = 1.e20;
 
   // avoid bfluxbot to be zero
-  bfluxbot = std::max(dsmall, bfluxbot);
+  if(bfluxbot >= 0.)
+    bfluxbot = std::max(dsmall, bfluxbot);
+  else
+    bfluxbot = std::min(-dsmall, bfluxbot);
 
   // allow for one restart
   while(m <= 1)
@@ -504,8 +507,11 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
 
   const double Lmax = 1.e20;
 
-  // avoid bfluxbot to be zero
-  db = std::max(dsmall, db);
+  // avoid db to be zero
+  if(db >= 0.)
+    db = std::max(dsmall, db);
+  else
+    db = std::min(-dsmall, db);
 
   // allow for one restart
   while(m <= 1)
