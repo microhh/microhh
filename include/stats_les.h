@@ -28,7 +28,7 @@ class cstats_les
     NcFile *dataFile;
     NcDim  *z_dim, *zh_dim, *t_dim;
     NcVar  *z_var, *zh_var, *t_var, *iter_var;
-    NcVar  *u_var , *v_var , *w_var , *s_var;
+    NcVar  *u_var , *v_var, *w_var, *s_var;
     NcVar  *evisc_var;
     NcVar  *u2_var, *v2_var, *w2_var, *s2_var;
     NcVar  *u3_var, *v3_var, *w3_var, *s3_var;
@@ -37,16 +37,17 @@ class cstats_les
     NcVar  *udiff_var, *vdiff_var, *sdiff_var;
     NcVar  *uflux_var, *vflux_var, *sflux_var;
 
-    double *u , *v , *w , *s ;
+    double *u , *v , *w , *s;
+    double *uabs, *vabs;
     double *evisc;
     double *u2, *v2, *w2, *s2;
     double *u3, *v3, *w3, *s3;
-    double *wu , *wv , *ws ;
+    double *wu , *wv , *ws;
     double *ugrad, *vgrad, *sgrad;
     double *udiff, *vdiff, *sdiff;
     double *uflux, *vflux, *sflux;
 
-    int calcmean     (double *, double *);
+    int calcmean     (double *, double *, double);
     int calcmoment   (double *, double *, double *, double, int);
     int calcdiff     (double *, double *, double *, double *, double *, double *, double);
     int calcgrad     (double *, double *, double *);

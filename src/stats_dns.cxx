@@ -6,6 +6,8 @@
 #include "defines.h"
 #include <netcdfcpp.h>
 
+#define NO_OFFSET 0.
+
 cstats_dns::cstats_dns(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   grid   = gridin;
@@ -277,10 +279,10 @@ int cstats_dns::exec(int iteration, double time)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, u, 0.);
-  calcmean(fields->v->data, v, 0.);
-  calcmean(fields->w->data, w, 0.);
-  calcmean(fields->s["s"]->data, s, 0.);
+  calcmean(fields->u->data, u, NO_OFFSET);
+  calcmean(fields->v->data, v, NO_OFFSET);
+  calcmean(fields->w->data, w, NO_OFFSET);
+  calcmean(fields->s["s"]->data, s, NO_OFFSET);
 
   // calculate absolute means
   calcmean(fields->u->data, uabs, grid->u);

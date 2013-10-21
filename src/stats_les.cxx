@@ -6,6 +6,8 @@
 #include "defines.h"
 #include <netcdfcpp.h>
 
+#define NO_OFFSET 0.
+
 cstats_les::cstats_les(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   grid   = gridin;
@@ -27,6 +29,9 @@ cstats_les::~cstats_les()
     delete[] v;
     delete[] w;
     delete[] s;
+
+    delete[] uabs;
+    delete[] vabs;
 
     delete[] u2;
     delete[] v2;
@@ -64,6 +69,9 @@ int cstats_les::init()
   v = new double[grid->kcells];
   w = new double[grid->kcells];
   s = new double[grid->kcells];
+
+  uabs = new double[grid->kcells];
+  vabs = new double[grid->kcells];
 
   u2 = new double[grid->kcells];
   v2 = new double[grid->kcells];
@@ -190,11 +198,15 @@ int cstats_les::exec(int iteration, double time)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, u);
-  calcmean(fields->v->data, v);
-  calcmean(fields->w->data, w);
-  calcmean(fields->s["s"]->data, s);
-  calcmean(fields->s["evisc"]->data, evisc);
+  calcmean(fields->u->data, u, NO_OFFSET);
+  calcmean(fields->v->data, v, NO_OFFSET);
+  calcmean(fields->w->data, w, NO_OFFSET);
+  calcmean(fields->s["s"]->data, s, NO_OFFSET);
+  calcmean(fields->s["evisc"]->data, evisc, NO_OFFSET);
+
+  // calculate absolute means
+  calcmean(fields->u->data, uabs, grid->u);
+  calcmean(fields->v->data, vabs, grid->v);
 
   // calc variances
   calcmoment(fields->u->data, u, u2, 2., 0);
@@ -233,8 +245,8 @@ int cstats_les::exec(int iteration, double time)
   // put the data into the NetCDF file
   if(mpi->mpiid == 0)
   {
-    u_var->put_rec(&u[grid->kstart], nstats);
-    v_var->put_rec(&v[grid->kstart], nstats);
+    u_var->put_rec(&uabs[grid->kstart], nstats);
+    v_var->put_rec(&vabs[grid->kstart], nstats);
     w_var->put_rec(&w[grid->kstart], nstats);
     s_var->put_rec(&s[grid->kstart], nstats);
 
@@ -276,7 +288,7 @@ int cstats_les::exec(int iteration, double time)
   return 0;
 }
 
-int cstats_les::calcmean(double * restrict data, double * restrict prof)
+int cstats_les::calcmean(double * restrict data, double * restrict prof, double offset)
 {
   int ijk,ii,jj,kk;
 
@@ -292,7 +304,7 @@ int cstats_les::calcmean(double * restrict data, double * restrict prof)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += data[ijk];
+        prof[k] += data[ijk] + offset;
       }
   }
 
