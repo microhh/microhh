@@ -5,6 +5,8 @@
 #include "fields.h"
 #include "defines.h"
 
+#define NO_OFFSET 0.
+
 cfields::cfields(cgrid *gridin, cmpi *mpiin)
 {
   grid = gridin;
@@ -338,20 +340,13 @@ int cfields::load(int n)
 {
   int nerror = 0;
 
-  for(fieldmap::const_iterator it=mp.begin(); it!=mp.end(); ++it)
+  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    double offset = 0.;
-    // the offset is kept at zero, because bitwise identical restarts is not possible
-    // when offset is saved in the file
-    // if(it->second->name == "u")
-    //   offset = grid->u;
-    // else if(it->second->name == "v")
-    //   offset = grid->v;
-
+    // the offset is kept at zero, otherwise bitwise identical restarts is not possible
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
-    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, offset))
+    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
     {
       if(mpi->mpiid == 0) std::printf("FAILED\n");
       ++nerror;
@@ -362,46 +357,20 @@ int cfields::load(int n)
     }  
   }
 
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-  {
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-    if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
-    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, 0.))
-    {
-      if(mpi->mpiid == 0) std::printf("FAILED\n");
-      ++nerror;
-    }
-    else
-    {
-      if(mpi->mpiid == 0) std::printf("OK\n");
-    }
-  }
-
-  if(nerror > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 int cfields::save(int n)
 {
   int nerror = 0;
-  for(fieldmap::const_iterator it=mp.begin(); it!=mp.end(); ++it)
+  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
 
-    double offset = 0.;
-    // the offset is kept at zero, because bitwise identical restarts is not possible
-    // when offset is saved in the file
-    // if(it->second->name == "u")
-    //   offset = grid->u;
-    // else if(it->second->name == "v")
-    //   offset = grid->v;
-
-    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, offset))
+    // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
+    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
     {
       if(mpi->mpiid == 0) std::printf("FAILED\n");
       ++nerror;
@@ -412,50 +381,8 @@ int cfields::save(int n)
     }
   }
 
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-  {
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-    if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
-    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, 0.))
-    {
-      if(mpi->mpiid == 0) std::printf("FAILED\n");
-      ++nerror;
-    }
-    else
-    {
-      if(mpi->mpiid == 0) std::printf("OK\n");
-    }
-  }
-
-  return (nerror > 0);
+  return nerror;
 }
-
-/*
-int cfields::boundary()
-{
-  u->boundary_bottop(0);
-  v->boundary_bottop(0);
-  // w->boundary_bottop(0);
-  s->boundary_bottop(1);
-
-  // u->boundary_cyclic();
-  // v->boundary_cyclic();
-  // w->boundary_cyclic();
-  // s->boundary_cyclic();
-  
-  grid->boundary_cyclic(u->data);
-  grid->boundary_cyclic(v->data);
-  grid->boundary_cyclic(w->data);
-  grid->boundary_cyclic(s->data);
-  mpi->waitall();
-
-  // for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; ++k)
-  //   std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
-
-  return 0;
-}
-*/
 
 double cfields::checkmom()
 {
