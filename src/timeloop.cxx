@@ -27,14 +27,14 @@ int ctimeloop::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&runtime     , "time", "runtime"  , "");
+  n += inputin->getItem(&runtime, "time", "runtime", "");
   if(mpi->mode == "init")
   {
     starttime = 0.;
   }
   else
   {
-    n += inputin->getItem(&starttime   , "time", "starttime", "");
+    n += inputin->getItem(&starttime, "time", "starttime", "");
   }
   // optional parameters
   n += inputin->getItem(&adaptivestep, "time", "adaptivestep", "", true );
@@ -146,25 +146,16 @@ int ctimeloop::exec()
 
   if(rkorder == 3)
   {
-    rk3(fields->u->data, fields->ut->data, dt);
-    rk3(fields->v->data, fields->vt->data, dt);
-    rk3(fields->w->data, fields->wt->data, dt);
-    
-    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      rk3(fields->s[it->first]->data, it->second->data, dt);
+    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+      rk3(fields->ap[it->first]->data, it->second->data, dt);
 
-//     rk3((*fields->s).data, (*fields->st).data, dt);
     substep = (substep+1) % 3;
   }
 
   if(rkorder == 4)
   {
-    rk4(fields->u->data, fields->ut->data, dt);
-    rk4(fields->v->data, fields->vt->data, dt);
-    rk4(fields->w->data, fields->wt->data, dt);
-
-    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      rk3(fields->s[it->first]->data, it->second->data, dt);
+    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+      rk4(fields->ap[it->first]->data, it->second->data, dt);
 
     substep = (substep+1) % 5;
   }

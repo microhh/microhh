@@ -119,19 +119,22 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
   }
-  
-  std::string fldtname = fldname + "t";
-  
+
+  // add a new prognostic momentum variable
   mp[fldname] = new cfield3d(grid, mpi, fldname);
-  // mp[fldname]->init();
 
+  // add a new tendency for momentum variable
+  std::string fldtname = fldname + "t";
   mt[fldname] = new cfield3d(grid, mpi, fldtname);
-  // mt[fldname]->init();
 
-  //m[fldname] = mp[fldname];
-
+  // TODO remove these from the model?
   fld  = mp[fldname];
   fldt = mt[fldname];
+
+  // add the prognostic variable and its tendency to the collection
+  // of all fields and tendencies
+  ap[fldname] = mp[fldname];
+  at[fldname] = mt[fldname];
 
   return 0;
 }
@@ -144,15 +147,18 @@ int cfields::initpfld(std::string fldname)
     return 1;
   }
   
-  std::string fldtname = fldname + "t";
-  
+  // add a new scalar variable
   sp[fldname] = new cfield3d(grid, mpi, fldname);
-  //sp[fldname]->init();
-  
-  st[fldname] = new cfield3d(grid, mpi, fldtname);
-  //st[fldname]->init();
 
-  s[fldname] = sp[fldname];
+  // add a new tendency for scalar variable
+  std::string fldtname = fldname + "t";
+  st[fldname] = new cfield3d(grid, mpi, fldtname);
+
+  // add the prognostic variable and its tendency to the collection
+  // of all fields and tendencies
+  s [fldname] = sp[fldname];
+  ap[fldname] = sp[fldname];
+  at[fldname] = st[fldname];
   
   return 0;
 }
@@ -166,12 +172,8 @@ int cfields::initdfld(std::string fldname)
   }
 
   sd[fldname] = new cfield3d(grid, mpi, fldname );
-  // sd[fldname]->init();
+  s [fldname] = sd[fldname];
 
-  s[fldname] = sd[fldname];
-
-  // fld = s[fldname];
-  
   return 0;  
 }
 
