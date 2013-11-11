@@ -137,10 +137,12 @@ int cstats_les::create(int n)
       z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
       zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
 
+
       u_var = dataFile->add_var("u", ncDouble, t_dim, z_dim );
       v_var = dataFile->add_var("v", ncDouble, t_dim, z_dim );
       w_var = dataFile->add_var("w", ncDouble, t_dim, zh_dim);
-      s_var = dataFile->add_var("s", ncDouble, t_dim, z_dim );
+      // s_var = dataFile->add_var("s", ncDouble, t_dim, z_dim );
+      addprof("s", "z");
 
       u2_var = dataFile->add_var("u2", ncDouble, t_dim, z_dim );
       v2_var = dataFile->add_var("v2", ncDouble, t_dim, z_dim );
@@ -201,7 +203,7 @@ int cstats_les::exec(int iteration, double time)
   calcmean(fields->u->data, u, NO_OFFSET);
   calcmean(fields->v->data, v, NO_OFFSET);
   calcmean(fields->w->data, w, NO_OFFSET);
-  calcmean(fields->s["s"]->data, s, NO_OFFSET);
+  calcmean(fields->s["s"]->data, profs["s"].data, NO_OFFSET);
   calcmean(fields->s["evisc"]->data, evisc, NO_OFFSET);
 
   // calculate absolute means
@@ -212,13 +214,13 @@ int cstats_les::exec(int iteration, double time)
   calcmoment(fields->u->data, u, u2, 2., 0);
   calcmoment(fields->v->data, v, v2, 2., 0);
   calcmoment(fields->w->data, w, w2, 2., 1);
-  calcmoment(fields->s["s"]->data, s, s2, 2., 0);
+  calcmoment(fields->s["s"]->data, profs["s"].data, s2, 2., 0);
 
   // calc skewnesses
   calcmoment(fields->u->data, u, u3, 3., 0);
   calcmoment(fields->v->data, v, v3, 3., 0);
   calcmoment(fields->w->data, w, w3, 3., 1);
-  calcmoment(fields->s["s"]->data, s, s3, 3., 0);
+  calcmoment(fields->s["s"]->data, profs["s"].data, s3, 3., 0);
 
   calcgrad(fields->u->data, ugrad, grid->dzhi);
   calcgrad(fields->v->data, vgrad, grid->dzhi);
@@ -235,7 +237,7 @@ int cstats_les::exec(int iteration, double time)
   calcdiff(fields->s["s"]->data, fields->s["evisc"]->data, sdiff, grid->dzhi, fields->s["s"]->datafluxbot, fields->s["s"]->datafluxtop, fields->tPr);
 
   // add the turbulent and diffusive fluxes
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     uflux[k] = wu[k] + udiff[k];
     vflux[k] = wv[k] + vdiff[k];
@@ -283,11 +285,26 @@ int cstats_les::exec(int iteration, double time)
   if(mpi->mpiid == 0) 
     dataFile->sync();
 
-  nstats++;
+  ++nstats;
 
   return 0;
 }
 
+int cstats_les::addprof(std::string name, std::string zloc)
+{
+  if(zloc == "z")
+  {
+    profs[name].var = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
+  }
+  else if(zloc == "zh")
+  {
+    profs[name].var = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
+  }
+
+  return 0;
+}
+
+// COMPUTATIONAL KERNELS BELOW
 int cstats_les::calcmean(double * restrict data, double * restrict prof, double offset)
 {
   int ijk,ii,jj,kk;
@@ -296,12 +313,12 @@ int cstats_les::calcmean(double * restrict data, double * restrict prof, double 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  for(int k=0; k<grid->kcells; k++)
+  for(int k=0; k<grid->kcells; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += data[ijk] + offset;
@@ -310,7 +327,7 @@ int cstats_les::calcmean(double * restrict data, double * restrict prof, double 
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=0; k<grid->kcells; k++)
+  for(int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -326,12 +343,12 @@ int cstats_les::calcmoment(double * restrict data, double * restrict datamean, d
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  for(int k=grid->kstart; k<grid->kend+a; k++)
+  for(int k=grid->kstart; k<grid->kend+a; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += std::pow(data[ijk]-datamean[k], power);
@@ -340,7 +357,7 @@ int cstats_les::calcmoment(double * restrict data, double * restrict datamean, d
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+a; k++)
+  for(int k=grid->kstart; k<grid->kend+a; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -369,12 +386,12 @@ int cstats_les::calcflux(double * restrict data, double * restrict w, double * r
     calcw = tmp1;
   }
   
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += 0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
@@ -383,7 +400,7 @@ int cstats_les::calcflux(double * restrict data, double * restrict w, double * r
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -399,12 +416,12 @@ int cstats_les::calcgrad(double * restrict data, double * restrict prof, double 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += (data[ijk]-data[ijk-kk])*dzhi[k];
@@ -413,7 +430,7 @@ int cstats_les::calcgrad(double * restrict data, double * restrict prof, double 
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -434,20 +451,20 @@ int cstats_les::calcdiff(double * restrict data, double * restrict evisc, double
   // CvH add horizontal interpolation for u and v and interpolate the eddy viscosity properly
   // bottom boundary
   prof[kstart] = 0.;
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij = i + j*jj;
       prof[kstart] += fluxbot[ij];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend; k++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += -0.5*(evisc[ijk-kk]+evisc[ijk])/tPr*(data[ijk]-data[ijk-kk])*dzhi[k];
@@ -456,9 +473,9 @@ int cstats_les::calcdiff(double * restrict data, double * restrict evisc, double
 
   // top boundary
   prof[kend] = 0.;
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij = i + j*jj;
       prof[kend] += fluxtop[ij];
@@ -466,7 +483,7 @@ int cstats_les::calcdiff(double * restrict data, double * restrict evisc, double
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);

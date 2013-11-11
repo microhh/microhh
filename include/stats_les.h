@@ -47,6 +47,15 @@ class cstats_les
     double *udiff, *vdiff, *sdiff;
     double *uflux, *vflux, *sflux;
 
+    struct statsvar
+    {
+      NcVar *var;
+      double *data;
+    };
+
+    std::map<std::string, statsvar> profs;
+    int addprof(std::string, std::string);
+
     int calcmean     (double *, double *, double);
     int calcmoment   (double *, double *, double *, double, int);
     int calcdiff     (double *, double *, double *, double *, double *, double *, double);
