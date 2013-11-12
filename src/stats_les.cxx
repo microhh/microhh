@@ -25,81 +25,16 @@ cstats_les::~cstats_les()
 
   if(allocated)
   {
-    delete[] u;
-    delete[] v;
-    delete[] w;
-    // delete[] s;
-
     delete[] uabs;
     delete[] vabs;
-
-    delete[] u2;
-    delete[] v2;
-    delete[] w2;
-    // delete[] s2;
-
-    delete[] u3;
-    delete[] v3;
-    delete[] w3;
-    delete[] s3;
-
-    delete[] evisc;
-
-    delete[] ugrad;
-    delete[] vgrad;
-    delete[] sgrad;
-
-    delete[] wu;
-    delete[] wv;
-    delete[] ws;
-
-    delete[] udiff;
-    delete[] vdiff;
-    delete[] sdiff;
-
-    delete[] uflux;
-    delete[] vflux;
-    delete[] sflux;
+    // TODO empty list
   }
 }
 
 int cstats_les::init()
 {
-  u = new double[grid->kcells];
-  v = new double[grid->kcells];
-  w = new double[grid->kcells];
-  // s = new double[grid->kcells];
-
   uabs = new double[grid->kcells];
   vabs = new double[grid->kcells];
-
-  u2 = new double[grid->kcells];
-  v2 = new double[grid->kcells];
-  w2 = new double[grid->kcells];
-  // s2 = new double[grid->kcells];
-
-  u3 = new double[grid->kcells];
-  v3 = new double[grid->kcells];
-  w3 = new double[grid->kcells];
-  s3 = new double[grid->kcells];
-
-  evisc = new double[grid->kcells];
-
-  ugrad = new double[grid->kcells];
-  vgrad = new double[grid->kcells];
-  sgrad = new double[grid->kcells];
-
-  wu = new double[grid->kcells];
-  wv = new double[grid->kcells];
-  ws = new double[grid->kcells];
-
-  udiff = new double[grid->kcells];
-  vdiff = new double[grid->kcells];
-  sdiff = new double[grid->kcells];
-
-  uflux = new double[grid->kcells];
-  vflux = new double[grid->kcells];
-  sflux = new double[grid->kcells];
 
   allocated = true;
 
@@ -137,43 +72,59 @@ int cstats_les::create(int n)
       z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
       zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
 
-      u_var = dataFile->add_var("u", ncDouble, t_dim, z_dim );
-      v_var = dataFile->add_var("v", ncDouble, t_dim, z_dim );
-      w_var = dataFile->add_var("w", ncDouble, t_dim, zh_dim);
-
-      // s_var = dataFile->add_var("s", ncDouble, t_dim, z_dim );
+      // means
+      addprof("u", "z" );
+      addprof("v", "z" );
+      addprof("w", "zh");
       for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
         addprof(it->first, "z");
+      addprof("evisc", "z");
+      addprof("p", "z");
 
-      u2_var = dataFile->add_var("u2", ncDouble, t_dim, z_dim );
-      v2_var = dataFile->add_var("v2", ncDouble, t_dim, z_dim );
-      w2_var = dataFile->add_var("w2", ncDouble, t_dim, zh_dim);
-
+      // 2nd order
+      addprof("u2", "z" );
+      addprof("v2", "z" );
+      addprof("w2", "zh");
       for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
         addprof(it->first+"2", "z");
 
-      u3_var = dataFile->add_var("u3", ncDouble, t_dim, z_dim );
-      v3_var = dataFile->add_var("v3", ncDouble, t_dim, z_dim );
-      w3_var = dataFile->add_var("w3", ncDouble, t_dim, zh_dim);
-      s3_var = dataFile->add_var("s3", ncDouble, t_dim, z_dim );
+      // 3rd order
+      addprof("u3", "z" );
+      addprof("v3", "z" );
+      addprof("w3", "zh");
+      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        addprof(it->first+"3", "z");
 
-      ugrad_var = dataFile->add_var("ugrad", ncDouble, t_dim, zh_dim );
-      vgrad_var = dataFile->add_var("vgrad", ncDouble, t_dim, zh_dim );
-      sgrad_var = dataFile->add_var("sgrad", ncDouble, t_dim, zh_dim );
+      // 4th order
+      addprof("u4", "z" );
+      addprof("v4", "z" );
+      addprof("w4", "zh");
+      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        addprof(it->first+"4", "z");
 
-      wu_var = dataFile->add_var("uw", ncDouble, t_dim, zh_dim );
-      wv_var = dataFile->add_var("vw", ncDouble, t_dim, zh_dim );
-      ws_var = dataFile->add_var("sw", ncDouble, t_dim, zh_dim );
+      // gradients
+      addprof("ugrad", "zh");
+      addprof("vgrad", "zh");
+      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        addprof(it->first+"grad", "zh");
 
-      udiff_var = dataFile->add_var("udiff", ncDouble, t_dim, zh_dim );
-      vdiff_var = dataFile->add_var("vdiff", ncDouble, t_dim, zh_dim );
-      sdiff_var = dataFile->add_var("sdiff", ncDouble, t_dim, zh_dim );
+      // turbulent fluxes
+      addprof("uw", "zh");
+      addprof("vw", "zh");
+      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        addprof(it->first+"w", "zh");
 
-      uflux_var = dataFile->add_var("uflux", ncDouble, t_dim, zh_dim );
-      vflux_var = dataFile->add_var("vflux", ncDouble, t_dim, zh_dim );
-      sflux_var = dataFile->add_var("sflux", ncDouble, t_dim, zh_dim );
+      // diffusive fluxes
+      addprof("udiff", "zh");
+      addprof("vdiff", "zh");
+      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        addprof(it->first+"diff", "zh");
 
-      evisc_var = dataFile->add_var("evisc", ncDouble, t_dim, z_dim );
+      // total fluxes
+      addprof("uflux", "zh");
+      addprof("vflux", "zh");
+      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        addprof(it->first+"flux", "zh");
 
       // save the grid variables
       z_var ->put(&grid->z [grid->kstart], grid->kmax  );
@@ -203,93 +154,67 @@ int cstats_les::exec(int iteration, double time)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, u, NO_OFFSET);
-  calcmean(fields->v->data, v, NO_OFFSET);
-  calcmean(fields->w->data, w, NO_OFFSET);
-  calcmean(fields->s["evisc"]->data, evisc, NO_OFFSET);
-
+  calcmean(fields->u->data, profs["u"].data, NO_OFFSET);
+  calcmean(fields->v->data, profs["v"].data, NO_OFFSET);
+  calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
+
+  calcmean(fields->s["p"]->data, profs["p"].data, NO_OFFSET);
+  calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
 
   // calculate absolute means
   calcmean(fields->u->data, uabs, grid->u);
   calcmean(fields->v->data, vabs, grid->v);
 
-  // calc variances
-  calcmoment(fields->u->data, u, u2, 2., 0);
-  calcmoment(fields->v->data, v, v2, 2., 0);
-  calcmoment(fields->w->data, w, w2, 2., 1);
-
+  // 2nd order
+  calcmoment(fields->u->data, profs["u"].data, profs["u2"].data, 2., 0);
+  calcmoment(fields->v->data, profs["v"].data, profs["v2"].data, 2., 0);
+  calcmoment(fields->w->data, profs["w"].data, profs["w2"].data, 2., 1);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmoment(it->second->data, profs[it->first].data, profs[it->first+"2"].data, 2., 0);
 
-  // calc skewnesses
-  calcmoment(fields->u->data, u, u3, 3., 0);
-  calcmoment(fields->v->data, v, v3, 3., 0);
-  calcmoment(fields->w->data, w, w3, 3., 1);
-  calcmoment(fields->s["s"]->data, profs["s"].data, s3, 3., 0);
+  // 3rd order
+  calcmoment(fields->u->data, profs["u"].data, profs["u3"].data, 3., 0);
+  calcmoment(fields->v->data, profs["v"].data, profs["v3"].data, 3., 0);
+  calcmoment(fields->w->data, profs["w"].data, profs["w3"].data, 3., 1);
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    calcmoment(it->second->data, profs[it->first].data, profs[it->first+"3"].data, 3., 0);
 
-  calcgrad(fields->u->data, ugrad, grid->dzhi);
-  calcgrad(fields->v->data, vgrad, grid->dzhi);
-  calcgrad(fields->s["s"]->data, sgrad, grid->dzhi);
+  // 4th order
+  calcmoment(fields->u->data, profs["u"].data, profs["u4"].data, 4., 0);
+  calcmoment(fields->v->data, profs["v"].data, profs["v4"].data, 4., 0);
+  calcmoment(fields->w->data, profs["w"].data, profs["w4"].data, 4., 1);
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    calcmoment(it->second->data, profs[it->first].data, profs[it->first+"4"].data, 3., 0);
+
+  calcgrad(fields->u->data, profs["ugrad"].data, grid->dzhi);
+  calcgrad(fields->v->data, profs["vgrad"].data, grid->dzhi);
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    calcgrad(it->second->data, profs[it->first+"grad"].data, grid->dzhi);
 
   // calculate turbulent fluxes
-  calcflux(fields->u->data, fields->w->data, wu, fields->s["tmp1"]->data, 1, 0);
-  calcflux(fields->v->data, fields->w->data, wv, fields->s["tmp1"]->data, 0, 1);
-  calcflux(fields->s["s"]->data, fields->w->data, ws, fields->s["tmp1"]->data, 0, 0);
+  calcflux(fields->u->data, fields->w->data, profs["uw"].data, fields->s["tmp1"]->data, 1, 0);
+  calcflux(fields->v->data, fields->w->data, profs["vw"].data, fields->s["tmp1"]->data, 0, 1);
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    calcflux(it->second->data, fields->w->data, profs[it->first+"w"].data, fields->s["tmp1"]->data, 0, 0);
 
   // calculate diffusive fluxes
-  calcdiff(fields->u->data, fields->s["evisc"]->data, udiff, grid->dzhi, fields->u->datafluxbot, fields->u->datafluxtop, 1.);
-  calcdiff(fields->v->data, fields->s["evisc"]->data, vdiff, grid->dzhi, fields->v->datafluxbot, fields->v->datafluxtop, 1.);
-  calcdiff(fields->s["s"]->data, fields->s["evisc"]->data, sdiff, grid->dzhi, fields->s["s"]->datafluxbot, fields->s["s"]->datafluxtop, fields->tPr);
+  calcdiff(fields->u->data, fields->s["evisc"]->data, profs["udiff"].data, grid->dzhi, fields->u->datafluxbot, fields->u->datafluxtop, 1.);
+  calcdiff(fields->v->data, fields->s["evisc"]->data, profs["vdiff"].data, grid->dzhi, fields->v->datafluxbot, fields->v->datafluxtop, 1.);
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    calcdiff(it->second->data, fields->s["evisc"]->data, profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, fields->tPr);
 
-  // add the turbulent and diffusive fluxes
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
-  {
-    uflux[k] = wu[k] + udiff[k];
-    vflux[k] = wv[k] + vdiff[k];
-    sflux[k] = ws[k] + sdiff[k];
-  }
+  addfluxes(profs["uflux"].data, profs["uw"].data, profs["udiff"].data);
+  addfluxes(profs["vflux"].data, profs["vw"].data, profs["vdiff"].data);
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addfluxes(profs[it->first+"flux"].data, profs[it->first+"w"].data, profs[it->first+"diff"].data);
 
   // put the data into the NetCDF file
   if(mpi->mpiid == 0)
   {
-    u_var->put_rec(&uabs[grid->kstart], nstats);
-    v_var->put_rec(&vabs[grid->kstart], nstats);
-    w_var->put_rec(&w[grid->kstart], nstats);
-    // s_var->put_rec(&s[grid->kstart], nstats);
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
       profs[it->first].ncvar->put_rec(&profs[it->first].data[grid->kstart], nstats);
-
-    evisc_var->put_rec(&evisc[grid->kstart], nstats);
-
-    u2_var->put_rec(&u2[grid->kstart], nstats);
-    v2_var->put_rec(&v2[grid->kstart], nstats);
-    w2_var->put_rec(&w2[grid->kstart], nstats);
-    // s2_var->put_rec(&s2[grid->kstart], nstats);
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-      profs[it->first+"2"].ncvar->put_rec(&profs[it->first+"2"].data[grid->kstart], nstats);
-
-    u3_var->put_rec(&u3[grid->kstart], nstats);
-    v3_var->put_rec(&v3[grid->kstart], nstats);
-    w3_var->put_rec(&w3[grid->kstart], nstats);
-    s3_var->put_rec(&s3[grid->kstart], nstats);
-
-    ugrad_var->put_rec(&ugrad[grid->kstart], nstats);
-    vgrad_var->put_rec(&vgrad[grid->kstart], nstats);
-    sgrad_var->put_rec(&sgrad[grid->kstart], nstats);
-
-    wu_var->put_rec(&wu[grid->kstart], nstats);
-    wv_var->put_rec(&wv[grid->kstart], nstats);
-    ws_var->put_rec(&ws[grid->kstart], nstats);
-
-    udiff_var->put_rec(&udiff[grid->kstart], nstats);
-    vdiff_var->put_rec(&vdiff[grid->kstart], nstats);
-    sdiff_var->put_rec(&sdiff[grid->kstart], nstats);
-
-    uflux_var->put_rec(&uflux[grid->kstart], nstats);
-    vflux_var->put_rec(&vflux[grid->kstart], nstats);
-    sflux_var->put_rec(&sflux[grid->kstart], nstats);
   }
 
   // sync the data
@@ -305,13 +230,9 @@ int cstats_les::addprof(std::string name, std::string zloc)
 {
   // create the NetCDF variable
   if(zloc == "z")
-  {
-    profs[name].ncvar  = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
-  }
+    profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
   else if(zloc == "zh")
-  {
     profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
-  }
 
   // and allocate the memory
   profs[name].data = new double[grid->kcells];
@@ -322,9 +243,8 @@ int cstats_les::addprof(std::string name, std::string zloc)
 // COMPUTATIONAL KERNELS BELOW
 int cstats_les::calcmean(double * restrict data, double * restrict prof, double offset)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
@@ -352,9 +272,8 @@ int cstats_les::calcmean(double * restrict data, double * restrict prof, double 
 
 int cstats_les::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
@@ -382,9 +301,8 @@ int cstats_les::calcmoment(double * restrict data, double * restrict datamean, d
 
 int cstats_les::calcflux(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
@@ -425,9 +343,8 @@ int cstats_les::calcflux(double * restrict data, double * restrict w, double * r
 
 int cstats_les::calcgrad(double * restrict data, double * restrict prof, double * restrict dzhi)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
@@ -455,9 +372,8 @@ int cstats_les::calcgrad(double * restrict data, double * restrict prof, double 
 
 int cstats_les::calcdiff(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi, double * restrict fluxbot, double * restrict fluxtop, double tPr)
 {
-  int ijk,ij,ii,jj,kk,kstart,kend;
+  int ijk,ij,jj,kk,kstart,kend;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   kstart = grid->kstart;
@@ -502,6 +418,14 @@ int cstats_les::calcdiff(double * restrict data, double * restrict evisc, double
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats_les::addfluxes(double * restrict flux, double * restrict turb, double * restrict diff)
+{
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+    flux[k] = turb[k] + diff[k];
 
   return 0;
 }
