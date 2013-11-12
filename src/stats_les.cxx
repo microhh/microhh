@@ -27,7 +27,10 @@ cstats_les::~cstats_les()
   {
     delete[] uabs;
     delete[] vabs;
-    // TODO empty list
+
+    // delete the profiles
+    for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
+      delete[] it->second.data;
   }
 }
 
