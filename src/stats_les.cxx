@@ -28,7 +28,7 @@ cstats_les::~cstats_les()
     delete[] u;
     delete[] v;
     delete[] w;
-    delete[] s;
+    // delete[] s;
 
     delete[] uabs;
     delete[] vabs;
@@ -36,7 +36,7 @@ cstats_les::~cstats_les()
     delete[] u2;
     delete[] v2;
     delete[] w2;
-    delete[] s2;
+    // delete[] s2;
 
     delete[] u3;
     delete[] v3;
@@ -68,7 +68,7 @@ int cstats_les::init()
   u = new double[grid->kcells];
   v = new double[grid->kcells];
   w = new double[grid->kcells];
-  s = new double[grid->kcells];
+  // s = new double[grid->kcells];
 
   uabs = new double[grid->kcells];
   vabs = new double[grid->kcells];
@@ -76,7 +76,7 @@ int cstats_les::init()
   u2 = new double[grid->kcells];
   v2 = new double[grid->kcells];
   w2 = new double[grid->kcells];
-  s2 = new double[grid->kcells];
+  // s2 = new double[grid->kcells];
 
   u3 = new double[grid->kcells];
   v3 = new double[grid->kcells];
@@ -137,17 +137,20 @@ int cstats_les::create(int n)
       z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
       zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
 
-
       u_var = dataFile->add_var("u", ncDouble, t_dim, z_dim );
       v_var = dataFile->add_var("v", ncDouble, t_dim, z_dim );
       w_var = dataFile->add_var("w", ncDouble, t_dim, zh_dim);
+
       // s_var = dataFile->add_var("s", ncDouble, t_dim, z_dim );
-      addprof("s", "z");
+      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        addprof(it->first, "z");
 
       u2_var = dataFile->add_var("u2", ncDouble, t_dim, z_dim );
       v2_var = dataFile->add_var("v2", ncDouble, t_dim, z_dim );
       w2_var = dataFile->add_var("w2", ncDouble, t_dim, zh_dim);
-      s2_var = dataFile->add_var("s2", ncDouble, t_dim, z_dim );
+
+      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        addprof(it->first+"2", "z");
 
       u3_var = dataFile->add_var("u3", ncDouble, t_dim, z_dim );
       v3_var = dataFile->add_var("v3", ncDouble, t_dim, z_dim );
@@ -203,8 +206,10 @@ int cstats_les::exec(int iteration, double time)
   calcmean(fields->u->data, u, NO_OFFSET);
   calcmean(fields->v->data, v, NO_OFFSET);
   calcmean(fields->w->data, w, NO_OFFSET);
-  calcmean(fields->s["s"]->data, profs["s"].data, NO_OFFSET);
   calcmean(fields->s["evisc"]->data, evisc, NO_OFFSET);
+
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
 
   // calculate absolute means
   calcmean(fields->u->data, uabs, grid->u);
@@ -214,7 +219,9 @@ int cstats_les::exec(int iteration, double time)
   calcmoment(fields->u->data, u, u2, 2., 0);
   calcmoment(fields->v->data, v, v2, 2., 0);
   calcmoment(fields->w->data, w, w2, 2., 1);
-  calcmoment(fields->s["s"]->data, profs["s"].data, s2, 2., 0);
+
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    calcmoment(it->second->data, profs[it->first].data, profs[it->first+"2"].data, 2., 0);
 
   // calc skewnesses
   calcmoment(fields->u->data, u, u3, 3., 0);
@@ -250,14 +257,18 @@ int cstats_les::exec(int iteration, double time)
     u_var->put_rec(&uabs[grid->kstart], nstats);
     v_var->put_rec(&vabs[grid->kstart], nstats);
     w_var->put_rec(&w[grid->kstart], nstats);
-    s_var->put_rec(&s[grid->kstart], nstats);
+    // s_var->put_rec(&s[grid->kstart], nstats);
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      profs[it->first].ncvar->put_rec(&profs[it->first].data[grid->kstart], nstats);
 
     evisc_var->put_rec(&evisc[grid->kstart], nstats);
 
     u2_var->put_rec(&u2[grid->kstart], nstats);
     v2_var->put_rec(&v2[grid->kstart], nstats);
     w2_var->put_rec(&w2[grid->kstart], nstats);
-    s2_var->put_rec(&s2[grid->kstart], nstats);
+    // s2_var->put_rec(&s2[grid->kstart], nstats);
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      profs[it->first+"2"].ncvar->put_rec(&profs[it->first+"2"].data[grid->kstart], nstats);
 
     u3_var->put_rec(&u3[grid->kstart], nstats);
     v3_var->put_rec(&v3[grid->kstart], nstats);
@@ -292,14 +303,18 @@ int cstats_les::exec(int iteration, double time)
 
 int cstats_les::addprof(std::string name, std::string zloc)
 {
+  // create the NetCDF variable
   if(zloc == "z")
   {
-    profs[name].var = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
+    profs[name].ncvar  = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
   }
   else if(zloc == "zh")
   {
-    profs[name].var = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
+    profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
   }
+
+  // and allocate the memory
+  profs[name].data = new double[grid->kcells];
 
   return 0;
 }
