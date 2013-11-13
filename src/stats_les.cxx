@@ -150,6 +150,12 @@ int cstats_les::create(int n)
   return (nerror > 0);
 }
 
+unsigned long cstats_les::gettimelim(unsigned long itime)
+{
+  unsigned long idtlim = istatstime -  itime % istatstime;
+  return idtlim;
+}
+
 int cstats_les::exec(int iteration, double time, unsigned long itime)
 {
   // check if time for execution

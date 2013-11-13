@@ -178,6 +178,12 @@ int cstats_dns::create(int n)
   return (nerror > 0);
 }
 
+unsigned long cstats_dns::gettimelim(unsigned long itime)
+{
+  unsigned long idtlim = istatstime -  itime % istatstime;
+  return idtlim;
+}
+
 int cstats_dns::exec(int iteration, double time, unsigned long itime)
 {
   // check if time for execution
@@ -295,9 +301,8 @@ int cstats_dns::addprof(std::string name, std::string zloc)
 // COMPUTATIONAL KERNELS
 int cstats_dns::calcmean(double * restrict data, double * restrict prof, double offset)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
@@ -325,9 +330,8 @@ int cstats_dns::calcmean(double * restrict data, double * restrict prof, double 
 
 int cstats_dns::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
@@ -355,9 +359,8 @@ int cstats_dns::calcmoment(double * restrict data, double * restrict datamean, d
 
 int cstats_dns::calcflux(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
-  int ijk,ii,jj,kk1,kk2;
+  int ijk,jj,kk1,kk2;
 
-  ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
@@ -399,9 +402,8 @@ int cstats_dns::calcflux(double * restrict data, double * restrict w, double * r
 
 int cstats_dns::calcgrad(double * restrict data, double * restrict prof, double * restrict dzhi4)
 {
-  int ijk,ii,jj,kk1,kk2;
+  int ijk,jj,kk1,kk2;
 
-  ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
@@ -430,9 +432,8 @@ int cstats_dns::calcgrad(double * restrict data, double * restrict prof, double 
 
 int cstats_dns::calcdiff(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
 {
-  int ijk,ii,jj,kk1,kk2;
+  int ijk,jj,kk1,kk2;
 
-  ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;

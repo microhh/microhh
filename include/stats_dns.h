@@ -16,6 +16,7 @@ class cstats_dns : public cstats
     int readinifile(cinput *);
     int init(double);
     int create(int);
+    unsigned long gettimelim(unsigned long);
     int exec(int, double, unsigned long);
 
   private:

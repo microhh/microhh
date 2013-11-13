@@ -24,10 +24,10 @@ class cstats
     virtual int readinifile(cinput *);
     virtual int init(double);
     virtual int create(int);
+    virtual unsigned long gettimelim(unsigned long);
     virtual int exec(int, double, unsigned long);
 
-    unsigned long gettimelim(unsigned long);
-    int dostats(int, unsigned long);
+    // int dostats(int, unsigned long);
 
   protected:
     cgrid   *grid;
