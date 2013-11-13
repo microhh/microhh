@@ -561,7 +561,6 @@ int cgrid::load()
     pFile = fopen(filename, "rb");
     if(pFile == NULL)
     {
-      std::printf("FAILED\n");
       ++nerror;
     }
     else
