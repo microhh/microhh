@@ -5,30 +5,20 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
+#include "stats.h"
 
-struct statsvar
-{
-  NcVar *ncvar;
-  double *data;
-};
-typedef std::map<std::string, statsvar> profmap;
-
-class cstats_les
+class cstats_les : public cstats
 {
   public:
     cstats_les(cgrid *, cfields *, cmpi *);
     ~cstats_les();
 
     int readinifile(cinput *);
-    int init();
+    int init(double);
     int create(int);
-    int exec(int, double);
+    int exec(int, double, unsigned long);
 
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
-
     bool allocated;
     bool initialized;
 

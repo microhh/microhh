@@ -2,18 +2,14 @@
 #include <cmath>
 #include "grid.h"
 #include "fields.h"
-#include "stats.h"
+#include "stats_les.h"
 #include "defines.h"
 #include <netcdfcpp.h>
 
 #define NO_OFFSET 0.
 
-cstats_les::cstats_les(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cstats_les::cstats_les(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cstats(gridin, fieldsin, mpiin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
-
   allocated   = false;
   initialized = false;
 }
@@ -34,8 +30,17 @@ cstats_les::~cstats_les()
   }
 }
 
-int cstats_les::init()
+int cstats_les::readinifile(cinput *inputin)
 {
+  int nerror = 0;
+  nerror += inputin->getItem(&statstime, "stats", "statstime", "");
+  return nerror;
+}
+
+int cstats_les::init(double ifactor)
+{
+  istatstime = (unsigned long)(ifactor * statstime);
+
   uabs = new double[grid->kcells];
   vabs = new double[grid->kcells];
 
@@ -145,8 +150,12 @@ int cstats_les::create(int n)
   return (nerror > 0);
 }
 
-int cstats_les::exec(int iteration, double time)
+int cstats_les::exec(int iteration, double time, unsigned long itime)
 {
+  // check if time for execution
+  if(itime % istatstime != 0)
+    return 0;
+
   if(mpi->mpiid == 0) std::printf("Saving stats for time %f\n", time);
 
   if(mpi->mpiid == 0)

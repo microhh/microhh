@@ -39,6 +39,8 @@ class cmodel
     std::string swpres;
     std::string swboundary;
 
+    std::string swstats;
+
     cgrid   *grid;
     cfields *fields;
 

@@ -28,6 +28,10 @@
 #include "pres_g42.h"
 #include "pres_g4.h"
 
+// stats schemes
+#include "stats_dns.h"
+#include "stats_les.h"
+
 cmodel::cmodel(cmpi * mpiin, cinput * inputin)
 {
   mpi   = mpiin;
@@ -45,15 +49,15 @@ cmodel::cmodel(cmpi * mpiin, cinput * inputin)
   buoyancy = new cbuoyancy(grid, fields, mpi);
   buffer   = new cbuffer  (grid, fields, mpi);
 
-  // load the postprocessing moduls
-  stats = new cstats   (grid, fields, mpi);
-  cross = new ccross   (grid, fields, mpi);
-
   // set null pointers for classes that will be initialized later
   boundary = NULL;
   advec    = NULL;
   diff     = NULL;
   pres     = NULL;
+
+  // load the postprocessing moduls
+  stats = NULL;
+  cross = new ccross(grid, fields, mpi);
 }
 
 cmodel::~cmodel()
@@ -92,6 +96,7 @@ int cmodel::readinifile()
   n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
   n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   n += input->getItem(&swboundary, "boundary", "swboundary", "", "default"           );
+  n += input->getItem(&swstats   , "stats"   , "swstats"   , "");
 
   // if one or more arguments fails, then crash
   if(n > 0)
@@ -190,6 +195,18 @@ int cmodel::readinifile()
     return 1;
 
   // statistics
+  if(swstats == "0")
+    stats = new cstats    (grid, fields, mpi);
+  else if(swstats == "dns")
+    stats = new cstats_dns(grid, fields, mpi);
+  else if(swstats == "les")
+    stats = new cstats_les(grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
+    return 1;
+  }
+
   if(stats->readinifile(input))
     return 1;
   if(cross->readinifile(input))
