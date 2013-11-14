@@ -21,8 +21,8 @@ cstats_les::~cstats_les()
 
   if(allocated)
   {
-    delete[] uabs;
-    delete[] vabs;
+    delete[] umodel;
+    delete[] vmodel;
 
     // delete the profiles
     for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
@@ -41,8 +41,8 @@ int cstats_les::init(double ifactor)
 {
   istatstime = (unsigned long)(ifactor * statstime);
 
-  uabs = new double[grid->kcells];
-  vabs = new double[grid->kcells];
+  umodel = new double[grid->kcells];
+  vmodel = new double[grid->kcells];
 
   allocated = true;
 
@@ -177,8 +177,8 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, profs["u"].data, NO_OFFSET);
-  calcmean(fields->v->data, profs["v"].data, NO_OFFSET);
+  calcmean(fields->u->data, profs["u"].data, grid->u);
+  calcmean(fields->v->data, profs["v"].data, grid->v);
   calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
@@ -186,27 +186,27 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
   calcmean(fields->s["p"]->data, profs["p"].data, NO_OFFSET);
   calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
 
-  // calculate absolute means
-  calcmean(fields->u->data, uabs, grid->u);
-  calcmean(fields->v->data, vabs, grid->v);
+  // calculate model means without correction for transformation
+  calcmean(fields->u->data, umodel, NO_OFFSET);
+  calcmean(fields->v->data, vmodel, NO_OFFSET);
 
   // 2nd order
-  calcmoment(fields->u->data, profs["u"].data, profs["u2"].data, 2., 0);
-  calcmoment(fields->v->data, profs["v"].data, profs["v2"].data, 2., 0);
+  calcmoment(fields->u->data, umodel, profs["u2"].data, 2., 0);
+  calcmoment(fields->v->data, vmodel, profs["v2"].data, 2., 0);
   calcmoment(fields->w->data, profs["w"].data, profs["w2"].data, 2., 1);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmoment(it->second->data, profs[it->first].data, profs[it->first+"2"].data, 2., 0);
 
   // 3rd order
-  calcmoment(fields->u->data, profs["u"].data, profs["u3"].data, 3., 0);
-  calcmoment(fields->v->data, profs["v"].data, profs["v3"].data, 3., 0);
+  calcmoment(fields->u->data, umodel, profs["u3"].data, 3., 0);
+  calcmoment(fields->v->data, vmodel, profs["v3"].data, 3., 0);
   calcmoment(fields->w->data, profs["w"].data, profs["w3"].data, 3., 1);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmoment(it->second->data, profs[it->first].data, profs[it->first+"3"].data, 3., 0);
 
   // 4th order
-  calcmoment(fields->u->data, profs["u"].data, profs["u4"].data, 4., 0);
-  calcmoment(fields->v->data, profs["v"].data, profs["v4"].data, 4., 0);
+  calcmoment(fields->u->data, umodel, profs["u4"].data, 4., 0);
+  calcmoment(fields->v->data, vmodel, profs["v4"].data, 4., 0);
   calcmoment(fields->w->data, profs["w"].data, profs["w4"].data, 4., 1);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmoment(it->second->data, profs[it->first].data, profs[it->first+"4"].data, 3., 0);

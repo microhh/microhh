@@ -27,7 +27,7 @@ class cstats_dns : public cstats
     NcDim  *z_dim, *zh_dim, *t_dim;
     NcVar  *z_var, *zh_var, *t_var, *iter_var;
 
-    double *uabs, *vabs;
+    double *umodel, *vmodel;
 
     profmap profs;
     int addprof(std::string, std::string);
