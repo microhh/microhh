@@ -54,7 +54,7 @@ int cdiff_les_g2::execvisc(cboundary *boundaryin)
           fields->u->data, fields->v->data, fields->w->data,
           fields->u->datafluxbot, fields->v->datafluxbot,
           boundaryptr->ustar, boundaryptr->obuk,
-          grid->z, grid->dz, grid->dzi, grid->dzhi);
+          grid->z, grid->dzi, grid->dzhi);
 
   // TODO replace by proper check
   if(fields->s.count("s") == 1)
@@ -63,7 +63,7 @@ int cdiff_les_g2::execvisc(cboundary *boundaryin)
           fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
           fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
           boundaryptr->ustar, boundaryptr->obuk,
-          grid->z, grid->dz, grid->dzi, grid->dzhi, 
+          grid->z, grid->dz, grid->dzi,
           fields->tPr);
   }
   else
@@ -71,7 +71,7 @@ int cdiff_les_g2::execvisc(cboundary *boundaryin)
     evisc_neutral(fields->s["evisc"]->data,
                   fields->u->data, fields->v->data, fields->w->data,
                   fields->u->datafluxbot, fields->v->datafluxbot,
-                  grid->z, grid->dz, grid->dzi, grid->dzhi);
+                  grid->z, grid->dz);
   }
 
   return 0;
@@ -103,7 +103,7 @@ int cdiff_les_g2::strain2(double * restrict strain2,
                           double * restrict u, double * restrict v, double * restrict w,
                           double * restrict ufluxbot, double * restrict vfluxbot,
                           double * restrict ustar, double * restrict obuk,
-                          double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi)
+                          double * restrict z, double * restrict dzi, double * restrict dzhi)
 {
   int    ij,ijk,ii,jj,kk,kstart;
   double dxi,dyi;
@@ -177,7 +177,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
                         double * restrict u, double * restrict v, double * restrict w,  double * restrict b,
                         double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
                         double * restrict ustar, double * restrict obuk,
-                        double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi,
+                        double * restrict z, double * restrict dz, double * restrict dzi,
                         double tPr)
 {
   int    ij,ijk,jj,kk,kstart;
@@ -244,7 +244,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
 int cdiff_les_g2::evisc_neutral(double * restrict evisc,
                                 double * restrict u, double * restrict v, double * restrict w,
                                 double * restrict ufluxbot, double * restrict vfluxbot,
-                                double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi)
+                                double * restrict z, double * restrict dz)
 {
   int    ij,ijk,jj,kk,kstart;
   double dx,dy;
