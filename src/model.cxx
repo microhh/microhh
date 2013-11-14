@@ -95,8 +95,8 @@ int cmodel::readinifile()
   n += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
   n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
   n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
-  n += input->getItem(&swboundary, "boundary", "swboundary", "", "default"           );
-  n += input->getItem(&swstats   , "stats"   , "swstats"   , "");
+  n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
+  n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
 
   // if one or more arguments fails, then crash
   if(n > 0)
