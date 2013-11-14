@@ -67,87 +67,92 @@ int cstats_les::create(int n)
       std::printf("ERROR cannot write statistics file\n");
       ++nerror;
     }
-    else
-    {
-      // create dimensions
-      z_dim  = dataFile->add_dim("z" , grid->kmax);
-      zh_dim = dataFile->add_dim("zh", grid->kmax+1);
-      t_dim  = dataFile->add_dim("t");
-
-      // create variables
-      iter_var = dataFile->add_var("iter", ncInt   , t_dim );
-      t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
-      z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
-      zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
-
-      // means
-      addprof("u", "z" );
-      addprof("v", "z" );
-      addprof("w", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first, "z");
-      addprof("evisc", "z");
-      addprof("p", "z");
-
-      // 2nd order
-      addprof("u2", "z" );
-      addprof("v2", "z" );
-      addprof("w2", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"2", "z");
-
-      // 3rd order
-      addprof("u3", "z" );
-      addprof("v3", "z" );
-      addprof("w3", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"3", "z");
-
-      // 4th order
-      addprof("u4", "z" );
-      addprof("v4", "z" );
-      addprof("w4", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"4", "z");
-
-      // gradients
-      addprof("ugrad", "zh");
-      addprof("vgrad", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"grad", "zh");
-
-      // turbulent fluxes
-      addprof("uw", "zh");
-      addprof("vw", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"w", "zh");
-
-      // diffusive fluxes
-      addprof("udiff", "zh");
-      addprof("vdiff", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"diff", "zh");
-
-      // total fluxes
-      addprof("uflux", "zh");
-      addprof("vflux", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"flux", "zh");
-
-      // save the grid variables
-      z_var ->put(&grid->z [grid->kstart], grid->kmax  );
-      zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
-
-      dataFile->sync();
-    }
-
-    initialized = true;
   }
-
   // crash on all processes in case the file could not be written
   mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
 
-  return (nerror > 0);
+  // create dimensions
+  if(mpi->mpiid == 0)
+  {
+    z_dim  = dataFile->add_dim("z" , grid->kmax);
+    zh_dim = dataFile->add_dim("zh", grid->kmax+1);
+    t_dim  = dataFile->add_dim("t");
+
+    // create variables belonging to dimensions
+    iter_var = dataFile->add_var("iter", ncInt   , t_dim );
+    t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
+    z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
+    zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
+  }
+
+  // means
+  addprof("u", "z" );
+  addprof("v", "z" );
+  addprof("w", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first, "z");
+  addprof("evisc", "z");
+  addprof("p", "z");
+
+  // 2nd order
+  addprof("u2", "z" );
+  addprof("v2", "z" );
+  addprof("w2", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"2", "z");
+
+  // 3rd order
+  addprof("u3", "z" );
+  addprof("v3", "z" );
+  addprof("w3", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"3", "z");
+
+  // 4th order
+  addprof("u4", "z" );
+  addprof("v4", "z" );
+  addprof("w4", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"4", "z");
+
+  // gradients
+  addprof("ugrad", "zh");
+  addprof("vgrad", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"grad", "zh");
+
+  // turbulent fluxes
+  addprof("uw", "zh");
+  addprof("vw", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"w", "zh");
+
+  // diffusive fluxes
+  addprof("udiff", "zh");
+  addprof("vdiff", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"diff", "zh");
+
+  // total fluxes
+  addprof("uflux", "zh");
+  addprof("vflux", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"flux", "zh");
+
+  if(mpi->mpiid == 0)
+  {
+    // save the grid variables
+    z_var ->put(&grid->z [grid->kstart], grid->kmax  );
+    zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
+
+    dataFile->sync();
+  }
+
+  initialized = true;
+
+  return 0;
 }
 
 unsigned long cstats_les::gettimelim(unsigned long itime)
@@ -233,11 +238,10 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
   {
     for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
       profs[it->first].ncvar->put_rec(&profs[it->first].data[grid->kstart], nstats);
-  }
 
-  // sync the data
-  if(mpi->mpiid == 0) 
+    // sync the data
     dataFile->sync();
+  }
 
   ++nstats;
 
@@ -247,10 +251,13 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
 int cstats_les::addprof(std::string name, std::string zloc)
 {
   // create the NetCDF variable
-  if(zloc == "z")
-    profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
-  else if(zloc == "zh")
-    profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
+  if(mpi->mpiid == 0)
+  {
+    if(zloc == "z")
+      profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
+    else if(zloc == "zh")
+      profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
+  }
 
   // and allocate the memory
   profs[name].data = new double[grid->kcells];

@@ -67,115 +67,121 @@ int cstats_dns::create(int n)
       std::printf("ERROR cannot write statistics file\n");
       ++nerror;
     }
-    else
-    {
-      // create dimensions
-      z_dim  = dataFile->add_dim("z" , grid->kmax);
-      zh_dim = dataFile->add_dim("zh", grid->kmax+1);
-      t_dim  = dataFile->add_dim("t");
-
-      // create variables
-      iter_var = dataFile->add_var("iter", ncInt   , t_dim );
-      t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
-      z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
-      zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
-
-      // means
-      addprof("u", "z" );
-      addprof("v", "z" );
-      addprof("w", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first, "z");
-      addprof("p", "z");
-
-      // 2nd order
-      addprof("u2", "z" );
-      addprof("v2", "z" );
-      addprof("w2", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"2", "z");
-
-      // 3rd order
-      addprof("u3", "z" );
-      addprof("v3", "z" );
-      addprof("w3", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"3", "z");
-
-      // 4th order
-      addprof("u4", "z" );
-      addprof("v4", "z" );
-      addprof("w4", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"4", "z");
-
-      // gradients
-      addprof("ugrad", "zh");
-      addprof("vgrad", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"grad", "zh");
-
-      // turbulent fluxes
-      addprof("uw", "zh");
-      addprof("vw", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"w", "zh");
-
-      // diffusive fluxes
-      addprof("udiff", "zh");
-      addprof("vdiff", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"diff", "zh");
-
-      // total fluxes
-      addprof("uflux", "zh");
-      addprof("vflux", "zh");
-      for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        addprof(it->first+"flux", "zh");
-
-      addprof("u2_shear" , "z");
-      addprof("v2_shear" , "z");
-      addprof("tke_shear", "z");
-
-      addprof("u2_turb" , "z" );
-      addprof("v2_turb" , "z" );
-      addprof("w2_turb" , "zh");
-      addprof("tke_turb", "z" );
-
-      addprof("u2_visc" , "z" );
-      addprof("v2_visc" , "z" );
-      addprof("w2_visc" , "zh");
-      addprof("tke_visc", "z" );
-
-      addprof("u2_diss" , "z" );
-      addprof("v2_diss" , "z" );
-      addprof("w2_diss" , "zh");
-      addprof("tke_diss", "z" );
-
-      addprof("w2_pres" , "zh");
-      addprof("tke_pres", "z" );
-
-      addprof("u2_rdstr", "z" );
-      addprof("v2_rdstr", "z" );
-      addprof("w2_rdstr", "zh");
-
-      addprof("w2_buoy" , "zh");
-      addprof("tke_buoy", "z" );
-
-      // save the grid variables
-      z_var ->put(&grid->z [grid->kstart], grid->kmax  );
-      zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
-
-      dataFile->sync();
-    }
-
-    initialized = true;
   }
 
   // crash on all processes in case the file could not be written
   mpi->broadcast(&nerror, 1);
+  if(nerror)
+    return 1;
 
-  return (nerror > 0);
+  if(mpi->mpiid == 0)
+  {
+    // create dimensions
+    z_dim  = dataFile->add_dim("z" , grid->kmax);
+    zh_dim = dataFile->add_dim("zh", grid->kmax+1);
+    t_dim  = dataFile->add_dim("t");
+
+    // create variables
+    iter_var = dataFile->add_var("iter", ncInt   , t_dim );
+    t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
+    z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
+    zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
+  }
+
+  // means
+  addprof("u", "z" );
+  addprof("v", "z" );
+  addprof("w", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first, "z");
+  addprof("p", "z");
+
+  // 2nd order
+  addprof("u2", "z" );
+  addprof("v2", "z" );
+  addprof("w2", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"2", "z");
+
+  // 3rd order
+  addprof("u3", "z" );
+  addprof("v3", "z" );
+  addprof("w3", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"3", "z");
+
+  // 4th order
+  addprof("u4", "z" );
+  addprof("v4", "z" );
+  addprof("w4", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"4", "z");
+
+  // gradients
+  addprof("ugrad", "zh");
+  addprof("vgrad", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"grad", "zh");
+
+  // turbulent fluxes
+  addprof("uw", "zh");
+  addprof("vw", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"w", "zh");
+
+  // diffusive fluxes
+  addprof("udiff", "zh");
+  addprof("vdiff", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"diff", "zh");
+
+  // total fluxes
+  addprof("uflux", "zh");
+  addprof("vflux", "zh");
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    addprof(it->first+"flux", "zh");
+
+  addprof("u2_shear" , "z");
+  addprof("v2_shear" , "z");
+  addprof("tke_shear", "z");
+
+  addprof("u2_turb" , "z" );
+  addprof("v2_turb" , "z" );
+  addprof("w2_turb" , "zh");
+  addprof("tke_turb", "z" );
+
+  addprof("u2_visc" , "z" );
+  addprof("v2_visc" , "z" );
+  addprof("w2_visc" , "zh");
+  addprof("tke_visc", "z" );
+
+  addprof("u2_diss" , "z" );
+  addprof("v2_diss" , "z" );
+  addprof("w2_diss" , "zh");
+  addprof("tke_diss", "z" );
+
+  addprof("w2_pres" , "zh");
+  addprof("tke_pres", "z" );
+
+  addprof("u2_rdstr", "z" );
+  addprof("v2_rdstr", "z" );
+  addprof("w2_rdstr", "zh");
+
+  addprof("w2_buoy" , "zh");
+  addprof("tke_buoy", "z" );
+
+  if(mpi->mpiid == 0)
+  {
+    // save the grid variables
+    z_var ->put(&grid->z [grid->kstart], grid->kmax  );
+    zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
+
+    dataFile->sync();
+  }
+
+  initialized = true;
+
+  return 0;
 }
 
 unsigned long cstats_dns::gettimelim(unsigned long itime)
@@ -273,13 +279,11 @@ int cstats_dns::exec(int iteration, double time, unsigned long itime)
   {
     for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
       profs[it->first].ncvar->put_rec(&profs[it->first].data[grid->kstart], nstats);
+
+    dataFile->sync();
   }
 
-  // sync the data
-  if(mpi->mpiid == 0) 
-    dataFile->sync();
-
-  nstats++;
+  ++nstats;
 
   return 0;
 }
@@ -287,10 +291,13 @@ int cstats_dns::exec(int iteration, double time, unsigned long itime)
 int cstats_dns::addprof(std::string name, std::string zloc)
 {
   // create the NetCDF variable
-  if(zloc == "z")
-    profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
-  else if(zloc == "zh")
-    profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
+  if(mpi->mpiid == 0)
+  {
+    if(zloc == "z")
+      profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
+    else if(zloc == "zh")
+      profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
+  }
 
   // and allocate the memory
   profs[name].data = new double[grid->kcells];
