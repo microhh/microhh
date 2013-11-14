@@ -56,12 +56,23 @@ int cdiff_les_g2::execvisc(cboundary *boundaryin)
           boundaryptr->ustar, boundaryptr->obuk,
           grid->z, grid->dz, grid->dzi, grid->dzhi);
 
-  evisc(fields->s["evisc"]->data,
-        fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
-        fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
-        boundaryptr->ustar, boundaryptr->obuk,
-        grid->z, grid->dz, grid->dzi, grid->dzhi, 
-        fields->tPr);
+  // TODO replace by proper check
+  if(fields->s.count("s") == 1)
+  {
+    evisc(fields->s["evisc"]->data,
+          fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
+          fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
+          boundaryptr->ustar, boundaryptr->obuk,
+          grid->z, grid->dz, grid->dzi, grid->dzhi, 
+          fields->tPr);
+  }
+  else
+  {
+    evisc_neutral(fields->s["evisc"]->data,
+                  fields->u->data, fields->v->data, fields->w->data,
+                  fields->u->datafluxbot, fields->v->datafluxbot,
+                  grid->z, grid->dz, grid->dzi, grid->dzhi);
+  }
 
   return 0;
 }
@@ -222,6 +233,49 @@ int cdiff_les_g2::evisc(double * restrict evisc,
         RitPrratio = (9.81/300.)*(b[ijk+kk]-b[ijk-kk])*0.5*dzi[k] / evisc[ijk] / tPr;
         RitPrratio = std::min(RitPrratio, 1.-dsmall);
         evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
+      }
+  }
+
+  grid->boundary_cyclic(evisc);
+
+  return 0;
+}
+
+int cdiff_les_g2::evisc_neutral(double * restrict evisc,
+                                double * restrict u, double * restrict v, double * restrict w,
+                                double * restrict ufluxbot, double * restrict vfluxbot,
+                                double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi)
+{
+  int    ij,ijk,jj,kk,kstart;
+  double dx,dy;
+
+  // wall damping
+  double mlen,mlen0,fac;
+  const double z0 = 0.1;
+  const double n  = 2.;
+
+  double RitPrratio;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+
+  dx = grid->dx;
+  dy = grid->dy;
+
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+    mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
+    fac   = std::pow(mlen, 2.);
+
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        evisc[ijk] = fac * std::sqrt(evisc[ijk]);
       }
   }
 
