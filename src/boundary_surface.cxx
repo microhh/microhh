@@ -188,10 +188,20 @@ int cboundary_surface::bcvalues()
 {
   // start with retrieving the stability information
   // TODO make this working properly with buoyancy
-  stability(ustar, obuk, fields->sp["s"]->datafluxbot,
-            fields->u->data, fields->v->data, fields->sp["s"]->data,
-            fields->u->databot, fields->v->databot, fields->sp["s"]->databot,
-            fields->s["tmp1"]->data, grid->z);
+  if(fields->s.count("s") == 1)
+  {
+    stability(ustar, obuk, fields->sp["s"]->datafluxbot,
+              fields->u->data, fields->v->data, fields->sp["s"]->data,
+              fields->u->databot, fields->v->databot, fields->sp["s"]->databot,
+              fields->s["tmp1"]->data, grid->z);
+  }
+  else
+  {
+    stability_neutral(ustar, obuk,
+                      fields->u->data, fields->v->data,
+                      fields->u->databot, fields->v->databot,
+                      fields->s["tmp1"]->data, grid->z);
+  }
 
   // calculate the surface value, gradient and flux depending on the chosen boundary condition
   surfm(ustar, obuk,
@@ -199,9 +209,12 @@ int cboundary_surface::bcvalues()
         fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
         grid->z[grid->kstart], surfmbcbot);
 
-  surfs(ustar, obuk, fields->sp["s"]->data,
-        fields->sp["s"]->databot, fields->sp["s"]->datagradbot, fields->sp["s"]->datafluxbot,
-        grid->z[grid->kstart], surfsbcbot["s"]);
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  {
+    surfs(ustar, obuk, it->second->data,
+          it->second->databot, it->second->datagradbot, it->second->datafluxbot,
+          grid->z[grid->kstart], surfsbcbot[it->first]);
+  }
 
   return 0;
 }
@@ -278,6 +291,80 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
         ijk = i + j*jj + kstart*kk;
         db = b[ijk] - bbot[ij];
         obuk [ij] = calcobuk_noslip_dirichlet(obuk[ij], dutot[ij], db, z[kstart]);
+        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+      }
+  }
+
+  return 0;
+}
+
+int cboundary_surface::stability_neutral(double * restrict ustar, double * restrict obuk,
+                                         double * restrict u    , double * restrict v   ,
+                                         double * restrict ubot , double * restrict vbot,
+                                         double * restrict dutot, double * restrict z)
+{
+  int ij,ijk,ii,jj,kk,kstart;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  kstart = grid->kstart;
+
+  // calculate total wind
+  double utot, ubottot;
+  const double minval = 1.e-1;
+  // first, interpolate the wind to the scalar location
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2.) + std::pow(ubot[ij+ii], 2.))
+                         + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
+      utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
+                         + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
+      // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
+      // otherwise evisc at k = kstart blows up
+      dutot[ij] = std::max(std::abs(utot - ubottot), minval);
+    }
+
+  grid->boundary_cyclic2d(dutot);
+
+  // set the Obukhov length to a very large negative number
+  // case 1: fixed buoyancy flux and fixed ustar
+  if(surfmbcbot == 2 && surfsbcbot["s"] == 2)
+  {
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ij  = i + j*jj;
+        obuk[ij] = -dbig;
+      }
+  }
+  // case 2: fixed buoyancy surface value and free ustar
+  else if(surfmbcbot == 0 && surfsbcbot["s"] == 2)
+  {
+    for(int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+      for(int i=0; i<grid->icells; ++i)
+      {
+        ij  = i + j*jj;
+        obuk [ij] = -dbig;
+        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+      }
+  }
+  else if(surfmbcbot == 0 && surfsbcbot["s"] == 0)
+  {
+    for(int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+      for(int i=0; i<grid->icells; ++i)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + kstart*kk;
+        obuk [ij] = -dbig;
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }

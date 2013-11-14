@@ -30,6 +30,10 @@ class cboundary_surface : public cboundary
                   double *, double *, double *,
                   double *, double *, double *,
                   double *, double *);
+    int stability_neutral(double *, double *,
+                          double *, double *,
+                          double *, double *,
+                          double *, double *);
     int surfm(double *, double *,
               double *, double *, double *, double *,
               double *, double *, double *, double *,
