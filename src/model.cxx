@@ -101,7 +101,7 @@ std::printf("a");
   n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
-  n += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "default");
+  n += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "off");
 std::printf("a");
 
   // if one or more arguments fails, then crash
@@ -182,18 +182,17 @@ std::printf("a");
 
   // read the thermo and buffer in the end because they need to know the requested fields
   if(swthermo== "moist")
-  {
     thermo = new cthermo_moist(grid, fields, mpi);
-  }
-  else if(swthermo == "default")
-  {
+  else if(swthermo == "dry")
     thermo = new cthermo(grid, fields, mpi);
-  }
+  else if(swthermo == "off")
+    thermo = new cthermo(grid, fields, mpi);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
     return 1;
   }
+
   if(thermo->readinifile(input))
     return 1;
 
