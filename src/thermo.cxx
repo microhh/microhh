@@ -1,10 +1,10 @@
 #include <cstdio>
 #include "grid.h"
 #include "fields.h"
-#include "buoyancy.h"
+#include "thermo.h"
 #include "defines.h"
 
-cbuoyancy::cbuoyancy(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cthermo::cthermo(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 {
   // std::printf("Creating instance of object buoyancy\n");
   grid   = gridin;
@@ -12,48 +12,34 @@ cbuoyancy::cbuoyancy(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
   mpi    = mpiin;
 }
 
-cbuoyancy::~cbuoyancy()
+cthermo::~cthermo()
 {
   // std::printf("Destroying instance of object buoyancy\n");
 }
 
-int cbuoyancy::readinifile(cinput *inputin)
+int cthermo::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
+  nerror += inputin->getItem(&gravitybeta, "buoyancy", "gravitybeta", "");
 
-  n += inputin->getItem(&swbuoyancy , "buoyancy", "swbuoyancy", "");
+  nerror += fields->initpfld("s");
+  nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
 
-  // request buoyancy field
-  // CvH reconsider usage of the name s
-  if(swbuoyancy == "2" || swbuoyancy == "4")
-  {
-    n += inputin->getItem(&gravitybeta, "buoyancy", "gravitybeta", "");
-
-    n += fields->initpfld("s");
-    n += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
-  }
-
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return (nerror > 0);
 }
 
-int cbuoyancy::exec()
+int cthermo::exec()
 {
-  if(swbuoyancy == "0")
-    return 0;
-
   // extend later for gravity vector not normal to surface
-  if(swbuoyancy == "2")
+  if(grid->swspatialorder== "2")
     buoyancy_2nd(fields->wt->data, fields->s["s"]->data);
-  else if(swbuoyancy == "4")
+  else if(grid->swspatialorder == "4")
     buoyancy_4th(fields->wt->data, fields->s["s"]->data);
 
   return 0;
 }
 
-int cbuoyancy::buoyancy_2nd(double * restrict wt, double * restrict s)
+int cthermo::buoyancy_2nd(double * restrict wt, double * restrict s)
 {
   int ijk,jj,kk;
 
@@ -73,7 +59,7 @@ int cbuoyancy::buoyancy_2nd(double * restrict wt, double * restrict s)
   return 0;
 }
 
-int cbuoyancy::buoyancy_4th(double * restrict wt, double * restrict s)
+int cthermo::buoyancy_4th(double * restrict wt, double * restrict s)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -94,22 +80,22 @@ int cbuoyancy::buoyancy_4th(double * restrict wt, double * restrict s)
   return 0;
 }
 
-inline double cbuoyancy::interp2(const double a, const double b)
+inline double cthermo::interp2(const double a, const double b)
 {
   return 0.5*(a + b);
 }
 
-inline double cbuoyancy::interp4(const double a, const double b, const double c, const double d)
+inline double cthermo::interp4(const double a, const double b, const double c, const double d)
 {
   return (-a + 9.*b + 9.*c - d) / 16.;
 }
 
-inline double cbuoyancy::interp4biasbot(const double a, const double b, const double c, const double d)
+inline double cthermo::interp4biasbot(const double a, const double b, const double c, const double d)
 {
   return ((5./16.)*a + (15./16.)*b - (5./16.)*c + (1./16)*d);
 }
 
-inline double cbuoyancy::interp4biastop(const double a, const double b, const double c, const double d)
+inline double cthermo::interp4biastop(const double a, const double b, const double c, const double d)
 {
   return ((5./16.)*d + (15./16.)*c - (5./16.)*b + (1./16)*a);
 }

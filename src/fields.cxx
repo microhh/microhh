@@ -161,7 +161,7 @@ int cfields::initpfld(std::string fldname)
   s [fldname] = sp[fldname];
   ap[fldname] = sp[fldname];
   at[fldname] = st[fldname];
-  
+
   return 0;
 }
 

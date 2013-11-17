@@ -28,6 +28,10 @@
 #include "pres_g42.h"
 #include "pres_g4.h"
 
+// thermo schemes
+#include "thermo.h"
+#include "thermo_moist.h"
+
 // stats schemes
 #include "stats_dns.h"
 #include "stats_les.h"
@@ -46,7 +50,6 @@ cmodel::cmodel(cmpi * mpiin, cinput * inputin)
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
-  buoyancy = new cbuoyancy(grid, fields, mpi);
   buffer   = new cbuffer  (grid, fields, mpi);
 
   // set null pointers for classes that will be initialized later
@@ -66,7 +69,7 @@ cmodel::~cmodel()
   delete cross;
   delete stats;
   delete buffer;
-  delete buoyancy;
+  delete thermo;
   delete force;
   delete pres;
   delete diff;
@@ -91,12 +94,15 @@ int cmodel::readinifile()
   if(fields->readinifile(input))
     return 1;
 
+std::printf("a");
   // first, get the switches for the schemes
   n += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
   n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
   n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
+  n += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "default");
+std::printf("a");
 
   // if one or more arguments fails, then crash
   if(n > 0)
@@ -171,9 +177,24 @@ int cmodel::readinifile()
   // model operations
   if(force->readinifile(input))
     return 1;
-  if(buoyancy->readinifile(input))
-    return 1;
   if(timeloop->readinifile(input))
+    return 1;
+
+  // read the thermo and buffer in the end because they need to know the requested fields
+  if(swthermo== "moist")
+  {
+    thermo = new cthermo_moist(grid, fields, mpi);
+  }
+  else if(swthermo == "default")
+  {
+    thermo = new cthermo(grid, fields, mpi);
+  }
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+    return 1;
+  }
+  if(thermo->readinifile(input))
     return 1;
 
   // read the boundary and buffer in the end because they need to know the requested fields
@@ -316,8 +337,8 @@ int cmodel::exec()
     advec->exec();
     // diffusion
     diff->exec();
-    // buoyancy
-    buoyancy->exec();
+    // thermo
+    thermo->exec();
     // buffer
     buffer->exec();
     // large scale forcings

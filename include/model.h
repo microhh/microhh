@@ -10,7 +10,8 @@
 #include "advec.h"
 #include "diff.h"
 #include "force.h"
-#include "buoyancy.h"
+#include "thermo.h"
+#include "thermo_moist.h"
 #include "pres.h"
 #include "buffer.h"
 #include "timeloop.h"
@@ -38,6 +39,7 @@ class cmodel
     std::string swdiff;
     std::string swpres;
     std::string swboundary;
+    std::string swthermo;
 
     std::string swstats;
 
@@ -51,7 +53,7 @@ class cmodel
     cdiff     *diff;
     cpres     *pres;  
     cforce    *force;   
-    cbuoyancy *buoyancy;
+    cthermo   *thermo;
     cbuffer   *buffer;
 
     // load the postprocessing modules
