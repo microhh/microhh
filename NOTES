@@ -1,9 +1,10 @@
-# gcc flags
-CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -ftree-vectorizer-verbose=1 -march=native -mtune=native
+Stat output:
+*) ql
+*) bu?
 
-# intel flags
-CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG -xHOST -fno-alias -restrict -vec-report1 -axSSE4.2 -opt-prefetch -prof-use
+Bu functie (slice, 3d):
+*) Surface flux
+*) Value
+*) Gradient op full level
 
-# ibm JUGENE flags
-CMAKE_CXX_FLAGS_RELEASE:STRING=-O4 -qnoipa -qmaxmem=-1 -qarch=450d -qtune=450 -qnostrict -qhot=simd
-
+ql, buh op 3d veld
