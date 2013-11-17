@@ -55,15 +55,18 @@ int cthermo_moist::create()
   allocated = true;
   return nerror;
 }
+
 int cthermo_moist::exec()
 {
+  int ijk,kk;
+  kk = grid->icells*grid->jcells;
 
   // add mean pressure to pressure fluctuations into tmp array
   for(int k=0; k<grid->kcells; k++)
   {
     for(int n=0; n<grid->icells*grid->jcells; n++)
     {
-      fields->s["tmp1"]->data[n] = (fields->s["p"]->data[n] + pmn[k]) / rhos;
+      fields->s["tmp1"]->data[n+k*kk] = (fields->s["p"]->data[n+k*kk] + pmn[k]) / rhos;
     }
   }
 
