@@ -36,6 +36,8 @@ class cthermo_moist : public cthermo
     double thvs;
     double rhos;
     double *pmn;
+
+    bool allocated;
     
     int buoyancy_2nd(double *, double *, double *, double *);
     int buoyancy_4th(double *, double *, double *, double *);
