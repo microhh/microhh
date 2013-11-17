@@ -1,15 +1,15 @@
-#ifndef BUOYANCY
-#define BUOYANCY
+#ifndef THERMO
+#define THERMO
 
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
 
-class cbuoyancy
+class cthermo
 {
   public:
-    cbuoyancy(cgrid *, cfields *, cmpi *);
-    virtual ~cbuoyancy();
+    cthermo(cgrid *, cfields *, cmpi *);
+    virtual ~cthermo();
     virtual int readinifile(cinput *);
     virtual int exec();
 
@@ -18,7 +18,7 @@ class cbuoyancy
     cfields *fields;
     cmpi    *mpi;
 
-//     std::string swbuoyancy;
+//     std::string swthermo;
     double gravitybeta; // gravity multiplied with thermal expansion coefficient
 
   private:

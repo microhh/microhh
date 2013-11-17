@@ -4,9 +4,9 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
-#include "buoyancy.h"
+#include "thermo.h"
 #include <cmath>
-class cthermo_moist : public cbuoyancy
+class cthermo_moist : public cthermo
 {
   public:
     cthermo_moist(cgrid *, cfields *, cmpi *);
@@ -31,7 +31,7 @@ class cthermo_moist : public cbuoyancy
 #define grav 9.81
   private:
 
-//     std::string swbuoyancy;
+//     std::string swthermo;
 
     double ps;
     double thvs;

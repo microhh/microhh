@@ -29,7 +29,7 @@
 #include "pres_g4.h"
 
 // thermo schemes
-#include "buoyancy.h"
+#include "thermo.h"
 #include "thermo_moist.h"
 
 // stats schemes
@@ -69,7 +69,7 @@ cmodel::~cmodel()
   delete cross;
   delete stats;
   delete buffer;
-  delete buoyancy;
+  delete thermo;
   delete force;
   delete pres;
   delete diff;
@@ -101,7 +101,7 @@ std::printf("a");
   n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
-  n += input->getItem(&swbuoyancy, "buoyancy", "swbuoyancy", "", "default"           );
+  n += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "default");
 std::printf("a");
 
   // if one or more arguments fails, then crash
@@ -181,20 +181,20 @@ std::printf("a");
     return 1;
 
   // read the thermo and buffer in the end because they need to know the requested fields
-  if(swbuoyancy== "moist")
+  if(swthermo== "moist")
   {
-    buoyancy = new cthermo_moist(grid, fields, mpi);
+    thermo = new cthermo_moist(grid, fields, mpi);
   }
-  else if(swbuoyancy == "default")
+  else if(swthermo == "default")
   {
-    buoyancy = new cbuoyancy(grid, fields, mpi);
+    thermo = new cthermo(grid, fields, mpi);
   }
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swbuoyancy\n", swbuoyancy.c_str());
+    std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
     return 1;
   }
-  if(buoyancy->readinifile(input))
+  if(thermo->readinifile(input))
     return 1;
 
   // read the boundary and buffer in the end because they need to know the requested fields
@@ -337,8 +337,8 @@ int cmodel::exec()
     advec->exec();
     // diffusion
     diff->exec();
-    // buoyancy
-    buoyancy->exec();
+    // thermo
+    thermo->exec();
     // buffer
     buffer->exec();
     // large scale forcings

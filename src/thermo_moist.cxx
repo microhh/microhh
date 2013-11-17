@@ -3,9 +3,8 @@
 #include "fields.h"
 #include "thermo_moist.h"
 #include "defines.h"
-#include "buoyancy.h"
 
-cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cbuoyancy(gridin, fields, mpiin)
+cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cthermo(gridin, fields, mpiin)
 {
 }
 
