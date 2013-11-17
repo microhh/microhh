@@ -21,13 +21,21 @@ class cdiff_les_g2 : public cdiff
     double getdn(double);
 
   private:
-    // int evisc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
+    int strain2(double *,
+                double *, double *, double *,
+                double *, double *,
+                double *, double *,
+                double *, double *, double *);
     int evisc(double *,
               double *, double *, double *, double *,
               double *, double *, double *,
               double *, double *,
-              double *, double *, double *, double *,
+              double *, double *, double *,
               double);
+    int evisc_neutral(double *,
+                      double *, double *, double *,
+                      double *, double *,
+                      double *, double *);
     int diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *);
     int diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *);
     int diffw(double *, double *, double *, double *, double *, double *, double *);

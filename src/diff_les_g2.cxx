@@ -50,13 +50,29 @@ int cdiff_les_g2::execvisc(cboundary *boundaryin)
   // boundary is of type boundary_surface
   cboundary_surface *boundaryptr = static_cast<cboundary_surface*>(boundaryin);
 
-  // CvH this will crash in the absense of temperature, fix
-  evisc(fields->s["evisc"]->data,
-        fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
-        fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
-        boundaryptr->ustar, boundaryptr->obuk,
-        grid->z, grid->dz, grid->dzi, grid->dzhi, 
-        fields->tPr);
+  strain2(fields->s["evisc"]->data,
+          fields->u->data, fields->v->data, fields->w->data,
+          fields->u->datafluxbot, fields->v->datafluxbot,
+          boundaryptr->ustar, boundaryptr->obuk,
+          grid->z, grid->dzi, grid->dzhi);
+
+  // TODO replace by proper check
+  if(fields->s.count("s") == 1)
+  {
+    evisc(fields->s["evisc"]->data,
+          fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
+          fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
+          boundaryptr->ustar, boundaryptr->obuk,
+          grid->z, grid->dz, grid->dzi,
+          fields->tPr);
+  }
+  else
+  {
+    evisc_neutral(fields->s["evisc"]->data,
+                  fields->u->data, fields->v->data, fields->w->data,
+                  fields->u->datafluxbot, fields->v->datafluxbot,
+                  grid->z, grid->dz);
+  }
 
   return 0;
 }
@@ -83,38 +99,22 @@ int cdiff_les_g2::exec()
   return 0;
 }
 
-int cdiff_les_g2::evisc(double * restrict evisc,
-                        double * restrict u, double * restrict v, double * restrict w,  double * restrict b,
-                        double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
-                        double * restrict ustar, double * restrict obuk,
-                        double * restrict z, double * restrict dz, double * restrict dzi, double * restrict dzhi,
-                        double tPr)
+int cdiff_les_g2::strain2(double * restrict strain2,
+                          double * restrict u, double * restrict v, double * restrict w,
+                          double * restrict ufluxbot, double * restrict vfluxbot,
+                          double * restrict ustar, double * restrict obuk,
+                          double * restrict z, double * restrict dzi, double * restrict dzhi)
 {
   int    ij,ijk,ii,jj,kk,kstart;
-  double dx,dy,dxi,dyi;
-
-  // wall damping
-  double mlen,mlen0,fac;
-  const double z0 = 0.1;
-  const double n  = 2.;
-
-  double strain2, RitPrratio;
+  double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   kstart = grid->kstart;
 
-  dx = grid->dx;
-  dy = grid->dy;
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
-
-  // bottom boundary, here strain is fully parametrized using MO
-  // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-  mlen0 = cs*std::pow(dx*dy*dz[kstart], 1./3.);
-  mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[kstart]+z0), n))), 1./n);
-  fac   = std::pow(mlen, 2.);
 
   for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -122,35 +122,23 @@ int cdiff_les_g2::evisc(double * restrict evisc,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      strain2 = 2.*(
+      strain2[ijk] = 2.*(
         // du/dz
         + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.)
 
         // dv/dz
         + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.) );
       // add a small number to avoid zero divisions
-      strain2 += dsmall;
-
-      // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
-      // Add the buoyancy production to the TKE
-      RitPrratio = -(9.81/300.)*bfluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phih(z[kstart]/obuk[ij]) / strain2 / tPr;
-      RitPrratio = std::min(RitPrratio, 1.-dsmall);
-      evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
+      strain2[ijk] += dsmall;
     }
 
   for(int k=grid->kstart+1; k<grid->kend; ++k)
-  {
-    // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-    mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
-    fac   = std::pow(mlen, 2.);
-
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        strain2 = 2.*(
+        strain2[ijk] = 2.*(
           // du/dx + du/dx
           + std::pow((u[ijk+ii]-u[ijk])*dxi, 2.)
 
@@ -177,14 +165,117 @@ int cdiff_les_g2::evisc(double * restrict evisc,
           + 0.125*std::pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, 2.)
           + 0.125*std::pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2.)
           + 0.125*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2.) );
-        // add a small number to avoid zero divisions
-        strain2 += dsmall;
 
+        // add a small number to avoid zero divisions
+        strain2[ijk] += dsmall;
+      }
+
+  return 0;
+}
+
+int cdiff_les_g2::evisc(double * restrict evisc,
+                        double * restrict u, double * restrict v, double * restrict w,  double * restrict b,
+                        double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
+                        double * restrict ustar, double * restrict obuk,
+                        double * restrict z, double * restrict dz, double * restrict dzi,
+                        double tPr)
+{
+  int    ij,ijk,jj,kk,kstart;
+  double dx,dy;
+
+  // wall damping
+  double mlen,mlen0,fac;
+  const double z0 = 0.1;
+  const double n  = 2.;
+
+  double RitPrratio;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+
+  dx = grid->dx;
+  dy = grid->dy;
+
+  // bottom boundary, here strain is fully parametrized using MO
+  // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+  mlen0 = cs*std::pow(dx*dy*dz[kstart], 1./3.);
+  mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[kstart]+z0), n))), 1./n);
+  fac   = std::pow(mlen, 2.);
+
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
+      // Add the buoyancy production to the TKE
+      RitPrratio = -(9.81/300.)*bfluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
+      RitPrratio = std::min(RitPrratio, 1.-dsmall);
+      evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+  {
+    // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+    mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
+    fac   = std::pow(mlen, 2.);
+
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
         // CvH use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
         // Add the buoyancy production to the TKE
-        RitPrratio = (9.81/300.)*(b[ijk+kk]-b[ijk-kk])*0.5*dzi[k] / strain2 / tPr;
+        RitPrratio = (9.81/300.)*(b[ijk+kk]-b[ijk-kk])*0.5*dzi[k] / evisc[ijk] / tPr;
         RitPrratio = std::min(RitPrratio, 1.-dsmall);
-        evisc[ijk] = fac * std::sqrt(strain2) * std::sqrt(1.-RitPrratio);
+        evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
+      }
+  }
+
+  grid->boundary_cyclic(evisc);
+
+  return 0;
+}
+
+int cdiff_les_g2::evisc_neutral(double * restrict evisc,
+                                double * restrict u, double * restrict v, double * restrict w,
+                                double * restrict ufluxbot, double * restrict vfluxbot,
+                                double * restrict z, double * restrict dz)
+{
+  int    ij,ijk,jj,kk,kstart;
+  double dx,dy;
+
+  // wall damping
+  double mlen,mlen0,fac;
+  const double z0 = 0.1;
+  const double n  = 2.;
+
+  double RitPrratio;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+
+  dx = grid->dx;
+  dy = grid->dy;
+
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
+    mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
+    fac   = std::pow(mlen, 2.);
+
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        evisc[ijk] = fac * std::sqrt(evisc[ijk]);
       }
   }
 
