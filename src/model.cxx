@@ -30,6 +30,7 @@
 
 // thermo schemes
 #include "thermo.h"
+#include "thermo_dry.h"
 #include "thermo_moist.h"
 
 // stats schemes
@@ -180,11 +181,10 @@ std::printf("a");
   if(timeloop->readinifile(input))
     return 1;
 
-  // read the thermo and buffer in the end because they need to know the requested fields
   if(swthermo== "moist")
     thermo = new cthermo_moist(grid, fields, mpi);
   else if(swthermo == "dry")
-    thermo = new cthermo(grid, fields, mpi);
+    thermo = new cthermo_dry(grid, fields, mpi);
   else if(swthermo == "off")
     thermo = new cthermo(grid, fields, mpi);
   else
@@ -192,7 +192,6 @@ std::printf("a");
     std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
     return 1;
   }
-
   if(thermo->readinifile(input))
     return 1;
 
