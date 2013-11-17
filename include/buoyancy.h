@@ -9,7 +9,7 @@ class cbuoyancy
 {
   public:
     cbuoyancy(cgrid *, cfields *, cmpi *);
-    ~cbuoyancy();
+    virtual ~cbuoyancy();
     int readinifile(cinput *);
     int exec();
 

@@ -3,8 +3,9 @@
 #include "fields.h"
 #include "thermo_moist.h"
 #include "defines.h"
+#include "buoyancy.h"
 
-cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cbuoyancy(gridin, fields, mpiin)
 {
   // std::printf("Creating instance of object buoyancy\n");
   grid   = gridin;
@@ -16,7 +17,7 @@ cthermo_moist::~cthermo_moist()
 {
   // std::printf("Destroying instance of object buoyancy\n");
   delete[] pmn;
-  
+
 }
 
 int cthermo_moist::readinifile(cinput *inputin)

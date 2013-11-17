@@ -4,8 +4,9 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
+#include "buoyancy.h"
 #include <cmath>
-class cthermo_moist
+class cthermo_moist : public cbuoyancy
 {
   public:
     cthermo_moist(cgrid *, cfields *, cmpi *);

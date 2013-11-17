@@ -31,6 +31,7 @@
 // thermo schemes
 #include "buoyancy.h"
 #include "thermo_moist.h"
+
 // stats schemes
 #include "stats_dns.h"
 #include "stats_les.h"
@@ -93,6 +94,7 @@ int cmodel::readinifile()
   if(fields->readinifile(input))
     return 1;
 
+std::printf("a");
   // first, get the switches for the schemes
   n += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
   n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
@@ -100,6 +102,7 @@ int cmodel::readinifile()
   n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
   n += input->getItem(&swbuoyancy, "buoyancy", "swbuoyancy", "", "default"           );
+std::printf("a");
 
   // if one or more arguments fails, then crash
   if(n > 0)
@@ -174,8 +177,10 @@ int cmodel::readinifile()
   // model operations
   if(force->readinifile(input))
     return 1;
+std::printf("a");
   if(buoyancy->readinifile(input))
     return 1;
+std::printf("a");
   if(timeloop->readinifile(input))
     return 1;
 
@@ -196,12 +201,16 @@ int cmodel::readinifile()
 
   // read the thermo and buffer in the end because they need to know the requested fields
   if(swbuoyancy== "moist")
+  {
     buoyancy = new cthermo_moist(grid, fields, mpi);
+  }
   else if(swbuoyancy == "default")
+  {
     buoyancy = new cbuoyancy(grid, fields, mpi);
+  }
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+    std::printf("ERROR \"%s\" is an illegal value for swbuoyancy\n", swbuoyancy.c_str());
     return 1;
   }
   if(buoyancy->readinifile(input))
