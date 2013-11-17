@@ -5,6 +5,8 @@
 #include "fields.h"
 #include "defines.h"
 
+#define NO_OFFSET 0.
+
 cfields::cfields(cgrid *gridin, cmpi *mpiin)
 {
   grid = gridin;
@@ -119,19 +121,22 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
   }
-  
-  std::string fldtname = fldname + "t";
-  
+
+  // add a new prognostic momentum variable
   mp[fldname] = new cfield3d(grid, mpi, fldname);
-  // mp[fldname]->init();
 
+  // add a new tendency for momentum variable
+  std::string fldtname = fldname + "t";
   mt[fldname] = new cfield3d(grid, mpi, fldtname);
-  // mt[fldname]->init();
 
-  //m[fldname] = mp[fldname];
-
+  // TODO remove these from the model?
   fld  = mp[fldname];
   fldt = mt[fldname];
+
+  // add the prognostic variable and its tendency to the collection
+  // of all fields and tendencies
+  ap[fldname] = mp[fldname];
+  at[fldname] = mt[fldname];
 
   return 0;
 }
@@ -144,15 +149,18 @@ int cfields::initpfld(std::string fldname)
     return 1;
   }
   
-  std::string fldtname = fldname + "t";
-  
+  // add a new scalar variable
   sp[fldname] = new cfield3d(grid, mpi, fldname);
-  //sp[fldname]->init();
-  
-  st[fldname] = new cfield3d(grid, mpi, fldtname);
-  //st[fldname]->init();
 
-  s[fldname] = sp[fldname];
+  // add a new tendency for scalar variable
+  std::string fldtname = fldname + "t";
+  st[fldname] = new cfield3d(grid, mpi, fldtname);
+
+  // add the prognostic variable and its tendency to the collection
+  // of all fields and tendencies
+  s [fldname] = sp[fldname];
+  ap[fldname] = sp[fldname];
+  at[fldname] = st[fldname];
 
   return 0;
 }
@@ -166,12 +174,8 @@ int cfields::initdfld(std::string fldname)
   }
 
   sd[fldname] = new cfield3d(grid, mpi, fldname );
-  // sd[fldname]->init();
+  s [fldname] = sd[fldname];
 
-  s[fldname] = sd[fldname];
-
-  // fld = s[fldname];
-  
   return 0;  
 }
 
@@ -193,11 +197,11 @@ int cfields::create(cinput *inputin)
   n += addvortexpair(inputin);
   
   // Add the mean profiles to the fields
-  n += addmeanprofile(inputin, "u", mp["u"]->data);
-  n += addmeanprofile(inputin, "v", mp["v"]->data);
+  n += addmeanprofile(inputin, "u", mp["u"]->data, grid->u);
+  n += addmeanprofile(inputin, "v", mp["v"]->data, grid->v);
  
   for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    n += addmeanprofile(inputin, it->first, it->second->data);
+    n += addmeanprofile(inputin, it->first, it->second->data, 0.);
   
   // set w equal to zero at the boundaries, just to be sure
   int lbot = grid->kstart*grid->icells*grid->jcells;
@@ -227,7 +231,7 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   
   int ijk,jj,kk;
   int kendrnd;
-  double rndfac, rndfach;
+  double rndfac;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
@@ -257,8 +261,7 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
 
   for(int k=grid->kstart; k<kendrnd; ++k)
   {
-    rndfac  = std::pow((rndz-grid->z [k])/rndz, rndbeta);
-    rndfach = std::pow((rndz-grid->zh[k])/rndz, rndbeta);
+    rndfac = std::pow((rndz-grid->z [k])/rndz, rndbeta);
     for(int j=grid->jstart; j<grid->jend; ++j)
       for(int i=grid->istart; i<grid->iend; ++i)
       {
@@ -311,7 +314,7 @@ int cfields::addvortexpair(cinput *inputin)
   return (n>0);
 }
 
-int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict data)
+int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict data, double offset)
 {
   int ijk, jj, kk;
   double proftemp[grid->kmax];
@@ -327,7 +330,7 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        data[ijk] += proftemp[k-grid->kstart];
+        data[ijk] += proftemp[k-grid->kstart] - offset;
       }
       
   return 0;
@@ -335,57 +338,51 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
 
 int cfields::load(int n)
 {
-  // check them all before returning error
   int nerror = 0;
-  nerror += u->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  nerror += v->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  nerror += w->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); ++itProg)
-    nerror += itProg->second->load(n, sd["tmp1"]->data, sd["tmp2"]->data);
 
-  if(nerror > 0)
-    return 1;
+  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  {
+    // the offset is kept at zero, otherwise bitwise identical restarts is not possible
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
+    if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
+    {
+      if(mpi->mpiid == 0) std::printf("FAILED\n");
+      ++nerror;
+    }
+    else
+    {
+      if(mpi->mpiid == 0) std::printf("OK\n");
+    }  
+  }
 
-  return 0;
+  return nerror;
 }
 
 int cfields::save(int n)
 {
-  u->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  v->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  w->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
-  // p->save(n);
-  for(fieldmap::iterator itProg = sp.begin(); itProg!=sp.end(); ++itProg)
-    itProg->second->save(n, sd["tmp1"]->data, sd["tmp2"]->data);
+  int nerror = 0;
+  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  {
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
+    if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
 
-  return 0;
+    // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
+    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
+    {
+      if(mpi->mpiid == 0) std::printf("FAILED\n");
+      ++nerror;
+    }  
+    else
+    {
+      if(mpi->mpiid == 0) std::printf("OK\n");
+    }
+  }
+
+  return nerror;
 }
-
-/*
-int cfields::boundary()
-{
-  u->boundary_bottop(0);
-  v->boundary_bottop(0);
-  // w->boundary_bottop(0);
-  s->boundary_bottop(1);
-
-  // u->boundary_cyclic();
-  // v->boundary_cyclic();
-  // w->boundary_cyclic();
-  // s->boundary_cyclic();
-  
-  grid->boundary_cyclic(u->data);
-  grid->boundary_cyclic(v->data);
-  grid->boundary_cyclic(w->data);
-  grid->boundary_cyclic(s->data);
-  mpi->waitall();
-
-  // for(int k=grid->kstart-grid->kgc; k<grid->kend+grid->kgc; ++k)
-  //   std::printf("%4d %9.6f %9.6f %9.6f %9.6f %9.6f\n", k, grid->z[k], grid->zh[k], u->data[k*grid->icells*grid->jcells], v->data[k*grid->icells*grid->jcells], w->data[k*grid->icells*grid->jcells]);
-
-  return 0;
-}
-*/
 
 double cfields::checkmom()
 {

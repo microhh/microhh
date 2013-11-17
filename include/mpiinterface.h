@@ -26,6 +26,10 @@ class cmpi
     int broadcast(double *, int);
     int broadcast(unsigned long *, int);
 
+    // overload the sum function
+    int sum(int *, int);
+    int sum(double *, int);
+
     std::string mode;
     std::string simname;
 

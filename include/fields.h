@@ -28,35 +28,31 @@ class cfields
     double checktke ();
     double checkmass();
 
-    // variables
+    // 3d fields for momentum
     cfield3d *u;
     cfield3d *v;
     cfield3d *w;
-    // cfield3d *p;
 
     cfield3d *ut;
     cfield3d *vt;
     cfield3d *wt;
-    
+
+    // maps of 3d fields
+    fieldmap ap;
+    fieldmap at;
+
+    fieldmap mp;
+    fieldmap mt;
+
     fieldmap s;
     fieldmap sd;
     fieldmap sp;
     fieldmap st;
-    // fieldmap m;
-    fieldmap mp;
-    fieldmap mt;
-    
-    // temporary arrays
-    // cfield3d *tmp1;
-    // cfield3d *tmp2;
 
-    // eddy viscosity for LES
-    // cfield3d *evisc;
+    // TODO remove these to and bring them to diffusion model
     double tPr;
-
     double visc;
-    // double viscs;
-    
+
   private:
     // variables
     cgrid *grid;
@@ -75,10 +71,10 @@ class cfields
     // functions
     double calcmom_2nd(double *, double *, double *, double *);
     double calctke_2nd(double *, double *, double *, double *);
-    int addmeanprofile(cinput *, std::string, double *);
+    int addmeanprofile(cinput *, std::string, double *, double);
     int randomnize(cinput *, std::string, double *);
     int addvortexpair(cinput* inputin);
-    double calcmass   (double *, double *);
+    double calcmass(double *, double *);
     inline double interp2(const double, const double);
 };
 #endif

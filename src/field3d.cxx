@@ -180,40 +180,10 @@ int cfield3d::boundary_cyclic()
       }
 
   return 0;
-}*/
-
+}
 int cfield3d::save(int n, double * restrict tmp1, double * restrict tmp2)
 {
   char filename[256];
-
-  /* 
-  std::sprintf(filename, "%s.%07d.%07d", name.c_str(), n, mpiid);
-  FILE *pFile;
-  pFile = fopen(filename, "wb");
-
-  if(pFile == NULL)
-  {
-    std::printf("ERROR \"%s\" cannot be written", filename);
-    return 1;
-  }
-  else
-    std::printf("Saving \"%s\"\n", filename);
-
-  int ijk,istart,jj,kk;
-
-  istart = grid->istart;
-  jj     = grid->icells;
-  kk     = grid->icells*grid->jcells;
-
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
-      {
-        ijk = istart + j*jj + k*kk;
-        fwrite(&data[ijk], sizeof(double), grid->imax, pFile);
-      }
-
-  fclose(pFile);
-  */
 
   std::sprintf(filename, "%s.%07d", name.c_str(), n);
 
@@ -232,35 +202,6 @@ int cfield3d::load(int n, double * restrict tmp1, double * restrict tmp2)
 {
   char filename[256];
 
-  /*
-  FILE *pFile;
-  std::sprintf(filename, "%s.%07d.%07d", name.c_str(), n, mpiid);
-  pFile = fopen(filename, "rb");
-
-  if(pFile == NULL)
-  {
-    std::printf("ERROR \"%s\" does not exist\n", filename);
-    return 1;
-  }
-  else
-    std::printf("Loading \"%s\"\n", filename);
-
-  int ijk,istart,jj,kk;
-
-  istart = grid->istart;
-  jj     = grid->icells;
-  kk     = grid->icells*grid->jcells;
-
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
-      {
-        ijk = istart + j*jj + k*kk;
-        fread(&data[ijk], sizeof(double), grid->imax, pFile);
-      }
-
-  fclose(pFile);
-  */
-
   std::sprintf(filename, "%s.%07d", name.c_str(), n);
 
   if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
@@ -273,6 +214,7 @@ int cfield3d::load(int n, double * restrict tmp1, double * restrict tmp2)
 
   return 0;
 }
+*/
 
 int cfield3d::checkfornan()
 {
@@ -286,7 +228,6 @@ int cfield3d::checkfornan()
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
-
 
   double cfl = 0;
 

@@ -41,7 +41,7 @@ class cboundary
     typedef std::map<std::string, field3dbc *> bcmap;
     bcmap sbc;
 
-    int setbc(double *, double *, double *, int, double, double);
+    int setbc(double *, double *, double *, int, double, double, double);
     
   private:
     virtual int bcvalues();

@@ -6,6 +6,9 @@
 #include "boundary_surface.h"
 #include "defines.h"
 
+#define NO_VELOCITY 0.
+#define NO_OFFSET 0.
+
 // a sign function
 inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
 
@@ -28,7 +31,6 @@ int cboundary_surface::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  // n += inputin->getItem(&swboundary, "boundary", "swboundary", "", grid->swspatialorder);
   swspatialorder = grid->swspatialorder;
 
   n += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
@@ -116,9 +118,14 @@ int cboundary_surface::save(int iotime)
   char filename[256];
 
   std::sprintf(filename, "obuk.%07d", iotime);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
   if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
+  {
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
+  }
+  else
+    if(mpi->mpiid == 0) std::printf("OK\n");
 
   return 0;
 }
@@ -128,9 +135,14 @@ int cboundary_surface::load(int iotime)
   char filename[256];
 
   std::sprintf(filename, "obuk.%07d", iotime);
-  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
   if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
+  {
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
+  }
+  else
+    if(mpi->mpiid == 0) std::printf("OK\n");
 
   grid->boundary_cyclic2d(obuk);
 
@@ -139,16 +151,17 @@ int cboundary_surface::load(int iotime)
 
 int cboundary_surface::setvalues()
 {
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, 0., fields->visc);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, 0., fields->visc);
+  // grid transformation is properly taken into account by setting the databot and top values
+  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, surfmbcbot, NO_VELOCITY, fields->visc, grid->u);
+  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, surfmbcbot, NO_VELOCITY, fields->visc, grid->v);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, 0., fields->visc);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, 0., fields->visc);
+  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->u);
+  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->v);
 
   for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc);
-    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc);
+    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, surfsbcbot[it->first], sbc[it->first]->bot, it->second->visc, NO_OFFSET);
+    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
   }
 
   int ij,jj;
@@ -307,7 +320,7 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
   else if(bcbot == 2)
   {
     // first redistribute ustar over the two flux components
-    double u2, v2, vonu2,uonv2,ustaronu4,ustaronv4;
+    double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
     const double minval = 1.e-2;
 
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -400,7 +413,7 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
-        varbot[ij]     =  varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
+        varbot[ij] = varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
         // use the linearly interpolated grad, rather than the MO grad,
         // to prevent giving unresolvable gradients to advection schemes
@@ -423,7 +436,10 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
   const double Lmax = 1.e20;
 
   // avoid bfluxbot to be zero
-  bfluxbot = std::max(dsmall, bfluxbot);
+  if(bfluxbot >= 0.)
+    bfluxbot = std::max(dsmall, bfluxbot);
+  else
+    bfluxbot = std::min(-dsmall, bfluxbot);
 
   // allow for one restart
   while(m <= 1)
@@ -491,8 +507,11 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
 
   const double Lmax = 1.e20;
 
-  // avoid bfluxbot to be zero
-  db = std::max(dsmall, db);
+  // avoid db to be zero
+  if(db >= 0.)
+    db = std::max(dsmall, db);
+  else
+    db = std::min(-dsmall, db);
 
   // allow for one restart
   while(m <= 1)

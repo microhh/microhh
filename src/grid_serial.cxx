@@ -295,14 +295,15 @@ int cgrid::save()
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "wb");
+  std::printf("Saving \"%s\" ... ", filename);
 
   if(pFile == NULL)
   {
-    std::printf("ERROR \"%s\" cannot be written\n", filename);
+    std::printf("FAILED\n");
     return 1;
   }
   else
-    std::printf("Saving \"%s\"\n", filename);
+    std::printf("OK\n");
 
   fwrite(&x [istart], sizeof(double), itot, pFile);
   fwrite(&xh[istart], sizeof(double), itot, pFile);
@@ -325,14 +326,16 @@ int cgrid::save()
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-    std::printf("Saving \"%s\"\n", filename);
+    std::printf("Saving \"%s\" ... ", filename);
 
     int n = fftw_export_wisdom_to_filename(filename);
     if(n == 0)
     {
-      std::printf("ERROR \"%s\" cannot be saved\n", filename);
+      std::printf("FAILED\n");
       return 1;
     }
+    else
+      std::printf("OK\n");
   }
 
   return 0;
@@ -345,14 +348,15 @@ int cgrid::load()
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "rb");
+  std::printf("Loading \"%s\" ... ", filename);
 
   if(pFile == NULL)
   {
-    std::printf("ERROR \"%s\" does not exist\n", filename);
+    std::printf("FAILED\n");
     return 1;
   }
   else
-    std::printf("Loading \"%s\"\n", filename);
+    std::printf("OK\n");
 
   fread(&x [istart], sizeof(double), itot, pFile);
   fread(&xh[istart], sizeof(double), itot, pFile);
@@ -369,15 +373,16 @@ int cgrid::load()
   std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
   if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
+    std::printf("Loading \"%s\" ... ", filename);
 
   int n = fftw_import_wisdom_from_filename(filename);
   if(n == 0)
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" does not exist\n", filename);
+    std::printf("FAILED\n");
     return 1;
   }
+  else
+    std::printf("OK\n");
 
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
   iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
@@ -391,7 +396,7 @@ int cgrid::load()
   return 0;
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
+int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "wb");
@@ -404,11 +409,21 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   jj = icells;
   kk = icells*jcells;
 
+  // first, add the offset to the data
+  for(int k=kstart; k<kend; k++)
+    for(int j=jstart; j<jend; j++)
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        tmp1[ijk] = data[ijk] + offset;
+      }
+
+  // second, save the data to disk
   for(int k=kstart; k<kend; k++)
     for(int j=jstart; j<jend; j++)
       {
         ijk = istart + j*jj + k*kk;
-        fwrite(&data[ijk], sizeof(double), imax, pFile);
+        fwrite(&tmp1[ijk], sizeof(double), imax, pFile);
       }
 
   fclose(pFile);
@@ -416,7 +431,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
+int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "rb");
@@ -429,14 +444,24 @@ int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * 
   jj = icells;
   kk = icells*jcells;
 
+  // first, load the data from disk
   for(int k=kstart; k<kend; k++)
     for(int j=jstart; j<jend; j++)
       {
         ijk = istart + j*jj + k*kk;
-        fread(&data[ijk], sizeof(double), imax, pFile);
+        fread(&tmp1[ijk], sizeof(double), imax, pFile);
       }
 
   fclose(pFile);
+
+  // second, remove the offset
+  for(int k=kstart; k<kend; k++)
+    for(int j=jstart; j<jend; j++)
+      for(int i=istart; i<iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        data[ijk] = tmp1[ijk] - offset;
+      }
 
   return 0;
 }

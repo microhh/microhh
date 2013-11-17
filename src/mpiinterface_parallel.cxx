@@ -219,4 +219,16 @@ int cmpi::broadcast(double *data, int datasize)
   MPI_Bcast(data, datasize, MPI_DOUBLE, 0, commxy);
   return 0;
 }
+
+int cmpi::sum(int *var, int datasize)
+{
+  MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_INT, MPI_SUM, commxy);
+  return 0;
+}
+
+int cmpi::sum(double *var, int datasize)
+{
+  MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_SUM, commxy);
+  return 0;
+}
 #endif

@@ -466,12 +466,12 @@ int cgrid::save()
 {
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
 
   MPI_File fh;
   if(MPI_File_open(mpi->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" cannot be written\n", filename);
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
   }
 
@@ -515,6 +515,9 @@ int cgrid::save()
     fclose(pFile);
   }
 
+  // the saving procedure is a success
+  if(mpi->mpiid == 0) std::printf("OK\n");
+
   // SAVE THE FFTW PLAN
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
   iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
@@ -528,7 +531,7 @@ int cgrid::save()
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-    std::printf("Saving \"%s\"\n", filename);
+    std::printf("Saving \"%s\" ... ", filename);
 
     int n = fftw_export_wisdom_to_filename(filename);
     if(n == 0)
@@ -536,6 +539,8 @@ int cgrid::save()
       std::printf("ERROR \"%s\" cannot be saved\n", filename);
       return 1;
     }
+    else
+      std::printf("OK\n");
   }
 
   return 0;
@@ -548,7 +553,7 @@ int cgrid::load()
   // LOAD THE GRID
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(mpi->mpiid == 0) std::printf("Loading \"%s\"\n", filename);
+  if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
 
   FILE *pFile;
   if(mpi->mpiid == 0)
@@ -556,7 +561,6 @@ int cgrid::load()
     pFile = fopen(filename, "rb");
     if(pFile == NULL)
     {
-      std::printf("ERROR \"%s\" does not exist\n", filename);
       ++nerror;
     }
     else
@@ -572,7 +576,12 @@ int cgrid::load()
   // communicate the file read error over all procs
   mpi->broadcast(&nerror, 1);
   if(nerror)
+  {
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
+  }
+  else
+    if(mpi->mpiid == 0) std::printf("OK\n");
 
   mpi->broadcast(&z [kstart], kmax);
   mpi->broadcast(&zh[kstart], kmax);
@@ -584,15 +593,16 @@ int cgrid::load()
   std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
   if(mpi->mpiid == 0)
-    std::printf("Loading \"%s\"\n", filename);
+    std::printf("Loading \"%s\" ... ", filename);
 
   int n = fftw_import_wisdom_from_filename(filename);
   if(n == 0)
   {
-    if(mpi->mpiid == 0)
-      std::printf("ERROR \"%s\" does not exist\n", filename);
+    if(mpi->mpiid == 0) std::printf("FAILED\n");
     return 1;
   }
+  else
+    if(mpi->mpiid == 0) std::printf("OK\n");
 
   iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
   iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
@@ -606,7 +616,7 @@ int cgrid::load()
   return 0;
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
+int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -629,7 +639,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
-        tmp1[ijkb] = data[ijk];
+        tmp1[ijkb] = data[ijk] + offset;
       }
 
   transposezx(tmp2, tmp1);
@@ -654,7 +664,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename)
+int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -696,7 +706,7 @@ int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * 
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
-        data[ijk] = tmp2[ijkb];
+        data[ijk] = tmp2[ijkb] - offset;
       }
 
   return 0;

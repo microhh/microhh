@@ -41,6 +41,8 @@ class cmodel
     std::string swboundary;
     std::string swbuoyancy;
 
+    std::string swstats;
+
     cgrid   *grid;
     cfields *fields;
 

@@ -31,6 +31,9 @@
 // thermo schemes
 #include "buoyancy.h"
 #include "thermo_moist.h"
+// stats schemes
+#include "stats_dns.h"
+#include "stats_les.h"
 
 cmodel::cmodel(cmpi * mpiin, cinput * inputin)
 {
@@ -48,15 +51,15 @@ cmodel::cmodel(cmpi * mpiin, cinput * inputin)
   force    = new cforce   (grid, fields, mpi);
   buffer   = new cbuffer  (grid, fields, mpi);
 
-  // load the postprocessing moduls
-  stats = new cstats   (grid, fields, mpi);
-  cross = new ccross   (grid, fields, mpi);
-
   // set null pointers for classes that will be initialized later
   boundary = NULL;
   advec    = NULL;
   diff     = NULL;
   pres     = NULL;
+
+  // load the postprocessing moduls
+  stats = NULL;
+  cross = new ccross(grid, fields, mpi);
 }
 
 cmodel::~cmodel()
@@ -94,7 +97,8 @@ int cmodel::readinifile()
   n += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
   n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
   n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
-  n += input->getItem(&swboundary, "boundary", "swboundary", "", "default"           );
+  n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
+  n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
   n += input->getItem(&swbuoyancy, "buoyancy", "swbuoyancy", "", "default"           );
 
   // if one or more arguments fails, then crash
@@ -207,6 +211,18 @@ int cmodel::readinifile()
     return 1;
 
   // statistics
+  if(swstats == "0")
+    stats = new cstats    (grid, fields, mpi);
+  else if(swstats == "dns")
+    stats = new cstats_dns(grid, fields, mpi);
+  else if(swstats == "les")
+    stats = new cstats_les(grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
+    return 1;
+  }
+
   if(stats->readinifile(input))
     return 1;
   if(cross->readinifile(input))
@@ -325,10 +341,10 @@ int cmodel::exec()
 
     // pressure
     pres->exec(timeloop->getsubdt());
-    if(timeloop->dosave() && !timeloop->insubstep())
-    {
-      fields->s["p"]->save(timeloop->iotime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
-    }
+    // if(timeloop->dosave() && !timeloop->insubstep())
+    // {
+    //   fields->s["p"]->save(timeloop->iotime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
+    // }
     
     // statistics when not in substep and not directly after restart
     if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))

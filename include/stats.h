@@ -5,35 +5,37 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
-#include "stats_dns.h"
-#include "stats_les.h"
+// #include "stats_dns.h"
+// #include "stats_les.h"
+
+struct statsvar
+{
+  NcVar *ncvar;
+  double *data;
+};
+typedef std::map<std::string, statsvar> profmap;
 
 class cstats
 {
   public:
     cstats(cgrid *, cfields *, cmpi *);
-    ~cstats();
+    virtual ~cstats();
 
-    int readinifile(cinput *);
-    int init(double);
-    int create(int);
-    unsigned long gettimelim(unsigned long);
-    int exec(int, double, unsigned long);
-    int dostats(int, unsigned long );
+    virtual int readinifile(cinput *);
+    virtual int init(double);
+    virtual int create(int);
+    virtual unsigned long gettimelim(unsigned long);
+    virtual int exec(int, double, unsigned long);
 
-  private:
+    // int dostats(int, unsigned long);
+
+  protected:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
 
-    cstats_dns *stats_dns;
-    cstats_les *stats_les;
-
-    std::string swstats;
-
     double statstime;
     unsigned long istatstime;
-
 };
 #endif
 

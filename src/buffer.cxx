@@ -70,6 +70,13 @@ int cbuffer::create(cinput *inputin)
     nerror += inputin->getProf(&bufferprofs["u"][grid->kstart], "u", grid->kmax);
     nerror += inputin->getProf(&bufferprofs["v"][grid->kstart], "v", grid->kmax);
 
+    // in case of u and v, subtract the grid velocity
+    for(int k=grid->kstart; k<grid->kend; ++k)
+    {
+      bufferprofs["u"][k] -= grid->u;
+      bufferprofs["v"][k] -= grid->v;
+    }
+
     // allocate the buffer for w on 0
     for(int k=0; k<grid->kcells; ++k)
       bufferprofs["w"][k] = 0.;

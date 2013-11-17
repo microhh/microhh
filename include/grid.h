@@ -76,6 +76,9 @@ class cgrid
     double *yh; ///< Grid coordinate of cell faces in x-direction.
     double *zh; ///< Grid coordinate of cell faces in x-direction.
 
+    double u;
+    double v;
+
     std::string swspatialorder; ///< Default spatial order of the operators to be used on this grid.
 
     // MPI functions
@@ -96,8 +99,8 @@ class cgrid
     int calcmean(double *, const double *, int);
 
     // IO functions
-    int savefield3d(double *, double *, double *, char *); ///< Saves a full 3d field.
-    int loadfield3d(double *, double *, double *, char *); ///< Loads a full 3d field.
+    int savefield3d(double *, double *, double *, char *, double); ///< Saves a full 3d field.
+    int loadfield3d(double *, double *, double *, char *, double); ///< Loads a full 3d field.
 
     int savexzslice(double *, double *, char *, int);           ///< Saves a xz-slice from a 3d field.
     int savexyslice(double *, double *, char *, int kslice=-1); ///< Saves a xy-slice from a 3d field.

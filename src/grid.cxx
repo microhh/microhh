@@ -62,6 +62,10 @@ int cgrid::readinifile(cinput *inputin)
   n += inputin->getItem(&jtot, "grid", "jtot", "");
   n += inputin->getItem(&ktot, "grid", "ktot", "");
 
+  // velocity of the grid for gaelian transformation
+  n += inputin->getItem(&u, "grid", "u", "", 0.);
+  n += inputin->getItem(&v, "grid", "v", "", 0.);
+
   n += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
 
   if(n > 0)
