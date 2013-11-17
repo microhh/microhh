@@ -180,21 +180,6 @@ std::printf("a");
   if(timeloop->readinifile(input))
     return 1;
 
-  // read the boundary and buffer in the end because they need to know the requested fields
-  if(swboundary == "surface")
-    boundary = new cboundary_surface(grid, fields, mpi);
-  else if(swboundary == "user")
-    boundary = new cboundary_user(grid, fields, mpi);
-  else if(swboundary == "default")
-    boundary = new cboundary(grid, fields, mpi);
-  else
-  {
-    std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
-    return 1;
-  }
-  if(boundary->readinifile(input))
-    return 1;
-
   // read the thermo and buffer in the end because they need to know the requested fields
   if(swbuoyancy== "moist")
   {
@@ -210,6 +195,21 @@ std::printf("a");
     return 1;
   }
   if(buoyancy->readinifile(input))
+    return 1;
+
+  // read the boundary and buffer in the end because they need to know the requested fields
+  if(swboundary == "surface")
+    boundary = new cboundary_surface(grid, fields, mpi);
+  else if(swboundary == "user")
+    boundary = new cboundary_user(grid, fields, mpi);
+  else if(swboundary == "default")
+    boundary = new cboundary(grid, fields, mpi);
+  else
+  {
+    std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+    return 1;
+  }
+  if(boundary->readinifile(input))
     return 1;
 
   if(buffer->readinifile(input))
