@@ -15,7 +15,7 @@ cthermo_dry::~cthermo_dry()
 int cthermo_dry::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&gravitybeta, "buoyancy", "gravitybeta", "");
+  nerror += inputin->getItem(&gravitybeta, "thermo", "gravitybeta", "");
 
   nerror += fields->initpfld("s");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");

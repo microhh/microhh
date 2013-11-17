@@ -94,7 +94,6 @@ int cmodel::readinifile()
   if(fields->readinifile(input))
     return 1;
 
-std::printf("a");
   // first, get the switches for the schemes
   n += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
   n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
@@ -102,7 +101,6 @@ std::printf("a");
   n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
   n += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "off");
-std::printf("a");
 
   // if one or more arguments fails, then crash
   if(n > 0)
