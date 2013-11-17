@@ -30,9 +30,6 @@ class cthermo_moist : public cbuoyancy
 #define p0 1.e5
 #define grav 9.81
   private:
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
 
 //     std::string swbuoyancy;
 

@@ -177,10 +177,6 @@ std::printf("a");
   // model operations
   if(force->readinifile(input))
     return 1;
-std::printf("a");
-  if(buoyancy->readinifile(input))
-    return 1;
-std::printf("a");
   if(timeloop->readinifile(input))
     return 1;
 

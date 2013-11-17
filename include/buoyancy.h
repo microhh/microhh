@@ -10,10 +10,10 @@ class cbuoyancy
   public:
     cbuoyancy(cgrid *, cfields *, cmpi *);
     virtual ~cbuoyancy();
-    int readinifile(cinput *);
-    int exec();
+    virtual int readinifile(cinput *);
+    virtual int exec();
 
-  private:
+  protected:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
@@ -21,6 +21,7 @@ class cbuoyancy
 //     std::string swbuoyancy;
     double gravitybeta; // gravity multiplied with thermal expansion coefficient
 
+  private:
     int buoyancy_2nd(double *, double *);
     int buoyancy_4th(double *, double *);
 

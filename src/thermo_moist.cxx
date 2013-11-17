@@ -7,10 +7,6 @@
 
 cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cbuoyancy(gridin, fields, mpiin)
 {
-  // std::printf("Creating instance of object buoyancy\n");
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
 }
 
 cthermo_moist::~cthermo_moist()
