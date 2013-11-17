@@ -6,6 +6,17 @@
 #include "mpiinterface.h"
 #include "thermo.h"
 #include <cmath>
+
+#define rd 287.04
+#define rv 461.5
+#define ep rd/rv
+#define cp 1005
+#define lv 2.5e6
+#define rhow    1.e3
+#define tmelt   273.15
+#define p0 1.e5
+#define grav 9.81
+
 class cthermo_moist : public cthermo
 {
   public:
@@ -20,19 +31,7 @@ class cthermo_moist : public cthermo
     int getsat();
     int getsath();
 
-#define rd 287.04
-#define rv 461.5
-#define ep rd/rv
-#define cp 1005
-#define lv 2.5e6
-#define rhow    1.e3
-#define tmelt   273.15
-#define p0 1.e5
-#define grav 9.81
   private:
-
-//     std::string swthermo;
-
     double ps;
     double thvs;
     double rhos;
