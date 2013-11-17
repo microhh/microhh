@@ -20,6 +20,12 @@ int cthermo::readinifile(cinput *inputin)
   return 0;
 }
 
+int cthermo::create()
+{
+  return 0;
+}
+
+
 int cthermo::exec()
 {
   return 0;

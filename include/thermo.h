@@ -12,6 +12,7 @@ class cthermo
     virtual ~cthermo();
     virtual int readinifile(cinput *);
     virtual int exec();
+    virtual int create();
 
   protected:
     cgrid   *grid;
