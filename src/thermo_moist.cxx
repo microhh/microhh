@@ -4,7 +4,7 @@
 #include "thermo_moist.h"
 #include "defines.h"
 
-cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cthermo(gridin, fields, mpiin)
+cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cthermo(gridin, fieldsin, mpiin)
 {
 }
 
