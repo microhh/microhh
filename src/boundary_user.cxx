@@ -93,8 +93,6 @@ int cboundary_user::setbc_patch(double * restrict a, double facl, double facr, d
       else
         errvaly = 1.;
 
-      std::printf("CvH %d, %E, %E\n", errvalx, errvaly);
-
       a[ij] = avall + (avalr-avall)*errvalx*errvaly;
     }
 
