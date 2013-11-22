@@ -39,10 +39,11 @@ int cthermo_moist::create()
   double qtsurf, ssurf;
   
   // Create hydrostatic profile
-  nerror += grid->calcmean(&ssurf, fields->s["s"]->databot,1);
-  nerror += grid->calcmean(&qtsurf, fields->s["qt"]->databot,1);
+  // Doesnt work; just put a ref value in Namelist for both gravity and 1/beta
+//   nerror += grid->calcmean(&ssurf, fields->s["s"]->databot,1);
+//   nerror += grid->calcmean(&qtsurf, fields->s["qt"]->databot,1);
 
-  thvs = ssurf * (1. - (1. - rv/rd)*qtsurf);
+  thvs = 300.;//ssurf * (1. - (1. - rv/rd)*qtsurf);
   double tvs  = exner(ps) * thvs;
   rhos = ps / (rv * tvs);
 
@@ -63,7 +64,7 @@ int cthermo_moist::exec()
   {
     for(int n=0; n<grid->icells*grid->jcells; n++)
     {
-      fields->s["tmp1"]->data[n] = (fields->s["p"]->data[n] + pmn[k]) / rhos;
+      fields->s["tmp1"]->data[n] = fields->s["p"]->data[n] * rhos + pmn[k]; // minus trace
     }
   }
 
@@ -143,11 +144,11 @@ inline double cthermo_moist::calcql(const double s, const double qt, const doubl
   double sabs, sguess = 1.e9, t, ql, dtldt;
   sabs = s * exner(p);
   t = sabs;
-  while (fabs(sguess-sabs)/sabs > 1e-5 && niter < nitermax)
+  while (std::fabs(sguess-sabs)/sabs > 1e-5 && niter < nitermax)
   {
     ++niter;
     ql = std::max(0.,qt - rslf(p, t));
-    sguess = t*exp(-lv*ql/(cp*t));
+    sguess = t*std::exp(-lv*ql/(cp*t));
     dtldt = sabs/t*(1. - lv * ql / (pow(cp,2.)* t));
     t += (sguess-sabs) / dtldt;
   }
