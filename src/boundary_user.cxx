@@ -68,11 +68,6 @@ int cboundary_user::setvalues()
 
 int cboundary_user::setbc_patch(double * restrict a, double facl, double facr, double aval)
 {
-  // dimensions patches
-  double xrmid   = 0.5*patch_xh;
-  double xrstart = 0.5*(patch_xh - patch_xr);
-  double xrend   = 0.5*(patch_xh + patch_xr);
-
   double avall, avalr;
   double xmod, ymod;
   double errvalx, errvaly;
@@ -91,24 +86,12 @@ int cboundary_user::setbc_patch(double * restrict a, double facl, double facr, d
       xmod = fmod(grid->x[i], patch_xh);
       ymod = fmod(grid->y[j], patch_xh);
 
-      if(xmod < xrmid)
-        errvalx =  0.5*erf(0.5*(xmod-xrstart) / patch_xi);
-      else
-        errvalx = -0.5*erf(0.5*(xmod-xrend) / patch_xi);
+      errvalx = 0.5 - 0.5*erf(2.*(std::abs(2.*xmod - patch_xh) - patch_xr) / patch_xi);
 
       if(patch_dim == 2)
-      {
-        if(ymod < xrmid)
-          errvaly =  0.5*erf(0.5*(ymod-xrstart) / patch_xi);
-        else
-          errvaly = -0.5*erf(0.5*(ymod-xrend) / patch_xi);
-      }
+        errvalx = 0.5 - 0.5*erf(2.*(std::abs(2.*xmod - patch_xh) - patch_xr) / patch_xi);
       else
         errvaly = 1.;
-
-      // normalize the values between 0 and 1
-      errvalx = errvalx + 0.5;
-      errvaly = errvaly + 0.5;
 
       a[ij] = avall + (avalr-avall)*errvalx*errvaly;
     }

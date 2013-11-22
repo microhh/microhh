@@ -6,13 +6,16 @@
 
 cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cthermo(gridin, fieldsin, mpiin)
 {
+  allocated = false;
 }
 
 cthermo_moist::~cthermo_moist()
 {
   // std::printf("Destroying instance of object buoyancy\n");
-  delete[] pmn;
-
+  if (allocated)
+  {
+    delete[] pmn;
+  }
 }
 
 int cthermo_moist::readinifile(cinput *inputin)
@@ -43,23 +46,27 @@ int cthermo_moist::create()
   double tvs  = exner(ps) * thvs;
   rhos = ps / (rv * tvs);
 
-  pmn = new double[grid->kmax+2*grid->kgc];
+  pmn = new double[grid->kcells];
   for(int k=0; k<grid->kcells; k++)
   {
     pmn[k] = ps - rhos * grav * grid->z[k];
   }
-  
+
+  allocated = true;
   return nerror;
 }
+
 int cthermo_moist::exec()
 {
+  int ijk,kk;
+  kk = grid->icells*grid->jcells;
 
   // add mean pressure to pressure fluctuations into tmp array
   for(int k=0; k<grid->kcells; k++)
   {
     for(int n=0; n<grid->icells*grid->jcells; n++)
     {
-      fields->s["tmp1"]->data[n] = (fields->s["p"]->data[n] + pmn[k]) / rhos;
+      fields->s["tmp1"]->data[n+k*kk] = (fields->s["p"]->data[n+k*kk] + pmn[k]) / rhos;
     }
   }
 

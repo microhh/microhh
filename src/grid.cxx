@@ -426,7 +426,7 @@ int cgrid::calcmean(double * restrict prof, const double * restrict data, const 
 
   double n = imax*jmax;
 
-  for(int k=0; k<kcells; k++)
+  for(int k=0; k<krange; k++)
     prof[k] /= n;
 
   getprof(prof, krange);
