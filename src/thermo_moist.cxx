@@ -43,7 +43,7 @@ int cthermo_moist::create()
 //   nerror += grid->calcmean(&ssurf, fields->s["s"]->databot,1);
 //   nerror += grid->calcmean(&qtsurf, fields->s["qt"]->databot,1);
 
-  thvs = ssurf * (1. - (1. - rv/rd)*qtsurf);
+  thvs = 300;//ssurf * (1. - (1. - rv/rd)*qtsurf);
   double tvs  = exner(ps) * thvs;
   rhos = ps / (rv * tvs);
 
