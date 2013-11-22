@@ -18,7 +18,5 @@ class cthermo
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
-
-    double gravitybeta; // gravity multiplied with thermal expansion coefficient
 };
 #endif

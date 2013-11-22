@@ -85,13 +85,3 @@ inline double cthermo_dry::interp4(const double a, const double b, const double 
   return (-a + 9.*b + 9.*c - d) / 16.;
 }
 
-inline double cthermo_dry::interp4biasbot(const double a, const double b, const double c, const double d)
-{
-  return ((5./16.)*a + (15./16.)*b - (5./16.)*c + (1./16)*d);
-}
-
-inline double cthermo_dry::interp4biastop(const double a, const double b, const double c, const double d)
-{
-  return ((5./16.)*d + (15./16.)*c - (5./16.)*b + (1./16)*a);
-}
-

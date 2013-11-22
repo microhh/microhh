@@ -96,6 +96,11 @@ int cstats_les::create(int n)
   addprof("evisc", "z");
   addprof("p", "z");
 
+  // in case of moisture, add ql prof
+  fieldmap::const_iterator it=fields->sd.find("ql");
+  if(it!=fields->sd.end())
+    addprof(it->first, "z");
+
   // 2nd order
   addprof("u2", "z" );
   addprof("v2", "z" );
@@ -185,6 +190,11 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
 
   calcmean(fields->s["p"]->data, profs["p"].data, NO_OFFSET);
   calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
+
+  // in case of moisture, calc ql mean
+  fieldmap::const_iterator it=fields->sd.find("ql");
+  if(it!=fields->sd.end())
+    calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
 
   // calculate model means without correction for transformation
   calcmean(fields->u->data, umodel, NO_OFFSET);
