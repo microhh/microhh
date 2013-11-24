@@ -14,9 +14,13 @@ class cthermo
     virtual int exec();
     virtual int create();
 
+    std::string getname();
+
   protected:
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;
+
+    std::string swthermo;
 };
 #endif

@@ -6,6 +6,7 @@
 
 cthermo_dry::cthermo_dry(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cthermo(gridin, fieldsin, mpiin)
 {
+  swthermo = "dry";
 }
 
 cthermo_dry::~cthermo_dry()

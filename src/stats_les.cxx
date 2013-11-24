@@ -98,9 +98,8 @@ int cstats_les::create(int n, cthermo *thermoin)
   addprof("p", "z");
 
   // in case of moisture, add ql prof
-  fieldmap::const_iterator it=fields->sd.find("ql");
-  if(it!=fields->sd.end())
-    addprof(it->first, "z");
+  if(thermoin->getname() == "moist")
+    addprof("ql", "z");
 
   // 2nd order
   addprof("u2", "z" );
@@ -193,13 +192,12 @@ int cstats_les::exec(int iteration, double time, unsigned long itime, cthermo *t
   calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
 
   // in case of moisture, calc ql mean
-  fieldmap::const_iterator it=fields->sd.find("ql");
-  if(it!=fields->sd.end())
+  if(thermoin->getname() == "moist")
   {
-    // CvH this is a hack, properly check the type
+    // use a static cast to get access to the thermo moist functions
     cthermo_moist *thermoptr = static_cast<cthermo_moist *>(thermoin);
-    thermoptr->getql(it->second, fields->s["tmp1"]);
-    calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
+    thermoptr->getql(fields->s["ql"], fields->s["tmp1"]);
+    calcmean(fields->s["ql"]->data, profs["ql"].data, NO_OFFSET);
   }
 
   // calculate model means without correction for transformation

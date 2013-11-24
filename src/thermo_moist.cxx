@@ -6,6 +6,8 @@
 
 cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cthermo(gridin, fieldsin, mpiin)
 {
+  swthermo = "moist";
+
   allocated = false;
 }
 
