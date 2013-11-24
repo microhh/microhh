@@ -39,6 +39,7 @@ class cstats_les : public cstats
     int calcgrad     (double *, double *, double *);
     int calcflux     (double *, double *, double *, double *, int, int);
     int addfluxes    (double *, double *, double *);
+    int calccount    (double* data, double* prof, double threshold);
 
     int nstats;
 };

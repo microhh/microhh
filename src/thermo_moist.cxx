@@ -59,8 +59,10 @@ int cthermo_moist::create()
 
 int cthermo_moist::exec()
 {
-  int ijk,kk;
+  int ijk,kk,nerror;
   kk = grid->icells*grid->jcells;
+
+  nerror = 0;
 
   // add mean pressure to pressure fluctuations into tmp array
   for(int k=0; k<grid->kcells; k++)
@@ -70,6 +72,8 @@ int cthermo_moist::exec()
       fields->s["tmp1"]->data[n+k*kk] = fields->s["p"]->data[n+k*kk] * rhos + pmn[k]; // minus trace
     }
   }
+
+  // nerror += calcqlfield(fields->s["ql"]->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
 
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder == "2")
@@ -81,7 +85,8 @@ int cthermo_moist::exec()
     buoyancy_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
   }
 
-  return 0;
+
+  return (nerror>0);
 }
 
 int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
@@ -120,6 +125,7 @@ int cthermo_moist::buoyancy_2nd(double * restrict wt, double * restrict s, doubl
 //         if(ql>0)
 //           printf("%d qt %f rs %f ql %f bu %f bu0 %f %f\n", k, qth, rslf(ph, sh*exner(ph)),ql, thvs/grav*(bu(ph, sh,qth,ql)), thvs/grav*(bu(ph, sh,qth,0.)), ph);
       }
+//           printf("%d qt %f rs %f ql %f bu %f bu0 %f %f\n", k, qth, qth/rslf(ph, sh*exner(ph)),ql, thvs/grav*(bu(ph, sh,qth,ql)), thvs/grav*(bu(ph, sh,qth,0.)), ph);
 
   }
   return 0;
@@ -208,7 +214,7 @@ inline double cthermo_moist::exner(const double p)
 }
 inline double cthermo_moist::rslf(const double p, const double t)
 {
-  return ep*esl(t)/(p-esl(t));
+  return ep*esl(t)/(p-(1-ep)*esl(t));
 }
 
 inline double cthermo_moist::esl(const double t)
@@ -222,9 +228,12 @@ inline double cthermo_moist::esl(const double t)
   const double c6=0.6936113e-08;
   const double c7=0.2564861e-11;
   const double c8=-.3704404e-13;
-  const double x=std::max(-80.,t-tmelt);
-
-  return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
+//   const double x=std::max(-80.,t-tmelt);
+  const double at= 17.27;
+  const double bt= 35.86;
+  const double es0 = 610.78;
+//   return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
+  return es0*std::exp(at*(t-tmelt)/(t-bt));
 }
 
 inline double cthermo_moist::interp2(const double a, const double b)

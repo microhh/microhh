@@ -100,7 +100,9 @@ int cstats_les::create(int n, cthermo *thermoin)
   // in case of moisture, add ql prof
   if(thermoin->getname() == "moist")
     addprof("ql", "z");
-
+  {
+    addprof("cfrac", "z");
+  }
   // 2nd order
   addprof("u2", "z" );
   addprof("v2", "z" );
@@ -197,7 +199,8 @@ int cstats_les::exec(int iteration, double time, unsigned long itime, cthermo *t
     // use a static cast to get access to the thermo moist functions
     cthermo_moist *thermoptr = static_cast<cthermo_moist *>(thermoin);
     thermoptr->getql(fields->s["ql"], fields->s["tmp1"]);
-    calcmean(fields->s["ql"]->data, profs["ql"].data, NO_OFFSET);
+    calcmean (fields->s["ql"]->data, profs["ql"].data, NO_OFFSET);
+    calccount(fields->s["ql"]->data, profs["cfrac"].data, 0.);
   }
 
   // calculate model means without correction for transformation
@@ -286,7 +289,7 @@ int cstats_les::calcmean(double * restrict data, double * restrict prof, double 
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-  
+
   for(int k=0; k<grid->kcells; ++k)
   {
     prof[k] = 0.;
@@ -296,6 +299,39 @@ int cstats_les::calcmean(double * restrict data, double * restrict prof, double 
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += data[ijk] + offset;
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=0; k<grid->kcells; ++k)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+// COMPUTATIONAL KERNELS BELOW
+int cstats_les::calccount(double * restrict data, double * restrict prof, double threshold)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  for(int k=0; k<grid->kcells; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk;
+        if(data[ijk]>threshold)
+        {
+          prof[k] += 1.;
+        }
       }
   }
 

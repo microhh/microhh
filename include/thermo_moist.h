@@ -53,6 +53,5 @@ class cthermo_moist : public cthermo
 
     inline double interp2(const double, const double);
     inline double interp4(const double, const double, const double, const double);
-
 };
 #endif
