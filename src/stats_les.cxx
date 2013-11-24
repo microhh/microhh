@@ -3,6 +3,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "stats_les.h"
+#include "thermo_moist.h"
 #include "defines.h"
 #include <netcdfcpp.h>
 
@@ -52,7 +53,7 @@ int cstats_les::init(double ifactor)
   return 0;
 }
 
-int cstats_les::create(int n)
+int cstats_les::create(int n, cthermo *thermoin)
 {
   int nerror = 0;
 
@@ -166,7 +167,7 @@ unsigned long cstats_les::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int cstats_les::exec(int iteration, double time, unsigned long itime)
+int cstats_les::exec(int iteration, double time, unsigned long itime, cthermo *thermoin)
 {
   // check if time for execution
   if(itime % istatstime != 0)
@@ -194,7 +195,12 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
   // in case of moisture, calc ql mean
   fieldmap::const_iterator it=fields->sd.find("ql");
   if(it!=fields->sd.end())
+  {
+    // CvH this is a hack, properly check the type
+    cthermo_moist *thermoptr = static_cast<cthermo_moist *>(thermoin);
+    thermoptr->getql(it->second, fields->s["tmp1"]);
     calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
+  }
 
   // calculate model means without correction for transformation
   calcmean(fields->u->data, umodel, NO_OFFSET);

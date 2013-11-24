@@ -5,6 +5,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
+#include "thermo.h"
 #include "stats.h"
 
 class cstats_les : public cstats
@@ -15,9 +16,9 @@ class cstats_les : public cstats
 
     int readinifile(cinput *);
     int init(double);
-    int create(int);
+    int create(int, cthermo *);
     unsigned long gettimelim(unsigned long);
-    int exec(int, double, unsigned long);
+    int exec(int, double, unsigned long, cthermo *);
 
   private:
     bool allocated;

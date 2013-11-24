@@ -271,8 +271,19 @@ int cmodel::load()
     return 1;
   if(thermo->create())
     return 1;
-  if(stats->create(timeloop->iotime))
-    return 1;
+
+  if(swstats == "les")
+  {
+    cstats_les *stats_lesptr = static_cast<cstats_les *>(stats);
+    if(stats_lesptr->create(timeloop->iotime, thermo))
+      return 1;
+  }
+  else
+  {
+    if(stats->create(timeloop->iotime))
+      return 1;
+  }
+
 
   if(boundary->setvalues())
     return 1;
@@ -344,15 +355,18 @@ int cmodel::exec()
 
     // pressure
     pres->exec(timeloop->getsubdt());
-    // if(timeloop->dosave() && !timeloop->insubstep())
-    // {
-    //   fields->s["p"]->save(timeloop->iotime, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
-    // }
-    
+
     // statistics when not in substep and not directly after restart
     if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))
     {
-      stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
+      if(swstats == "les")
+      {
+        cstats_les *stats_lesptr = static_cast<cstats_les *>(stats);
+        stats_lesptr->exec(timeloop->iteration, timeloop->time, timeloop->itime, thermo);
+      }
+      else
+        stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
+
       cross->exec(timeloop->time, timeloop->itime, timeloop->iotime);
     }
 

@@ -26,10 +26,11 @@ class cthermo_moist : public cthermo
     int init(cinput *);
     int create();
     int exec();
-    int getbuoyancy();
-    int getbuoyancyh();
-    int getsat();
-    int getsath();
+    int getql(cfield3d *, cfield3d *);
+    // int getbuoyancy();
+    // int getbuoyancyh();
+    // int getsat();
+    // int getsath();
 
   private:
     double ps;
@@ -41,6 +42,9 @@ class cthermo_moist : public cthermo
     
     int buoyancy_2nd(double *, double *, double *, double *);
     int buoyancy_4th(double *, double *, double *, double *);
+
+    int calcqlfield(double *, double *, double *, double *);
+
     inline double calcql(const double, const double, const double);
     inline double bu(const double p, const double s, const double qt, const double ql);
     inline double exner(const double);
@@ -49,8 +53,6 @@ class cthermo_moist : public cthermo
 
     inline double interp2(const double, const double);
     inline double interp4(const double, const double, const double, const double);
-    inline double interp4biasbot(const double, const double, const double, const double);
-    inline double interp4biastop(const double, const double, const double, const double);
 
 };
 #endif

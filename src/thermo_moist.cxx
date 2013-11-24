@@ -11,7 +11,6 @@ cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : ct
 
 cthermo_moist::~cthermo_moist()
 {
-  // std::printf("Destroying instance of object buoyancy\n");
   if (allocated)
   {
     delete[] pmn;
@@ -30,7 +29,6 @@ int cthermo_moist::readinifile(cinput *inputin)
   nerror += fields->initdfld("ql");
 
   return (nerror > 0);
-
 }
 
 int cthermo_moist::create()
@@ -71,7 +69,6 @@ int cthermo_moist::exec()
     }
   }
 
-
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder == "2")
   {
@@ -83,6 +80,19 @@ int cthermo_moist::exec()
   }
 
   return 0;
+}
+
+int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
+{
+  int ijk,kk;
+  kk = grid->icells*grid->jcells;
+
+  // add mean pressure to pressure fluctuations into tmp array
+  for(int k=0; k<grid->kcells; k++)
+    for(int n=0; n<grid->icells*grid->jcells; n++)
+      pfield->data[n+k*kk] = fields->s["p"]->data[n+k*kk]*rhos + pmn[k]; // minus trace
+
+  calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pfield->data);
 }
 
 int cthermo_moist::buoyancy_2nd(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p)
@@ -139,6 +149,26 @@ int cthermo_moist::buoyancy_4th(double * restrict wt, double * restrict s, doubl
   return 0;
 }
 
+int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double * restrict qt, double * restrict p)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  for(int k=grid->kstart+1; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ql[ijk] = calcql(s[ijk], qt[ijk], p[ijk]);
+      }
+
+  return 0;
+}
+
+// INLINE FUNCTIONS
 inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql)
 {
   return  grav * ((s + lv*ql/(cp*exner(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvs) / thvs;
@@ -203,15 +233,5 @@ inline double cthermo_moist::interp2(const double a, const double b)
 inline double cthermo_moist::interp4(const double a, const double b, const double c, const double d)
 {
   return (-a + 9.*b + 9.*c - d) / 16.;
-}
-
-inline double cthermo_moist::interp4biasbot(const double a, const double b, const double c, const double d)
-{
-  return ((5./16.)*a + (15./16.)*b - (5./16.)*c + (1./16)*d);
-}
-
-inline double cthermo_moist::interp4biastop(const double a, const double b, const double c, const double d)
-{
-  return ((5./16.)*d + (15./16.)*c - (5./16.)*b + (1./16)*a);
 }
 
