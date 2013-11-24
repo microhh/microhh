@@ -99,8 +99,10 @@ int cstats_les::create(int n)
   // in case of moisture, add ql prof
   fieldmap::const_iterator it=fields->sd.find("ql");
   if(it!=fields->sd.end())
+  {
     addprof(it->first, "z");
-
+    addprof("cfrac", "z");
+  }
   // 2nd order
   addprof("u2", "z" );
   addprof("v2", "z" );
@@ -194,8 +196,10 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
   // in case of moisture, calc ql mean
   fieldmap::const_iterator it=fields->sd.find("ql");
   if(it!=fields->sd.end())
+  {
     calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
-
+    calccount(it->second->data, profs["cfrac"].data,0.);
+  }
   // calculate model means without correction for transformation
   calcmean(fields->u->data, umodel, NO_OFFSET);
   calcmean(fields->v->data, vmodel, NO_OFFSET);
@@ -282,7 +286,7 @@ int cstats_les::calcmean(double * restrict data, double * restrict prof, double 
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-  
+
   for(int k=0; k<grid->kcells; ++k)
   {
     prof[k] = 0.;
@@ -292,6 +296,39 @@ int cstats_les::calcmean(double * restrict data, double * restrict prof, double 
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += data[ijk] + offset;
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=0; k<grid->kcells; ++k)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+// COMPUTATIONAL KERNELS BELOW
+int cstats_les::calccount(double * restrict data, double * restrict prof, double threshold)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  for(int k=0; k<grid->kcells; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk;
+        if(data[ijk]>threshold)
+        {
+          prof[k] += 1.;
+        }
       }
   }
 
