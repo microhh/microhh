@@ -41,6 +41,7 @@ class cthermo_moist : public cthermo
     
     int buoyancy_2nd(double *, double *, double *, double *);
     int buoyancy_4th(double *, double *, double *, double *);
+    int calcqlfield(double *, double *, double *, double *);
     inline double calcql(const double, const double, const double);
     inline double bu(const double p, const double s, const double qt, const double ql);
     inline double exner(const double);
