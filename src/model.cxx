@@ -229,6 +229,10 @@ int cmodel::readinifile()
   if(cross->readinifile(input))
     return 1;
 
+  // set dependencies at the same hierarchy level
+  if(swboundary == "surface")
+    static_cast<cboundary_surface *>(boundary)->setdepends(thermo);
+
   return 0;
 }
 

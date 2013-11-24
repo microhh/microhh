@@ -102,6 +102,14 @@ int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
   calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pfield->data);
 }
 
+int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
+{
+  calcbuoyancysurf(bfield->data         , bfield->databot, bfield->datafluxbot,
+                   fields->s["s" ]->data, fields->s["s" ]->databot, fields->s["s" ]->datafluxbot,
+                   fields->s["qt"]->data, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
+  return 0;
+}
+
 int cthermo_moist::buoyancy_2nd(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p)
 {
   int ijk,jj,kk;
@@ -175,6 +183,34 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
 
   return 0;
 }
+
+int cthermo_moist::calcbuoyancysurf(double * restrict b , double * restrict bbot , double * restrict bfluxbot, 
+                                    double * restrict s , double * restrict sbot , double * restrict sfluxbot,
+                                    double * restrict qt, double * restrict qtbot, double * restrict qtfluxbot)
+{
+  int ij,ijk,jj,kk,kstart;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+
+  // assume no liquid water at the lowest model level
+  // CvH create proper function for the flux
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      bbot    [ij] = bu(p0, sbot    [ij], qtbot    [ij], 0.);
+      bfluxbot[ij] = sfluxbot[ij];
+
+      b[ijk] = bu(p0, s[ijk], qt[ijk], 0.);
+    }
+
+  return 0;
+}
+
 
 // INLINE FUNCTIONS
 inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql)

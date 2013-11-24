@@ -5,6 +5,7 @@
 #include "fields.h"
 #include "mpiinterface.h"
 #include "boundary.h"
+#include "thermo.h"
 
 class cboundary_surface : public cboundary
 {
@@ -16,6 +17,8 @@ class cboundary_surface : public cboundary
     int init();
     int setvalues();
     int exec();
+
+    int setdepends(cthermo *);
 
     int save(int);
     int load(int);
@@ -58,5 +61,7 @@ class cboundary_surface : public cboundary
     typedef std::map<std::string, int> bcbotmap;
     int surfmbcbot;
     bcbotmap surfsbcbot;
+
+    cthermo *thermo;
 };
 #endif

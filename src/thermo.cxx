@@ -32,6 +32,11 @@ int cthermo::exec()
   return 0;
 }
 
+int cthermo::getbuoyancysurf(cfield3d *buoy)
+{
+  return 0;
+}
+
 std::string cthermo::getname()
 {
   return swthermo;

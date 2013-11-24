@@ -149,6 +149,12 @@ int cboundary_surface::load(int iotime)
   return 0;
 }
 
+int cboundary_surface::setdepends(cthermo *thermoin)
+{
+  thermo = thermoin;
+  return 0;
+}
+
 int cboundary_surface::setvalues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
@@ -187,20 +193,30 @@ int cboundary_surface::setvalues()
 int cboundary_surface::bcvalues()
 {
   // start with retrieving the stability information
-  // TODO make this working properly with buoyancy
-  if(fields->s.count("s") == 1)
-  {
-    stability(ustar, obuk, fields->sp["s"]->datafluxbot,
-              fields->u->data, fields->v->data, fields->sp["s"]->data,
-              fields->u->databot, fields->v->databot, fields->sp["s"]->databot,
-              fields->s["tmp1"]->data, grid->z);
-  }
-  else
+  if(thermo->getname() == "off")
   {
     stability_neutral(ustar, obuk,
                       fields->u->data, fields->v->data,
                       fields->u->databot, fields->v->databot,
-                      fields->s["tmp1"]->data, grid->z);
+                      fields->sd["tmp1"]->data, grid->z);
+  }
+  // assume that the temperature field contains the buoyancy
+  else if(thermo->getname() == "dry")
+  {
+    stability(ustar, obuk, fields->sp["s"]->datafluxbot,
+              fields->u->data, fields->v->data, fields->sp["s"]->data,
+              fields->u->databot, fields->v->databot, fields->sp["s"]->databot,
+              fields->sd["tmp1"]->data, grid->z);
+  }
+  // assume buoyancy calculation is needed
+  else
+  {
+    // store the buoyancy in tmp1
+    thermo->getbuoyancysurf(fields->sd["tmp1"]);
+    stability(ustar, obuk, fields->sd["tmp1"]->datafluxbot,
+              fields->u->data, fields->v->data, fields->sd["tmp1"]->data,
+              fields->u->databot, fields->v->databot, fields->sd["tmp1"]->databot,
+              fields->sd["tmp2"]->data, grid->z);
   }
 
   // calculate the surface value, gradient and flux depending on the chosen boundary condition
