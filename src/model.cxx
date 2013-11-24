@@ -232,6 +232,8 @@ int cmodel::readinifile()
   // set dependencies at the same hierarchy level
   if(swboundary == "surface")
     static_cast<cboundary_surface *>(boundary)->setdepends(thermo);
+  if(swdiff == "22")
+    static_cast<cdiff_les_g2 *>(diff)->setdepends(thermo, static_cast<cboundary_surface *>(boundary));
 
   return 0;
 }
@@ -328,7 +330,7 @@ int cmodel::exec()
 
   // set the boundary conditions
   boundary->exec();
-  diff->execvisc(boundary);
+  diff->execvisc();
 
   if(settimestep())
     return 1;
@@ -421,7 +423,7 @@ int cmodel::exec()
 
     // boundary conditions
     boundary->exec();
-    diff->execvisc(boundary);
+    diff->execvisc();
 
     if(outputfile(!timeloop->loop))
       return 1;

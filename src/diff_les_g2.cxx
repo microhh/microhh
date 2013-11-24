@@ -45,34 +45,48 @@ unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-int cdiff_les_g2::execvisc(cboundary *boundaryin)
+int cdiff_les_g2::execvisc()
 {
   // boundary is of type boundary_surface
-  cboundary_surface *boundaryptr = static_cast<cboundary_surface*>(boundaryin);
+  // cboundary_surface *boundaryptr = static_cast<cboundary_surface*>(boundaryin);
 
   strain2(fields->s["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data,
           fields->u->datafluxbot, fields->v->datafluxbot,
-          boundaryptr->ustar, boundaryptr->obuk,
+          boundary->ustar, boundary->obuk,
           grid->z, grid->dzi, grid->dzhi);
 
-  // TODO replace by proper check
-  if(fields->s.count("s") == 1)
-  {
-    evisc(fields->s["evisc"]->data,
-          fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
-          fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
-          boundaryptr->ustar, boundaryptr->obuk,
-          grid->z, grid->dz, grid->dzi,
-          fields->tPr);
-  }
-  else
+  // start with retrieving the stability information
+  if(thermo->getname() == "off")
   {
     evisc_neutral(fields->s["evisc"]->data,
                   fields->u->data, fields->v->data, fields->w->data,
                   fields->u->datafluxbot, fields->v->datafluxbot,
                   grid->z, grid->dz);
   }
+  // assume that the temperature field contains the buoyancy
+  else// if(thermo->getname() == "dry")
+  {
+    evisc(fields->s["evisc"]->data,
+          fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
+          fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
+          boundary->ustar, boundary->obuk,
+          grid->z, grid->dz, grid->dzi,
+          fields->tPr);
+  }
+  /*
+  // assume buoyancy calculation is needed
+  else
+  {
+    // store the buoyancy in tmp1
+    thermo->getbuoyancysurf(fields->sd["tmp1"]);
+    evisc(fields->s["evisc"]->data,
+          fields->u->data, fields->v->data, fields->w->data, fields->sd["tmp1"]->data,
+          fields->u->datafluxbot, fields->v->datafluxbot, fields->sd["tmp1"]->datafluxbot,
+          boundaryptr->ustar, boundaryptr->obuk,
+          grid->z, grid->dz, grid->dzi,
+          fields->tPr);
+  }*/
 
   return 0;
 }
@@ -96,6 +110,13 @@ int cdiff_les_g2::exec()
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, fields->tPr);
 
+  return 0;
+}
+
+int cdiff_les_g2::setdepends(cthermo *thermoin, cboundary_surface *boundaryin)
+{
+  thermo = thermoin;
+  boundary = boundaryin;
   return 0;
 }
 
@@ -199,7 +220,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
 
   // bottom boundary, here strain is fully parametrized using MO
   // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-  mlen0 = cs*std::pow(dx*dy*dz[kstart], 1./3.);
+  mlen0 =cs*std::pow(dx*dy*dz[kstart], 1./3.);
   mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[kstart]+z0), n))), 1./n);
   fac   = std::pow(mlen, 2.);
 

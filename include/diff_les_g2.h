@@ -5,7 +5,8 @@
 #include "fields.h"
 #include "diff.h"
 #include "mpiinterface.h"
-#include "boundary.h"
+#include "boundary_surface.h"
+#include "thermo.h"
 
 class cdiff_les_g2 : public cdiff
 {
@@ -15,10 +16,12 @@ class cdiff_les_g2 : public cdiff
 
     int readinifile(cinput *);
     int exec();
-    int execvisc(cboundary *);
+    int execvisc();
 
     unsigned long gettimelim(unsigned long, double);
     double getdn(double);
+
+    int setdepends(cthermo *, cboundary_surface *);
 
   private:
     int strain2(double *,
@@ -47,5 +50,8 @@ class cdiff_les_g2 : public cdiff
     inline double phih(double);
 
     double cs;
+
+    cthermo           *thermo;
+    cboundary_surface *boundary;
 };
 #endif

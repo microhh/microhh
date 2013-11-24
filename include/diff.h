@@ -14,7 +14,7 @@ class cdiff
 
     virtual int readinifile(cinput *);
     virtual int setvalues();
-    virtual int execvisc(cboundary *);
+    virtual int execvisc();
     virtual int exec();
 
     virtual unsigned long gettimelim(unsigned long, double);
