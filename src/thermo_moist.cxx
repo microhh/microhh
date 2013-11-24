@@ -45,7 +45,7 @@ int cthermo_moist::create()
 
   thvs = 300;//ssurf * (1. - (1. - rv/rd)*qtsurf);
   double tvs  = exner(ps) * thvs;
-  rhos = ps / (rv * tvs);
+  rhos = ps / (rd * tvs);
 
   pmn = new double[grid->kcells];
   for(int k=0; k<grid->kcells; k++)
@@ -104,8 +104,11 @@ int cthermo_moist::buoyancy_2nd(double * restrict wt, double * restrict s, doubl
         qth = interp2(qt[ijk-kk], qt[ijk]);
         ph  = interp2(p[ijk-kk], p[ijk]);
         ql  = calcql(sh, qth, ph);
-        wt[ijk] += bu(sh, qth, ql);
+        wt[ijk] += bu(ph, sh, qth, ql);
+//         if(ql>0)
+//           printf("%d qt %f rs %f ql %f bu %f bu0 %f %f\n", k, qth, rslf(ph, sh*exner(ph)),ql, thvs/grav*(bu(ph, sh,qth,ql)), thvs/grav*(bu(ph, sh,qth,0.)), ph);
       }
+
   }
   return 0;
 }
@@ -130,31 +133,40 @@ int cthermo_moist::buoyancy_4th(double * restrict wt, double * restrict s, doubl
         qth = interp4(qt[ijk-kk2], qt[ijk-kk1], qt[ijk], qt[ijk+kk1]);
         ph  = interp4(p[ijk-kk2] , p[ijk-kk1] , p[ijk] , p[ijk+kk1]);
         ql  = calcql(sh, qth, ph);
-        wt[ijk] += bu(sh, qth, ql);
+        wt[ijk] += bu(ph, sh, qth, ql);
       }
 
   return 0;
 }
 
-inline double cthermo_moist::bu(const double s, const double qt, const double ql)
+inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql)
 {
-  return grav * (s * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvs) / thvs;
+  return  grav * ((s + lv*ql/(cp*exner(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvs) / thvs;
 }
 
 inline double cthermo_moist::calcql(const double s, const double qt, const double p)
 {
   int niter = 0, nitermax = 5;
-  double sabs, sguess = 1.e9, t, ql, dtldt;
-  sabs = s * exner(p);
-  t = sabs;
-  while (std::fabs(sguess-sabs)/sabs > 1e-5 && niter < nitermax)
+//   double sabs, sguess = 1.e9, t, qs, ql, dtldt;
+  double ql, tl, tnr_old = 1.e9, tnr, qs;
+  tl = s * exner(p);
+  tnr = tl;
+  while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5)// && niter < nitermax)
   {
     ++niter;
-    ql = std::max(0.,qt - rslf(p, t));
-    sguess = t*std::exp(-lv*ql/(cp*t));
-    dtldt = sabs/t*(1. - lv * ql / (pow(cp,2.)* t));
-    t += (sguess-sabs) / dtldt;
+    tnr_old = tnr;
+//     es      = es0*exp(at*(Tnr-tmelt)/(Tnr-bt));
+//     qs   = rd/rv*es/(pressure(k)-(1-rd/rv)*es);
+    qs = rslf(p,tnr);
+//     printf("%f, %f %f %f\n",qs,qt, tnr, p);
+    tnr     = tnr - (tnr+(lv/cp)*qs-tl-(lv/cp)*qt)/(1+(std::pow(lv,2)*qs)/ (rv*cp*std::pow(tnr,2)));
+
+//     sguess = t*std::exp(-lv*ql/(cp*t));
+//     sguess = t + lv*ql/cp;
+//     dtldt = sabs/t*(1. - lv * ql / (pow(cp,2.)* t));
+//     t += (sguess-sabs) / dtldt;
   }
+  ql = std::max(0.,qt - qs);
   return ql;
 }
 
