@@ -234,7 +234,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
       ijk = i + j*jj + kstart*kk;
       // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
       // Add the buoyancy production to the TKE
-      RitPrratio = -(9.81/300.)*bfluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
+      RitPrratio = -bfluxbot[ij]/(kappa*z[kstart]*ustar[ij])*phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
       RitPrratio = std::min(RitPrratio, 1.-dsmall);
       evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
     }
@@ -253,7 +253,7 @@ int cdiff_les_g2::evisc(double * restrict evisc,
         ijk = i + j*jj + k*kk;
         // CvH use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
         // Add the buoyancy production to the TKE
-        RitPrratio = (9.81/300.)*(b[ijk+kk]-b[ijk-kk])*0.5*dzi[k] / evisc[ijk] / tPr;
+        RitPrratio = (b[ijk+kk]-b[ijk-kk])*0.5*dzi[k] / evisc[ijk] / tPr;
         RitPrratio = std::min(RitPrratio, 1.-dsmall);
         evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
       }
