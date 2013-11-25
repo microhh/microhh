@@ -64,14 +64,7 @@ int cthermo_moist::exec()
 
   nerror = 0;
 
-  // add mean pressure to pressure fluctuations into tmp array
-  for(int k=0; k<grid->kcells; k++)
-  {
-    for(int n=0; n<grid->icells*grid->jcells; n++)
-    {
-      fields->s["tmp1"]->data[n+k*kk] = fields->s["p"]->data[n+k*kk] * rhos + pmn[k]; // minus trace
-    }
-  }
+  calcpres(fields->s["tmp1"]->data, fields->s["p"]->data, pmn);
 
   // nerror += calcqlfield(fields->s["ql"]->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
 
@@ -94,11 +87,10 @@ int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
   int ijk,kk;
   kk = grid->icells*grid->jcells;
 
-  // add mean pressure to pressure fluctuations into tmp array
-  for(int k=0; k<grid->kcells; k++)
-    for(int n=0; n<grid->icells*grid->jcells; n++)
-      pfield->data[n+k*kk] = fields->s["p"]->data[n+k*kk]*rhos + pmn[k]; // minus trace
+  // calculate the hydrostatic pressure
+  calcpres(pfield->data, fields->s["p"]->data, this->pmn);
 
+  // calculate the ql field
   calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pfield->data);
 }
 
@@ -114,6 +106,26 @@ int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
 int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
+  return 0;
+}
+
+int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * restrict pmn)
+{
+  int ijk,jj,kk;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  double rhos = this->rhos;
+
+  for(int k=0; k<grid->kcells; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        p[ijk] = pi[ijk]*rhos + pmn[k]; // minus trace
+      }
+
   return 0;
 }
 
@@ -196,10 +208,11 @@ int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
                                    double * restrict qt, double * restrict qtbot)
 {
   int ij,ijk,jj,kk,kstart;
-
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   kstart = grid->kstart;
+
+  double thvref = thvs;
 
   // assume no liquid water at the lowest model level
   // CvH create proper function for the flux
@@ -209,8 +222,8 @@ int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij ] = bunoql(sbot[ij], qtbot[ij]);
-      b   [ijk] = bunoql(s[ijk], qt[ijk]);
+      bbot[ij ] = bunoql(sbot[ij], qtbot[ij], thvref);
+      b   [ijk] = bunoql(s[ijk], qt[ijk], thvref);
     }
 
   return 0;
@@ -221,6 +234,8 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
   int ij,jj,kk;
   jj = grid->icells;
 
+  double thvref = thvs;
+
   // assume no liquid water at the lowest model level
   // CvH create proper function for the flux
   for(int j=grid->jstart; j<grid->jend; j++)
@@ -228,7 +243,7 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ij  = i + j*jj;
-      bfluxbot[ij] = bufluxnoql(sbot[ij], sfluxbot[ij], qtbot[ij], qtfluxbot[ij]);
+      bfluxbot[ij] = bufluxnoql(sbot[ij], sfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvref);
     }
 
   return 0;
@@ -240,14 +255,14 @@ inline double cthermo_moist::bu(const double p, const double s, const double qt,
   return grav * ((s + lv*ql/(cp*exner(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvs) / thvs;
 }
 
-inline double cthermo_moist::bunoql(const double s, const double qt)
+inline double cthermo_moist::bunoql(const double s, const double qt, const double thvref)
 {
-  return grav * (s * (1. - (1. - rv/rd)*qt) - thvs) / thvs;
+  return grav * (s * (1. - (1. - rv/rd)*qt) - thvref) / thvref;
 }
 
-inline double cthermo_moist::bufluxnoql(const double s, const double sflux, const double qt, const double qtflux)
+inline double cthermo_moist::bufluxnoql(const double s, const double sflux, const double qt, const double qtflux, const double thvref)
 {
-  return grav/thvs * (sflux * (1. - (1.-rv/rd)*qt) - (1.-rv/rd)*s*qtflux);
+  return grav/thvref * (sflux * (1. - (1.-rv/rd)*qt) - (1.-rv/rd)*s*qtflux);
 }
 
 inline double cthermo_moist::calcql(const double s, const double qt, const double p)
