@@ -31,8 +31,7 @@ class cthermo_moist : public cthermo
     // functions to retrieve buoyancy properties, to be called from other classes
     int getbuoyancysurf   (cfield3d *);
     int getbuoyancyfluxbot(cfield3d *);
-
-    // int getbuoyancy();
+    int getbuoyancy(cfield3d *, cfield3d *);
     // int getbuoyancyh();
     // int getsat();
     // int getsath();
@@ -45,8 +44,10 @@ class cthermo_moist : public cthermo
 
     bool allocated;
     
-    int buoyancy_2nd(double *, double *, double *, double *);
-    int buoyancy_4th(double *, double *, double *, double *);
+    int calcbuoyancytend_2nd(double *, double *, double *, double *);
+    int calcbuoyancytend_4th(double *, double *, double *, double *);
+
+    int calcbuoyancy(double *, double *, double *, double *);
 
     int calcpres(double *, double *, double *);
     int calcqlfield(double *, double *, double *, double *);

@@ -71,11 +71,11 @@ int cthermo_moist::exec()
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder == "2")
   {
-    buoyancy_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
+    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
   }
   else if(grid->swspatialorder == "4")
   {
-    buoyancy_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
+    calcbuoyancytend_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
   }
 
 
@@ -92,6 +92,18 @@ int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
 
   // calculate the ql field
   calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pfield->data);
+
+  return 0;
+}
+
+int cthermo_moist::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
+{
+  // first calculate the pressure
+  calcpres(tmp->data, fields->s["p"]->data, this->pmn);
+  // then calculate the buoyancy at the cell centers
+  calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, tmp->data);
+
+  return 0;
 }
 
 int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
@@ -129,7 +141,7 @@ int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * 
   return 0;
 }
 
-int cthermo_moist::buoyancy_2nd(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p)
+int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p)
 {
   int ijk,jj,kk;
   double sh, qth, ph, ql;
@@ -158,7 +170,7 @@ int cthermo_moist::buoyancy_2nd(double * restrict wt, double * restrict s, doubl
   return 0;
 }
 
-int cthermo_moist::buoyancy_4th(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p)
+int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -179,6 +191,26 @@ int cthermo_moist::buoyancy_4th(double * restrict wt, double * restrict s, doubl
         ph  = interp4(p[ijk-kk2] , p[ijk-kk1] , p[ijk] , p[ijk+kk1]);
         ql  = calcql(sh, qth, ph);
         wt[ijk] += bu(ph, sh, qth, ql);
+      }
+
+  return 0;
+}
+
+int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double * restrict qt, double * restrict p)
+{
+  int ijk,jj,kk;
+  double ql;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ql = calcql(s[ijk], qt[ijk], p[ijk]);
+        b[ijk] = bu(p[ijk], s[ijk], qt[ijk], ql);
       }
 
   return 0;

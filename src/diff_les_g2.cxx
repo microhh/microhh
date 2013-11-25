@@ -77,11 +77,13 @@ int cdiff_les_g2::execvisc()
   // assume buoyancy calculation is needed
   else
   {
-    // store the buoyancy in tmp1
+    // store the buoyancyflux in tmp1
     thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
-    // CvH, for now pass the temperature until other problems are solved
+    // retrieve the full field in tmp1 and use tmp2 for temporary calculations
+    thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
+
     evisc(fields->s["evisc"]->data,
-          fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
+          fields->u->data, fields->v->data, fields->w->data, fields->s["tmp1"]->data,
           fields->u->datafluxbot, fields->v->datafluxbot, fields->sd["tmp1"]->datafluxbot,
           boundary->ustar, boundary->obuk,
           grid->z, grid->dz, grid->dzi,
