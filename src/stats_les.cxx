@@ -198,9 +198,9 @@ int cstats_les::exec(int iteration, double time, unsigned long itime, cthermo *t
   {
     // use a static cast to get access to the thermo moist functions
     cthermo_moist *thermoptr = static_cast<cthermo_moist *>(thermoin);
-    thermoptr->getql(fields->s["ql"], fields->s["tmp1"]);
-    calcmean (fields->s["ql"]->data, profs["ql"].data, NO_OFFSET);
-    calccount(fields->s["ql"]->data, profs["cfrac"].data, 0.);
+    thermoptr->getql(fields->s["tmp1"], fields->s["tmp2"]);
+    calcmean (fields->s["tmp1"]->data, profs["ql"].data, NO_OFFSET);
+    calccount(fields->s["tmp1"]->data, profs["cfrac"].data, 0.);
   }
 
   // calculate model means without correction for transformation

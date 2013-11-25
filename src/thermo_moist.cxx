@@ -28,7 +28,7 @@ int cthermo_moist::readinifile(cinput *inputin)
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
   nerror += fields->initpfld("qt");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
-  nerror += fields->initdfld("ql");
+  // nerror += fields->initdfld("ql");
 
   return (nerror > 0);
 }
@@ -223,7 +223,7 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  for(int k=grid->kstart+1; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
