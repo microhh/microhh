@@ -99,8 +99,8 @@ int cstats_les::create(int n, cthermo *thermoin)
 
   // in case of moisture, add ql prof
   if(thermoin->getname() == "moist")
-    addprof("ql", "z");
   {
+    addprof("ql", "z");
     addprof("cfrac", "z");
   }
   // 2nd order

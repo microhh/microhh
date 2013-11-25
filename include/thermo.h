@@ -13,7 +13,10 @@ class cthermo
     virtual int readinifile(cinput *);
     virtual int exec();
     virtual int create();
-    virtual int getbuoyancysurf(cfield3d *);
+
+    // interfacint functions to get buoyancy properties from other classes
+    virtual int getbuoyancysurf   (cfield3d *);
+    virtual int getbuoyancyfluxbot(cfield3d *);
 
     std::string getname();
 

@@ -65,7 +65,7 @@ int cdiff_les_g2::execvisc()
                   grid->z, grid->dz);
   }
   // assume that the temperature field contains the buoyancy
-  else// if(thermo->getname() == "dry")
+  else if(thermo->getname() == "dry")
   {
     evisc(fields->s["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
@@ -74,19 +74,19 @@ int cdiff_les_g2::execvisc()
           grid->z, grid->dz, grid->dzi,
           fields->tPr);
   }
-  /*
   // assume buoyancy calculation is needed
   else
   {
     // store the buoyancy in tmp1
-    thermo->getbuoyancysurf(fields->sd["tmp1"]);
+    thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
+    // CvH, for now pass the temperature until other problems are solved
     evisc(fields->s["evisc"]->data,
-          fields->u->data, fields->v->data, fields->w->data, fields->sd["tmp1"]->data,
-          fields->u->datafluxbot, fields->v->datafluxbot, fields->sd["tmp1"]->datafluxbot,
-          boundaryptr->ustar, boundaryptr->obuk,
+          fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
+          fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
+          boundary->ustar, boundary->obuk,
           grid->z, grid->dz, grid->dzi,
           fields->tPr);
-  }*/
+  }
 
   return 0;
 }
