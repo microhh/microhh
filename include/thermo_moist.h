@@ -55,7 +55,8 @@ class cthermo_moist : public cthermo
     int calcbuoyancyfluxbot(double *, double *, double *);
 
     inline double calcql(const double, const double, const double);
-    inline double bu(const double p, const double s, const double qt, const double ql);
+    inline double bu(const double, const double, const double, const double);
+    inline double bunoql(const double, const double);
     inline double exner(const double);
     inline double rslf(const double, const double);
     inline double esl(const double);

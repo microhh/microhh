@@ -209,8 +209,8 @@ int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij ] = bu(p0, sbot[ij], qtbot[ij], 0.);
-      b   [ijk] = bu(p0, s[ijk], qt[ijk], 0.);
+      bbot[ij ] = bunoql(sbot[ij], qtbot[ij]);
+      b   [ijk] = bunoql(s[ijk], qt[ijk]);
     }
 
   return 0;
@@ -237,7 +237,12 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
 // INLINE FUNCTIONS
 inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql)
 {
-  return  grav * ((s + lv*ql/(cp*exner(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvs) / thvs;
+  return grav * ((s + lv*ql/(cp*exner(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvs) / thvs;
+}
+
+inline double cthermo_moist::bunoql(const double s, const double qt)
+{
+  return grav * (s * (1. - (1. - rv/rd)*qt) - thvs) / thvs;
 }
 
 inline double cthermo_moist::calcql(const double s, const double qt, const double p)
