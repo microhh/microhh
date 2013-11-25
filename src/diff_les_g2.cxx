@@ -82,7 +82,7 @@ int cdiff_les_g2::execvisc()
     // CvH, for now pass the temperature until other problems are solved
     evisc(fields->s["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
-          fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
+          fields->u->datafluxbot, fields->v->datafluxbot, fields->sd["tmp1"]->datafluxbot,
           boundary->ustar, boundary->obuk,
           grid->z, grid->dz, grid->dzi,
           fields->tPr);
