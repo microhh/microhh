@@ -32,12 +32,17 @@ int cthermo::exec()
   return 0;
 }
 
-int cthermo::getbuoyancysurf(cfield3d *buoy)
+int cthermo::getbuoyancysurf(cfield3d *bfield)
 {
   return 0;
 }
 
-int cthermo::getbuoyancyfluxbot(cfield3d *buoy)
+int cthermo::getbuoyancyfluxbot(cfield3d *bfield)
+{
+  return 0;
+}
+
+int cthermo::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
 {
   return 0;
 }
