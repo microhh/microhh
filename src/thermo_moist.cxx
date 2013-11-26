@@ -203,7 +203,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=0; k<grid->kcells; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
