@@ -64,16 +64,6 @@ int cdiff_les_g2::execvisc()
                   fields->u->datafluxbot, fields->v->datafluxbot,
                   grid->z, grid->dz);
   }
-  // assume that the temperature field contains the buoyancy
-  else if(thermo->getname() == "dry")
-  {
-    evisc(fields->s["evisc"]->data,
-          fields->u->data, fields->v->data, fields->w->data, fields->s["s"]->data,
-          fields->u->datafluxbot, fields->v->datafluxbot, fields->s["s"]->datafluxbot,
-          boundary->ustar, boundary->obuk,
-          grid->z, grid->dz, grid->dzi,
-          fields->tPr);
-  }
   // assume buoyancy calculation is needed
   else
   {

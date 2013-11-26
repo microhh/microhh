@@ -21,9 +21,14 @@ class cthermo_dry : public cthermo
     int readinifile(cinput *);               ///< Processing data of the input file.
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
 
+    int getbuoyancy(cfield3d *, cfield3d *); ///< Compute the buoyancy for usage in another routine.
+    int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
+
   private:
-    int buoyancy_2nd(double *, double *); ///< Calculation of the buoyancy with 2nd order accuracy.
-    int buoyancy_4th(double *, double *); ///< Calculation of the buoyancy with 4th order accuracy.
+    int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
+    int calcbuoyancyfluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
+    int calcbuoyancytend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+    int calcbuoyancytend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
     inline double interp2(const double, const double); ///< 2nd order interpolation function.
     inline double interp4(const double, const double, 

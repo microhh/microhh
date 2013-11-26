@@ -28,19 +28,72 @@ int cthermo_dry::exec()
 {
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder== "2")
-    buoyancy_2nd(fields->wt->data, fields->s["s"]->data);
+    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data);
   else if(grid->swspatialorder == "4")
-    buoyancy_4th(fields->wt->data, fields->s["s"]->data);
+    calcbuoyancytend_4th(fields->wt->data, fields->s["s"]->data);
 
   return 0;
 }
 
-int cthermo_dry::buoyancy_2nd(double * restrict wt, double * restrict s)
+int cthermo_dry::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
+{
+  calcbuoyancy(bfield->data, fields->s["s"]->data);
+  return 0;
+}
+
+int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
+{
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->datafluxbot);
+  return 0;
+}
+
+int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict s)
+{
+  int ijk,jj,kk;
+  double ql;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  double gravitybeta = this->gravitybeta;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        b[ijk] = gravitybeta*s[ijk];
+      }
+
+  return 0;
+}
+
+int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
+{
+  int ij,jj,kk;
+  jj = grid->icells;
+
+  double gravitybeta = this->gravitybeta;
+
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      bfluxbot[ij] = gravitybeta*sfluxbot[ij];
+    }
+
+  return 0;
+}
+
+int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict s)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+
+  double gravitybeta = this->gravitybeta;
 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -55,7 +108,7 @@ int cthermo_dry::buoyancy_2nd(double * restrict wt, double * restrict s)
   return 0;
 }
 
-int cthermo_dry::buoyancy_4th(double * restrict wt, double * restrict s)
+int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict s)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -63,6 +116,8 @@ int cthermo_dry::buoyancy_4th(double * restrict wt, double * restrict s)
   jj  = grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
+
+  double gravitybeta = this->gravitybeta;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
