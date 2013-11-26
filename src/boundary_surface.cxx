@@ -200,15 +200,6 @@ int cboundary_surface::bcvalues()
                       fields->u->databot, fields->v->databot,
                       fields->sd["tmp1"]->data, grid->z);
   }
-  // assume that the temperature field contains the buoyancy
-  else if(thermo->getname() == "dry")
-  {
-    stability(ustar, obuk, fields->sp["s"]->datafluxbot,
-              fields->u->data, fields->v->data, fields->sp["s"]->data,
-              fields->u->databot, fields->v->databot, fields->sp["s"]->databot,
-              fields->sd["tmp1"]->data, grid->z);
-  }
-  // assume buoyancy calculation is needed
   else
   {
     // store the buoyancy in tmp1
@@ -269,8 +260,6 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
 
   grid->boundary_cyclic2d(dutot);
 
-  // TODO replace by value from buoyancy
-  double gravitybeta = 9.81/300.;
   double db;
 
   // calculate Obukhov length
@@ -282,7 +271,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
-        obuk[ij] = -std::pow(ustar[ij], 3.) / (gravitybeta*kappa*bfluxbot[ij]);
+        obuk[ij] = -std::pow(ustar[ij], 3.) / (kappa*bfluxbot[ij]);
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
@@ -563,8 +552,6 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
     else
       L0 = dhuge;
 
-    // TODO replace by value from buoyancy
-    double gravitybeta = 9.81/300.;
     int n = 0;
 
     // exit on convergence or on iteration count
@@ -572,11 +559,11 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-      fx     = zsl/L + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3.);
+      fx     = zsl/L + kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3.);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3.))
-               - (zsl/Lstart + kappa*gravitybeta*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3.)) )
+      fxdif  = ( (zsl/Lend + kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3.))
+               - (zsl/Lstart + kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3.)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
@@ -635,8 +622,6 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
     else
       L0 = -dhuge;
 
-    // TODO replace by value from buoyancy
-    double gravitybeta = 9.81/300.;
     int n = 0;
 
     // exit on convergence or on iteration count
@@ -644,11 +629,11 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-      fx     = zsl/L - kappa*gravitybeta*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2.);
+      fx     = zsl/L - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2.);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend - kappa*gravitybeta*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, Lend), 2.))
-               - (zsl/Lstart - kappa*gravitybeta*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
+      fxdif  = ( (zsl/Lend - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, Lend), 2.))
+               - (zsl/Lstart - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
