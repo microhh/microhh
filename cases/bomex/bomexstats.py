@@ -18,6 +18,7 @@ cft = stats.variables["cfrac"][:,:]
 
 sfluxt = stats.variables["sflux"][:,:]
 ufluxt = stats.variables["uflux"][:,:]
+vfluxt = stats.variables["vflux"][:,:]
 
 end   = t.size
 start = t.size - 36
@@ -31,6 +32,8 @@ cf = numpy.mean(cft[start:end,:], 0)
 
 sflux = numpy.mean(sfluxt[start:end,:], 0)
 uflux = numpy.mean(ufluxt[start:end,:], 0)
+vflux = numpy.mean(vfluxt[start:end,:], 0)
+Uflux = uflux + vflux
 
 # enable LaTeX plotting
 rc('font',**{'family':'serif','serif':['Palatino']})
@@ -93,7 +96,10 @@ ylabel(r'z [m]')
 figure()
 for n in range(start,end):
   plot(ufluxt[n,:], zh, color='#eeeeee')
+  plot(vfluxt[n,:], zh, color='#eeeeee')
 plot(uflux, zh)
+plot(vflux, zh)
+plot(Uflux, zh)
 xlabel(r'u`w` [m$^2$~s$^{-2}$]')
 ylabel(r'z [m]')
 
