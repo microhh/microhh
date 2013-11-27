@@ -2,7 +2,8 @@ MicroHH
 -------
 MicroHH is a computational fluid dynamics code made for Direct Numerical Simulation (DNS) and Large-Eddy Simulation of turbulent flows in the atmospheric boundary layer.
 
-MicroHH is created by Chiel van Heerwaarden (chielvanheerwaarden@gmail.com) and Thijs Heus (thijsheus@gmail.com).
+MicroHH is created by Chiel van Heerwaarden (chielvanheerwaarden at gmail.com) and Thijs Heus.
+The latest version of the source code can be found on http://github.com/microhh
 
 MicroHH is described in detail in Van Heerwaarden & Heus (in preparation). In case you decide to use MicroHH for your own research, the developers would appreciate to be notified and kindly request to cite their reference paper. Bug notifications and fixes are always welcome.
 
