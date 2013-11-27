@@ -40,7 +40,7 @@ make -j
 
 Running an example case
 =======================
-To start one of the included test cases, open the directory "cases". Here, a collection of test cases has been included. In this example, we start the drycblles case, a simple large-eddy simulation of a dry convective boundary layer.
+To start one of the included test cases, go back to the main directory and  open the directory "cases". Here, a collection of test cases has been included. In this example, we start the drycblles case, a simple large-eddy simulation of a dry convective boundary layer.
 
 cd cases/drycblles
 
@@ -52,7 +52,7 @@ Then, we have to copy or link the microhh executable to the current directory. H
 
 cp ../../build/microhh .
 
-Now, we can start microhh in init mode to create the initial 3d fields.
+Now, we can start microhh in initialization mode to create the initial fields:
 
 ./microhh init drycblles
 
@@ -64,5 +64,9 @@ This will take some time. Now, a statistics file called drycblles.0000000.nc has
 
 ipython
 run drycbllesstats
+show()
+
+This should show you a set of basic plots. Congratulations, you have just completed your first run of MicroHH.
 
 Happy MicroHHing!
+
