@@ -1,22 +1,22 @@
 MicroHH
-=======
+-------
 MicroHH is a computational fluid dynamics code made for Direct Numerical Simulation (DNS) and Large-Eddy Simulation of turbulent flows in the atmospheric boundary layer.
 
 MicroHH is created by Chiel van Heerwaarden (chielvanheerwaarden@gmail.com) and Thijs Heus (thijsheus@gmail.com).
 
 Requirements
-============
+------------
 In order to compile MicroHH you need:
-[x] C++ compiler
-[x] MPI2 implementation (optional, but recommended)
-[x] FFTW3 libraries
-[x] NetCDF4
-[x] CMake
-[x] Doxygen (optional)
-[x] Python + python-netcdf4 + numpy + matplotlib (optional for running example cases)
+* C++ compiler
+* MPI2 implementation (optional, but recommended)
+* FFTW3 libraries
+* NetCDF4
+* CMake
+* Doxygen (optional for creating documentation)
+* Python + ipython + python-netcdf4 + numpy + matplotlib (optional for running example cases)
 
 Compilation of the code
-=======================
+-----------------------
 First, enter the config directory: 
 
 cd config
@@ -28,18 +28,21 @@ cp ubuntu.cmake default.cmake
 Then, go back to the main directory and create a subdirectory with an arbitrary name in which you will compile the code. Let us assume this directory is called "build":
 
 mkdir build
+
 cd build
 
 From this directory, run cmake with the suffix .. to point to the parent directory:
 
 cmake ..
 
-This should trigger the build system and create the make files, if the default.cmake file contains the correct settings. In case this works correctly, you can start the compilation of the code and create the "microhh" executable:
+This should trigger the build system and create the make files, if the default.cmake file contains the correct settings. In case this works correctly, you can start the compilation of the code and create the microhh executable:
 
 make -j
 
+Your directory should contain a file named "microhh" now, that is the main executable.
+
 Running an example case
-=======================
+-----------------------
 To start one of the included test cases, go back to the main directory and  open the directory "cases". Here, a collection of test cases has been included. In this example, we start the drycblles case, a simple large-eddy simulation of a dry convective boundary layer.
 
 cd cases/drycblles
