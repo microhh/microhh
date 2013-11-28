@@ -88,6 +88,8 @@ int cstats_dns::create(int n)
       std::printf("ERROR cannot write statistics file\n");
       ++nerror;
     }
+    else
+      initialized = true;
   }
 
   // crash on all processes in case the file could not be written
@@ -199,8 +201,6 @@ int cstats_dns::create(int n)
 
     dataFile->sync();
   }
-
-  initialized = true;
 
   return 0;
 }

@@ -89,6 +89,8 @@ int cstats_les::create(int n, cthermo *thermoin)
       std::printf("ERROR cannot write statistics file\n");
       ++nerror;
     }
+    else
+      initialized = true;
   }
   // crash on all processes in case the file could not be written
   mpi->broadcast(&nerror, 1);
@@ -177,8 +179,6 @@ int cstats_les::create(int n, cthermo *thermoin)
 
     dataFile->sync();
   }
-
-  initialized = true;
 
   return 0;
 }
