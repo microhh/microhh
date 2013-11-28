@@ -79,6 +79,7 @@ cmodel::cmodel(cmpi * mpiin, cinput * inputin)
   advec    = NULL;
   diff     = NULL;
   pres     = NULL;
+  thermo   = NULL;
 
   // load the postprocessing moduls
   stats = NULL;
@@ -91,12 +92,12 @@ cmodel::~cmodel()
   delete cross;
   delete stats;
   delete buffer;
-  delete thermo;
   delete force;
   delete pres;
   delete diff;
   delete advec;
   delete timeloop;
+  delete thermo;
 
   delete boundary;
   delete fields;
