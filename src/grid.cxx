@@ -25,7 +25,10 @@
 #include "input.h"
 #include "defines.h"
 
-// build the grid
+/**
+ * This function constructs the grid class.
+ * @param mpiin Pointer to the master class.
+ */
 cgrid::cgrid(cmpi *mpiin)
 {
   mpi = mpiin;
@@ -35,6 +38,9 @@ cgrid::cgrid(cmpi *mpiin)
   fftwplan  = false;
 }
 
+/**
+ * This function destructs the grid class.
+ */
 cgrid::~cgrid()
 {
   if(fftwplan)
@@ -71,6 +77,12 @@ cgrid::~cgrid()
   exitmpi();
 }
 
+/**
+ * This function processes the input data and stores them in the class
+ * variables.
+ * @param inputin Pointer to the input class.
+ * @return Returns 1 on error, 0 otherwise.
+ */
 int cgrid::readinifile(cinput *inputin)
 {
   int n = 0;
@@ -115,6 +127,11 @@ int cgrid::readinifile(cinput *inputin)
   return 0;
 }
 
+/**
+ * This function allocates the dynamic arrays in the field class
+ * variables and calculates the derived grid indices and dimensions.
+ * @return Returns 1 on error, 0 otherwise.
+ */
 int cgrid::init()
 {
   // check whether the grid fits the processor configuration
@@ -194,6 +211,12 @@ int cgrid::init()
   return 0;
 }
 
+/**
+ * This function initializes the fields containing the grid dimensions based
+ * on the profiles in the input file.
+ * @param inputin Pointer to the input class.
+ * @return Returns 1 on error, 0 otherwise.
+ */
 int cgrid::create(cinput *inputin)
 {
   if(inputin->getProf(&z[kstart], "z", kmax))
@@ -204,6 +227,11 @@ int cgrid::create(cinput *inputin)
   return 0;
 }
 
+/**
+ * This function calculates the scalars and arrays that contain the information
+ * on the grid spacing.
+ * @return Returns 0.
+ */
 int cgrid::calculate()
 {
   int i,j,k;
@@ -319,11 +347,17 @@ int cgrid::calculate()
   return 0;
 }
 
-// interpolation functions
-// CvH merge interpolate functions later to something more consise but still vectorizable
+/**
+ * This function does a second order horizontal interpolation in the x-direction
+ * to the selected location on the grid.
+ * @param out Pointer to the output field.
+ * @param in Pointer to the input field.
+ * @param locx Integer containing the location of the input field,
+ * where a value of 1 refers to the flux level.
+ * @return Returns 0.
+ */
 int cgrid::interpolatex_2nd(double * restrict out, double * restrict in, int locx)
 {
-  // interpolation function, locx = 1 indicates that the reference is at the half level
   int ijk,ii,jj,kk,ihlf;
 
   ii = 1;
@@ -345,9 +379,17 @@ int cgrid::interpolatex_2nd(double * restrict out, double * restrict in, int loc
   return 0;
 }
 
+/**
+ * This function does a second order horizontal interpolation in the y-direction
+ * to the selected location on the grid.
+ * @param out Pointer to the output field.
+ * @param in Pointer to the input field.
+ * @param locy Integer containing the location of the input field,
+ * where a value of 1 refers to the flux level.
+ * @return Returns 0.
+ */
 int cgrid::interpolatey_2nd(double * restrict out, double * restrict in, int locy)
 {
-  // interpolation function, locy = 1 indicates that the reference is at the half level
   int ijk,ii,jj,kk,jhlf;
 
   ii = 1;
