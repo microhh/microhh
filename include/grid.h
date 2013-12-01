@@ -66,16 +66,17 @@ class cgrid
     int jgc; ///< Number of ghost cells in the y-direction.
     int kgc; ///< Number of ghost cells in the z-direction.
 
-    int icells; ///< Number of grid cells in the x-direction for one process including ghost cells.
-    int jcells; ///< Number of grid cells in the y-direction for one process including ghost cells.
-    int kcells; ///< Number of grid cells in the z-direction for one process including ghost cells.
-    int ncells; ///< Total number of grid cells for one process including ghost cells.
-    int istart; ///< Index of the first grid point in the x-direction.
-    int jstart; ///< Index of the first grid point in the y-direction.
-    int kstart; ///< Index of the first grid point in the z-direction.
-    int iend;   ///< Index of the last gridpoint+1 in the x-direction.
-    int jend;   ///< Index of the last gridpoint+1 in the y-direction.
-    int kend;   ///< Index of the last gridpoint+1 in the z-direction.
+    int icells;  ///< Number of grid cells in the x-direction including ghost cells for one process.
+    int jcells;  ///< Number of grid cells in the y-direction including ghost cells for one process.
+    int ijcells; ///< Number of grid cells in the xy-plane including ghost cells for one process.
+    int kcells;  ///< Number of grid cells in the z-direction including ghost cells for one process.
+    int ncells;  ///< Total number of grid cells for one process including ghost cells.
+    int istart;  ///< Index of the first grid point in the x-direction.
+    int jstart;  ///< Index of the first grid point in the y-direction.
+    int kstart;  ///< Index of the first grid point in the z-direction.
+    int iend;    ///< Index of the last gridpoint+1 in the x-direction.
+    int jend;    ///< Index of the last gridpoint+1 in the y-direction.
+    int kend;    ///< Index of the last gridpoint+1 in the z-direction.
 
     double xsize; ///< Size of the domain in the x-direction.
     double ysize; ///< Size of the domain in the y-direction.
