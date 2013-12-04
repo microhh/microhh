@@ -235,11 +235,11 @@ int cmodel::readinifile()
 
   // statistics
   if(swstats == "0")
-    stats = new cstats    (grid, fields, mpi);
+    stats = new cstats(this);
   else if(swstats == "dns")
-    stats = new cstats_dns(grid, fields, mpi);
+    stats = new cstats_dns(this);
   else if(swstats == "les")
-    stats = new cstats_les(grid, fields, mpi);
+    stats = new cstats_les(this);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
@@ -299,19 +299,8 @@ int cmodel::load()
     return 1;
   if(thermo->create())
     return 1;
-
-  if(swstats == "les")
-  {
-    cstats_les *stats_lesptr = static_cast<cstats_les *>(stats);
-    if(stats_lesptr->create(timeloop->iotime, thermo))
-      return 1;
-  }
-  else
-  {
-    if(stats->create(timeloop->iotime))
-      return 1;
-  }
-
+  if(stats->create(timeloop->iotime))
+    return 1;
 
   if(boundary->setvalues())
     return 1;
@@ -387,14 +376,7 @@ int cmodel::exec()
     // statistics when not in substep and not directly after restart
     if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))
     {
-      if(swstats == "les")
-      {
-        cstats_les *stats_lesptr = static_cast<cstats_les *>(stats);
-        stats_lesptr->exec(timeloop->iteration, timeloop->time, timeloop->itime, thermo);
-      }
-      else
-        stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
-
+      stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       cross->exec(timeloop->time, timeloop->itime, timeloop->iotime);
     }
 

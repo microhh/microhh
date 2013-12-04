@@ -26,20 +26,22 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
-#include "thermo.h"
 #include "stats.h"
+
+// forward declarations
+class cmodel;
 
 class cstats_les : public cstats
 {
   public:
-    cstats_les(cgrid *, cfields *, cmpi *);
+    cstats_les(cmodel *);
     ~cstats_les();
 
     int readinifile(cinput *);
     int init(double);
-    int create(int, cthermo *);
+    int create(int);
     unsigned long gettimelim(unsigned long);
-    int exec(int, double, unsigned long, cthermo *);
+    int exec(int, double, unsigned long);
 
   private:
     bool allocated;

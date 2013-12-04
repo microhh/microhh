@@ -26,11 +26,12 @@
 #include "stats_les.h"
 #include "thermo_moist.h"
 #include "defines.h"
+#include "model.h"
 #include <netcdfcpp.h>
 
 #define NO_OFFSET 0.
 
-cstats_les::cstats_les(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cstats(gridin, fieldsin, mpiin)
+cstats_les::cstats_les(cmodel *modelin) : cstats(modelin)
 {
   allocated   = false;
   initialized = false;
@@ -74,7 +75,7 @@ int cstats_les::init(double ifactor)
   return 0;
 }
 
-int cstats_les::create(int n, cthermo *thermoin)
+int cstats_les::create(int n)
 {
   int nerror = 0;
 
@@ -121,7 +122,7 @@ int cstats_les::create(int n, cthermo *thermoin)
   addprof("p", "z");
 
   // in case of moisture, add ql prof
-  if(thermoin->getname() == "moist")
+  if(model->thermo->getname() == "moist")
   {
     addprof("ql", "z");
     addprof("cfrac", "z");
@@ -189,7 +190,7 @@ unsigned long cstats_les::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int cstats_les::exec(int iteration, double time, unsigned long itime, cthermo *thermoin)
+int cstats_les::exec(int iteration, double time, unsigned long itime)
 {
   // check if time for execution
   if(itime % istatstime != 0)
@@ -215,11 +216,10 @@ int cstats_les::exec(int iteration, double time, unsigned long itime, cthermo *t
   calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
 
   // in case of moisture, calc ql mean
-  if(thermoin->getname() == "moist")
+  if(model->thermo->getname() == "moist")
   {
     // use a static cast to get access to the thermo moist functions
-    cthermo_moist *thermoptr = static_cast<cthermo_moist *>(thermoin);
-    thermoptr->getql(fields->s["tmp1"], fields->s["tmp2"]);
+    dynamic_cast<cthermo_moist *>(model->thermo)->getql(fields->s["tmp1"], fields->s["tmp2"]);
     calcmean (fields->s["tmp1"]->data, profs["ql"].data, NO_OFFSET);
     calccount(fields->s["tmp1"]->data, profs["cfrac"].data, 0.);
   }

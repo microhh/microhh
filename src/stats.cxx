@@ -24,12 +24,14 @@
 #include "fields.h"
 #include "stats.h"
 #include "defines.h"
+#include "model.h"
 
-cstats::cstats(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cstats::cstats(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 }
 
 cstats::~cstats()

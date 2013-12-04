@@ -28,10 +28,13 @@
 #include "mpiinterface.h"
 #include "stats.h"
 
+// forward declaration of model to remove circular dependency
+class cmodel;
+
 class cstats_dns : public cstats
 {
   public:
-    cstats_dns(cgrid *, cfields *, cmpi *);
+    cstats_dns(cmodel *);
     ~cstats_dns();
 
     int readinifile(cinput *);

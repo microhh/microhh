@@ -26,8 +26,9 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
-// #include "stats_dns.h"
-// #include "stats_les.h"
+
+// forward declaration of model to remove circular dependency
+class cmodel;
 
 struct statsvar
 {
@@ -39,7 +40,7 @@ typedef std::map<std::string, statsvar> profmap;
 class cstats
 {
   public:
-    cstats(cgrid *, cfields *, cmpi *);
+    cstats(cmodel *);
     virtual ~cstats();
 
     virtual int readinifile(cinput *);
@@ -48,9 +49,8 @@ class cstats
     virtual unsigned long gettimelim(unsigned long);
     virtual int exec(int, double, unsigned long);
 
-    // int dostats(int, unsigned long);
-
   protected:
+    cmodel  *model;
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;

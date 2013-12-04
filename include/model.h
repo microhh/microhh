@@ -51,19 +51,10 @@ class cmodel
     int save();
     int exec();
 
-  private:
+    // make the pointers public for use in other classes
+    // maybe safer to create get functions
     cmpi    *mpi;
     cinput  *input;
-
-    // switches for included schemes
-    std::string swadvec;
-    std::string swdiff;
-    std::string swpres;
-    std::string swboundary;
-    std::string swthermo;
-
-    std::string swstats;
-
     cgrid   *grid;
     cfields *fields;
 
@@ -77,9 +68,19 @@ class cmodel
     cthermo   *thermo;
     cbuffer   *buffer;
 
-    // load the postprocessing modules
+    // postprocessing modules
     cstats    *stats;
     ccross    *cross;
+
+  private:
+    // switches for included schemes
+    std::string swadvec;
+    std::string swdiff;
+    std::string swpres;
+    std::string swboundary;
+    std::string swthermo;
+
+    std::string swstats;
 
     int outputfile(bool);
     int settimestep();

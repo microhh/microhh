@@ -25,11 +25,12 @@
 #include "fields.h"
 #include "stats_dns.h"
 #include "defines.h"
+#include "model.h"
 #include <netcdfcpp.h>
 
 #define NO_OFFSET 0.
 
-cstats_dns::cstats_dns(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cstats(gridin, fieldsin, mpiin)
+cstats_dns::cstats_dns(cmodel *modelin) : cstats(modelin)
 {
   allocated   = false;
   initialized = false;
