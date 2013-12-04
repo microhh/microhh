@@ -27,18 +27,19 @@
 #include "mpiinterface.h"
 #include "diff.h"
 #include "defines.h"
+#include "model.h"
 
-cdiff::cdiff(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cdiff::cdiff(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 }
 
 cdiff::~cdiff()
 {
 }
-
 
 int cdiff::readinifile(cinput *inputin)
 {

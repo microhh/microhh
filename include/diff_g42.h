@@ -27,10 +27,13 @@
 #include "diff.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 class cdiff_g42 : public cdiff
 {
   public:
-    cdiff_g42(cgrid *, cfields *, cmpi *);
+    cdiff_g42(cmodel *);
     ~cdiff_g42();
 
     int setvalues();

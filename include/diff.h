@@ -27,10 +27,13 @@
 #include "mpiinterface.h"
 #include "boundary.h"
 
+// forward declaration
+class cmodel;
+
 class cdiff
 {
   public:
-    cdiff(cgrid *, cfields *, cmpi *);
+    cdiff(cmodel *);
     virtual ~cdiff();
 
     virtual int readinifile(cinput *);
@@ -44,6 +47,7 @@ class cdiff
     double dnmax;
 
   protected:
+    cmodel  *model;
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;

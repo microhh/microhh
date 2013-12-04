@@ -28,8 +28,9 @@
 #include "diff_les_g2.h"
 #include "boundary_surface.h"
 #include "defines.h"
+#include "model.h"
 
-cdiff_les_g2::cdiff_les_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
+cdiff_les_g2::cdiff_les_g2(cmodel *modelin) : cdiff(modelin)
 {
 }
 
@@ -68,17 +69,17 @@ unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
 
 int cdiff_les_g2::execvisc()
 {
-  // boundary is of type boundary_surface
-  // cboundary_surface *boundaryptr = static_cast<cboundary_surface*>(boundaryin);
+  // do a cast because the base boundary class does not have the MOST related variables
+  cboundary_surface *boundaryptr = dynamic_cast<cboundary_surface *>(model->boundary);
 
   strain2(fields->s["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data,
           fields->u->datafluxbot, fields->v->datafluxbot,
-          boundary->ustar, boundary->obuk,
+          boundaryptr->ustar, boundaryptr->obuk,
           grid->z, grid->dzi, grid->dzhi);
 
   // start with retrieving the stability information
-  if(thermo->getname() == "off")
+  if(model->thermo->getname() == "off")
   {
     evisc_neutral(fields->s["evisc"]->data,
                   fields->u->data, fields->v->data, fields->w->data,
@@ -89,14 +90,14 @@ int cdiff_les_g2::execvisc()
   else
   {
     // store the buoyancyflux in tmp1
-    thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
+    model->thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
     // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-    thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
+    model->thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
 
     evisc(fields->s["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data, fields->s["tmp1"]->data,
           fields->u->datafluxbot, fields->v->datafluxbot, fields->sd["tmp1"]->datafluxbot,
-          boundary->ustar, boundary->obuk,
+          boundaryptr->ustar, boundaryptr->obuk,
           grid->z, grid->dz, grid->dzi,
           fields->tPr);
   }
@@ -123,13 +124,6 @@ int cdiff_les_g2::exec()
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, fields->tPr);
 
-  return 0;
-}
-
-int cdiff_les_g2::setdepends(cthermo *thermoin, cboundary_surface *boundaryin)
-{
-  thermo = thermoin;
-  boundary = boundaryin;
   return 0;
 }
 

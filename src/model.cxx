@@ -152,17 +152,17 @@ int cmodel::readinifile()
 
   // check the diffusion scheme
   if(swdiff == "0")
-    diff = new cdiff    (grid, fields, mpi);
+    diff = new cdiff(this);
   else if(swdiff == "2")
-    diff = new cdiff_g2 (grid, fields, mpi);
+    diff = new cdiff_g2(this);
   else if(swdiff == "42")
-    diff = new cdiff_g42(grid, fields, mpi);
+    diff = new cdiff_g42(this);
   else if(swdiff == "4")
-    diff = new cdiff_g4 (grid, fields, mpi);
-  // TODO move to new model file later
+    diff = new cdiff_g4(this);
+  // TODO move to new model file later?
   else if(swdiff == "22")
   {
-    diff = new cdiff_les_g2(grid, fields, mpi);
+    diff = new cdiff_les_g2(this);
     // the subgrid model requires a surface model because of the MO matching at first level
     if(swboundary != "surface")
     {
@@ -250,10 +250,6 @@ int cmodel::readinifile()
     return 1;
   if(cross->readinifile(input))
     return 1;
-
-  // set dependencies at the same hierarchy level
-  if(swdiff == "22")
-    static_cast<cdiff_les_g2 *>(diff)->setdepends(thermo, static_cast<cboundary_surface *>(boundary));
 
   return 0;
 }

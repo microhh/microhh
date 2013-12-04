@@ -27,8 +27,9 @@
 #include "mpiinterface.h"
 #include "diff_g42.h"
 #include "defines.h"
+#include "model.h"
 
-cdiff_g42::cdiff_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cdiff(gridin, fieldsin, mpiin)
+cdiff_g42::cdiff_g42(cmodel *modelin) : cdiff(modelin)
 {
 }
 

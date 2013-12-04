@@ -27,12 +27,14 @@
 #include "diff.h"
 #include "mpiinterface.h"
 #include "boundary_surface.h"
-#include "thermo.h"
+
+// forward declaration
+class cmodel;
 
 class cdiff_les_g2 : public cdiff
 {
   public:
-    cdiff_les_g2(cgrid *, cfields *, cmpi *);
+    cdiff_les_g2(cmodel *);
     ~cdiff_les_g2();
 
     int readinifile(cinput *);
@@ -41,8 +43,6 @@ class cdiff_les_g2 : public cdiff
 
     unsigned long gettimelim(unsigned long, double);
     double getdn(double);
-
-    int setdepends(cthermo *, cboundary_surface *);
 
   private:
     int strain2(double *,
@@ -71,8 +71,5 @@ class cdiff_les_g2 : public cdiff
     inline double phih(double);
 
     double cs;
-
-    cthermo           *thermo;
-    cboundary_surface *boundary;
 };
 #endif
