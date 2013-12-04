@@ -26,11 +26,12 @@
 #include "fields.h"
 #include "boundary_user.h"
 #include "defines.h"
+#include "model.h"
 
 #define NO_VELOCITY 0.
 #define NO_OFFSET 0.
 
-cboundary_user::cboundary_user(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cboundary(gridin, fieldsin, mpiin)
+cboundary_user::cboundary_user(cmodel *modelin) : cboundary(modelin)
 {
 }
 

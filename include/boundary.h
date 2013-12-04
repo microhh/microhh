@@ -26,6 +26,9 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 struct field3dbc
 {
   double bot;
@@ -37,7 +40,7 @@ struct field3dbc
 class cboundary
 {
   public:
-    cboundary(cgrid *, cfields *, cmpi *);
+    cboundary(cmodel *);
     virtual ~cboundary();
 
     virtual int readinifile(cinput *);
@@ -50,6 +53,7 @@ class cboundary
     int exec();
 
   protected:
+    cmodel  *model;
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;

@@ -26,6 +26,7 @@
 #include "fields.h"
 #include "boundary_surface.h"
 #include "defines.h"
+#include "model.h"
 
 #define NO_VELOCITY 0.
 #define NO_OFFSET 0.
@@ -33,7 +34,7 @@
 // a sign function
 inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
 
-cboundary_surface::cboundary_surface(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cboundary(gridin, fieldsin, mpiin)
+cboundary_surface::cboundary_surface(cmodel *modelin) : cboundary(modelin)
 {
   allocated = false;
 }
@@ -170,12 +171,6 @@ int cboundary_surface::load(int iotime)
   return 0;
 }
 
-int cboundary_surface::setdepends(cthermo *thermoin)
-{
-  thermo = thermoin;
-  return 0;
-}
-
 int cboundary_surface::setvalues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
@@ -214,7 +209,7 @@ int cboundary_surface::setvalues()
 int cboundary_surface::bcvalues()
 {
   // start with retrieving the stability information
-  if(thermo->getname() == "off")
+  if(model->thermo->getname() == "off")
   {
     stability_neutral(ustar, obuk,
                       fields->u->data, fields->v->data,
@@ -224,7 +219,7 @@ int cboundary_surface::bcvalues()
   else
   {
     // store the buoyancy in tmp1
-    thermo->getbuoyancysurf(fields->sd["tmp1"]);
+    model->thermo->getbuoyancysurf(fields->sd["tmp1"]);
     stability(ustar, obuk, fields->sd["tmp1"]->datafluxbot,
               fields->u->data, fields->v->data, fields->sd["tmp1"]->data,
               fields->u->databot, fields->v->databot, fields->sd["tmp1"]->databot,

@@ -27,10 +27,13 @@
 #include "mpiinterface.h"
 #include "boundary.h"
 
+// forward declaration
+class cmodel;
+
 class cboundary_user : public cboundary
 {
   public:
-    cboundary_user(cgrid *, cfields *, cmpi *);
+    cboundary_user(cmodel *);
 
     int readinifile(cinput *);
     int setvalues();

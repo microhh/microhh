@@ -217,11 +217,11 @@ int cmodel::readinifile()
 
   // read the boundary and buffer in the end because they need to know the requested fields
   if(swboundary == "surface")
-    boundary = new cboundary_surface(grid, fields, mpi);
+    boundary = new cboundary_surface(this);
   else if(swboundary == "user")
-    boundary = new cboundary_user(grid, fields, mpi);
+    boundary = new cboundary_user(this);
   else if(swboundary == "default")
-    boundary = new cboundary(grid, fields, mpi);
+    boundary = new cboundary(this);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
@@ -252,8 +252,6 @@ int cmodel::readinifile()
     return 1;
 
   // set dependencies at the same hierarchy level
-  if(swboundary == "surface")
-    static_cast<cboundary_surface *>(boundary)->setdepends(thermo);
   if(swdiff == "22")
     static_cast<cdiff_les_g2 *>(diff)->setdepends(thermo, static_cast<cboundary_surface *>(boundary));
 

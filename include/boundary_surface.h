@@ -28,18 +28,19 @@
 #include "boundary.h"
 #include "thermo.h"
 
+// forward declaration
+class cmodel;
+
 class cboundary_surface : public cboundary
 {
   public:
-    cboundary_surface(cgrid *, cfields *, cmpi *);
+    cboundary_surface(cmodel *);
     ~cboundary_surface();
 
     int readinifile(cinput *);
     int init();
     int setvalues();
     int exec();
-
-    int setdepends(cthermo *);
 
     int save(int);
     int load(int);
@@ -82,7 +83,5 @@ class cboundary_surface : public cboundary
     typedef std::map<std::string, int> bcbotmap;
     int surfmbcbot;
     bcbotmap surfsbcbot;
-
-    cthermo *thermo;
 };
 #endif

@@ -26,15 +26,17 @@
 #include "fields.h"
 #include "boundary.h"
 #include "defines.h"
+#include "model.h"
 
 #define NO_OFFSET 0.
 #define NO_VELOCITY 0.
 
-cboundary::cboundary(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cboundary::cboundary(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 }
 
 cboundary::~cboundary()
