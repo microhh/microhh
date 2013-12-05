@@ -638,18 +638,18 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
 
 int cinput::checkItem(std::string *value, std::string cat, std::string item, std::string el)
 {
-  char inputstring[256], temp[256], dummy[256];
+  char inputstring[256], stringval[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
 
-  int n = std::sscanf(inputstring, "%s %s", temp, dummy);
+  int n = std::sscanf(inputstring, " %s %[^\n] ", stringval, dummy);
 
   if(n == 1)
-    *value = inputstring;
+    *value = stringval;
   else
   {
     if(std::strcmp(inputstring,""))
     {
-      if (el == "default")
+      if(el == "default")
       {
         if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), inputstring);
       }
