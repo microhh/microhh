@@ -68,6 +68,14 @@ int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
+int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
+{
+  calcbuoyancybot(bfield->data        , bfield->databot,
+                  fields->s["s"]->data, fields->s["s"]->databot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->datafluxbot);
+  return 0;
+}
+
 int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict s)
 {
   int ijk,jj,kk;
@@ -89,6 +97,29 @@ int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict s)
   return 0;
 }
 
+int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
+                                 double * restrict s , double * restrict sbot)
+{
+  int ij,ijk,jj,kk,kstart;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+
+  double gravitybeta = this->gravitybeta;
+
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      bbot[ij] = gravitybeta*sbot[ij];
+      b[ijk]   = gravitybeta*s[ijk];
+    }
+
+  return 0;
+}
+
 int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
 {
   int ij,jj,kk;
@@ -96,9 +127,9 @@ int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restri
 
   double gravitybeta = this->gravitybeta;
 
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
       bfluxbot[ij] = gravitybeta*sfluxbot[ij];
