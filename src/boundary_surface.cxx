@@ -448,7 +448,6 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
         ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4.) + std::pow(ustar[ij], 4.));
         ufluxbot[ij] = -sign(u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
         vfluxbot[ij] = -sign(v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
-        // std::printf("CvH (%d, %d), %E, %E\n", i, j, std::pow(std::pow(ufluxbot[ij],2.) + std::pow(vfluxbot[ij],2.), 0.25), ustar[ij]);
       }
 
     grid->boundary_cyclic2d(ufluxbot);
@@ -528,6 +527,9 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
         // to prevent giving unresolvable gradients to advection schemes
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
+
+    // communicate the boundary values
+    grid->boundary_cyclic2d(varbot);
   }
 
   return 0;
