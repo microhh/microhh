@@ -268,10 +268,9 @@ int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
   double thvref = thvs;
 
   // assume no liquid water at the lowest model level
-  // CvH create proper function for the flux
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -290,10 +289,9 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
   double thvref = thvs;
 
   // assume no liquid water at the lowest model level
-  // CvH create proper function for the flux
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
       bfluxbot[ij] = bufluxnoql(sbot[ij], sfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvref);

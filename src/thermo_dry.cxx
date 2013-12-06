@@ -107,9 +107,9 @@ int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
 
   double gravitybeta = this->gravitybeta;
 
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for(int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;

@@ -180,7 +180,7 @@ int cboundary_surface::setvalues()
   setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->u);
   setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->v);
 
-  for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, surfsbcbot[it->first], sbc[it->first]->bot, it->second->visc, NO_OFFSET);
     setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
@@ -282,9 +282,9 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   // case 1: fixed buoyancy flux and fixed ustar
   if(surfmbcbot == 2 && surfsbcbot["s"] == 2)
   {
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         obuk[ij] = -std::pow(ustar[ij], 3.) / (kappa*bfluxbot[ij]);
