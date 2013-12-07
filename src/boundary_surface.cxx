@@ -192,6 +192,9 @@ int cboundary_surface::setvalues()
   // in case the momentum has a fixed ustar, set the value to that of the input
   if(surfmbcbot == 2)
   {
+    setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, 0., NO_VELOCITY, fields->visc, grid->u);
+    setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, 0., NO_VELOCITY, fields->visc, grid->v);
+
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
@@ -452,7 +455,12 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
 
     grid->boundary_cyclic2d(ufluxbot);
     grid->boundary_cyclic2d(vfluxbot);
-    
+
+    // CvH: I think that the problem is not closed, since both the fluxes and the surface values
+    // of u and v are unknown. You have to assume a no slip in order to get the fluxes and therefore
+    // should not update the surface values with those that belong to the flux. This procedure needs
+    // to be checked more carefully.
+    /*
     // calculate the surface values
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -461,12 +469,13 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         // interpolate the whole stability function rather than ustar or obuk
-        ubot[ij] = ufluxbot[ij] / (0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + u[ijk];
-        vbot[ij] = vfluxbot[ij] / (0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + v[ijk];
+        ubot[ij] = 0.;// ufluxbot[ij] / (0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + u[ijk];
+        vbot[ij] = 0.;// vfluxbot[ij] / (0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + v[ijk];
       }
 
     grid->boundary_cyclic2d(ubot);
     grid->boundary_cyclic2d(vbot);
+    */
   }
 
   for(int j=0; j<grid->jcells; ++j)
@@ -499,9 +508,9 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
   // the surface value is known, calculate the flux and gradient
   if(bcbot == 0)
   {
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
@@ -515,9 +524,9 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
   else if(bcbot == 2)
   {
     // the flux is known, calculate the surface value and gradient
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
@@ -527,9 +536,6 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
         // to prevent giving unresolvable gradients to advection schemes
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
-
-    // communicate the boundary values
-    grid->boundary_cyclic2d(varbot);
   }
 
   return 0;
