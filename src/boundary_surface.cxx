@@ -186,14 +186,14 @@ int cboundary_surface::setvalues()
     setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
   }
 
-  int ij,jj;
-  jj = grid->icells;
-
   // in case the momentum has a fixed ustar, set the value to that of the input
   if(surfmbcbot == 2)
   {
-    setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, 0., NO_VELOCITY, fields->visc, grid->u);
-    setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, 0., NO_VELOCITY, fields->visc, grid->v);
+    int ij,jj;
+    jj = grid->icells;
+
+    setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, 0, NO_VELOCITY, fields->visc, grid->u);
+    setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, 0, NO_VELOCITY, fields->visc, grid->v);
 
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep

@@ -70,7 +70,7 @@ unsigned long cdiff_les_g2::gettimelim(unsigned long idt, double dt)
 int cdiff_les_g2::execvisc()
 {
   // do a cast because the base boundary class does not have the MOST related variables
-  cboundary_surface *boundaryptr = dynamic_cast<cboundary_surface *>(model->boundary);
+  cboundary_surface *boundaryptr = static_cast<cboundary_surface *>(model->boundary);
 
   strain2(fields->s["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data,
