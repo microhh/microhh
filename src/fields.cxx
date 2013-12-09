@@ -25,13 +25,15 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
+#include "model.h"
 
 #define NO_OFFSET 0.
 
-cfields::cfields(cgrid *gridin, cmpi *mpiin)
+cfields::cfields(cmodel *modelin)
 {
-  grid = gridin;
-  mpi  = mpiin;
+  model = modelin;
+  grid  = model->grid;
+  mpi   = model->mpi;
 
   allocated = false;
 }

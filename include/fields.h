@@ -27,12 +27,13 @@
 #include "field3d.h"
 
 typedef std::map<std::string, cfield3d *> fieldmap;
+class cmodel;
 
 class cfields
 {
   public:
     // functions
-    cfields(cgrid *, cmpi *);
+    cfields(cmodel *);
     ~cfields();
     int readinifile(cinput *);
     int init();
@@ -77,8 +78,9 @@ class cfields
 
   private:
     // variables
-    cgrid *grid;
-    cmpi  *mpi;
+    cmodel *model;
+    cgrid  *grid;
+    cmpi   *mpi;
     bool allocated;
 
     // perturbations

@@ -58,7 +58,7 @@
 #include "stats_dns.h"
 #include "stats_les.h"
 
-cmodel::cmodel(cmpi * mpiin, cinput * inputin)
+cmodel::cmodel(cmpi *mpiin, cinput *inputin)
 {
   mpi   = mpiin;
   input = inputin;
@@ -67,7 +67,7 @@ cmodel::cmodel(cmpi * mpiin, cinput * inputin)
   grid = new cgrid(mpi);
 
   // create the fields class
-  fields = new cfields(grid, mpi);
+  fields = new cfields(this);
 
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
