@@ -135,6 +135,15 @@ int cfields::init()
   return 0;
 }
 
+int cfields::exec()
+{
+  // calculate the means for the prognostic scalars
+  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+    grid->calcmean(it->second->datamean, it->second->data, grid->kcells);
+
+  return 0;
+}
+
 int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
 {
   if (mp.find(fldname)!=mp.end())

@@ -147,7 +147,7 @@ int cforce::exec(double dt)
   if(swwls == "1")
   {
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      advecwls_2nd(it->second->data, fields->s[it->first]->data, wls, grid->dzhi);
+      advecwls_2nd(it->second->data, fields->s[it->first]->datamean, wls, grid->dzhi);
   }
 
   return 0;
@@ -296,18 +296,18 @@ int cforce::advecwls_2nd(double * const restrict st, const double * const restri
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   // use an upwind differentiation
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
-    if(wls[k] >= 0.)
+    if(wls[k] > 0.)
     {
       for(int j=grid->jstart; j<grid->jend; ++j)
         for(int i=grid->istart; i<grid->iend; ++i)
         {
           ijk = i + j*jj + k*kk;
-          st[ijk] -=  wls[k] * (s[ijk]-s[ijk-kk])*dzhi[k];
+          st[ijk] -=  wls[k] * (s[k]-s[k-1])*dzhi[k];
         }
     }
     else
@@ -316,7 +316,7 @@ int cforce::advecwls_2nd(double * const restrict st, const double * const restri
         for(int i=grid->istart; i<grid->iend; ++i)
         {
           ijk = i + j*jj + k*kk;
-          st[ijk] -=  wls[k] * (s[ijk+kk]-s[ijk])*dzhi[k+1];
+          st[ijk] -=  wls[k] * (s[k+1]-s[k])*dzhi[k+1];
         }
     }
   }

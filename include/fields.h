@@ -37,6 +37,7 @@ class cfields
     int readinifile(cinput *);
     int init();
     int create(cinput *);
+    int exec();
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string);
     int initpfld(std::string);

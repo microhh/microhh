@@ -335,6 +335,9 @@ int cmodel::exec()
 
   // set the boundary conditions
   boundary->exec();
+  // get the field means, in case needed
+  fields->exec();
+  // get the viscosity to be used in diffusion
   diff->execvisc();
 
   if(settimestep())
@@ -419,8 +422,11 @@ int cmodel::exec()
         return 1;
     }
 
-    // boundary conditions
+    // set the boundary conditions
     boundary->exec();
+    // get the field means, in case needed
+    fields->exec();
+    // get the viscosity to be used in diffusion
     diff->execvisc();
 
     if(outputfile(!timeloop->loop))
