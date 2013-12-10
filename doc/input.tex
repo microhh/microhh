@@ -1,9 +1,10 @@
+% The design of this document has been borrowed from the DALES manual.
 \documentclass[a4paper,10pt]{extarticle}
 \usepackage[twoside, bindingoffset=0.4cm, paper=a4paper, left=2.4cm, right=2.4cm, top=2.4cm, bottom=3.0cm]{geometry}
 \usepackage{amsmath}
 \usepackage{supertabular}
 \usepackage{longtable}
-\usepackage{txfonts}
+%\usepackage{txfonts}
 
 \begin{document}
 \section*{MicroHH cheat sheet}
@@ -13,28 +14,44 @@
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-iadvec        & n/a   & \\
+swadvec       & n/a   & off \\
+              &       & 2   \\
+              &       & 24  \\
+              &       & 4   \\
+              &       & 44  \\
+cflmax        & 1.0   &     \\
 \end{supertabular}
+
 \subsection*{[boundary]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-iboundary     & n/a   & \\
-bcbotmom      & n/a   & \\
-bctopmom      & n/a   & \\
-sbcbot[]      & n/a   & \\
-sbctop[]      & n/a   & \\
-sbot[]        & n/a   & \\
-stop[]        & n/a   & \\
-iboundarytype & 0     & \\
-patch\_dim    & 2     & \\
-patch\_xh     & 1.    & \\
-patch\_xr     & 1.    & \\
-patch\_xi     & 0.    & \\
-patch\_facr   & 1.    & \\
-patch\_facl   & 0.    & \\
+swboundary    & default & default & \\
+              &         & surface & \\
+mbcbot        & n/a     & noslip \\
+              &         & freeslip \\
+              &         & ustar \\
+mbctop        & n/a     & noslip \\
+              &         & freeslip \\
+sbcbot[]      & n/a     & dirichlet \\
+              &         & neumann \\
+              &         & flux \\
+sbctop[]      & n/a     & dirichlet \\
+              &         & neumann \\
+              &         & flux \\
+sbot[]        & n/a     & \\
+stop[]        & n/a     & \\
+z0m           & n/a     & \\
+z0h           & n/a     & \\
+ustar         & n/a     & \\
+%patch\_dim    & 2     & \\
+%patch\_xh     & 1.    & \\
+%patch\_xr     & 1.    & \\
+%patch\_xi     & 0.    & \\
+%patch\_facr   & 1.    & \\
+%patch\_facl   & 0.    & \\
 \end{supertabular}
 \subsection*{[buffer]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -43,21 +60,10 @@ patch\_facl   & 0.    & \\
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
 %[buffer]                \\
-ibuffer       & 0     & \\
-bufferkstart  & 0     & \\
+swbuffer      & off   & off, on\\
+bufferzstart  & n/a   & \\
 buffersigma   & 2.    & \\
 bufferbeta    & 2.    & \\
-\end{supertabular}
-\subsection*{[buoyancy]}
-\tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
-\tabletail{\hline \textit{Continued on next page ...} \\} 
-\tablelasttail{\hline}
-\begin{supertabular}{lcll}
-ibuoyancy     & n/a   & \\
-gravity       & 9.81  & \\
-buoyancyref   & 0.    & \\
-svisc["s"]    & n/a   & \\
 \end{supertabular}
 \subsection*{[cross]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -65,8 +71,13 @@ svisc["s"]    & n/a   & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-icross        & 0     & \\
-jxz           & 0     & \\
+swcross       & off   & off\\
+              &       & on \\
+crosstime     & n/a   & \\
+jxz           & empty & \\
+kxy           & empty & \\
+simple        & empty & \\
+lngrad        & empty & \\
 \end{supertabular}
 \subsection*{[diff]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -74,7 +85,12 @@ jxz           & 0     & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-idiff         & n/a   & \\
+swdiff        & n/a   & off\\
+              &       & 2  \\
+              &       & 4  \\
+              &       & 22 \\
+dnmax         & 0.4   & \\
+cs            & 0.23  &  & only valid for swdiff=22 \\
 \end{supertabular}
 \subsection*{[fields]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -82,7 +98,10 @@ idiff         & n/a   & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-visc          &       & \\
+slist         & empty & \\
+visc          & n/a   & \\
+svisc[]       & n/a   & \\
+tPr           & 1./3. & \\
 rndseed       & 2     & & Seed of the randomnizer. \\
 rndamp        & 0.    & \\
 rndamps       & 0.    & \\
@@ -91,9 +110,6 @@ rndbeta       & 2.    & \\
 nvortexpair   & 0     & \\
 vortexamp     & 1.e-3 & \\
 vortexaxis    & 1     & \\
-tPr           & 1./3. & \\
-slist         & ""    & \\
-svisc[slist]  & n/a   & \\
 \end{supertabular}
 \subsection*{[force]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -101,8 +117,12 @@ svisc[slist]  & n/a   & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-iforce        & n/a   & \\
+swforce       & n/a   & \\
+swls          & n/a   & \\
+lslist        & empty & \\
+swwls         & n/a   & \\
 uflow         & 0.    & \\
+fc            & n/a   & \\
 \end{supertabular}
 \subsection*{[grid]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -117,6 +137,8 @@ itot          & n/a   & \\
 jtot          & n/a   & \\
 ktot          & n/a   & \\
 spatialorder  & n/a   & \\
+u             & 0.    & \\
+v             & 0.    & \\
 \end{supertabular}
 \subsection*{[mpi]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -125,7 +147,7 @@ spatialorder  & n/a   & \\
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
 npx           & 1     & \\
-npy           & 1     & \\ 
+npy           & 1     & \\
 \end{supertabular}
 \subsection*{[pres]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -133,7 +155,9 @@ npy           & 1     & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-ipres         & n/a   & \\
+swpres        & n/a   & off \\
+              &       & 2   \\
+              &       & 4   \\
 \end{supertabular}
 \subsection*{[stats]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -141,7 +165,22 @@ ipres         & n/a   & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-istats        & 0     & \\
+swstats       & off   & off \\
+              &       & dns \\
+              &       & les \\
+statstime     & n/a   &     \\
+\end{supertabular}
+\subsection*{[thermo]}
+\tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
+\tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
+\tabletail{\hline \textit{Continued on next page ...} \\}
+\tablelasttail{\hline}
+\begin{supertabular}{lcll}
+swthermo      & off       & off   \\
+              &           & dry   \\
+              &           & moist \\
+gravitybeta   & 9.81/300. & \\
+ps            & n/a       & \\
 \end{supertabular}
 \subsection*{[timeloop]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -149,18 +188,16 @@ istats        & 0     & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lcll}
-maxiter       & n/a   & \\
-startiter     & n/a   & \\
+runtime       & n/a   & \\
+starttime     & n/a   & \\
 adaptivestep  & true  & \\
 dt            & 0.1   & \\
 dtmax         & dbig  & \\
-cflmax        & 1.    & \\
-dnmax         & 0.4   & \\
 rkorder       & 4     & \\
 outputiter    & 100   & \\
-saveiter      & 500   & \\
-statsiter     & 100   & \\
-postprociter  & 100   & \\
+savetime      & 3600  & \\
+precision     & 1     & \\
+postproctime  & 100   & \\
 \end{supertabular}
 
 \end{document}
