@@ -65,7 +65,7 @@ for k in range(kmax):
     qtls[k] = -1.2 + (z[k]-300)*(1.2)/(500.-300)
 
 # normalize profiles to SI
-qtls /= 1000.  # from g/kg to kg/kg
+#qtls /= 1000.  # from g/kg to kg/kg
 wls  /= 100.   # from cm/s to m/s
 sls  /= 86400. # from K/d to K/s
 qtls *= 1.e-8
