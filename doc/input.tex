@@ -15,10 +15,10 @@
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
 swadvec       & n/a   & off \\
-              &       & 2   \\
-              &       & 24  \\
-              &       & 4   \\
-              &       & 44  \\
+              &       & 2nd \\
+              &       & 2nd4th \\
+              &       & 4th \\
+              &       & 4thm\\
 cflmax        & 1.0   &     \\
 \end{supertabular}
 
@@ -60,11 +60,10 @@ ustar         & n/a     & \\
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
 %[buffer]                \\
-swbuffer      & off   & off \\
-              &       & on \\
-bufferzstart  & n/a   & \\
-buffersigma   & 2.    & \\
-bufferbeta    & 2.    & \\
+swbuffer & off   & off \\
+zstart   & n/a   & \\
+sigma    & 2.    & \\
+beta     & 2.    & \\
 \end{supertabular}
 \subsection*{[cross]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -74,7 +73,7 @@ bufferbeta    & 2.    & \\
 \begin{supertabular}{lccl}
 swcross       & off   & off\\
               &       & on \\
-crosstime     & n/a   & \\
+time          & n/a   & \\
 jxz           & empty & \\
 kxy           & empty & \\
 simple        & empty & \\
@@ -86,10 +85,10 @@ lngrad        & empty & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swdiff        & n/a   & off\\
-              &       & 2  \\
-              &       & 4  \\
-              &       & 22 \\
+swdiff        & swspatialorder & off \\
+              &       & 2nd \\
+              &       & 4th \\
+              &       & 2ndsmag \\ 
 dnmax         & 0.4   & \\
 cs            & 0.23  &  & only valid for swdiff=22 \\
 \end{supertabular}
@@ -108,7 +107,7 @@ rndamp        & 0.    & \\
 rndamps       & 0.    & \\
 rndz          & 0.    & \\
 rndbeta       & 2.    & \\
-nvortexpair   & 0     & \\
+vortexnpair   & 0     & \\
 vortexamp     & 1.e-3 & \\
 vortexaxis    & 1     & \\
 \end{supertabular}
@@ -157,8 +156,8 @@ npy           & 1     & \\
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
 swpres        & n/a   & off \\
-              &       & 2   \\
-              &       & 4   \\
+              &       & 2nd \\
+              &       & 4th \\
 \end{supertabular}
 \subsection*{[stats]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -169,7 +168,7 @@ swpres        & n/a   & off \\
 swstats       & off   & off \\
               &       & dns \\
               &       & les \\
-statstime     & n/a   &     \\
+time          & n/a   &     \\
 \end{supertabular}
 \subsection*{[thermo]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -194,7 +193,8 @@ starttime     & n/a   & \\
 adaptivestep  & true  & \\
 dt            & 0.1   & \\
 dtmax         & dbig  & \\
-rkorder       & 4     & \\
+rkorder       & 4th   & 3rd \\
+              &       & 4th \\
 outputiter    & 100   & \\
 savetime      & 3600  & \\
 precision     & 1     & \\
