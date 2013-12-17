@@ -14,12 +14,12 @@
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swadvec       & n/a   & off \\
-              &       & 2nd \\
-              &       & 2nd4th \\
-              &       & 4th \\
-              &       & 4thm\\
-cflmax        & 1.0   &     \\
+swadvec       & [grid][spatialorder] & off  & disable advection \\ 
+              &                      & 2    & 2nd order advection \\
+%              &       & 2int4\\
+              &                      & 4    & 4th order advection (high accuracy) \\
+              &                      & 4m   & 4th order advection (energy conserving) \\
+cflmax        & 1.0   &    \\
 \end{supertabular}
 
 \subsection*{[boundary]}
@@ -28,30 +28,24 @@ cflmax        & 1.0   &     \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swboundary    & default & default & \\
-              &         & surface & \\
-mbcbot        & n/a     & noslip \\
-              &         & freeslip \\
-              &         & ustar \\
-mbctop        & n/a     & noslip \\
-              &         & freeslip \\
-sbcbot[]      & n/a     & dirichlet \\
-              &         & neumann \\
-              &         & flux \\
-sbctop[]      & n/a     & dirichlet \\
-              &         & neumann \\
-              &         & flux \\
-sbot[]        & n/a     & \\
-stop[]        & n/a     & \\
-z0m           & n/a     & \\
-z0h           & n/a     & \\
-ustar         & n/a     & \\
-%patch\_dim    & 2     & \\
-%patch\_xh     & 1.    & \\
-%patch\_xr     & 1.    & \\
-%patch\_xi     & 0.    & \\
-%patch\_facr   & 1.    & \\
-%patch\_facl   & 0.    & \\
+swboundary    & default & default   & fully resolved boundaries (smooth wall) \\
+              &         & surface   & MOST based wall model \\
+mbcbot        & n/a     & noslip    & no-slip bottom boundary condition \\
+              &         & freeslip  & free-slip bottom boundary condition \\
+              &         & ustar     & fixed ustar bottom boundary condition \\
+mbctop        & n/a     & noslip    & no-slip top boundary condition \\
+              &         & freeslip  & free-slip top boundary condition\\
+sbcbot[]      & n/a     & dirichlet & fixed bottom value boundary condition \\
+              &         & neumann   & fixed bottom gradient (only valid for \textit{default}) \\
+              &         & flux      & fixed bottom flux boundary condition \\
+sbcbot[]      & n/a     & dirichlet & fixed top value boundary condition \\
+              &         & neumann   & fixed top gradient (only valid for \textit{default}) \\
+              &         & flux      & fixed top flux boundary condition \\
+sbot[]        & n/a     &           & value of the bottom boundary condition\\
+stop[]        & n/a     &           & value of the top boundary condition \\
+z0m           & n/a     &           & roughness length of momentum [m] (only valid for \textit{surface}) \\
+z0h           & n/a     &           & roughness length of scalars [m] (only valid for \textit{surface}) \\
+ustar         & n/a     &           & value of the friction velocity [m~s$^{-1}$] (only valid for \textit{surface}) \\
 \end{supertabular}
 \subsection*{[buffer]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -59,11 +53,11 @@ ustar         & n/a     & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-%[buffer]                \\
-swbuffer & off   & off \\
-zstart   & n/a   & \\
-sigma    & 2.    & \\
-beta     & 2.    & \\
+swbuffer & off   & off & disable buffer layer at the top of the domain \\
+         &       & on  & enable buffer layer at the top of the domain \\
+zstart   & n/a   &     & starting height for buffer zone [m]\\
+sigma    & n/a   &    & damping time scale of the buffer layer [s$^{-1}$]\\
+beta     & 2.    &    & exponent of the damping increase with height [-] \\
 \end{supertabular}
 \subsection*{[cross]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -71,13 +65,13 @@ beta     & 2.    & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swcross       & off   & off\\
-              &       & on \\
-time          & n/a   & \\
-jxz           & empty & \\
-kxy           & empty & \\
-simple        & empty & \\
-lngrad        & empty & \\
+swcross       & off   & off & disable cross sections \\
+              &       & on  & enable cross sections \\ 
+time          & n/a   &     & time [s] \\
+jxz           & empty &     & list of j-values at which xz-crosssection are taken \\
+kxy           & empty &     & list of k-values at which xy-crosssection are taken \\
+simple        & empty &     & list of variables of which standard cross sections are taken \\
+lngrad        & empty &     & list of variables of which the $ln( \|\Delta var)\| )$ is taken \\
 \end{supertabular}
 \subsection*{[diff]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -85,12 +79,12 @@ lngrad        & empty & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swdiff        & swspatialorder & off \\
-              &       & 2nd \\
-              &       & 4th \\
-              &       & 2ndsmag \\ 
-dnmax         & 0.4   & \\
-cs            & 0.23  &  & only valid for swdiff=22 \\
+swdiff        & [grid][spatialorder] & off   & disable diffusion \\
+              &                      & 2     & 2nd order diffusion \\
+              &                      & 4     & 4th order diffusion \\
+              &                      & 2smag & 2nd order smagorisnky eddy diffusion \\
+dnmax         & 0.4                  &       & maximum diffusion number for numerical scheme \\
+cs            & 0.23                 &       & smagorinsky constant (only valid for \textit{2smag}) \\
 \end{supertabular}
 \subsection*{[fields]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -98,18 +92,17 @@ cs            & 0.23  &  & only valid for swdiff=22 \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-slist         & empty & \\
-visc          & n/a   & \\
-svisc[]       & n/a   & \\
-tPr           & 1./3. & \\
-rndseed       & 2     & & Seed of the randomnizer. \\
-rndamp        & 0.    & \\
-rndamps       & 0.    & \\
-rndz          & 0.    & \\
-rndbeta       & 2.    & \\
-vortexnpair   & 0     & \\
-vortexamp     & 1.e-3 & \\
-vortexaxis    & 1     & \\
+slist         & empty &  & list of passive scalars \\
+visc          & n/a   &  & viscosity [m$^2$ s$^{-1}$] \\
+svisc[]       & n/a   &  & diffusivity of scalars [m$^2$ s$^{-1}$] \\
+tPr           & 1./3. &  & turbulent Prandtl number \\
+rndseed       & 2     &  & seed of the randomnizer \\
+rndamp[]      & 0.    &  & amplitude of random perturbations [variable unit] \\
+rndz          & 0.    &  & maximum height of perturbations [m] \\
+rndexp        & 2.    &  & exponent of decay of perturbation \\
+vortexnpair   & 0     &  & number of rotating vortex pairs \\
+vortexamp     & 1.e-3 &  & amplitude of vortex pairs \\
+vortexaxis    & x     &  & axis around which the vortices are evolving \\
 \end{supertabular}
 \subsection*{[force]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -117,12 +110,16 @@ vortexaxis    & 1     & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swforce       & n/a   & \\
-swls          & n/a   & \\
-lslist        & empty & \\
-swwls         & n/a   & \\
-uflow         & 0.    & \\
-fc            & n/a   & \\
+swlspres      & off   & off  & disable large scale pressure forcing \\
+              &       & geo  & use geostrophic wind as large scale pressure force \\
+              &       & flow & fix the mean flow velocity \\
+swls          & off   & off  & disable large scale source/sink \\
+              &       & on   & enable large scale source/sink \\
+lslist        & empty &      & list of prognostic variables having large scale source/sink \\
+swwls         & off   & off  & disable large scale vertical velocity \\
+              &       & on   & enable large scale vertical velocity \\
+fc            & n/a   &      & coriolis parameter [s$^{-1}$] \\
+uflow         & n/a   &      & mean flow velocity [m~s$^{-1}$] \\
 \end{supertabular}
 \subsection*{[grid]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -130,15 +127,16 @@ fc            & n/a   & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-xsize         & n/a   & \\
-ysize         & n/a   & \\
-zsize         & n/a   & \\
-itot          & n/a   & \\
-jtot          & n/a   & \\
-ktot          & n/a   & \\
-spatialorder  & n/a   & \\
-u             & 0.    & \\
-v             & 0.    & \\
+xsize         & n/a   &  & x-size of domain [m]\\
+ysize         & n/a   &  & y-size of domain [m]\\
+zsize         & n/a   &  & z-size of domain [m]\\
+itot          & n/a   &  & number of grid points in x-direction \\
+jtot          & n/a   &  & number of grid points in y-direction \\
+ktot          & n/a   &  & number of grid points in z-direction \\
+spatialorder  & n/a   &  & 2nd order spatial discretization \\
+              &       &  & 4th order spatial discretization \\
+utrans        & 0.    &  & translation velocity in x-direction [m s$^{-1}$] \\
+vtrans        & 0.    &  & translation velocity in y-direction [m s$^{-1}$] \\
 \end{supertabular}
 \subsection*{[mpi]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -146,8 +144,8 @@ v             & 0.    & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-npx           & 1     & \\
-npy           & 1     & \\
+npx           & 1     & & number of processors in x-direction \\
+npy           & 1     & & number of processors in y-direction \\
 \end{supertabular}
 \subsection*{[pres]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -155,9 +153,9 @@ npy           & 1     & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swpres        & n/a   & off \\
-              &       & 2nd \\
-              &       & 4th \\
+swpres        & [grid][spatialorder]  & off \\
+              &       & 2             & 2nd order pressure solver (tridiagonal solver) \\
+              &       & 4             & 4th order pressure solver (heptadiagonal solver) \\
 \end{supertabular}
 \subsection*{[stats]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -165,10 +163,10 @@ swpres        & n/a   & off \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swstats       & off   & off \\
-              &       & dns \\
-              &       & les \\
-time          & n/a   &     \\
+swstats       & off   & off & disable statistics \\
+              &       & dns & dns set of statistics \\
+              &       & les & les set of statistics \\
+time          & n/a   &     & trigger interval [s] \\
 \end{supertabular}
 \subsection*{[thermo]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -176,11 +174,13 @@ time          & n/a   &     \\
 \tabletail{\hline \textit{Continued on next page ...} \\}
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swthermo      & off       & off   \\
-              &           & dry   \\
-              &           & moist \\
-gravitybeta   & 9.81/300. & \\
-ps            & n/a       & \\
+swthermo      & off       & off   & disable thermodynamics \\
+              &           & dry   & dry thermodynamics \\
+              &           & moist & moist thermodynamics \\
+gravity       & 9.81      &       & gravity acceleration [m~s$^{-2}$] \\
+expcoef       & 1./300.   &       & thermal expansion coefficient [m$^3$~K$^{-1}$] \\
+thvref        & 300.      &       & reference virtual temperature [K] \\
+ps            & n/a       &       & surface pressure [Pa] \\
 \end{supertabular}
 \subsection*{[timeloop]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -188,17 +188,18 @@ ps            & n/a       & \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-runtime       & n/a   & \\
-starttime     & n/a   & \\
-adaptivestep  & true  & \\
-dt            & 0.1   & \\
-dtmax         & dbig  & \\
-rkorder       & 4th   & 3rd \\
-              &       & 4th \\
-outputiter    & 100   & \\
-savetime      & 3600  & \\
-precision     & 1     & \\
-postproctime  & 100   & \\
+starttime     & n/a   &       & start time of simulation [s] \\
+endtime       & n/a   &       & end time of simulation [s] \\
+adaptivestep  & true  & true  & enable adaptive time stepping \\
+              &       & false & disable adaptive time stepping \\
+dt            & 0.1   &       & time step [s] (only valid if adaptivestep = false) \\
+dtmax         & dbig  &       & maximum time step [s] \\
+rkorder       & 3     & 3     & Runge-Kutta 3rd order accuracy, 3 steps \\
+              &       & 4     & Runge-Kutta 4th order accuracy, 5 steps \\
+outputiter    & 10    &       & frequency of diagnostic output to $<$casename$>$.out \\
+savetime      & 3600  &       & interval for saving restart files [s] \\
+iotimeprec    & 0     &       & precision of saving of time in 10-power (i.e. -1 == 0.1, etc.) \\
+postproctime  & 100   &       & time step of postprocessing procedure \\
 \end{supertabular}
 
 \end{document}
