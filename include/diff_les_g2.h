@@ -22,11 +22,7 @@
 #ifndef DIFF_LES_G2
 #define DIFF_LES_G2
 
-#include "grid.h"
-#include "fields.h"
 #include "diff.h"
-#include "mpiinterface.h"
-#include "boundary_surface.h"
 
 // forward declaration
 class cmodel;

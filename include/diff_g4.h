@@ -22,10 +22,7 @@
 #ifndef DIFF_G4
 #define DIFF_G4
 
-#include "grid.h"
-#include "fields.h"
 #include "diff.h"
-#include "mpiinterface.h"
 
 // forward declaration
 class cmodel;

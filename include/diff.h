@@ -22,13 +22,11 @@
 #ifndef DIFF
 #define DIFF
 
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
-#include "boundary.h"
-
-// forward declaration
+// forward declaration to speed up build time
 class cmodel;
+class cgrid;
+class cfields;
+class cmpi;
 
 class cdiff
 {
