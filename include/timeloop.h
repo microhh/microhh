@@ -32,7 +32,7 @@
 class ctimeloop
 {
   public:
-    ctimeloop(cgrid *, cfields *, cmpi *);
+    ctimeloop(cmodel *);
     ~ctimeloop();
 
     int readinifile(cinput *);
@@ -86,6 +86,7 @@ class ctimeloop
     double precision;
 
   private:
+    cmodel  *model;
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;

@@ -26,6 +26,9 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 /**
  * Class for the right-hand side terms that contain large-scale forcings
  * This class contains the large-scale pressure forcings, either in flux for or through a
@@ -33,21 +36,21 @@
  * be imposed that advects the scalars through the domain. Profiles of sources/sinks can be
  * assigned to all scalars.
  */
-
 class cforce
 {
   public:
-    cforce(cgrid *, cfields *, cmpi *); ///< Constructor of the force class.
-    ~cforce();                          ///< Destructor of the force class.
-    int readinifile(cinput *);          ///< Processing data of the input file.
-    int init();                         ///< Initialize the arrays that contain the profiles.
-    int create(cinput *);               ///< Read the profiles of the forces from the input.
-    int exec(double);                   ///< Add the tendencies belonging to the large-scale processes.
+    cforce(cmodel *);          ///< Constructor of the force class.
+    ~cforce();                 ///< Destructor of the force class.
+    int readinifile(cinput *); ///< Processing data of the input file.
+    int init();                ///< Initialize the arrays that contain the profiles.
+    int create(cinput *);      ///< Read the profiles of the forces from the input.
+    int exec(double);          ///< Add the tendencies belonging to the large-scale processes.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
 
   private:
+    cmodel  *model;  ///< Pointer to model class.
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
     cmpi    *mpi;    ///< Pointer to mpi class.

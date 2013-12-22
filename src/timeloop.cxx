@@ -25,13 +25,17 @@
 #include "fields.h"
 #include "timeloop.h"
 #include "defines.h"
+#include "model.h"
 
-ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+// forward declaration
+class cmodel;
+
+ctimeloop::ctimeloop(cmodel *modelin)
 {
-  // std::printf("Creating instance of object timeloop\n");
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 
   substep = 0;
   ifactor = 1e6;
@@ -39,7 +43,6 @@ ctimeloop::ctimeloop(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
 
 ctimeloop::~ctimeloop()
 {
-  // std::printf("Destroying instance of object timeloop\n");
 }
 
 int ctimeloop::readinifile(cinput *inputin)

@@ -24,12 +24,14 @@
 #include "fields.h"
 #include "force.h"
 #include "defines.h"
+#include "model.h"
 
-cforce::cforce(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cforce::cforce(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 
   allocated = false;
 }
