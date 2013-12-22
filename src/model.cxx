@@ -81,7 +81,7 @@ cmodel::cmodel(cmpi *mpiin, cinput *inputin)
   // create the instances of the model operations
   timeloop = new ctimeloop(grid, fields, mpi);
   force    = new cforce   (grid, fields, mpi);
-  buffer   = new cbuffer  (grid, fields, mpi);
+  buffer   = new cbuffer(this);
 
   // set null pointers for classes that will be initialized later
   boundary = NULL;

@@ -26,11 +26,19 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
+/**
+ * Class for the buffer layer in the top of the domain.
+ * This class performs the gravity wave damping in the top of the domain to
+ * prevent reflection at the top boundary.
+ */
 class cbuffer
 {
   public:
-    cbuffer(cgrid *, cfields *, cmpi *); ///< Constructor of the buffer class.
-    ~cbuffer();                          ///< Destructor of the buffer class.
+    cbuffer(cmodel *); ///< Constructor of the buffer class.
+    ~cbuffer();        ///< Destructor of the buffer class.
 
     int readinifile(cinput *); ///< Processing data of the input file.
     int init();                ///< Initialize the arrays that contain the profiles.
@@ -38,6 +46,7 @@ class cbuffer
     int exec();                ///< Add the tendencies created by the damping.
 
   private:
+    cmodel  *model;  ///< Pointer to model class.
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
     cmpi    *mpi;    ///< Pointer to mpi class.
@@ -56,6 +65,6 @@ class cbuffer
     std::string swbuffer; ///< Switch for buffer.
 
     int buffer(double * const, const double * const, 
-              const double * const, const double * const); ///< Calculate the tendency 
+               const double * const, const double * const); ///< Calculate the tendency 
 };
 #endif

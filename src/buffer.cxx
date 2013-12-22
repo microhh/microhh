@@ -26,12 +26,14 @@
 #include "fields.h"
 #include "buffer.h"
 #include "defines.h"
+#include "model.h"
 
-cbuffer::cbuffer(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cbuffer::cbuffer(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 
   allocated = false;
 }
