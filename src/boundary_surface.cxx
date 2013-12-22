@@ -26,6 +26,7 @@
 #include "fields.h"
 #include "boundary_surface.h"
 #include "defines.h"
+#include "thermo.h"
 #include "model.h"
 
 #define NO_VELOCITY 0.

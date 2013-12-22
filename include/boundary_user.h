@@ -22,9 +22,6 @@
 #ifndef BOUNDARY_USER
 #define BOUNDARY_USER
 
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
 #include "boundary.h"
 
 // forward declaration

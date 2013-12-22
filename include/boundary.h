@@ -22,12 +22,11 @@
 #ifndef BOUNDARY
 #define BOUNDARY
 
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
-
-// forward declaration
+// forward declarations to speed up build time
 class cmodel;
+class cgrid;
+class cfields;
+class cmpi;
 
 struct field3dbc
 {

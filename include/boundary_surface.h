@@ -22,11 +22,7 @@
 #ifndef BOUNDARY_SURFACE
 #define BOUNDARY_SURFACE
 
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
 #include "boundary.h"
-#include "thermo.h"
 
 // forward declaration
 class cmodel;

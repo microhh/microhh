@@ -28,6 +28,7 @@
 #include "diff_les_g2.h"
 #include "boundary_surface.h"
 #include "defines.h"
+#include "thermo.h"
 #include "model.h"
 
 cdiff_les_g2::cdiff_les_g2(cmodel *modelin) : cdiff(modelin)
