@@ -22,12 +22,11 @@
 #ifndef ADVEC
 #define ADVEC
 
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
-
-// forward declaration
+// forward declarations to speed up build time
 class cmodel;
+class cgrid;
+class cfields;
+class cmpi;
 
 /**
  * Base class for the advection scheme.
@@ -37,8 +36,8 @@ class cmodel;
 class cadvec
 {
   public:
-    cadvec(cmodel *); ///< Constructor of the advection class.
-    virtual ~cadvec();                  ///< Destructor of the advection class.
+    cadvec(cmodel *);  ///< Constructor of the advection class.
+    virtual ~cadvec(); ///< Destructor of the advection class.
 
     virtual int readinifile(cinput *);  ///< Processes the data from the input file.
 
@@ -53,6 +52,5 @@ class cadvec
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
     cmpi    *mpi;    ///< Pointer to mpi class.
-
 };
 #endif

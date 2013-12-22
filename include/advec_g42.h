@@ -22,10 +22,7 @@
 #ifndef ADVEC_G42
 #define ADVEC_G42
 
-#include "grid.h"
-#include "fields.h"
 #include "advec.h"
-#include "mpiinterface.h"
 
 // forward declaration
 class cmodel;
