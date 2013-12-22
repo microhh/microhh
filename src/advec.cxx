@@ -26,12 +26,14 @@
 #include "fields.h"
 #include "advec.h"
 #include "defines.h"
+#include "model.h"
 
-cadvec::cadvec(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cadvec::cadvec(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 }
 
 cadvec::~cadvec()

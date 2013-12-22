@@ -26,8 +26,9 @@
 #include "fields.h"
 #include "advec_g4m.h"
 #include "defines.h"
+#include "model.h"
 
-cadvec_g4m::cadvec_g4m(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
+cadvec_g4m::cadvec_g4m(cmodel *modelin) : cadvec(modelin)
 {
 }
 

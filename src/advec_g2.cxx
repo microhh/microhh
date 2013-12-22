@@ -26,8 +26,9 @@
 #include "fields.h"
 #include "advec_g2.h"
 #include "defines.h"
+#include "model.h"
 
-cadvec_g2::cadvec_g2(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cadvec(gridin, fieldsin, mpiin)
+cadvec_g2::cadvec_g2(cmodel *modelin) : cadvec(modelin)
 {
 }
 

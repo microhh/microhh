@@ -26,6 +26,9 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 /**
  * Base class for the advection scheme.
  * This class handles the case when advection is turned off. Derived classes are
@@ -34,7 +37,7 @@
 class cadvec
 {
   public:
-    cadvec(cgrid *, cfields *, cmpi *); ///< Constructor of the advection class.
+    cadvec(cmodel *); ///< Constructor of the advection class.
     virtual ~cadvec();                  ///< Destructor of the advection class.
 
     virtual int readinifile(cinput *);  ///< Processes the data from the input file.
@@ -46,6 +49,7 @@ class cadvec
     double cflmax;
 
   protected:
+    cmodel  *model;  ///< Pointer to model class.
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
     cmpi    *mpi;    ///< Pointer to mpi class.

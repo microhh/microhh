@@ -27,6 +27,9 @@
 #include "advec.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 /**
  * Derived class for advection scheme with 2nd order interpolation in the vertical
  * and 4th order in the horizontal.
@@ -34,8 +37,8 @@
 class cadvec_g42 : public cadvec
 {
   public:
-    cadvec_g42(cgrid *, cfields *, cmpi *); ///< Constructor of the advection class.
-    ~cadvec_g42();                          ///< Destructor of the advection class.
+    cadvec_g42(cmodel *); ///< Constructor of the advection class.
+    ~cadvec_g42();        ///< Destructor of the advection class.
 
     unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
     double getcfl(double);                               ///< Get the CFL number.

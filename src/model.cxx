@@ -131,17 +131,17 @@ int cmodel::readinifile()
 
   // check the advection scheme
   if(swadvec == "0")
-    advec = new cadvec     (grid, fields, mpi);
+    advec = new cadvec(this);
   else if(swadvec == "2")
-    advec = new cadvec_g2  (grid, fields, mpi);
+    advec = new cadvec_g2(this);
   else if(swadvec == "24")
-    advec = new cadvec_g2i4(grid, fields, mpi);
+    advec = new cadvec_g2i4(this);
   else if(swadvec == "42")
-    advec = new cadvec_g42 (grid, fields, mpi);
+    advec = new cadvec_g42(this);
   else if(swadvec == "4")
-    advec = new cadvec_g4  (grid, fields, mpi);
+    advec = new cadvec_g4(this);
   else if(swadvec == "44")
-    advec = new cadvec_g4m (grid, fields, mpi);
+    advec = new cadvec_g4m(this);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
