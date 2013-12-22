@@ -24,14 +24,15 @@
 #include "grid.h"
 #include "input.h"
 #include "defines.h"
+#include "model.h"
 
 /**
  * This function constructs the grid class.
- * @param mpiin Pointer to the master class.
+ * @param modelin Pointer to the model class.
  */
-cgrid::cgrid(cmpi *mpiin)
+cgrid::cgrid(cmodel *modelin)
 {
-  mpi = mpiin;
+  mpi = modelin->mpi;
 
   allocated = false;
   mpitypes  = false;

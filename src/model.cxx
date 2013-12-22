@@ -73,7 +73,7 @@ cmodel::cmodel(cmpi *mpiin, cinput *inputin)
   input = inputin;
 
   // create the grid class
-  grid = new cgrid(mpi);
+  grid = new cgrid(this);
 
   // create the fields class
   fields = new cfields(this);

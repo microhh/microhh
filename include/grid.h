@@ -29,6 +29,9 @@
 #include "input.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 /**
  * Class for the grid settings and operators.
  * This class contains the grid properties, such as dimensions and resolution.
@@ -36,12 +39,11 @@
  * in order to interpolate, transpose and save data. The MPI operations that work over multiple
  * processes on the entire grid are contained in this class.
  */
-
 class cgrid
 {
   public:
-    cgrid(cmpi *); ///< Constructor of the grid class.
-    ~cgrid();      ///< Destructor of the grid class.
+    cgrid(cmodel *); ///< Constructor of the grid class.
+    ~cgrid();        ///< Destructor of the grid class.
 
     int readinifile(cinput *); ///< Processes data from the input file.
     int init();                ///< Initialization of the grid arrays.
