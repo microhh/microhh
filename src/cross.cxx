@@ -25,13 +25,15 @@
 #include "fields.h"
 #include "cross.h"
 #include "defines.h"
+#include "model.h"
 #include <netcdfcpp.h>
 
-ccross::ccross(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+ccross::ccross(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 }
 
 ccross::~ccross()

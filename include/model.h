@@ -24,20 +24,36 @@
 
 #include <string>
 
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
-#include "boundary.h"
-#include "advec.h"
-#include "diff.h"
-#include "force.h"
-#include "thermo.h"
-#include "thermo_moist.h"
-#include "pres.h"
-#include "buffer.h"
-#include "timeloop.h"
-#include "stats.h"
-#include "cross.h"
+// #include "grid.h"
+// #include "fields.h"
+// #include "mpiinterface.h"
+// #include "boundary.h"
+// #include "advec.h"
+// #include "diff.h"
+// #include "force.h"
+// #include "thermo.h"
+// #include "thermo_moist.h"
+// #include "pres.h"
+// #include "buffer.h"
+// #include "timeloop.h"
+// #include "stats.h"
+// #include "cross.h"
+
+// forward declaration to prevent very long building times
+class cmpi;
+class cinput;
+class cgrid;
+class cfields;
+class cboundary;
+class ctimeloop;
+class cadvec;
+class cdiff;
+class cpres;
+class cforce;
+class cthermo;
+class cbuffer;
+class cstats;
+class ccross;
 
 class cmodel
 {

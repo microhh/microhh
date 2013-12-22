@@ -27,10 +27,13 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 class ccross
 {
   public:
-    ccross(cgrid *, cfields *, cmpi *);
+    ccross(cmodel *);
     ~ccross();
 
     int readinifile(cinput *);
@@ -39,6 +42,7 @@ class ccross
     int exec(double, unsigned long, int);
 
   private:
+    cmodel  *model;
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;

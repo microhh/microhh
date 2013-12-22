@@ -26,12 +26,18 @@
 #include "fields.h"
 #include "model.h"
 #include "defines.h"
+#include "timeloop.h"
+#include "buffer.h"
+#include "force.h"
+#include "cross.h"
 
 // boundary schemes
+#include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_user.h"
 
 // advection schemes
+#include "advec.h"
 #include "advec_g2.h"
 #include "advec_g2i4.h"
 #include "advec_g42.h"
@@ -39,12 +45,14 @@
 #include "advec_g4m.h"
 
 // diffusion schemes
+#include "diff.h"
 #include "diff_g2.h"
 #include "diff_g42.h"
 #include "diff_g4.h"
 #include "diff_les_g2.h"
 
 // pressure schemes
+#include "pres.h"
 #include "pres_g2.h"
 #include "pres_g42.h"
 #include "pres_g4.h"
@@ -55,6 +63,7 @@
 #include "thermo_moist.h"
 
 // stats schemes
+#include "stats.h"
 #include "stats_dns.h"
 #include "stats_les.h"
 
@@ -83,7 +92,7 @@ cmodel::cmodel(cmpi *mpiin, cinput *inputin)
 
   // load the postprocessing moduls
   stats = NULL;
-  cross = new ccross(grid, fields, mpi);
+  cross = new ccross(this);
 }
 
 cmodel::~cmodel()
