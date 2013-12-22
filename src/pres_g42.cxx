@@ -27,8 +27,9 @@
 #include "fields.h"
 #include "pres_g42.h"
 #include "defines.h"
+#include "model.h"
 
-cpres_g42::cpres_g42(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cpres(gridin, fieldsin, mpiin)
+cpres_g42::cpres_g42(cmodel *modelin) : cpres(modelin)
 {
   allocated = false;
 }

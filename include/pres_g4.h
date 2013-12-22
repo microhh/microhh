@@ -28,10 +28,13 @@
 #include "pres.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 class cpres_g4 : public cpres
 {
   public:
-    cpres_g4(cgrid *, cfields *, cmpi *);
+    cpres_g4(cmodel *);
     ~cpres_g4();
 
     int init();

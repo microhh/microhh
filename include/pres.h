@@ -27,10 +27,13 @@
 #include "fields.h"
 #include "mpiinterface.h"
 
+// forward declaration
+class cmodel;
+
 class cpres
 {
   public:
-    cpres(cgrid *, cfields *, cmpi *);
+    cpres(cmodel *);
     virtual ~cpres();
 
     virtual int readinifile(cinput *);
@@ -41,6 +44,7 @@ class cpres
     virtual double check();
 
   protected:
+    cmodel  *model;
     cgrid   *grid;
     cfields *fields;
     cmpi    *mpi;

@@ -189,13 +189,13 @@ int cmodel::readinifile()
 
   // check the pressure scheme
   if(swpres == "0")
-    pres = new cpres    (grid, fields, mpi);
+    pres = new cpres(this);
   else if(swpres == "2")
-    pres = new cpres_g2 (grid, fields, mpi);
+    pres = new cpres_g2(this);
   else if(swpres == "42")
-    pres = new cpres_g42(grid, fields, mpi);
+    pres = new cpres_g42(this);
   else if(swpres == "4")
-    pres = new cpres_g4 (grid, fields, mpi);
+    pres = new cpres_g4(this);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());

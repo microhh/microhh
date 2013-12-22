@@ -27,12 +27,14 @@
 #include "fields.h"
 #include "pres.h"
 #include "defines.h"
+#include "model.h"
 
-cpres::cpres(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cpres::cpres(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  mpi    = mpiin;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  mpi    = model->mpi;
 }
 
 cpres::~cpres()
