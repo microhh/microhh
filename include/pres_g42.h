@@ -22,11 +22,7 @@
 #ifndef PRES_G42
 #define PRES_G42
 
-#include <fftw3.h>
-#include "grid.h"
-#include "fields.h"
 #include "pres.h"
-#include "mpiinterface.h"
 
 // forward declaration
 class cmodel;
