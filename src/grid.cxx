@@ -21,6 +21,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include "mpiinterface.h"
 #include "grid.h"
 #include "input.h"
 #include "defines.h"

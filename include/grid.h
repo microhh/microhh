@@ -27,10 +27,10 @@
 #endif
 #include <fftw3.h>
 #include "input.h"
-#include "mpiinterface.h"
 
 // forward declaration
 class cmodel;
+class cmpi;
 
 /**
  * Class for the grid settings and operators.
