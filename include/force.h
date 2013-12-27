@@ -22,12 +22,11 @@
 #ifndef FORCE
 #define FORCE
 
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
-
 // forward declaration
 class cmodel;
+class cgrid;
+class cfields;
+class cmpi;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings

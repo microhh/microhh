@@ -20,6 +20,7 @@
  */
 
 #include <cstdio>
+#include "mpiinterface.h"
 #include "grid.h"
 #include "fields.h"
 #include "force.h"
