@@ -40,21 +40,18 @@
 #include "advec.h"
 #include "advec_g2.h"
 #include "advec_g2i4.h"
-#include "advec_g42.h"
 #include "advec_g4.h"
 #include "advec_g4m.h"
 
 // diffusion schemes
 #include "diff.h"
 #include "diff_g2.h"
-#include "diff_g42.h"
 #include "diff_g4.h"
 #include "diff_les_g2.h"
 
 // pressure schemes
 #include "pres.h"
 #include "pres_g2.h"
-#include "pres_g42.h"
 #include "pres_g4.h"
 
 // thermo schemes
@@ -145,8 +142,6 @@ int cmodel::readinifile()
     advec = new cadvec_g2(this);
   else if(swadvec == "24")
     advec = new cadvec_g2i4(this);
-  else if(swadvec == "42")
-    advec = new cadvec_g42(this);
   else if(swadvec == "4")
     advec = new cadvec_g4(this);
   else if(swadvec == "44")
@@ -164,8 +159,6 @@ int cmodel::readinifile()
     diff = new cdiff(this);
   else if(swdiff == "2")
     diff = new cdiff_g2(this);
-  else if(swdiff == "42")
-    diff = new cdiff_g42(this);
   else if(swdiff == "4")
     diff = new cdiff_g4(this);
   // TODO move to new model file later?
@@ -192,8 +185,6 @@ int cmodel::readinifile()
     pres = new cpres(this);
   else if(swpres == "2")
     pres = new cpres_g2(this);
-  else if(swpres == "42")
-    pres = new cpres_g42(this);
   else if(swpres == "4")
     pres = new cpres_g4(this);
   else
