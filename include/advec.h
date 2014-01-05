@@ -39,18 +39,20 @@ class cadvec
     cadvec(cmodel *);  ///< Constructor of the advection class.
     virtual ~cadvec(); ///< Destructor of the advection class.
 
-    virtual int readinifile(cinput *);  ///< Processes the data from the input file.
+    virtual int readinifile(cinput *); ///< Processes the data from the input file.
+    virtual int exec();                ///< Execute the advection scheme.
 
     virtual double getcfl(double); ///< Retrieve the CFL number.
-    virtual unsigned long gettimelim(unsigned long, double);
-    virtual int exec();
 
-    double cflmax;
+    virtual unsigned long gettimelim(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
+
 
   protected:
     cmodel  *model;  ///< Pointer to model class.
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
     cmpi    *mpi;    ///< Pointer to mpi class.
+
+    double cflmax; ///< Maximum allowed value for the CFL criterion.
 };
 #endif
