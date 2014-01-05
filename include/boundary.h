@@ -28,34 +28,42 @@ class cgrid;
 class cfields;
 class cmpi;
 
+/**
+ * Structure containing the boundary options and values per 3d field.
+ */
 struct field3dbc
 {
-  double bot;
-  double top;
-  int bcbot;
-  int bctop;
+  double bot; ///< Value of the bottom boundary.
+  double top; ///< Value of the top boundary.
+  int bcbot;  ///< Switch for the bottom boundary.
+  int bctop;  ///< Switch for the top boundary.
 };
 
+/**
+ * Base class for the advection scheme.
+ * This class handles the case when advection is turned off. Derived classes are
+ * implemented that handle different advection schemes.
+ */
 class cboundary
 {
   public:
-    cboundary(cmodel *);
-    virtual ~cboundary();
+    cboundary(cmodel *);  ///< Constuctor of the boundary class.
+    virtual ~cboundary(); ///< Destructor of the boundary class.
 
-    virtual int readinifile(cinput *);
-    virtual int init();
-    virtual int setvalues();
+    virtual int readinifile(cinput *); ///< Process the data from the input file.
+    virtual int init();                ///< Initialize the fields.
+    virtual int setvalues();           ///< Set all 2d fields to the prober BC value.
 
-    virtual int save(int);
-    virtual int load(int);
+    virtual int save(int); ///< Save boundary conditions related fields for restarts.
+    virtual int load(int); ///< Load boundary conditions related fields for restarts.
 
-    int exec();
+    int exec(); ///< Update the boundary conditions.
 
   protected:
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
-    cmpi    *mpi;
+    cmodel  *model;  ///< Pointer to model class.
+    cgrid   *grid;   ///< Pointer to grid class.
+    cfields *fields; ///< Pointer to fields class.
+    cmpi    *mpi;    ///< Pointer to mpi class.
 
     std::string swspatialorder;
 
@@ -70,14 +78,14 @@ class cboundary
   private:
     virtual int bcvalues();
 
-    int setgcbot_2nd(double *, double *, int, double *, double *);
-    int setgctop_2nd(double *, double *, int, double *, double *);
-    int setgcbot_4th(double *, double *, int, double *, double *);
-    int setgctop_4th(double *, double *, int, double *, double *);
+    int setgcbot_2nd(double *, double *, int, double *, double *); ///< Set the bottom ghost cells with 2nd-order accuracy.
+    int setgctop_2nd(double *, double *, int, double *, double *); ///< Set the top ghost cells with 2nd-order accuracy.
+    int setgcbot_4th(double *, double *, int, double *, double *); ///< Set the bottom ghost cells with 4th-order accuracy.
+    int setgctop_4th(double *, double *, int, double *, double *); ///< Set the top ghost cells with 4th-order accuracy.
 
-    int setgcbotw_4th(double *);
-    int setgctopw_4th(double *);
+    int setgcbotw_4th(double *); ///< Set the bottom ghost cells for the vertical velocity with 4th order accuracy.
+    int setgctopw_4th(double *); ///< Set the top ghost cells for the vertical velocity with 4th order accuracy.
 
-    inline double grad4x(const double, const double, const double, const double);
+    inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
 };
 #endif
