@@ -24,21 +24,6 @@
 
 #include <string>
 
-// #include "grid.h"
-// #include "fields.h"
-// #include "mpiinterface.h"
-// #include "boundary.h"
-// #include "advec.h"
-// #include "diff.h"
-// #include "force.h"
-// #include "thermo.h"
-// #include "thermo_moist.h"
-// #include "pres.h"
-// #include "buffer.h"
-// #include "timeloop.h"
-// #include "stats.h"
-// #include "cross.h"
-
 // forward declaration to prevent very long building times
 class cmpi;
 class cinput;
@@ -68,7 +53,7 @@ class cmodel
     int exec();
 
     // make the pointers public for use in other classes
-    // maybe safer to create get functions
+    // CvH maybe it is safer to create get functions
     cmpi    *mpi;
     cinput  *input;
     cgrid   *grid;
@@ -85,8 +70,8 @@ class cmodel
     cbuffer   *buffer;
 
     // postprocessing modules
-    cstats    *stats;
-    ccross    *cross;
+    cstats *stats;
+    ccross *cross;
 
   private:
     // switches for included schemes
