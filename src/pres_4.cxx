@@ -25,16 +25,16 @@
 #include <fftw3.h>
 #include "grid.h"
 #include "fields.h"
-#include "pres_g4.h"
+#include "pres_4.h"
 #include "defines.h"
 #include "model.h"
 
-cpres_g4::cpres_g4(cmodel *modelin) : cpres(modelin)
+cpres_4::cpres_4(cmodel *modelin) : cpres(modelin)
 {
   allocated = false;
 }
 
-cpres_g4::~cpres_g4()
+cpres_4::~cpres_4()
 {
   if(allocated)
   {
@@ -67,7 +67,7 @@ cpres_g4::~cpres_g4()
   }
 }
 
-int cpres_g4::exec(double dt)
+int cpres_4::exec(double dt)
 {
   // create the input for the pressure solver
   pres_in(fields->sd["p"]->data,
@@ -86,7 +86,7 @@ int cpres_g4::exec(double dt)
   return 0;
 }
 
-double cpres_g4::check()
+double cpres_4::check()
 {
   double divmax = 0.;
 
@@ -95,7 +95,7 @@ double cpres_g4::check()
   return divmax;
 }
 
-int cpres_g4::init()
+int cpres_4::init()
 {
   int imax, jmax, kmax;
   int itot, jtot, kstart;
@@ -140,7 +140,7 @@ int cpres_g4::init()
   return 0;
 }
 
-int cpres_g4::setvalues()
+int cpres_4::setvalues()
 {
   int imax, jmax, kmax;
   int itot, jtot, kstart;
@@ -225,7 +225,7 @@ int cpres_g4::setvalues()
   return 0;
 }
 
-int cpres_g4::pres_in(double * restrict p, 
+int cpres_4::pres_in(double * restrict p, 
                       double * restrict u , double * restrict v , double * restrict w , 
                       double * restrict ut, double * restrict vt, double * restrict wt, 
                       double * restrict dzi4, double dt)
@@ -290,7 +290,7 @@ int cpres_g4::pres_in(double * restrict p,
   return 0;
 }
 
-int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double * restrict m5calc, double * restrict dz,
+int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict m5calc, double * restrict dz,
                          double * restrict fftini, double * restrict fftouti, 
                          double * restrict fftinj, double * restrict fftoutj)
 
@@ -513,7 +513,7 @@ int cpres_g4::pres_solve(double * restrict p, double * restrict work3d, double *
   return 0;
 }
 
-int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
                        double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
@@ -555,7 +555,7 @@ int cpres_g4::pres_out(double * restrict ut, double * restrict vt, double * rest
   return 0;
 }
 
-int cpres_g4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+int cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
                    double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p)
 {
   int kmax;
@@ -678,7 +678,7 @@ int cpres_g4::hdma(double * restrict m1, double * restrict m2, double * restrict
 
 /*
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
-int cpres_g4::tdma(double * restrict a, double * restrict b, double * restrict c, 
+int cpres_4::tdma(double * restrict a, double * restrict b, double * restrict c, 
                 double * restrict p, double * restrict work2d, double * restrict work3d)
                 
 {
@@ -750,7 +750,7 @@ int cpres_g4::tdma(double * restrict a, double * restrict b, double * restrict c
 }
 */
 
-double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+double cpres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart,kend;
@@ -789,25 +789,3 @@ double cpres_g4::calcdivergence(double * restrict u, double * restrict v, double
 
   return divmax;
 }
-
-/*
-inline double cpres_g4::grad4(const double a, const double b, const double c, const double d, const double dxi)
-{
-  return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
-}
-
-inline double cpres_g4::grad4x(const double a, const double b, const double c, const double d)
-{
-  return (-(d-a) + 27.*(c-b)); 
-}
-
-inline double cpres_g4::grad4xbiasbot(const double a, const double b, const double c, const double d)
-{
-  return (-23.*a + 21.*b + 3.*c - d);
-}
-
-inline double cpres_g4::grad4xbiastop(const double a, const double b, const double c, const double d)
-{
-  return ( 23.*d - 21.*c - 3.*b + a);
-}
-*/

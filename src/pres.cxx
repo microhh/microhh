@@ -64,6 +64,5 @@ int cpres::exec(double dt)
 double cpres::check()
 {
   double divmax = 0.;
-
   return divmax;
 }

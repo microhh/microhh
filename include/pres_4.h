@@ -19,19 +19,19 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PRES_G4
-#define PRES_G4
+#ifndef PRES_4
+#define PRES_4
 
 #include "pres.h"
 
 // forward declaration
 class cmodel;
 
-class cpres_g4 : public cpres
+class cpres_4 : public cpres
 {
   public:
-    cpres_g4(cmodel *);
-    ~cpres_g4();
+    cpres_4(cmodel *);
+    ~cpres_4();
 
     int init();
     int setvalues();

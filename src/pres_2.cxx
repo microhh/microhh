@@ -25,16 +25,16 @@
 #include <fftw3.h>
 #include "grid.h"
 #include "fields.h"
-#include "pres_g2.h"
+#include "pres_2.h"
 #include "defines.h"
 #include "model.h"
 
-cpres_g2::cpres_g2(cmodel *modelin) : cpres(modelin)
+cpres_2::cpres_2(cmodel *modelin) : cpres(modelin)
 {
   allocated = false;
 }
 
-cpres_g2::~cpres_g2()
+cpres_2::~cpres_2()
 {
   if(allocated)
   {
@@ -47,7 +47,7 @@ cpres_g2::~cpres_g2()
   }
 }
 
-int cpres_g2::exec(double dt)
+int cpres_2::exec(double dt)
 {
   // create the input for the pressure solver
   pres_in(fields->sd["p"]->data,
@@ -66,7 +66,7 @@ int cpres_g2::exec(double dt)
   return 0;
 }
 
-double cpres_g2::check()
+double cpres_2::check()
 {
   double divmax = 0.;
 
@@ -75,7 +75,7 @@ double cpres_g2::check()
   return divmax;
 }
 
-int cpres_g2::init()
+int cpres_2::init()
 {
   int imax, jmax, kmax;
   int itot, jtot;
@@ -99,7 +99,7 @@ int cpres_g2::init()
   return 0;
 }
 
-int cpres_g2::setvalues()
+int cpres_2::setvalues()
 {
   int imax, jmax, kmax;
   int itot, jtot, kgc;
@@ -139,7 +139,7 @@ int cpres_g2::setvalues()
   return 0;
 }
 
-int cpres_g2::pres_in(double * restrict p, 
+int cpres_2::pres_in(double * restrict p, 
                       double * restrict u , double * restrict v , double * restrict w , 
                       double * restrict ut, double * restrict vt, double * restrict wt, 
                       double * restrict dzi,
@@ -184,7 +184,7 @@ int cpres_g2::pres_in(double * restrict p,
   return 0;
 }
 
-int cpres_g2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
+int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
                          double * restrict fftini, double * restrict fftouti, 
                          double * restrict fftinj, double * restrict fftoutj)
 
@@ -288,7 +288,7 @@ int cpres_g2::pres_solve(double * restrict p, double * restrict work3d, double *
   return 0;
 }
 
-int cpres_g2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+int cpres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
                        double * restrict p , double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
@@ -316,7 +316,7 @@ int cpres_g2::pres_out(double * restrict ut, double * restrict vt, double * rest
 }
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
-int cpres_g2::tdma(double * restrict a, double * restrict b, double * restrict c, 
+int cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c, 
                 double * restrict p, double * restrict work2d, double * restrict work3d)
                 
 {
@@ -387,7 +387,7 @@ int cpres_g2::tdma(double * restrict a, double * restrict b, double * restrict c
   return 0;
 }
 
-double cpres_g2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;

@@ -82,9 +82,9 @@ lngrad        & empty &     & list of variables of which the $ln( \|\Delta var)\
 swdiff        & [grid][spatialorder] & off   & disable diffusion \\
               &                      & 2     & 2nd-order diffusion \\
               &                      & 4     & 4th-order diffusion \\
-              &                      & 2smag & 2nd-order Smagorinsky eddy diffusion \\
+              &                      & les2s & 2nd-order Smagorinsky eddy diffusion \\
 dnmax         & 0.4                  &       & maximum diffusion number for numerical scheme \\
-cs            & 0.23                 &       & smagorinsky constant (only valid for \textit{2smag}) \\
+cs            & 0.23                 &       & Smagorinsky constant (only valid for \textit{les2s}) \\
 \end{supertabular}
 \subsection*{[fields]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -153,9 +153,9 @@ npy           & 1     & & number of processors in y-direction \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swpres        & [grid][spatialorder]  & off \\
-              &       & 2             & 2nd-order pressure solver (tridiagonal solver) \\
-              &       & 4             & 4th-order pressure solver (heptadiagonal solver) \\
+swpres        & [grid][spatialorder]  & 0 & disable pressure solver \\
+              &                       & 2 & 2nd-order pressure solver (tridiagonal solver) \\
+              &                       & 4 & 4th-order pressure solver (heptadiagonal solver) \\
 \end{supertabular}
 \subsection*{[stats]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}

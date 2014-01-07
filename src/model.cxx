@@ -51,8 +51,8 @@
 
 // pressure schemes
 #include "pres.h"
-#include "pres_g2.h"
-#include "pres_g4.h"
+#include "pres_2.h"
+#include "pres_4.h"
 
 // thermo schemes
 #include "thermo.h"
@@ -184,9 +184,9 @@ int cmodel::readinifile()
   if(swpres == "0")
     pres = new cpres(this);
   else if(swpres == "2")
-    pres = new cpres_g2(this);
+    pres = new cpres_2(this);
   else if(swpres == "4")
-    pres = new cpres_g4(this);
+    pres = new cpres_4(this);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());
