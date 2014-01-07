@@ -24,19 +24,19 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
-#include "advec_g4.h"
+#include "advec_4.h"
 #include "defines.h"
 #include "model.h"
 
-cadvec_g4::cadvec_g4(cmodel *modelin) : cadvec(modelin)
+cadvec_4::cadvec_4(cmodel *modelin) : cadvec(modelin)
 {
 }
 
-cadvec_g4::~cadvec_g4()
+cadvec_4::~cadvec_4()
 {
 }
 
-unsigned long cadvec_g4::gettimelim(unsigned long idt, double dt)
+unsigned long cadvec_4::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
   double cfl;
@@ -49,7 +49,7 @@ unsigned long cadvec_g4::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-double cadvec_g4::getcfl(double dt)
+double cadvec_4::getcfl(double dt)
 {
   double cfl;
 
@@ -58,7 +58,7 @@ double cadvec_g4::getcfl(double dt)
   return cfl;
 }
 
-int cadvec_g4::exec()
+int cadvec_4::exec()
 {
   advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
   advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
@@ -70,7 +70,7 @@ int cadvec_g4::exec()
   return 0;
 }
 
-double cadvec_g4::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+double cadvec_4::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
@@ -106,7 +106,7 @@ double cadvec_g4::calccfl(double * restrict u, double * restrict v, double * res
   return cfl;
 }
 
-int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+int cadvec_4::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -200,7 +200,7 @@ int cadvec_g4::advecu(double * restrict ut, double * restrict u, double * restri
   return 0;
 }
 
-int cadvec_g4::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+int cadvec_4::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -294,7 +294,7 @@ int cadvec_g4::advecv(double * restrict vt, double * restrict u, double * restri
   return 0;
 }
 
-int cadvec_g4::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi4)
+int cadvec_4::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -388,7 +388,7 @@ int cadvec_g4::advecw(double * restrict wt, double * restrict u, double * restri
   return 0;
 }
 
-int cadvec_g4::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+int cadvec_4::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;

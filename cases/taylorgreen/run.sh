@@ -37,35 +37,35 @@ rm -f *.00* taylorgreen.out
 cd ..
 
 # 4th order scheme Morinishi
-cd taylorgreen16_44
+cd taylorgreen16_4m
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../microhh init taylorgreen
 ../microhh run taylorgreen
 cd ..
 
-cd taylorgreen32_44
+cd taylorgreen32_4m
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../microhh init taylorgreen
 ../microhh run taylorgreen
 cd ..
 
-cd taylorgreen64_44
+cd taylorgreen64_4m
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../microhh init taylorgreen
 ../microhh run taylorgreen
 cd ..
 
-cd taylorgreen128_44
+cd taylorgreen128_4m
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../microhh init taylorgreen
 ../microhh run taylorgreen
 cd ..
 
-cd taylorgreen256_44
+cd taylorgreen256_4m
 python taylorgreenprof.py
 rm -f *.00* taylorgreen.out
 ../microhh init taylorgreen

@@ -19,8 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_G4M
-#define ADVEC_G4M
+#ifndef ADVEC_4M
+#define ADVEC_4M
 
 #include "advec.h"
 
@@ -32,11 +32,11 @@ class cmodel;
  * Fully mass, momentum and energy conserving advection scheme based on the paper
  * of Morinishi et al., (1998).
  */
-class cadvec_g4m : public cadvec
+class cadvec_4m : public cadvec
 {
   public:
-    cadvec_g4m(cmodel *); ///< Constructor of the advection class.
-    ~cadvec_g4m();        ///< Destructor of the advection class.
+    cadvec_4m(cmodel *); ///< Constructor of the advection class.
+    ~cadvec_4m();        ///< Destructor of the advection class.
 
     unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
     double getcfl(double);                               ///< Get the CFL number.

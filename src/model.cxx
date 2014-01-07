@@ -38,10 +38,10 @@
 
 // advection schemes
 #include "advec.h"
-#include "advec_g2.h"
-#include "advec_g2i4.h"
-#include "advec_g4.h"
-#include "advec_g4m.h"
+#include "advec_2.h"
+#include "advec_2int4.h"
+#include "advec_4.h"
+#include "advec_4m.h"
 
 // diffusion schemes
 #include "diff.h"
@@ -139,13 +139,13 @@ int cmodel::readinifile()
   if(swadvec == "0")
     advec = new cadvec(this);
   else if(swadvec == "2")
-    advec = new cadvec_g2(this);
-  else if(swadvec == "24")
-    advec = new cadvec_g2i4(this);
+    advec = new cadvec_2(this);
+  else if(swadvec == "2int4")
+    advec = new cadvec_2int4(this);
   else if(swadvec == "4")
-    advec = new cadvec_g4(this);
-  else if(swadvec == "44")
-    advec = new cadvec_g4m(this);
+    advec = new cadvec_4(this);
+  else if(swadvec == "4m")
+    advec = new cadvec_4m(this);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());

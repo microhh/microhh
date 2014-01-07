@@ -42,10 +42,10 @@ cadvec::~cadvec()
 
 int cadvec::readinifile(cinput *inputin)
 {
-  int n = 0;
-  n += inputin->getItem(&cflmax      , "advec", "cflmax"      , "", 1.   );
+  int nerror = 0;
+  nerror += inputin->getItem(&cflmax, "advec", "cflmax", "", 1.);
 
-  return (n>0);
+  return nerror;
 }
 
 unsigned long cadvec::gettimelim(unsigned long idt, double dt)
