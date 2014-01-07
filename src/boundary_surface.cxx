@@ -51,26 +51,23 @@ cboundary_surface::~cboundary_surface()
 
 int cboundary_surface::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
-  // obligatory parameters
-  swspatialorder = grid->swspatialorder;
-
-  n += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
-  n += inputin->getItem(&mbctop, "boundary", "mbctop", "");
+  nerror += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
+  nerror += inputin->getItem(&mbctop, "boundary", "mbctop", "");
 
   // read the boundaries per field
   for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     sbc[it->first] = new field3dbc;
-    n += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
-    n += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
-    n += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
-    n += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
+    nerror += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
   }
 
-  n += inputin->getItem(&z0m, "boundary", "z0m", "");
-  n += inputin->getItem(&z0h, "boundary", "z0h", "");
+  nerror += inputin->getItem(&z0m, "boundary", "z0m", "");
+  nerror += inputin->getItem(&z0h, "boundary", "z0h", "");
 
   // copy all the boundary options and set the model ones to flux type
   surfmbcbot = mbcbot;
@@ -80,11 +77,11 @@ int cboundary_surface::readinifile(cinput *inputin)
   if(surfmbcbot == 1)
   {
     if(mpi->mpiid == 0) std::printf("ERROR fixed gradient bc is not supported in surface model\n");
-    ++n;
+    ++nerror;
   }
   // read the ustar value only if fixed fluxes are prescribed
   else if(surfmbcbot == 2)
-    n += inputin->getItem(&ustarin, "boundary", "ustar", "");
+    nerror += inputin->getItem(&ustarin, "boundary", "ustar", "");
 
   // process the scalars
   for(bcmap::iterator it=sbc.begin(); it!=sbc.end(); ++it)
@@ -96,22 +93,18 @@ int cboundary_surface::readinifile(cinput *inputin)
     if(surfsbcbot[it->first] == 1)
     {
       if(mpi->mpiid == 0) std::printf("ERROR fixed gradient bc is not supported in surface model\n");
-      ++n;
+      ++nerror;
     }
 
     // crash in case of fixed momentum flux and dirichlet bc for scalar
     if(surfsbcbot[it->first] == 0 && surfmbcbot == 2)
     {
       if(mpi->mpiid == 0) std::printf("ERROR fixed ustar bc in combination with Dirichlet bc for scalars is not supported\n");
-      ++n;
+      ++nerror;
     }
   }
 
-  // if one argument fails, then crash
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 int cboundary_surface::init()

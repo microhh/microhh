@@ -50,29 +50,22 @@ cboundary::~cboundary()
 
 int cboundary::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
-  // obligatory parameters
-  // n += inputin->getItem(&swboundary, "boundary", "swboundary", "", grid->swspatialorder);
-  swspatialorder = grid->swspatialorder;
-
-  n += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
-  n += inputin->getItem(&mbctop, "boundary", "mbctop", "");
+  nerror += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
+  nerror += inputin->getItem(&mbctop, "boundary", "mbctop", "");
 
   // read the boundaries per field
   for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     sbc[it->first] = new field3dbc;
-    n += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
-    n += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
-    n += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
-    n += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
+    nerror += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
   }
 
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 int cboundary::init()
@@ -120,7 +113,7 @@ int cboundary::exec()
   // calculate boundary values
   bcvalues();
 
-  if(swspatialorder == "2")
+  if(grid->swspatialorder == "2")
   {
     setgcbot_2nd(fields->u->data, grid->dzh, mbcbot, fields->u->databot, fields->u->datagradbot);
     setgctop_2nd(fields->u->data, grid->dzh, mbctop, fields->u->datatop, fields->u->datagradtop);
@@ -134,13 +127,13 @@ int cboundary::exec()
       setgctop_2nd(it->second->data, grid->dzh, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
     }
   }
-  else if(swspatialorder == "4")
+  else if(grid->swspatialorder == "4")
   {
-    setgcbot_4th (fields->u->data, grid->z, mbcbot, fields->u->databot, fields->u->datagradbot);
-    setgctop_4th (fields->u->data, grid->z, mbctop, fields->u->datatop, fields->u->datagradtop);
+    setgcbot_4th(fields->u->data, grid->z, mbcbot, fields->u->databot, fields->u->datagradbot);
+    setgctop_4th(fields->u->data, grid->z, mbctop, fields->u->datatop, fields->u->datagradtop);
 
-    setgcbot_4th (fields->v->data, grid->z, mbcbot, fields->v->databot, fields->v->datagradbot);
-    setgctop_4th (fields->v->data, grid->z, mbctop, fields->v->datatop, fields->v->datagradtop);
+    setgcbot_4th(fields->v->data, grid->z, mbcbot, fields->v->databot, fields->v->datagradbot);
+    setgctop_4th(fields->v->data, grid->z, mbctop, fields->v->datatop, fields->v->datagradtop);
 
     setgcbotw_4th(fields->w->data);
     setgctopw_4th(fields->w->data);

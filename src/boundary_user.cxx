@@ -37,38 +37,30 @@ cboundary_user::cboundary_user(cmodel *modelin) : cboundary(modelin)
 
 int cboundary_user::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
-  // obligatory parameters
-  // n += inputin->getItem(&swboundary, "boundary", "swboundary", "", grid->swspatialorder);
-  swspatialorder = grid->swspatialorder;
-
-  n += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
-  n += inputin->getItem(&mbctop, "boundary", "mbctop", "");
+  nerror += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
+  nerror += inputin->getItem(&mbctop, "boundary", "mbctop", "");
 
   // read the boundaries per field
   for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     sbc[it->first] = new field3dbc;
-    n += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
-    n += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
-    n += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
-    n += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
+    nerror += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
   }
 
   // patch type
-  n += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , "", 2 );
-  n += inputin->getItem(&patch_xh,   "boundary", "patch_xh"  , "", 1.);
-  n += inputin->getItem(&patch_xr,   "boundary", "patch_xr"  , "", 1.);
-  n += inputin->getItem(&patch_xi,   "boundary", "patch_xi"  , "", 0.);
-  n += inputin->getItem(&patch_facr, "boundary", "patch_facr", "", 1.);
-  n += inputin->getItem(&patch_facl, "boundary", "patch_facl", "", 0.);
+  nerror += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , "", 2 );
+  nerror += inputin->getItem(&patch_xh,   "boundary", "patch_xh"  , "", 1.);
+  nerror += inputin->getItem(&patch_xr,   "boundary", "patch_xr"  , "", 1.);
+  nerror += inputin->getItem(&patch_xi,   "boundary", "patch_xi"  , "", 0.);
+  nerror += inputin->getItem(&patch_facr, "boundary", "patch_facr", "", 1.);
+  nerror += inputin->getItem(&patch_facl, "boundary", "patch_facl", "", 0.);
   
-  // if one argument fails, then crash
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 int cboundary_user::setvalues()

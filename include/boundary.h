@@ -65,8 +65,6 @@ class cboundary
     cfields *fields; ///< Pointer to fields class.
     cmpi    *mpi;    ///< Pointer to mpi class.
 
-    std::string swspatialorder;
-
     int mbcbot;
     int mbctop;
 
