@@ -14,11 +14,11 @@
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swadvec       & [grid][spatialorder] & off  & disable advection \\ 
-              &                      & 2    & 2nd order advection \\
-%              &       & 2int4\\
-              &                      & 4    & 4th order advection (high accuracy) \\
-              &                      & 4m   & 4th order advection (energy conserving) \\
+swadvec       & [grid][spatialorder] & 0     & disable advection \\ 
+              &                      & 2     & 2nd-order advection \\
+              &                      & 2int4 & 2nd-order advection with 4th-order interpolation \\  
+              &                      & 4     & 4th-order advection (high accuracy) \\
+              &                      & 4m    & 4th-order advection (energy conserving) \\
 cflmax        & 1.0   &    \\
 \end{supertabular}
 
@@ -80,9 +80,9 @@ lngrad        & empty &     & list of variables of which the $ln( \|\Delta var)\
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
 swdiff        & [grid][spatialorder] & off   & disable diffusion \\
-              &                      & 2     & 2nd order diffusion \\
-              &                      & 4     & 4th order diffusion \\
-              &                      & 2smag & 2nd order smagorisnky eddy diffusion \\
+              &                      & 2     & 2nd-order diffusion \\
+              &                      & 4     & 4th-order diffusion \\
+              &                      & 2smag & 2nd-order Smagorinsky eddy diffusion \\
 dnmax         & 0.4                  &       & maximum diffusion number for numerical scheme \\
 cs            & 0.23                 &       & smagorinsky constant (only valid for \textit{2smag}) \\
 \end{supertabular}
@@ -127,16 +127,16 @@ uflow         & n/a   &      & mean flow velocity [m~s$^{-1}$] \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-xsize         & n/a   &  & x-size of domain [m]\\
-ysize         & n/a   &  & y-size of domain [m]\\
-zsize         & n/a   &  & z-size of domain [m]\\
-itot          & n/a   &  & number of grid points in x-direction \\
-jtot          & n/a   &  & number of grid points in y-direction \\
-ktot          & n/a   &  & number of grid points in z-direction \\
-spatialorder  & n/a   &  & 2nd order spatial discretization \\
-              &       &  & 4th order spatial discretization \\
-utrans        & 0.    &  & translation velocity in x-direction [m s$^{-1}$] \\
-vtrans        & 0.    &  & translation velocity in y-direction [m s$^{-1}$] \\
+xsize         & n/a   &   & x-size of domain [m]\\
+ysize         & n/a   &   & y-size of domain [m]\\
+zsize         & n/a   &   & z-size of domain [m]\\
+itot          & n/a   &   & number of grid points in x-direction \\
+jtot          & n/a   &   & number of grid points in y-direction \\
+ktot          & n/a   &   & number of grid points in z-direction \\
+spatialorder  & n/a   & 2 & 2nd-order spatial discretization \\
+              &       & 4 & 4th-order spatial discretization \\
+utrans        & 0.    &   & translation velocity in x-direction [m s$^{-1}$] \\
+vtrans        & 0.    &   & translation velocity in y-direction [m s$^{-1}$] \\
 \end{supertabular}
 \subsection*{[mpi]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -154,8 +154,8 @@ npy           & 1     & & number of processors in y-direction \\
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
 swpres        & [grid][spatialorder]  & off \\
-              &       & 2             & 2nd order pressure solver (tridiagonal solver) \\
-              &       & 4             & 4th order pressure solver (heptadiagonal solver) \\
+              &       & 2             & 2nd-order pressure solver (tridiagonal solver) \\
+              &       & 4             & 4th-order pressure solver (heptadiagonal solver) \\
 \end{supertabular}
 \subsection*{[stats]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -194,8 +194,8 @@ adaptivestep  & true  & true  & enable adaptive time stepping \\
               &       & false & disable adaptive time stepping \\
 dt            & 0.1   &       & time step [s] (only valid if adaptivestep = false) \\
 dtmax         & dbig  &       & maximum time step [s] \\
-rkorder       & 3     & 3     & Runge-Kutta 3rd order accuracy, 3 steps \\
-              &       & 4     & Runge-Kutta 4th order accuracy, 5 steps \\
+rkorder       & 3     & 3     & Runge-Kutta 3rd-order accuracy, 3 steps \\
+              &       & 4     & Runge-Kutta 4th-order accuracy, 5 steps \\
 outputiter    & 10    &       & frequency of diagnostic output to $<$casename$>$.out \\
 savetime      & 3600  &       & interval for saving restart files [s] \\
 iotimeprec    & 0     &       & precision of saving of time in 10-power (i.e. -1 == 0.1, etc.) \\
