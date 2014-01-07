@@ -19,19 +19,19 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_LES_G2
-#define DIFF_LES_G2
+#ifndef DIFF_LES2S
+#define DIFF_LES2S
 
 #include "diff.h"
 
 // forward declaration
 class cmodel;
 
-class cdiff_les_g2 : public cdiff
+class cdiff_les2s : public cdiff
 {
   public:
-    cdiff_les_g2(cmodel *);
-    ~cdiff_les_g2();
+    cdiff_les2s(cmodel *);
+    ~cdiff_les2s();
 
     int readinifile(cinput *);
     int exec();

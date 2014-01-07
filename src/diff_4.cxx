@@ -25,19 +25,19 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
-#include "diff_g4.h"
+#include "diff_4.h"
 #include "defines.h"
 #include "model.h"
 
-cdiff_g4::cdiff_g4(cmodel *modelin) : cdiff(modelin)
+cdiff_4::cdiff_4(cmodel *modelin) : cdiff(modelin)
 {
 }
 
-cdiff_g4::~cdiff_g4()
+cdiff_4::~cdiff_4()
 {
 }
 
-int cdiff_g4::setvalues()
+int cdiff_4::setvalues()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
@@ -51,7 +51,7 @@ int cdiff_g4::setvalues()
   return 0;
 }
 
-unsigned long cdiff_g4::gettimelim(unsigned long idt, double dt)
+unsigned long cdiff_4::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
@@ -60,7 +60,7 @@ unsigned long cdiff_g4::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-double cdiff_g4::getdn(double dt)
+double cdiff_4::getdn(double dt)
 {
   double dn;
 
@@ -69,7 +69,7 @@ double cdiff_g4::getdn(double dt)
   return dn;
 }
 
-int cdiff_g4::exec()
+int cdiff_4::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
@@ -81,7 +81,7 @@ int cdiff_g4::exec()
   return 0;
 }
 
-int cdiff_g4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+int cdiff_4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -151,7 +151,7 @@ int cdiff_g4::diffc(double * restrict at, double * restrict a, double * restrict
   return 0;
 }
 
-int cdiff_g4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+int cdiff_4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -220,26 +220,3 @@ int cdiff_g4::diffw(double * restrict at, double * restrict a, double * restrict
 
   return 0;
 }
-
-/*
-inline double cdiff_g4::divgrad4(const double am3, const double am2, const double am1, const double a,
-                                 const double ap1, const double ap2, const double ap3, const double dxidxi)
-{
-  return ( (1./576.)*(am3+ap3) - (54./576.)*(am2+ap2) + (783./576.)*(am1+ap1) - (1460./576.)*a ) * dxidxi;
-}
-
-inline double cdiff_g4::grad4x(const double a, const double b, const double c, const double d)
-{
-  return (-(d-a) + 27.*(c-b)); 
-}
-
-inline double cdiff_g4::grad4xbiasbot(const double a, const double b, const double c, const double d)
-{
-  return (-23.*a + 21.*b + 3.*c - d);
-}
-
-inline double cdiff_g4::grad4xbiastop(const double a, const double b, const double c, const double d)
-{
-  return ( 23.*d - 21.*c - 3.*b + a);
-}
-*/

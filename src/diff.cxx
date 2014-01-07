@@ -43,11 +43,11 @@ cdiff::~cdiff()
 
 int cdiff::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
-  n += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.4);
+  nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.4);
 
-  return (n>0);
+  return nerror;
 }
 
 unsigned long cdiff::gettimelim(unsigned long idtlim, double dt)

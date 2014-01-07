@@ -45,9 +45,9 @@
 
 // diffusion schemes
 #include "diff.h"
-#include "diff_g2.h"
-#include "diff_g4.h"
-#include "diff_les_g2.h"
+#include "diff_2.h"
+#include "diff_4.h"
+#include "diff_les2s.h"
 
 // pressure schemes
 #include "pres.h"
@@ -158,17 +158,17 @@ int cmodel::readinifile()
   if(swdiff == "0")
     diff = new cdiff(this);
   else if(swdiff == "2")
-    diff = new cdiff_g2(this);
+    diff = new cdiff_2(this);
   else if(swdiff == "4")
-    diff = new cdiff_g4(this);
+    diff = new cdiff_4(this);
   // TODO move to new model file later?
-  else if(swdiff == "22")
+  else if(swdiff == "les2s")
   {
-    diff = new cdiff_les_g2(this);
+    diff = new cdiff_les2s(this);
     // the subgrid model requires a surface model because of the MO matching at first level
     if(swboundary != "surface")
     {
-      std::printf("ERROR swdiff == \"22\" requires swboundary == \"surface\"\n");
+      std::printf("ERROR swdiff == \"les2s\" requires swboundary == \"surface\"\n");
       return 1;
     }
   }

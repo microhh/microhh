@@ -25,19 +25,19 @@
 #include "grid.h"
 #include "fields.h"
 #include "mpiinterface.h"
-#include "diff_g2.h"
+#include "diff_2.h"
 #include "defines.h"
 #include "model.h"
 
-cdiff_g2::cdiff_g2(cmodel *modelin) : cdiff(modelin)
+cdiff_2::cdiff_2(cmodel *modelin) : cdiff(modelin)
 {
 }
 
-cdiff_g2::~cdiff_g2()
+cdiff_2::~cdiff_2()
 {
 }
 
-int cdiff_g2::setvalues()
+int cdiff_2::setvalues()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
@@ -51,7 +51,7 @@ int cdiff_g2::setvalues()
   return 0;
 }
 
-unsigned long cdiff_g2::gettimelim(unsigned long idt, double dt)
+unsigned long cdiff_2::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
@@ -60,7 +60,7 @@ unsigned long cdiff_g2::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-double cdiff_g2::getdn(double dt)
+double cdiff_2::getdn(double dt)
 {
   double dn;
 
@@ -69,7 +69,7 @@ double cdiff_g2::getdn(double dt)
   return dn;
 }
 
-int cdiff_g2::exec()
+int cdiff_2::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
@@ -81,7 +81,7 @@ int cdiff_g2::exec()
   return 0;
 }
 
-int cdiff_g2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
+int cdiff_2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
@@ -111,7 +111,7 @@ int cdiff_g2::diffc(double * restrict at, double * restrict a, double * restrict
   return 0;
 }
 
-int cdiff_g2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
+int cdiff_2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;

@@ -19,19 +19,19 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_G2
-#define DIFF_G2
+#ifndef DIFF_2
+#define DIFF_2
 
 #include "diff.h"
 
 // forward declaration
 class cmodel;
 
-class cdiff_g2 : public cdiff
+class cdiff_2 : public cdiff
 {
   public:
-    cdiff_g2(cmodel *);
-    ~cdiff_g2();
+    cdiff_2(cmodel *);
+    ~cdiff_2();
 
     int setvalues();
     int exec();
