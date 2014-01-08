@@ -31,6 +31,10 @@
 #define NO_OFFSET 0.
 #define NO_VELOCITY 0.
 
+#define BC_DIRICHLET 0
+#define BC_NEUMANN 1
+#define BC_FLUX 2
+
 cboundary::cboundary(cmodel *modelin)
 {
   model  = modelin;
@@ -41,7 +45,7 @@ cboundary::cboundary(cmodel *modelin)
 
 cboundary::~cboundary()
 {
-  for(bcmap::iterator it=sbc.begin(); it!=sbc.end(); ++it)
+  for(bcmap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
     delete it->second;
 
   // empty the map
@@ -52,17 +56,55 @@ int cboundary::readinifile(cinput *inputin)
 {
   int nerror = 0;
 
-  nerror += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
-  nerror += inputin->getItem(&mbctop, "boundary", "mbctop", "");
+  std::string swbot, swtop;
+
+  nerror += inputin->getItem(&swbot, "boundary", "mbcbot", "");
+  nerror += inputin->getItem(&swtop, "boundary", "mbctop", "");
+
+  // set the bottom bc
+  if(swbot == "dirichlet")
+    mbcbot = BC_DIRICHLET;
+  else if(swbot == "neumann")
+    mbcbot = BC_NEUMANN;
+  else
+    nerror++;
+
+  // set the top bc
+  if(swtop == "dirichlet")
+    mbctop = BC_DIRICHLET;
+  else if(swtop == "neumann")
+    mbctop = BC_NEUMANN;
+  else
+    nerror++;
 
   // read the boundaries per field
-  for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     sbc[it->first] = new field3dbc;
-    nerror += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
-    nerror += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
-    nerror += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
-    nerror += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
+    nerror += inputin->getItem(&swbot, "boundary", "sbcbot", it->first);
+    nerror += inputin->getItem(&swtop, "boundary", "sbctop", it->first);
+    nerror += inputin->getItem(&sbc[it->first]->bot, "boundary", "sbot", it->first);
+    nerror += inputin->getItem(&sbc[it->first]->top, "boundary", "stop", it->first);
+
+    // set the bottom bc
+    if(swbot == "dirichlet")
+      sbc[it->first]->bcbot = BC_DIRICHLET;
+    else if(swbot == "neumann")
+      sbc[it->first]->bcbot = BC_NEUMANN;
+    else if(swbot == "flux")
+      sbc[it->first]->bcbot = BC_FLUX;
+    else
+      nerror++;
+
+    // set the top bc
+    if(swtop == "dirichlet")
+      sbc[it->first]->bctop = BC_DIRICHLET;
+    else if(swtop == "neumann")
+      sbc[it->first]->bctop = BC_NEUMANN;
+    else if(swtop == "flux")
+      sbc[it->first]->bctop = BC_FLUX;
+    else
+      nerror++;
   }
 
   return nerror;
@@ -91,7 +133,7 @@ int cboundary::setvalues()
   setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->u);
   setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->v);
 
-  for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, NO_OFFSET);
     setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
@@ -107,7 +149,7 @@ int cboundary::exec()
   grid->boundary_cyclic(fields->v->data);
   grid->boundary_cyclic(fields->w->data);
 
-  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
     grid->boundary_cyclic(it->second->data);
 
   // calculate boundary values
@@ -121,7 +163,7 @@ int cboundary::exec()
     setgcbot_2nd(fields->v->data, grid->dzh, mbcbot, fields->v->databot, fields->v->datagradbot);
     setgctop_2nd(fields->v->data, grid->dzh, mbctop, fields->v->datatop, fields->v->datagradtop);
 
-    for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       setgcbot_2nd(it->second->data, grid->dzh, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
       setgctop_2nd(it->second->data, grid->dzh, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
@@ -138,7 +180,7 @@ int cboundary::exec()
     setgcbotw_4th(fields->w->data);
     setgctopw_4th(fields->w->data);
 
-    for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       setgcbot_4th(it->second->data, grid->z, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
       setgctop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
@@ -158,7 +200,7 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, double * rest
   int ij,jj;
   jj = grid->icells;
 
-  if(sw == 0)
+  if(sw == BC_DIRICHLET)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -168,7 +210,7 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, double * rest
         a[ij] = aval - offset;
       }
   }
-  else if(sw == 1)
+  else if(sw == BC_NEUMANN)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -179,7 +221,7 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, double * rest
         aflux[ij] = -aval*visc;
       }
   }
-  else if(sw == 2)
+  else if(sw == BC_FLUX)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -204,7 +246,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, 
 
   kstart = grid->kstart;
 
-  if(sw == 0)
+  if(sw == BC_DIRICHLET)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -215,7 +257,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, 
         a[ijk-kk] = 2.*abot[ij] - a[ijk];
       }
   }
-  else if(sw == 1 || sw == 2)
+  else if(sw == BC_NEUMANN || sw == BC_FLUX)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -239,7 +281,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  if(sw == 0)
+  if(sw == BC_DIRICHLET)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -250,7 +292,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, 
         a[ijk+kk] = 2.*atop[ij] - a[ijk];
       }
   }
-  else if(sw == 1 || sw == 2)
+  else if(sw == BC_NEUMANN || sw == BC_FLUX)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -275,7 +317,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
 
   kstart = grid->kstart;
 
-  if(sw == 0)
+  if(sw == BC_DIRICHLET)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -287,7 +329,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
         a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
       }
   }
-  else if(sw == 1 || sw == 2)
+  else if(sw == BC_NEUMANN || sw == BC_FLUX)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -313,7 +355,7 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
 
-  if(sw == 0)
+  if(sw == BC_DIRICHLET)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -325,7 +367,7 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
         a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
       }
   }
-  else if(sw == 1 || sw == 2)
+  else if(sw == BC_NEUMANN || sw == BC_FLUX)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
