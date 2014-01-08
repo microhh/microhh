@@ -34,6 +34,7 @@
 #define BC_DIRICHLET 0
 #define BC_NEUMANN 1
 #define BC_FLUX 2
+#define BC_USTAR 3
 
 cboundary::cboundary(cmodel *modelin)
 {
@@ -56,6 +57,15 @@ int cboundary::readinifile(cinput *inputin)
 {
   int nerror = 0;
 
+  nerror += processbcs(inputin);
+
+  return nerror;
+}
+
+int cboundary::processbcs(cinput *inputin)
+{
+  int nerror = 0;
+
   std::string swbot, swtop;
 
   nerror += inputin->getItem(&swbot, "boundary", "mbcbot", "");
@@ -66,6 +76,8 @@ int cboundary::readinifile(cinput *inputin)
     mbcbot = BC_DIRICHLET;
   else if(swbot == "freeslip")
     mbcbot = BC_NEUMANN;
+  else if(swbot == "ustar")
+    mbcbot = BC_USTAR;
   else
   {
     if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for mbcbot\n", swbot.c_str());
@@ -77,6 +89,8 @@ int cboundary::readinifile(cinput *inputin)
     mbctop = BC_DIRICHLET;
   else if(swtop == "freeslip")
     mbctop = BC_NEUMANN;
+  else if(swtop == "ustar")
+    mbctop = BC_USTAR;
   else
   {
     if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for mbctop\n", swtop.c_str());

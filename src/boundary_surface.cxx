@@ -53,18 +53,7 @@ int cboundary_surface::readinifile(cinput *inputin)
 {
   int nerror = 0;
 
-  nerror += inputin->getItem(&mbcbot, "boundary", "mbcbot", "");
-  nerror += inputin->getItem(&mbctop, "boundary", "mbctop", "");
-
-  // read the boundaries per field
-  for(fieldmap::iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  {
-    sbc[it->first] = new field3dbc;
-    nerror += inputin->getItem(&sbc[it->first]->bcbot, "boundary", "sbcbot", it->first);
-    nerror += inputin->getItem(&sbc[it->first]->bctop, "boundary", "sbctop", it->first);
-    nerror += inputin->getItem(&sbc[it->first]->bot  , "boundary", "sbot"  , it->first);
-    nerror += inputin->getItem(&sbc[it->first]->top  , "boundary", "stop"  , it->first);
-  }
+  processbcs(inputin);
 
   nerror += inputin->getItem(&z0m, "boundary", "z0m", "");
   nerror += inputin->getItem(&z0h, "boundary", "z0h", "");
