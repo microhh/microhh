@@ -59,6 +59,13 @@ int cboundary::readinifile(cinput *inputin)
 
   nerror += processbcs(inputin);
 
+  // there is no option for prescribing ustar without surface model
+  if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
+    ++nerror;
+  }
+
   return nerror;
 }
 
