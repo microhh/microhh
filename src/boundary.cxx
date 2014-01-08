@@ -62,20 +62,26 @@ int cboundary::readinifile(cinput *inputin)
   nerror += inputin->getItem(&swtop, "boundary", "mbctop", "");
 
   // set the bottom bc
-  if(swbot == "dirichlet")
+  if(swbot == "noslip")
     mbcbot = BC_DIRICHLET;
-  else if(swbot == "neumann")
+  else if(swbot == "freeslip")
     mbcbot = BC_NEUMANN;
   else
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for mbcbot\n", swbot.c_str());
     nerror++;
+  }
 
   // set the top bc
-  if(swtop == "dirichlet")
+  if(swtop == "noslip")
     mbctop = BC_DIRICHLET;
-  else if(swtop == "neumann")
+  else if(swtop == "freeslip")
     mbctop = BC_NEUMANN;
   else
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for mbctop\n", swtop.c_str());
     nerror++;
+  }
 
   // read the boundaries per field
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
@@ -94,7 +100,10 @@ int cboundary::readinifile(cinput *inputin)
     else if(swbot == "flux")
       sbc[it->first]->bcbot = BC_FLUX;
     else
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for sbcbot\n", swbot.c_str());
       nerror++;
+    }
 
     // set the top bc
     if(swtop == "dirichlet")
@@ -104,7 +113,10 @@ int cboundary::readinifile(cinput *inputin)
     else if(swtop == "flux")
       sbc[it->first]->bctop = BC_FLUX;
     else
+    {
+      if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for sbctop\n", swtop.c_str());
       nerror++;
+    }
   }
 
   return nerror;
