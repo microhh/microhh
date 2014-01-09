@@ -42,29 +42,26 @@ ccross::~ccross()
 
 int ccross::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
   // optional, by default switch cross off
-  n += inputin->getItem(&swcross, "cross", "swcross", "", "0");
+  nerror += inputin->getItem(&swcross, "cross", "swcross", "", "0");
 
   if(swcross == "1")
   {
     // get the time at which the cross sections are triggered
-    n += inputin->getItem(&crosstime, "cross", "crosstime", "");
+    nerror += inputin->getItem(&sampletime, "cross", "sampletime", "");
 
     // get the list of indices at which to take cross sections
-    n += inputin->getList(&jxz, "cross", "jxz", "");
-    n += inputin->getList(&kxy, "cross", "kxy", "");
+    nerror += inputin->getList(&jxz, "cross", "jxz", "");
+    nerror += inputin->getList(&kxy, "cross", "kxy", "");
 
     // get the list of variables per type of cross
-    n += inputin->getList(&simple, "cross", "simple", "");
-    n += inputin->getList(&lngrad, "cross", "lngrad", "");
+    nerror += inputin->getList(&simple, "cross", "simple", "");
+    nerror += inputin->getList(&lngrad, "cross", "lngrad", "");
   }
 
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 int ccross::init(int ifactor)
@@ -72,7 +69,7 @@ int ccross::init(int ifactor)
   if(swcross == "0")
     return 0;
 
-  icrosstime = (unsigned long)(ifactor * crosstime);
+  isampletime = (unsigned long)(ifactor * sampletime);
 
   return 0;
 }
@@ -82,7 +79,7 @@ unsigned long ccross::gettimelim(unsigned long itime)
   if(swcross == "0")
     return ulhuge;
 
-  unsigned long idtlim = icrosstime - itime % icrosstime;
+  unsigned long idtlim = isampletime - itime % isampletime;
 
   return idtlim;
 }
@@ -94,7 +91,7 @@ int ccross::exec(double time, unsigned long itime, int iotime)
     return 0;
 
   // check if time for execution
-  if(itime % icrosstime != 0)
+  if(itime % isampletime != 0)
     return 1;
 
   if(mpi->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);

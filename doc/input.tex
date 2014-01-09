@@ -67,7 +67,7 @@ beta     & 2.  &   & exponent of the damping increase with height [-] \\
 \begin{supertabular}{lccl}
 swcross       & off   & off & disable cross sections \\
               &       & on  & enable cross sections \\ 
-time          & n/a   &     & time [s] \\
+sampletime    & n/a   &     & sampling time step [s] \\
 jxz           & empty &     & list of j-values at which xz-crosssection are taken \\
 kxy           & empty &     & list of k-values at which xy-crosssection are taken \\
 simple        & empty &     & list of variables of which standard cross sections are taken \\
@@ -166,7 +166,7 @@ swpres        & [grid][spatialorder]  & 0 & disable pressure solver \\
 swstats       & off   & off & disable statistics \\
               &       & dns & dns set of statistics \\
               &       & les & les set of statistics \\
-time          & n/a   &     & trigger interval [s] \\
+sampletime    & n/a   &     & sampling time step [s] \\
 \end{supertabular}
 \subsection*{[thermo]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}

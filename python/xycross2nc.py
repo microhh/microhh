@@ -66,7 +66,7 @@ for i in range(niter):
 
   var_t[i] = iter*precision
 
-  fin = open("cross/{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, iter),"rb")
+  fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, iter),"rb")
   raw = fin.read(nx*ny*8)
   tmp = numpy.array(struct.unpack('<{}d'.format(nx*ny), raw))
   del(raw)

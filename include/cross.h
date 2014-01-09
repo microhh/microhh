@@ -47,8 +47,8 @@ class ccross
     cfields *fields;
     cmpi    *mpi;
 
-    double crosstime;
-    unsigned long icrosstime;
+    double sampletime;
+    unsigned long isampletime;
 
     std::string swcross;
 
