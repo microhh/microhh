@@ -51,9 +51,9 @@ class cbuffer
     cfields *fields; ///< Pointer to fields class.
     cmpi    *mpi;    ///< Pointer to mpi class.
 
-    double bufferz;     ///< Height above which the buffer is applied.
-    double buffersigma; ///< Damping frequency.
-    double bufferbeta;  ///< Exponent for damping increase with height.
+    double zstart; ///< Height above which the buffer layer is starting.
+    double sigma;  ///< Damping frequency.
+    double beta;   ///< Exponent for damping increase with height.
 
     int bufferkstart;  ///< Grid point at cell center at which damping starts.
     int bufferkstarth; ///< Grid point at cell face at which damping starts.

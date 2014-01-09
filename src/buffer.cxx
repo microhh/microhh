@@ -54,9 +54,9 @@ int cbuffer::readinifile(cinput *inputin)
 
   if(swbuffer == "1")
   {
-    n += inputin->getItem(&bufferz    , "buffer", "bufferz"     , "");
-    n += inputin->getItem(&buffersigma, "buffer", "buffersigma" , "", 2.);
-    n += inputin->getItem(&bufferbeta , "buffer", "bufferbeta"  , "", 2.);
+    n += inputin->getItem(&zstart, "buffer", "zstart", "");
+    n += inputin->getItem(&sigma , "buffer", "sigma" , "", 2.);
+    n += inputin->getItem(&beta  , "buffer", "beta"  , "", 2.);
   }
 
   // if one argument fails, then crash
@@ -114,12 +114,11 @@ int cbuffer::create(cinput *inputin)
     for(int k=grid->kstart; k<grid->kend; ++k)
     {
       // check if the cell center is in the buffer zone
-      if(grid->z[k] < bufferz)
+      if(grid->z[k] < this->zstart)
         ++bufferkstart;
       // check if the cell face is in the buffer zone
-      if(grid->zh[k] < bufferz)
+      if(grid->zh[k] < this->zstart)
         ++bufferkstarth;
-
     }
 
     // check whether the lowest of the two levels is contained in the buffer layer
@@ -156,20 +155,20 @@ int cbuffer::buffer(double * const restrict at, const double * const restrict a,
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double sigma;
+  double sigmaz;
   double zsizebuf;
 
-  zsizebuf = grid->zsize - bufferz;
+  zsizebuf = grid->zsize - this->zstart;
 
-  for(int k=bufferkstart; k<grid->kend; k++)
+  for(int k=bufferkstart; k<grid->kend; ++k)
   {
-    sigma = buffersigma*std::pow((z[k]-bufferz)/zsizebuf, bufferbeta);
-    for(int j=grid->jstart; j<grid->jend; j++)
+    sigmaz = this->sigma*std::pow((z[k]-this->zstart)/zsizebuf, this->beta);
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        at[ijk] -= sigma*(a[ijk]-abuf[k]);
+        at[ijk] -= sigmaz*(a[ijk]-abuf[k]);
       }
   }
 
