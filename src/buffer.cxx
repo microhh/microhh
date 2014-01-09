@@ -136,9 +136,9 @@ int cbuffer::exec()
   if(swbuffer == "1")
   {
     // calculate the buffer tendencies
-    buffer((*fields->mt["u"]).data, (*fields->mp["u"]).data, bufferprofs["u"], grid->z );
-    buffer((*fields->mt["v"]).data, (*fields->mp["v"]).data, bufferprofs["v"], grid->z );
-    buffer((*fields->mt["w"]).data, (*fields->mp["w"]).data, bufferprofs["w"], grid->zh);
+    buffer(fields->mt["u"]->data, fields->mp["u"]->data, bufferprofs["u"], grid->z );
+    buffer(fields->mt["v"]->data, fields->mp["v"]->data, bufferprofs["v"], grid->z );
+    buffer(fields->mt["w"]->data, fields->mp["w"]->data, bufferprofs["w"], grid->zh);
  
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       buffer(fields->st[it->first]->data, it->second->data, bufferprofs[it->first], grid->z);
