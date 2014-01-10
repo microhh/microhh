@@ -57,13 +57,13 @@ cstats_les::~cstats_les()
 int cstats_les::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&statstime, "stats", "statstime", "");
+  nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
   return nerror;
 }
 
 int cstats_les::init(double ifactor)
 {
-  istatstime = (unsigned long)(ifactor * statstime);
+  isampletime = (unsigned long)(ifactor * sampletime);
 
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
@@ -187,14 +187,14 @@ int cstats_les::create(int n)
 
 unsigned long cstats_les::gettimelim(unsigned long itime)
 {
-  unsigned long idtlim = istatstime -  itime % istatstime;
+  unsigned long idtlim = isampletime -  itime % isampletime;
   return idtlim;
 }
 
 int cstats_les::exec(int iteration, double time, unsigned long itime)
 {
   // check if time for execution
-  if(itime % istatstime != 0)
+  if(itime % isampletime != 0)
     return 0;
 
   if(mpi->mpiid == 0) std::printf("Saving stats for time %f\n", time);
