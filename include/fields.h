@@ -84,12 +84,11 @@ class cfields
 
     // perturbations
     double rndamp;
-    double rndamps;
     double rndz;
-    double rndbeta;
+    double rndexp;
     double vortexamp;
-    int nvortexpair;
-    int vortexaxis;
+    int vortexnpair;
+    std::string vortexaxis;
     
     // functions
     double calcmom_2nd(double *, double *, double *, double *);
@@ -101,4 +100,3 @@ class cfields
     inline double interp2(const double, const double);
 };
 #endif
-

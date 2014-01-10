@@ -71,7 +71,7 @@ int cfields::readinifile(cinput *inputin)
   int nerror = 0;
 
   // obligatory parameters
-  nerror += inputin->getItem(&visc, "fields", "visc", "" );
+  nerror += inputin->getItem(&visc, "fields", "visc", "");
 
   // read the name of the passive scalars
   std::vector<std::string> slist;
@@ -243,15 +243,15 @@ int cfields::create(cinput *inputin)
 
 int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data)
 {
-  int n = 0;
+  int nerror = 0;
 
   // set mpiid as random seed to avoid having the same field at all procs
   int static seed = 0;
 
   if(!seed)
   {
-    n += inputin->getItem(&seed, "fields", "rndseed" , "", 2);
-    seed += mpi->mpiid;
+    nerror += inputin->getItem(&seed, "fields", "rndseed", "", 0);
+    seed += mpi->mpiid + 2;
     std::srand(seed);
   }
   
@@ -263,81 +263,77 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   kk = grid->icells*grid->jcells;
   
   // look up the specific randomnizer variables
-  n += inputin->getItem(&rndamp , "fields", "rndamp" , fld, 0.);
-  n += inputin->getItem(&rndz   , "fields", "rndz"   , fld, 0.);
-  n += inputin->getItem(&rndbeta, "fields", "rndbeta", fld, 0.);
+  nerror += inputin->getItem(&rndamp, "fields", "rndamp", fld, 0.);
+  nerror += inputin->getItem(&rndz  , "fields", "rndz"  , fld, 0.);
+  nerror += inputin->getItem(&rndexp, "fields", "rndexp", fld, 0.);
 
   // find the location of the randomizer height
   kendrnd = grid->kstart;
   while(grid->zh[kendrnd+1] < rndz)
-  {
     ++kendrnd;
-  }
 
   if(kendrnd > grid->kend)
   {
-    printf("ERROR: Randomnizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
+    printf("ERROR: randomnizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
     return 1;
   }
   
-  if((int) kendrnd == grid->kstart)
-  {
+  if(kendrnd == grid->kstart)
     kendrnd = grid->kend;
-  }
 
   for(int k=grid->kstart; k<kendrnd; ++k)
   {
-    rndfac = std::pow((rndz-grid->z [k])/rndz, rndbeta);
+    rndfac = std::pow((rndz-grid->z [k])/rndz, rndexp);
     for(int j=grid->jstart; j<grid->jend; ++j)
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        data[ijk] = rndfac  * rndamp * ((double) std::rand() / (double) RAND_MAX - 0.5);
+        data[ijk] = rndfac * rndamp * ((double) std::rand() / (double) RAND_MAX - 0.5);
       }
   }
 
-  return (n>0);
+  return nerror;
 }
 
 int cfields::addvortexpair(cinput *inputin)
 {
+  int nerror = 0;
+
   // add a double vortex to the initial conditions
   const double pi = std::acos((double)-1.);
   int ijk, jj, kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-
-  int n = 0;
     
   // optional parameters
-  n += inputin->getItem(&nvortexpair, "fields", "nvortexpair", "", 0    );
-  n += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , "", 1.e-3);
-  n += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , "", 1    );
+  nerror += inputin->getItem(&vortexnpair, "fields", "vortexnpair", "", 0    );
+  nerror += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , "", 1.e-3);
+  nerror += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , "", "y"  );
 
-  if(nvortexpair > 0)
+  if(vortexnpair > 0)
   {
-    if(vortexaxis == 0)
+    if(vortexaxis == "y")
       for(int k=grid->kstart; k<grid->kend; ++k)
         for(int j=grid->jstart; j<grid->jend; ++j)
           for(int i=grid->istart; i<grid->iend; ++i)
           {
             ijk = i + j*jj + k*kk;
-            u->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->xh[i])/grid->xsize)*std::cos(pi*grid->z [k]/grid->zsize);
-            w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->x [i])/grid->xsize)*std::sin(pi*grid->zh[k]/grid->zsize);
+            u->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(grid->xh[i])/grid->xsize)*std::cos(pi*grid->z [k]/grid->zsize);
+            w->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(grid->x [i])/grid->xsize)*std::sin(pi*grid->zh[k]/grid->zsize);
           }
-    else if(vortexaxis == 1)
+    else if(vortexaxis == "x")
       for(int k=grid->kstart; k<grid->kend; ++k)
         for(int j=grid->jstart; j<grid->jend; ++j)
           for(int i=grid->istart; i<grid->iend; ++i)
           {
             ijk = i + j*jj + k*kk;
-            v->data[ijk] +=  vortexamp*std::sin(nvortexpair*2.*pi*(grid->yh[j])/grid->ysize)*std::cos(pi*grid->z [k]/grid->zsize);
-            w->data[ijk] += -vortexamp*std::cos(nvortexpair*2.*pi*(grid->y [j])/grid->ysize)*std::sin(pi*grid->zh[k]/grid->zsize);
+            v->data[ijk] +=  vortexamp*std::sin(vortexnpair*2.*pi*(grid->yh[j])/grid->ysize)*std::cos(pi*grid->z [k]/grid->zsize);
+            w->data[ijk] += -vortexamp*std::cos(vortexnpair*2.*pi*(grid->y [j])/grid->ysize)*std::sin(pi*grid->zh[k]/grid->zsize);
           }
   }
   
-  return (n>0);
+  return nerror;
 }
 
 int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict data, double offset)
