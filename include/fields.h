@@ -73,7 +73,6 @@ class cfields
     fieldmap st;
 
     // TODO remove these to and bring them to diffusion model
-    double tPr;
     double visc;
 
   private:

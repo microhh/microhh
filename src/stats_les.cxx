@@ -27,6 +27,7 @@
 #include "thermo_moist.h"
 #include "defines.h"
 #include "model.h"
+#include "diff_les2s.h"
 #include <netcdfcpp.h>
 
 #define NO_OFFSET 0.
@@ -261,10 +262,12 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
     calcflux(it->second->data, fields->w->data, profs[it->first+"w"].data, fields->s["tmp1"]->data, 0, 0);
 
   // calculate diffusive fluxes
+  // TODO find a prettier solution for this cast later
+  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
   calcdiff(fields->u->data, fields->s["evisc"]->data, profs["udiff"].data, grid->dzhi, fields->u->datafluxbot, fields->u->datafluxtop, 1.);
   calcdiff(fields->v->data, fields->s["evisc"]->data, profs["vdiff"].data, grid->dzhi, fields->v->datafluxbot, fields->v->datafluxtop, 1.);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcdiff(it->second->data, fields->s["evisc"]->data, profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, fields->tPr);
+    calcdiff(it->second->data, fields->s["evisc"]->data, profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
 
   addfluxes(profs["uflux"].data, profs["uw"].data, profs["udiff"].data);
   addfluxes(profs["vflux"].data, profs["vw"].data, profs["vdiff"].data);

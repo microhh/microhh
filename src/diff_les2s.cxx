@@ -41,18 +41,15 @@ cdiff_les2s::~cdiff_les2s()
 
 int cdiff_les2s::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
-  n += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5 );
-  n += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23);
+  nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5  );
+  nerror += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23 );
+  nerror += inputin->getItem(&tPr  , "diff", "tPr"  , "", 1./3.);
 
-  n += fields->initdfld("evisc");
+  nerror += fields->initdfld("evisc");
 
-  // if one argument fails, then crash
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
@@ -60,7 +57,7 @@ unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
   unsigned long idtlim;
   double dnmul;
 
-  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, fields->tPr);
+  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, this->tPr);
   // avoid zero division
   dnmul = std::max(dsmall, dnmul);
   idtlim = idt * dnmax/(dnmul*dt);
@@ -85,7 +82,7 @@ int cdiff_les2s::execvisc()
     evisc_neutral(fields->s["evisc"]->data,
                   fields->u->data, fields->v->data, fields->w->data,
                   fields->u->datafluxbot, fields->v->datafluxbot,
-                  grid->z, grid->dz);
+                  grid->z, grid->dz, boundaryptr->z0m);
   }
   // assume buoyancy calculation is needed
   else
@@ -100,7 +97,7 @@ int cdiff_les2s::execvisc()
           fields->u->datafluxbot, fields->v->datafluxbot, fields->sd["tmp1"]->datafluxbot,
           boundaryptr->ustar, boundaryptr->obuk,
           grid->z, grid->dz, grid->dzi,
-          fields->tPr);
+          boundaryptr->z0m);
   }
 
   return 0;
@@ -111,7 +108,7 @@ double cdiff_les2s::getdn(double dt)
   double dnmul;
 
   // calculate eddy viscosity
-  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, fields->tPr);
+  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, this->tPr);
 
   return dnmul*dt;
 }
@@ -123,7 +120,7 @@ int cdiff_les2s::exec()
   diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data);
 
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, fields->tPr);
+    diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, this->tPr);
 
   return 0;
 }
@@ -207,15 +204,14 @@ int cdiff_les2s::evisc(double * restrict evisc,
                         double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
                         double * restrict ustar, double * restrict obuk,
                         double * restrict z, double * restrict dz, double * restrict dzi,
-                        double tPr)
+                        double z0m)
 {
   int    ij,ijk,jj,kk,kstart;
   double dx,dy;
 
   // wall damping
   double mlen,mlen0,fac;
-  const double z0 = 0.1;
-  const double n  = 2.;
+  const double n = 2.;
 
   double RitPrratio;
 
@@ -228,9 +224,13 @@ int cdiff_les2s::evisc(double * restrict evisc,
 
   // bottom boundary, here strain is fully parametrized using MO
   // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-  mlen0 =cs*std::pow(dx*dy*dz[kstart], 1./3.);
-  mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[kstart]+z0), n))), 1./n);
+  mlen0 = this->cs*std::pow(dx*dy*dz[kstart], 1./3.);
+  mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[kstart]+z0m), n))), 1./n);
   fac   = std::pow(mlen, 2.);
+
+  // local copies to aid vectorization
+  double tPr = this->tPr;
+  double cs  = this->cs;
 
   for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -249,7 +249,7 @@ int cdiff_les2s::evisc(double * restrict evisc,
   {
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
+    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0m), n))), 1./n);
     fac   = std::pow(mlen, 2.);
 
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -257,7 +257,6 @@ int cdiff_les2s::evisc(double * restrict evisc,
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        // CvH use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
         // Add the buoyancy production to the TKE
         RitPrratio = (b[ijk+kk]-b[ijk-kk])*0.5*dzi[k] / evisc[ijk] / tPr;
         RitPrratio = std::min(RitPrratio, 1.-dsmall);
@@ -271,16 +270,15 @@ int cdiff_les2s::evisc(double * restrict evisc,
 }
 
 int cdiff_les2s::evisc_neutral(double * restrict evisc,
-                                double * restrict u, double * restrict v, double * restrict w,
-                                double * restrict ufluxbot, double * restrict vfluxbot,
-                                double * restrict z, double * restrict dz)
+                               double * restrict u, double * restrict v, double * restrict w,
+                               double * restrict ufluxbot, double * restrict vfluxbot,
+                               double * restrict z, double * restrict dz, double z0m)
 {
   int    ij,ijk,jj,kk,kstart;
   double dx,dy;
 
   // wall damping
   double mlen,mlen0,fac;
-  const double z0 = 0.1;
   const double n  = 2.;
 
   double RitPrratio;
@@ -292,11 +290,15 @@ int cdiff_les2s::evisc_neutral(double * restrict evisc,
   dx = grid->dx;
   dy = grid->dy;
 
+  // local copies to aid vectorization
+  double tPr = this->tPr;
+  double cs  = this->cs;
+
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0), n))), 1./n);
+    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(kappa*(z[k]+z0m), n))), 1./n);
     fac   = std::pow(mlen, 2.);
 
     for(int j=grid->jstart; j<grid->jend; ++j)

@@ -68,38 +68,32 @@ cfields::~cfields()
 int cfields::readinifile(cinput *inputin)
 {
   // input parameters
-  int n = 0;
+  int nerror = 0;
 
   // obligatory parameters
-  n += inputin->getItem(&visc , "fields", "visc", "" );
-
-  // LES
-  n += inputin->getItem(&tPr, "fields", "tPr", "", 1./3.);
+  nerror += inputin->getItem(&visc, "fields", "visc", "" );
 
   // read the name of the passive scalars
   std::vector<std::string> slist;
-  n += inputin->getList(&slist, "fields", "slist", "");
+  nerror += inputin->getList(&slist, "fields", "slist", "");
 
   // initialize the scalars
-  for(std::vector<std::string>::iterator it = slist.begin(); it!=slist.end(); ++it)
+  for(std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
   {
     if(initpfld(*it))
       return 1;
-    n += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
+    nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
   // initialize the basic set of fields
-  n += initmomfld(u, ut, "u");
-  n += initmomfld(v, vt, "v");
-  n += initmomfld(w, wt, "w");
-  n += initdfld("p");
-  n += initdfld("tmp1");
-  n += initdfld("tmp2");
+  nerror += initmomfld(u, ut, "u");
+  nerror += initmomfld(v, vt, "v");
+  nerror += initmomfld(w, wt, "w");
+  nerror += initdfld("p");
+  nerror += initdfld("tmp1");
+  nerror += initdfld("tmp2");
 
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 int cfields::init()
