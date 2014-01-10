@@ -163,7 +163,7 @@ swpres        & [grid][spatialorder]  & 0 & disable pressure solver \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swstats       & off   & off & disable statistics \\
+swstats       & 0     & 0   & disable statistics \\
               &       & dns & dns set of statistics \\
               &       & les & les set of statistics \\
 sampletime    & n/a   &     & sampling time step [s] \\
@@ -190,6 +190,8 @@ ps            & n/a       &       & surface pressure [Pa] \\
 \begin{supertabular}{lccl}
 starttime     & n/a   &       & start time of simulation [s] \\
 endtime       & n/a   &       & end time of simulation [s] \\
+savetime      & 3600  &       & interval for saving restart files [s] \\
+postproctime  & 100   &       & time step of postprocessing procedure \\
 adaptivestep  & true  & true  & enable adaptive time stepping \\
               &       & false & disable adaptive time stepping \\
 dt            & 0.1   &       & time step [s] (only valid if adaptivestep = false) \\
@@ -197,9 +199,7 @@ dtmax         & dbig  &       & maximum time step [s] \\
 rkorder       & 3     & 3     & Runge-Kutta 3rd-order accuracy, 3 steps \\
               &       & 4     & Runge-Kutta 4th-order accuracy, 5 steps \\
 outputiter    & 10    &       & frequency of diagnostic output to $<$casename$>$.out \\
-savetime      & 3600  &       & interval for saving restart files [s] \\
 iotimeprec    & 0     &       & precision of saving of time in 10-power (i.e. -1 == 0.1, etc.) \\
-postproctime  & 100   &       & time step of postprocessing procedure \\
 \end{supertabular}
 
 \end{document}
