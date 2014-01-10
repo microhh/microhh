@@ -56,11 +56,11 @@ class cforce
 
     bool allocated; ///< Boolean flag to indicate allocation of arrays.
 
-    std::string swforce; ///< Switch for the large scale pressure force.
-    std::string swls;    ///< Switch for large scale scalar tendencies.
-    std::string swwls;   ///< Switch for large-scale vertical transport of scalars.
+    std::string swlspres; ///< Switch for the large scale pressure force.
+    std::string swls;     ///< Switch for large scale scalar tendencies.
+    std::string swwls;    ///< Switch for large-scale vertical transport of scalars.
 
-    double uflow; ///< Mean velocity used to enforce constant flux.
+    double uflux; ///< Mean velocity used to enforce constant flux.
     double fc;    ///< Coriolis parameter.
 
     double *ug; ///< Pointer to array u-component geostrophic wind.

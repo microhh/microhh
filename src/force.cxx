@@ -41,7 +41,7 @@ cforce::~cforce()
 {
   if(allocated)
   {
-    if(swforce == "2")
+    if(swlspres == "geo")
     {
       delete[] ug;
       delete[] vg;
@@ -62,27 +62,32 @@ int cforce::readinifile(cinput *inputin)
 {
   int nerror = 0;
 
-  nerror += inputin->getItem(&swforce, "force", "swforce", "");
-  nerror += inputin->getItem(&swls   , "force", "swls"   , "", "0");
-  nerror += inputin->getItem(&swwls  , "force", "swwls"  , "", "0");
-  
-  if(swforce == "1")
-    nerror += inputin->getItem(&uflow, "force", "uflow", "");
-  else if(swforce == "2")
-    nerror += inputin->getItem(&fc, "force", "fc", "");
+  nerror += inputin->getItem(&swlspres, "force", "swlspres", "", "0");
+  nerror += inputin->getItem(&swls    , "force", "swls"    , "", "0");
+  nerror += inputin->getItem(&swwls   , "force", "swwls"   , "", "0");
+ 
+  if(swlspres != "0")
+  {
+    if(swlspres == "uflux")
+      nerror += inputin->getItem(&uflux, "force", "uflux", "");
+    else if(swlspres == "geo")
+      nerror += inputin->getItem(&fc, "force", "fc", "");
+    else
+    {
+      ++nerror;
+      if(mpi->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swlspres\n", swlspres.c_str());
+    }
+  }
 
   if(swls == "1")
     nerror += inputin->getList(&lslist, "force", "lslist", "");
 
-  if(nerror > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 int cforce::init()
 {
-  if(swforce == "2")
+  if(swlspres == "geo")
   {
     ug = new double[grid->kcells];
     vg = new double[grid->kcells];
@@ -106,7 +111,7 @@ int cforce::create(cinput *inputin)
 {
   int nerror = 0;
 
-  if(swforce == "2")
+  if(swlspres == "geo")
   {
     nerror += inputin->getProf(&ug[grid->kstart], "ug", grid->kmax);
     nerror += inputin->getProf(&vg[grid->kstart], "vg", grid->kmax);
@@ -130,10 +135,10 @@ int cforce::create(cinput *inputin)
 
 int cforce::exec(double dt)
 {
-  if(swforce == "1")
+  if(swlspres == "uflux")
     flux((*fields->ut).data, (*fields->u).data, grid->dz, dt);
 
-  else if(swforce == "2")
+  else if(swlspres == "geo")
   {
     if(grid->swspatialorder == "2")
       coriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
@@ -187,7 +192,7 @@ int cforce::flux(double * const restrict ut, const double * const restrict u,
   utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
 
   double fbody; 
-  fbody = (uflow - uavg - ugrid) / dt - utavg;
+  fbody = (uflux - uavg - ugrid) / dt - utavg;
 
   for(int n=0; n<grid->ncells; n++)
     ut[n] += fbody;
