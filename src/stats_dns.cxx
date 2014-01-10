@@ -228,8 +228,8 @@ int cstats_dns::exec(int iteration, double time, unsigned long itime)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, profs["u"].data, grid->u);
-  calcmean(fields->v->data, profs["v"].data, grid->v);
+  calcmean(fields->u->data, profs["u"].data, grid->utrans);
+  calcmean(fields->v->data, profs["v"].data, grid->vtrans);
   calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmean(it->second->data, profs[it->first].data, NO_OFFSET);

@@ -223,8 +223,8 @@ int cfields::create(cinput *inputin)
   n += addvortexpair(inputin);
   
   // Add the mean profiles to the fields
-  n += addmeanprofile(inputin, "u", mp["u"]->data, grid->u);
-  n += addmeanprofile(inputin, "v", mp["v"]->data, grid->v);
+  n += addmeanprofile(inputin, "u", mp["u"]->data, grid->utrans);
+  n += addmeanprofile(inputin, "v", mp["v"]->data, grid->vtrans);
  
   for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
     n += addmeanprofile(inputin, it->first, it->second->data, 0.);

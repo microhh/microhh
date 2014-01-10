@@ -110,16 +110,16 @@ vortexaxis    & x     &  & axis around which the vortices are evolving \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swlspres      & off   & off  & disable large scale pressure forcing \\
-              &       & geo  & use geostrophic wind as large scale pressure force \\
-              &       & flow & fix the mean flow velocity \\
-swls          & off   & off  & disable large scale source/sink \\
-              &       & on   & enable large scale source/sink \\
-lslist        & empty &      & list of prognostic variables having large scale source/sink \\
-swwls         & off   & off  & disable large scale vertical velocity \\
-              &       & on   & enable large scale vertical velocity \\
-fc            & n/a   &      & coriolis parameter [s$^{-1}$] \\
-uflow         & n/a   &      & mean flow velocity [m~s$^{-1}$] \\
+swlspres      & 0     & 0     & disable large scale pressure forcing \\
+              &       & geo   & use geostrophic wind as large scale pressure force \\
+              &       & uflux & fix the mean flow velocity in the x-direction \\
+swls          & 0     & 0     & disable large scale source/sink \\
+              &       & 1     & enable large scale source/sink \\
+lslist        & empty &       & list of prognostic variables having large scale source/sink \\
+swwls         & 0     & 0     & disable large scale vertical velocity \\
+              &       & 1     & enable large scale vertical velocity \\
+fc            & n/a   &       & coriolis parameter [s$^{-1}$] \\
+uflux         & n/a   &       & mean flow velocity [m~s$^{-1}$] \\
 \end{supertabular}
 \subsection*{[grid]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -127,16 +127,16 @@ uflow         & n/a   &      & mean flow velocity [m~s$^{-1}$] \\
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-xsize         & n/a   &   & x-size of domain [m]\\
-ysize         & n/a   &   & y-size of domain [m]\\
-zsize         & n/a   &   & z-size of domain [m]\\
-itot          & n/a   &   & number of grid points in x-direction \\
-jtot          & n/a   &   & number of grid points in y-direction \\
-ktot          & n/a   &   & number of grid points in z-direction \\
-spatialorder  & n/a   & 2 & 2nd-order spatial discretization \\
-              &       & 4 & 4th-order spatial discretization \\
-utrans        & 0.    &   & translation velocity in x-direction [m s$^{-1}$] \\
-vtrans        & 0.    &   & translation velocity in y-direction [m s$^{-1}$] \\
+xsize          & n/a   &   & x-size of domain [m]\\
+ysize          & n/a   &   & y-size of domain [m]\\
+zsize          & n/a   &   & z-size of domain [m]\\
+itot           & n/a   &   & number of grid points in x-direction \\
+jtot           & n/a   &   & number of grid points in y-direction \\
+ktot           & n/a   &   & number of grid points in z-direction \\
+swspatialorder & n/a   & 2 & 2nd-order spatial discretization \\
+               &       & 4 & 4th-order spatial discretization \\
+utrans         & 0.    &   & translation velocity in x-direction [m s$^{-1}$] \\
+vtrans         & 0.    &   & translation velocity in y-direction [m s$^{-1}$] \\
 \end{supertabular}
 \subsection*{[mpi]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}

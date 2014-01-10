@@ -162,11 +162,11 @@ int cboundary_surface::load(int iotime)
 int cboundary_surface::setvalues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, surfmbcbot, NO_VELOCITY, fields->visc, grid->u);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, surfmbcbot, NO_VELOCITY, fields->visc, grid->v);
+  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, surfmbcbot, NO_VELOCITY, fields->visc, grid->utrans);
+  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, surfmbcbot, NO_VELOCITY, fields->visc, grid->vtrans);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->u);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->v);
+  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->utrans);
+  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->vtrans);
 
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
@@ -180,8 +180,8 @@ int cboundary_surface::setvalues()
     int ij,jj;
     jj = grid->icells;
 
-    setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, 0, NO_VELOCITY, fields->visc, grid->u);
-    setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, 0, NO_VELOCITY, fields->visc, grid->v);
+    setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, 0, NO_VELOCITY, fields->visc, grid->utrans);
+    setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, 0, NO_VELOCITY, fields->visc, grid->vtrans);
 
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep

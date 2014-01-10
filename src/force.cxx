@@ -136,7 +136,7 @@ int cforce::create(cinput *inputin)
 int cforce::exec(double dt)
 {
   if(swlspres == "uflux")
-    flux((*fields->ut).data, (*fields->u).data, grid->dz, dt);
+    flux(fields->ut->data, fields->u->data, grid->dz, dt);
 
   else if(swlspres == "geo")
   {
@@ -173,7 +173,7 @@ int cforce::flux(double * const restrict ut, const double * const restrict u,
 
   uavg  = 0.;
   utavg = 0.;
-  ugrid = grid->u;
+  ugrid = grid->utrans;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -211,8 +211,8 @@ int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  ugrid = grid->u;
-  vgrid = grid->v;
+  ugrid = grid->utrans;
+  vgrid = grid->vtrans;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -248,8 +248,8 @@ int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
   jj2 = 2*grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
 
-  ugrid = grid->u;
-  vgrid = grid->v;
+  ugrid = grid->utrans;
+  vgrid = grid->vtrans;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)

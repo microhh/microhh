@@ -100,8 +100,8 @@ class cgrid
     double *yh; ///< Grid coordinate of cell faces in x-direction.
     double *zh; ///< Grid coordinate of cell faces in x-direction.
 
-    double u;
-    double v;
+    double utrans; ///< Galilean transformation velocity in x-direction.
+    double vtrans; ///< Galilean transformation velocity in y-direction.
 
     std::string swspatialorder; ///< Default spatial order of the operators to be used on this grid.
 
