@@ -85,6 +85,8 @@ class ctimeloop
     double ifactor;
     double iotimeprec;
 
+    unsigned long iiotimeprec;
+
   private:
     cmodel  *model;
     cgrid   *grid;

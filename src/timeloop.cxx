@@ -20,6 +20,7 @@
  */
 
 #include <cstdio>
+#include <cmath>
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
@@ -86,18 +87,36 @@ int ctimeloop::readinifile(cinput *inputin)
   time      = 0.;
   iteration = 0;
 
-  // calculate all the integer times
-  iendtime      = (unsigned long)(ifactor * endtime);
-  istarttime    = (unsigned long)(ifactor * starttime);
+  // set or calculate all the integer times
   itime         = (unsigned long) 0;
-  idt           = (unsigned long)(ifactor * dt);
-  idtmax        = (unsigned long)(ifactor * dtmax);
-  isavetime     = (unsigned long)(ifactor * savetime);
-  ipostproctime = (unsigned long)(ifactor * postproctime);
+
+  // add 0.5 to prevent roundoff errors
+  iendtime      = (unsigned long)(ifactor * endtime + 0.5);
+  istarttime    = (unsigned long)(ifactor * starttime + 0.5);
+  idt           = (unsigned long)(ifactor * dt + 0.5);
+  idtmax        = (unsigned long)(ifactor * dtmax + 0.5);
+  isavetime     = (unsigned long)(ifactor * savetime + 0.5);
+  ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
 
   idtlim = idt;
 
-  iotime = (int)(starttime / iotimeprec);
+  // take the proper precision for the output files into account
+  // first, strip precision to an exact 10 power
+  std::printf("CvH0 iotimeprec = %E\n", iotimeprec);
+  iotimeprec = std::pow(10., (int)(std::log10(iotimeprec) + 0.5));
+  std::printf("CvH1 iotimeprec = %E\n", iotimeprec);
+
+  // then, create precision in integer number
+  iiotimeprec = (unsigned long)(ifactor * iotimeprec + 0.5);
+
+  // check whether starttime and savetime are an exact multiple of iotimeprec
+  if((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
+  {
+    if(mpi->mpiid == 0) std::printf("ERROR starttime or savetime is not an exact multiple of iotimeprec\n");
+    return 1;
+  }
+
+  iotime = (int)(istarttime / iiotimeprec);
 
   gettimeofday(&start, NULL);
 
@@ -107,23 +126,22 @@ int ctimeloop::readinifile(cinput *inputin)
 int ctimeloop::settimelim()
 {
   idtlim = idtmax;
-  idtlim = std::min(idtlim,isavetime -  itime % isavetime);
+  idtlim = std::min(idtlim, isavetime - itime % isavetime);
 
   return 0;
 }
 
 int ctimeloop::timestep()
 {
-  time   += dt;
-  itime  += idt;
-  iotime = (int)(1./iotimeprec*itime/ifactor);
+  time  += dt;
+  itime += idt;
+  iotime = (int)(itime/iiotimeprec);
 
-  iteration++;
+  ++iteration;
 
   if(itime >= iendtime)
-  {
     loop = false;
-  }
+  
   return 0;
 }
 
@@ -382,7 +400,7 @@ int ctimeloop::load(int starttime)
 int ctimeloop::postprocstep()
 {
   itime += ipostproctime;
-  iotime = (int)(1./iotimeprec*itime/ifactor);
+  iotime = (int)(itime/iiotimeprec);
 
   if(itime > iendtime)
     loop = false;
