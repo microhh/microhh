@@ -66,7 +66,7 @@ int ctimeloop::readinifile(cinput *inputin)
   n += inputin->getItem(&dt          , "time", "dt"          , "", dtmax);
   n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 3    );
   n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 20   );
-  n += inputin->getItem(&iotimeprec  , "time", "iotimeprec"  , "", 1.   );
+  n += inputin->getItem(&iotimeprec  , "time", "iotimeprec"  , "", 0    );
 
   if(mpi->mode == "post")
     n += inputin->getItem(&postproctime, "time", "postproctime", "");
@@ -101,13 +101,7 @@ int ctimeloop::readinifile(cinput *inputin)
   idtlim = idt;
 
   // take the proper precision for the output files into account
-  // first, strip precision to an exact 10 power
-  std::printf("CvH0 iotimeprec = %E\n", iotimeprec);
-  iotimeprec = std::pow(10., (int)(std::log10(iotimeprec) + 0.5));
-  std::printf("CvH1 iotimeprec = %E\n", iotimeprec);
-
-  // then, create precision in integer number
-  iiotimeprec = (unsigned long)(ifactor * iotimeprec + 0.5);
+  iiotimeprec = (unsigned long)(ifactor * std::pow(10., iotimeprec) + 0.5);
 
   // check whether starttime and savetime are an exact multiple of iotimeprec
   if((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
