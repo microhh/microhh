@@ -23,11 +23,14 @@
 #define TIMELOOP
 
 #include <sys/time.h>
-#include "input.h"
-#include "grid.h"
-#include "fields.h"
-#include "master.h"
 #include <string>
+
+// forward declarations to reduce compilation time
+class cinput;
+class cmaster;
+class cmodel;
+class cgrid;
+class cfields;
 
 class ctimeloop
 {
@@ -87,10 +90,10 @@ class ctimeloop
     double ifactor;
 
   private:
+    cmaster *master;
     cmodel  *model;
     cgrid   *grid;
     cfields *fields;
-    cmpi    *mpi;
 
     timeval start;
     timeval end;

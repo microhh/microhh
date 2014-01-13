@@ -25,7 +25,7 @@
 #include "field3d.h"
 
 // forward declarations to reduce compilation time
-class cmpi;
+class cmaster;
 class cmodel;
 class cgrid;
 
@@ -79,9 +79,9 @@ class cfields
 
   private:
     // variables
-    cmodel *model;
-    cgrid  *grid;
-    cmpi   *mpi;
+    cmodel  *model;
+    cgrid   *grid;
+    cmaster *master;
     bool allocated;
 
     // perturbations

@@ -25,7 +25,7 @@
 #include <netcdfcpp.h>
 
 // forward declarations to reduce compilation time
-class cmpi;
+class cmaster;
 class cmodel;
 class cgrid;
 class cfields;
@@ -42,10 +42,10 @@ class ccross
     int exec(double, unsigned long, int);
 
   private:
+    cmaster *master;
     cmodel  *model;
     cgrid   *grid;
     cfields *fields;
-    cmpi    *mpi;
 
     double sampletime;
     unsigned long isampletime;

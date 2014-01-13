@@ -24,15 +24,15 @@
 #include <mpi.h>
 #include "grid.h"
 #include "defines.h"
-#include "mpiinterface.h"
+#include "master.h"
 
-cmpi::cmpi()
+cmaster::cmaster()
 {
   initialized = false;
   allocated   = false;
 }
 
-cmpi::~cmpi()
+cmaster::~cmaster()
 {
   if(allocated)
   {
@@ -48,7 +48,7 @@ cmpi::~cmpi()
     MPI_Finalize();
 }
 
-int cmpi::readinifile(cinput *inputin)
+int cmaster::readinifile(cinput *inputin)
 {
   int n = 0;
 
@@ -61,7 +61,7 @@ int cmpi::readinifile(cinput *inputin)
   return 0;
 }
 
-int cmpi::startup(int argc, char *argv[])
+int cmaster::startup(int argc, char *argv[])
 {
   int n;
 
@@ -114,7 +114,7 @@ int cmpi::startup(int argc, char *argv[])
   return 0;
 }
 
-int cmpi::init()
+int cmaster::init()
 {
   int n;
 
@@ -186,12 +186,12 @@ int cmpi::init()
   return 0;
 }
 
-double cmpi::gettime()
+double cmaster::gettime()
 {
   return MPI_Wtime();
 }
 
-int cmpi::checkerror(int n)
+int cmaster::checkerror(int n)
 {
   char errbuffer[MPI_MAX_ERROR_STRING];
   int errlen;
@@ -206,7 +206,7 @@ int cmpi::checkerror(int n)
   return 0;
 }
 
-int cmpi::waitall()
+int cmaster::waitall()
 {
   // wait for MPI processes and reset the number of pending requests
   MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
@@ -216,38 +216,38 @@ int cmpi::waitall()
 }
 
 // do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
-int cmpi::broadcast(char *data, int datasize)
+int cmaster::broadcast(char *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_CHAR, 0, commxy);
   return 0;
 }
 
 // overloaded broadcast functions
-int cmpi::broadcast(int *data, int datasize)
+int cmaster::broadcast(int *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_INT, 0, commxy);
   return 0;
 }
 
-int cmpi::broadcast(unsigned long *data, int datasize)
+int cmaster::broadcast(unsigned long *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, commxy);
   return 0;
 }
 
-int cmpi::broadcast(double *data, int datasize)
+int cmaster::broadcast(double *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_DOUBLE, 0, commxy);
   return 0;
 }
 
-int cmpi::sum(int *var, int datasize)
+int cmaster::sum(int *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_INT, MPI_SUM, commxy);
   return 0;
 }
 
-int cmpi::sum(double *var, int datasize)
+int cmaster::sum(double *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_SUM, commxy);
   return 0;

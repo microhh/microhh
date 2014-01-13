@@ -23,7 +23,7 @@
 #define BUFFER
 
 // forward declarations to reduce compilation time
-class cmpi;
+class cmaster;
 class cmodel;
 class cgrid;
 class cfields;
@@ -45,10 +45,10 @@ class cbuffer
     int exec();                ///< Add the tendencies created by the damping.
 
   private:
+    cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
-    cmpi    *mpi;    ///< Pointer to mpi class.
 
     double zstart; ///< Height above which the buffer layer is starting.
     double sigma;  ///< Damping frequency.

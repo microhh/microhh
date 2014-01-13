@@ -23,10 +23,10 @@
 #define ADVEC
 
 // forward declarations to speed up build time
+class cmaster;
 class cmodel;
 class cgrid;
 class cfields;
-class cmpi;
 
 /**
  * Base class for the advection scheme.
@@ -48,10 +48,10 @@ class cadvec
 
 
   protected:
+    cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
-    cmpi    *mpi;    ///< Pointer to mpi class.
 
     double cflmax; ///< Maximum allowed value for the CFL criterion.
 };

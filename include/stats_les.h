@@ -26,12 +26,6 @@
 #include <stats.h>
 
 // forward declarations to reduce compilation time
-class cmpi;
-class cmodel;
-class cgrid;
-class cfields;
-
-// forward declarations
 class cmodel;
 
 class cstats_les : public cstats

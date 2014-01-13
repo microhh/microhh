@@ -26,7 +26,7 @@
 class cmodel;
 class cgrid;
 class cfields;
-class cmpi;
+class cmaster;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings
@@ -49,10 +49,10 @@ class cforce
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
 
   private:
+    cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
-    cmpi    *mpi;    ///< Pointer to mpi class.
 
     bool allocated; ///< Boolean flag to indicate allocation of arrays.
 

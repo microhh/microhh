@@ -27,12 +27,12 @@
 #include <vector>
 
 // forward declaration to avoid circular dependency
-class cmpi;
+class cmaster;
 
 class cinput
 {
   public:
-    cinput(cmpi *);
+    cinput(cmaster *);
     ~cinput();
     int readinifile ();
     int readproffile();
@@ -54,7 +54,7 @@ class cinput
     int printUnused();
 
   private:
-    cmpi *mpi;
+    cmaster *master;
 
     template <class valuetype>
     int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);

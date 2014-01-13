@@ -25,21 +25,17 @@
 #include <string>
 
 // forward declarations to reduce compilation time
-class cmpi;
+class cmaster;
 class cgrid;
 
 class cfield3d
 {
   public:
     // functions
-    cfield3d(cgrid *, cmpi *, std::string);
+    cfield3d(cgrid *, cmaster *, std::string);
     ~cfield3d();
 
     int init();
-    // int boundary_bottop(int);
-    // int boundary_cyclic();
-    // int save(int, double *, double *);
-    // int load(int, double *, double *);
     int checkfornan();
 
     // variables
@@ -55,8 +51,8 @@ class cfield3d
     double visc;
 
   private:
-    cgrid *grid;
-    cmpi  *mpi;
+    cgrid   *grid;
+    cmaster *master;
     bool allocated;
 };
 #endif

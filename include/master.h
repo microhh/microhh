@@ -19,8 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MPIINTERFACE
-#define MPIINTERFACE
+#ifndef MASTER
+#define MASTER
 
 #ifdef PARALLEL
 #include <mpi.h>
@@ -28,11 +28,11 @@
 #include <string>
 #include "input.h"
 
-class cmpi
+class cmaster
 {
   public:
-    cmpi();
-    ~cmpi();
+    cmaster();
+    ~cmaster();
 
     int startup(int, char**);
     int readinifile(cinput *);

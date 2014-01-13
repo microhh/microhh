@@ -26,18 +26,18 @@
 #include "defines.h"
 #include "master.h"
 
-cmpi::cmpi()
+cmaster::cmaster()
 {
   initialized = false;
   allocated   = false;
 }
 
-cmpi::~cmpi()
+cmaster::~cmaster()
 {
   if(mpiid == 0) std::printf("Finished run on %d processes\n", nprocs);
 }
 
-int cmpi::readinifile(cinput *inputin)
+int cmaster::readinifile(cinput *inputin)
 {
   int n = 0;
 
@@ -50,7 +50,7 @@ int cmpi::readinifile(cinput *inputin)
   return 0;
 }
 
-int cmpi::startup(int argc, char *argv[])
+int cmaster::startup(int argc, char *argv[])
 {
   initialized = true;
 
@@ -86,7 +86,7 @@ int cmpi::startup(int argc, char *argv[])
   return 0;
 }
 
-int cmpi::init()
+int cmaster::init()
 {
   if(nprocs != npx*npy)
   {
@@ -103,7 +103,7 @@ int cmpi::init()
   return 0;
 }
 
-double cmpi::gettime()
+double cmaster::gettime()
 {
   timeval timestruct;
   gettimeofday(&timestruct, NULL);
@@ -112,29 +112,29 @@ double cmpi::gettime()
   return time;
 }
 
-int cmpi::waitall()
+int cmaster::waitall()
 {
   return 0;
 }
 
 // all broadcasts return directly, because there is nothing to broadcast
-int cmpi::broadcast(char *data, int datasize)
+int cmaster::broadcast(char *data, int datasize)
 {
   return 0;
 }
 
 // overloaded broadcast functions
-int cmpi::broadcast(int *data, int datasize)
+int cmaster::broadcast(int *data, int datasize)
 {
   return 0;
 }
 
-int cmpi::broadcast(unsigned long *data, int datasize)
+int cmaster::broadcast(unsigned long *data, int datasize)
 {
   return 0;
 }
 
-int cmpi::broadcast(double *data, int datasize)
+int cmaster::broadcast(double *data, int datasize)
 {
   return 0;
 }

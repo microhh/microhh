@@ -23,10 +23,10 @@
 #define BOUNDARY
 
 // forward declarations to speed up build time
+class cmaster;
 class cmodel;
 class cgrid;
 class cfields;
-class cmpi;
 
 /**
  * Structure containing the boundary options and values per 3d field.
@@ -60,10 +60,10 @@ class cboundary
     int exec(); ///< Update the boundary conditions.
 
   protected:
+    cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
-    cmpi    *mpi;    ///< Pointer to mpi class.
 
     int mbcbot;
     int mbctop;

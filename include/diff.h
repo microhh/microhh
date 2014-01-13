@@ -26,7 +26,7 @@
 class cmodel;
 class cgrid;
 class cfields;
-class cmpi;
+class cmaster;
 
 class cdiff
 {
@@ -48,6 +48,6 @@ class cdiff
     cmodel  *model;
     cgrid   *grid;
     cfields *fields;
-    cmpi    *mpi;
+    cmaster *master;
 };
 #endif

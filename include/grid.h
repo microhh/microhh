@@ -30,7 +30,7 @@
 
 // forward declaration
 class cmodel;
-class cmpi;
+class cmaster;
 
 /**
  * Class for the grid settings and operators.
@@ -146,10 +146,10 @@ class cgrid
     int interpolatey_4th(double *, double *, int); ///< Fourth order interpolation in the y-direction.
 
   private:
-    cmpi *mpi;      ///< Pointer to mpi class.
-    bool allocated; ///< Boolean to check whether grid data is allocated.
-    bool mpitypes;  ///< Boolean to check whether MPI datatypes are created.
-    bool fftwplan;  ///< Boolean to check whether FFTW3 plans are created.
+    cmaster *master; ///< Pointer to master class.
+    bool allocated;  ///< Boolean to check whether grid data is allocated.
+    bool mpitypes;   ///< Boolean to check whether MPI datatypes are created.
+    bool fftwplan;   ///< Boolean to check whether FFTW3 plans are created.
 
 #ifdef PARALLEL
     // MPI Datatypes

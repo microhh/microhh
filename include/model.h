@@ -25,7 +25,7 @@
 #include <string>
 
 // forward declaration to prevent very long building times
-class cmpi;
+class cmaster;
 class cinput;
 class cgrid;
 class cfields;
@@ -43,7 +43,7 @@ class ccross;
 class cmodel
 {
   public:
-    cmodel(cmpi *, cinput *);
+    cmodel(cmaster *, cinput *);
     ~cmodel();
     int readinifile();
     int init();
@@ -54,7 +54,7 @@ class cmodel
 
     // make the pointers public for use in other classes
     // CvH maybe it is safer to create get functions
-    cmpi    *mpi;
+    cmaster *master;
     cinput  *input;
     cgrid   *grid;
     cfields *fields;

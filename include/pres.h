@@ -26,7 +26,7 @@
 class cmodel;
 class cgrid;
 class cfields;
-class cmpi;
+class cmaster;
 
 class cpres
 {
@@ -42,9 +42,9 @@ class cpres
     virtual double check();
 
   protected:
+    cmaster *master;
     cmodel  *model;
     cgrid   *grid;
     cfields *fields;
-    cmpi    *mpi;
 };
 #endif
