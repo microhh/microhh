@@ -1,4 +1,5 @@
 #!/bin/bash
+python drycbllesprof.py
 rm -f *.000*
 rm -f *.out
 ./microhh init drycblles

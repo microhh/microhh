@@ -1,4 +1,6 @@
 #!/bin/bash
+python drycbllesprof.py
+
 rm -f *.000*
 rm -f *.out
 mpiexec -n 8 ./microhh init drycblles
