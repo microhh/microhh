@@ -87,24 +87,24 @@ cgrid::~cgrid()
  */
 int cgrid::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
-  n += inputin->getItem(&xsize, "grid", "xsize", "");
-  n += inputin->getItem(&ysize, "grid", "ysize", "");
-  n += inputin->getItem(&zsize, "grid", "zsize", "");
+  nerror += inputin->getItem(&xsize, "grid", "xsize", "");
+  nerror += inputin->getItem(&ysize, "grid", "ysize", "");
+  nerror += inputin->getItem(&zsize, "grid", "zsize", "");
 
-  n += inputin->getItem(&itot, "grid", "itot", "");
-  n += inputin->getItem(&jtot, "grid", "jtot", "");
-  n += inputin->getItem(&ktot, "grid", "ktot", "");
+  nerror += inputin->getItem(&itot, "grid", "itot", "");
+  nerror += inputin->getItem(&jtot, "grid", "jtot", "");
+  nerror += inputin->getItem(&ktot, "grid", "ktot", "");
 
   // velocity of the grid for gaelian transformation
-  n += inputin->getItem(&u, "grid", "u", "", 0.);
-  n += inputin->getItem(&v, "grid", "v", "", 0.);
+  nerror += inputin->getItem(&utrans, "grid", "utrans", "", 0.);
+  nerror += inputin->getItem(&vtrans, "grid", "vtrans", "", 0.);
 
-  n += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
+  nerror += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
 
-  if(n > 0)
-    return 1;
+  if(nerror > 0)
+    return nerror;
 
   if(!(swspatialorder == "2" || swspatialorder == "4"))
   {

@@ -64,7 +64,7 @@ class ctimeloop
     double time;
     double dt;
     double dtmax;
-    double runtime;
+    double endtime;
     double postproctime;
     double savetime;
     double starttime;
@@ -72,18 +72,19 @@ class ctimeloop
 
     int iteration;
     int iotime;
+    int iotimeprec;
 
     unsigned long itime;
-    unsigned long iruntime;
+    unsigned long istarttime;
+    unsigned long iendtime;
     unsigned long idt;
     unsigned long idtmax;
     unsigned long ipostproctime;
     unsigned long isavetime;
-    unsigned long istarttime;
     unsigned long idtlim;
+    unsigned long iiotimeprec;
 
     double ifactor;
-    double precision;
 
   private:
     cmodel  *model;

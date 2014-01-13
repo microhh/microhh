@@ -41,29 +41,25 @@ cbuffer::cbuffer(cmodel *modelin)
 cbuffer::~cbuffer()
 {
   if(allocated)
-    for (std::map<std::string,double*>::iterator it = bufferprofs.begin(); it!=bufferprofs.end(); it++)
+    for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
       delete[] it->second;
 }
 
 int cbuffer::readinifile(cinput *inputin)
 {
-  int n = 0;
+  int nerror = 0;
 
   // optional parameters
-  n += inputin->getItem(&swbuffer, "buffer", "swbuffer", "", "0");
+  nerror += inputin->getItem(&swbuffer, "buffer", "swbuffer", "", "0");
 
   if(swbuffer == "1")
   {
-    n += inputin->getItem(&zstart, "buffer", "zstart", "");
-    n += inputin->getItem(&sigma , "buffer", "sigma" , "", 2.);
-    n += inputin->getItem(&beta  , "buffer", "beta"  , "", 2.);
+    nerror += inputin->getItem(&zstart, "buffer", "zstart", "");
+    nerror += inputin->getItem(&sigma , "buffer", "sigma" , "", 2.);
+    nerror += inputin->getItem(&beta  , "buffer", "beta"  , "", 2.);
   }
 
-  // if one argument fails, then crash
-  if(n > 0)
-    return 1;
-
-  return 0;
+  return nerror;
 }
 
 int cbuffer::init()
@@ -96,8 +92,8 @@ int cbuffer::create(cinput *inputin)
     // in case of u and v, subtract the grid velocity
     for(int k=grid->kstart; k<grid->kend; ++k)
     {
-      bufferprofs["u"][k] -= grid->u;
-      bufferprofs["v"][k] -= grid->v;
+      bufferprofs["u"][k] -= grid->utrans;
+      bufferprofs["v"][k] -= grid->vtrans;
     }
 
     // allocate the buffer for w on 0

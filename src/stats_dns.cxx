@@ -55,13 +55,13 @@ cstats_dns::~cstats_dns()
 int cstats_dns::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&statstime, "stats", "statstime", "");
+  nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
   return nerror;
 }
 
 int cstats_dns::init(double ifactor)
 {
-  istatstime = (unsigned long)(ifactor * statstime);
+  isampletime = (unsigned long)(ifactor * sampletime);
 
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
@@ -208,14 +208,14 @@ int cstats_dns::create(int n)
 
 unsigned long cstats_dns::gettimelim(unsigned long itime)
 {
-  unsigned long idtlim = istatstime -  itime % istatstime;
+  unsigned long idtlim = isampletime -  itime % isampletime;
   return idtlim;
 }
 
 int cstats_dns::exec(int iteration, double time, unsigned long itime)
 {
   // check if time for execution
-  if(itime % istatstime != 0)
+  if(itime % isampletime != 0)
     return 0;
 
   if(mpi->mpiid == 0) std::printf("Saving stats for time %f\n", time);
@@ -228,8 +228,8 @@ int cstats_dns::exec(int iteration, double time, unsigned long itime)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, profs["u"].data, grid->u);
-  calcmean(fields->v->data, profs["v"].data, grid->v);
+  calcmean(fields->u->data, profs["u"].data, grid->utrans);
+  calcmean(fields->v->data, profs["v"].data, grid->vtrans);
   calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmean(it->second->data, profs[it->first].data, NO_OFFSET);

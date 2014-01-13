@@ -41,8 +41,12 @@ class cboundary_surface : public cboundary
     int save(int);
     int load(int);
 
+    // make these variables public for out-of-class usage
     double *obuk;
     double *ustar;
+
+    double z0m;
+    double z0h;
 
   private:
     // surface scheme
@@ -71,8 +75,6 @@ class cboundary_surface : public cboundary
     inline double phim(double);
     inline double phih(double);
     double ustarin;
-    double z0m;
-    double z0h;
 
     bool allocated;
 

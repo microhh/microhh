@@ -55,8 +55,8 @@ class cstats
     cfields *fields;
     cmpi    *mpi;
 
-    double statstime;
-    unsigned long istatstime;
+    double sampletime;
+    unsigned long isampletime;
 };
 #endif
 

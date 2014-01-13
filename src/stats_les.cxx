@@ -27,6 +27,7 @@
 #include "thermo_moist.h"
 #include "defines.h"
 #include "model.h"
+#include "diff_les2s.h"
 #include <netcdfcpp.h>
 
 #define NO_OFFSET 0.
@@ -56,13 +57,13 @@ cstats_les::~cstats_les()
 int cstats_les::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&statstime, "stats", "statstime", "");
+  nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
   return nerror;
 }
 
 int cstats_les::init(double ifactor)
 {
-  istatstime = (unsigned long)(ifactor * statstime);
+  isampletime = (unsigned long)(ifactor * sampletime);
 
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
@@ -186,14 +187,14 @@ int cstats_les::create(int n)
 
 unsigned long cstats_les::gettimelim(unsigned long itime)
 {
-  unsigned long idtlim = istatstime -  itime % istatstime;
+  unsigned long idtlim = isampletime -  itime % isampletime;
   return idtlim;
 }
 
 int cstats_les::exec(int iteration, double time, unsigned long itime)
 {
   // check if time for execution
-  if(itime % istatstime != 0)
+  if(itime % isampletime != 0)
     return 0;
 
   if(mpi->mpiid == 0) std::printf("Saving stats for time %f\n", time);
@@ -206,8 +207,8 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, profs["u"].data, grid->u);
-  calcmean(fields->v->data, profs["v"].data, grid->v);
+  calcmean(fields->u->data, profs["u"].data, grid->utrans);
+  calcmean(fields->v->data, profs["v"].data, grid->vtrans);
   calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
@@ -261,10 +262,12 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
     calcflux(it->second->data, fields->w->data, profs[it->first+"w"].data, fields->s["tmp1"]->data, 0, 0);
 
   // calculate diffusive fluxes
+  // TODO find a prettier solution for this cast later
+  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
   calcdiff(fields->u->data, fields->s["evisc"]->data, profs["udiff"].data, grid->dzhi, fields->u->datafluxbot, fields->u->datafluxtop, 1.);
   calcdiff(fields->v->data, fields->s["evisc"]->data, profs["vdiff"].data, grid->dzhi, fields->v->datafluxbot, fields->v->datafluxtop, 1.);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcdiff(it->second->data, fields->s["evisc"]->data, profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, fields->tPr);
+    calcdiff(it->second->data, fields->s["evisc"]->data, profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
 
   addfluxes(profs["uflux"].data, profs["uw"].data, profs["udiff"].data);
   addfluxes(profs["vflux"].data, profs["vw"].data, profs["vdiff"].data);
