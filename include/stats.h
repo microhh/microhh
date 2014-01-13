@@ -23,12 +23,13 @@
 #define STATS
 
 #include <netcdfcpp.h>
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
+#include <stats.h>
 
-// forward declaration of model to remove circular dependency
+// forward declarations to reduce compilation time
+class cmpi;
 class cmodel;
+class cgrid;
+class cfields;
 
 struct statsvar
 {

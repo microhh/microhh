@@ -23,13 +23,13 @@
 #define STATS_DNS
 
 #include <netcdfcpp.h>
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
-#include "stats.h"
+#include <stats.h>
 
-// forward declaration of model to remove circular dependency
+// forward declarations to reduce compilation time
+class cmpi;
 class cmodel;
+class cgrid;
+class cfields;
 
 class cstats_dns : public cstats
 {

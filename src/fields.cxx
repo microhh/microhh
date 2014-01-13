@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"

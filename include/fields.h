@@ -22,12 +22,14 @@
 #ifndef FIELDS
 #define FIELDS
 #include <map>
-#include "grid.h"
-#include "mpiinterface.h"
 #include "field3d.h"
 
-typedef std::map<std::string, cfield3d *> fieldmap;
+// forward declarations to reduce compilation time
+class cmpi;
 class cmodel;
+class cgrid;
+
+typedef std::map<std::string, cfield3d *> fieldmap;
 
 class cfields
 {

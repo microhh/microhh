@@ -20,8 +20,7 @@
  */
 
 #include <cstdio>
-#include "grid.h"
-#include "mpiinterface.h"
+#include "master.h"
 #include "model.h"
 
 int main(int argc, char *argv[])

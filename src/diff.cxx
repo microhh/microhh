@@ -24,7 +24,7 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
-#include "mpiinterface.h"
+#include "master.h"
 #include "diff.h"
 #include "defines.h"
 #include "model.h"

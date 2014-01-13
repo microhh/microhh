@@ -24,7 +24,7 @@
 #include <sys/time.h>
 #include "grid.h"
 #include "defines.h"
-#include "mpiinterface.h"
+#include "master.h"
 
 cmpi::cmpi()
 {

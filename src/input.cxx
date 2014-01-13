@@ -24,7 +24,7 @@
 #include <cctype>
 #include <map>
 #include "input.h"
-#include "mpiinterface.h"
+#include "master.h"
 #include <algorithm>
 #include <string>
 #include <iostream>

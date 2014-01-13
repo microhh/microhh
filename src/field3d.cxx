@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <iostream>
 #include <cmath>
+#include "master.h"
 #include "grid.h"
 #include "field3d.h"
 #include "defines.h"

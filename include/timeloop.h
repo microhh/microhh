@@ -26,7 +26,7 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "mpiinterface.h"
+#include "master.h"
 #include <string>
 
 class ctimeloop

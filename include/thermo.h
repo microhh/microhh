@@ -24,7 +24,7 @@
 
 #include "grid.h"
 #include "fields.h"
-#include "mpiinterface.h"
+#include "master.h"
 
 class cthermo
 {

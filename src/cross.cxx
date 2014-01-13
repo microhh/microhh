@@ -21,6 +21,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "cross.h"

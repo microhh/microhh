@@ -24,7 +24,7 @@
 
 #include "grid.h"
 #include "field3d.h"
-#include "mpiinterface.h"
+#include "master.h"
 
 class cmpicheck
 {

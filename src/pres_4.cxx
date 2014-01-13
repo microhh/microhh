@@ -23,6 +23,7 @@
 #include <cmath>
 #include <algorithm>
 #include <fftw3.h>
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "pres_4.h"

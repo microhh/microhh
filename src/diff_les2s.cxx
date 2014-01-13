@@ -24,7 +24,7 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
-#include "mpiinterface.h"
+#include "master.h"
 #include "diff_les2s.h"
 #include "boundary_surface.h"
 #include "defines.h"

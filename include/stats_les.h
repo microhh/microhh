@@ -23,10 +23,13 @@
 #define STATS_LES
 
 #include <netcdfcpp.h>
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
-#include "stats.h"
+#include <stats.h>
+
+// forward declarations to reduce compilation time
+class cmpi;
+class cmodel;
+class cgrid;
+class cfields;
 
 // forward declarations
 class cmodel;

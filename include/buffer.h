@@ -22,12 +22,11 @@
 #ifndef BUFFER
 #define BUFFER
 
-#include "grid.h"
-#include "fields.h"
-#include "mpiinterface.h"
-
-// forward declaration
+// forward declarations to reduce compilation time
+class cmpi;
 class cmodel;
+class cgrid;
+class cfields;
 
 /**
  * Class for the buffer layer in the top of the domain.

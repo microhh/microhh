@@ -23,8 +23,10 @@
 #define FIELD3D
 
 #include <string>
-#include "grid.h"
-#include "mpiinterface.h"
+
+// forward declarations to reduce compilation time
+class cmpi;
+class cgrid;
 
 class cfield3d
 {

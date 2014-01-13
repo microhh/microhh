@@ -22,7 +22,7 @@
 #ifndef PARALLEL
 #include <fftw3.h>
 #include <cstdio>
-#include "mpiinterface.h"
+#include "master.h"
 #include "grid.h"
 #include "defines.h"
 
