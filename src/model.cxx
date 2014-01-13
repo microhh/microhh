@@ -64,10 +64,10 @@
 #include "stats_dns.h"
 #include "stats_les.h"
 
-cmodel::cmodel(cmpi *mpiin, cinput *inputin)
+cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
-  mpi   = mpiin;
-  input = inputin;
+  master = masterin;
+  input  = inputin;
 
   // create the grid class
   grid = new cgrid(this);
@@ -202,11 +202,11 @@ int cmodel::readinifile()
     return 1;
 
   if(swthermo== "moist")
-    thermo = new cthermo_moist(grid, fields, mpi);
+    thermo = new cthermo_moist(grid, fields, master);
   else if(swthermo == "dry")
-    thermo = new cthermo_dry(grid, fields, mpi);
+    thermo = new cthermo_dry(grid, fields, master);
   else if(swthermo == "off")
-    thermo = new cthermo(grid, fields, mpi);
+    thermo = new cthermo(grid, fields, master);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
@@ -382,7 +382,7 @@ int cmodel::exec()
       break;
 
     // RUN MODE
-    if(mpi->mode == "run")
+    if(master->mode == "run")
     {
       // integrate in time
       timeloop->exec();
@@ -404,7 +404,7 @@ int cmodel::exec()
     }
 
     // POST PROCESS MODE
-    else if(mpi->mode == "post")
+    else if(master->mode == "post")
     {
       // step to the next time step
       timeloop->postprocstep();
@@ -451,14 +451,14 @@ int cmodel::outputfile(bool doclose)
   static FILE *dnsout = NULL;
 
   // write output file header to the main processor and set the time
-  if(mpi->mpiid == 0 && dnsout == NULL)
+  if(master->mpiid == 0 && dnsout == NULL)
   {
-    std::string outputname = mpi->simname + ".out";
+    std::string outputname = master->simname + ".out";
     dnsout = std::fopen(outputname.c_str(), "a");
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
-    start = mpi->gettime();
+    start = master->gettime();
   }
 
   if(timeloop->docheck() && !timeloop->insubstep())
@@ -473,12 +473,12 @@ int cmodel::outputfile(bool doclose)
     cfl     = advec->getcfl(timeloop->dt);
     dn      = diff->getdn(timeloop->dt);
 
-    end     = mpi->gettime();
+    end     = master->gettime();
     cputime = end - start;
     start   = end;
 
     // write the output to file
-    if(mpi->mpiid == 0)
+    if(master->mpiid == 0)
     {
       std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
         iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
@@ -488,7 +488,7 @@ int cmodel::outputfile(bool doclose)
   if(doclose)
   {
     // close the output file
-    if(mpi->mpiid == 0)
+    if(master->mpiid == 0)
     std::fclose(dnsout);
   }
 

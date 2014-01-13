@@ -81,10 +81,10 @@ int cstats_les::create(int n)
   int nerror = 0;
 
   // create a NetCDF file for the statistics
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     char filename[256];
-    std::sprintf(filename, "%s.%07d.nc", mpi->simname.c_str(), n);
+    std::sprintf(filename, "%s.%07d.nc", master->simname.c_str(), n);
     dataFile = new NcFile(filename, NcFile::New);
     if(!dataFile->is_valid())
     {
@@ -95,12 +95,12 @@ int cstats_les::create(int n)
       initialized = true;
   }
   // crash on all processes in case the file could not be written
-  mpi->broadcast(&nerror, 1);
+  master->broadcast(&nerror, 1);
   if(nerror)
     return 1;
 
   // create dimensions
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     z_dim  = dataFile->add_dim("z" , grid->kmax);
     zh_dim = dataFile->add_dim("zh", grid->kmax+1);
@@ -173,7 +173,7 @@ int cstats_les::create(int n)
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     addprof(it->first+"flux", "zh");
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
@@ -197,9 +197,9 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
   if(itime % isampletime != 0)
     return 0;
 
-  if(mpi->mpiid == 0) std::printf("Saving stats for time %f\n", time);
+  if(master->mpiid == 0) std::printf("Saving stats for time %f\n", time);
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     t_var   ->put_rec(&time     , nstats);
     iter_var->put_rec(&iteration, nstats);
@@ -275,7 +275,7 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
     addfluxes(profs[it->first+"flux"].data, profs[it->first+"w"].data, profs[it->first+"diff"].data);
 
   // put the data into the NetCDF file
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
       profs[it->first].ncvar->put_rec(&profs[it->first].data[grid->kstart], nstats);
@@ -292,7 +292,7 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
 int cstats_les::addprof(std::string name, std::string zloc)
 {
   // create the NetCDF variable
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     if(zloc == "z")
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );

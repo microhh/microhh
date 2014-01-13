@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cmath>
 #include "input.h"
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "timeloop.h"
@@ -36,7 +37,7 @@ ctimeloop::ctimeloop(cmodel *modelin)
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
-  mpi    = model->mpi;
+  master = model->master;
 
   substep = 0;
   ifactor = 1e6;
@@ -52,7 +53,7 @@ int ctimeloop::readinifile(cinput *inputin)
   int n = 0;
 
   // obligatory parameters
-  if(mpi->mode == "init")
+  if(master->mode == "init")
     starttime = 0.;
   else
     n += inputin->getItem(&starttime, "time", "starttime", "");
@@ -68,7 +69,7 @@ int ctimeloop::readinifile(cinput *inputin)
   n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 20   );
   n += inputin->getItem(&iotimeprec  , "time", "iotimeprec"  , "", 0    );
 
-  if(mpi->mode == "post")
+  if(master->mode == "post")
     n += inputin->getItem(&postproctime, "time", "postproctime", "");
 
   // if one argument fails, then crash
@@ -78,7 +79,7 @@ int ctimeloop::readinifile(cinput *inputin)
   // 3 and 4 are the only valid values for the rkorder
   if(!(rkorder == 3 || rkorder == 4))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%d\" is an illegal value for rkorder\n", rkorder);
+    if(master->mpiid == 0) std::printf("ERROR \"%d\" is an illegal value for rkorder\n", rkorder);
     return 1;
   }
 
@@ -106,7 +107,7 @@ int ctimeloop::readinifile(cinput *inputin)
   // check whether starttime and savetime are an exact multiple of iotimeprec
   if((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR starttime or savetime is not an exact multiple of iotimeprec\n");
+    if(master->mpiid == 0) std::printf("ERROR starttime or savetime is not an exact multiple of iotimeprec\n");
     return 1;
   }
 
@@ -319,7 +320,7 @@ bool ctimeloop::insubstep()
 
 int ctimeloop::save(int starttime)
 {
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
@@ -350,7 +351,7 @@ int ctimeloop::load(int starttime)
 {
   int nerror = 0;
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
@@ -376,13 +377,13 @@ int ctimeloop::load(int starttime)
     std::printf("OK\n");
   }
 
-  mpi->broadcast(&nerror, 1);
+  master->broadcast(&nerror, 1);
   if(nerror)
     return 1;
 
-  mpi->broadcast(&itime    , 1);
-  mpi->broadcast(&idt      , 1);
-  mpi->broadcast(&iteration, 1);
+  master->broadcast(&itime    , 1);
+  master->broadcast(&idt      , 1);
+  master->broadcast(&iteration, 1);
 
   // calculate the double precision time from the integer time
   time = (double)itime / ifactor;

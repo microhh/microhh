@@ -222,8 +222,8 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
       for(i=0; i<iblock; i++)
       {
         // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-        iindex = mpi->mpicoordy * iblock + i;
-        jindex = mpi->mpicoordx * jblock + j;
+        iindex = master->mpicoordy * iblock + i;
+        jindex = master->mpicoordx * jblock + j;
 
         ijk  = i + j*jj + k*kk;
         b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
@@ -234,8 +234,8 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
 #pragma ivdep
     for(i=0; i<iblock; i++)
     {
-      iindex = mpi->mpicoordy * iblock + i;
-      jindex = mpi->mpicoordx * jblock + j;
+      iindex = master->mpicoordy * iblock + i;
+      jindex = master->mpicoordx * jblock + j;
 
       // substitute BC's
       ijk = i + j*jj;

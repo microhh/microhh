@@ -29,7 +29,7 @@
 class cthermo
 {
   public:
-    cthermo(cgrid *, cfields *, cmpi *);
+    cthermo(cgrid *, cfields *, cmaster *);
     virtual ~cthermo();
     virtual int readinifile(cinput *);
     virtual int exec();
@@ -45,7 +45,7 @@ class cthermo
   protected:
     cgrid   *grid;
     cfields *fields;
-    cmpi    *mpi;
+    cmaster *master;
 
     std::string swthermo;
 };

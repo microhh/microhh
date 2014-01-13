@@ -33,7 +33,7 @@
  */
 cgrid::cgrid(cmodel *modelin)
 {
-  mpi = modelin->mpi;
+  master = modelin->master;
 
   allocated = false;
   mpitypes  = false;
@@ -108,7 +108,7 @@ int cgrid::readinifile(cinput *inputin)
 
   if(!(swspatialorder == "2" || swspatialorder == "4"))
   {
-    if(mpi->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
     return 1;
   }
  
@@ -138,42 +138,42 @@ int cgrid::readinifile(cinput *inputin)
 int cgrid::init()
 {
   // check whether the grid fits the processor configuration
-  if(itot % mpi->npx != 0)
+  if(itot % master->npx != 0)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, mpi->npx);
+    if(master->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, master->npx);
     return 1;
   }
-  if(itot % mpi->npy != 0)
+  if(itot % master->npy != 0)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, mpi->npy);
+    if(master->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, master->npy);
     return 1;
   }
   // check this one only when npy > 1, since the transpose in that direction only happens then
-  if(jtot % mpi->npx != 0)
+  if(jtot % master->npx != 0)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, mpi->npx);
+    if(master->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, master->npx);
     return 1;
   }
-  if(jtot % mpi->npy != 0)
+  if(jtot % master->npy != 0)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, mpi->npy);
+    if(master->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, master->npy);
     return 1;
   }
-  if(ktot % mpi->npx != 0)
+  if(ktot % master->npx != 0)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, mpi->npx);
+    if(master->mpiid == 0) std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, master->npx);
     return 1;
   }
 
   // calculate the grid dimensions per process
-  imax   = itot / mpi->npx;
-  jmax   = jtot / mpi->npy;
+  imax   = itot / master->npx;
+  jmax   = jtot / master->npy;
   kmax   = ktot;
 
   // calculate the block sizes for the transposes
-  iblock = itot / mpi->npy;
-  jblock = jtot / mpi->npx;
-  kblock = ktot / mpi->npx;
+  iblock = itot / master->npy;
+  jblock = jtot / master->npx;
+  kblock = ktot / master->npx;
 
   // calculate the grid dimensions including ghost cells
   icells  = (imax+2*igc);
@@ -251,8 +251,8 @@ int cgrid::calculate()
   dy = ysize / jtot;
 
   // calculate the offset per process to get the true x- and y-coordinate
-  double xoff = mpi->mpicoordx * xsize / mpi->npx;
-  double yoff = mpi->mpicoordy * ysize / mpi->npy;
+  double xoff = master->mpicoordx * xsize / master->npx;
+  double yoff = master->mpicoordy * ysize / master->npy;
 
   // calculate the x and y coordinates
   for(i=0; i<icells; ++i)

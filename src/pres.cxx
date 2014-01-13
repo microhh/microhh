@@ -34,7 +34,7 @@ cpres::cpres(cmodel *modelin)
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
-  mpi    = model->mpi;
+  master = model->master;
 }
 
 cpres::~cpres()

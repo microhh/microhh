@@ -31,9 +31,9 @@
 #include <iomanip>
 #include <sstream>
 
-cinput::cinput(cmpi *mpiin)
+cinput::cinput(cmaster *masterin)
 {
-  mpi = mpiin;
+  master = masterin;
 }
 
 cinput::~cinput()
@@ -54,9 +54,9 @@ int cinput::readinifile()
 
   // read the input file
   FILE *inputfile;
-  std::string inputfilename = mpi->simname + ".ini";
+  std::string inputfilename = master->simname + ".ini";
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     inputfile = fopen(inputfilename.c_str(), "r");
     if(inputfile == NULL)
@@ -67,7 +67,7 @@ int cinput::readinifile()
   }
 
   // broadcast the error count
-  mpi->broadcast(&nerror, 1);
+  master->broadcast(&nerror, 1);
   if(nerror)
     return 1;
 
@@ -77,7 +77,7 @@ int cinput::readinifile()
   int nlines  = 0;
   int nline;
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
     while(std::fgets(inputline, 256, inputfile) != NULL)
@@ -85,18 +85,18 @@ int cinput::readinifile()
     std::printf("Inifile contains %d lines\n", nlines);
     rewind(inputfile);
   }
-  mpi->broadcast(&nlines, 1);
+  master->broadcast(&nlines, 1);
 
   // check the cases: comments, empty line, block, value, rubbish
   for(int nn=0; nn<nlines; nn++)
   {
     nline = nn+1;
-    if(mpi->mpiid == 0)
+    if(master->mpiid == 0)
     {
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
     }
-    mpi->broadcast(inputline, 256);
+    master->broadcast(inputline, 256);
 
     for(int i = 0; inputline[i] != '\0'; i++)
     {
@@ -123,7 +123,7 @@ int cinput::readinifile()
       }
       else
       {
-        if(mpi->mpiid == 0) std::printf("ERROR line %d: illegal block specification [%s]\n", nline, temp1);
+        if(master->mpiid == 0) std::printf("ERROR line %d: illegal block specification [%s]\n", nline, temp1);
         return 1;
       }
       continue;
@@ -138,7 +138,7 @@ int cinput::readinifile()
       {
         if(!blockset)
         {
-          if(mpi->mpiid == 0) std::printf("ERROR line %d: illegal item [?][%s] = \"%s\"\n", nline, lhs, rhs);
+          if(master->mpiid == 0) std::printf("ERROR line %d: illegal item [?][%s] = \"%s\"\n", nline, lhs, rhs);
           nerrors++;
           return 1;
         }
@@ -158,14 +158,14 @@ int cinput::readinifile()
         }
         else
         {
-          if(mpi->mpiid == 0) std::printf("ERROR line %d: Item [%s][%s][%s] defined for the second time\n", nline, block, lhs, element);
+          if(master->mpiid == 0) std::printf("ERROR line %d: Item [%s][%s][%s] defined for the second time\n", nline, block, lhs, element);
           return 1;
         }
       }
       else
       {
         n = std::sscanf(inputline, "%[^=]", temp1);
-        if(mpi->mpiid == 0) std::printf("ERROR line %d: illegal item  [%s][%s]\n", nline, block, temp1);
+        if(master->mpiid == 0) std::printf("ERROR line %d: illegal item  [%s][%s]\n", nline, block, temp1);
         nerrors++;
       }
     }
@@ -176,13 +176,13 @@ int cinput::readinifile()
       n = std::sscanf(inputline, "%[^\n]", temp1);
       if(n > 0)
       {
-        if(mpi->mpiid == 0) std::printf("ERROR line %d: \"%s\" is illegal input\n", nline, temp1);
+        if(master->mpiid == 0) std::printf("ERROR line %d: \"%s\" is illegal input\n", nline, temp1);
         nerrors++;
       }
     }
   }
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     std::printf("Inifile has been processed with %d errors\n", nerrors);
     fclose(inputfile);
@@ -200,9 +200,9 @@ int cinput::readproffile()
 
   // read the input file
   FILE *inputfile;
-  std::string inputfilename = mpi->simname + ".prof";
+  std::string inputfilename = master->simname + ".prof";
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     inputfile = fopen(inputfilename.c_str(), "r");
     if(inputfile == NULL)
@@ -213,7 +213,7 @@ int cinput::readproffile()
   }
 
   // broadcast the error count
-  mpi->broadcast(&nerror, 1);
+  master->broadcast(&nerror, 1);
   if(nerror)
     return 1;
 
@@ -222,7 +222,7 @@ int cinput::readproffile()
   int nvar   = 0;
   // std::vector<std::string> varnames;
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
     while(std::fgets(inputline, 256, inputfile) != NULL)
@@ -230,7 +230,7 @@ int cinput::readproffile()
     std::printf("Inifile contains %d lines\n", nlines);
     rewind(inputfile);
   }
-  mpi->broadcast(&nlines, 1);
+  master->broadcast(&nlines, 1);
 
   int nn;
 
@@ -238,12 +238,12 @@ int cinput::readproffile()
   for(nn=0; nn<nlines; nn++)
   {
     nline = nn+1;
-    if(mpi->mpiid == 0)
+    if(master->mpiid == 0)
     {
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
     }
-    mpi->broadcast(inputline, 256);
+    master->broadcast(inputline, 256);
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
@@ -264,7 +264,7 @@ int cinput::readproffile()
 
       if(!std::isalpha(substring[0]))
       {
-        if(mpi->mpiid == 0)
+        if(master->mpiid == 0)
         {
           std::printf("ERROR at line %d: \"%s\" is not a variable name\n", nline, substring);
           fclose(inputfile);
@@ -272,7 +272,7 @@ int cinput::readproffile()
         return 1;
       }
 
-      if(mpi->mpiid == 0) std::printf("Found variable \"%s\"\n", substring);
+      if(master->mpiid == 0) std::printf("Found variable \"%s\"\n", substring);
 
       // temporarily store the variable name
       varnames.push_back(std::string(substring));
@@ -283,7 +283,7 @@ int cinput::readproffile()
 
     if(nvar == 0)
     {
-      if(mpi->mpiid == 0)
+      if(master->mpiid == 0)
       {
         std::printf("ERROR no variable names in header\n");
         fclose(inputfile);
@@ -306,12 +306,12 @@ int cinput::readproffile()
   for(nn++; nn<nlines; nn++)
   {
     nline = nn+1;
-    if(mpi->mpiid == 0)
+    if(master->mpiid == 0)
     {
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
     }
-    mpi->broadcast(inputline, 256);
+    master->broadcast(inputline, 256);
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
@@ -337,7 +337,7 @@ int cinput::readproffile()
 
       if(n != 1)
       {
-        if(mpi->mpiid == 0)
+        if(master->mpiid == 0)
         {
           std::printf("ERROR line %d: \"%s\" is not a correct data value\n", nline, substring);
           fclose(inputfile);
@@ -354,7 +354,7 @@ int cinput::readproffile()
 
     if(ncols != nvar)
     {
-      if(mpi->mpiid == 0)
+      if(master->mpiid == 0)
       {
         std::printf("ERROR line %d: %d data columns, but %d defined variables\n", nline, ncols, nvar);
         fclose(inputfile);
@@ -367,7 +367,7 @@ int cinput::readproffile()
       proflist[varnames[n]].push_back(varvalues[n]);
   }
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
     fclose(inputfile);
 
   return 0;
@@ -451,7 +451,7 @@ int cinput::parseItem(valuetype *value, std::string cat, std::string item, std::
       }
       else
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
         return 1;
       }
     }
@@ -462,7 +462,7 @@ int cinput::parseItem(valuetype *value, std::string cat, std::string item, std::
       itemtype = "(global)";
     }
   }
-  if(mpi->mpiid == 0) 
+  if(master->mpiid == 0) 
     std::cout << std::left  << std::setw(30) << itemout << "= " 
               << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
               << "   " << itemtype << std::endl;
@@ -486,11 +486,11 @@ int cinput::checkItem(int *value, std::string cat, std::string item, std::string
     {
       if (el == "default")
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -538,11 +538,11 @@ int cinput::checkItem(double *value, std::string cat, std::string item, std::str
     {
       if(el == "default")
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -600,11 +600,11 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
     {
       if (el == "default")
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -651,11 +651,11 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
     {
       if(el == "default")
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), inputstring);
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -691,7 +691,7 @@ int cinput::parseList(std::vector<valuetype> *value, std::string cat, std::strin
   itemout = "[" + cat + "][" + item + "]";
   if(checkItemExists(cat, item))
   {
-    if(mpi->mpiid == 0)
+    if(master->mpiid == 0)
       std::cout << std::left  << std::setw(30) << itemout << "= "
                 << std::right << std::setw(11) << "EMPTY LIST" << std::endl;
   }
@@ -705,7 +705,7 @@ int cinput::parseList(std::vector<valuetype> *value, std::string cat, std::strin
       liststream << *it << ", ";
     }
     liststream << *(value->end()-1);
-    if(mpi->mpiid == 0)
+    if(master->mpiid == 0)
       std::cout << std::left  << std::setw(30) << itemout << "= "
                 << std::right << std::setw(11) << liststream.str() << std::endl;
   }
@@ -739,11 +739,11 @@ int cinput::checkList(std::vector<std::string> *value, std::string cat, std::str
       {
         if (el == "default")
         {
-          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), inputstring);
+          if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), inputstring);
         }
         else
         {
-          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+          if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
         }
         // empty the vector
         value->clear();
@@ -787,11 +787,11 @@ int cinput::checkList(std::vector<int> *value, std::string cat, std::string item
       {
         if (el == "default")
         {
-          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type INT\n", cat.c_str(), item.c_str(), inputstring);
+          if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type INT\n", cat.c_str(), item.c_str(), inputstring);
         }
         else
         {
-          if(mpi->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+          if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
         }
         // empty the vector
         value->clear();
@@ -819,11 +819,11 @@ int cinput::printUnused()
         {
           if(it3->first == "default")
           {
-            if(mpi->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
+            if(master->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
           }
           else
           {
-            if(mpi->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
+            if(master->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
           }
         }
       }
@@ -841,20 +841,20 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
     int profsize = proflist[varname].size();
     if(profsize < kmaxin)
     {
-      if(mpi->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
+      if(master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
       return 1;
     }
     if(profsize > kmaxin)
-      if(mpi->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
+      if(master->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
 
     for(int k=0; k<kmaxin; k++)
       data[k] = proflist[varname][k];
 
-    if(mpi->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
+    if(master->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
   }
   else
   {
-    if(mpi->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
+    if(master->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
     for(int k=0; k<kmaxin; k++)
       data[k] = 0.;
   }

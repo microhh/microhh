@@ -34,7 +34,7 @@ cbuffer::cbuffer(cmodel *modelin)
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
-  mpi    = model->mpi;
+  master = model->master;
 
   allocated = false;
 }
@@ -122,7 +122,7 @@ int cbuffer::create(cinput *inputin)
     if(bufferkstarth == grid->kend)
     {
       ++nerror;
-      if(mpi->mpiid == 0) std::printf("ERROR buffer is too close to the model top\n");
+      if(master->mpiid == 0) std::printf("ERROR buffer is too close to the model top\n");
     }
   }
   return nerror;

@@ -32,7 +32,7 @@ cforce::cforce(cmodel *modelin)
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
-  mpi    = model->mpi;
+  master = model->master;
 
   allocated = false;
 }
@@ -75,7 +75,7 @@ int cforce::readinifile(cinput *inputin)
     else
     {
       ++nerror;
-      if(mpi->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swlspres\n", swlspres.c_str());
+      if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swlspres\n", swlspres.c_str());
     }
   }
 

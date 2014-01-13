@@ -70,7 +70,7 @@ int cboundary_surface::readinifile(cinput *inputin)
   // crash in case fixed gradient is prescribed
   if(surfmbcbot == BC_NEUMANN)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR neumann bc is not supported in surface model\n");
+    if(master->mpiid == 0) std::printf("ERROR neumann bc is not supported in surface model\n");
     ++nerror;
   }
   // read the ustar value only if fixed fluxes are prescribed
@@ -86,14 +86,14 @@ int cboundary_surface::readinifile(cinput *inputin)
     // crash in case fixed gradient is prescribed
     if(surfsbcbot[it->first] == BC_NEUMANN)
     {
-      if(mpi->mpiid == 0) std::printf("ERROR fixed gradient bc is not supported in surface model\n");
+      if(master->mpiid == 0) std::printf("ERROR fixed gradient bc is not supported in surface model\n");
       ++nerror;
     }
 
     // crash in case of fixed momentum flux and dirichlet bc for scalar
     if(surfsbcbot[it->first] == BC_DIRICHLET && surfmbcbot == BC_USTAR)
     {
-      if(mpi->mpiid == 0) std::printf("ERROR fixed ustar bc in combination with dirichlet bc for scalars is not supported\n");
+      if(master->mpiid == 0) std::printf("ERROR fixed ustar bc in combination with dirichlet bc for scalars is not supported\n");
       ++nerror;
     }
   }
@@ -128,14 +128,14 @@ int cboundary_surface::save(int iotime)
   char filename[256];
 
   std::sprintf(filename, "obuk.%07d", iotime);
-  if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
+  if(master->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
   if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
   {
-    if(mpi->mpiid == 0) std::printf("FAILED\n");
+    if(master->mpiid == 0) std::printf("FAILED\n");
     return 1;
   }
   else
-    if(mpi->mpiid == 0) std::printf("OK\n");
+    if(master->mpiid == 0) std::printf("OK\n");
 
   return 0;
 }
@@ -145,14 +145,14 @@ int cboundary_surface::load(int iotime)
   char filename[256];
 
   std::sprintf(filename, "obuk.%07d", iotime);
-  if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+  if(master->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
   if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
   {
-    if(mpi->mpiid == 0) std::printf("FAILED\n");
+    if(master->mpiid == 0) std::printf("FAILED\n");
     return 1;
   }
   else
-    if(mpi->mpiid == 0) std::printf("OK\n");
+    if(master->mpiid == 0) std::printf("OK\n");
 
   grid->boundary_cyclic2d(obuk);
 

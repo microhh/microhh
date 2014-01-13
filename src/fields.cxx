@@ -32,9 +32,9 @@
 
 cfields::cfields(cmodel *modelin)
 {
-  model = modelin;
-  grid  = model->grid;
-  mpi   = model->mpi;
+  model  = modelin;
+  grid   = model->grid;
+  master = model->master;
 
   allocated = false;
 }
@@ -99,7 +99,7 @@ int cfields::readinifile(cinput *inputin)
 
 int cfields::init()
 {
-  if(mpi->mpiid == 0) std::printf("Initializing fields\n");
+  if(master->mpiid == 0) std::printf("Initializing fields\n");
 
   int n = 0;
 
@@ -150,11 +150,11 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   }
 
   // add a new prognostic momentum variable
-  mp[fldname] = new cfield3d(grid, mpi, fldname);
+  mp[fldname] = new cfield3d(grid, master, fldname);
 
   // add a new tendency for momentum variable
   std::string fldtname = fldname + "t";
-  mt[fldname] = new cfield3d(grid, mpi, fldtname);
+  mt[fldname] = new cfield3d(grid, master, fldtname);
 
   // TODO remove these from the model?
   fld  = mp[fldname];
@@ -177,11 +177,11 @@ int cfields::initpfld(std::string fldname)
   }
   
   // add a new scalar variable
-  sp[fldname] = new cfield3d(grid, mpi, fldname);
+  sp[fldname] = new cfield3d(grid, master, fldname);
 
   // add a new tendency for scalar variable
   std::string fldtname = fldname + "t";
-  st[fldname] = new cfield3d(grid, mpi, fldtname);
+  st[fldname] = new cfield3d(grid, master, fldtname);
 
   // add the prognostic variable and its tendency to the collection
   // of all fields and tendencies
@@ -200,7 +200,7 @@ int cfields::initdfld(std::string fldname)
     return 1;
   }
 
-  sd[fldname] = new cfield3d(grid, mpi, fldname );
+  sd[fldname] = new cfield3d(grid, master, fldname );
   s [fldname] = sd[fldname];
 
   return 0;  
@@ -208,7 +208,7 @@ int cfields::initdfld(std::string fldname)
 
 int cfields::create(cinput *inputin)
 {
-  if(mpi->mpiid == 0) std::printf("Creating fields\n");
+  if(master->mpiid == 0) std::printf("Creating fields\n");
   
   int n = 0;
   
@@ -252,7 +252,7 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   if(!seed)
   {
     nerror += inputin->getItem(&seed, "fields", "rndseed", "", 0);
-    seed += mpi->mpiid + 2;
+    seed += master->mpiid + 2;
     std::srand(seed);
   }
   
@@ -368,15 +368,15 @@ int cfields::load(int n)
     // the offset is kept at zero, otherwise bitwise identical restarts is not possible
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-    if(mpi->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+    if(master->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
     if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
     {
-      if(mpi->mpiid == 0) std::printf("FAILED\n");
+      if(master->mpiid == 0) std::printf("FAILED\n");
       ++nerror;
     }
     else
     {
-      if(mpi->mpiid == 0) std::printf("OK\n");
+      if(master->mpiid == 0) std::printf("OK\n");
     }  
   }
 
@@ -390,17 +390,17 @@ int cfields::save(int n)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-    if(mpi->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
+    if(master->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
 
     // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
     if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
     {
-      if(mpi->mpiid == 0) std::printf("FAILED\n");
+      if(master->mpiid == 0) std::printf("FAILED\n");
       ++nerror;
     }  
     else
     {
-      if(mpi->mpiid == 0) std::printf("OK\n");
+      if(master->mpiid == 0) std::printf("OK\n");
     }
   }
 

@@ -33,14 +33,13 @@
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-
 class cthermo_dry : public cthermo
 {
   public:
-    cthermo_dry(cgrid *, cfields *, cmpi *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_dry();                          ///< Destructor of the dry thermodynamics class.
-    int readinifile(cinput *);               ///< Processing data of the input file.
-    int exec();                              ///< Add the tendencies belonging to the buoyancy.
+    cthermo_dry(cgrid *, cfields *, cmaster *); ///< Constructor of the dry thermodynamics class.
+    ~cthermo_dry();                             ///< Destructor of the dry thermodynamics class.
+    int readinifile(cinput *);                  ///< Processing data of the input file.
+    int exec();                                 ///< Add the tendencies belonging to the buoyancy.
 
     int getbuoyancy(cfield3d *, cfield3d *); ///< Compute the buoyancy for usage in another routine.
     int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.

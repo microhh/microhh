@@ -25,7 +25,7 @@
 #include "thermo_dry.h"
 #include "defines.h"
 
-cthermo_dry::cthermo_dry(cgrid *gridin, cfields *fieldsin, cmpi *mpiin) : cthermo(gridin, fieldsin, mpiin)
+cthermo_dry::cthermo_dry(cgrid *gridin, cfields *fieldsin, cmaster *masterin) : cthermo(gridin, fieldsin, masterin)
 {
   swthermo = "dry";
 }

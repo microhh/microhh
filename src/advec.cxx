@@ -33,7 +33,7 @@ cadvec::cadvec(cmodel *modelin)
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
-  mpi    = model->mpi;
+  master = model->master;
 }
 
 cadvec::~cadvec()

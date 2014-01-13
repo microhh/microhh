@@ -343,7 +343,7 @@ int cgrid::save()
 
   fftwplan = true;
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
@@ -394,7 +394,7 @@ int cgrid::load()
   // LOAD THE FFTW PLAN
   std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-  if(mpi->mpiid == 0)
+  if(master->mpiid == 0)
     std::printf("Loading \"%s\" ... ", filename);
 
   int n = fftw_import_wisdom_from_filename(filename);

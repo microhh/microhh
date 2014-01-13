@@ -42,7 +42,7 @@ cboundary::cboundary(cmodel *modelin)
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
-  mpi    = model->mpi;
+  master = model->master;
 }
 
 cboundary::~cboundary()
@@ -63,7 +63,7 @@ int cboundary::readinifile(cinput *inputin)
   // there is no option for prescribing ustar without surface model
   if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
   {
-    if(mpi->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
+    if(master->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
     ++nerror;
   }
 
@@ -88,7 +88,7 @@ int cboundary::processbcs(cinput *inputin)
     mbcbot = BC_USTAR;
   else
   {
-    if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for mbcbot\n", swbot.c_str());
+    if(master->mpiid == 0) std::printf("ERROR %s is illegal value for mbcbot\n", swbot.c_str());
     nerror++;
   }
 
@@ -101,7 +101,7 @@ int cboundary::processbcs(cinput *inputin)
     mbctop = BC_USTAR;
   else
   {
-    if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for mbctop\n", swtop.c_str());
+    if(master->mpiid == 0) std::printf("ERROR %s is illegal value for mbctop\n", swtop.c_str());
     nerror++;
   }
 
@@ -123,7 +123,7 @@ int cboundary::processbcs(cinput *inputin)
       sbc[it->first]->bcbot = BC_FLUX;
     else
     {
-      if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for sbcbot\n", swbot.c_str());
+      if(master->mpiid == 0) std::printf("ERROR %s is illegal value for sbcbot\n", swbot.c_str());
       nerror++;
     }
 
@@ -136,7 +136,7 @@ int cboundary::processbcs(cinput *inputin)
       sbc[it->first]->bctop = BC_FLUX;
     else
     {
-      if(mpi->mpiid == 0) std::printf("ERROR %s is illegal value for sbctop\n", swtop.c_str());
+      if(master->mpiid == 0) std::printf("ERROR %s is illegal value for sbctop\n", swtop.c_str());
       nerror++;
     }
   }

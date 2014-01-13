@@ -34,7 +34,7 @@ ccross::ccross(cmodel *modelin)
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
-  mpi    = model->mpi;
+  master = model->master;
 }
 
 ccross::~ccross()
@@ -95,7 +95,7 @@ int ccross::exec(double time, unsigned long itime, int iotime)
   if(itime % isampletime != 0)
     return 1;
 
-  if(mpi->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);
+  if(master->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);
 
   // cross section of variables
   for(std::vector<std::string>::iterator it = simple.begin(); it < simple.end(); ++it)
@@ -122,7 +122,7 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
-    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
     grid->savexzslice(data, tmp, filename, *it);
   }
 
@@ -130,7 +130,7 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
-    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
     grid->savexyslice(data, tmp, filename, *it);
   }
 
@@ -187,7 +187,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
-    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
     grid->savexzslice(lngrad, tmp, filename, *it);
   }
 
@@ -195,7 +195,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
-    if(mpi->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+    if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
     grid->savexyslice(lngrad, tmp, filename, *it);
   }
 

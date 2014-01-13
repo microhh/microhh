@@ -25,16 +25,16 @@
 
 int main(int argc, char *argv[])
 {
-  cmpi mpi;
-  if(mpi.startup(argc, argv))
+  cmaster master;
+  if(master.startup(argc, argv))
     return 1;
 
   // start up the message passing interface
-  if(mpi.mpiid == 0) std::printf("Microhh git-hash: " GITHASH "\n");
+  if(master.mpiid == 0) std::printf("Microhh git-hash: " GITHASH "\n");
 
   // create the instances of the objects
-  cinput  input (&mpi);
-  cmodel  model (&mpi, &input);
+  cinput  input (&master);
+  cmodel  model (&master, &input);
 
   // read the input data
   if(input.readinifile())
@@ -42,18 +42,18 @@ int main(int argc, char *argv[])
   if(input.readproffile())
     return 1;
 
-  if(mpi.readinifile(&input))
+  if(master.readinifile(&input))
     return 1;
   if(model.readinifile())
     return 1;
 
   // init the mpi 
-  if(mpi.init())
+  if(master.init())
     return 1;
   if(model.init())
     return 1;
 
-  if(mpi.mode == "init")
+  if(master.mode == "init")
   {
     if(model.create())
       return 1;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
   input.clear();
 
   // run the model
-  if(mpi.mode != "init")
+  if(master.mode != "init")
     if(model.exec())
       return 1;
 

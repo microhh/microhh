@@ -41,7 +41,7 @@
 class cthermo_moist : public cthermo
 {
   public:
-    cthermo_moist(cgrid *, cfields *, cmpi *);
+    cthermo_moist(cgrid *, cfields *, cmaster *);
     ~cthermo_moist();
     int readinifile(cinput *);
     int init(cinput *);

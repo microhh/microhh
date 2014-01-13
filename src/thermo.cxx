@@ -25,11 +25,11 @@
 #include "thermo.h"
 #include "defines.h"
 
-cthermo::cthermo(cgrid *gridin, cfields *fieldsin, cmpi *mpiin)
+cthermo::cthermo(cgrid *gridin, cfields *fieldsin, cmaster *masterin)
 {
   grid   = gridin;
   fields = fieldsin;
-  mpi    = mpiin;
+  master = masterin;
 
   swthermo = "off";
 }
