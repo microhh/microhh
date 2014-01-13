@@ -31,6 +31,10 @@
 #define NO_VELOCITY 0.
 #define NO_OFFSET 0.
 
+#define BC_DIRICHLET 0
+#define BC_NEUMANN 1
+#define BC_FLUX 2
+
 cboundary_user::cboundary_user(cmodel *modelin) : cboundary(modelin)
 {
 }
@@ -62,14 +66,17 @@ int cboundary_user::setvalues()
 
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc_patch(it->second->datagradbot, patch_facl, patch_facr, sbc[it->first]->bot);
-    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
+    setbc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
+                sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, NO_OFFSET, fields->s["tmp1"]->data, patch_facl, patch_facr);
+    setbc      (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
+                sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
   }
 
   return 0;
 }
 
-int cboundary_user::setbc_patch(double * restrict a, double facl, double facr, double aval)
+int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
+                                double * restrict tmp, double facl, double facr)
 {
   double avall, avalr;
   double xmod, ymod;
@@ -81,6 +88,7 @@ int cboundary_user::setbc_patch(double * restrict a, double facl, double facr, d
   avall = facl*aval;
   avalr = facr*aval;
 
+  // save the pattern
   for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
@@ -96,8 +104,41 @@ int cboundary_user::setbc_patch(double * restrict a, double facl, double facr, d
       else
         errvaly = 1.;
 
-      a[ij] = avall + (avalr-avall)*errvalx*errvaly;
+      tmp[ij] = errvalx*errvaly;
     }
+
+  if(sw == BC_DIRICHLET)
+  {
+    for(int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+      for(int i=0; i<grid->icells; ++i)
+      {
+        ij = i + j*jj;
+        a[ij] = avall + (avalr-avall)*tmp[ij] - offset;
+      }
+  }
+  else if(sw == BC_NEUMANN)
+  {
+    for(int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+      for(int i=0; i<grid->icells; ++i)
+      {
+        ij = i + j*jj;
+        agrad[ij] = avall + (avalr-avall)*tmp[ij];
+        aflux[ij] = -aval*visc;
+      }
+  }
+  else if(sw == BC_FLUX)
+  {
+    for(int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+      for(int i=0; i<grid->icells; ++i)
+      {
+        ij = i + j*jj;
+        aflux[ij] = avall + (avalr-avall)*tmp[ij];
+        agrad[ij] = -aval/visc;
+      }
+  }
 
   return 0;
 }

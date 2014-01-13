@@ -24,7 +24,7 @@
 
 #include "boundary.h"
 
-// forward declaration
+// forward declaration to reduce compilation time
 class cmodel;
 
 class cboundary_user : public cboundary
@@ -36,7 +36,8 @@ class cboundary_user : public cboundary
     int setvalues();
 
   private:
-    int setbc_patch(double *, double, double, double);
+    int setbc_patch(double *, double *, double *, int, double, double, double,
+                    double *, double, double); ///< Set the values for the boundary fields.
 
     // patch type
     int    patch_dim;
