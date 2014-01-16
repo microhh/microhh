@@ -37,6 +37,7 @@ cfields::cfields(cmodel *modelin)
   master = model->master;
 
   allocated = false;
+  calcprofs = false;
 }
 
 cfields::~cfields()
@@ -135,9 +136,18 @@ int cfields::init()
 int cfields::exec()
 {
   // calculate the means for the prognostic scalars
-  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    grid->calcmean(it->second->datamean, it->second->data, grid->kcells);
+  if(calcprofs)
+  {
+    for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+      grid->calcmean(it->second->datamean, it->second->data, grid->kcells);
+  }
 
+  return 0;
+}
+
+int cfields::setcalcprofs(bool sw)
+{
+  calcprofs = sw;
   return 0;
 }
 

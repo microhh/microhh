@@ -53,6 +53,8 @@ class cfields
     double checktke ();
     double checkmass();
 
+    int setcalcprofs(bool);
+
     // 3d fields for momentum
     cfield3d *u;
     cfield3d *v;
@@ -82,7 +84,9 @@ class cfields
     cmodel  *model;
     cgrid   *grid;
     cmaster *master;
+
     bool allocated;
+    bool calcprofs;
 
     // perturbations
     double rndamp;

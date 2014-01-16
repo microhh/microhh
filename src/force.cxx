@@ -81,6 +81,19 @@ int cforce::readinifile(cinput *inputin)
 
   if(swls == "1")
     nerror += inputin->getList(&lslist, "force", "lslist", "");
+  else if(swls != "0")
+  {
+    ++nerror;
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swls\n", swls.c_str());
+  }
+
+  if(swwls == "1")
+    fields->setcalcprofs(true);
+  else if(swwls != "0")
+  {
+    ++nerror;
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swwls\n", swwls.c_str());
+  }
 
   return nerror;
 }
