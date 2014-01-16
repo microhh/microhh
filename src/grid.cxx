@@ -206,10 +206,10 @@ int cgrid::init()
   dzhi4 = new double[kmax+2*kgc];
 
   // allocate the data for the fourier transforms
-  fftini  = fftw_alloc_real(itot);
-  fftouti = fftw_alloc_real(itot);
-  fftinj  = fftw_alloc_real(jtot);
-  fftoutj = fftw_alloc_real(jtot);
+  fftini  = fftw_alloc_real(itot*jmax);
+  fftouti = fftw_alloc_real(itot*jmax);
+  fftinj  = fftw_alloc_real(jtot*iblock);
+  fftoutj = fftw_alloc_real(jtot*iblock);
 
   allocated = true;
 

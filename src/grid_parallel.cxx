@@ -540,11 +540,25 @@ int cgrid::save()
   // the saving procedure is a success
   if(master->mpiid == 0) std::printf("OK\n");
 
-  // SAVE THE FFTW PLAN
-  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
+  // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
+  // use the FFTW3 many interface in order to reduce function call overhead
+  int rank = 1;
+  int ni[] = {itot};
+  int nj[] = {jtot};
+  int istride = 1;
+  int jstride = iblock;
+  int idist = itot;
+  int jdist = 1;
+  fftw_r2r_kind kindf[] = {FFTW_R2HC};
+  fftw_r2r_kind kindb[] = {FFTW_HC2R};
+  iplanf = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+                              fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+  iplanb = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+                              fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+  jplanf = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+                              fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+  jplanb = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+                              fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
   fftwplan = true;
 
@@ -626,10 +640,25 @@ int cgrid::load()
   else
     if(master->mpiid == 0) std::printf("OK\n");
 
-  iplanf = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_r2r_1d(itot, fftini, fftouti, FFTW_HC2R, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_R2HC, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_r2r_1d(jtot, fftinj, fftoutj, FFTW_HC2R, FFTW_EXHAUSTIVE);
+
+  // use the FFTW3 many interface in order to reduce function call overhead
+  int rank = 1;
+  int ni[] = {itot};
+  int nj[] = {jtot};
+  int istride = 1;
+  int jstride = iblock;
+  int idist = itot;
+  int jdist = 1;
+  fftw_r2r_kind kindf[] = {FFTW_R2HC};
+  fftw_r2r_kind kindb[] = {FFTW_HC2R};
+  iplanf = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+                              fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
+  iplanb = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+                              fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
+  jplanf = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+                              fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
+  jplanb = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+                              fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
   fftwplan = true;
 
@@ -738,7 +767,7 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
-  int ijk,jj,kk;
+  int ij,ijk,jj,kk;
 
   // transpose the pressure field
   transposezx(tmp1,data);
@@ -746,26 +775,27 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
   jj = itot;
   kk = itot*jmax;
 
-  // do the first fourier transform
+  // process the fourier transforms slice by slice
   for(int k=0; k<kblock; k++)
-    for(int j=0; j<jmax; j++)
+  {
+#pragma ivdep
+    for(int n=0; n<itot*jmax; n++)
     {
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        fftini[i] = tmp1[ijk];
-      }
-
-      fftw_execute(iplanf);
-
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        tmp1[ijk] = fftouti[i];
-      }
+      ij  = n;
+      ijk = n + k*kk;
+      fftini[ij] = tmp1[ijk];
     }
+
+    fftw_execute(iplanf);
+
+#pragma ivdep
+    for(int n=0; n<itot*jmax; n++)
+    {
+      ij  = n;
+      ijk = n + k*kk;
+      tmp1[ijk] = fftouti[ij];
+    }
+  }
 
   // transpose again
   transposexy(data,tmp1);
@@ -775,23 +805,24 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
 
   // do the second fourier transform
   for(int k=0; k<kblock; k++)
-    for(int i=0; i<iblock; i++)
+  {
+    for(int n=0; n<iblock*jtot; n++)
     {
-      for(int j=0; j<jtot; j++)
-      {
-        ijk = i + j*jj + k*kk;
-        fftinj[j] = data[ijk];
-      }
-
-      fftw_execute(jplanf);
-
-      for(int j=0; j<jtot; j++)
-      {
-        ijk = i + j*jj + k*kk;
-        // shift to use p in pressure solver
-        tmp1[ijk] = fftoutj[j];
-      }
+      ij  = n;
+      ijk = n + k*kk;
+      fftinj[ij] = data[ijk];
     }
+
+    fftw_execute(jplanf);
+
+    for(int n=0; n<iblock*jtot; n++)
+    {
+      ij  = n;
+      ijk = n + k*kk;
+      // shift to use p in pressure solver
+      tmp1[ijk] = fftoutj[ij];
+    }
+  }
 
   // transpose back to original orientation
   transposeyz(data,tmp1);
@@ -803,7 +834,7 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
-  int ijk,jj,kk;
+  int ij,ijk,jj,kk;
 
   // transpose back to y
   transposezy(tmp1, data);
@@ -813,22 +844,25 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
 
   // transform the second transform back
   for(int k=0; k<kblock; k++)
-    for(int i=0; i<iblock; i++)
+  {
+#pragma ivdep
+    for(int n=0; n<iblock*jtot; n++)
     {
-      for(int j=0; j<jtot; j++)
-      {
-        ijk = i + j*jj + k*kk;
-        fftinj[j] = tmp1[ijk];
-      }
-
-      fftw_execute(jplanb);
-
-      for(int j=0; j<jtot; j++)
-      {
-        ijk = i + j*jj + k*kk;
-        data[ijk] = fftoutj[j] / jtot;
-      }
+      ij  = n;
+      ijk = n + k*kk;
+      fftinj[ij] = tmp1[ijk];
     }
+
+    fftw_execute(jplanb);
+
+#pragma ivdep
+    for(int n=0; n<iblock*jtot; n++)
+    {
+      ij  = n;
+      ijk = n + k*kk;
+      data[ijk] = fftoutj[ij] / jtot;
+    }
+  }
 
   // transpose back to x
   transposeyx(tmp1, data);
@@ -838,25 +872,26 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
 
   // transform the first transform back
   for(int k=0; k<kblock; k++)
-    for(int j=0; j<jmax; j++)
+  {
+#pragma ivdep
+    for(int n=0; n<itot*jmax; n++)
     {
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        fftini[i] = tmp1[ijk];
-      }
-
-      fftw_execute(iplanb);
-
-#pragma ivdep
-      for(int i=0; i<itot; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        // swap array here to avoid unncessary 3d loop
-        data[ijk] = fftouti[i] / itot;
-      }
+      ij  = n;
+      ijk = n + k*kk;
+      fftini[ij] = tmp1[ijk];
     }
+
+    fftw_execute(iplanb);
+
+#pragma ivdep
+    for(int n=0; n<itot*jmax; n++)
+    {
+      ij  = n;
+      ijk = n + k*kk;
+      // swap array here to avoid unnecessary 3d loop
+      data[ijk] = fftouti[ij] / itot;
+    }
+  }
 
   // and transpose back...
   transposexz(tmp1, data);
