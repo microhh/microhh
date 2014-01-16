@@ -129,7 +129,7 @@ int cmodel::readinifile()
   n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
-  n += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "off");
+  n += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
 
   // if one or more arguments fails, then crash
   if(n > 0)
@@ -205,7 +205,7 @@ int cmodel::readinifile()
     thermo = new cthermo_moist(grid, fields, master);
   else if(swthermo == "dry")
     thermo = new cthermo_dry(grid, fields, master);
-  else if(swthermo == "off")
+  else if(swthermo == "0")
     thermo = new cthermo(grid, fields, master);
   else
   {
