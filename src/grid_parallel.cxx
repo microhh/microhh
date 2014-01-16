@@ -806,6 +806,7 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
   // do the second fourier transform
   for(int k=0; k<kblock; k++)
   {
+#pragma ivdep
     for(int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
@@ -815,6 +816,7 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
 
     fftw_execute(jplanf);
 
+#pragma ivdep
     for(int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
