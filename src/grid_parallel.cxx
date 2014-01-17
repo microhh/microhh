@@ -640,7 +640,6 @@ int cgrid::load()
   else
     if(master->mpiid == 0) std::printf("OK\n");
 
-
   // use the FFTW3 many interface in order to reduce function call overhead
   int rank = 1;
   int ni[] = {itot};
