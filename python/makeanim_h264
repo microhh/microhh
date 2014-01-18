@@ -2,4 +2,4 @@
 # crf is quality (0 is lossless, 15 is very good, 23 is standard), framerate is the fps of the movie
 # r is the number of frames per second in the output, leading to duplicates in case framerate < r
 avconv -framerate 15 -i figs/frame.%05d.png -s:v 1280x640 -c:v libx264 \
-  -preset veryslow -profile:v high -crf 15 -pix_fmt yuv420p -r 24 movie.mp4
+  -profile:v high -crf 15 -pix_fmt yuv420p -r 25 movie.mp4
