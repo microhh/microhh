@@ -4,12 +4,12 @@
 #
 # ONE PASS FILTERING (aim for constant quality)
 # crf is quality (0 is lossless, 15 is very good, 23 is standard)
-avconv -framerate 15 -i figs/frame.%05d.png -s:v 1920x960 -c:v libx264 \
+avconv -framerate 15 -i figs/frame.%05d.png -s:v 1280x640 -c:v libx264 \
   -profile:v high -crf 15 -pix_fmt yuv420p -r 25 movie.mp4
 
 # TWO PASS FILTERING (aim for constant bitrate)
 # b:v is the bitrate (for high quality use 10000k for 720p and 16000k for 1080p)
-#avconv -framerate 15 -i figs/frame.%05d.png -pass 1 -s:v 1280x640 -c:v libx264 \
-#  -profile:v high -b:v 10000k -pix_fmt yuv420p -r 25 -f mp4 -y /dev/null
-#avconv -framerate 15 -i figs/frame.%05d.png -pass 2 -s:v 1280x640 -c:v libx264 \
-#  -profile:v high -b:v 10000k -pix_fmt yuv420p -r 25 movie.mp4
+# avconv -framerate 15 -i figs/frame.%05d.png -pass 1 -s:v 1280x640 -c:v libx264 \
+#   -profile:v high -b:v 10000k -pix_fmt yuv420p -r 25 -f mp4 -y /dev/null
+# avconv -framerate 15 -i figs/frame.%05d.png -pass 2 -s:v 1280x640 -c:v libx264 \
+#   -profile:v high -b:v 10000k -pix_fmt yuv420p -r 25 movie.mp4
