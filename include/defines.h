@@ -24,6 +24,7 @@
 
 #define kappa  0.4
 
+#define dtiny  1.e-30
 #define dsmall 1.e-9
 #define dbig   1.e9
 #define dhuge  1.e30
