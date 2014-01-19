@@ -1,5 +1,16 @@
-# vbitrate = 50 * 25 * width * height / 256
-opt="vbitrate=10000000:mbd=2:keyint=132:v4mv:vqmin=3:lumi_mask=0.07:dark_mask=0.2:mpeg_quant:scplx_mask=0.1:tcplx_mask=0.1:naq"
-mencoder -ovc lavc -lavcopts vcodec=mpeg4:vpass=1:$opt -mf w=1920:h=916:fps=6:type=png -nosound -o /dev/null mf://figs/*.png
-mencoder -ovc lavc -lavcopts vcodec=mpeg4:vpass=2:$opt -mf w=1920:h=916:fps=6:type=png -nosound -o movie.avi mf://figs/*.png
+# use H.264 compression to create very high quality and small file size movies 
+# (use "avconv" as the executable name in case libav is installed instead of ffmpeg). 
+# framerate is the fps of the movie
+# r is the number of frames per second in the output, leading to duplicates in case framerate < r
+#
+# ONE PASS FILTERING (aim for constant quality)
+# crf is quality (0 is lossless, 15 is very good, 23 is standard)
+ffmpeg -framerate 15 -i figs/frame.%05d.png -s:v 1280x720 -c:v libx264 \
+  -profile:v high -crf 15 -pix_fmt yuv420p -r 25 movie.mp4
 
+# TWO PASS FILTERING (aim for constant bitrate)
+# b:v is the bitrate (for high quality use 10000k for 720p and 16000k for 1080p)
+# ffmpeg -framerate 15 -i figs/frame.%05d.png -pass 1 -s:v 1280x720 -c:v libx264 \
+#   -profile:v high -b:v 10000k -pix_fmt yuv420p -r 25 -f mp4 -y /dev/null
+# ffmpeg -framerate 15 -i figs/frame.%05d.png -pass 2 -s:v 1280x720 -c:v libx264 \
+#   -profile:v high -b:v 10000k -pix_fmt yuv420p -r 25 movie.mp4

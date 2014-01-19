@@ -1,3 +1,0 @@
-# use H.264 compression to create very high quality and small file size movies
-mencoder -oac copy -ovc x264 -x264encopts preset=veryslow:tune=film:crf=15:frameref=15:fast_pskip=0:threads=auto -o movie.avi mf://figs/*.png
-
