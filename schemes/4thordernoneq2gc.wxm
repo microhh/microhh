@@ -47,6 +47,8 @@ ratsimp( subst([f3=0,f4=0,f5=0,f6=0], bc2dir) );
 
 /* [wxMaxima: input   start ] */
 dfdx : rhs(sol[2])/rhs(solx[2]);
+/* put the gradient of the grid in a readable format */
+dfdx : rhs(sol[2])/(xgrad/(24*h));
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
@@ -62,7 +64,7 @@ ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0], bc2neu) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-bc1temprob : ratsimp( solve(a*rhs(sol1[1]) + b*dfdx = c, f[-1/2]) );
+bc1temprob : ratsimp( solve(a*rhs(sol[1]) + b*dfdx = c, f[-1/2]) );
 bc2rob : ratsimp(solve( subst(bc1temprob, sol[4]), f[-3/2]));
 bc2rob : subst(0, f3, bc2rob);
 bc1rob : ratsimp(subst(bc2rob, bc1temprob));
@@ -71,6 +73,18 @@ bc1rob : ratsimp(subst(bc2rob, bc1temprob));
 /* [wxMaxima: input   start ] */
 ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0], bc1rob) );
 ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0], bc2rob) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+/* check for dirichlet */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0,a=1,b=0,c=f0bc], bc1rob) );
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0,a=1,b=0,c=f0bc], bc2rob) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+/* check for neumann */
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0,a=0,b=1,c=f1bc], bc1rob) );
+ratsimp( subst([f3=0,f4=0,f5=0,f6=0,f5x=0,a=0,b=1,c=f1bc], bc2rob) );
 /* [wxMaxima: input   end   ] */
 
 /* Maxima can't load/batch files which end with a comment! */
