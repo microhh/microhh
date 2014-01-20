@@ -1,5 +1,5 @@
 /* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
-/* [ Created with wxMaxima version 12.04.0 ] */
+/* [ Created with wxMaxima version 0.8.5 ] */
 
 /* [wxMaxima: input   start ] */
 f(x) := f0 + f1*x/1! + f2*x^2/2! + f3*x^3/3! + f4*x^4/4! + f5*x^5/5! + f6*x^6/6!;
@@ -54,6 +54,26 @@ bc1neu : ratsimp( subst(bc2neu, bc1neutemp) );
 /* [wxMaxima: input   start ] */
 ratsimp( subst([f4=0,f5=0,f6=0], bc1neu) );
 ratsimp( subst([f4=0,f5=0,f6=0], bc2neu) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+a*sol1[1] + b*sol1[2] = c;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol1[1];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1robtemp : solve( a*rhs(sol1[1]) + b*rhs(sol1[2]) = c, f[-1/2])$
+bc2rob : ratsimp( solve( subst( bc1robtemp, sol1[4]), f[-3/2]) );
+bc2rob : subst(0, f3, bc2rob)$
+bc1rob : ratsimp( subst(bc2rob, bc1robtemp) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], bc1rob) );
+ratsimp( subst([f4=0,f5=0,f6=0], bc2rob) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
