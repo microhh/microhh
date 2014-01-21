@@ -58,7 +58,7 @@ int cboundary_surface::readinifile(cinput *inputin)
 {
   int nerror = 0;
 
-  processbcs(inputin);
+  nerror += processbcs(inputin);
 
   nerror += inputin->getItem(&z0m, "boundary", "z0m", "");
   nerror += inputin->getItem(&z0h, "boundary", "z0h", "");
