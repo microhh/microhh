@@ -59,7 +59,8 @@ int ccross::readinifile(cinput *inputin)
 
     // get the list of variables per type of cross
     nerror += inputin->getList(&simple , "cross", "simple" , "");
-    nerror += inputin->getList(&surface, "cross", "surface", "");
+    nerror += inputin->getList(&bot    , "cross", "bot"    , "");
+    nerror += inputin->getList(&fluxbot, "cross", "fluxbot", "");
     nerror += inputin->getList(&lngrad , "cross", "lngrad" , "");
   }
 
@@ -102,9 +103,13 @@ int ccross::exec(double time, unsigned long itime, int iotime)
   for(std::vector<std::string>::iterator it=simple.begin(); it<simple.end(); ++it)
     crosssimple(fields->a[*it]->data, fields->s["tmp1"]->data, fields->a[*it]->name, jxz, kxy, iotime);
 
-  // cross sections of surface values
-  for(std::vector<std::string>::iterator it=surface.begin(); it<surface.end(); ++it)
-    crosssurface(fields->a[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->a[*it]->name, iotime);
+  // cross sections of bottom values
+  for(std::vector<std::string>::iterator it=bot.begin(); it<bot.end(); ++it)
+    crossbot(fields->a[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->a[*it]->name, iotime);
+
+  // cross sections of bottom flux values
+  for(std::vector<std::string>::iterator it=fluxbot.begin(); it<fluxbot.end(); ++it)
+    crossfluxbot(fields->a[*it]->datafluxbot, fields->s["tmp1"]->data, fields->a[*it]->name, iotime);
 
   // cross section of scalar gradients
   for(std::vector<std::string>::iterator it=lngrad.begin(); it<lngrad.end(); ++it)
@@ -137,7 +142,7 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   return 0;
 }
 
-int ccross::crosssurface(double * restrict data, double * restrict tmp1, double * restrict tmp2, std::string name, int iotime)
+int ccross::crossbot(double * restrict data, double * restrict tmp1, double * restrict tmp2, std::string name, int iotime)
 {
   int ijk,jj1,kk1,kk2,kk3,kstart;
 
@@ -149,7 +154,7 @@ int ccross::crosssurface(double * restrict data, double * restrict tmp1, double 
 
   // define the file name
   char filename[256];
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "surf", iotime);
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "bot", iotime);
   if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
   // interpolate the data
@@ -178,6 +183,18 @@ int ccross::crosssurface(double * restrict data, double * restrict tmp1, double 
 
   // pass only three arguments to ensure that no ghost cells are used
   grid->savexyslice(&tmp1[kstart*kk1], tmp2, filename);
+
+  return 0;
+}
+
+int ccross::crossfluxbot(double * restrict data, double * restrict tmp, std::string name, int iotime)
+{
+  // define the file name
+  char filename[256];
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "fluxbot", iotime);
+  if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+
+  grid->savexyslice(data, tmp, filename);
 
   return 0;
 }
