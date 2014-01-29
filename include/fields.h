@@ -65,6 +65,7 @@ class cfields
     cfield3d *wt;
 
     // maps of 3d fields
+    fieldmap a;
     fieldmap ap;
     fieldmap at;
 

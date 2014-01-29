@@ -172,6 +172,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
 
   // add the prognostic variable and its tendency to the collection
   // of all fields and tendencies
+  a [fldname] = mp[fldname];
   ap[fldname] = mp[fldname];
   at[fldname] = mt[fldname];
 
@@ -195,6 +196,7 @@ int cfields::initpfld(std::string fldname)
 
   // add the prognostic variable and its tendency to the collection
   // of all fields and tendencies
+  a [fldname] = sp[fldname];
   s [fldname] = sp[fldname];
   ap[fldname] = sp[fldname];
   at[fldname] = st[fldname];
@@ -212,6 +214,7 @@ int cfields::initdfld(std::string fldname)
 
   sd[fldname] = new cfield3d(grid, master, fldname );
   s [fldname] = sd[fldname];
+  a [fldname] = sd[fldname];
 
   return 0;  
 }

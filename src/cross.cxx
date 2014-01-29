@@ -58,8 +58,9 @@ int ccross::readinifile(cinput *inputin)
     nerror += inputin->getList(&kxy, "cross", "kxy", "");
 
     // get the list of variables per type of cross
-    nerror += inputin->getList(&simple, "cross", "simple", "");
-    nerror += inputin->getList(&lngrad, "cross", "lngrad", "");
+    nerror += inputin->getList(&simple , "cross", "simple" , "");
+    nerror += inputin->getList(&surface, "cross", "surface", "");
+    nerror += inputin->getList(&lngrad , "cross", "lngrad" , "");
   }
 
   return nerror;
@@ -98,16 +99,15 @@ int ccross::exec(double time, unsigned long itime, int iotime)
   if(master->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);
 
   // cross section of variables
-  for(std::vector<std::string>::iterator it = simple.begin(); it < simple.end(); ++it)
-  {
-    // catch the momentum fields from the correct list
-    if(*it == "u" || *it == "v" || *it == "w")
-      crosssimple(fields->mp[*it]->data, fields->s["tmp1"]->data, fields->mp[*it]->name, jxz, kxy, iotime);
-    else
-      crosssimple(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s[*it]->name, jxz, kxy, iotime);
-  }
+  for(std::vector<std::string>::iterator it=simple.begin(); it<simple.end(); ++it)
+    crosssimple(fields->a[*it]->data, fields->s["tmp1"]->data, fields->a[*it]->name, jxz, kxy, iotime);
+
+  // cross sections of surface values
+  for(std::vector<std::string>::iterator it=surface.begin(); it<surface.end(); ++it)
+    crosssurface(fields->a[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->a[*it]->name, iotime);
+
   // cross section of scalar gradients
-  for(std::vector<std::string>::iterator it = lngrad.begin(); it < lngrad.end(); ++it)
+  for(std::vector<std::string>::iterator it=lngrad.begin(); it<lngrad.end(); ++it)
     crosslngrad(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*it]->name + "lngrad", jxz, kxy, iotime);
 
   return 0;
@@ -136,7 +136,52 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
 
   return 0;
 }
- 
+
+int ccross::crosssurface(double * restrict data, double * restrict tmp1, double * restrict tmp2, std::string name, int iotime)
+{
+  int ijk,jj1,kk1,kk2,kk3,kstart;
+
+  jj1 = 1*grid->icells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+  kk3 = 3*grid->ijcells;
+  kstart = grid->kstart;
+
+  // define the file name
+  char filename[256];
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "surf", iotime);
+  if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+
+  // interpolate the data
+  if(grid->swspatialorder == "2")
+  {
+    for(int j=grid->jstart; j<grid->jend; ++j)
+  #pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj1 + kstart*kk1;
+        tmp1[ijk] = 0.5*data[ijk-kk1] + 0.5*data[ijk];
+      }
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    for(int j=grid->jstart; j<grid->jend; ++j)
+  #pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj1 + kstart*kk1;
+        tmp1[ijk] = ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1];
+      }
+  }
+  else
+    return 1;
+
+  // pass only three arguments to ensure that no ghost cells are used
+  grid->savexyslice(&tmp1[kstart*kk1], tmp2, filename);
+
+  return 0;
+}
+
 int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, 
                         std::string name, std::vector<int> jxz, std::vector<int> kxy, int iotime)
 {
