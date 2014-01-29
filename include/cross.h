@@ -56,11 +56,13 @@ class ccross
     std::vector<int> kxy;
 
     std::vector<std::string> simple;
-    std::vector<std::string> surface;
+    std::vector<std::string> bot;
+    std::vector<std::string> fluxbot;
     std::vector<std::string> lngrad;
 
     int crosssimple (double *, double *, std::string, std::vector<int>, std::vector<int>, int);
-    int crosssurface(double *, double *, double *, std::string, int);
+    int crossbot    (double *, double *, double *, std::string, int);
+    int crossfluxbot(double *, double *, std::string, int);
     int crosslngrad (double *, double *, double *, double *, std::string, std::vector<int>, std::vector<int>, int);
 };
 #endif
