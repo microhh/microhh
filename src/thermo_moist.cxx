@@ -37,6 +37,7 @@ cthermo_moist::~cthermo_moist()
   if (allocated)
   {
     delete[] pmn;
+    delete[] pav;
   }
 }
 
@@ -69,9 +70,11 @@ int cthermo_moist::create()
   rhos = ps / (rd * tvs);
 
   pmn = new double[grid->kcells];
+  pav = new double[grid->kcells];
   for(int k=0; k<grid->kcells; k++)
   {
     pmn[k] = ps - rhos * grav * grid->z[k];
+    pav[k] = 0.
   }
 
   allocated = true;
@@ -85,7 +88,7 @@ int cthermo_moist::exec()
 
   nerror = 0;
 
-  calcpres(fields->s["tmp1"]->data, fields->s["p"]->data, pmn);
+  calcpres(fields->s["tmp1"]->data, fields->s["p"]->data, pmn, pav);
 
   // nerror += calcqlfield(fields->s["ql"]->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
 
@@ -109,7 +112,7 @@ int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
   kk = grid->icells*grid->jcells;
 
   // calculate the hydrostatic pressure
-  calcpres(pfield->data, fields->s["p"]->data, this->pmn);
+  calcpres(pfield->data, fields->s["p"]->data, this->pmn, this->pav);
 
   // calculate the ql field
   calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pfield->data);
@@ -120,7 +123,7 @@ int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
 int cthermo_moist::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
 {
   // first calculate the pressure
-  calcpres(tmp->data, fields->s["p"]->data, this->pmn);
+  calcpres(tmp->data, fields->s["p"]->data, this->pmn, this->pav);
   // then calculate the buoyancy at the cell centers
   calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, tmp->data);
 
@@ -142,7 +145,7 @@ int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
-int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * restrict pmn)
+int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * restrict pmn, double * restrict pav)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -150,13 +153,15 @@ int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * 
 
   double rhos = this->rhos;
 
+  grid->calcmean(pav,pi,grid->kmax);
+
   for(int k=0; k<grid->kcells; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        p[ijk] = pi[ijk]*rhos + pmn[k]; // minus trace
+        p[ijk] = pi[ijk]*rhos - pav[k] + pmn[k]; // minus trace
       }
 
   return 0;

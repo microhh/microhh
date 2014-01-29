@@ -62,6 +62,7 @@ class cthermo_moist : public cthermo
     double thvs;
     double rhos;
     double *pmn;
+    double *pav;
 
     bool allocated;
     
@@ -70,7 +71,7 @@ class cthermo_moist : public cthermo
 
     int calcbuoyancy(double *, double *, double *, double *);
 
-    int calcpres(double *, double *, double *);
+    int calcpres(double *, double *, double *, double *);
     int calcqlfield(double *, double *, double *, double *);
     int calcbuoyancybot(double *, double *,
                         double *, double *,
