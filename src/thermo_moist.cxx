@@ -169,6 +169,8 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
+  double thvref = thvs;
+
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
@@ -181,7 +183,7 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
         qth = interp2(qt[ijk-kk], qt[ijk]);
         ph  = interp2(p[ijk-kk], p[ijk]);
         ql  = calcql(sh, qth, ph);
-        wt[ijk] += bu(ph, sh, qth, ql);
+        wt[ijk] += bu(ph, sh, qth, ql, thvref);
         // if(ql>0)
         //  std::printf("%d qt %f rs %f ql %f bu %f bu0 %f %f\n", k, qth, rslf(ph, sh*exner(ph)),ql, thvs/grav*(bu(ph, sh,qth,ql)), thvs/grav*(bu(ph, sh,qth,0.)), ph);
       }
@@ -201,6 +203,8 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
 
+  double thvref = thvs;
+
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -211,7 +215,7 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
         qth = interp4(qt[ijk-kk2], qt[ijk-kk1], qt[ijk], qt[ijk+kk1]);
         ph  = interp4(p[ijk-kk2] , p[ijk-kk1] , p[ijk] , p[ijk+kk1]);
         ql  = calcql(sh, qth, ph);
-        wt[ijk] += bu(ph, sh, qth, ql);
+        wt[ijk] += bu(ph, sh, qth, ql, thvref);
       }
 
   return 0;
@@ -224,6 +228,8 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
+  double thvref = thvs;
+
   for(int k=0; k<grid->kcells; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -231,7 +237,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
       {
         ijk = i + j*jj + k*kk;
         ql = calcql(s[ijk], qt[ijk], p[ijk]);
-        b[ijk] = bu(p[ijk], s[ijk], qt[ijk], ql);
+        b[ijk] = bu(p[ijk], s[ijk], qt[ijk], ql, thvref);
       }
 
   return 0;
@@ -301,9 +307,9 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
 }
 
 // INLINE FUNCTIONS
-inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql)
+inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql, const double thvref)
 {
-  return grav * ((s + lv*ql/(cp*exner(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvs) / thvs;
+  return grav * ((s + lv*ql/(cp*exner(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvref) / thvref;
 }
 
 inline double cthermo_moist::bunoql(const double s, const double qt, const double thvref)
