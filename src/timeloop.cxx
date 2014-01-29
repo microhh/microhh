@@ -97,7 +97,8 @@ int ctimeloop::readinifile(cinput *inputin)
   idt           = (unsigned long)(ifactor * dt + 0.5);
   idtmax        = (unsigned long)(ifactor * dtmax + 0.5);
   isavetime     = (unsigned long)(ifactor * savetime + 0.5);
-  ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
+  if(master->mode == "post")
+    ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
 
   idtlim = idt;
 
