@@ -207,7 +207,7 @@ int cmodel::readinifile()
   else if(swthermo == "dry")
     thermo = new cthermo_dry(grid, fields, master);
   else if(swthermo == "dry_slope")
-    thermo = new cthermo_dry_slope(grid, fields, mpi);
+    thermo = new cthermo_dry_slope(grid, fields, master);
   else if(swthermo == "0")
     thermo = new cthermo(grid, fields, master);
   else

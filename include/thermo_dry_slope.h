@@ -24,7 +24,7 @@
 
 #include "grid.h"
 #include "fields.h"
-#include "mpiinterface.h"
+#include "master.h"
 #include "thermo.h"
 
 /**
@@ -36,8 +36,8 @@
 class cthermo_dry_slope : public cthermo
 {
   public:
-    cthermo_dry_slope(cgrid *, cfields *, cmpi *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_dry_slope();                          ///< Destructor of the dry thermodynamics class.
+    cthermo_dry_slope(cgrid *, cfields *, cmaster *); ///< Constructor of the dry thermodynamics class.
+    ~cthermo_dry_slope();                             ///< Destructor of the dry thermodynamics class.
 
     int readinifile(cinput *);               ///< Processing data of the input file.
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
