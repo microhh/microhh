@@ -58,6 +58,7 @@
 #include "thermo.h"
 #include "thermo_dry.h"
 #include "thermo_moist.h"
+#include "thermo_dry_slope.h"
 
 // stats schemes
 #include "stats.h"
@@ -205,6 +206,8 @@ int cmodel::readinifile()
     thermo = new cthermo_moist(grid, fields, master);
   else if(swthermo == "dry")
     thermo = new cthermo_dry(grid, fields, master);
+  else if(swthermo == "dry_slope")
+    thermo = new cthermo_dry_slope(grid, fields, mpi);
   else if(swthermo == "0")
     thermo = new cthermo(grid, fields, master);
   else
