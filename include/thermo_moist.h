@@ -38,6 +38,28 @@
 #define p0 1.e5
 #define grav 9.81
 
+#define ex1 2.85611940298507510698e-06
+#define ex2 -1.02018879928714644313e-11
+#define ex3 5.82999832046362073082e-17
+#define ex4 -3.95621945728655163954e-22
+#define ex5 2.93898686274077761686e-27
+#define ex6 -2.30925409555411170635e-32
+#define ex7 1.88513914720731231360e-37
+
+#define at 17.27
+#define bt 35.86
+#define es0 610.78
+
+#define c0 0.6105851e+03
+#define c1 0.4440316e+02
+#define c2 0.1430341e+01
+#define c3 0.2641412e-01
+#define c4 0.2995057e-03
+#define c5 0.2031998e-05
+#define c6 0.6936113e-08
+#define c7 0.2564861e-11
+#define c8 -.3704404e-13
+
 class cthermo_moist : public cthermo
 {
   public:
@@ -63,13 +85,17 @@ class cthermo_moist : public cthermo
     double rhos;
     double *pmn;
     double *pav;
+    double *sh;
+    double *qth;
+    double *ph;
+    double *ql;
 
     bool allocated;
     
-    int calcbuoyancytend_2nd(double *, double *, double *, double *);
+    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *);
 
-    int calcbuoyancy(double *, double *, double *, double *);
+    int calcbuoyancy(double *, double *, double *, double *, double *);
 
     int calcpres(double *, double *, double *, double *);
     int calcqlfield(double *, double *, double *, double *);
@@ -83,6 +109,7 @@ class cthermo_moist : public cthermo
     inline double bunoql(const double, const double, const double);
     inline double bufluxnoql(const double, const double, const double, const double, const double);
     inline double exner(const double);
+    inline double exner2(const double);
     inline double rslf(const double, const double);
     inline double esl(const double);
 
