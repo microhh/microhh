@@ -81,7 +81,7 @@ int ccross::checkList(std::vector<std::string> *list, fieldmap *fm, std::string 
     // if the field does not exist trigger an error
     if(!fm->count(*it))
     {
-      std::printf("ERROR field %s in [cross][%s] is illegal\n", it->c_str(), crossname.c_str());
+      if(master->mpiid == 0) std::printf("ERROR field %s in [cross][%s] is illegal\n", it->c_str(), crossname.c_str());
       return 1;
     }
   }
