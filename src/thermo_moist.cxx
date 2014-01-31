@@ -37,11 +37,6 @@ cthermo_moist::~cthermo_moist()
   if (allocated)
   {
     delete[] pmn;
-    delete[] pav;
-    delete[] sh;
-    delete[] qth;
-    delete[] ph;
-    delete[] ql;
   }
 }
 
@@ -73,17 +68,10 @@ int cthermo_moist::create()
   double tvs  = exner2(ps) * thvs;
   rhos = ps / (rd * tvs);
 
-  sh = new double[grid->icells*grid->jcells];
-  qth = new double[grid->icells*grid->jcells];
-  ph = new double[grid->icells*grid->jcells];
-  ql = new double[grid->icells*grid->jcells];
-
   pmn = new double[grid->kcells];
-  pav = new double[grid->kcells];
   for(int k=0; k<grid->kcells; k++)
   {
     pmn[k] = ps - rhos * grav * grid->z[k];
-    pav[k] = 0.;
   }
 
   allocated = true;
@@ -97,14 +85,15 @@ int cthermo_moist::exec()
 
   nerror = 0;
 
-  calcpres(fields->s["tmp1"]->data, fields->s["p"]->data, pmn, pav);
+  calcpres(fields->s["tmp1"]->data, fields->s["p"]->data, pmn, fields->s["p"]->datamean);
 
   // nerror += calcqlfield(fields->s["ql"]->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
 
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder == "2")
   {
-    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data, sh,qth,ph,ql);
+    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data,
+                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk], &fields->s["tmp2"]->data[3*kk]);
   }
   else if(grid->swspatialorder == "4")
   {
@@ -121,7 +110,7 @@ int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
   kk = grid->icells*grid->jcells;
 
   // calculate the hydrostatic pressure
-  calcpres(pfield->data, fields->s["p"]->data, this->pmn, this->pav);
+  calcpres(pfield->data, fields->s["p"]->data, this->pmn, fields->s["p"]->datamean);
 
   // calculate the ql field
   calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pfield->data);
@@ -132,9 +121,9 @@ int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
 int cthermo_moist::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
 {
   // first calculate the pressure
-  calcpres(tmp->data, fields->s["p"]->data, this->pmn, this->pav);
+  calcpres(tmp->data, fields->s["p"]->data, this->pmn, fields->s["p"]->datamean);
   // then calculate the buoyancy at the cell centers
-  calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, tmp->data, ql);
+  calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, tmp->data, fields->s["tmp2"]->data);
 
   return 0;
 }
@@ -162,7 +151,7 @@ int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * 
 
   double rhos = this->rhos;
 
-  grid->calcmean(pav,pi,grid->kmax);
+  grid->calcmean(pav,pi,grid->kcells);
 
   for(int k=0; k<grid->kcells; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -267,8 +256,8 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        th      = sh[ij] * exner2(ph[ij]);
-        ql[ij]  = qth[ij]-rslf(ph[ij],th);   // not real ql, just estimate
+        th      = s[ijk] * exner2(p[ijk]);
+        ql[ij]  = qt[ijk]-rslf(p[ijk],th);   // not real ql, just estimate
         if(ql[ij] > 0)
           ql[ij] = calcql(s[ijk], qt[ijk], p[ijk]);
         else

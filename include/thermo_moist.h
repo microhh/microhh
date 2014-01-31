@@ -84,11 +84,6 @@ class cthermo_moist : public cthermo
     double thvs;
     double rhos;
     double *pmn;
-    double *pav;
-    double *sh;
-    double *qth;
-    double *ph;
-    double *ql;
 
     bool allocated;
     
