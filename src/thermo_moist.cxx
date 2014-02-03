@@ -64,15 +64,18 @@ int cthermo_moist::create()
   //   nerror += grid->calcmean(&ssurf, fields->s["s"]->databot,1);
   //   nerror += grid->calcmean(&qtsurf, fields->s["qt"]->databot,1);
 
-  thvs = 303.2;//ssurf * (1. - (1. - rv/rd)*qtsurf);
-  double tvs  = exner2(ps) * thvs;
-  rhos = ps / (rd * tvs);
+  thvs = 303.2;  //ssurf * (1. - (1. - rv/rd)*qtsurf);
+  //double tvs  = exner2(ps) * thvs;
+  //rhos = ps / (rd * tvs);
 
   pmn = new double[grid->kcells];
-  for(int k=0; k<grid->kcells; k++)
-  {
-    pmn[k] = ps - rhos * grav * grid->z[k];
-  }
+  calchydropres(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+
+  //for(int k=0; k<grid->kcells; k++)
+  //{
+  //  pmn[k] = ps - rhos * grav * grid->z[k];
+  //  printf("%i %f %f\n",k,grid->z[k],pmn[k]);
+  //}
 
   allocated = true;
   return nerror;
@@ -86,6 +89,8 @@ int cthermo_moist::exec()
   nerror = 0;
 
   //calcpres(fields->s["tmp1"]->data, fields->s["p"]->data, pmn, fields->s["p"]->datamean);
+  calchydropres(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+
   // nerror += calcqlfield(fields->s["ql"]->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
 
   // extend later for gravity vector not normal to surface
@@ -110,6 +115,7 @@ int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
 
   // calculate the hydrostatic pressure
   //calcpres(pfield->data, fields->s["p"]->data, this->pmn, fields->s["p"]->datamean);
+  calchydropres(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
 
   // calculate the ql field
   //calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pfield->data);
@@ -122,6 +128,7 @@ int cthermo_moist::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
 {
   // first calculate the pressure
   //calcpres(tmp->data, fields->s["p"]->data, this->pmn, fields->s["p"]->datamean);
+  calchydropres(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
 
   // then calculate the buoyancy at the cell centers
   calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, fields->s["tmp2"]->data);
@@ -144,24 +151,54 @@ int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
-int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * restrict pmn, double * restrict pav)
+//int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * restrict pmn, double * restrict pav)
+//{
+//  int ijk,jj,kk;
+//  jj = grid->icells;
+//  kk = grid->icells*grid->jcells;
+//
+//  double rhos = this->rhos;
+//
+//  grid->calcmean(pav,pi,grid->kcells);
+//
+//  for(int k=0; k<grid->kcells; k++)
+//    for(int j=grid->jstart; j<grid->jend; j++)
+//#pragma ivdep
+//      for(int i=grid->istart; i<grid->iend; i++)
+//      {
+//        ijk = i + j*jj + k*kk;
+//        p[ijk] = pi[ijk]*rhos - pav[k] + pmn[k]; // minus trace
+//      }
+//
+//  return 0;
+//}
+
+int cthermo_moist::calchydropres(double * restrict pmn, double * restrict s, double * restrict smean,
+                                 double * restrict qt, double * restrict qtmean)
 {
   int ijk,jj,kk;
+  double thv,tv;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double rhos = this->rhos;
+  grid->calcmean(smean,s,grid->kcells);
+  grid->calcmean(qtmean,qt,grid->kcells);
 
-  grid->calcmean(pav,pi,grid->kcells);
+  double rdcp = rd/cp;
 
-  for(int k=0; k<grid->kcells; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        p[ijk] = pi[ijk]*rhos - pav[k] + pmn[k]; // minus trace
-      }
+  // Lowest gridpoint
+  thv = thvs;   // surface
+  // BvS: what to do with more than 1 ghostcell?
+  pmn[grid->kstart-1] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[grid->kstart-1] / (cp * thvs)),(1./rdcp)); 
+  pmn[grid->kstart] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[grid->kstart] / (cp * thvs)),(1./rdcp)); 
+  //printf("%f %f\n",pmn[0],pmn[1]);
+
+  for(int k=grid->kstart+1; k<grid->kend+1; k++)
+  {
+    thv = smean[k]*(1.+(rv/rd-1.)*qtmean[k]);   // BvS: assume no ql for now..
+    pmn[k] = pow((pow(pmn[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thv)),(1./rdcp)); 
+    //printf("%i %f %f\n",k,grid->z[k],pmn[k]);
+  }
 
   return 0;
 }
@@ -179,7 +216,7 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
-    ph   = interp2(p[k-1],p[k]);
+    ph   = interp2(p[k-1],p[k]);   // BvS interpolation pressure ok?
     exnh = exner2(ph);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
