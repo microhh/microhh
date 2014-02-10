@@ -33,6 +33,7 @@ class cthermo
     cthermo(cmodel *);
     virtual ~cthermo();
     virtual int readinifile(cinput *);
+    virtual int init();
     virtual int exec();
     virtual int create();
 

@@ -275,6 +275,8 @@ int cmodel::init()
     return 1;
   if(pres->init())
     return 1;
+  if(thermo->init())
+    return 1;
 
   if(stats->init(timeloop->ifactor))
     return 1;

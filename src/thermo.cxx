@@ -45,6 +45,11 @@ int cthermo::readinifile(cinput *inputin)
   return 0;
 }
 
+int cthermo::init()
+{
+  return 0;
+}
+
 int cthermo::create()
 {
   return 0;

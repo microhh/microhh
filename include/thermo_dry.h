@@ -41,6 +41,8 @@ class cthermo_dry : public cthermo
     cthermo_dry(cmodel *);     ///< Constructor of the dry thermodynamics class.
     ~cthermo_dry();            ///< Destructor of the dry thermodynamics class.
     int readinifile(cinput *); ///< Processing data of the input file.
+    int init();
+    int create();
     int exec();                ///< Add the tendencies belonging to the buoyancy.
 
     int getbuoyancy(cfield3d *, cfield3d *); ///< Compute the buoyancy for usage in another routine.
@@ -60,5 +62,13 @@ class cthermo_dry : public cthermo
                           const double, const double); ///< 4th order interpolation function.
 
     double thref; ///< Reference potential temperature.
+
+    double *pref;
+    double *exner;
+    double *rhoref;
+
+    double *prefh;
+    double *exnerh;
+    double *rhorefh;
 };
 #endif

@@ -20,14 +20,21 @@
  */
 
 #include <cstdio>
+#include <cmath>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_dry.h"
 #include "defines.h"
 
-#define gravity 9.81
+#define grav 9.81
+#define Rd 287.04
+#define cp 1005.
 
-cthermo_dry::cthermo_dry(cmodel *modelin) : cthermo(modelin)
+// make input options later
+#define thvref 300.
+#define psurf 100000.
+
+cthermo_dry::cthermo_dry(cgrid *gridin, cfields *fieldsin, cmaster *masterin) : cthermo(gridin, fieldsin, masterin)
 {
   swthermo = "dry";
 }
@@ -45,6 +52,41 @@ int cthermo_dry::readinifile(cinput *inputin)
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
 
   return nerror;
+}
+
+int cthermo_dry::init()
+{
+  // fields for anelastic solver
+  pref    = new double[grid->kcells];
+  exner   = new double[grid->kcells];
+  rhoref  = new double[grid->kcells];
+
+  prefh   = new double[grid->kcells];
+  exnerh  = new double[grid->kcells];
+  rhorefh = new double[grid->kcells];
+
+  return 0;
+}
+
+int cthermo_dry::create()
+{
+  // ANELASTIC
+  // calculate the base state pressure and density
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    pref   [k] = psurf*std::exp(-grav/(Rd*thvref)*grid->z[k]);
+    exner  [k] = std::pow(pref[k]/psurf, Rd/cp);
+    rhoref [k] = pref[k] / (Rd*exner[k]*thvref);
+  }
+
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prefh  [k] = psurf*std::exp(-grav/(Rd*thvref)*grid->zh[k]);
+    exnerh [k] = std::pow(prefh[k]/psurf, Rd/cp);
+    rhorefh[k] = prefh[k] / (Rd*exnerh[k]*thvref);
+  }
+
+  return 0;
 }
 
 int cthermo_dry::exec()
