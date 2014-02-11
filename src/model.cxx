@@ -22,6 +22,7 @@
 #include <string>
 #include <cstdio>
 #include <algorithm>
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "model.h"
@@ -114,7 +115,7 @@ cmodel::~cmodel()
 int cmodel::readinifile()
 {
   // input parameters
-  int n = 0;
+  int nerror = 0;
 
   // grid
   if(grid->readinifile(input))
@@ -125,15 +126,15 @@ int cmodel::readinifile()
     return 1;
 
   // first, get the switches for the schemes
-  n += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
-  n += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
-  n += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
-  n += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
-  n += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
-  n += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
+  nerror += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
+  nerror += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
+  nerror += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
+  nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
+  nerror += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
+  nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
 
   // if one or more arguments fails, then crash
-  if(n > 0)
+  if(nerror > 0)
     return 1;
 
   // check the advection scheme
@@ -203,13 +204,13 @@ int cmodel::readinifile()
     return 1;
 
   if(swthermo== "moist")
-    thermo = new cthermo_moist(grid, fields, master);
+    thermo = new cthermo_moist(this);
   else if(swthermo == "dry")
-    thermo = new cthermo_dry(grid, fields, master);
+    thermo = new cthermo_dry(this);
   else if(swthermo == "dry_slope")
-    thermo = new cthermo_dry_slope(grid, fields, master);
+    thermo = new cthermo_dry_slope(this);
   else if(swthermo == "0")
-    thermo = new cthermo(grid, fields, master);
+    thermo = new cthermo(this);
   else
   {
     std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());

@@ -20,12 +20,13 @@
  */
 
 #include <cstdio>
+#include <cmath>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
 #include "defines.h"
 
-cthermo_moist::cthermo_moist(cgrid *gridin, cfields *fieldsin, cmaster *mpiin) : cthermo(gridin, fieldsin, mpiin)
+cthermo_moist::cthermo_moist(cmodel *modelin) : cthermo(modelin)
 {
   swthermo = "moist";
 
