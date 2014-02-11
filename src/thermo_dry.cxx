@@ -79,7 +79,6 @@ int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
 int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict s)
 {
   int ijk,jj,kk;
-  double ql;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
@@ -122,7 +121,7 @@ int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
 
 int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
 {
-  int ij,jj,kk;
+  int ij,jj;
   jj = grid->icells;
 
   double gravitybeta = this->gravitybeta;
