@@ -22,10 +22,12 @@
 #ifndef THERMO_DRY
 #define THERMO_DRY
 
-#include "grid.h"
-#include "fields.h"
-#include "master.h"
 #include "thermo.h"
+
+// forward declarations to speed up build time
+class cmaster;
+class cgrid;
+class cfields;
 
 /**
  * Class for the dry thermodynamics.
@@ -36,10 +38,10 @@
 class cthermo_dry : public cthermo
 {
   public:
-    cthermo_dry(cgrid *, cfields *, cmaster *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_dry();                             ///< Destructor of the dry thermodynamics class.
-    int readinifile(cinput *);                  ///< Processing data of the input file.
-    int exec();                                 ///< Add the tendencies belonging to the buoyancy.
+    cthermo_dry(cmodel *);     ///< Constructor of the dry thermodynamics class.
+    ~cthermo_dry();            ///< Destructor of the dry thermodynamics class.
+    int readinifile(cinput *); ///< Processing data of the input file.
+    int exec();                ///< Add the tendencies belonging to the buoyancy.
 
     int getbuoyancy(cfield3d *, cfield3d *); ///< Compute the buoyancy for usage in another routine.
     int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.

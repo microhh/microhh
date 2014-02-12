@@ -22,11 +22,12 @@
 #ifndef THERMO_MOIST
 #define THERMO_MOIST
 
-#include "grid.h"
-#include "fields.h"
-#include "master.h"
 #include "thermo.h"
-#include <cmath>
+
+// forward declarations to speed up build time
+class cmaster;
+class cgrid;
+class cfields;
 
 #define rd 287.04
 #define rv 461.5
@@ -63,7 +64,7 @@
 class cthermo_moist : public cthermo
 {
   public:
-    cthermo_moist(cgrid *, cfields *, cmaster *);
+    cthermo_moist(cmodel *);
     ~cthermo_moist();
     int readinifile(cinput *);
     int init(cinput *);

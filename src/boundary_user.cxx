@@ -100,7 +100,7 @@ int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, do
       errvalx = 0.5 - 0.5*erf(2.*(std::abs(2.*xmod - patch_xh) - patch_xr) / patch_xi);
 
       if(patch_dim == 2)
-        errvalx = 0.5 - 0.5*erf(2.*(std::abs(2.*xmod - patch_xh) - patch_xr) / patch_xi);
+        errvaly = 0.5 - 0.5*erf(2.*(std::abs(2.*ymod - patch_xh) - patch_xr) / patch_xi);
       else
         errvaly = 1.;
 
@@ -125,7 +125,7 @@ int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, do
       {
         ij = i + j*jj;
         agrad[ij] = avall + (avalr-avall)*tmp[ij];
-        aflux[ij] = -aval*visc;
+        aflux[ij] = -agrad[ij]*visc;
       }
   }
   else if(sw == BC_FLUX)
@@ -136,7 +136,7 @@ int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, do
       {
         ij = i + j*jj;
         aflux[ij] = avall + (avalr-avall)*tmp[ij];
-        agrad[ij] = -aval/visc;
+        agrad[ij] = -aflux[ij]/visc;
       }
   }
 

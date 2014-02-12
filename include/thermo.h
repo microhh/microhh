@@ -22,14 +22,15 @@
 #ifndef THERMO
 #define THERMO
 
-#include "grid.h"
-#include "fields.h"
-#include "master.h"
+// forward declarations to speed up build time
+class cmaster;
+class cgrid;
+class cfields;
 
 class cthermo
 {
   public:
-    cthermo(cgrid *, cfields *, cmaster *);
+    cthermo(cmodel *);
     virtual ~cthermo();
     virtual int readinifile(cinput *);
     virtual int exec();
