@@ -61,15 +61,16 @@ int cthermo_moist::create()
   
   // Create hydrostatic profile
   // Doesnt work; just put a ref value in Namelist for both gravity and 1/beta
-  //   nerror += grid->calcmean(&ssurf, fields->s["s"]->databot,1);
-  //   nerror += grid->calcmean(&qtsurf, fields->s["qt"]->databot,1);
+  //nerror += grid->calcmean(&ssurf, fields->s["s"]->databot,1);
+  //nerror += grid->calcmean(&qtsurf, fields->s["qt"]->databot,1);
 
   thvs = 303.2;  //ssurf * (1. - (1. - rv/rd)*qtsurf);
   //double tvs  = exner2(ps) * thvs;
   //rhos = ps / (rd * tvs);
 
   pmn = new double[grid->kcells];
-  calchydropres(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+  
+  //calchydropres(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
 
   //for(int k=0; k<grid->kcells; k++)
   //{
@@ -176,28 +177,41 @@ int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
 int cthermo_moist::calchydropres(double * restrict pmn, double * restrict s, double * restrict smean,
                                  double * restrict qt, double * restrict qtmean)
 {
-  int ijk,jj,kk;
-  double thv,tv;
+  int ijk,jj,kk,kstart,kend;
+  double thv,ssurf,qtsurf;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+  kstart = grid->kstart;
+  kend = grid->kend;
 
   grid->calcmean(smean,s,grid->kcells);
   grid->calcmean(qtmean,qt,grid->kcells);
 
+  grid->calcmean(&ssurf,fields->s["s"]->databot,1);
+  grid->calcmean(&qtsurf,fields->s["qt"]->databot,1);
+
   double rdcp = rd/cp;
 
-  // Lowest gridpoint
-  thv = thvs;   // surface
-  // BvS: what to do with more than 1 ghostcell?
-  pmn[grid->kstart-1] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[grid->kstart-1] / (cp * thvs)),(1./rdcp)); 
-  pmn[grid->kstart] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[grid->kstart] / (cp * thvs)),(1./rdcp)); 
-  //printf("%f %f\n",pmn[0],pmn[1]);
+  // Calculate lowest grid point (kstart) from surface pressure
+  thv = ssurf*(1.+(rv/rd-1)*qtsurf);
+  pmn[kstart] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thv)),(1./rdcp)); 
 
-  for(int k=grid->kstart+1; k<grid->kend+1; k++)
+  for(int k=kstart+1; k<kend+1; k++)
   {
     thv = smean[k]*(1.+(rv/rd-1.)*qtmean[k]);   // BvS: assume no ql for now..
     pmn[k] = pow((pow(pmn[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thv)),(1./rdcp)); 
-    //printf("%i %f %f\n",k,grid->z[k],pmn[k]);
+  }
+
+  // Fill ghost cells 
+  if(grid->swspatialorder == "2")
+  {
+    pmn[kstart-1] = 2.*ps - pmn[kstart];
+
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    pmn[kstart-1] = (8./3.)*ps - 2.*pmn[kstart] + (1./3.)*pmn[kstart+1];
+    pmn[kstart-2] = 8.*ps - 9.*pmn[kstart] + 2.*pmn[kstart+1];
   }
 
   return 0;
