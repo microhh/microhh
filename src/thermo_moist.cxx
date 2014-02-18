@@ -203,7 +203,8 @@ int cthermo_moist::calchydropres(double * restrict pmn, double * restrict s, dou
 
   for(int k=kstart+1; k<kend; k++)
   {
-    thv = smean[k]*(1.+(rv/rd-1.)*qtmean[k]);   // BvS: assume no ql for now..
+    thv = interp2(smean[k],smean[k-1])*(1.+(rv/rd-1.)*interp2(qtmean[k],qtmean[k-1]));   // BvS: assume no ql for now..
+    //thv = smean[k]*(1.+(rv/rd-1.)*qtmean[k]);   // BvS: assume no ql for now..
     pmn[k] = pow((pow(pmn[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thv)),(1./rdcp)); 
   }
 
