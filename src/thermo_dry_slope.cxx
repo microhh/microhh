@@ -26,7 +26,7 @@
 #include "thermo_dry_slope.h"
 #include "defines.h"
 
-cthermo_dry_slope::cthermo_dry_slope(cgrid *gridin, cfields *fieldsin, cmaster *masterin) : cthermo(gridin, fieldsin, masterin)
+cthermo_dry_slope::cthermo_dry_slope(cmodel *modelin) : cthermo(modelin)
 {
   swthermo = "slope";
 }

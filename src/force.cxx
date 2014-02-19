@@ -132,6 +132,14 @@ int cforce::create(cinput *inputin)
 
   if(swls == "1")
   {
+    // check whether the fields in the list exist in the prognostic fields
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+      if(!fields->ap.count(*it))
+      {
+        if(master->mpiid == 0) std::printf("ERROR field %s in [force][lslist] is illegal\n", it->c_str());
+        ++nerror;
+      }
+
     // read the large scale sources, which are the variable names with a "ls" suffix
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
       nerror += inputin->getProf(&lsprofs[*it][grid->kstart], *it+"ls", grid->kmax);

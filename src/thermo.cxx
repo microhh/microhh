@@ -20,16 +20,18 @@
  */
 
 #include <cstdio>
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "thermo.h"
 #include "defines.h"
+#include "model.h"
 
-cthermo::cthermo(cgrid *gridin, cfields *fieldsin, cmaster *masterin)
+cthermo::cthermo(cmodel *modelin)
 {
-  grid   = gridin;
-  fields = fieldsin;
-  master = masterin;
+  grid   = modelin->grid;
+  fields = modelin->fields;
+  master = modelin->master;
 
   swthermo = "off";
 }

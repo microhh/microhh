@@ -60,6 +60,8 @@ class ccross
     std::vector<std::string> fluxbot;
     std::vector<std::string> lngrad;
 
+    int checkList(std::vector<std::string> *, fieldmap *, std::string crossname);
+
     int crosssimple (double *, double *, std::string, std::vector<int>, std::vector<int>, int);
     int crossbot    (double *, double *, double *, std::string, int);
     int crossfluxbot(double *, double *, std::string, int);

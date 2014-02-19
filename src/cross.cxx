@@ -62,9 +62,31 @@ int ccross::readinifile(cinput *inputin)
     nerror += inputin->getList(&bot    , "cross", "bot"    , "");
     nerror += inputin->getList(&fluxbot, "cross", "fluxbot", "");
     nerror += inputin->getList(&lngrad , "cross", "lngrad" , "");
+
+    // check whether the requested fields in list exist, to prevent segfaults later
+    nerror += checkList(&simple , &fields->a, "simple" );
+    nerror += checkList(&bot    , &fields->a, "bot"    );
+    nerror += checkList(&fluxbot, &fields->a, "fluxbot");
+    nerror += checkList(&lngrad , &fields->s, "lngrad" );
   }
 
   return nerror;
+}
+
+// search for the given cross name whether the field exists in the correct map
+int ccross::checkList(std::vector<std::string> *list, fieldmap *fm, std::string crossname)
+{
+  for(std::vector<std::string>::const_iterator it=list->begin(); it!=list->end(); ++it)
+  {
+    // if the field does not exist trigger an error
+    if(!fm->count(*it))
+    {
+      if(master->mpiid == 0) std::printf("ERROR field %s in [cross][%s] is illegal\n", it->c_str(), crossname.c_str());
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 int ccross::init(int ifactor)
