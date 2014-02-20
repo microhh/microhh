@@ -55,6 +55,16 @@ int cthermo::exec()
   return 0;
 }
 
+int cthermo::checkthermofield(std::string name)
+{
+  return 1;  // always returns error 
+}
+
+int cthermo::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+{
+  return 0;
+}
+
 int cthermo::getbuoyancysurf(cfield3d *bfield)
 {
   return 0;
@@ -65,10 +75,10 @@ int cthermo::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
-int cthermo::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
-{
-  return 0;
-}
+//int cthermo::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
+//{
+//  return 0;
+//}
 
 std::string cthermo::getname()
 {

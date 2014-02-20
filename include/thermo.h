@@ -39,7 +39,9 @@ class cthermo
     // interfacint functions to get buoyancy properties from other classes
     virtual int getbuoyancysurf(cfield3d *);
     virtual int getbuoyancyfluxbot(cfield3d *);
-    virtual int getbuoyancy(cfield3d *, cfield3d *);
+    //virtual int getbuoyancy(cfield3d *, cfield3d *);
+    virtual int checkthermofield(std::string name);
+    virtual int getthermofield(cfield3d *, cfield3d *, std::string name);
 
     std::string getname();
 

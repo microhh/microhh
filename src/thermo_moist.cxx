@@ -62,7 +62,7 @@ int cthermo_moist::create()
   thvs = 303.2;  //ssurf * (1. - (1. - rv/rd)*qtsurf);
 
   pmn  = new double[grid->kcells];  // Hydrostatic pressure (full levels)
-  
+ 
   allocated = true;
   return nerror;
 }
@@ -91,41 +91,65 @@ int cthermo_moist::exec()
   return (nerror>0);
 }
 
-int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
+int cthermo_moist::checkthermofield(std::string name)
+{
+  if(name == "b" || name == "ql")
+    return 0;
+  else
+    return 1;
+}
+
+int cthermo_moist::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
 {
   // calculate the hydrostatic pressure
   if(grid->swspatialorder == "2")
-  {
     calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
-  }
   else if(grid->swspatialorder == "4")
-  {
     calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
-  }
 
-  // calculate the ql field
-  calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
+  if(name == "b")
+    calcbuoyancy(field->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, tmp->data);
+  else if(name == "ql")
+    calcqlfield(field->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
 
   return 0;
 }
 
-int cthermo_moist::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
-{
-  // calculate the hydrostatic pressure
-  if(grid->swspatialorder == "2")
-  {
-    calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
-  }
-  else if(grid->swspatialorder == "4")
-  {
-    calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
-  }
-
-  // calculate the buoyancy at the cell centers
-  calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, fields->s["tmp2"]->data);
-
-  return 0;
-}
+//int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
+//{
+//  // calculate the hydrostatic pressure
+//  if(grid->swspatialorder == "2")
+//  {
+//    calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+//  }
+//  else if(grid->swspatialorder == "4")
+//  {
+//    calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+//  }
+//
+//  // calculate the ql field
+//  calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
+//
+//  return 0;
+//}
+//
+//int cthermo_moist::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
+//{
+//  // calculate the hydrostatic pressure
+//  if(grid->swspatialorder == "2")
+//  {
+//    calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+//  }
+//  else if(grid->swspatialorder == "4")
+//  {
+//    calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+//  }
+//
+//  // calculate the buoyancy at the cell centers
+//  calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, fields->s["tmp2"]->data);
+//
+//  return 0;
+//}
 
 int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
 {

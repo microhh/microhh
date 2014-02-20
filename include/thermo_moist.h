@@ -75,7 +75,10 @@ class cthermo_moist : public cthermo
     // functions to retrieve buoyancy properties, to be called from other classes
     int getbuoyancysurf   (cfield3d *);
     int getbuoyancyfluxbot(cfield3d *);
-    int getbuoyancy(cfield3d *, cfield3d *);
+    //int getbuoyancy(cfield3d *, cfield3d *);
+    int checkthermofield(std::string name);
+    int getthermofield(cfield3d *, cfield3d *, std::string name);
+
     // int getbuoyancyh();
     // int getsat();
     // int getsath();

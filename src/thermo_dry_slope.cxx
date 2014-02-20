@@ -55,11 +55,27 @@ int cthermo_dry_slope::exec()
   return 0;
 }
 
-int cthermo_dry_slope::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
+int cthermo_dry_slope::checkthermofield(std::string name)
 {
-  calcbuoyancy(bfield->data, fields->s["s"]->data);
+  if(name == "b")
+    return 0;
+  else
+    return 1;
+}
+
+int cthermo_dry_slope::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+{
+  // Check needed?
+  calcbuoyancy(field->data, fields->s["s"]->data);
+
   return 0;
 }
+
+//int cthermo_dry_slope::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
+//{
+//  calcbuoyancy(bfield->data, fields->s["s"]->data);
+//  return 0;
+//}
 
 int cthermo_dry_slope::getbuoyancyfluxbot(cfield3d *bfield)
 {

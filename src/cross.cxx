@@ -27,6 +27,7 @@
 #include "cross.h"
 #include "defines.h"
 #include "model.h"
+#include "thermo.h"
 #include <netcdfcpp.h>
 
 ccross::ccross(cmodel *modelin)
@@ -79,10 +80,14 @@ int ccross::checkList(std::vector<std::string> *list, fieldmap *fm, std::string 
   for(std::vector<std::string>::const_iterator it=list->begin(); it!=list->end(); ++it)
   {
     // if the field does not exist trigger an error
+    // except when it can be calculated in thermo
     if(!fm->count(*it))
     {
-      if(master->mpiid == 0) std::printf("ERROR field %s in [cross][%s] is illegal\n", it->c_str(), crossname.c_str());
-      return 1;
+      if(model->thermo->checkthermofield(*it))
+      {
+        if(master->mpiid == 0) std::printf("ERROR field %s in [cross][%s] is illegal\n", it->c_str(), crossname.c_str());
+        return 1;
+      }
     }
   }
 
@@ -123,7 +128,15 @@ int ccross::exec(double time, unsigned long itime, int iotime)
 
   // cross section of variables
   for(std::vector<std::string>::iterator it=simple.begin(); it<simple.end(); ++it)
-    crosssimple(fields->a[*it]->data, fields->s["tmp1"]->data, fields->a[*it]->name, jxz, kxy, iotime);
+  {
+    if(fields->a.count(*it))
+      crosssimple(fields->a[*it]->data, fields->s["tmp1"]->data, fields->a[*it]->name, jxz, kxy, iotime);
+    else
+    {
+      model->thermo->getthermofield(fields->s["tmp1"],fields->s["tmp2"],*it); 
+      crosssimple(fields->s["tmp1"]->data,fields->s["tmp2"]->data, *it, jxz, kxy, iotime);
+    }
+  }
 
   // cross sections of bottom values
   for(std::vector<std::string>::iterator it=bot.begin(); it<bot.end(); ++it)

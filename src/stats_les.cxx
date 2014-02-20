@@ -221,7 +221,8 @@ int cstats_les::exec(int iteration, double time, unsigned long itime)
   if(model->thermo->getname() == "moist")
   {
     // use a static cast to get access to the thermo moist functions
-    static_cast<cthermo_moist *>(model->thermo)->getql(fields->s["tmp1"], fields->s["tmp2"]);
+    //static_cast<cthermo_moist *>(model->thermo)->getql(fields->s["tmp1"], fields->s["tmp2"]);
+    static_cast<cthermo_moist *>(model->thermo)->getthermofield(fields->s["tmp1"], fields->s["tmp2"],"ql");
     calcmean (fields->s["tmp1"]->data, profs["ql"].data, NO_OFFSET);
     calccount(fields->s["tmp1"]->data, profs["cfrac"].data, 0.);
   }
