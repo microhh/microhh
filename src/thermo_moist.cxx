@@ -361,6 +361,13 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
         ij  = i + j*jj;
         tl  = s[ijk] * exn;
         ql[ij]  = qt[ijk]-rslf(p[k],tl);   // not real ql, just estimate
+      }
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ij  = i + j*jj;
         if(ql[ij] > 0)
           ql[ij] = calcql(s[ijk], qt[ijk], p[k], exn);
         else
