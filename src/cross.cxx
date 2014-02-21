@@ -64,6 +64,13 @@ int ccross::readinifile(cinput *inputin)
     nerror += inputin->getList(&fluxbot, "cross", "fluxbot", "");
     nerror += inputin->getList(&lngrad , "cross", "lngrad" , "");
 
+    // lngrad only has 4th order scheme
+    if(lngrad.size()>0 && grid->swspatialorder != "4")
+    {
+      if(master->mpiid == 0) std::printf("ERROR lngrad only supported for swspatialorder=4\n");
+      return 1;
+    }
+
     // check whether the requested fields in list exist, to prevent segfaults later
     nerror += checkList(&simple , &fields->a, "simple" );
     nerror += checkList(&bot    , &fields->a, "bot"    );
@@ -83,7 +90,8 @@ int ccross::checkList(std::vector<std::string> *list, fieldmap *fm, std::string 
     // except when it can be calculated in thermo
     if(!fm->count(*it))
     {
-      if(model->thermo->checkthermofield(*it))
+      // BvS for now trigger error when requesting thermo variables/fluxes
+      if(model->thermo->checkthermofield(*it) || crossname == "bot" || crossname == "fluxbot")
       {
         if(master->mpiid == 0) std::printf("ERROR field %s in [cross][%s] is illegal\n", it->c_str(), crossname.c_str());
         return 1;
@@ -133,7 +141,7 @@ int ccross::exec(double time, unsigned long itime, int iotime)
       crosssimple(fields->a[*it]->data, fields->s["tmp1"]->data, fields->a[*it]->name, jxz, kxy, iotime);
     else
     {
-      model->thermo->getthermofield(fields->s["tmp1"],fields->s["tmp2"],*it); 
+      model->thermo->getthermofield(fields->s["tmp1"],fields->s["tmp2"],*it);
       crosssimple(fields->s["tmp1"]->data,fields->s["tmp2"]->data, *it, jxz, kxy, iotime);
     }
   }
@@ -148,7 +156,19 @@ int ccross::exec(double time, unsigned long itime, int iotime)
 
   // cross section of scalar gradients
   for(std::vector<std::string>::iterator it=lngrad.begin(); it<lngrad.end(); ++it)
-    crosslngrad(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*it]->name + "lngrad", jxz, kxy, iotime);
+  {
+    if(fields->a.count(*it))
+      crosslngrad(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*it]->name + "lngrad", jxz, kxy, iotime);
+    else
+    {
+      model->thermo->getthermofield(fields->s["tmp1"],fields->s["tmp2"],*it);
+      // Most thermo fields don't have data in their ghost cells, so call cyclics before calculating gradients
+      grid->boundary_cyclic(fields->s["tmp1"]->data); 
+      // Note: tmp1 is overwritten within crosslngrad() after lngrad is calculated
+      crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it + "lngrad", jxz, kxy, iotime);
+    }
+  }
+
 
   return 0;
 }
