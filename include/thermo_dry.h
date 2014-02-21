@@ -59,6 +59,6 @@ class cthermo_dry : public cthermo
     inline double interp4(const double, const double, 
                           const double, const double); ///< 4th order interpolation function.
 
-    double gravitybeta; ///< Gravity acceleration multiplied with thermal expansion coefficient.
+    double thref; ///< Reference potential temperature.
 };
 #endif

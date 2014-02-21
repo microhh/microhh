@@ -25,6 +25,8 @@
 #include "thermo_dry.h"
 #include "defines.h"
 
+#define gravity 9.81
+
 cthermo_dry::cthermo_dry(cmodel *modelin) : cthermo(modelin)
 {
   swthermo = "dry";
@@ -37,7 +39,7 @@ cthermo_dry::~cthermo_dry()
 int cthermo_dry::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&gravitybeta, "thermo", "gravitybeta", "");
+  nerror += inputin->getItem(&thref, "thermo", "thref", "");
 
   nerror += fields->initpfld("th");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
@@ -70,7 +72,7 @@ int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
 
 int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
 {
-  calcbuoyancybot(bfield->data        , bfield->databot,
+  calcbuoyancybot(bfield->data, bfield->databot,
                   fields->s["th"]->data, fields->s["th"]->databot);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot);
   return 0;
@@ -82,7 +84,8 @@ int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict th)
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double gravitybeta = this->gravitybeta;
+  double thref  = this->thref;
+  double gthref = gravity/this->thref;
 
   for(int k=0; k<grid->kcells; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -90,7 +93,7 @@ int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict th)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        b[ijk] = gravitybeta*th[ijk];
+        b[ijk] = gthref * (th[ijk] - thref);
       }
 
   return 0;
@@ -104,7 +107,8 @@ int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
   kk = grid->icells*grid->jcells;
   kstart = grid->kstart;
 
-  double gravitybeta = this->gravitybeta;
+  double thref  = this->thref;
+  double gthref = gravity/this->thref;
 
   for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
@@ -112,8 +116,8 @@ int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij] = gravitybeta*thbot[ij];
-      b[ijk]   = gravitybeta*th[ijk];
+      bbot[ij] = gthref * (thbot[ij] - thref);
+      b[ijk]   = gthref * (th[ijk] - thref);
     }
 
   return 0;
@@ -124,14 +128,15 @@ int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restri
   int ij,jj;
   jj = grid->icells;
 
-  double gravitybeta = this->gravitybeta;
+  double thref  = this->thref;
+  double gthref = gravity/this->thref;
 
   for(int j=0; j<grid->jcells; j++)
 #pragma ivdep
     for(int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
-      bfluxbot[ij] = gravitybeta*thfluxbot[ij];
+      bfluxbot[ij] = gthref*thfluxbot[ij];
     }
 
   return 0;
@@ -144,7 +149,8 @@ int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double gravitybeta = this->gravitybeta;
+  double thref  = this->thref;
+  double gthref = gravity/this->thref;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -152,7 +158,7 @@ int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        wt[ijk] += gravitybeta * interp2(th[ijk-kk], th[ijk]);
+        wt[ijk] += gthref * (interp2(th[ijk-kk], th[ijk]) - thref);
       }
 
   return 0;
@@ -167,7 +173,8 @@ int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
 
-  double gravitybeta = this->gravitybeta;
+  double thref  = this->thref;
+  double gthref = gravity/this->thref;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -175,7 +182,7 @@ int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk1;
-        wt[ijk] += gravitybeta * interp4(th[ijk-kk2], th[ijk-kk1], th[ijk], th[ijk+kk1]);
+        wt[ijk] += gthref * (interp4(th[ijk-kk2], th[ijk-kk1], th[ijk], th[ijk+kk1]) - thref);
       }
 
   return 0;
