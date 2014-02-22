@@ -27,6 +27,7 @@
 #include "stats_dns.h"
 #include "defines.h"
 #include "model.h"
+#include "thermo.h"
 #include <netcdfcpp.h>
 
 #define NO_OFFSET 0.
@@ -192,8 +193,11 @@ int cstats_dns::create(int n)
   addprof("v2_rdstr", "z" );
   addprof("w2_rdstr", "zh");
 
-  addprof("w2_buoy" , "zh");
-  addprof("tke_buoy", "z" );
+  if(model->thermo->getname() != "0")
+  {
+    addprof("w2_buoy" , "zh");
+    addprof("tke_buoy", "z" );
+  }
 
   if(master->mpiid == 0)
   {
@@ -285,7 +289,7 @@ int cstats_dns::exec(int iteration, double time, unsigned long itime)
     addfluxes(profs[it->first+"flux"].data, profs[it->first+"w"].data, profs[it->first+"diff"].data);
 
   // calculate the TKE budget
-  calctkebudget(fields->u->data, fields->v->data, fields->w->data, fields->s["p"]->data, fields->s["s"]->data,
+  calctkebudget(fields->u->data, fields->v->data, fields->w->data, fields->s["p"]->data,
                 fields->s["tmp1"]->data, fields->s["tmp2"]->data,
                 umodel, vmodel,
                 profs["u2_shear"].data, profs["v2_shear"].data, profs["tke_shear"].data,
@@ -294,8 +298,15 @@ int cstats_dns::exec(int iteration, double time, unsigned long itime)
                 profs["u2_diss"].data, profs["v2_diss"].data, profs["w2_diss"].data, profs["tke_diss"].data,
                 profs["w2_pres"].data, profs["tke_pres"].data,
                 profs["u2_rdstr"].data, profs["v2_rdstr"].data, profs["w2_rdstr"].data,
-                profs["w2_buoy"].data, profs["tke_buoy"].data,
                 grid->dzi4, grid->dzhi4, fields->visc);
+
+  // calculate the buoyancy term of the TKE budget
+  if(model->thermo->getname() != "0")
+  {
+    model->thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
+    calctkebudget_buoy(fields->w->data, fields->s["tmp1"]->data,
+                  profs["w2_buoy"].data, profs["tke_buoy"].data);
+  }
 
   // put the data into the NetCDF file
   if(master->mpiid == 0)
@@ -338,12 +349,12 @@ int cstats_dns::calcmean(double * restrict data, double * restrict prof, double 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  for(int k=0; k<grid->kcells; k++)
+  for(int k=0; k<grid->kcells; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += data[ijk] + offset;
@@ -352,7 +363,7 @@ int cstats_dns::calcmean(double * restrict data, double * restrict prof, double 
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=0; k<grid->kcells; k++)
+  for(int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -367,12 +378,12 @@ int cstats_dns::calcmoment(double * restrict data, double * restrict datamean, d
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   
-  for(int k=grid->kstart; k<grid->kend+a; k++)
+  for(int k=grid->kstart; k<grid->kend+a; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += std::pow(data[ijk]-datamean[k], power);
@@ -381,7 +392,7 @@ int cstats_dns::calcmoment(double * restrict data, double * restrict datamean, d
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+a; k++)
+  for(int k=grid->kstart; k<grid->kend+a; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -410,12 +421,12 @@ int cstats_dns::calcflux(double * restrict data, double * restrict w, double * r
     calcw = tmp1;
   }
   
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
         prof[k] += (ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
@@ -424,7 +435,7 @@ int cstats_dns::calcflux(double * restrict data, double * restrict w, double * r
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -440,12 +451,12 @@ int cstats_dns::calcgrad(double * restrict data, double * restrict prof, double 
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
   
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
         prof[k] += (cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
@@ -454,7 +465,7 @@ int cstats_dns::calcgrad(double * restrict data, double * restrict prof, double 
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -470,12 +481,12 @@ int cstats_dns::calcdiff(double * restrict data, double * restrict prof, double 
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
   
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
         prof[k] += -visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
@@ -484,7 +495,7 @@ int cstats_dns::calcdiff(double * restrict data, double * restrict prof, double 
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
@@ -492,7 +503,7 @@ int cstats_dns::calcdiff(double * restrict data, double * restrict prof, double 
   return 0;
 }
 
-int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p, double * restrict b,
+int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
                               double * restrict wx, double * restrict wy,
                               double * restrict umean, double * restrict vmean,
                               double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
@@ -501,7 +512,6 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
                               double * restrict u2_diss, double * restrict v2_diss, double * restrict w2_diss, double * restrict tke_diss,
                               double * restrict w2_pres, double * restrict tke_pres,
                               double * restrict u2_rdstr, double * restrict v2_rdstr, double * restrict w2_rdstr,
-                              double * restrict w2_buoy, double * restrict tke_buoy,
                               double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   // get w on the x and y location
@@ -522,16 +532,15 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
 
   double n = grid->imax*grid->jmax;
 
-
   // calculate the shear term u'w*dumean/dz
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_shear [k] = 0.;
     v2_shear [k] = 0.;
     tke_shear[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_shear[k] -= 2.*(u[ijk]-umean[k])*(ci0*wx[ijk-kk1] + ci1*wx[ijk] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2])
@@ -549,7 +558,7 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
     tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
   }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_shear [k] /= n;
     v2_shear [k] /= n;
@@ -560,18 +569,17 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
   grid->getprof(v2_shear , grid->kcells);
   grid->getprof(tke_shear, grid->kcells);
 
-
   // calculate the turbulent transport term
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_turb [k] = 0.;
     v2_turb [k] = 0.;
     w2_turb [k] = 0.;
     tke_turb[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_turb[k]  -= ( cg0*((ci0*std::pow(u[ijk-kk3]-umean[k-3],2.) + ci1*std::pow(u[ijk-kk2]-umean[k-2],2.) + ci2*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci3*std::pow(u[ijk    ]-umean[k  ],2.))*wx[ijk-kk1])
@@ -588,10 +596,10 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
       }
     tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
   }
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_turb[k] -= ( cg0*(ci0*std::pow(w[ijk-kk3],3.) + ci1*std::pow(w[ijk-kk2],3.) + ci2*std::pow(w[ijk-kk1],3.) + ci3*std::pow(w[ijk    ],3.))
@@ -600,7 +608,7 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
                       + cg3*(ci0*std::pow(w[ijk    ],3.) + ci1*std::pow(w[ijk+kk1],3.) + ci2*std::pow(w[ijk+kk2],3.) + ci3*std::pow(w[ijk+kk3],3.)) ) * dzhi4[k];
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_turb [k] /= n;
     v2_turb [k] /= n;
@@ -614,14 +622,14 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
   grid->getprof(tke_turb, grid->kcells);
 
   // calculate the pressure transport term
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     w2_pres [k] = 0.;
     tke_pres[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         tke_pres[k] -= ( cg0*((ci0*p[ijk-kk3] + ci1*p[ijk-kk2] + ci2*p[ijk-kk1] + ci3*p[ijk    ])*w[ijk-kk1])
@@ -630,10 +638,10 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
                        + cg3*((ci0*p[ijk    ] + ci1*p[ijk+kk1] + ci2*p[ijk+kk2] + ci3*p[ijk+kk3])*w[ijk+kk2]) ) * dzi4[k];
       }
   }
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_pres[k] -= 2.*( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ])*p[ijk-kk2])
@@ -642,7 +650,7 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
                          + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])*p[ijk+kk1]) ) * dzhi4[k];
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     w2_pres [k] /= n;
     tke_pres[k] /= n;
@@ -651,18 +659,17 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
   grid->getprof(w2_pres , grid->kcells);
   grid->getprof(tke_pres, grid->kcells);
 
-
   // calculate the viscous transport term
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_visc [k] = 0.;
     v2_visc [k] = 0.;
     w2_visc [k] = 0.;
     tke_visc[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_visc[k]  += visc * ( cg0*((cg0*std::pow(u[ijk-kk3]-umean[k-3],2.) + cg1*std::pow(u[ijk-kk2]-umean[k-2],2.) + cg2*std::pow(u[ijk-kk1]-umean[k-1],2.) + cg3*std::pow(u[ijk    ]-umean[k  ],2.)) * dzhi4[k-1])
@@ -679,10 +686,10 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
       }
     tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
   }
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_visc[k] += visc * ( cg0*((cg0*std::pow(w[ijk-kk3],2.) + cg1*std::pow(w[ijk-kk2],2.) + cg2*std::pow(w[ijk-kk1],2.) + cg3*std::pow(w[ijk    ],2.)) * dzi4[k-2])
@@ -691,7 +698,7 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
                              + cg3*((cg0*std::pow(w[ijk    ],2.) + cg1*std::pow(w[ijk+kk1],2.) + cg2*std::pow(w[ijk+kk2],2.) + cg3*std::pow(w[ijk+kk3],2.)) * dzi4[k+1]) ) * dzhi4[k];
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_visc [k] /= n;
     v2_visc [k] /= n;
@@ -710,16 +717,16 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_diss [k] = 0.;
     v2_diss [k] = 0.;
     w2_diss [k] = 0.;
     tke_diss[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_diss[k]  -= 2.*visc * (
@@ -761,10 +768,10 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
       }
     tke_diss[k] += 0.5*(u2_diss[k] + v2_diss[k]);
   }
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_diss[k]  -= 2.*visc * (
@@ -784,7 +791,7 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
                                    + cg3*(ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) ) * dzhi4[k], 2.) );
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_diss [k] /= n;
     v2_diss [k] /= n;
@@ -799,15 +806,15 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
 
 
   // calculate the pressure redistribution term
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_rdstr [k] = 0.;
     v2_rdstr [k] = 0.;
     w2_rdstr [k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_rdstr [k] += 2.*(ci0*p[ijk-ii2] + ci1*p[ijk-ii1] + ci2*p[ijk] + ci3*p[ijk+ii1])*
@@ -822,10 +829,10 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
                         + cg3*((ci0*(v[ijk    ]-vmean[k]) + ci1*(v[ijk+jj1]-vmean[k]) + ci2*(v[ijk+jj2]-vmean[k]) + ci3*(v[ijk+jj3]-vmean[k]))) ) * cgi*dyi;
       }
   }
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_rdstr[k] += 2.*(ci0*p[ijk-kk2] + ci1*p[ijk-kk1] + ci2*p[ijk] + ci3*p[ijk+kk1])*
@@ -835,7 +842,7 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
                        + cg3*(ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) ) * dzhi4[k];
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_rdstr [k] /= n;
     v2_rdstr [k] /= n;
@@ -846,32 +853,44 @@ int cstats_dns::calctkebudget(double * restrict u, double * restrict v, double *
   grid->getprof(v2_rdstr , grid->kcells);
   grid->getprof(w2_rdstr , grid->kcells);
 
+  return 0;
+}
+
+int cstats_dns::calctkebudget_buoy(double * restrict w, double * restrict b,
+                                   double * restrict w2_buoy, double * restrict tke_buoy)
+{
+  int ijk,jj1,kk1,kk2;
+
+  jj1 = 1*grid->icells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+
+  double n = grid->imax*grid->jmax;
 
   // calculate the buoyancy term
-  // CvH, check the correct usage of the gravity term later! check also the reference b!
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     w2_buoy [k] = 0.;
     tke_buoy[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         tke_buoy[k] += (ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*b[ijk];
       }
   }
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_buoy[k] += 2.*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1])*w[ijk];
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend; ++k)
   {
     w2_buoy [k] /= n;
     tke_buoy[k] /= n;

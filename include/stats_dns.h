@@ -59,7 +59,7 @@ class cstats_dns : public cstats
     int calcdiff     (double *, double *, double *, double);
     int calcgrad     (double *, double *, double *);
     int addfluxes    (double *, double *, double *);
-    int calctkebudget(double *, double *, double *, double *, double *,
+    int calctkebudget(double *, double *, double *, double *,
                       double *, double *,
                       double *, double *,
                       double *, double *, double *,
@@ -68,8 +68,8 @@ class cstats_dns : public cstats
                       double *, double *, double *, double *,
                       double *, double *,
                       double *, double *, double *,
-                      double *, double *,
                       double *, double *, double);
+    int calctkebudget_buoy(double *, double *, double *, double *);
 
     int nstats;
 };
