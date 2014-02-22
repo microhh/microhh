@@ -63,6 +63,7 @@ int ccross::readinifile(cinput *inputin)
     nerror += inputin->getList(&bot    , "cross", "bot"    , "");
     nerror += inputin->getList(&fluxbot, "cross", "fluxbot", "");
     nerror += inputin->getList(&lngrad , "cross", "lngrad" , "");
+    nerror += inputin->getList(&path   , "cross", "path"   , "");
 
     // lngrad only has 4th order scheme
     if(lngrad.size()>0 && grid->swspatialorder != "4")
@@ -76,6 +77,7 @@ int ccross::readinifile(cinput *inputin)
     nerror += checkList(&bot    , &fields->a, "bot"    );
     nerror += checkList(&fluxbot, &fields->a, "fluxbot");
     nerror += checkList(&lngrad , &fields->s, "lngrad" );
+    nerror += checkList(&path   , &fields->s, "path" );
   }
 
   return nerror;
@@ -169,6 +171,17 @@ int ccross::exec(double time, unsigned long itime, int iotime)
     }
   }
 
+  // integrated paths
+  for(std::vector<std::string>::iterator it=path.begin(); it<path.end(); ++it)
+  {
+    if(fields->a.count(*it))
+      crosspath(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s[*it]->name, iotime);
+    else
+    {
+      model->thermo->getthermofield(fields->s["tmp1"],fields->s["tmp2"],*it);
+      crosspath(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, *it, iotime);
+    }
+  }
 
   return 0;
 }
@@ -369,4 +382,45 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
 
   return 0;
 }
- 
+
+int ccross::crosspath(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name, int iotime)
+{
+  int ijk,ijk1,jj,kk;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  int kstart = grid->kstart;
+
+  // for testing hard code density to 1.0 
+  // obtain either from thermo_moist, anelastic scheme, etc.
+  double rho0 = 1.0;   
+
+  // Path is integrated in first full level, set to zero first
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj + kstart*kk;
+      tmp[ijk] = 0.;
+    }
+
+  // Integrate with height
+  for(int k=kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk1 = i + j*jj + kstart*kk;
+        ijk  = i + j*jj + k*kk;
+        tmp[ijk1] += rho0 * data[ijk] * grid->dz[k];       
+      }
+
+  // define the file name
+  char filename[256];
+  std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "path", 0, iotime);
+  //std::sprintf(filename, "%s.%s.%07d", name.c_str(), "path", iotime);
+  if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
+
+  grid->savexyslice(&tmp[kstart*kk], tmp1, filename);
+
+  return 0;
+}
