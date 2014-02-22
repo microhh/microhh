@@ -22,69 +22,64 @@
 #include <cstdio>
 #include "grid.h"
 #include "fields.h"
-#include "thermo_dry.h"
+#include "thermo_buoy.h"
 #include "defines.h"
 
-#define gravity 9.81
-
-cthermo_dry::cthermo_dry(cmodel *modelin) : cthermo(modelin)
+cthermo_buoy::cthermo_buoy(cmodel *modelin) : cthermo(modelin)
 {
-  swthermo = "dry";
+  swthermo = "buoy";
 }
 
-cthermo_dry::~cthermo_dry()
+cthermo_buoy::~cthermo_buoy()
 {
 }
 
-int cthermo_dry::readinifile(cinput *inputin)
+int cthermo_buoy::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&thref, "thermo", "thref", "");
 
-  nerror += fields->initpfld("th");
-  nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
+  nerror += fields->initpfld("b");
+  nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
 
   return nerror;
 }
 
-int cthermo_dry::exec()
+int cthermo_buoy::exec()
 {
+  // extend later for gravity vector not normal to surface
   if(grid->swspatialorder== "2")
-    calcbuoyancytend_2nd(fields->wt->data, fields->s["th"]->data);
+    calcbuoyancytend_2nd(fields->wt->data, fields->s["b"]->data);
   else if(grid->swspatialorder == "4")
-    calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data);
+    calcbuoyancytend_4th(fields->wt->data, fields->s["b"]->data);
 
   return 0;
 }
 
-int cthermo_dry::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
+int cthermo_buoy::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
 {
-  calcbuoyancy(bfield->data, fields->s["th"]->data);
+  calcbuoyancy(bfield->data, fields->s["b"]->data);
   return 0;
 }
 
-int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
+int cthermo_buoy::getbuoyancyfluxbot(cfield3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
   return 0;
 }
 
-int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
+int cthermo_buoy::getbuoyancysurf(cfield3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
-                  fields->s["th"]->data, fields->s["th"]->databot);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot);
+                  fields->s["b"]->data, fields->s["b"]->databot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
   return 0;
 }
 
-int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict th)
+int cthermo_buoy::calcbuoyancy(double * restrict b, double * restrict bin)
 {
   int ijk,jj,kk;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-
-  double thref  = this->thref;
-  double gthref = gravity/this->thref;
 
   for(int k=0; k<grid->kcells; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -92,22 +87,19 @@ int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict th)
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        b[ijk] = gthref * (th[ijk] - thref);
+        b[ijk] = bin[ijk]; 
       }
 
   return 0;
 }
 
-int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
-                                 double * restrict th, double * restrict thbot)
+int cthermo_buoy::calcbuoyancybot(double * restrict b  , double * restrict bbot,
+                                  double * restrict bin, double * restrict binbot)
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   kstart = grid->kstart;
-
-  double thref  = this->thref;
-  double gthref = gravity/this->thref;
 
   for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -115,40 +107,35 @@ int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij] = gthref * (thbot[ij] - thref);
-      b[ijk]   = gthref * (th[ijk] - thref);
+      bbot[ij] = binbot[ij];
+      b[ijk]   = bin[ijk];
     }
 
   return 0;
 }
 
-int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict thfluxbot)
+int cthermo_buoy::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict binfluxbot)
 {
   int ij,jj;
   jj = grid->icells;
-
-  double gthref = gravity/this->thref;
 
   for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
     for(int i=0; i<grid->icells; ++i)
     {
       ij  = i + j*jj;
-      bfluxbot[ij] = gthref*thfluxbot[ij];
+      bfluxbot[ij] = binfluxbot[ij];
     }
 
   return 0;
 }
 
-int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th)
+int cthermo_buoy::calcbuoyancytend_2nd(double * restrict wt, double * restrict b)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-
-  double thref  = this->thref;
-  double gthref = gravity/this->thref;
 
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -156,13 +143,13 @@ int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        wt[ijk] += gthref * (interp2(th[ijk-kk], th[ijk]) - thref);
+        wt[ijk] += interp2(b[ijk-kk], b[ijk]);
       }
 
   return 0;
 }
 
-int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th)
+int cthermo_buoy::calcbuoyancytend_4th(double * restrict wt, double * restrict b)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -171,27 +158,24 @@ int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
 
-  double thref  = this->thref;
-  double gthref = gravity/this->thref;
-
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
-        wt[ijk] += gthref * (interp4(th[ijk-kk2], th[ijk-kk1], th[ijk], th[ijk+kk1]) - thref);
+        wt[ijk] += interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
       }
 
   return 0;
 }
 
-inline double cthermo_dry::interp2(const double a, const double b)
+inline double cthermo_buoy::interp2(const double a, const double b)
 {
   return 0.5*(a + b);
 }
 
-inline double cthermo_dry::interp4(const double a, const double b, const double c, const double d)
+inline double cthermo_buoy::interp4(const double a, const double b, const double c, const double d)
 {
   return (-a + 9.*b + 9.*c - d) / 16.;
 }

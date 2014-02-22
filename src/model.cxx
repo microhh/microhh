@@ -57,6 +57,7 @@
 
 // thermo schemes
 #include "thermo.h"
+#include "thermo_buoy.h"
 #include "thermo_dry.h"
 #include "thermo_moist.h"
 #include "thermo_dry_slope.h"
@@ -205,6 +206,8 @@ int cmodel::readinifile()
 
   if(swthermo== "moist")
     thermo = new cthermo_moist(this);
+  else if(swthermo == "buoy")
+    thermo = new cthermo_buoy(this);
   else if(swthermo == "dry")
     thermo = new cthermo_dry(this);
   else if(swthermo == "dry_slope")
