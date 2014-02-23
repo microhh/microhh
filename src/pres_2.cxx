@@ -53,7 +53,8 @@ int cpres_2::exec(double dt)
   // create the input for the pressure solver
   pres_in(fields->sd["p"]->data,
           fields->u ->data, fields->v ->data, fields->w ->data,
-          fields->ut->data, fields->vt->data, fields->wt->data, 
+          fields->ut->data, fields->vt->data, fields->wt->data,
+          fields->rhoref, fields->rhorefh,
           grid->dzi, dt);
 
   // solve the system
@@ -71,7 +72,8 @@ double cpres_2::check()
 {
   double divmax = 0.;
 
-  divmax = calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi);
+  divmax = calcdivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi,
+                          fields->rhoref, fields->rhorefh);
 
   return divmax;
 }
@@ -143,7 +145,7 @@ int cpres_2::setvalues()
 int cpres_2::pres_in(double * restrict p, 
                       double * restrict u , double * restrict v , double * restrict w , 
                       double * restrict ut, double * restrict vt, double * restrict wt, 
-                      double * restrict dzi,
+                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
                       double dt)
 {
   int    ijk,ii,jj,kk,ijkp,jjp,kkp;
@@ -169,6 +171,7 @@ int cpres_2::pres_in(double * restrict p,
   grid->boundary_cyclic(vt);
   grid->boundary_cyclic(wt);
 
+  /*
   // write pressure as a 3d array without ghost cells
   for(int k=0; k<grid->kmax; k++)
     for(int j=0; j<grid->jmax; j++)
@@ -181,13 +184,27 @@ int cpres_2::pres_in(double * restrict p,
                 + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
                 + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k+kgc];
       }
+      */
 
+  // write pressure as a 3d array without ghost cells
+  for(int k=0; k<grid->kmax; k++)
+    for(int j=0; j<grid->jmax; j++)
+#pragma ivdep
+      for(int i=0; i<grid->imax; i++)
+      {
+        ijkp = i + j*jjp + k*kkp;
+        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+        p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
+                + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
+                + ( rhorefh[k+kgc+1] * (wt[ijk+kk] + w[ijk+kk] / dt) 
+                  - rhorefh[k+kgc] * (wt[ijk] + w[ijk] / dt) ) / rhoref[k+kgc] * dzi[k+kgc];
+      }
   return 0;
 }
 
 int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
-                         double * restrict fftini, double * restrict fftouti, 
-                         double * restrict fftinj, double * restrict fftoutj)
+                        double * restrict fftini, double * restrict fftouti, 
+                        double * restrict fftinj, double * restrict fftoutj)
 
 {
   int i,j,k,jj,kk,ijk;
@@ -388,7 +405,8 @@ int cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c,
   return 0;
 }
 
-double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
+                               double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -410,7 +428,8 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        div = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
+        div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi) 
+            + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
 
         divmax = std::max(divmax, std::abs(div));
       }

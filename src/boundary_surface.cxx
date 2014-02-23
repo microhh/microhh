@@ -272,7 +272,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
 
   // calculate Obukhov length
   // case 1: fixed buoyancy flux and fixed ustar
-  if(surfmbcbot == BC_USTAR && surfsbcbot["s"] == BC_FLUX)
+  if(surfmbcbot == BC_USTAR && surfsbcbot["th"] == BC_FLUX)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -283,7 +283,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
-  else if(surfmbcbot == BC_DIRICHLET && surfsbcbot["s"] == BC_FLUX)
+  else if(surfmbcbot == BC_DIRICHLET && surfsbcbot["th"] == BC_FLUX)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -294,7 +294,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
-  else if(surfmbcbot == BC_DIRICHLET && surfsbcbot["s"] == BC_DIRICHLET)
+  else if(surfmbcbot == BC_DIRICHLET && surfsbcbot["th"] == BC_DIRICHLET)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -347,7 +347,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
 
   // set the Obukhov length to a very large negative number
   // case 1: fixed buoyancy flux and fixed ustar
-  if(surfmbcbot == 2 && surfsbcbot["s"] == 2)
+  if(surfmbcbot == 2 && surfsbcbot["th"] == 2)
   {
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -358,7 +358,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
-  else if(surfmbcbot == 0 && surfsbcbot["s"] == 2)
+  else if(surfmbcbot == 0 && surfsbcbot["th"] == 2)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -369,7 +369,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
-  else if(surfmbcbot == 0 && surfsbcbot["s"] == 0)
+  else if(surfmbcbot == 0 && surfsbcbot["th"] == 0)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep

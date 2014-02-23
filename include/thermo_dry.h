@@ -50,25 +50,28 @@ class cthermo_dry : public cthermo
     int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
 
   private:
-    int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
+    int calcbuoyancy(double *, double *, double *); ///< Calculation of the buoyancy.
     int calcbuoyancybot(double *, double *,
-                        double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
-    int calcbuoyancyfluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-    int calcbuoyancytend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-    int calcbuoyancytend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+                        double *, double *,
+                        double *, double *);               ///< Calculation of the near-surface and surface buoyancy.
+    int calcbuoyancyfluxbot(double *, double *, double *); ///< Calculation of the buoyancy flux at the bottom.
+    int calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+    int calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
     inline double interp2(const double, const double); ///< 2nd order interpolation function.
     inline double interp4(const double, const double, 
                           const double, const double); ///< 4th order interpolation function.
 
-    double thref; ///< Reference potential temperature.
+    // double thref; ///< Reference potential temperature.
 
+    double *thref;
     double *pref;
     double *exner;
-    double *rhoref;
+    // double *rhoref;
 
+    double *threfh;
     double *prefh;
     double *exnerh;
-    double *rhorefh;
+    // double *rhorefh;
 };
 #endif

@@ -48,13 +48,14 @@ class cpres_2 : public cpres
     int pres_in(double *, 
                 double *, double *, double *,
                 double *, double *, double *,
-                double *, double);
+                double *, double *, double *,
+                double);
     int pres_solve(double *, double *, double *, double *,
                    double *, double *, 
                    double *, double *);
     int pres_out(double *, double *, double *,
                  double *, double *);
-    double calcdivergence(double *, double *, double *, double *);
+    double calcdivergence(double *, double *, double *, double *, double *, double *);
 
     // functions
     int tdma(double *, double *, double *, double *, 

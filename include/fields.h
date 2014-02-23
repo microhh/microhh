@@ -77,6 +77,10 @@ class cfields
     fieldmap sp;
     fieldmap st;
 
+    // reference density
+    double *rhoref;
+    double *rhorefh;
+
     // TODO remove these to and bring them to diffusion model
     double visc;
 
