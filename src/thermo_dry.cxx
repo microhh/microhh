@@ -126,6 +126,12 @@ int cthermo_dry::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
   return 0;
 }
 
+int cthermo_dry::getN2(cfield3d *bfield, cfield3d *tmp)
+{
+  calcN2(bfield->data, fields->s["th"]->data, grid->dzi, thref);
+  return 0;
+}
+
 int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot, threfh);
@@ -153,6 +159,24 @@ int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict th, double 
       {
         ijk = i + j*jj + k*kk;
         b[ijk] = gravity/thref[k] * (th[ijk] - thref[k]);
+      }
+
+  return 0;
+}
+
+int cthermo_dry::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
+{
+  int ijk,jj,kk;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  for(int k=0; k<grid->kcells; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        N2[ijk] = gravity/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
       }
 
   return 0;

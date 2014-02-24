@@ -46,15 +46,17 @@ class cthermo_dry : public cthermo
     int exec();                ///< Add the tendencies belonging to the buoyancy.
 
     int getbuoyancy(cfield3d *, cfield3d *); ///< Compute the buoyancy for usage in another routine.
+    int getN2(cfield3d *, cfield3d *);       ///< Compute the buoyancy for usage in another routine.
     int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
     int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
 
   private:
-    int calcbuoyancy(double *, double *, double *); ///< Calculation of the buoyancy.
+    int calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
+    int calcN2(double *, double *, double *, double *); ///< Calculation of the buoyancy.
     int calcbuoyancybot(double *, double *,
                         double *, double *,
-                        double *, double *);               ///< Calculation of the near-surface and surface buoyancy.
-    int calcbuoyancyfluxbot(double *, double *, double *); ///< Calculation of the buoyancy flux at the bottom.
+                        double *, double *);                ///< Calculation of the near-surface and surface buoyancy.
+    int calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
     int calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
     int calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 

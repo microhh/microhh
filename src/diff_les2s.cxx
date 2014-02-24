@@ -90,7 +90,7 @@ int cdiff_les2s::execvisc()
     // store the buoyancyflux in tmp1
     model->thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
     // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-    model->thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
+    model->thermo->getN2(fields->sd["tmp1"], fields->sd["tmp2"]);
 
     evisc(fields->s["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data, fields->s["tmp1"]->data,
@@ -200,7 +200,7 @@ int cdiff_les2s::strain2(double * restrict strain2,
 }
 
 int cdiff_les2s::evisc(double * restrict evisc,
-                        double * restrict u, double * restrict v, double * restrict w,  double * restrict b,
+                        double * restrict u, double * restrict v, double * restrict w,  double * restrict N2,
                         double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
                         double * restrict ustar, double * restrict obuk,
                         double * restrict z, double * restrict dz, double * restrict dzi,
@@ -258,7 +258,7 @@ int cdiff_les2s::evisc(double * restrict evisc,
       {
         ijk = i + j*jj + k*kk;
         // Add the buoyancy production to the TKE
-        RitPrratio = (b[ijk+kk]-b[ijk-kk])*0.5*dzi[k] / evisc[ijk] / tPr;
+        RitPrratio = N2[ijk] / evisc[ijk] / tPr;
         RitPrratio = std::min(RitPrratio, 1.-dsmall);
         evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
       }
