@@ -95,6 +95,18 @@ int cthermo_dry::create()
     fields->rhorefh[k] = prefh[k] / (Rd*exnerh[k]*threfh[k]);
   }
 
+  // set the ghost cells for the reference variables
+  // CvH for now in 2nd order
+  thref[grid->kstart-1] = 2.*threfh[grid->kstart] - thref[grid->kstart];
+  pref [grid->kstart-1] = 2.*prefh [grid->kstart] - pref [grid->kstart];
+  exner[grid->kstart-1] = 2.*exnerh[grid->kstart] - exner[grid->kstart];
+  fields->rhoref[grid->kstart-1] = 2.*fields->rhorefh[grid->kstart] - fields->rhoref[grid->kstart];
+
+  thref[grid->kend] = 2.*threfh[grid->kend] - thref[grid->kend-1];
+  pref [grid->kend] = 2.*prefh [grid->kend] - pref [grid->kend-1];
+  exner[grid->kend] = 2.*exnerh[grid->kend] - exner[grid->kend-1];
+  fields->rhoref[grid->kend] = 2.*fields->rhorefh[grid->kend] - fields->rhoref[grid->kend-1];
+
   return 0;
 }
 

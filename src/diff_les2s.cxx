@@ -77,7 +77,7 @@ int cdiff_les2s::execvisc()
           grid->z, grid->dzi, grid->dzhi);
 
   // start with retrieving the stability information
-  if(true)//model->thermo->getname() == "off")
+  if(model->thermo->getname() == "off")
   {
     evisc_neutral(fields->s["evisc"]->data,
                   fields->u->data, fields->v->data, fields->w->data,
