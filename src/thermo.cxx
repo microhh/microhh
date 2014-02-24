@@ -50,7 +50,7 @@ int cthermo::init()
   return 0;
 }
 
-int cthermo::create()
+int cthermo::create(cinput *inputin)
 {
   return 0;
 }

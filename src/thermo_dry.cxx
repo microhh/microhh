@@ -71,7 +71,7 @@ int cthermo_dry::init()
   return 0;
 }
 
-int cthermo_dry::create()
+int cthermo_dry::create(cinput *inputin)
 {
   // ANELASTIC
   // calculate the base state pressure and density

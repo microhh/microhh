@@ -300,7 +300,7 @@ int cmodel::load()
     return 1;
   if(force->create(input))
     return 1;
-  if(thermo->create())
+  if(thermo->create(input))
     return 1;
   if(stats->create(timeloop->iotime))
     return 1;

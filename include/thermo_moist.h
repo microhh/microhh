@@ -68,7 +68,7 @@ class cthermo_moist : public cthermo
     ~cthermo_moist();
     int readinifile(cinput *);
     int init(cinput *);
-    int create();
+    int create(cinput *);
     int exec();
     int getql(cfield3d *, cfield3d *);
 

@@ -55,7 +55,7 @@ int cthermo_moist::readinifile(cinput *inputin)
   return (nerror > 0);
 }
 
-int cthermo_moist::create()
+int cthermo_moist::create(cinput *inputin)
 {
   int nerror = 0;
   double qtsurf, ssurf;

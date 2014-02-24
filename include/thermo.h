@@ -35,7 +35,7 @@ class cthermo
     virtual int readinifile(cinput *);
     virtual int init();
     virtual int exec();
-    virtual int create();
+    virtual int create(cinput *);
 
     // interfacint functions to get buoyancy properties from other classes
     virtual int getbuoyancy(cfield3d *, cfield3d *);
