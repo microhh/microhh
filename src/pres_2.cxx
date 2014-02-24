@@ -54,11 +54,12 @@ int cpres_2::exec(double dt)
   pres_in(fields->sd["p"]->data,
           fields->u ->data, fields->v ->data, fields->w ->data,
           fields->ut->data, fields->vt->data, fields->wt->data,
-          fields->rhoref, fields->rhorefh,
-          grid->dzi, dt);
+          grid->dzi, fields->rhoref, fields->rhorefh,
+          dt);
 
   // solve the system
-  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
+  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data,
+             grid->dz, fields->rhoref,
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   // get the pressure tendencies from the pressure field
@@ -135,18 +136,18 @@ int cpres_2::setvalues()
   // create vectors that go into the tridiagonal matrix solver
   for(int k=0; k<kmax; k++)
   {
-    a[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc  ];
-    c[k] = grid->dz[k+kgc] * grid->dzhi[k+kgc+1];
+    a[k] = grid->dz[k+kgc] * fields->rhorefh[k+kgc  ]*grid->dzhi[k+kgc  ];
+    c[k] = grid->dz[k+kgc] * fields->rhorefh[k+kgc+1]*grid->dzhi[k+kgc+1];
   }
 
   return 0;
 }
 
 int cpres_2::pres_in(double * restrict p, 
-                      double * restrict u , double * restrict v , double * restrict w , 
-                      double * restrict ut, double * restrict vt, double * restrict wt, 
-                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
-                      double dt)
+                     double * restrict u , double * restrict v , double * restrict w ,
+                     double * restrict ut, double * restrict vt, double * restrict wt,
+                     double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
+                     double dt)
 {
   int    ijk,ii,jj,kk,ijkp,jjp,kkp;
   int    igc,jgc,kgc;
@@ -194,15 +195,16 @@ int cpres_2::pres_in(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
-                + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
+        p[ijkp] = rhoref[k+kgc] * ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
+                + rhoref[k+kgc] * ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
                 + ( rhorefh[k+kgc+1] * (wt[ijk+kk] + w[ijk+kk] / dt) 
-                  - rhorefh[k+kgc] * (wt[ijk] + w[ijk] / dt) ) / rhoref[k+kgc] * dzi[k+kgc];
+                  - rhorefh[k+kgc  ] * (wt[ijk   ] + w[ijk   ] / dt) ) * dzi[k+kgc];
       }
   return 0;
 }
 
-int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
+int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b,
+                        double * restrict dz, double * restrict rhoref,
                         double * restrict fftini, double * restrict fftouti, 
                         double * restrict fftinj, double * restrict fftoutj)
 
@@ -243,7 +245,7 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
         jindex = master->mpicoordx * jblock + j;
 
         ijk  = i + j*jj + k*kk;
-        b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+        b[ijk] = dz[k+kgc]*dz[k+kgc] * rhoref[k+kgc]*(bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
         p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 

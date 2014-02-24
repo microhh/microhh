@@ -50,9 +50,9 @@ class cpres_2 : public cpres
                 double *, double *, double *,
                 double *, double *, double *,
                 double);
-    int pres_solve(double *, double *, double *, double *,
-                   double *, double *, 
-                   double *, double *);
+    int pres_solve(double *, double *, double *,
+                   double *, double *,
+                   double *, double *, double *, double *);
     int pres_out(double *, double *, double *,
                  double *, double *);
     double calcdivergence(double *, double *, double *, double *, double *, double *);
