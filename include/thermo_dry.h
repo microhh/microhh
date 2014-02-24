@@ -65,6 +65,7 @@ class cthermo_dry : public cthermo
                           const double, const double); ///< 4th order interpolation function.
 
     // double thref0; ///< Reference potential temperature.
+    double pbot; ///< Surface pressure.
 
     double *thref;
     double *pref;

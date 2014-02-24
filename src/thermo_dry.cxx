@@ -30,11 +30,6 @@
 #define Rd 287.04
 #define cp 1005.
 
-// make input options later
-#define psurf 100000.
-#define gammath 0.003
-#define thstart 300.
-
 cthermo_dry::cthermo_dry(cmodel *modelin) : cthermo(modelin)
 {
   swthermo = "dry";
@@ -48,6 +43,7 @@ int cthermo_dry::readinifile(cinput *inputin)
 {
   int nerror = 0;
   // nerror += inputin->getItem(&thref0, "thermo", "thref0", "");
+  nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
   nerror += fields->initpfld("th");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
@@ -98,8 +94,8 @@ int cthermo_dry::create(cinput *inputin)
   // calculate the base state pressure and density
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
-    pref [k] = psurf*std::exp(-gravity/(Rd*thref[k])*grid->z[k]);
-    exner[k] = std::pow(pref[k]/psurf, Rd/cp);
+    pref [k] = pbot*std::exp(-gravity/(Rd*thref[k])*grid->z[k]);
+    exner[k] = std::pow(pref[k]/pbot, Rd/cp);
 
     // set the base density for the entire model
     fields->rhoref[k] = pref[k] / (Rd*exner[k]*thref[k]);
@@ -107,8 +103,8 @@ int cthermo_dry::create(cinput *inputin)
 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
-    prefh [k] = psurf*std::exp(-gravity/(Rd*threfh[k])*grid->zh[k]);
-    exnerh[k] = std::pow(prefh[k]/psurf, Rd/cp);
+    prefh [k] = pbot*std::exp(-gravity/(Rd*threfh[k])*grid->zh[k]);
+    exnerh[k] = std::pow(prefh[k]/pbot, Rd/cp);
 
     // set the base density for the entire model
     fields->rhorefh[k] = prefh[k] / (Rd*exnerh[k]*threfh[k]);
@@ -123,6 +119,12 @@ int cthermo_dry::create(cinput *inputin)
   pref [kend] = 2.*prefh [kend] - pref [kend-1];
   exner[kend] = 2.*exnerh[kend] - exner[kend-1];
   fields->rhoref[kend] = 2.*fields->rhorefh[kend] - fields->rhoref[kend-1];
+
+  // for(int k=0; k<grid->kcells; ++k)
+  //   std::printf("%E, %E, %E, %E, %E\n", grid->z[k], thref[k], exner[k], pref[k], fields->rhoref[k]);
+
+  // for(int k=0; k<grid->kcells; ++k)
+  //   std::printf("%E, %E, %E, %E, %E\n", grid->zh[k], threfh[k], exnerh[k], prefh[k], fields->rhorefh[k]);
 
   return 0;
 }
