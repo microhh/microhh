@@ -77,7 +77,7 @@ int cdiff_les2s::execvisc()
           grid->z, grid->dzi, grid->dzhi);
 
   // start with retrieving the stability information
-  if(model->thermo->getname() == "off")
+  if(true)//model->thermo->getname() == "off")
   {
     evisc_neutral(fields->s["evisc"]->data,
                   fields->u->data, fields->v->data, fields->w->data,
@@ -115,12 +115,12 @@ double cdiff_les2s::getdn(double dt)
 
 int cdiff_les2s::exec()
 {
-  diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop);
-  diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop);
-  diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data);
+  diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
+  diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
+  diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->rhoref, fields->rhorefh);
 
-  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, this->tPr);
+  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+    diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
 
   return 0;
 }
@@ -315,7 +315,7 @@ int cdiff_les2s::evisc_neutral(double * restrict evisc,
   return 0;
 }
 
-int cdiff_les2s::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop)
+int cdiff_les2s::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
@@ -349,8 +349,8 @@ int cdiff_les2s::diffu(double * restrict ut, double * restrict u, double * restr
             + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
             // du/dz + dw/dx
-            + (  evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
-               + fluxbot[ij] ) * dzi[kstart];
+            + (  rhorefh[kstart+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+               + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; ++k)
@@ -371,8 +371,8 @@ int cdiff_les2s::diffu(double * restrict ut, double * restrict u, double * restr
               + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                  - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
               // du/dz + dw/dx
-              + (  evisct*((u[ijk+kk]-u[ijk   ])* dzhi[k+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
-                 - eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) * dzi[k];
+              + (  rhorefh[k+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[k+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+                 - rhorefh[k  ] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[k] * dzi[k];
       }
 
   // top boundary
@@ -394,14 +394,14 @@ int cdiff_les2s::diffu(double * restrict ut, double * restrict u, double * restr
             + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
             // du/dz + dw/dx
-            + (- fluxtop[ij]
-               - eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) * dzi[kend-1];
+            + (- rhorefh[kend  ] * fluxtop[ij]
+               - rhorefh[kend-1] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[kend-1] * dzi[kend-1];
     }
 
   return 0;
 }
 
-int cdiff_les2s::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop)
+int cdiff_les2s::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
@@ -435,8 +435,8 @@ int cdiff_les2s::diffv(double * restrict vt, double * restrict u, double * restr
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
                - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
             // dv/dz + dw/dy
-            + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
-               + fluxbot[ij] ) * dzi[kstart];
+            + (  rhorefh[kstart+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+               + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; ++k)
@@ -457,8 +457,8 @@ int cdiff_les2s::diffv(double * restrict vt, double * restrict u, double * restr
               + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
                  - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
               // dv/dz + dw/dy
-              + (  evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
-                 - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[k];
+              + (  rhorefh[k+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+                 - rhorefh[k  ] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];
       }
 
   // top boundary
@@ -480,14 +480,14 @@ int cdiff_les2s::diffv(double * restrict vt, double * restrict u, double * restr
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
                - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
             // dv/dz + dw/dy
-            + (- fluxtop[ij]
-               - eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) * dzi[kend-1];
+            + (- rhorefh[kend  ] * fluxtop[ij]
+               - rhorefh[kend-1] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[kend-1] * dzi[kend-1];
     }
 
   return 0;
 }
 
-int cdiff_les2s::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc)
+int cdiff_les2s::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -518,14 +518,14 @@ int cdiff_les2s::diffw(double * restrict wt, double * restrict u, double * restr
               + (  eviscn*((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
                  - eviscs*((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
               // dw/dz + dw/dz
-              + (  evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
-                 - evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) * 2.* dzhi[k];
+              + (  rhoref[k  ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
+                 - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * 2.* dzhi[k];
       }
 
   return 0;
 }
 
-int cdiff_les2s::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double tPr)
+int cdiff_les2s::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh, double tPr)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxidxi,dyidyi;
@@ -559,8 +559,8 @@ int cdiff_les2s::diffc(double * restrict at, double * restrict a, double * restr
                - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
             + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
                - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-            + (  evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
-               + fluxbot[ij] ) * dzi[kstart];
+            + (  rhorefh[kstart+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[kstart+1]
+               + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; ++k)
@@ -581,8 +581,8 @@ int cdiff_les2s::diffc(double * restrict at, double * restrict a, double * restr
                  - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
               + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
                  - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-              + (  evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
-                 - eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) * dzi[k];
+              + (  rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
+                 - rhorefh[k  ] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) / rhoref[k] * dzi[k];
       }
 
   // top boundary
@@ -604,8 +604,8 @@ int cdiff_les2s::diffc(double * restrict at, double * restrict a, double * restr
                - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
             + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
                - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
-            + (- fluxtop[ij]
-               - eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1]  ) * dzi[kend-1];
+            + (- rhorefh[kend  ] * fluxtop[ij]
+               - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
     }
 
   return 0;
