@@ -150,7 +150,7 @@ int ccross::exec(double time, unsigned long itime, int iotime)
 
   // check if time for execution
   if(itime % isampletime != 0)
-    return 1;
+    return 0;
 
   if(master->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);
 
@@ -207,7 +207,6 @@ int ccross::exec(double time, unsigned long itime, int iotime)
 int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name, std::vector<int> jxz, std::vector<int> kxy, int iotime)
 {
   int nerror = 0;
-  // define the file name
   char filename[256];
 
   // loop over the index arrays to save all xz cross sections
@@ -215,17 +214,6 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
     nerror += checkSave(grid->savexzslice(data, tmp, filename, *it), filename);    
-
-    //if(master->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
-    //if(grid->savexzslice(data, tmp, filename, *it))
-    //{
-    //  if(master->mpiid == 0) std::printf("FAILED\n");
-    //  ++nerror;
-    //}
-    //else
-    //{
-    //  if(master->mpiid == 0) std::printf("OK\n");
-    //}
   }
 
   // loop over the index arrays to save all xy cross sections
@@ -233,17 +221,6 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
     nerror += checkSave(grid->savexyslice(data, tmp, filename, *it), filename);
-
-    //if(master->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
-    //if(grid->savexyslice(data, tmp, filename, *it))
-    //{
-    //  if(master->mpiid == 0) std::printf("FAILED\n");
-    //  ++nerror;
-    //}
-    //else
-    //{
-    //  if(master->mpiid == 0) std::printf("OK\n");
-    //}
   }
 
   return nerror;
@@ -254,17 +231,13 @@ int ccross::crossbot(double * restrict data, double * restrict tmp1, double * re
 {
   int ijk,jj1,kk1,kk2,kk3,kstart;
   int nerror = 0;
+  char filename[256];
 
   jj1 = 1*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
   kk3 = 3*grid->ijcells;
   kstart = grid->kstart;
-
-  // define the file name
-  char filename[256];
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "bot", iotime);
-  //if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
   // interpolate the data
   if(grid->swspatialorder == "2")
@@ -290,6 +263,7 @@ int ccross::crossbot(double * restrict data, double * restrict tmp1, double * re
   else
     return 1;
 
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "bot", iotime);
   // pass only three arguments to savexyslice to ensure that no ghost cells are used
   nerror += checkSave(grid->savexyslice(&tmp1[kstart*kk1], tmp2, filename),filename);
 
@@ -299,11 +273,9 @@ int ccross::crossbot(double * restrict data, double * restrict tmp1, double * re
 int ccross::crossfluxbot(double * restrict data, double * restrict tmp, std::string name, int iotime)
 {
   int nerror = 0;
-  // define the file name
   char filename[256];
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "fluxbot", iotime);
-  //if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
 
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "fluxbot", iotime);
   nerror += checkSave(grid->savexyslice(data, tmp, filename),filename);
 
   return nerror;
@@ -315,6 +287,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;
   int nerror = 0;
+  char filename[256];
 
   ii1 = 1;
   ii2 = 2;
@@ -404,14 +377,11 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
                                 + cg3*(ti0*a[ijk-kk1] + ti1*a[ijk    ] + ti2*a[ijk+kk1] + ti3*a[ijk+kk2]) ) * dzi4[kend], 2.) );
     }
 
-  // define the file name
-  char filename[256];
 
   // loop over the index arrays to save all xz cross sections
   for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
-    //if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
     nerror += checkSave(grid->savexzslice(lngrad, tmp, filename, *it),filename);
   }
 
@@ -419,8 +389,6 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
-    //if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
-    nerror += checkSave(grid->savexyslice(lngrad, tmp, filename, *it),filename);
   }
 
   return nerror;
@@ -433,6 +401,7 @@ int ccross::crosspath(double * restrict data, double * restrict tmp, double * re
   kk = grid->icells*grid->jcells;
   int kstart = grid->kstart;
   int nerror = 0;
+  char filename[256];
 
   // for testing hard code density to 1.0 
   // obtain either from thermo_moist, anelastic scheme, etc.
@@ -458,12 +427,7 @@ int ccross::crosspath(double * restrict data, double * restrict tmp, double * re
         tmp[ijk1] += rho0 * data[ijk] * grid->dz[k];       
       }
 
-  // define the file name
-  char filename[256];
   std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "path", 0, iotime);
-  //std::sprintf(filename, "%s.%s.%07d", name.c_str(), "path", iotime);
-  //if(master->mpiid == 0) std::printf("Saving \"%s\"\n", filename);
-
   nerror += checkSave(grid->savexyslice(&tmp[kstart*kk], tmp1, filename),filename);
 
   return nerror;
