@@ -47,7 +47,7 @@ cthermo_dry::~cthermo_dry()
 int cthermo_dry::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  // nerror += inputin->getItem(&thref, "thermo", "thref", "");
+  // nerror += inputin->getItem(&thref0, "thermo", "thref0", "");
 
   nerror += fields->initpfld("th");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
@@ -73,13 +73,33 @@ int cthermo_dry::init()
 
 int cthermo_dry::create(cinput *inputin)
 {
+  // take the initial profile as the reference
+  if(inputin->getProf(&thref[grid->kstart], "th", grid->kmax))
+    return 1;
+
+  int kstart = grid->kstart;
+  int kend   = grid->kend;
+
+  // extrapolate the profile to get the bottom value
+  threfh[kstart] = thref[kstart] - grid->z[kstart]*(thref[kstart+1]-thref[kstart])*grid->dzhi[kstart+1];
+
+  // extrapolate the profile to get the top value
+  threfh[kend] = thref[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thref[kend-1]-thref[kend-2])*grid->dzhi[kend-1];
+
+  // set the ghost cells for the reference temperature
+  thref[kstart-1] = 2.*threfh[kstart] - thref[kstart];
+  thref[kend]     = 2.*threfh[kend]   - thref[kend-1];
+
+  // interpolate the reference temperature profile
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    threfh[k] = 0.5*(thref[k-1] + thref[k]);
+
   // ANELASTIC
   // calculate the base state pressure and density
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
-    thref  [k] = thstart + gammath*grid->z[k];
-    pref   [k] = psurf*std::exp(-gravity/(Rd*thref[k])*grid->z[k]);
-    exner  [k] = std::pow(pref[k]/psurf, Rd/cp);
+    pref [k] = psurf*std::exp(-gravity/(Rd*thref[k])*grid->z[k]);
+    exner[k] = std::pow(pref[k]/psurf, Rd/cp);
 
     // set the base density for the entire model
     fields->rhoref[k] = pref[k] / (Rd*exner[k]*thref[k]);
@@ -87,9 +107,8 @@ int cthermo_dry::create(cinput *inputin)
 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
-    threfh [k] = thstart + gammath*grid->zh[k];
-    prefh  [k] = psurf*std::exp(-gravity/(Rd*threfh[k])*grid->zh[k]);
-    exnerh [k] = std::pow(prefh[k]/psurf, Rd/cp);
+    prefh [k] = psurf*std::exp(-gravity/(Rd*threfh[k])*grid->zh[k]);
+    exnerh[k] = std::pow(prefh[k]/psurf, Rd/cp);
 
     // set the base density for the entire model
     fields->rhorefh[k] = prefh[k] / (Rd*exnerh[k]*threfh[k]);
@@ -97,15 +116,13 @@ int cthermo_dry::create(cinput *inputin)
 
   // set the ghost cells for the reference variables
   // CvH for now in 2nd order
-  thref[grid->kstart-1] = 2.*threfh[grid->kstart] - thref[grid->kstart];
-  pref [grid->kstart-1] = 2.*prefh [grid->kstart] - pref [grid->kstart];
-  exner[grid->kstart-1] = 2.*exnerh[grid->kstart] - exner[grid->kstart];
-  fields->rhoref[grid->kstart-1] = 2.*fields->rhorefh[grid->kstart] - fields->rhoref[grid->kstart];
+  pref [kstart-1] = 2.*prefh [kstart] - pref [kstart];
+  exner[kstart-1] = 2.*exnerh[kstart] - exner[kstart];
+  fields->rhoref[kstart-1] = 2.*fields->rhorefh[kstart] - fields->rhoref[kstart];
 
-  thref[grid->kend] = 2.*threfh[grid->kend] - thref[grid->kend-1];
-  pref [grid->kend] = 2.*prefh [grid->kend] - pref [grid->kend-1];
-  exner[grid->kend] = 2.*exnerh[grid->kend] - exner[grid->kend-1];
-  fields->rhoref[grid->kend] = 2.*fields->rhorefh[grid->kend] - fields->rhoref[grid->kend-1];
+  pref [kend] = 2.*prefh [kend] - pref [kend-1];
+  exner[kend] = 2.*exnerh[kend] - exner[kend-1];
+  fields->rhoref[kend] = 2.*fields->rhorefh[kend] - fields->rhoref[kend-1];
 
   return 0;
 }

@@ -64,7 +64,7 @@ class cthermo_dry : public cthermo
     inline double interp4(const double, const double, 
                           const double, const double); ///< 4th order interpolation function.
 
-    // double thref; ///< Reference potential temperature.
+    // double thref0; ///< Reference potential temperature.
 
     double *thref;
     double *pref;
