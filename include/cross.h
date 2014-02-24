@@ -62,6 +62,7 @@ class ccross
     std::vector<std::string> path;
 
     int checkList(std::vector<std::string> *, fieldmap *, std::string crossname);
+    int checkSave(int, char *);
 
     int crosssimple (double *, double *, std::string, std::vector<int>, std::vector<int>, int);
     int crossbot    (double *, double *, double *, std::string, int);
