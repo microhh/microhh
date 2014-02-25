@@ -45,7 +45,8 @@ cthermo_moist::~cthermo_moist()
 int cthermo_moist::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&ps, "thermo", "ps", "");
+  nerror += inputin->getItem(&ps    , "thermo", "ps"    , "");
+  nerror += inputin->getItem(&thvref, "thermo", "thvref", "");
 
   nerror += fields->initpfld("s");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
@@ -59,9 +60,7 @@ int cthermo_moist::create()
 {
   int nerror = 0;
   
-  thvs = 303.2;  //ssurf * (1. - (1. - rv/rd)*qtsurf);
-
-  pmn  = new double[grid->kcells];  // Hydrostatic pressure (full levels)
+  pmn = new double[grid->kcells];  // hydrostatic pressure (full levels)
  
   allocated = true;
   return nerror;
@@ -271,7 +270,7 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double thvref = thvs;
+  double thvref = this->thvref;
 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -324,7 +323,7 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
 
-  double thvref = thvs;
+  double thvref = this->thvref;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
@@ -372,7 +371,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double thvref = thvs;
+  double thvref = this->thvref;
 
   for(int k=0; k<grid->kcells; k++)
   {
@@ -441,7 +440,7 @@ int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
   kk = grid->icells*grid->jcells;
   kstart = grid->kstart;
 
-  double thvref = thvs;
+  double thvref = this->thvref;
 
   // assume no liquid water at the lowest model level
   for(int j=0; j<grid->jcells; j++)
@@ -462,7 +461,7 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
   int ij,jj;
   jj = grid->icells;
 
-  double thvref = thvs;
+  double thvref = this->thvref;
 
   // assume no liquid water at the lowest model level
   for(int j=0; j<grid->jcells; j++)

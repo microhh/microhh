@@ -75,11 +75,6 @@ int cthermo::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
-//int cthermo::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
-//{
-//  return 0;
-//}
-
 std::string cthermo::getname()
 {
   return swthermo;
