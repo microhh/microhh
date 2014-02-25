@@ -155,13 +155,15 @@ int cthermo_moist::exec()
   {
     calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
     calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, pmn,
-                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk]);
+                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk],
+                         threfh);
   }
   else if(grid->swspatialorder == "4")
   {
     calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
     calcbuoyancytend_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, pmn,
-                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk]);
+                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk],
+                         threfh);
   }
 
   return (nerror>0);
@@ -184,12 +186,11 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
     calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
 
   if(name == "b")
-    calcbuoyancy(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, tmp->data);
+    calcbuoyancy(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, tmp->data, thref);
   else if(name == "ql")
     calcqlfield(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
   else if(name == "N2")
-    // Cvh HACK HACK HACK for compilation
-    calcN2(fld->data, fields->s["s"]->data, grid->dzi); //, thref);
+    calcN2(fld->data, fields->s["s"]->data, grid->dzi, thref);
   else
     return 1;
 
@@ -236,14 +237,15 @@ int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
 {
   calcbuoyancybot(bfield->data         , bfield->databot,
                   fields->s["s" ]->data, fields->s["s" ]->databot,
-                  fields->s["qt"]->data, fields->s["qt"]->databot);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
+                  fields->s["qt"]->data, fields->s["qt"]->databot,
+                  thref, threfh);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, threfh);
   return 0;
 }
 
 int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, threfh);
   return 0;
 }
 
@@ -345,14 +347,15 @@ int cthermo_moist::calchydropres_4th(double * restrict pmn, double * restrict s,
 
 
 int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p,
-                                        double * restrict sh, double * restrict qth, double * restrict ql)
+                                        double * restrict sh, double * restrict qth, double * restrict ql,
+                                        double * restrict threfh)
 {
   int ijk,jj,kk,ij;
   double tl, ph, exnh;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double thvref = thvs;
+  // double thvref = thvs;
 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -388,14 +391,15 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        wt[ijk] += bu(ph, sh[ij], qth[ij], ql[ij], thvref);
+        wt[ijk] += bu(ph, sh[ij], qth[ij], ql[ij], threfh[k]);
       }
   }
   return 0;
 }
 
 int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p,
-                                        double * restrict sh, double * restrict qth, double * restrict ql)
+                                        double * restrict sh, double * restrict qth, double * restrict ql,
+                                        double * restrict threfh)
 {
   int ijk,jj,ij;
   int kk1,kk2;
@@ -405,7 +409,7 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
 
-  double thvref = thvs;
+  // double thvref = thvs;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
@@ -440,20 +444,21 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
       {
         ijk = i + j*jj + k*kk1;
         ij  = i + j*jj;
-        wt[ijk] += bu(ph, sh[ij], qth[ij], ql[ij], thvref);
+        wt[ijk] += bu(ph, sh[ij], qth[ij], ql[ij], threfh[k]);
       }
   }
   return 0;
 }
 
-int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double * restrict qt, double * restrict p, double * restrict ql)
+int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double * restrict qt, double * restrict p, double * restrict ql,
+                                double * restrict thref)
 {
   int ijk,jj,kk,ij;
   double tl, exn;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double thvref = thvs;
+  // double thvref = thvs;
 
   for(int k=0; k<grid->kcells; k++)
   {
@@ -484,7 +489,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        b[ijk] = bu(p[k], s[ijk], qt[ijk], ql[ij], thvref);
+        b[ijk] = bu(p[k], s[ijk], qt[ijk], ql[ij], thref[k]);
       }
   }
 
@@ -513,13 +518,13 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
   return 0;
 }
 
-int cthermo_moist::calcN2(double * restrict N2, double * restrict s, double * restrict dzi)//, double * restrict thref)
+int cthermo_moist::calcN2(double * restrict N2, double * restrict s, double * restrict dzi, double * restrict thref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  double thvref = thvs;
+  // double thvref = thvs;
 
   for(int k=0; k<grid->kcells; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -527,7 +532,7 @@ int cthermo_moist::calcN2(double * restrict N2, double * restrict s, double * re
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        N2[ijk] = grav/thvref*0.5*(s[ijk+kk] - s[ijk-kk])*dzi[k];
+        N2[ijk] = grav/thref[k]*0.5*(s[ijk+kk] - s[ijk-kk])*dzi[k];
       }
 
   return 0;
@@ -535,14 +540,15 @@ int cthermo_moist::calcN2(double * restrict N2, double * restrict s, double * re
 
 int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
                                    double * restrict s , double * restrict sbot,
-                                   double * restrict qt, double * restrict qtbot)
+                                   double * restrict qt, double * restrict qtbot,
+                                   double * restrict thref, double * restrict threfh)
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   kstart = grid->kstart;
 
-  double thvref = thvs;
+  // double thvref = thvs;
 
   // assume no liquid water at the lowest model level
   for(int j=0; j<grid->jcells; j++)
@@ -551,19 +557,21 @@ int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij ] = bunoql(sbot[ij], qtbot[ij], thvref);
-      b   [ijk] = bunoql(s[ijk], qt[ijk], thvref);
+      bbot[ij ] = bunoql(sbot[ij], qtbot[ij], threfh[kstart]);
+      b   [ijk] = bunoql(s[ijk], qt[ijk], thref[kstart]);
     }
 
   return 0;
 }
 
-int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sbot, double * restrict sfluxbot, double * restrict qtbot, double * restrict qtfluxbot)
+int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sbot, double * restrict sfluxbot, double * restrict qtbot, double * restrict qtfluxbot,
+                                       double * restrict threfh)
 {
-  int ij,jj;
+  int ij,jj,kstart;
   jj = grid->icells;
+  kstart = grid->kstart;
 
-  double thvref = thvs;
+  // double thvref = thvs;
 
   // assume no liquid water at the lowest model level
   for(int j=0; j<grid->jcells; j++)
@@ -571,7 +579,7 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
     for(int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
-      bfluxbot[ij] = bufluxnoql(sbot[ij], sfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvref);
+      bfluxbot[ij] = bufluxnoql(sbot[ij], sfluxbot[ij], qtbot[ij], qtfluxbot[ij], threfh[kstart]);
     }
 
   return 0;

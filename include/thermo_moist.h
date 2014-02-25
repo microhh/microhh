@@ -91,11 +91,11 @@ class cthermo_moist : public cthermo
 
     bool allocated;
     
-    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *);
-    int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *);
+    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
+    int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
 
-    int calcbuoyancy(double *, double *, double *, double *, double *);
-    int calcN2(double *, double *, double *); //, double *); ///< Calculation of the Brunt-Vaissala frequency.
+    int calcbuoyancy(double *, double *, double *, double *, double *, double *);
+    int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
 
     //int calcpres(double *, double *, double *, double *);
     int calchydropres_2nd(double *, double *, double *, double *, double *);
@@ -104,8 +104,9 @@ class cthermo_moist : public cthermo
     int calcqlfield(double *, double *, double *, double *);
     int calcbuoyancybot(double *, double *,
                         double *, double *,
+                        double *, double *,
                         double *, double *);
-    int calcbuoyancyfluxbot(double *, double *, double *, double *, double *);
+    int calcbuoyancyfluxbot(double *, double *, double *, double *, double *, double *);
 
     inline double calcql(const double, const double, const double ,const double);
     inline double bu(const double, const double, const double, const double, const double);
