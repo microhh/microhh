@@ -37,14 +37,12 @@ class cthermo
     virtual int exec();
     virtual int create(cinput *);
 
-    // interfacint functions to get buoyancy properties from other classes
-    // virtual int getbuoyancy(cfield3d *, cfield3d *);
-    // virtual int getN2(cfield3d *, cfield3d *);       ///< Compute the buoyancy for usage in another routine.
-    virtual int getbuoyancysurf(cfield3d *);
-    virtual int getbuoyancyfluxbot(cfield3d *);
-    //virtual int getbuoyancy(cfield3d *, cfield3d *);
+    // interfacing functions to get buoyancy properties from other classes
     virtual int checkthermofield(std::string name);
     virtual int getthermofield(cfield3d *, cfield3d *, std::string name);
+    virtual int getbuoyancysurf(cfield3d *);
+    virtual int getbuoyancyfluxbot(cfield3d *);
+    virtual int getprogvars(std::vector<std::string> *);
 
     std::string getname();
 

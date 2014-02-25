@@ -45,7 +45,8 @@ cthermo_moist::~cthermo_moist()
 int cthermo_moist::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&ps, "thermo", "ps", "");
+  nerror += inputin->getItem(&ps    , "thermo", "ps"    , "");
+  nerror += inputin->getItem(&thvref, "thermo", "thvref", "");
 
   nerror += fields->initpfld("s");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
@@ -135,9 +136,7 @@ int cthermo_moist::create(cinput *inputin)
 
   int nerror = 0;
   
-  thvs = 303.2;  //ssurf * (1. - (1. - rv/rd)*qtsurf);
-
-  pmn = new double[grid->kcells];  // Hydrostatic pressure (full levels)
+  pmn = new double[grid->kcells];  // hydrostatic pressure (full levels)
  
   allocated = true;
   return nerror;
@@ -246,6 +245,14 @@ int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
 int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, threfh);
+  return 0;
+}
+
+int cthermo_moist::getprogvars(std::vector<std::string> *list)
+{
+  list->push_back("s");
+  list->push_back("qt");
+
   return 0;
 }
 
