@@ -36,7 +36,7 @@ cthermo_moist::cthermo_moist(cmodel *modelin) : cthermo(modelin)
 
 cthermo_moist::~cthermo_moist()
 {
-  if (allocated)
+  if(allocated)
   {
     delete[] pmn;
   }
@@ -55,13 +55,89 @@ int cthermo_moist::readinifile(cinput *inputin)
   return (nerror > 0);
 }
 
+int cthermo_moist::init()
+{
+  // fields for anelastic solver
+  thref   = new double[grid->kcells];
+  pref    = new double[grid->kcells];
+  exner   = new double[grid->kcells];
+  // rhoref  = new double[grid->kcells];
+
+  threfh  = new double[grid->kcells];
+  prefh   = new double[grid->kcells];
+  exnerh  = new double[grid->kcells];
+  // rhorefh = new double[grid->kcells];
+
+  return 0;
+}
+
 int cthermo_moist::create(cinput *inputin)
 {
+  // CALCULATE THE BASE PROFILES
+  // take the initial profile as the reference
+  if(inputin->getProf(&thref[grid->kstart], "s", grid->kmax))
+    return 1;
+
+  int kstart = grid->kstart;
+  int kend   = grid->kend;
+
+  // extrapolate the profile to get the bottom value
+  threfh[kstart] = thref[kstart] - grid->z[kstart]*(thref[kstart+1]-thref[kstart])*grid->dzhi[kstart+1];
+
+  // extrapolate the profile to get the top value
+  threfh[kend] = thref[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thref[kend-1]-thref[kend-2])*grid->dzhi[kend-1];
+
+  // set the ghost cells for the reference temperature
+  thref[kstart-1] = 2.*threfh[kstart] - thref[kstart];
+  thref[kend]     = 2.*threfh[kend]   - thref[kend-1];
+
+  // interpolate the reference temperature profile
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    threfh[k] = 0.5*(thref[k-1] + thref[k]);
+
+  // ANELASTIC
+  // calculate the base state pressure and density
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    pref [k] = ps*std::exp(-grav/(rd*thref[k])*grid->z[k]);
+    exner[k] = std::pow(pref[k]/ps, rd/cp);
+
+    // set the base density for the entire model
+    fields->rhoref[k] = pref[k] / (rd*exner[k]*thref[k]);
+  }
+
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prefh [k] = ps*std::exp(-grav/(rd*threfh[k])*grid->zh[k]);
+    exnerh[k] = std::pow(prefh[k]/ps, rd/cp);
+
+    // set the base density for the entire model
+    fields->rhorefh[k] = prefh[k] / (rd*exnerh[k]*threfh[k]);
+  }
+
+  // set the ghost cells for the reference variables
+  // CvH for now in 2nd order
+  pref [kstart-1] = 2.*prefh [kstart] - pref [kstart];
+  exner[kstart-1] = 2.*exnerh[kstart] - exner[kstart];
+  fields->rhoref[kstart-1] = 2.*fields->rhorefh[kstart] - fields->rhoref[kstart];
+
+  pref [kend] = 2.*prefh [kend] - pref [kend-1];
+  exner[kend] = 2.*exnerh[kend] - exner[kend-1];
+  fields->rhoref[kend] = 2.*fields->rhorefh[kend] - fields->rhoref[kend-1];
+
+  // for(int k=0; k<grid->kcells; ++k)
+  //   std::printf("%E, %E, %E, %E, %E\n", grid->z[k], thref[k], exner[k], pref[k], fields->rhoref[k]);
+
+  // for(int k=0; k<grid->kcells; ++k)
+  //   std::printf("%E, %E, %E, %E, %E\n", grid->zh[k], threfh[k], exnerh[k], prefh[k], fields->rhorefh[k]);
+
+  // CONTINUE OLD ROUTINE
+
   int nerror = 0;
   
   thvs = 303.2;  //ssurf * (1. - (1. - rv/rd)*qtsurf);
 
-  pmn  = new double[grid->kcells];  // Hydrostatic pressure (full levels)
+  pmn = new double[grid->kcells];  // Hydrostatic pressure (full levels)
  
   allocated = true;
   return nerror;
@@ -113,7 +189,7 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
     calcqlfield(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
   else if(name == "N2")
     // Cvh HACK HACK HACK for compilation
-    calcN2(fld->data, fields->s["th"]->data, grid->dzi, grid->dzi);
+    calcN2(fld->data, fields->s["s"]->data, grid->dzi); //, thref);
   else
     return 1;
 
@@ -282,7 +358,7 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
     ph   = interp2(p[k-1],p[k]);   // BvS To-do: calculate pressure at full and half levels
-    exnh = exner2(ph);
+    exnh = exn(ph);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -334,7 +410,7 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
     ph  = interp4(p[k-2] , p[k-1] , p[k] , p[k+1]); // BvS To-do: calculate pressure at full and half levels
-    exnh = exner2(ph);
+    exnh = exn2(ph);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -381,7 +457,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
 
   for(int k=0; k<grid->kcells; k++)
   {
-    exn = exner2(p[k]);
+    exn = exn2(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -425,7 +501,7 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
 
   for(int k=grid->kstart; k<grid->kend; k++)
   {
-    exn = exner2(p[k]);
+    exn = exn2(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -437,11 +513,13 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
   return 0;
 }
 
-int cthermo_moist::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
+int cthermo_moist::calcN2(double * restrict N2, double * restrict s, double * restrict dzi)//, double * restrict thref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
+
+  double thvref = thvs;
 
   for(int k=0; k<grid->kcells; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -449,7 +527,7 @@ int cthermo_moist::calcN2(double * restrict N2, double * restrict th, double * r
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        N2[ijk] = grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+        N2[ijk] = grav/thvref*0.5*(s[ijk+kk] - s[ijk-kk])*dzi[k];
       }
 
   return 0;
@@ -502,7 +580,7 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
 // INLINE FUNCTIONS
 inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql, const double thvref)
 {
-  return grav * ((s + lv*ql/(cp*exner2(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvref) / thvref;
+  return grav * ((s + lv*ql/(cp*exn2(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvref) / thvref;
 }
 
 inline double cthermo_moist::bunoql(const double s, const double qt, const double thvref)
@@ -532,12 +610,12 @@ inline double cthermo_moist::calcql(const double s, const double qt, const doubl
   return ql;
 }
 
-inline double cthermo_moist::exner(const double p)
+inline double cthermo_moist::exn(const double p)
 {
   return pow((p/p0),(rd/cp));
 }
 
-inline double cthermo_moist::exner2(const double p)
+inline double cthermo_moist::exn2(const double p)
 {
   double dp=p-p0;
   return (1+(dp*(ex1+dp*(ex2+dp*(ex3+dp*(ex4+dp*(ex5+dp*(ex6+ex7*dp)))))))); 

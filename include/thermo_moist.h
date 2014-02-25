@@ -67,7 +67,7 @@ class cthermo_moist : public cthermo
     cthermo_moist(cmodel *);
     ~cthermo_moist();
     int readinifile(cinput *);
-    int init(cinput *);
+    int init();
     int create(cinput *);
     int exec();
     int getql(cfield3d *, cfield3d *);
@@ -95,7 +95,7 @@ class cthermo_moist : public cthermo
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *);
 
     int calcbuoyancy(double *, double *, double *, double *, double *);
-    int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
+    int calcN2(double *, double *, double *); //, double *); ///< Calculation of the Brunt-Vaissala frequency.
 
     //int calcpres(double *, double *, double *, double *);
     int calchydropres_2nd(double *, double *, double *, double *, double *);
@@ -111,12 +111,23 @@ class cthermo_moist : public cthermo
     inline double bu(const double, const double, const double, const double, const double);
     inline double bunoql(const double, const double, const double);
     inline double bufluxnoql(const double, const double, const double, const double, const double);
-    inline double exner(const double);
-    inline double exner2(const double);
+    inline double exn(const double);
+    inline double exn2(const double);
     inline double rslf(const double, const double);
     inline double esl(const double);
 
     inline double interp2(const double, const double);
     inline double interp4(const double, const double, const double, const double);
+
+    // REFERENCE PROFILES
+    double *thref;
+    double *pref;
+    double *exner;
+    // double *rhoref;
+
+    double *threfh;
+    double *prefh;
+    double *exnerh;
+    // double *rhorefh;
 };
 #endif
