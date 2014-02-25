@@ -26,7 +26,7 @@
 #include "thermo_dry.h"
 #include "defines.h"
 
-#define gravity 9.81
+#define grav 9.81
 #define Rd 287.04
 #define cp 1005.
 
@@ -94,7 +94,7 @@ int cthermo_dry::create(cinput *inputin)
   // calculate the base state pressure and density
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
-    pref [k] = pbot*std::exp(-gravity/(Rd*thref[k])*grid->z[k]);
+    pref [k] = pbot*std::exp(-grav/(Rd*thref[k])*grid->z[k]);
     exner[k] = std::pow(pref[k]/pbot, Rd/cp);
 
     // set the base density for the entire model
@@ -103,7 +103,7 @@ int cthermo_dry::create(cinput *inputin)
 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
-    prefh [k] = pbot*std::exp(-gravity/(Rd*threfh[k])*grid->zh[k]);
+    prefh [k] = pbot*std::exp(-grav/(Rd*threfh[k])*grid->zh[k]);
     exnerh[k] = std::pow(prefh[k]/pbot, Rd/cp);
 
     // set the base density for the entire model
@@ -147,18 +147,17 @@ int cthermo_dry::checkthermofield(std::string name)
     return 1;
 }
 
-int cthermo_dry::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 {
-  // Check needed?
-  calcbuoyancy(field->data, fields->s["th"]->data);
+  if(name == "b")
+    calcbuoyancy(fld->data, fields->s["th"]->data, thref);
+  else if(name == "N2")
+    calcN2(fld->data, fields->s["th"]->data, grid->dzi, thref);
+  else
+    return 1;
+
   return 0;
 }
-
-//int cthermo_dry::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
-//{
-//  calcbuoyancy(bfield->data, fields->s["th"]->data);
-//  return 0;
-//}
 
 int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
 {
@@ -187,7 +186,7 @@ int cthermo_dry::calcbuoyancy(double * restrict b, double * restrict th, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        b[ijk] = gravity/thref[k] * (th[ijk] - thref[k]);
+        b[ijk] = grav/thref[k] * (th[ijk] - thref[k]);
       }
 
   return 0;
@@ -205,7 +204,7 @@ int cthermo_dry::calcN2(double * restrict N2, double * restrict th, double * res
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        N2[ijk] = gravity/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+        N2[ijk] = grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
       }
 
   return 0;
@@ -226,8 +225,8 @@ int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij] = gravity/threfh[kstart] * (thbot[ij] - threfh[kstart]);
-      b[ijk]   = gravity/thref [kstart] * (th[ijk]   - thref [kstart]);
+      bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
+      b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
     }
 
   return 0;
@@ -245,7 +244,7 @@ int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restri
     for(int i=0; i<grid->icells; ++i)
     {
       ij  = i + j*jj;
-      bfluxbot[ij] = gravity/threfh[kstart]*thfluxbot[ij];
+      bfluxbot[ij] = grav/threfh[kstart]*thfluxbot[ij];
     }
 
   return 0;
@@ -264,7 +263,7 @@ int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        wt[ijk] += gravity/threfh[k] * (interp2(th[ijk-kk], th[ijk]) - threfh[k]);
+        wt[ijk] += grav/threfh[k] * (interp2(th[ijk-kk], th[ijk]) - threfh[k]);
       }
 
   return 0;
@@ -285,7 +284,7 @@ int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
-        wt[ijk] += gravity/threfh[k] * (interp4(th[ijk-kk2], th[ijk-kk1], th[ijk], th[ijk+kk1]) - threfh[k]);
+        wt[ijk] += grav/threfh[k] * (interp4(th[ijk-kk2], th[ijk-kk1], th[ijk], th[ijk+kk1]) - threfh[k]);
       }
 
   return 0;

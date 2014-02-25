@@ -38,8 +38,8 @@ class cthermo
     virtual int create(cinput *);
 
     // interfacint functions to get buoyancy properties from other classes
-    virtual int getbuoyancy(cfield3d *, cfield3d *);
-    virtual int getN2(cfield3d *, cfield3d *);       ///< Compute the buoyancy for usage in another routine.
+    // virtual int getbuoyancy(cfield3d *, cfield3d *);
+    // virtual int getN2(cfield3d *, cfield3d *);       ///< Compute the buoyancy for usage in another routine.
     virtual int getbuoyancysurf(cfield3d *);
     virtual int getbuoyancyfluxbot(cfield3d *);
     //virtual int getbuoyancy(cfield3d *, cfield3d *);

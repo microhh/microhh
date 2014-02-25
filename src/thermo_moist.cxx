@@ -99,7 +99,7 @@ int cthermo_moist::checkthermofield(std::string name)
     return 1;
 }
 
-int cthermo_moist::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 {
   // calculate the hydrostatic pressure
   if(grid->swspatialorder == "2")
@@ -108,9 +108,14 @@ int cthermo_moist::getthermofield(cfield3d *field, cfield3d *tmp, std::string na
     calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
 
   if(name == "b")
-    calcbuoyancy(field->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, tmp->data);
+    calcbuoyancy(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, tmp->data);
   else if(name == "ql")
-    calcqlfield(field->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
+    calcqlfield(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
+  else if(name == "N2")
+    // Cvh HACK HACK HACK for compilation
+    calcN2(fld->data, fields->s["th"]->data, grid->dzi, grid->dzi);
+  else
+    return 1;
 
   return 0;
 }
@@ -429,6 +434,24 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
         ql[ijk] = calcql(s[ijk], qt[ijk], p[k], exn);
       }
   }
+  return 0;
+}
+
+int cthermo_moist::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
+{
+  int ijk,jj,kk;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  for(int k=0; k<grid->kcells; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        N2[ijk] = grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+      }
+
   return 0;
 }
 

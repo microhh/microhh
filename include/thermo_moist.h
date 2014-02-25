@@ -95,6 +95,7 @@ class cthermo_moist : public cthermo
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *);
 
     int calcbuoyancy(double *, double *, double *, double *, double *);
+    int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
 
     //int calcpres(double *, double *, double *, double *);
     int calchydropres_2nd(double *, double *, double *, double *, double *);
