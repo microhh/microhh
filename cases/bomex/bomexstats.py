@@ -116,13 +116,13 @@ figure()
 for n in range(start,end):
   plot(w2t[n,:], zh, color='#eeeeee')
 plot(w2, zh)
-xlabel(r'w`$^2$ [m^2~s$^{-2}$]')
+xlabel(r'w`$^2$ [m$^2$~s$^{-2}$]')
 ylabel(r'z [m]')
 
 figure()
 for n in range(start,end):
   plot(tket[n,:], z, color='#eeeeee')
 plot(tke, z)
-xlabel(r'`TKE` [m$^2$~s$^{-2}$]')
+xlabel(r'TKE [m$^2$~s$^{-2}$]')
 ylabel(r'z [m]')
 

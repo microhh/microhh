@@ -20,6 +20,7 @@
  */
 
 #include <cstdio>
+#include "stdlib.h"
 #include <cmath>
 #include "grid.h"
 #include "fields.h"
@@ -50,7 +51,6 @@ int cthermo_moist::readinifile(cinput *inputin)
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
   nerror += fields->initpfld("qt");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
-  // nerror += fields->initdfld("ql");
 
   return (nerror > 0);
 }
@@ -58,76 +58,98 @@ int cthermo_moist::readinifile(cinput *inputin)
 int cthermo_moist::create(cinput *inputin)
 {
   int nerror = 0;
-  double qtsurf, ssurf;
   
-  // Create hydrostatic profile
-  // Doesnt work; just put a ref value in Namelist for both gravity and 1/beta
-  //   nerror += grid->calcmean(&ssurf, fields->s["s"]->databot,1);
-  //   nerror += grid->calcmean(&qtsurf, fields->s["qt"]->databot,1);
+  thvs = 303.2;  //ssurf * (1. - (1. - rv/rd)*qtsurf);
 
-  thvs = 303.2;//ssurf * (1. - (1. - rv/rd)*qtsurf);
-  double tvs  = exner2(ps) * thvs;
-  rhos = ps / (rd * tvs);
-
-  pmn = new double[grid->kcells];
-  for(int k=0; k<grid->kcells; k++)
-  {
-    pmn[k] = ps - rhos * grav * grid->z[k];
-  }
-
+  pmn  = new double[grid->kcells];  // Hydrostatic pressure (full levels)
+ 
   allocated = true;
   return nerror;
 }
 
 int cthermo_moist::exec()
 {
-  int ijk,kk,nerror;
+  int kk,nerror;
   kk = grid->icells*grid->jcells;
 
   nerror = 0;
 
-  calcpres(fields->s["tmp1"]->data, fields->s["p"]->data, pmn, fields->s["p"]->datamean);
-
-  // nerror += calcqlfield(fields->s["ql"]->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
-
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder == "2")
   {
-    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data,
-                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk], &fields->s["tmp2"]->data[3*kk]);
+    calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, pmn,
+                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk]);
   }
   else if(grid->swspatialorder == "4")
   {
-    calcbuoyancytend_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, fields->s["tmp1"]->data);
+    calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+    calcbuoyancytend_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, pmn,
+                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk]);
   }
-
 
   return (nerror>0);
 }
 
-int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
+int cthermo_moist::checkthermofield(std::string name)
 {
-  int ijk,kk;
-  kk = grid->icells*grid->jcells;
+  if(name == "b" || name == "ql")
+    return 0;
+  else
+    return 1;
+}
 
+int cthermo_moist::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+{
   // calculate the hydrostatic pressure
-  calcpres(pfield->data, fields->s["p"]->data, this->pmn, fields->s["p"]->datamean);
+  if(grid->swspatialorder == "2")
+    calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+  else if(grid->swspatialorder == "4")
+    calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
 
-  // calculate the ql field
-  calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pfield->data);
-
-  return 0;
-}
-
-int cthermo_moist::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
-{
-  // first calculate the pressure
-  calcpres(tmp->data, fields->s["p"]->data, this->pmn, fields->s["p"]->datamean);
-  // then calculate the buoyancy at the cell centers
-  calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, tmp->data, fields->s["tmp2"]->data);
+  if(name == "b")
+    calcbuoyancy(field->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, tmp->data);
+  else if(name == "ql")
+    calcqlfield(field->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
 
   return 0;
 }
+
+//int cthermo_moist::getql(cfield3d *qlfield, cfield3d *pfield)
+//{
+//  // calculate the hydrostatic pressure
+//  if(grid->swspatialorder == "2")
+//  {
+//    calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+//  }
+//  else if(grid->swspatialorder == "4")
+//  {
+//    calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+//  }
+//
+//  // calculate the ql field
+//  calcqlfield(qlfield->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
+//
+//  return 0;
+//}
+//
+//int cthermo_moist::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
+//{
+//  // calculate the hydrostatic pressure
+//  if(grid->swspatialorder == "2")
+//  {
+//    calchydropres_2nd(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+//  }
+//  else if(grid->swspatialorder == "4")
+//  {
+//    calchydropres_4th(pmn,fields->s["s"]->data,fields->s["s"]->datamean,fields->s["qt"]->data,fields->s["qt"]->datamean);
+//  }
+//
+//  // calculate the buoyancy at the cell centers
+//  calcbuoyancy(bfield->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, fields->s["tmp2"]->data);
+//
+//  return 0;
+//}
 
 int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
 {
@@ -144,40 +166,118 @@ int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
-int cthermo_moist::calcpres(double * restrict p, double * restrict pi, double * restrict pmn, double * restrict pav)
+/**
+ * This function calculates the hydrostatic pressure
+ * Solves: dpi/dz=-g/thv with pi=cp*(p/p0)**(rd/cp)
+ * @param pmn Pointer to hydrostatic pressure array
+ * @param s,smean,qt,qtmean .... 
+ * @return Returns 1 on error, 0 otherwise.
+ */
+int cthermo_moist::calchydropres_2nd(double * restrict pmn, double * restrict s, double * restrict smean,
+                                 double * restrict qt, double * restrict qtmean)
 {
-  int ijk,jj,kk;
-  jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  int kstart,kend;
+  double thv,ssurf,qtsurf,stop,qttop,ptop;
+  double rdcp = rd/cp;
 
-  double rhos = this->rhos;
+  kstart = grid->kstart;
+  kend = grid->kend;
 
-  grid->calcmean(pav,pi,grid->kcells);
+  // Calculate horizontal mean profiles, and interpolate surface and model top values 
+  grid->calcmean(smean,s,grid->kcells);
+  grid->calcmean(qtmean,qt,grid->kcells);
 
-  for(int k=0; k<grid->kcells; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        p[ijk] = pi[ijk]*rhos - pav[k] + pmn[k]; // minus trace
-      }
+  ssurf  = interp2(smean[kstart-1], smean[kstart]);
+  stop   = interp2(smean[kend-1],   smean[kend]);
+  qtsurf = interp2(qtmean[kstart-1],qtmean[kstart]);
+  qttop  = interp2(qtmean[kend-1],  qtmean[kend]);
+
+  // Calculate lowest full level (kstart) from surface values p,s,qt
+  thv = ssurf*(1.+(rv/rd-1)*qtsurf);
+  pmn[kstart] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thv)),(1./rdcp)); 
+
+  for(int k=kstart+1; k<kend; k++)
+  {
+    thv = interp2(smean[k-1],smean[k])*(1.+(rv/rd-1.)*interp2(qtmean[k-1],qtmean[k]));   // BvS: assume no ql for now..
+    pmn[k] = pow((pow(pmn[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thv)),(1./rdcp)); 
+  }
+
+  // Calculate pressure at top of domain, needed to fill ghost cells
+  thv = stop*(1.+(rv/rd-1)*qttop);
+  ptop = pow((pow(pmn[kend-1],rdcp) - grav * pow(p0,rdcp) * (grid->zh[kend]-grid->z[kend-1]) / (cp * thv)),(1./rdcp));
+
+  // Fill bottom and top ghost cells 
+  pmn[kstart-1] = 2.*ps - pmn[kstart];
+  pmn[kend] = 2.*ptop - pmn[kend-1];
 
   return 0;
 }
 
+/**
+ * This function calculates the hydrostatic pressure
+ * Solves: dpi/dz=-g/thv with pi=cp*(p/p0)**(rd/cp)
+ * @param pmn Pointer to hydrostatic pressure array
+ * @param s,smean,qt,qtmean .... 
+ * @return Returns 1 on error, 0 otherwise.
+ */
+int cthermo_moist::calchydropres_4th(double * restrict pmn, double * restrict s, double * restrict smean,
+                                 double * restrict qt, double * restrict qtmean)
+{
+  int kstart,kend;
+  double thv,ssurf,qtsurf,stop,qttop,ptop;
+  double rdcp = rd/cp;
+
+  kstart = grid->kstart;
+  kend = grid->kend;
+
+  // Calculate horizontal mean profiles, and interpolate surface and model top values 
+  grid->calcmean(smean,s,grid->kcells);
+  grid->calcmean(qtmean,qt,grid->kcells);
+
+  ssurf  = interp4(smean[kstart-2], smean[kstart-1], smean[kstart], smean[kstart+1]);
+  stop   = interp4(smean[kend-2],   smean[kend-1],   smean[kend],   smean[kend+1]);
+  qtsurf = interp4(qtmean[kstart-2],qtmean[kstart-1],qtmean[kstart],qtmean[kstart+1]);
+  qttop  = interp4(qtmean[kend-2],  qtmean[kend-1],  qtmean[kend],  qtmean[kend+1]);
+
+  // Calculate lowest full level (kstart) from surface values p,s,qt
+  thv = ssurf*(1.+(rv/rd-1)*qtsurf);
+  pmn[kstart] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thv)),(1./rdcp)); 
+
+  for(int k=kstart+1; k<kend; k++)
+  {
+    thv = interp4(smean[k-2],smean[k-1],smean[k],smean[k+1])*(1.+(rv/rd-1.)*interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]));   // BvS: assume no ql for now..
+    pmn[k] = pow((pow(pmn[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thv)),(1./rdcp)); 
+  }
+
+  // Calculate pressure at top of domain, needed to fill ghost cells
+  thv = stop*(1.+(rv/rd-1)*qttop);
+  ptop = pow((pow(pmn[kend-1],rdcp) - grav * pow(p0,rdcp) * (grid->zh[kend]-grid->z[kend-1]) / (cp * thv)),(1./rdcp));
+
+  // Fill bottom and top ghost cells 
+  pmn[kstart-1] = (8./3.)*ps - 2.*pmn[kstart] + (1./3.)*pmn[kstart+1];
+  pmn[kstart-2] = 8.*ps - 9.*pmn[kstart] + 2.*pmn[kstart+1];
+  pmn[kend] = (8./3.)*ptop - 2.*pmn[kend-1] + (1./3.)*pmn[kend-2];
+  pmn[kend+1] = 8.*ptop - 9.*pmn[kend-1] + 2.*pmn[kend-2];
+
+  return 0;
+}
+
+
 int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p,
-                                        double * restrict sh, double * restrict qth, double * restrict ph, double * restrict ql)
+                                        double * restrict sh, double * restrict qth, double * restrict ql)
 {
   int ijk,jj,kk,ij;
+  double tl, ph, exnh;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-  double th;
+
   double thvref = thvs;
 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
+    ph   = interp2(p[k-1],p[k]);   // BvS To-do: calculate pressure at full and half levels
+    exnh = exner2(ph);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -186,17 +286,18 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
         ij  = i + j*jj;
         sh[ij]  = interp2(s[ijk-kk], s[ijk]);
         qth[ij] = interp2(qt[ijk-kk], qt[ijk]);
-        ph[ij]  = interp2(p[ijk-kk], p[ijk]);
-        th      = sh[ij] * exner2(ph[ij]);
-        ql[ij]  = qth[ij]-rslf(ph[ij],th);   // not real ql, just estimate
+        tl      = sh[ij] * exnh;
+        // Calculate first estimate of ql using Tl
+        // if ql(Tl)>0, saturation adjustment routine needed
+        ql[ij]  = qth[ij]-rslf(ph,tl);
       }
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
-        if(ql[ij]>0)   // already doesn;t vectorize because of iter in calcql
-          ql[ij] = calcql(sh[ij], qth[ij], ph[ij]);
+        if(ql[ij]>0)   // already doesn't vectorize because of iteration in calcql()
+          ql[ij] = calcql(sh[ij], qth[ij], ph, exnh);
         else
           ql[ij] = 0.;
       }
@@ -206,17 +307,18 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        wt[ijk] += bu(ph[ij], sh[ij], qth[ij], ql[ij], thvref);
+        wt[ijk] += bu(ph, sh[ij], qth[ij], ql[ij], thvref);
       }
   }
   return 0;
 }
 
-int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p)
+int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p,
+                                        double * restrict sh, double * restrict qth, double * restrict ql)
 {
-  int ijk,jj;
+  int ijk,jj,ij;
   int kk1,kk2;
-  double sh, qth, ph, ql;
+  double tl, ph, exnh;
 
   jj  = grid->icells;
   kk1 = 1*grid->icells*grid->jcells;
@@ -225,25 +327,48 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
   double thvref = thvs;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
+  {
+    ph  = interp4(p[k-2] , p[k-1] , p[k] , p[k+1]); // BvS To-do: calculate pressure at full and half levels
+    exnh = exner2(ph);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk1;
-        sh  = interp4(s[ijk-kk2] , s[ijk-kk1] , s[ijk] , s[ijk+kk1]);
-        qth = interp4(qt[ijk-kk2], qt[ijk-kk1], qt[ijk], qt[ijk+kk1]);
-        ph  = interp4(p[ijk-kk2] , p[ijk-kk1] , p[ijk] , p[ijk+kk1]);
-        ql  = calcql(sh, qth, ph);
-        wt[ijk] += bu(ph, sh, qth, ql, thvref);
+        ij  = i + j*jj;
+        sh[ij]  = interp4(s[ijk-kk2] , s[ijk-kk1] , s[ijk] , s[ijk+kk1]);
+        qth[ij] = interp4(qt[ijk-kk2], qt[ijk-kk1], qt[ijk], qt[ijk+kk1]);
+        tl      = sh[ij] * exnh;
+        // Calculate first estimate of ql using Tl
+        // if ql(Tl)>0, saturation adjustment routine needed
+        ql[ij]  = qth[ij]-rslf(ph,tl);   
       }
-
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        if(ql[ij]>0)   // already doesn't vectorize because of iteration in calcql()
+          ql[ij] = calcql(sh[ij], qth[ij], ph, exnh);
+        else
+          ql[ij] = 0.;
+      }
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk1;
+        ij  = i + j*jj;
+        wt[ijk] += bu(ph, sh[ij], qth[ij], ql[ij], thvref);
+      }
+  }
   return 0;
 }
 
 int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double * restrict qt, double * restrict p, double * restrict ql)
 {
   int ijk,jj,kk,ij;
-  double th;
+  double tl, exn;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
@@ -251,16 +376,24 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
 
   for(int k=0; k<grid->kcells; k++)
   {
+    exn = exner2(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        th      = s[ijk] * exner2(p[ijk]);
-        ql[ij]  = qt[ijk]-rslf(p[ijk],th);   // not real ql, just estimate
+        tl  = s[ijk] * exn;
+        ql[ij]  = qt[ijk]-rslf(p[k],tl);   // not real ql, just estimate
+      }
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ij  = i + j*jj;
         if(ql[ij] > 0)
-          ql[ij] = calcql(s[ijk], qt[ijk], p[ijk]);
+          ql[ij] = calcql(s[ijk], qt[ijk], p[k], exn);
         else
           ql[ij] = 0.;
       }
@@ -270,7 +403,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        b[ijk] = bu(p[ijk], s[ijk], qt[ijk], ql[ij], thvref);
+        b[ijk] = bu(p[k], s[ijk], qt[ijk], ql[ij], thvref);
       }
   }
 
@@ -280,19 +413,22 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
 int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double * restrict qt, double * restrict p)
 {
   int ijk,jj,kk;
+  double exn;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
   for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    exn = exner2(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        ql[ijk] = calcql(s[ijk], qt[ijk], p[ijk]);
+        ql[ijk] = calcql(s[ijk], qt[ijk], p[k], exn);
       }
-
+  }
   return 0;
 }
 
@@ -323,7 +459,7 @@ int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
 
 int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sbot, double * restrict sfluxbot, double * restrict qtbot, double * restrict qtfluxbot)
 {
-  int ij,jj,kk;
+  int ij,jj;
   jj = grid->icells;
 
   double thvref = thvs;
@@ -356,12 +492,11 @@ inline double cthermo_moist::bufluxnoql(const double s, const double sflux, cons
   return grav/thvref * (sflux * (1. - (1.-rv/rd)*qt) - (1.-rv/rd)*s*qtflux);
 }
 
-inline double cthermo_moist::calcql(const double s, const double qt, const double p)
+inline double cthermo_moist::calcql(const double s, const double qt, const double p, const double exn)
 {
-  int niter = 0, nitermax = 5;
-//   double sabs, sguess = 1.e9, t, qs, ql, dtldt;
+  int niter = 0; //, nitermax = 5;
   double ql, tl, tnr_old = 1.e9, tnr, qs;
-  tl = s * exner2(p);
+  tl = s * exn;
   tnr = tl;
   while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5)// && niter < nitermax)
   {

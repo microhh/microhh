@@ -45,10 +45,12 @@ class cthermo_dry : public cthermo
     int create(cinput *);
     int exec();                ///< Add the tendencies belonging to the buoyancy.
 
-    int getbuoyancy(cfield3d *, cfield3d *); ///< Compute the buoyancy for usage in another routine.
+    //int getbuoyancy(cfield3d *, cfield3d *); ///< Compute the buoyancy for usage in another routine.
     int getN2(cfield3d *, cfield3d *);       ///< Compute the buoyancy for usage in another routine.
     int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
     int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
+    int checkthermofield(std::string name);
+    int getthermofield(cfield3d *, cfield3d *, std::string name);
 
   private:
     int calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.

@@ -42,6 +42,9 @@ class cthermo
     virtual int getN2(cfield3d *, cfield3d *);       ///< Compute the buoyancy for usage in another routine.
     virtual int getbuoyancysurf(cfield3d *);
     virtual int getbuoyancyfluxbot(cfield3d *);
+    //virtual int getbuoyancy(cfield3d *, cfield3d *);
+    virtual int checkthermofield(std::string name);
+    virtual int getthermofield(cfield3d *, cfield3d *, std::string name);
 
     std::string getname();
 
