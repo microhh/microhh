@@ -46,7 +46,7 @@ int cthermo_moist::readinifile(cinput *inputin)
 {
   int nerror = 0;
   nerror += inputin->getItem(&ps    , "thermo", "ps"    , "");
-  nerror += inputin->getItem(&thvref, "thermo", "thvref", "");
+  // nerror += inputin->getItem(&thvref, "thermo", "thvref", "");
 
   nerror += fields->initpfld("s");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
