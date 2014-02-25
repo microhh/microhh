@@ -90,7 +90,8 @@ int cdiff_les2s::execvisc()
     // store the buoyancyflux in tmp1
     model->thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
     // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-    model->thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
+    //model->thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
+    model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
 
     evisc(fields->s["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data, fields->s["tmp1"]->data,
