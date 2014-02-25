@@ -77,6 +77,7 @@ class cthermo_moist : public cthermo
     int getbuoyancyfluxbot(cfield3d *);
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);
+    int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
     double ps;

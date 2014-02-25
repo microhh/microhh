@@ -75,6 +75,12 @@ int cthermo_buoy::getbuoyancysurf(cfield3d *bfield)
   return 0;
 }
 
+int cthermo_buoy::getprogvars(std::vector<std::string> *list)
+{
+  list->push_back("b");
+  return 0;
+}
+
 int cthermo_buoy::calcbuoyancy(double * restrict b, double * restrict bin)
 {
   int ijk,jj,kk;

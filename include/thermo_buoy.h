@@ -43,9 +43,10 @@ class cthermo_buoy : public cthermo
     int readinifile(cinput *); ///< Processing data of the input file.
     int exec();                ///< Add the tendencies belonging to the buoyancy.
 
-    int getbuoyancy(cfield3d *, cfield3d *); ///< Compute the buoyancy for usage in another routine.
-    int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
+    int getbuoyancy(cfield3d *, cfield3d *);     ///< Compute the buoyancy for usage in another routine.
+    int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    int getbuoyancyfluxbot(cfield3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
+    int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
     int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.

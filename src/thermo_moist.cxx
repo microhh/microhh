@@ -165,6 +165,14 @@ int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
+int cthermo_moist::getprogvars(std::vector<std::string> *list)
+{
+  list->push_back("s");
+  list->push_back("qt");
+
+  return 0;
+}
+
 /**
  * This function calculates the hydrostatic pressure
  * Solves: dpi/dz=-g/thv with pi=cp*(p/p0)**(rd/cp)

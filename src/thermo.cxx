@@ -79,3 +79,8 @@ std::string cthermo::getname()
 {
   return swthermo;
 }
+
+int cthermo::getprogvars(std::vector<std::string> *list)
+{
+  return 0;
+}

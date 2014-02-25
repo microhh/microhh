@@ -65,17 +65,9 @@ int cthermo_dry_slope::checkthermofield(std::string name)
 
 int cthermo_dry_slope::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
 {
-  // Check needed?
   calcbuoyancy(field->data, fields->s["s"]->data);
-
   return 0;
 }
-
-//int cthermo_dry_slope::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
-//{
-//  calcbuoyancy(bfield->data, fields->s["s"]->data);
-//  return 0;
-//}
 
 int cthermo_dry_slope::getbuoyancyfluxbot(cfield3d *bfield)
 {
@@ -88,6 +80,12 @@ int cthermo_dry_slope::getbuoyancysurf(cfield3d *bfield)
   calcbuoyancybot(bfield->data        , bfield->databot,
                   fields->s["s"]->data, fields->s["s"]->databot);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->datafluxbot);
+  return 0;
+}
+
+int cthermo_dry_slope::getprogvars(std::vector<std::string> *list)
+{
+  list->push_back("s");
   return 0;
 }
 
