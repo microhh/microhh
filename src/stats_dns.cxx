@@ -303,7 +303,7 @@ int cstats_dns::exec(int iteration, double time, unsigned long itime)
   // calculate the buoyancy term of the TKE budget
   if(model->thermo->getname() != "0")
   {
-    model->thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
+    model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
     calctkebudget_buoy(fields->w->data, fields->s["tmp1"]->data,
                   profs["w2_buoy"].data, profs["tke_buoy"].data);
   }
