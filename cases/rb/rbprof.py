@@ -8,8 +8,7 @@ dz = zsize / kmax
 
 # define the variables
 z = numpy.zeros(kmax)
-#z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
-s = numpy.zeros(kmax)
+b = numpy.zeros(kmax)
 
 # create non-equidistant grid
 alpha = 0.7
@@ -19,8 +18,8 @@ for k in range(kmax):
 
 # write the data to a file
 proffile = open('rb.prof','w')
-proffile.write('{0:^14s} {1:^14s}\n'.format('z','s'))
+proffile.write('{0:^14s} {1:^14s}\n'.format('z','b'))
 for k in range(kmax):
-  proffile.write('{0:1.20E} {1:1.20E}\n'.format(z[k], s[k]))
+  proffile.write('{0:1.20E} {1:1.20E}\n'.format(z[k], b[k]))
 proffile.close()
 

@@ -43,17 +43,24 @@ b0    = 1.
 delta = 4.407731e-3
 N2    = 3.
 
-s = numpy.zeros(numpy.size(z))
+b = numpy.zeros(numpy.size(z))
 
 for k in range(kmax):
-  s[k] = N2*z[k] + b0*erf(-0.5*z[k]/delta) + b0
+  b[k] = N2*z[k] + b0*erf(-0.5*z[k]/delta) + b0
   #s[k] = N2*z[k]
 
 # write the data to a file
 proffile = open('drycbl_flow.prof','w')
-proffile.write('{0:^20s} {1:^20s}\n'.format('z','s'))
+proffile.write('{0:^20s} {1:^20s}\n'.format('z','b'))
 for k in range(kmax):
-  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], s[k]))
+  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], b[k]))
+proffile.close()
+
+# write the data to a file
+proffile = open('drycbl_flow_restart.prof','w')
+proffile.write('{0:^20s} {1:^20s}\n'.format('z','b'))
+for k in range(kmax):
+  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], b[k]))
 proffile.close()
 
 #plot the grid

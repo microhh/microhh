@@ -75,6 +75,20 @@ int cthermo_buoy::getbuoyancysurf(cfield3d *bfield)
   return 0;
 }
 
+int cthermo_buoy::checkthermofield(std::string name)
+{
+  if(name == "b")
+    return 0;
+  else
+    return 1;
+}
+
+int cthermo_buoy::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+{
+  calcbuoyancy(field->data, fields->s["b"]->data);
+  return 0;
+}
+
 int cthermo_buoy::getprogvars(std::vector<std::string> *list)
 {
   list->push_back("b");

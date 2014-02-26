@@ -12,18 +12,18 @@ z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
 s = numpy.zeros(numpy.size(z))
 
 for k in range(kmax):
-  s[k] = dthetadz*z[k]
+  th[k] = dthetadz*z[k]
 
 # write the data to a file
 proffile = open('drycblles.prof','w')
-proffile.write('{0:^20s} {1:^20s}\n'.format('z','s'))
+proffile.write('{0:^20s} {1:^20s}\n'.format('z','th'))
 for k in range(kmax):
-  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], s[k]))
+  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], th[k]))
 proffile.close()
 
 # write the data to a file
 proffile = open('drycblles_restart.prof','w')
-proffile.write('{0:^20s} {1:^20s}\n'.format('z','s'))
+proffile.write('{0:^20s} {1:^20s}\n'.format('z','th'))
 for k in range(kmax):
-  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], s[k]))
+  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], th[k]))
 proffile.close()
