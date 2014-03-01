@@ -61,7 +61,10 @@ int cthermo_moist::create()
   int nerror = 0;
   
   pmn = new double[grid->kcells];  // hydrostatic pressure (full levels)
- 
+
+  // Enable automated calculation of horizontally averaged fields
+  fields->setcalcprofs(true);
+
   allocated = true;
   return nerror;
 }
@@ -190,10 +193,6 @@ int cthermo_moist::calchydropres_2nd(double * restrict pmn, double * restrict s,
   kstart = grid->kstart;
   kend = grid->kend;
 
-  // Calculate horizontal mean profiles, and interpolate surface and model top values 
-  grid->calcmean(smean,s,grid->kcells);
-  grid->calcmean(qtmean,qt,grid->kcells);
-
   ssurf  = interp2(smean[kstart-1], smean[kstart]);
   stop   = interp2(smean[kend-1],   smean[kend]);
   qtsurf = interp2(qtmean[kstart-1],qtmean[kstart]);
@@ -236,10 +235,6 @@ int cthermo_moist::calchydropres_4th(double * restrict pmn, double * restrict s,
 
   kstart = grid->kstart;
   kend = grid->kend;
-
-  // Calculate horizontal mean profiles, and interpolate surface and model top values 
-  grid->calcmean(smean,s,grid->kcells);
-  grid->calcmean(qtmean,qt,grid->kcells);
 
   ssurf  = interp4(smean[kstart-2], smean[kstart-1], smean[kstart], smean[kstart+1]);
   stop   = interp4(smean[kend-2],   smean[kend-1],   smean[kend],   smean[kend+1]);
