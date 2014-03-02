@@ -29,9 +29,10 @@
 
 cthermo::cthermo(cmodel *modelin)
 {
-  grid   = modelin->grid;
-  fields = modelin->fields;
-  master = modelin->master;
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  master = model->master;
 
   swthermo = "off";
 }
@@ -45,12 +46,22 @@ int cthermo::readinifile(cinput *inputin)
   return 0;
 }
 
+int cthermo::init()
+{
+  return 0;
+}
+
 int cthermo::create()
 {
   return 0;
 }
 
 int cthermo::exec()
+{
+  return 0;
+}
+
+int cthermo::statsexec()
 {
   return 0;
 }

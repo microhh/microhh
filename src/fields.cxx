@@ -159,6 +159,8 @@ int cfields::statsexec()
   stats->calcmean(u->data, stats->profs["u"].data, grid->utrans);
   stats->calcmean(v->data, stats->profs["v"].data, grid->vtrans);
   stats->calcmean(w->data, stats->profs["w"].data, NO_OFFSET);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->calcmean(it->second->data, stats->profs[it->first].data, NO_OFFSET);
 
     // calculate model means without correction for transformation
   stats->calcmean(u->data, umodel, NO_OFFSET);
@@ -168,11 +170,17 @@ int cfields::statsexec()
   stats->calcmean(s["evisc"]->data, stats->profs["evisc"].data, NO_OFFSET);
 
   // 2nd order
-  stats->calcmoment(u->data, umodel, stats->profs["u2"].data, 2., 0);
-  stats->calcmoment(v->data, vmodel, stats->profs["v2"].data, 2., 0);
-  stats->calcmoment(w->data, stats->profs["w"].data, stats->profs["w2"].data, 2., 1);
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+"2"].data, 2., 0);
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->calcmoment(u->data, umodel, stats->profs["u"+sn].data, n, 0);
+    stats->calcmoment(v->data, vmodel, stats->profs["v"+sn].data, n, 0);
+    stats->calcmoment(w->data, stats->profs["w"].data, stats->profs["w"+sn].data, n, 1);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+sn].data, n, 0);
+  }
 
   stats->calcgrad(u->data, stats->profs["ugrad"].data, grid->dzhi);
   stats->calcgrad(v->data, stats->profs["vgrad"].data, grid->dzhi);
@@ -468,12 +476,12 @@ int cfields::load(int n)
   {
     std::stringstream ss;
     ss << n;
-
-    stats->addprof(u->name + ss.str(),"Moment "+ ss.str() + " of the " + u->longname,"(" + u->unit + ")"+ss.str(), "z" );
-    stats->addprof(v->name + ss.str(),"Moment "+ ss.str() + " of the " + v->longname,"(" + v->unit + ")"+ss.str(), "z" );
-    stats->addprof(w->name + ss.str(),"Moment "+ ss.str() + " of the " + w->longname,"(" + w->unit + ")"+ss.str(), "zh" );
+    std::string sn = ss.str();
+    stats->addprof(u->name + sn,"Moment "+ sn + " of the " + u->longname,"(" + u->unit + ")"+sn, "z" );
+    stats->addprof(v->name + sn,"Moment "+ sn + " of the " + v->longname,"(" + v->unit + ")"+sn, "z" );
+    stats->addprof(w->name + sn,"Moment "+ sn + " of the " + w->longname,"(" + w->unit + ")"+sn, "zh" );
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first + ss.str(),"Moment "+ ss.str() + " of the " + it->second->longname,"(" + it->second->unit + ")"+ss.str(), "z" );
+      stats->addprof(it->first + sn,"Moment "+ sn + " of the " + it->second->longname,"(" + it->second->unit + ")"+sn, "z" );
   }
 
   // gradients

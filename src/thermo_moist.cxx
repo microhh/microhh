@@ -20,12 +20,50 @@
  */
 
 #include <cstdio>
-#include "stdlib.h"
+#include <cstdlib>
 #include <cmath>
+#include <sstream>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
+#include "diff_les2s.h"
 #include "defines.h"
+#include "model.h"
+#include "stats.h"
+
+#define rd 287.04
+#define rv 461.5
+#define ep rd/rv
+#define cp 1005
+#define lv 2.5e6
+#define rhow    1.e3
+#define tmelt   273.15
+#define p0 1.e5
+#define grav 9.81
+
+#define ex1 2.85611940298507510698e-06
+#define ex2 -1.02018879928714644313e-11
+#define ex3 5.82999832046362073082e-17
+#define ex4 -3.95621945728655163954e-22
+#define ex5 2.93898686274077761686e-27
+#define ex6 -2.30925409555411170635e-32
+#define ex7 1.88513914720731231360e-37
+
+#define at 17.27
+#define bt 35.86
+#define es0 610.78
+
+#define c0 0.6105851e+03
+#define c1 0.4440316e+02
+#define c2 0.1430341e+01
+#define c3 0.2641412e-01
+#define c4 0.2995057e-03
+#define c5 0.2031998e-05
+#define c6 0.6936113e-08
+#define c7 0.2564861e-11
+#define c8 -.3704404e-13
+
+#define NO_OFFSET 0.
 
 cthermo_moist::cthermo_moist(cmodel *modelin) : cthermo(modelin)
 {
@@ -56,6 +94,13 @@ int cthermo_moist::readinifile(cinput *inputin)
   return (nerror > 0);
 }
 
+int cthermo_moist::init()
+{
+  stats = model->stats;
+
+  return 0;
+}
+
 int cthermo_moist::create()
 {
   int nerror = 0;
@@ -66,6 +111,21 @@ int cthermo_moist::create()
   fields->setcalcprofs(true);
 
   allocated = true;
+
+  stats->addprof("b", "Buoyancy", "m s-2", "z");
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+  }
+
+  stats->addprof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
+  stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+  stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+  stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+
   return nerror;
 }
 
@@ -91,6 +151,40 @@ int cthermo_moist::exec()
   }
 
   return (nerror>0);
+}
+
+int cthermo_moist::statsexec()
+{
+  // calc the buoyancy and its surface flux for the profiles
+  calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, fields->s["tmp2"]->data);
+  calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
+
+  // mean
+  stats->calcmean(fields->s["tmp1"]->data, stats->profs["b"].data, NO_OFFSET);
+
+  // moments
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->calcmoment(fields->s["tmp1"]->data, stats->profs["b"].data, stats->profs["b"+sn].data, n, 0);
+  }
+
+  // calculate the gradients
+  stats->calcgrad(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+
+  // calculate turbulent fluxes
+  stats->calcflux(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+
+  // calculate diffusive fluxes
+  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
+  stats->calcdiff(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
+
+  // calculate the total fluxes
+  stats->addfluxes(stats->profs["bflux"].data, stats->profs["bw"].data, stats->profs["bdiff"].data);
+
+  return 0;
 }
 
 int cthermo_moist::checkthermofield(std::string name)

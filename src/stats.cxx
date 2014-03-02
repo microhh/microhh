@@ -115,9 +115,17 @@ int cstats::create(int n)
 
     // create variables belonging to dimensions
     iter_var = dataFile->add_var("iter", ncInt   , t_dim );
+    nerror+= iter_var->add_att("units", "-");
+    nerror+= iter_var->add_att("longname", "Iteration oumber");
     t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
+    nerror+= t_var->add_att("units", "s");
+    nerror+= t_var->add_att("longname", "Time");
     z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
+    nerror+= z_var->add_att("units", "m");
+    nerror+= z_var->add_att("longname", "Full level height");
     zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
+    nerror+= z_var->add_att("units", "m");
+    nerror+= z_var->add_att("longname", "Half level height");
   }
 
   // means
@@ -323,7 +331,7 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
     else if(zloc == "zh")
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
-    nerror+=profs[name].ncvar->add_att("unit", unit.c_str());
+    nerror+=profs[name].ncvar->add_att("units", unit.c_str());
     nerror+=profs[name].ncvar->add_att("longname", longname.c_str());
     nerror+=profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
   }

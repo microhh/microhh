@@ -23,7 +23,6 @@
 #define STATS
 
 #include <netcdfcpp.h>
-#include <stats.h>
 
 // forward declarations to reduce compilation time
 class cmaster;
