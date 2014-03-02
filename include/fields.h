@@ -28,6 +28,7 @@
 class cmaster;
 class cmodel;
 class cgrid;
+class cstats;
 
 typedef std::map<std::string, cfield3d *> fieldmap;
 
@@ -41,7 +42,7 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
-    int stats();
+    int statsexec();
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string, std::string, std::string);
     int initpfld(std::string, std::string, std::string);
@@ -86,6 +87,7 @@ class cfields
     cmodel  *model;
     cgrid   *grid;
     cmaster *master;
+    cstats  *stats;
 
     bool allocated;
     bool calcprofs;
@@ -106,5 +108,9 @@ class cfields
     int addvortexpair(cinput* inputin);
     double calcmass(double *, double *);
     inline double interp2(const double, const double);
+
+    // statistics
+    double *umodel;
+    double *vmodel;
 };
 #endif

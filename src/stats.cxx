@@ -124,10 +124,10 @@ int cstats::create(int n)
   // addprof("u", "z" );
   // addprof("v", "z" );
   // addprof("w", "zh");
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addprof(it->first, "z");
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   addprof(it->first, "z");
   addprof("evisc", "z");
-  addprof("p", "z");
+  // addprof("p", "z");
 
   // in case of moisture, add ql prof
   if(model->thermo->getname() == "moist")
@@ -135,50 +135,51 @@ int cstats::create(int n)
     addprof("ql", "z");
     addprof("cfrac", "z");
   }
-  // 2nd order
-  addprof("u2", "z" );
-  addprof("v2", "z" );
-  addprof("w2", "zh");
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addprof(it->first+"2", "z");
+
+  // // 2nd order
+  // addprof("u2", "z" );
+  // addprof("v2", "z" );
+  // addprof("w2", "zh");
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   addprof(it->first+"2", "z");
 
   // 3rd order
-  addprof("u3", "z" );
-  addprof("v3", "z" );
-  addprof("w3", "zh");
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addprof(it->first+"3", "z");
+  // addprof("u3", "z" );
+  // addprof("v3", "z" );
+  // addprof("w3", "zh");
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   addprof(it->first+"3", "z");
 
-  // 4th order
-  addprof("u4", "z" );
-  addprof("v4", "z" );
-  addprof("w4", "zh");
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addprof(it->first+"4", "z");
+  // // 4th order
+  // addprof("u4", "z" );
+  // addprof("v4", "z" );
+  // addprof("w4", "zh");
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   addprof(it->first+"4", "z");
 
-  // gradients
-  addprof("ugrad", "zh");
-  addprof("vgrad", "zh");
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addprof(it->first+"grad", "zh");
+  // // gradients
+  // addprof("ugrad", "zh");
+  // addprof("vgrad", "zh");
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   addprof(it->first+"grad", "zh");
 
-  // turbulent fluxes
-  addprof("uw", "zh");
-  addprof("vw", "zh");
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addprof(it->first+"w", "zh");
+  // // turbulent fluxes
+  // addprof("uw", "zh");
+  // addprof("vw", "zh");
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   addprof(it->first+"w", "zh");
 
-  // diffusive fluxes
-  addprof("udiff", "zh");
-  addprof("vdiff", "zh");
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addprof(it->first+"diff", "zh");
+  // // diffusive fluxes
+  // addprof("udiff", "zh");
+  // addprof("vdiff", "zh");
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   addprof(it->first+"diff", "zh");
 
-  // total fluxes
-  addprof("uflux", "zh");
-  addprof("vflux", "zh");
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addprof(it->first+"flux", "zh");
+  // // total fluxes
+  // addprof("uflux", "zh");
+  // addprof("vflux", "zh");
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   addprof(it->first+"flux", "zh");
 
   if(master->mpiid == 0)
   {
@@ -230,10 +231,10 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   // calcmean(fields->u->data, profs["u"].data, grid->utrans);
   // calcmean(fields->v->data, profs["v"].data, grid->vtrans);
   // calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
+  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  //   calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
 
-  calcmean(fields->s["p"]->data, profs["p"].data, NO_OFFSET);
+  // calcmean(fields->s["p"]->data, profs["p"].data, NO_OFFSET);
   calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
 
   // in case of moisture, calc ql mean
@@ -246,6 +247,7 @@ int cstats::exec(int iteration, double time, unsigned long itime)
     calccount(fields->s["tmp1"]->data, profs["cfrac"].data, 0.);
   }
 
+  /*
   // calculate model means without correction for transformation
   calcmean(fields->u->data, umodel, NO_OFFSET);
   calcmean(fields->v->data, vmodel, NO_OFFSET);
@@ -294,6 +296,7 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   addfluxes(profs["vflux"].data, profs["vw"].data, profs["vdiff"].data);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     addfluxes(profs[it->first+"flux"].data, profs[it->first+"w"].data, profs[it->first+"diff"].data);
+  */
 
   // put the data into the NetCDF file
   if(master->mpiid == 0)

@@ -28,6 +28,7 @@
 #include "defines.h"
 #include "model.h"
 #include "stats.h"
+#include "diff_les2s.h"
 
 #define NO_OFFSET 0.
 
@@ -96,6 +97,9 @@ int cfields::readinifile(cinput *inputin)
   nerror += initdfld("tmp1","","");
   nerror += initdfld("tmp2","","");
 
+  // CvH check this later
+  stats = model->stats;
+
   return nerror;
 }
 
@@ -129,6 +133,10 @@ int cfields::init()
   if(n > 0)
     return 1;
 
+  // allocate help arrays for statistics;
+  umodel = new double[grid->kcells];
+  vmodel = new double[grid->kcells];
+
   allocated = true;
 
   return 0;
@@ -146,11 +154,48 @@ int cfields::exec()
   return 0;
 }
 
-int cfields::stats()
+int cfields::statsexec()
 {
-  model->stats->calcmean(u->data, model->stats->profs["u"].data, grid->utrans);
-  model->stats->calcmean(v->data, model->stats->profs["v"].data, grid->vtrans);
-  model->stats->calcmean(w->data, model->stats->profs["w"].data, NO_OFFSET);
+  stats->calcmean(u->data, stats->profs["u"].data, grid->utrans);
+  stats->calcmean(v->data, stats->profs["v"].data, grid->vtrans);
+  stats->calcmean(w->data, stats->profs["w"].data, NO_OFFSET);
+
+    // calculate model means without correction for transformation
+  stats->calcmean(u->data, umodel, NO_OFFSET);
+  stats->calcmean(v->data, vmodel, NO_OFFSET);
+
+  stats->calcmean(s["p"]->data, stats->profs["p"].data, NO_OFFSET);
+
+  // 2nd order
+  stats->calcmoment(u->data, umodel, stats->profs["u2"].data, 2., 0);
+  stats->calcmoment(v->data, vmodel, stats->profs["v2"].data, 2., 0);
+  stats->calcmoment(w->data, stats->profs["w"].data, stats->profs["w2"].data, 2., 1);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+"2"].data, 2., 0);
+
+  stats->calcgrad(u->data, stats->profs["ugrad"].data, grid->dzhi);
+  stats->calcgrad(v->data, stats->profs["vgrad"].data, grid->dzhi);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->calcgrad(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi);
+
+  // calculate turbulent fluxes
+  stats->calcflux(u->data, w->data, stats->profs["uw"].data, s["tmp1"]->data, 1, 0);
+  stats->calcflux(v->data, w->data, stats->profs["vw"].data, s["tmp1"]->data, 0, 1);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->calcflux(it->second->data, w->data, stats->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
+
+  // calculate diffusive fluxes
+  // TODO find a prettier solution for this cast later
+  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
+  stats->calcdiff(u->data, s["evisc"]->data, stats->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
+  stats->calcdiff(v->data, s["evisc"]->data, stats->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->calcdiff(it->second->data, s["evisc"]->data, stats->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
+
+  stats->addfluxes(stats->profs["uflux"].data, stats->profs["uw"].data, stats->profs["udiff"].data);
+  stats->addfluxes(stats->profs["vflux"].data, stats->profs["vw"].data, stats->profs["vdiff"].data);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addfluxes(stats->profs[it->first+"flux"].data, stats->profs[it->first+"w"].data, stats->profs[it->first+"diff"].data);
 
   return 0;
 }
@@ -408,9 +453,49 @@ int cfields::load(int n)
   }
 
   // initalize the profiles in the stats
-  model->stats->addprof("u", "z" );
-  model->stats->addprof("v", "z" );
-  model->stats->addprof("w", "zh");
+  stats->addprof("u", "z" );
+  stats->addprof("v", "z" );
+  stats->addprof("w", "zh");
+
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first, "z");
+  stats->addprof("p", "z");
+
+  // moments
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    stats->addprof("u"+ss.str(), "z" );
+    stats->addprof("v"+ss.str(), "z" );
+    stats->addprof("w"+ss.str(), "zh");
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->addprof(it->first+ss.str(), "z");
+  }
+
+  // gradients
+  stats->addprof("ugrad", "zh");
+  stats->addprof("vgrad", "zh");
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first+"grad", "zh");
+
+  // turbulent fluxes
+  stats->addprof("uw", "zh");
+  stats->addprof("vw", "zh");
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first+"w", "zh");
+
+  // diffusive fluxes
+  stats->addprof("udiff", "zh");
+  stats->addprof("vdiff", "zh");
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first+"diff", "zh");
+
+  // total fluxes
+  stats->addprof("uflux", "zh");
+  stats->addprof("vflux", "zh");
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first+"flux", "zh");
 
   return nerror;
 }
