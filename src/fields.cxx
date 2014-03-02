@@ -138,12 +138,12 @@ int cfields::init()
   // Check different type of crosses and put them in their respective lists 
   for(fieldmap::iterator it=a.begin(); it!=a.end(); ++it)
   {
-    checkaddcross(it->first, "",        &crosslist, &csimple);
-    checkaddcross(it->first, "lngrad",  &crosslist, &clngrad);
-    checkaddcross(it->first, "bot",     &crosslist, &cbot);
-    checkaddcross(it->first, "top",     &crosslist, &ctop);
-    checkaddcross(it->first, "fluxbot", &crosslist, &cfluxbot);
-    checkaddcross(it->first, "fluxtop", &crosslist, &cfluxtop);
+    checkaddcross(it->first, "",        &crosslist, &crosssimple);
+    checkaddcross(it->first, "lngrad",  &crosslist, &crosslngrad);
+    checkaddcross(it->first, "bot",     &crosslist, &crossbot);
+    checkaddcross(it->first, "top",     &crosslist, &crosstop);
+    checkaddcross(it->first, "fluxbot", &crosslist, &crossfluxbot);
+    checkaddcross(it->first, "fluxtop", &crosslist, &crossfluxtop);
   }
 
   // If crosslist not empty, illegal variables or cross types were selected
@@ -563,22 +563,22 @@ int cfields::execcross()
 {
   int nerror = 0;
 
-  for(std::vector<std::string>::iterator it=csimple.begin(); it<csimple.end(); ++it)
+  for(std::vector<std::string>::iterator it=crosssimple.begin(); it<crosssimple.end(); ++it)
     nerror += model->cross->crosssimple(a[*it]->data, s["tmp1"]->data, a[*it]->name);
 
-  for(std::vector<std::string>::iterator it=clngrad.begin(); it<clngrad.end(); ++it)
+  for(std::vector<std::string>::iterator it=crosslngrad.begin(); it<crosslngrad.end(); ++it)
     nerror += model->cross->crosslngrad(a[*it]->data, s["tmp1"]->data, s["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
 
-  for(std::vector<std::string>::iterator it=cfluxbot.begin(); it<cfluxbot.end(); ++it)
+  for(std::vector<std::string>::iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
     nerror += model->cross->crossplane(a[*it]->datafluxbot, s["tmp1"]->data, a[*it]->name, "fluxbot");
 
-  for(std::vector<std::string>::iterator it=cfluxtop.begin(); it<cfluxtop.end(); ++it)
+  for(std::vector<std::string>::iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
     nerror += model->cross->crossplane(a[*it]->datafluxtop, s["tmp1"]->data, a[*it]->name, "fluxtop");
 
-  for(std::vector<std::string>::iterator it=cbot.begin(); it<cbot.end(); ++it)
+  for(std::vector<std::string>::iterator it=crossbot.begin(); it<crossbot.end(); ++it)
     nerror += model->cross->crossplane(a[*it]->databot, s["tmp1"]->data, a[*it]->name, "bot");
 
-  for(std::vector<std::string>::iterator it=ctop.begin(); it<ctop.end(); ++it)
+  for(std::vector<std::string>::iterator it=crosstop.begin(); it<crosstop.end(); ++it)
     nerror += model->cross->crossplane(a[*it]->datatop, s["tmp1"]->data, a[*it]->name, "top");
 
   return nerror; 
