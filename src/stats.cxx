@@ -126,14 +126,14 @@ int cstats::create(int n)
   // addprof("w", "zh");
   // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   //   addprof(it->first, "z");
-  addprof("evisc", "z");
+  //   addprof("evisc", "z");
   // addprof("p", "z");
 
   // in case of moisture, add ql prof
   if(model->thermo->getname() == "moist")
   {
-    addprof("ql", "z");
-    addprof("cfrac", "z");
+  //     addprof("ql", "z");
+  //     addprof("cfrac", "z");
   }
 
   // // 2nd order
@@ -313,8 +313,9 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   return 0;
 }
 
-int cstats::addprof(std::string name, std::string zloc)
+int cstats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
 {
+  int nerror = 0;
   // create the NetCDF variable
   if(master->mpiid == 0)
   {
@@ -322,6 +323,9 @@ int cstats::addprof(std::string name, std::string zloc)
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
     else if(zloc == "zh")
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
+    nerror+=profs[name].ncvar->add_att("unit", unit.c_str());
+    nerror+=profs[name].ncvar->add_att("longname", longname.c_str());
+    nerror+=profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
   }
 
   // and allocate the memory and initialize at zero
@@ -329,7 +333,7 @@ int cstats::addprof(std::string name, std::string zloc)
   for(int k=0; k<grid->kcells; ++k)
     profs[name].data[k] = 0.;
 
-  return 0;
+  return (nerror>0);
 }
 
 // COMPUTATIONAL KERNELS BELOW

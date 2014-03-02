@@ -90,8 +90,8 @@ int cfields::readinifile(cinput *inputin)
   }
 
   // initialize the basic set of fields
-  nerror += initmomfld(u, ut, "u", "West-East velocity", "m s-1");
-  nerror += initmomfld(v, vt, "v", "South-North velocity", "m s-1");
+  nerror += initmomfld(u, ut, "u", "U velocity", "m s-1");
+  nerror += initmomfld(v, vt, "v", "V velocity", "m s-1");
   nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
   nerror += initdfld("p", "Pressure", "Pa");
   nerror += initdfld("tmp1","","");
@@ -219,7 +219,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, st
 
   // add a new tendency for momentum variable
   std::string fldtname  = fldname + "t";
-  std::string tunit     = unit + "/s";
+  std::string tunit     = unit + "s-1";
   std::string tlongname = "Tendency of " + longname;
   mt[fldname] = new cfield3d(grid, master, fldtname, tlongname, tunit);
 
@@ -453,49 +453,50 @@ int cfields::load(int n)
   }
 
   // initalize the profiles in the stats
-  stats->addprof("u", "z" );
-  stats->addprof("v", "z" );
-  stats->addprof("w", "zh");
+  stats->addprof(u->name, u->longname, u->unit, "z" );
+  stats->addprof(v->name, v->longname, v->unit, "z" );
+  stats->addprof(w->name, w->longname, w->unit, "zh" );
 
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first, "z");
-  stats->addprof("p", "z");
+    stats->addprof(it->first,it->second->longname, it->second->unit, "z");
+  stats->addprof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
 
   // moments
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
-    stats->addprof("u"+ss.str(), "z" );
-    stats->addprof("v"+ss.str(), "z" );
-    stats->addprof("w"+ss.str(), "zh");
+
+    stats->addprof(u->name + ss.str(),"Moment "+ ss.str() + "of the " + u->longname,"(" + u->unit + ")ss.str()", "z" );
+    stats->addprof(v->name + ss.str(),"Moment "+ ss.str() + "of the " + v->longname,"(" + v->unit + ")ss.str()", "z" );
+    stats->addprof(w->name + ss.str(),"Moment "+ ss.str() + "of the " + w->longname,"(" + w->unit + ")ss.str()", "zh" );
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first+ss.str(), "z");
+      stats->addprof(it->first + ss.str(),"Moment "+ ss.str() + "of the " + it->second->longname,"(" + it->second->unit + ")ss.str()", "z" );
   }
 
   // gradients
-  stats->addprof("ugrad", "zh");
-  stats->addprof("vgrad", "zh");
+  stats->addprof(u->name + "grad", "Gradient of the " + u->longname,"s-1","zh");
+  stats->addprof(v->name + "grad", "Gradient of the " + v->longname,"s-1","zh");
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first+"grad", "zh");
+    stats->addprof(it->first+"grad", "Gradient of the " + it->second->longname, it->second->unit + " m-1", "zh");
 
   // turbulent fluxes
-  stats->addprof("uw", "zh");
-  stats->addprof("vw", "zh");
+  stats->addprof("uw", "Turbulent flux of the " + u->longname, "m2 s-2", "zh");
+  stats->addprof("vw", "Turbulent flux of the " + v->longname, "m2 s-2", "zh");
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first+"w", "zh");
+    stats->addprof(it->first+"w", "Turbulent flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
 
-  // diffusive fluxes
-  stats->addprof("udiff", "zh");
-  stats->addprof("vdiff", "zh");
+  // Diffusive fluxes
+  stats->addprof("udiff", "Diffusive flux of the " + u->longname, "m2 s-2", "zh");
+  stats->addprof("vdiff", "Diffusive Flux of the " + v->longname, "m2 s-2", "zh");
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first+"diff", "zh");
+    stats->addprof(it->first+"diff", "Diffusive flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
 
-  // total fluxes
-  stats->addprof("uflux", "zh");
-  stats->addprof("vflux", "zh");
+  //Total fluxes
+  stats->addprof("uflux", "Total flux of the " + u->longname, "m2 s-2", "zh");
+  stats->addprof("vflux", "Total flux of the " + v->longname, "m2 s-2", "zh");
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first+"flux", "zh");
+    stats->addprof(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
 
   return nerror;
 }
