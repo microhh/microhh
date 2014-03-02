@@ -145,6 +145,11 @@ int cfields::exec()
   return 0;
 }
 
+int cfields::stats()
+{
+  return 0;
+}
+
 int cfields::setcalcprofs(bool sw)
 {
   calcprofs = sw;

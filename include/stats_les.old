@@ -19,8 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef STATS
-#define STATS
+#ifndef STATS_LES
+#define STATS_LES
 
 #include <netcdfcpp.h>
 #include <stats.h>
@@ -38,11 +38,11 @@ struct statsvar
 };
 typedef std::map<std::string, statsvar> profmap;
 
-class cstats
+class cstats_les : public cstats
 {
   public:
-    cstats(cmodel *);
-    ~cstats();
+    cstats_les(cmodel *);
+    ~cstats_les();
 
     int readinifile(cinput *);
     int init(double);
@@ -72,14 +72,5 @@ class cstats
     int calccount    (double* data, double* prof, double threshold);
 
     int nstats;
-
-  protected:
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
-    cmaster *master;
-
-    double sampletime;
-    unsigned long isampletime;
 };
 #endif

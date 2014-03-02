@@ -64,8 +64,8 @@
 
 // stats schemes
 #include "stats.h"
-#include "stats_dns.h"
-#include "stats_les.h"
+// #include "stats_dns.h"
+// #include "stats_les.h"
 
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
@@ -91,7 +91,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   thermo   = NULL;
 
   // load the postprocessing moduls
-  stats = NULL;
+  stats = new cstats(this);
   cross = new ccross(this);
 }
 
@@ -240,9 +240,10 @@ int cmodel::readinifile()
   if(buffer->readinifile(input))
     return 1;
 
+  // CvH enable stats above
   // statistics
+  /*
   if(swstats == "0")
-    stats = new cstats(this);
   else if(swstats == "dns")
     stats = new cstats_dns(this);
   else if(swstats == "les")
@@ -252,6 +253,7 @@ int cmodel::readinifile()
     std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
     return 1;
   }
+  */
 
   if(stats->readinifile(input))
     return 1;
