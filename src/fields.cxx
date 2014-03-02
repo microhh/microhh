@@ -159,6 +159,8 @@ int cfields::statsexec()
   stats->calcmean(u->data, stats->profs["u"].data, grid->utrans);
   stats->calcmean(v->data, stats->profs["v"].data, grid->vtrans);
   stats->calcmean(w->data, stats->profs["w"].data, NO_OFFSET);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->calcmean(it->second->data, stats->profs[it->first].data, NO_OFFSET);
 
     // calculate model means without correction for transformation
   stats->calcmean(u->data, umodel, NO_OFFSET);

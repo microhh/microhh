@@ -271,6 +271,8 @@ int cmodel::init()
     return 1;
   if(boundary->init())
     return 1;
+  if(thermo->init())
+    return 1;
   if(buffer->init())
     return 1;
   if(force->init())
@@ -389,6 +391,7 @@ int cmodel::exec()
       if(stats->dostats())
       {
         fields->statsexec();
+        thermo->statsexec();
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 

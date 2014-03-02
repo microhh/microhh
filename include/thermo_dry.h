@@ -28,6 +28,7 @@
 class cmaster;
 class cgrid;
 class cfields;
+class cstats;
 
 /**
  * Class for the dry thermodynamics.
@@ -41,7 +42,10 @@ class cthermo_dry : public cthermo
     cthermo_dry(cmodel *);     ///< Constructor of the dry thermodynamics class.
     ~cthermo_dry();            ///< Destructor of the dry thermodynamics class.
     int readinifile(cinput *); ///< Processing data of the input file.
+    int init();
+    int create();
     int exec();                ///< Add the tendencies belonging to the buoyancy.
+    int statsexec();
 
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);
@@ -62,5 +66,7 @@ class cthermo_dry : public cthermo
                           const double, const double); ///< 4th order interpolation function.
 
     double thref; ///< Reference potential temperature.
+
+    cstats *stats;
 };
 #endif

@@ -33,8 +33,10 @@ class cthermo
     cthermo(cmodel *);
     virtual ~cthermo();
     virtual int readinifile(cinput *);
-    virtual int exec();
+    virtual int init();
     virtual int create();
+    virtual int exec();
+    virtual int statsexec();
 
     // interfacing functions to get buoyancy properties from other classes
     virtual int checkthermofield(std::string name);
@@ -49,6 +51,7 @@ class cthermo
     cgrid   *grid;
     cfields *fields;
     cmaster *master;
+    cmodel  *model;
 
     std::string swthermo;
 };
