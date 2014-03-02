@@ -48,6 +48,8 @@ class cfield3d
     double *datafluxbot;
     double *datafluxtop;
     std::string name;
+    std::string unit;
+    std::string longname;
     double visc;
 
   private:
