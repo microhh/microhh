@@ -72,6 +72,8 @@ int cthermo_dry::create()
   stats->addprof("bw"   , "zh");
   stats->addprof("bdiff", "zh");
   stats->addprof("bflux", "zh");
+
+  return 0;
 }
 
 int cthermo_dry::exec()
@@ -86,8 +88,9 @@ int cthermo_dry::exec()
 
 int cthermo_dry::statsexec()
 {
-  // calc the buoyancy for the profiles
+  // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data);
+  calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot);
 
   // mean
   stats->calcmean(fields->s["tmp1"]->data, stats->profs["b"].data, NO_OFFSET);
@@ -109,7 +112,7 @@ int cthermo_dry::statsexec()
 
   // calculate diffusive fluxes
   cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-  stats->calcdiff(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["b"]->datafluxbot, fields->s["b"]->datafluxtop, diffptr->tPr);
+  stats->calcdiff(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
 
   // calculate the total fluxes
   stats->addfluxes(stats->profs["bflux"].data, stats->profs["bw"].data, stats->profs["bdiff"].data);
