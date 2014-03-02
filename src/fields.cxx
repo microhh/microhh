@@ -167,11 +167,17 @@ int cfields::statsexec()
   stats->calcmean(s["p"]->data, stats->profs["p"].data, NO_OFFSET);
 
   // 2nd order
-  stats->calcmoment(u->data, umodel, stats->profs["u2"].data, 2., 0);
-  stats->calcmoment(v->data, vmodel, stats->profs["v2"].data, 2., 0);
-  stats->calcmoment(w->data, stats->profs["w"].data, stats->profs["w2"].data, 2., 1);
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+"2"].data, 2., 0);
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->calcmoment(u->data, umodel, stats->profs["u"+sn].data, n, 0);
+    stats->calcmoment(v->data, vmodel, stats->profs["v"+sn].data, n, 0);
+    stats->calcmoment(w->data, stats->profs["w"].data, stats->profs["w"+sn].data, n, 1);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+sn].data, n, 0);
+  }
 
   stats->calcgrad(u->data, stats->profs["ugrad"].data, grid->dzhi);
   stats->calcgrad(v->data, stats->profs["vgrad"].data, grid->dzhi);
