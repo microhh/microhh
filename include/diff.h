@@ -39,6 +39,7 @@ class cdiff
     virtual int execvisc();
     virtual int exec();
 
+    std::string getname();
     virtual unsigned long gettimelim(unsigned long, double);
     virtual double getdn(double);
 
@@ -49,5 +50,7 @@ class cdiff
     cgrid   *grid;
     cfields *fields;
     cmaster *master;
+
+    std::string swdiff;
 };
 #endif

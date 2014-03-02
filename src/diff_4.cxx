@@ -31,6 +31,7 @@
 
 cdiff_4::cdiff_4(cmodel *modelin) : cdiff(modelin)
 {
+  swdiff = "4";
 }
 
 cdiff_4::~cdiff_4()
