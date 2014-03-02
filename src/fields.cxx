@@ -165,6 +165,7 @@ int cfields::statsexec()
   stats->calcmean(v->data, vmodel, NO_OFFSET);
 
   stats->calcmean(s["p"]->data, stats->profs["p"].data, NO_OFFSET);
+  stats->calcmean(s["evisc"]->data, stats->profs["evisc"].data, NO_OFFSET);
 
   // 2nd order
   stats->calcmoment(u->data, umodel, stats->profs["u2"].data, 2., 0);
@@ -460,6 +461,7 @@ int cfields::load(int n)
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
     stats->addprof(it->first,it->second->longname, it->second->unit, "z");
   stats->addprof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+  stats->addprof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
 
   // moments
   for(int n=2; n<5; ++n)
@@ -467,11 +469,11 @@ int cfields::load(int n)
     std::stringstream ss;
     ss << n;
 
-    stats->addprof(u->name + ss.str(),"Moment "+ ss.str() + "of the " + u->longname,"(" + u->unit + ")ss.str()", "z" );
-    stats->addprof(v->name + ss.str(),"Moment "+ ss.str() + "of the " + v->longname,"(" + v->unit + ")ss.str()", "z" );
-    stats->addprof(w->name + ss.str(),"Moment "+ ss.str() + "of the " + w->longname,"(" + w->unit + ")ss.str()", "zh" );
+    stats->addprof(u->name + ss.str(),"Moment "+ ss.str() + " of the " + u->longname,"(" + u->unit + ")"+ss.str(), "z" );
+    stats->addprof(v->name + ss.str(),"Moment "+ ss.str() + " of the " + v->longname,"(" + v->unit + ")"+ss.str(), "z" );
+    stats->addprof(w->name + ss.str(),"Moment "+ ss.str() + " of the " + w->longname,"(" + w->unit + ")"+ss.str(), "zh" );
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first + ss.str(),"Moment "+ ss.str() + "of the " + it->second->longname,"(" + it->second->unit + ")ss.str()", "z" );
+      stats->addprof(it->first + ss.str(),"Moment "+ ss.str() + " of the " + it->second->longname,"(" + it->second->unit + ")"+ss.str(), "z" );
   }
 
   // gradients
