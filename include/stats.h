@@ -35,7 +35,14 @@ struct statsvar
   NcVar *ncvar;
   double *data;
 };
+
+struct tseriesvar
+{
+  NcVar *ncvar;
+  double data;
+};
 typedef std::map<std::string, statsvar> profmap;
+typedef std::map<std::string, tseriesvar> tseriesmap;
 
 class cstats
 {
@@ -52,6 +59,8 @@ class cstats
 
     // interface functions
     profmap profs;
+    tseriesmap tseries;
+
     int addprof(std::string, std::string, std::string, std::string);
     int addfixedprof(std::string, std::string, std::string, std::string, double *);
     int addtseries(std::string, std::string, std::string);

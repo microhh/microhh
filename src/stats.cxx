@@ -312,6 +312,9 @@ int cstats::exec(int iteration, double time, unsigned long itime)
     for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
       profs[it->first].ncvar->put_rec(&profs[it->first].data[grid->kstart], nstats);
 
+    for(tseriesmap::const_iterator it=tseries.begin(); it!=tseries.end(); ++it)
+      tseries[it->first].ncvar->put_rec(&tseries[it->first].data, nstats);
+
     // sync the data
     dataFile->sync();
   }
@@ -371,19 +374,18 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
 
 int cstats::addtseries(std::string name, std::string longname, std::string unit)
 {
-//   int nerror = 0;
-//   //create the NetCDF variable
-//   if(master->mpiid == 0)
-//   {
-//     nerror+=profs[name].ncvar->add_att("units", unit.c_str());
-//     nerror+=profs[name].ncvar->add_att("long_name", longname.c_str());
-//     nerror+=profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
-//   }
-//
-//   //and allocate the memory and initialize at zero
-//   tseries[name].data = new double;
-//   tseries[name].data = 0.;
-//   return (nerror>0);
+  int nerror = 0;
+  //create the NetCDF variable
+  if(master->mpiid == 0)
+  {
+    nerror+=profs[name].ncvar->add_att("units", unit.c_str());
+    nerror+=profs[name].ncvar->add_att("long_name", longname.c_str());
+    nerror+=profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+  }
+
+  //and allocate the memory and initialize at zero
+  tseries[name].data = 0.;
+  return (nerror>0);
 }
 
 // COMPUTATIONAL KERNELS BELOW
