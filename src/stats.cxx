@@ -130,11 +130,11 @@ int cstats::create(int n)
   // addprof("p", "z");
 
   // in case of moisture, add ql prof
-  if(model->thermo->getname() == "moist")
-  {
-    addprof("ql", "z");
-    addprof("cfrac", "z");
-  }
+  // if(model->thermo->getname() == "moist")
+  // {
+  //   addprof("ql", "z");
+  //   addprof("cfrac", "z");
+  // }
 
   // // 2nd order
   // addprof("u2", "z" );
@@ -235,16 +235,16 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   //   calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
 
   // calcmean(fields->s["p"]->data, profs["p"].data, NO_OFFSET);
-  calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
+  // calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
 
   // in case of moisture, calc ql mean
   if(model->thermo->getname() == "moist")
   {
     // use a static cast to get access to the thermo moist functions
     //static_cast<cthermo_moist *>(model->thermo)->getql(fields->s["tmp1"], fields->s["tmp2"]);
-    static_cast<cthermo_moist *>(model->thermo)->getthermofield(fields->s["tmp1"], fields->s["tmp2"],"ql");
-    calcmean (fields->s["tmp1"]->data, profs["ql"].data, NO_OFFSET);
-    calccount(fields->s["tmp1"]->data, profs["cfrac"].data, 0.);
+    // static_cast<cthermo_moist *>(model->thermo)->getthermofield(fields->s["tmp1"], fields->s["tmp2"],"ql");
+    // calcmean (fields->s["tmp1"]->data, profs["ql"].data, NO_OFFSET);
+    // calccount(fields->s["tmp1"]->data, profs["cfrac"].data, 0.);
   }
 
   /*
