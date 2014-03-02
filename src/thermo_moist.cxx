@@ -126,6 +126,9 @@ int cthermo_moist::create()
   stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
   stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
+  stats->addprof("ql", "z");
+  stats->addprof("cfrac", "z");
+
   return nerror;
 }
 
@@ -183,6 +186,11 @@ int cthermo_moist::statsexec()
 
   // calculate the total fluxes
   stats->addfluxes(stats->profs["bflux"].data, stats->profs["bw"].data, stats->profs["bdiff"].data);
+
+  // calculate the liquid water stats
+  calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
+  stats->calcmean (fields->s["tmp1"]->data, stats->profs["ql"].data, NO_OFFSET);
+  stats->calccount(fields->s["tmp1"]->data, stats->profs["cfrac"].data, 0.);
 
   return 0;
 }
