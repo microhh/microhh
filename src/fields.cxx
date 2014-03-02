@@ -462,11 +462,12 @@ int cfields::load(int n)
   {
     std::stringstream ss;
     ss << n;
-    stats->addprof("u"+ss.str(), "z" );
-    stats->addprof("v"+ss.str(), "z" );
-    stats->addprof("w"+ss.str(), "zh");
+    std::string sn = ss.str();
+    stats->addprof("u"+sn, "z" );
+    stats->addprof("v"+sn, "z" );
+    stats->addprof("w"+sn, "zh");
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first+ss.str(), "z");
+      stats->addprof(it->first+sn, "z");
   }
 
   // gradients
