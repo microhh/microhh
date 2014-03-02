@@ -19,8 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef STATS_LES
-#define STATS_LES
+#ifndef STATS
+#define STATS
 
 #include <netcdfcpp.h>
 #include <stats.h>
@@ -28,11 +28,11 @@
 // forward declarations to reduce compilation time
 class cmodel;
 
-class cstats_les : public cstats
+class cstats
 {
   public:
-    cstats_les(cmodel *);
-    ~cstats_les();
+    cstats(cmodel *);
+    ~cstats();
 
     int readinifile(cinput *);
     int init(double);

@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "defines.h"
 #include "model.h"
+#include "stats.h"
 
 #define NO_OFFSET 0.
 
@@ -141,6 +142,15 @@ int cfields::exec()
     for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcmean(it->second->datamean, it->second->data, grid->kcells);
   }
+
+  return 0;
+}
+
+int cfields::stats()
+{
+  model->stats->calcmean(u->data, model->stats->profs["u"].data, grid->utrans);
+  model->stats->calcmean(v->data, model->stats->profs["v"].data, grid->vtrans);
+  model->stats->calcmean(w->data, model->stats->profs["w"].data, NO_OFFSET);
 
   return 0;
 }
@@ -392,6 +402,11 @@ int cfields::load(int n)
       if(master->mpiid == 0) std::printf("OK\n");
     }  
   }
+
+  // initalize the profiles in the stats
+  model->stats->addprof("u", "z" );
+  model->stats->addprof("v", "z" );
+  model->stats->addprof("w", "zh");
 
   return nerror;
 }

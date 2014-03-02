@@ -19,8 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef STATS
-#define STATS
+#ifndef STATS_LES
+#define STATS_LES
 
 #include <netcdfcpp.h>
 #include <stats.h>
@@ -38,24 +38,17 @@ struct statsvar
 };
 typedef std::map<std::string, statsvar> profmap;
 
-class cstats
+class cstats_les : public cstats
 {
   public:
-    cstats(cmodel *);
-    ~cstats();
+    cstats_les(cmodel *);
+    ~cstats_les();
 
     int readinifile(cinput *);
     int init(double);
     int create(int);
     unsigned long gettimelim(unsigned long);
     int exec(int, double, unsigned long);
-    int dostats();
-
-    // interface functions
-    profmap profs;
-    int addprof(std::string, std::string);
-
-    int calcmean     (double *, double *, double);
 
   private:
     bool allocated;
@@ -67,10 +60,10 @@ class cstats
 
     double *umodel, *vmodel;
 
-    // profmap profs;
-    // int addprof(std::string, std::string);
+    profmap profs;
+    int addprof(std::string, std::string);
 
-    // int calcmean     (double *, double *, double);
+    int calcmean     (double *, double *, double);
     int calcmoment   (double *, double *, double *, double, int);
     int calcdiff     (double *, double *, double *, double *, double *, double *, double);
     int calcgrad     (double *, double *, double *);
@@ -79,14 +72,5 @@ class cstats
     int calccount    (double* data, double* prof, double threshold);
 
     int nstats;
-
-  protected:
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
-    cmaster *master;
-
-    double sampletime;
-    unsigned long isampletime;
 };
 #endif

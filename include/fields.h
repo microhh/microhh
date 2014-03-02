@@ -41,6 +41,7 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
+    int stats();
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string);
     int initpfld(std::string);
