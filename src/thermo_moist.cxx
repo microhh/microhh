@@ -175,14 +175,28 @@ int cthermo_moist::statsexec()
   }
 
   // calculate the gradients
-  stats->calcgrad(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+  if(grid->swspatialorder == "2")
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+  if(grid->swspatialorder == "4")
+    stats->calcgrad_4th(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi4);
 
   // calculate turbulent fluxes
-  stats->calcflux(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+  if(grid->swspatialorder == "2")
+    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+  if(grid->swspatialorder == "4")
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
 
   // calculate diffusive fluxes
-  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-  stats->calcdiff(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
+  if(model->diff->getname() == "les2s")
+  {
+    cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
+    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
+  }
+  else
+  {
+    // take the diffusivity of temperature for that of moisture
+    stats->calcdiff_4th(fields->s["tmp1"]->data, stats->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc);
+  }
 
   // calculate the total fluxes
   stats->addfluxes(stats->profs["bflux"].data, stats->profs["bw"].data, stats->profs["bdiff"].data);

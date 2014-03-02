@@ -33,6 +33,7 @@
 
 cdiff_les2s::cdiff_les2s(cmodel *modelin) : cdiff(modelin)
 {
+  swdiff = "les2s";
 }
 
 cdiff_les2s::~cdiff_les2s()
@@ -47,7 +48,7 @@ int cdiff_les2s::readinifile(cinput *inputin)
   nerror += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23 );
   nerror += inputin->getItem(&tPr  , "diff", "tPr"  , "", 1./3.);
 
-  nerror += fields->initdfld("evisc", "Eddy Viscosity", "kg m-1 s-1");
+  nerror += fields->initdfld("evisc", "Eddy viscosity", "m2 s-1");
 
   return nerror;
 }
@@ -90,7 +91,6 @@ int cdiff_les2s::execvisc()
     // store the buoyancyflux in tmp1
     model->thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
     // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-    //model->thermo->getbuoyancy(fields->sd["tmp1"], fields->sd["tmp2"]);
     model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
 
     evisc(fields->s["evisc"]->data,

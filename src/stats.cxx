@@ -480,7 +480,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   return 0;
 }
 
-int cstats::calcflux(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
+int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
   int ijk,jj,kk;
 
@@ -522,7 +522,50 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
   return 0;
 }
 
-int cstats::calcgrad(double * restrict data, double * restrict prof, double * restrict dzhi)
+int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
+{
+  int ijk,jj,kk1,kk2;
+
+  jj  = 1*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+
+  // set a pointer to the field that contains w, either interpolated or the original
+  double * restrict calcw = w;
+  if(locx == 1)
+  {
+    grid->interpolatex_4th(tmp1, w, 0);
+    calcw = tmp1;
+  }
+  else if(locy == 1)
+  {
+    grid->interpolatey_4th(tmp1, w, 0);
+    calcw = tmp1;
+  }
+  
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk1;
+        prof[k] += (ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
 {
   int ijk,jj,kk;
 
@@ -551,7 +594,67 @@ int cstats::calcgrad(double * restrict data, double * restrict prof, double * re
   return 0;
 }
 
-int cstats::calcdiff(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi, double * restrict fluxbot, double * restrict fluxtop, double tPr)
+int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4)
+{
+  int ijk,jj,kk1,kk2;
+
+  jj  = 1*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+  
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk1;
+        prof[k] += (cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
+{
+  int ijk,jj,kk1,kk2;
+
+  jj  = 1*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+  
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk1;
+        prof[k] += -visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi, double * restrict fluxbot, double * restrict fluxtop, double tPr)
 {
   int ijk,ij,jj,kk,kstart,kend;
 

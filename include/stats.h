@@ -65,13 +65,16 @@ class cstats
     int addfixedprof(std::string, std::string, std::string, std::string, double *);
     int addtseries(std::string, std::string, std::string);
 
-    int calcmean  (double *, double *, double);
-    int calcmoment(double *, double *, double *, double, int);
-    int calcdiff  (double *, double *, double *, double *, double *, double *, double);
-    int calcgrad  (double *, double *, double *);
-    int calcflux  (double *, double *, double *, double *, int, int);
-    int addfluxes (double *, double *, double *);
-    int calccount (double* data, double* prof, double threshold);
+    int calcmean    (double *, double *, double);
+    int calcmoment  (double *, double *, double *, double, int);
+    int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double);
+    int calcdiff_4th(double *, double *, double *, double);
+    int calcgrad_2nd(double *, double *, double *);
+    int calcgrad_4th(double *, double *, double *);
+    int calcflux_2nd(double *, double *, double *, double *, int, int);
+    int calcflux_4th(double *, double *, double *, double *, int, int);
+    int addfluxes   (double *, double *, double *);
+    int calccount   (double* data, double* prof, double threshold);
 
   private:
     bool allocated;

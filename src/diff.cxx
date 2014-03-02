@@ -35,6 +35,8 @@ cdiff::cdiff(cmodel *modelin)
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
+
+  swdiff = "0";
 }
 
 cdiff::~cdiff()
@@ -81,3 +83,7 @@ int cdiff::exec()
   return 0;
 }
 
+std::string cdiff::getname()
+{
+  return swdiff;
+}
