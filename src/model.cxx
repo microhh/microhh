@@ -388,7 +388,7 @@ int cmodel::exec()
     {
       if(stats->dostats())
       {
-        fields->stats();
+        fields->statsexec();
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 

@@ -55,7 +55,13 @@ class cstats
     profmap profs;
     int addprof(std::string, std::string);
 
-    int calcmean     (double *, double *, double);
+    int calcmean  (double *, double *, double);
+    int calcmoment(double *, double *, double *, double, int);
+    int calcdiff  (double *, double *, double *, double *, double *, double *, double);
+    int calcgrad  (double *, double *, double *);
+    int calcflux  (double *, double *, double *, double *, int, int);
+    int addfluxes (double *, double *, double *);
+    int calccount (double* data, double* prof, double threshold);
 
   private:
     bool allocated;
@@ -66,17 +72,6 @@ class cstats
     NcVar  *z_var, *zh_var, *t_var, *iter_var;
 
     double *umodel, *vmodel;
-
-    // profmap profs;
-    // int addprof(std::string, std::string);
-
-    // int calcmean     (double *, double *, double);
-    int calcmoment   (double *, double *, double *, double, int);
-    int calcdiff     (double *, double *, double *, double *, double *, double *, double);
-    int calcgrad     (double *, double *, double *);
-    int calcflux     (double *, double *, double *, double *, int, int);
-    int addfluxes    (double *, double *, double *);
-    int calccount    (double* data, double* prof, double threshold);
 
     int nstats;
 
