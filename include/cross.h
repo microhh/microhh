@@ -39,7 +39,15 @@ class ccross
     int readinifile(cinput *);
     int init(int);
     unsigned long gettimelim(unsigned long);
-    int exec(double, unsigned long, int);
+    //int exec(double, unsigned long, int);
+
+    std::string swcross;
+    int docross();
+
+    int crosssimple (double *, double *, std::string);
+    int crosslngrad (double *, double *, double *, double *, std::string);
+    int crossplane  (double *, double *, std::string, std::string);
+    int crosspath   (double *, double *, double *, std::string, int);
 
   private:
     cmaster *master;
@@ -49,8 +57,6 @@ class ccross
 
     double sampletime;
     unsigned long isampletime;
-
-    std::string swcross;
 
     std::vector<int> jxz;
     std::vector<int> kxy;
@@ -63,12 +69,6 @@ class ccross
 
     int checkList(std::vector<std::string> *, fieldmap *, std::string crossname);
     int checkSave(int, char *);
-
-    int crosssimple (double *, double *, std::string, std::vector<int>, std::vector<int>, int);
-    int crossbot    (double *, double *, double *, std::string, int);
-    int crossfluxbot(double *, double *, std::string, int);
-    int crosslngrad (double *, double *, double *, double *, std::string, std::vector<int>, std::vector<int>, int);
-    int crosspath   (double *, double *, double *, std::string, int);
 };
 #endif
 
