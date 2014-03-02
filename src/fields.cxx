@@ -22,11 +22,13 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
+#include <algorithm>    // std::find
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
 #include "model.h"
+#include "cross.h"
 
 #define NO_OFFSET 0.
 
@@ -87,6 +89,9 @@ int cfields::readinifile(cinput *inputin)
     nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
+  // Read list of cross sections
+  nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
+
   // initialize the basic set of fields
   nerror += initmomfld(u, ut, "u");
   nerror += initmomfld(v, vt, "v");
@@ -129,6 +134,39 @@ int cfields::init()
     return 1;
 
   allocated = true;
+
+  // Check different type of crosses and put them in their respective lists 
+  for(fieldmap::iterator it=a.begin(); it!=a.end(); ++it)
+  {
+    checkaddcross(it->first, "",        &crosslist, &csimple);
+    checkaddcross(it->first, "lngrad",  &crosslist, &clngrad);
+    checkaddcross(it->first, "bot",     &crosslist, &cbot);
+    checkaddcross(it->first, "top",     &crosslist, &ctop);
+    checkaddcross(it->first, "fluxbot", &crosslist, &cfluxbot);
+    checkaddcross(it->first, "fluxtop", &crosslist, &cfluxtop);
+  }
+
+  // If crosslist not empty, illegal variables or cross types were selected
+  if(crosslist.size() > 0)
+  {
+    for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
+      if(master->mpiid == 0) std::printf("ERROR field %s in [fields][crosslist] is illegal\n", it->c_str());
+    return 1; 
+  } 
+
+  return 0;
+}
+
+int cfields::checkaddcross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+{
+  std::vector<std::string>::iterator position;
+  
+  position = std::find(crosslist->begin(), crosslist->end(), var + type);
+  if(position != crosslist->end()) 
+  {
+    typelist->push_back(var);
+    crosslist->erase(position);
+  }
 
   return 0;
 }
@@ -519,6 +557,31 @@ double cfields::calctke_2nd(double * restrict u, double * restrict v, double * r
   tke *= 0.5;
 
   return tke;
+}
+
+int cfields::execcross()
+{
+  int nerror = 0;
+
+  for(std::vector<std::string>::iterator it=csimple.begin(); it<csimple.end(); ++it)
+    nerror += model->cross->crosssimple(a[*it]->data, s["tmp1"]->data, a[*it]->name);
+
+  for(std::vector<std::string>::iterator it=clngrad.begin(); it<clngrad.end(); ++it)
+    nerror += model->cross->crosslngrad(a[*it]->data, s["tmp1"]->data, s["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
+
+  for(std::vector<std::string>::iterator it=cfluxbot.begin(); it<cfluxbot.end(); ++it)
+    nerror += model->cross->crossplane(a[*it]->datafluxbot, s["tmp1"]->data, a[*it]->name, "fluxbot");
+
+  for(std::vector<std::string>::iterator it=cfluxtop.begin(); it<cfluxtop.end(); ++it)
+    nerror += model->cross->crossplane(a[*it]->datafluxtop, s["tmp1"]->data, a[*it]->name, "fluxtop");
+
+  for(std::vector<std::string>::iterator it=cbot.begin(); it<cbot.end(); ++it)
+    nerror += model->cross->crossplane(a[*it]->databot, s["tmp1"]->data, a[*it]->name, "bot");
+
+  for(std::vector<std::string>::iterator it=ctop.begin(); it<ctop.end(); ++it)
+    nerror += model->cross->crossplane(a[*it]->datatop, s["tmp1"]->data, a[*it]->name, "top");
+
+  return nerror; 
 }
 
 inline double cfields::interp2(const double a, const double b)

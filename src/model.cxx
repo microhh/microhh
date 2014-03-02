@@ -381,8 +381,11 @@ int cmodel::exec()
     if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))
     {
       stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
-      if(cross->exec(timeloop->time, timeloop->itime, timeloop->iotime))
-        return 1;
+      //if(cross->exec(timeloop->time, timeloop->itime, timeloop->iotime))
+      //  return 1;
+
+      if(cross->docross())
+        fields->execcross();
     }
 
     // exit the simulation when the runtime has been hit after the pressure calculation

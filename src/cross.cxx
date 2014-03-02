@@ -28,6 +28,7 @@
 #include "defines.h"
 #include "model.h"
 #include "thermo.h"
+#include "timeloop.h"
 #include <netcdfcpp.h>
 
 ccross::ccross(cmodel *modelin)
@@ -57,51 +58,9 @@ int ccross::readinifile(cinput *inputin)
     // get the list of indices at which to take cross sections
     nerror += inputin->getList(&jxz, "cross", "jxz", "");
     nerror += inputin->getList(&kxy, "cross", "kxy", "");
-
-    // get the list of variables per type of cross
-    nerror += inputin->getList(&simple , "cross", "simple" , "");
-    nerror += inputin->getList(&bot    , "cross", "bot"    , "");
-    nerror += inputin->getList(&fluxbot, "cross", "fluxbot", "");
-    nerror += inputin->getList(&lngrad , "cross", "lngrad" , "");
-    nerror += inputin->getList(&path   , "cross", "path"   , "");
-
-    // lngrad only has 4th order scheme
-    if(lngrad.size()>0 && grid->swspatialorder != "4")
-    {
-      if(master->mpiid == 0) std::printf("ERROR lngrad only supported for swspatialorder=4\n");
-      return 1;
-    }
-
-    // check whether the requested fields in list exist, to prevent segfaults later
-    nerror += checkList(&simple , &fields->a, "simple" );
-    nerror += checkList(&bot    , &fields->a, "bot"    );
-    nerror += checkList(&fluxbot, &fields->a, "fluxbot");
-    nerror += checkList(&lngrad , &fields->s, "lngrad" );
-    nerror += checkList(&path   , &fields->s, "path" );
   }
 
   return nerror;
-}
-
-// search for the given cross name whether the field exists in the correct map
-int ccross::checkList(std::vector<std::string> *list, fieldmap *fm, std::string crossname)
-{
-  for(std::vector<std::string>::const_iterator it=list->begin(); it!=list->end(); ++it)
-  {
-    // if the field does not exist trigger an error
-    // except when it can be calculated in thermo
-    if(!fm->count(*it))
-    {
-      // BvS for now trigger error when requesting thermo variables/fluxes
-      if(model->thermo->checkthermofield(*it) || crossname == "bot" || crossname == "fluxbot")
-      {
-        if(master->mpiid == 0) std::printf("ERROR field %s in [cross][%s] is illegal\n", it->c_str(), crossname.c_str());
-        return 1;
-      }
-    }
-  }
-
-  return 0;
 }
 
 // check whether saving the slice was successful and print appropriate message
@@ -140,71 +99,18 @@ unsigned long ccross::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int ccross::exec(double time, unsigned long itime, int iotime)
+int ccross::docross()
 {
-  int nerror = 0;
-
-  // check if switched on
   if(swcross == "0")
     return 0;
 
-  // check if time for execution
-  if(itime % isampletime != 0)
+  if(model->timeloop->itime % isampletime == 0)
+    return 1;
+  else
     return 0;
-
-  if(master->mpiid == 0) std::printf("Saving cross sections for time %f\n", time);
-
-  // cross section of variables
-  for(std::vector<std::string>::iterator it=simple.begin(); it<simple.end(); ++it)
-  {
-    if(fields->a.count(*it))
-      nerror += crosssimple(fields->a[*it]->data, fields->s["tmp1"]->data, fields->a[*it]->name, jxz, kxy, iotime);
-    else
-    {
-      model->thermo->getthermofield(fields->s["tmp1"],fields->s["tmp2"],*it);
-      nerror += crosssimple(fields->s["tmp1"]->data,fields->s["tmp2"]->data, *it, jxz, kxy, iotime);
-    }
-  }
-
-  // cross sections of bottom values
-  for(std::vector<std::string>::iterator it=bot.begin(); it<bot.end(); ++it)
-    nerror += crossbot(fields->a[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->a[*it]->name, iotime);
-
-  // cross sections of bottom flux values
-  for(std::vector<std::string>::iterator it=fluxbot.begin(); it<fluxbot.end(); ++it)
-    nerror += crossfluxbot(fields->a[*it]->datafluxbot, fields->s["tmp1"]->data, fields->a[*it]->name, iotime);
-
-  // cross section of scalar gradients
-  for(std::vector<std::string>::iterator it=lngrad.begin(); it<lngrad.end(); ++it)
-  {
-    if(fields->a.count(*it))
-      nerror += crosslngrad(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, grid->dzi4, fields->s[*it]->name + "lngrad", jxz, kxy, iotime);
-    else
-    {
-      model->thermo->getthermofield(fields->s["tmp1"],fields->s["tmp2"],*it);
-      // Most thermo fields don't have data in their ghost cells, so call cyclics before calculating gradients
-      grid->boundary_cyclic(fields->s["tmp1"]->data); 
-      // Note: tmp1 is overwritten within crosslngrad() after lngrad is calculated
-      nerror += crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it + "lngrad", jxz, kxy, iotime);
-    }
-  }
-
-  // integrated paths
-  for(std::vector<std::string>::iterator it=path.begin(); it<path.end(); ++it)
-  {
-    if(fields->a.count(*it))
-      nerror += crosspath(fields->s[*it]->data, fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s[*it]->name, iotime);
-    else
-    {
-      model->thermo->getthermofield(fields->s["tmp1"],fields->s["tmp2"],*it);
-      nerror += crosspath(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, *it, iotime);
-    }
-  }
-
-  return nerror;
 }
 
-int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name, std::vector<int> jxz, std::vector<int> kxy, int iotime)
+int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name)
 {
   int nerror = 0;
   char filename[256];
@@ -212,82 +118,39 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   // loop over the index arrays to save all xz cross sections
   for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
   {
-    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->iotime);
     nerror += checkSave(grid->savexzslice(data, tmp, filename, *it), filename);    
   }
 
   // loop over the index arrays to save all xy cross sections
   for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
   {
-    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->iotime);
     nerror += checkSave(grid->savexyslice(data, tmp, filename, *it), filename);
   }
 
   return nerror;
 }
 
-
-int ccross::crossbot(double * restrict data, double * restrict tmp1, double * restrict tmp2, std::string name, int iotime)
-{
-  int ijk,jj1,kk1,kk2,kk3,kstart;
-  int nerror = 0;
-  char filename[256];
-
-  jj1 = 1*grid->icells;
-  kk1 = 1*grid->ijcells;
-  kk2 = 2*grid->ijcells;
-  kk3 = 3*grid->ijcells;
-  kstart = grid->kstart;
-
-  // interpolate the data
-  if(grid->swspatialorder == "2")
-  {
-    for(int j=grid->jstart; j<grid->jend; ++j)
-  #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
-      {
-        ijk = i + j*jj1 + kstart*kk1;
-        tmp1[ijk] = 0.5*data[ijk-kk1] + 0.5*data[ijk];
-      }
-  }
-  else if(grid->swspatialorder == "4")
-  {
-    for(int j=grid->jstart; j<grid->jend; ++j)
-  #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
-      {
-        ijk = i + j*jj1 + kstart*kk1;
-        tmp1[ijk] = ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1];
-      }
-  }
-  else
-    return 1;
-
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "bot", iotime);
-  // pass only three arguments to savexyslice to ensure that no ghost cells are used
-  nerror += checkSave(grid->savexyslice(&tmp1[kstart*kk1], tmp2, filename),filename);
-
-  return nerror;
-}
-
-int ccross::crossfluxbot(double * restrict data, double * restrict tmp, std::string name, int iotime)
+int ccross::crossplane(double * restrict data, double * restrict tmp, std::string name, std::string type)
 {
   int nerror = 0;
   char filename[256];
 
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "fluxbot", iotime);
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), type.c_str(), model->timeloop->iotime);
   nerror += checkSave(grid->savexyslice(data, tmp, filename),filename);
 
   return nerror;
-}
 
-int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, 
-                        std::string name, std::vector<int> jxz, std::vector<int> kxy, int iotime)
+} 
+
+int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
 {
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;
   int nerror = 0;
   char filename[256];
+  int iotime = model->timeloop->iotime;
 
   ii1 = 1;
   ii2 = 2;
@@ -381,14 +244,15 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   // loop over the index arrays to save all xz cross sections
   for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
   {
-    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, iotime);
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->iotime);
     nerror += checkSave(grid->savexzslice(lngrad, tmp, filename, *it),filename);
   }
 
   // loop over the index arrays to save all xy cross sections
   for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
   {
-    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, iotime);
+    std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->iotime);
+    nerror += checkSave(grid->savexyslice(lngrad, tmp, filename, *it),filename);
   }
 
   return nerror;
