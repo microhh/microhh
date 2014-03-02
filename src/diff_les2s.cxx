@@ -47,7 +47,7 @@ int cdiff_les2s::readinifile(cinput *inputin)
   nerror += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23 );
   nerror += inputin->getItem(&tPr  , "diff", "tPr"  , "", 1./3.);
 
-  nerror += fields->initdfld("evisc");
+  nerror += fields->initdfld("evisc", "Eddy Viscosity", "kg m-1 s-1");
 
   return nerror;
 }

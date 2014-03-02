@@ -83,18 +83,18 @@ int cfields::readinifile(cinput *inputin)
   // initialize the scalars
   for(std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
   {
-    if(initpfld(*it))
+    if(initpfld(*it,*it,"-"))
       return 1;
     nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
   // initialize the basic set of fields
-  nerror += initmomfld(u, ut, "u");
-  nerror += initmomfld(v, vt, "v");
-  nerror += initmomfld(w, wt, "w");
-  nerror += initdfld("p");
-  nerror += initdfld("tmp1");
-  nerror += initdfld("tmp2");
+  nerror += initmomfld(u, ut, "u", "West-East velocity", "m s-1");
+  nerror += initmomfld(v, vt, "v", "South-North velocity", "m s-1");
+  nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
+  nerror += initdfld("p", "Pressure", "Pa");
+  nerror += initdfld("tmp1","","");
+  nerror += initdfld("tmp2","","");
 
   return nerror;
 }
@@ -161,7 +161,7 @@ int cfields::setcalcprofs(bool sw)
   return 0;
 }
 
-int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
+int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, std::string longname, std::string unit)
 {
   if (mp.find(fldname)!=mp.end())
   {
@@ -170,11 +170,13 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   }
 
   // add a new prognostic momentum variable
-  mp[fldname] = new cfield3d(grid, master, fldname);
+  mp[fldname] = new cfield3d(grid, master, fldname, longname, unit);
 
   // add a new tendency for momentum variable
-  std::string fldtname = fldname + "t";
-  mt[fldname] = new cfield3d(grid, master, fldtname);
+  std::string fldtname  = fldname + "t";
+  std::string tunit     = unit + "/s";
+  std::string tlongname = "Tendency of " + longname;
+  mt[fldname] = new cfield3d(grid, master, fldtname, tlongname, tunit);
 
   // TODO remove these from the model?
   fld  = mp[fldname];
@@ -189,7 +191,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   return 0;
 }
 
-int cfields::initpfld(std::string fldname)
+int cfields::initpfld(std::string fldname, std::string longname, std::string unit)
 {
   if (s.find(fldname)!=s.end())
   {
@@ -198,11 +200,13 @@ int cfields::initpfld(std::string fldname)
   }
   
   // add a new scalar variable
-  sp[fldname] = new cfield3d(grid, master, fldname);
+  sp[fldname] = new cfield3d(grid, master, fldname,longname, unit);
 
   // add a new tendency for scalar variable
-  std::string fldtname = fldname + "t";
-  st[fldname] = new cfield3d(grid, master, fldtname);
+  std::string fldtname  = fldname + "t";
+  std::string tlongname = "Tendency of " + longname;
+  std::string tunit     = unit + "s-1";
+  st[fldname] = new cfield3d(grid, master, fldtname,tlongname, tunit);
 
   // add the prognostic variable and its tendency to the collection
   // of all fields and tendencies
@@ -214,7 +218,7 @@ int cfields::initpfld(std::string fldname)
   return 0;
 }
 
-int cfields::initdfld(std::string fldname)
+int cfields::initdfld(std::string fldname,std::string longname, std::string unit)
 {
   if (s.find(fldname)!=s.end())
   {
@@ -222,7 +226,7 @@ int cfields::initdfld(std::string fldname)
     return 1;
   }
 
-  sd[fldname] = new cfield3d(grid, master, fldname );
+  sd[fldname] = new cfield3d(grid, master, fldname, longname, unit);
   s [fldname] = sd[fldname];
   a [fldname] = sd[fldname];
 

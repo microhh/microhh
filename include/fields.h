@@ -43,9 +43,9 @@ class cfields
     int exec();
     int stats();
 
-    int initmomfld(cfield3d*&, cfield3d*&, std::string);
-    int initpfld(std::string);
-    int initdfld(std::string);
+    int initmomfld(cfield3d*&, cfield3d*&, std::string, std::string, std::string);
+    int initpfld(std::string, std::string, std::string);
+    int initdfld(std::string, std::string, std::string);
     
     int save(int);
     int load(int);

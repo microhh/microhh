@@ -32,7 +32,7 @@ class cfield3d
 {
   public:
     // functions
-    cfield3d(cgrid *, cmaster *, std::string);
+    cfield3d(cgrid *, cmaster *, std::string, std::string, std::string);
     ~cfield3d();
 
     int init();

@@ -48,9 +48,9 @@ int cthermo_moist::readinifile(cinput *inputin)
   nerror += inputin->getItem(&ps    , "thermo", "ps"    , "");
   nerror += inputin->getItem(&thvref, "thermo", "thvref", "");
 
-  nerror += fields->initpfld("s");
+  nerror += fields->initpfld("s", "Liquid Water Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
-  nerror += fields->initpfld("qt");
+  nerror += fields->initpfld("qt", "Total Water Mixing Ratio", "kg kg-1");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
 
   return (nerror > 0);

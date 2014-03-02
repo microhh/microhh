@@ -41,7 +41,7 @@ int cthermo_dry::readinifile(cinput *inputin)
   int nerror = 0;
   nerror += inputin->getItem(&thref, "thermo", "thref", "");
 
-  nerror += fields->initpfld("th");
+  nerror += fields->initpfld("th", "Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
 
   return nerror;
