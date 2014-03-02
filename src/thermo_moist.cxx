@@ -181,7 +181,10 @@ int cthermo_moist::statsexec()
     stats->calcgrad_4th(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi4);
 
   // calculate turbulent fluxes
-  stats->calcflux(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+  if(grid->swspatialorder == "2")
+    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+  if(grid->swspatialorder == "4")
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
 
   // calculate diffusive fluxes
   if(model->diff->getname() == "les2s")

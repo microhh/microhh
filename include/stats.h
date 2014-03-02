@@ -60,7 +60,8 @@ class cstats
     int calcdiff_4th(double *, double *, double *, double);
     int calcgrad_2nd(double *, double *, double *);
     int calcgrad_4th(double *, double *, double *);
-    int calcflux    (double *, double *, double *, double *, int, int);
+    int calcflux_2nd(double *, double *, double *, double *, int, int);
+    int calcflux_4th(double *, double *, double *, double *, int, int);
     int addfluxes   (double *, double *, double *);
     int calccount   (double* data, double* prof, double threshold);
 
