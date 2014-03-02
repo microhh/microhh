@@ -184,10 +184,20 @@ int cfields::statsexec()
       stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+sn].data, n, 0);
   }
 
-  stats->calcgrad(u->data, stats->profs["ugrad"].data, grid->dzhi);
-  stats->calcgrad(v->data, stats->profs["vgrad"].data, grid->dzhi);
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->calcgrad(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi);
+  if(grid->swspatialorder == "2")
+  {
+    stats->calcgrad_2nd(u->data, stats->profs["ugrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(v->data, stats->profs["vgrad"].data, grid->dzhi);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcgrad_2nd(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi);
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    stats->calcgrad_4th(u->data, stats->profs["ugrad"].data, grid->dzhi4);
+    stats->calcgrad_4th(v->data, stats->profs["vgrad"].data, grid->dzhi4);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcgrad_4th(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi4);
+  }
 
   // calculate turbulent fluxes
   stats->calcflux(u->data, w->data, stats->profs["uw"].data, s["tmp1"]->data, 1, 0);

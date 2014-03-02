@@ -478,7 +478,7 @@ int cstats::calcflux(double * restrict data, double * restrict w, double * restr
   return 0;
 }
 
-int cstats::calcgrad(double * restrict data, double * restrict prof, double * restrict dzhi)
+int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
 {
   int ijk,jj,kk;
 
@@ -494,6 +494,36 @@ int cstats::calcgrad(double * restrict data, double * restrict prof, double * re
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += (data[ijk]-data[ijk-kk])*dzhi[k];
+      }
+  }
+
+  double n = grid->imax*grid->jmax;
+
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+    prof[k] /= n;
+
+  grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4)
+{
+  int ijk,jj,kk1,kk2;
+
+  jj  = 1*grid->icells;
+  kk1 = 1*grid->icells*grid->jcells;
+  kk2 = 2*grid->icells*grid->jcells;
+  
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk1;
+        prof[k] += (cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 

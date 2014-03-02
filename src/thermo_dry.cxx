@@ -105,7 +105,10 @@ int cthermo_dry::statsexec()
   }
 
   // calculate the gradients
-  stats->calcgrad(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+  if(grid->swspatialorder == "2")
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+  if(grid->swspatialorder == "4")
+    stats->calcgrad_4th(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi4);
 
   // calculate turbulent fluxes
   stats->calcflux(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
