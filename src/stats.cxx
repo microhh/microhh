@@ -349,7 +349,6 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
 int cstats::addfixedprof(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
 {
   int nerror = 0;
-  printf("A %f %f %f\n", prof[grid->kstart], prof[grid->kstart+1], prof[grid->kstart+2]);
 
   // create the NetCDF variable
   NcVar *var;
