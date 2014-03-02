@@ -288,10 +288,15 @@ int cmodel::init()
 
 int cmodel::load()
 {
+  // first load the grid and time to make their information available
   if(grid->load())
     return 1;
   if(timeloop->load(timeloop->iotime))
     return 1;
+  // initialize the statistics file to open the possiblity to add profiles
+  if(stats->create(timeloop->iotime))
+    return 1;
+
   if(fields->load(timeloop->iotime))
     return 1;
   if(boundary->load(timeloop->iotime))
@@ -302,9 +307,8 @@ int cmodel::load()
     return 1;
   if(thermo->create())
     return 1;
-  if(stats->create(timeloop->iotime))
-    return 1;
 
+  // end with modules that require all fields to be present
   if(boundary->setvalues())
     return 1;
   if(diff->setvalues())
@@ -382,7 +386,12 @@ int cmodel::exec()
     // statistics when not in substep and not directly after restart
     if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))
     {
-      stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
+      if(stats->dostats())
+      {
+        fields->stats();
+        stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
+      }
+
       if(cross->exec(timeloop->time, timeloop->itime, timeloop->iotime))
         return 1;
     }

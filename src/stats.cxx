@@ -29,6 +29,7 @@
 #include "defines.h"
 #include "model.h"
 #include "diff_les2s.h"
+#include "timeloop.h"
 #include <netcdfcpp.h>
 
 #define NO_OFFSET 0.
@@ -120,9 +121,9 @@ int cstats::create(int n)
   }
 
   // means
-  addprof("u", "z" );
-  addprof("v", "z" );
-  addprof("w", "zh");
+  // addprof("u", "z" );
+  // addprof("v", "z" );
+  // addprof("w", "zh");
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     addprof(it->first, "z");
   addprof("evisc", "z");
@@ -197,13 +198,26 @@ unsigned long cstats::gettimelim(unsigned long itime)
   return idtlim;
 }
 
+int cstats::dostats()
+{
+  // check if time for execution
+  if(model->timeloop->itime % isampletime != 0)
+    return 0;
+
+  // write message in case stats is triggered
+  if(master->mpiid == 0) std::printf("Saving stats for time %f\n", model->timeloop->time);
+
+  // return true such that stats are computed
+  return 1;
+}
+
 int cstats::exec(int iteration, double time, unsigned long itime)
 {
   // check if time for execution
   if(itime % isampletime != 0)
     return 0;
 
-  if(master->mpiid == 0) std::printf("Saving stats for time %f\n", time);
+  // if(master->mpiid == 0) std::printf("Saving stats for time %f\n", time);
 
   if(master->mpiid == 0)
   {
@@ -213,9 +227,9 @@ int cstats::exec(int iteration, double time, unsigned long itime)
 
   // PROFILES
   // calculate means
-  calcmean(fields->u->data, profs["u"].data, grid->utrans);
-  calcmean(fields->v->data, profs["v"].data, grid->vtrans);
-  calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
+  // calcmean(fields->u->data, profs["u"].data, grid->utrans);
+  // calcmean(fields->v->data, profs["v"].data, grid->vtrans);
+  // calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
 

@@ -49,6 +49,13 @@ class cstats
     int create(int);
     unsigned long gettimelim(unsigned long);
     int exec(int, double, unsigned long);
+    int dostats();
+
+    // interface functions
+    profmap profs;
+    int addprof(std::string, std::string);
+
+    int calcmean     (double *, double *, double);
 
   private:
     bool allocated;
@@ -60,10 +67,10 @@ class cstats
 
     double *umodel, *vmodel;
 
-    profmap profs;
-    int addprof(std::string, std::string);
+    // profmap profs;
+    // int addprof(std::string, std::string);
 
-    int calcmean     (double *, double *, double);
+    // int calcmean     (double *, double *, double);
     int calcmoment   (double *, double *, double *, double, int);
     int calcdiff     (double *, double *, double *, double *, double *, double *, double);
     int calcgrad     (double *, double *, double *);
