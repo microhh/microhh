@@ -53,6 +53,8 @@ class cstats
     // interface functions
     profmap profs;
     int addprof(std::string, std::string, std::string, std::string);
+    int addfixedprof(std::string, std::string, std::string, std::string, double *);
+    int addtseries(std::string, std::string, std::string);
 
     int calcmean  (double *, double *, double);
     int calcmoment(double *, double *, double *, double, int);

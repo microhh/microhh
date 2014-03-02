@@ -332,7 +332,7 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
     else if(zloc == "zh")
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
     nerror+=profs[name].ncvar->add_att("units", unit.c_str());
-    nerror+=profs[name].ncvar->add_att("longname", longname.c_str());
+    nerror+=profs[name].ncvar->add_att("long_name", longname.c_str());
     nerror+=profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
   }
 
@@ -340,8 +340,50 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
   profs[name].data = new double[grid->kcells];
   for(int k=0; k<grid->kcells; ++k)
     profs[name].data[k] = 0.;
-  std::printf("Prof %s\n", name.c_str());
   return (nerror>0);
+}
+
+int cstats::addfixedprof(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
+{
+  int nerror = 0;
+  printf("A %f %f %f\n", prof[grid->kstart], prof[grid->kstart+1], prof[grid->kstart+2]);
+
+  // create the NetCDF variable
+  NcVar *var;
+  if(master->mpiid == 0)
+  {
+    if(zloc == "z")
+      var = dataFile->add_var(name.c_str(), ncDouble, z_dim );
+    else if(zloc == "zh")
+      var = dataFile->add_var(name.c_str(), ncDouble, zh_dim);
+    nerror+=var->add_att("units", unit.c_str());
+    nerror+=var->add_att("long_name", longname.c_str());
+    nerror+=var->add_att("_FillValue", NC_FILL_DOUBLE);
+
+    if(zloc == "z")
+      var->put(&prof[grid->kstart], grid->kmax);
+    else if(zloc == "zh")
+      var->put(&prof[grid->kstart], grid->kmax+1);
+  }
+
+  return (nerror>0);
+}
+
+int cstats::addtseries(std::string name, std::string longname, std::string unit)
+{
+//   int nerror = 0;
+//   //create the NetCDF variable
+//   if(master->mpiid == 0)
+//   {
+//     nerror+=profs[name].ncvar->add_att("units", unit.c_str());
+//     nerror+=profs[name].ncvar->add_att("long_name", longname.c_str());
+//     nerror+=profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+//   }
+//
+//   //and allocate the memory and initialize at zero
+//   tseries[name].data = new double;
+//   tseries[name].data = 0.;
+//   return (nerror>0);
 }
 
 // COMPUTATIONAL KERNELS BELOW
