@@ -126,8 +126,8 @@ int cthermo_moist::create()
   stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
   stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
-  stats->addprof("ql", "z");
-  stats->addprof("cfrac", "z");
+  stats->addprof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+  stats->addprof("cfrac", "Cloud fraction", "-","z");
 
   return nerror;
 }
