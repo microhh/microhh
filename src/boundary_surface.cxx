@@ -170,9 +170,9 @@ int cboundary_surface::execcross()
   for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
     if(*it == "ustar")
-      nerror += model->cross->crossplane(ustar, fields->s["tmp1"]->data, "ustar", "bot");
+      nerror += model->cross->crossplane(ustar, fields->s["tmp1"]->data, "ustar");
     else if(*it == "obuk")
-      nerror += model->cross->crossplane(obuk,  fields->s["tmp1"]->data, "obuk", "bot");
+      nerror += model->cross->crossplane(obuk,  fields->s["tmp1"]->data, "obuk");
   }  
 
   return nerror; 

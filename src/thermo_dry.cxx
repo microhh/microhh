@@ -183,9 +183,9 @@ int cthermo_dry::execcross()
     {
       getbuoyancysurf(fields->s["tmp1"]);
       if(*it == "bbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "b", "bot");
+        nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "b", "fluxbot");
+        nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
     }
   }  
 
