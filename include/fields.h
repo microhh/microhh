@@ -97,12 +97,13 @@ class cfields
 
     // cross sections
     std::vector<std::string> crosslist;      // List with all crosses from ini file
-    std::vector<std::string> csimple;        // Cross sections split per type
-    std::vector<std::string> clngrad;        //  ""      ""      ""   
-    std::vector<std::string> cbot;
-    std::vector<std::string> ctop;
-    std::vector<std::string> cfluxbot;
-    std::vector<std::string> cfluxtop;
+    // Cross sections split per type
+    std::vector<std::string> crosssimple;
+    std::vector<std::string> crosslngrad;   
+    std::vector<std::string> crossbot;
+    std::vector<std::string> crosstop;
+    std::vector<std::string> crossfluxbot;
+    std::vector<std::string> crossfluxtop;
     int checkaddcross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
 
     // perturbations

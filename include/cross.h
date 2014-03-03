@@ -47,7 +47,7 @@ class ccross
     int crosssimple (double *, double *, std::string);
     int crosslngrad (double *, double *, double *, double *, std::string);
     int crossplane  (double *, double *, std::string, std::string);
-    int crosspath   (double *, double *, double *, std::string, int);
+    int crosspath   (double *, double *, double *, std::string);
 
   private:
     cmaster *master;

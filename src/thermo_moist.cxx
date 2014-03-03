@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <sstream>
+#include <algorithm>    // std::count
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
@@ -30,6 +31,8 @@
 #include "defines.h"
 #include "model.h"
 #include "stats.h"
+#include "master.h"
+#include "cross.h"
 
 #define rd 287.04
 #define rv 461.5
@@ -91,6 +94,9 @@ int cthermo_moist::readinifile(cinput *inputin)
   nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
 
+  // Read list of cross sections
+  nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
+
   return (nerror > 0);
 }
 
@@ -112,6 +118,7 @@ int cthermo_moist::create()
 
   allocated = true;
 
+  // Statistics
   stats->addprof("b", "Buoyancy", "m s-2", "z");
   for(int n=2; n<5; ++n)
   {
@@ -131,6 +138,27 @@ int cthermo_moist::create()
 
   stats->addtseries("lwp", "Liquid water path", "kg m-2");
   stats->addtseries("ccover", "Projected cloud cover", "-");
+
+  // Cross sections (isn't there an easier way to populate this list?)
+  allowedcrossvars.push_back("b");
+  allowedcrossvars.push_back("bbot");
+  allowedcrossvars.push_back("bfluxbot");
+  allowedcrossvars.push_back("blngrad");
+  allowedcrossvars.push_back("ql");
+  allowedcrossvars.push_back("qlpath");
+
+  // Check input list of cross variables (crosslist) 
+  for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
+  {
+    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+    {
+      nerror += 1;
+      if(master->mpiid == 0) std::printf("ERROR field %s in [thermo][crosslist] is illegal\n", it->c_str());
+    }
+  }
+
+  // Sort crosslist to group ql and b variables
+  std::sort(crosslist.begin(),crosslist.end());
 
   return nerror;
 }
@@ -213,6 +241,43 @@ int cthermo_moist::statsexec()
   stats->calcpath(fields->s["tmp1"]->data, stats->tseries["lwp"].data);
 
   return 0;
+}
+
+int cthermo_moist::execcross()
+{
+  int nerror = 0;
+
+  // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
+  for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
+  {
+    if(*it == "b" or *it == "ql")
+    {
+      getthermofield(fields->s["tmp1"], fields->s["tmp2"], *it);
+      nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
+    }
+    else if(*it == "blngrad")
+    {
+      getthermofield(fields->s["tmp1"], fields->s["tmp2"], "b");
+      // Note: tmp1 twice used as argument -> overwritten in crosspath()
+      nerror += model->cross->crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it);
+    }
+    else if(*it == "qlpath")
+    {
+      getthermofield(fields->s["tmp1"], fields->s["tmp2"], "ql");
+      // Note: tmp1 twice used as argument -> overwritten in crosspath()
+      nerror += model->cross->crosspath(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, "ql");
+    }
+    else if(*it == "bbot" or *it == "bfluxbot")
+    {
+      getbuoyancysurf(fields->s["tmp1"]);
+      if(*it == "bbot")
+        nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "b", "bot");
+      else if(*it == "bfluxbot")
+        nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "b", "fluxbot");
+    }
+  }  
+
+  return nerror; 
 }
 
 int cthermo_moist::checkthermofield(std::string name)
