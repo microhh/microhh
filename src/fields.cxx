@@ -164,8 +164,7 @@ int cfields::init()
   if(crosslist.size() > 0)
   {
     for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
-      if(master->mpiid == 0) std::printf("ERROR field %s in [fields][crosslist] is illegal\n", it->c_str());
-    return 1; 
+      if(master->mpiid == 0) std::printf("WARNING field %s in [fields][crosslist] is illegal\n", it->c_str());
   } 
 
   return 0;

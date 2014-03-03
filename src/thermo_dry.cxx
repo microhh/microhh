@@ -87,14 +87,17 @@ int cthermo_dry::create()
   allowedcrossvars.push_back("bfluxbot");
   allowedcrossvars.push_back("blngrad");
 
-  // Check input list of cross variables (crosslist) 
-  for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
+  // Check input list of cross variables (crosslist)
+  std::vector<std::string>::iterator it=crosslist.begin();
+  while(it != crosslist.end())
   {
     if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
     {
-      nerror += 1;
-      if(master->mpiid == 0) std::printf("ERROR field %s in [thermo][crosslist] is illegal\n", it->c_str());
+      if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
+      it = crosslist.erase(it);  // erase() returns iterator of next element..
     }
+    else
+      ++it;
   }
 
   // Sort crosslist to group ql and b variables
