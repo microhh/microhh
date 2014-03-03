@@ -55,6 +55,11 @@ int cthermo_dry_slope::exec()
   return 0;
 }
 
+int cthermo_dry_slope::execcross()
+{
+  return 0;
+}
+
 int cthermo_dry_slope::checkthermofield(std::string name)
 {
   if(name == "b")

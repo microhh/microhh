@@ -150,7 +150,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   int kstart,kend;
   int nerror = 0;
   char filename[256];
-  int iotime = model->timeloop->iotime;
+  //int iotime = model->timeloop->iotime;
 
   ii1 = 1;
   ii2 = 2;
@@ -258,7 +258,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   return nerror;
 }
 
-int ccross::crosspath(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name, int iotime)
+int ccross::crosspath(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name)
 {
   int ijk,ijk1,jj,kk;
   jj = grid->icells;
@@ -291,7 +291,7 @@ int ccross::crosspath(double * restrict data, double * restrict tmp, double * re
         tmp[ijk1] += rho0 * data[ijk] * grid->dz[k];       
       }
 
-  std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "path", 0, iotime);
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "path", model->timeloop->iotime);
   nerror += checkSave(grid->savexyslice(&tmp[kstart*kk], tmp1, filename),filename);
 
   return nerror;

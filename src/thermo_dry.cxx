@@ -131,6 +131,11 @@ int cthermo_dry::statsexec()
   return 0;
 }
 
+int cthermo_dry::execcross()
+{
+  return 0;
+}
+
 int cthermo_dry::checkthermofield(std::string name)
 {
   if(name == "b")

@@ -95,8 +95,9 @@ class cfields
 
     // cross sections
     std::vector<std::string> crosslist;      // List with all crosses from ini file
-    std::vector<std::string> crosssimple;    // Cross sections split per type
-    std::vector<std::string> crosslngrad;    //  ""      ""      ""   
+    // Cross sections split per type
+    std::vector<std::string> crosssimple;
+    std::vector<std::string> crosslngrad;   
     std::vector<std::string> crossbot;
     std::vector<std::string> crosstop;
     std::vector<std::string> crossfluxbot;

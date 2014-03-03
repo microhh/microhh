@@ -42,6 +42,8 @@ class cthermo_buoy : public cthermo
     ~cthermo_buoy();            ///< Destructor of the dry thermodynamics class.
     int readinifile(cinput *); ///< Processing data of the input file.
     int exec();                ///< Add the tendencies belonging to the buoyancy.
+    int execcross();
+
 
     int getbuoyancy(cfield3d *, cfield3d *);     ///< Compute the buoyancy for usage in another routine.
     int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.

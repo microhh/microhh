@@ -40,6 +40,7 @@ class cthermo_moist : public cthermo
     int create();
     int exec();
     int statsexec();
+    int execcross();
 
     // functions to retrieve buoyancy properties, to be called from other classes
     int getbuoyancysurf(cfield3d *);
@@ -53,6 +54,10 @@ class cthermo_moist : public cthermo
     double thvref;
     double rhos;
     double *pmn;
+
+    // cross sections
+    std::vector<std::string> crosslist;        // List with all crosses from ini file
+    std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
     bool allocated;
     cstats *stats;

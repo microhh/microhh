@@ -396,7 +396,12 @@ int cmodel::exec()
       }
 
       if(cross->docross())
-        fields->execcross();
+      {
+        if(fields->execcross())
+          return 1;
+        if(thermo->execcross())
+          return 1;
+      }
     }
 
     // exit the simulation when the runtime has been hit after the pressure calculation
