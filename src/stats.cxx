@@ -64,7 +64,15 @@ cstats::~cstats()
 int cstats::readinifile(cinput *inputin)
 {
   int nerror = 0;
+  nerror += inputin->getItem(&swstats   , "stats", "swstats"   , "");
   nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
+
+  if(!(swstats == "0" || swstats == "1" ))
+  {
+    ++nerror;
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
+  }
+
   return nerror;
 }
 
@@ -85,6 +93,10 @@ int cstats::init(double ifactor)
 
 int cstats::create(int n)
 {
+  // do not create file if stats is disabled
+  if(swstats == "0")
+    return 0;
+
   int nerror = 0;
 
   // create a NetCDF file for the statistics
@@ -209,6 +221,10 @@ unsigned long cstats::gettimelim(unsigned long itime)
 
 int cstats::dostats()
 {
+  // check if stats are enabled
+  if(swstats == "0")
+    return 0;
+
   // check if time for execution
   if(model->timeloop->itime % isampletime != 0)
     return 0;
@@ -222,6 +238,8 @@ int cstats::dostats()
 
 int cstats::exec(int iteration, double time, unsigned long itime)
 {
+  // this function is only called when stats are enabled no need for swstats check
+
   // check if time for execution
   if(itime % isampletime != 0)
     return 0;
@@ -322,6 +340,11 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   ++nstats;
 
   return 0;
+}
+
+std::string cstats::getsw()
+{
+  return swstats;
 }
 
 int cstats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)

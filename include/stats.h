@@ -56,6 +56,7 @@ class cstats
     unsigned long gettimelim(unsigned long);
     int exec(int, double, unsigned long);
     int dostats();
+    std::string getsw();
 
     // interface functions
     profmap profs;
@@ -96,5 +97,7 @@ class cstats
 
     double sampletime;
     unsigned long isampletime;
+
+    std::string swstats;
 };
 #endif

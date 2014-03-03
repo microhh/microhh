@@ -112,22 +112,26 @@ int cthermo_moist::create()
 
   allocated = true;
 
-  stats->addprof("b", "Buoyancy", "m s-2", "z");
-  for(int n=2; n<5; ++n)
+  // add variables to the statistics
+  if(stats->getsw() == "1")
   {
-    std::stringstream ss;
-    ss << n;
-    std::string sn = ss.str();
-    stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+    stats->addprof("b", "Buoyancy", "m s-2", "z");
+    for(int n=2; n<5; ++n)
+    {
+      std::stringstream ss;
+      ss << n;
+      std::string sn = ss.str();
+      stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+    }
+
+    stats->addprof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
+    stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+    stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+
+    stats->addprof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+    stats->addprof("cfrac", "Cloud fraction", "-","z");
   }
-
-  stats->addprof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-  stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-  stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-  stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
-
-  stats->addprof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
-  stats->addprof("cfrac", "Cloud fraction", "-","z");
 
   return nerror;
 }
@@ -156,7 +160,7 @@ int cthermo_moist::exec()
   return (nerror>0);
 }
 
-int cthermo_moist::statsexec()
+int cthermo_moist::execstats()
 {
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, fields->s["tmp2"]->data);

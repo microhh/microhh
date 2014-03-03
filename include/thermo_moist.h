@@ -39,7 +39,7 @@ class cthermo_moist : public cthermo
     int init();
     int create();
     int exec();
-    int statsexec();
+    int execstats();
 
     // functions to retrieve buoyancy properties, to be called from other classes
     int getbuoyancysurf(cfield3d *);

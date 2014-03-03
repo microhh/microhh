@@ -22,7 +22,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
-#include <algorithm>    // std::find
+#include <algorithm>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -102,7 +102,7 @@ int cfields::readinifile(cinput *inputin)
   nerror += initdfld("tmp1","","");
   nerror += initdfld("tmp2","","");
 
-  // CvH check this later
+  // \TODO check this later
   stats = model->stats;
 
   return nerror;
@@ -192,7 +192,7 @@ int cfields::exec()
   return 0;
 }
 
-int cfields::statsexec()
+int cfields::execstats()
 {
   // calculate the means
   stats->calcmean(u->data, stats->profs["u"].data, grid->utrans);
@@ -536,55 +536,59 @@ int cfields::load(int n)
     }  
   }
 
-  // initalize the profiles in the stats
-  stats->addprof(u->name, u->longname, u->unit, "z" );
-  stats->addprof(v->name, v->longname, v->unit, "z" );
-  stats->addprof(w->name, w->longname, w->unit, "zh" );
-
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first,it->second->longname, it->second->unit, "z");
-  stats->addprof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
-
-  if(model->diff->getname() == "les2s")
-    stats->addprof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
-
-  // moments
-  for(int n=2; n<5; ++n)
+  // add the profiles to te statistics
+  if(stats->getsw() == "1")
   {
-    std::stringstream ss;
-    ss << n;
-    std::string sn = ss.str();
-    stats->addprof(u->name + sn,"Moment "+ sn + " of the " + u->longname,"(" + u->unit + ")"+sn, "z" );
-    stats->addprof(v->name + sn,"Moment "+ sn + " of the " + v->longname,"(" + v->unit + ")"+sn, "z" );
-    stats->addprof(w->name + sn,"Moment "+ sn + " of the " + w->longname,"(" + w->unit + ")"+sn, "zh" );
+    // add variables to the statistics
+    stats->addprof(u->name, u->longname, u->unit, "z" );
+    stats->addprof(v->name, v->longname, v->unit, "z" );
+    stats->addprof(w->name, w->longname, w->unit, "zh" );
+  
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first + sn,"Moment "+ sn + " of the " + it->second->longname,"(" + it->second->unit + ")"+sn, "z" );
+      stats->addprof(it->first,it->second->longname, it->second->unit, "z");
+    stats->addprof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+  
+    if(model->diff->getname() == "les2s")
+      stats->addprof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
+  
+    // moments
+    for(int n=2; n<5; ++n)
+    {
+      std::stringstream ss;
+      ss << n;
+      std::string sn = ss.str();
+      stats->addprof(u->name + sn,"Moment "+ sn + " of the " + u->longname,"(" + u->unit + ")"+sn, "z" );
+      stats->addprof(v->name + sn,"Moment "+ sn + " of the " + v->longname,"(" + v->unit + ")"+sn, "z" );
+      stats->addprof(w->name + sn,"Moment "+ sn + " of the " + w->longname,"(" + w->unit + ")"+sn, "zh" );
+      for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+        stats->addprof(it->first + sn,"Moment "+ sn + " of the " + it->second->longname,"(" + it->second->unit + ")"+sn, "z" );
+    }
+  
+    // gradients
+    stats->addprof(u->name + "grad", "Gradient of the " + u->longname,"s-1","zh");
+    stats->addprof(v->name + "grad", "Gradient of the " + v->longname,"s-1","zh");
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->addprof(it->first+"grad", "Gradient of the " + it->second->longname, it->second->unit + " m-1", "zh");
+  
+    // turbulent fluxes
+    stats->addprof("uw", "Turbulent flux of the " + u->longname, "m2 s-2", "zh");
+    stats->addprof("vw", "Turbulent flux of the " + v->longname, "m2 s-2", "zh");
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->addprof(it->first+"w", "Turbulent flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
+  
+    // Diffusive fluxes
+    stats->addprof("udiff", "Diffusive flux of the " + u->longname, "m2 s-2", "zh");
+    stats->addprof("vdiff", "Diffusive flux of the " + v->longname, "m2 s-2", "zh");
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->addprof(it->first+"diff", "Diffusive flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
+  
+    //Total fluxes
+    stats->addprof("uflux", "Total flux of the " + u->longname, "m2 s-2", "zh");
+    stats->addprof("vflux", "Total flux of the " + v->longname, "m2 s-2", "zh");
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->addprof(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   }
-
-  // gradients
-  stats->addprof(u->name + "grad", "Gradient of the " + u->longname,"s-1","zh");
-  stats->addprof(v->name + "grad", "Gradient of the " + v->longname,"s-1","zh");
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first+"grad", "Gradient of the " + it->second->longname, it->second->unit + " m-1", "zh");
-
-  // turbulent fluxes
-  stats->addprof("uw", "Turbulent flux of the " + u->longname, "m2 s-2", "zh");
-  stats->addprof("vw", "Turbulent flux of the " + v->longname, "m2 s-2", "zh");
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first+"w", "Turbulent flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
-
-  // Diffusive fluxes
-  stats->addprof("udiff", "Diffusive flux of the " + u->longname, "m2 s-2", "zh");
-  stats->addprof("vdiff", "Diffusive flux of the " + v->longname, "m2 s-2", "zh");
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first+"diff", "Diffusive flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
-
-  //Total fluxes
-  stats->addprof("uflux", "Total flux of the " + u->longname, "m2 s-2", "zh");
-  stats->addprof("vflux", "Total flux of the " + v->longname, "m2 s-2", "zh");
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addprof(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
-
+  
   return nerror;
 }
 

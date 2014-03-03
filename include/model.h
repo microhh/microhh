@@ -81,8 +81,6 @@ class cmodel
     std::string swboundary;
     std::string swthermo;
 
-    std::string swstats;
-
     int outputfile(bool);
     int settimestep();
 };

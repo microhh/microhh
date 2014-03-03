@@ -59,19 +59,23 @@ int cthermo_dry::init()
 
 int cthermo_dry::create()
 {
-  stats->addprof("b", "Buoyancy", "m s-2", "z");
-  for(int n=2; n<5; ++n)
+  // add variables to the statistics
+  if(stats->getsw() == "1")
   {
-    std::stringstream ss;
-    ss << n;
-    std::string sn = ss.str();
-    stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
-  }
+    stats->addprof("b", "Buoyancy", "m s-2", "z");
+    for(int n=2; n<5; ++n)
+    {
+      std::stringstream ss;
+      ss << n;
+      std::string sn = ss.str();
+      stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+    }
 
-  stats->addprof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-  stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-  stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-  stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+    stats->addprof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
+    stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+    stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+  }
 
   return 0;
 }
@@ -86,7 +90,7 @@ int cthermo_dry::exec()
   return 0;
 }
 
-int cthermo_dry::statsexec()
+int cthermo_dry::execstats()
 {
   // calculate the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data);

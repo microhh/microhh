@@ -30,6 +30,7 @@
 #include "timeloop.h"
 #include "buffer.h"
 #include "force.h"
+#include "stats.h"
 #include "cross.h"
 
 // boundary schemes
@@ -62,11 +63,6 @@
 #include "thermo_moist.h"
 #include "thermo_dry_slope.h"
 
-// stats schemes
-#include "stats.h"
-// #include "stats_dns.h"
-// #include "stats_les.h"
-
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
   master = masterin;
@@ -90,7 +86,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   pres     = NULL;
   thermo   = NULL;
 
-  // load the postprocessing moduls
+  // load the postprocessing modules
   stats = new cstats(this);
   cross = new ccross(this);
 }
@@ -131,7 +127,6 @@ int cmodel::readinifile()
   nerror += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
   nerror += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
-  nerror += input->getItem(&swstats   , "stats"   , "swstats"   , "", "0");
   nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
 
   // if one or more arguments fails, then crash
@@ -236,24 +231,8 @@ int cmodel::readinifile()
   }
   if(boundary->readinifile(input))
     return 1;
-
   if(buffer->readinifile(input))
     return 1;
-
-  // CvH enable stats above
-  // statistics
-  /*
-  if(swstats == "0")
-  else if(swstats == "dns")
-    stats = new cstats_dns(this);
-  else if(swstats == "les")
-    stats = new cstats_les(this);
-  else
-  {
-    std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
-    return 1;
-  }
-  */
 
   if(stats->readinifile(input))
     return 1;
@@ -390,8 +369,8 @@ int cmodel::exec()
     {
       if(stats->dostats())
       {
-        fields->statsexec();
-        thermo->statsexec();
+        fields->execstats();
+        thermo->execstats();
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 

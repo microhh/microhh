@@ -61,7 +61,7 @@ int cthermo::exec()
   return 0;
 }
 
-int cthermo::statsexec()
+int cthermo::execstats()
 {
   return 0;
 }
