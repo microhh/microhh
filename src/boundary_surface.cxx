@@ -21,6 +21,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <algorithm>    // std::count
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -29,6 +30,8 @@
 #include "defines.h"
 #include "thermo.h"
 #include "model.h"
+#include "master.h"
+#include "cross.h"
 
 #define NO_VELOCITY 0.
 #define NO_OFFSET 0.
@@ -63,6 +66,9 @@ int cboundary_surface::readinifile(cinput *inputin)
 
   nerror += inputin->getItem(&z0m, "boundary", "z0m", "");
   nerror += inputin->getItem(&z0h, "boundary", "z0h", "");
+
+  // Read list of cross sections
+  nerror += inputin->getList(&crosslist , "boundary", "crosslist" , "");
 
   // copy all the boundary options and set the model ones to flux type
   surfmbcbot = mbcbot;
@@ -137,7 +143,39 @@ int cboundary_surface::init()
      obuk[ij] = dsmall;
    }
 
+  // Cross sections
+  allowedcrossvars.push_back("ustar");
+  allowedcrossvars.push_back("obuk");
+
+  // Check input list of cross variables (crosslist)
+  std::vector<std::string>::iterator it=crosslist.begin();
+  while(it != crosslist.end())
+  {
+    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+    {
+      if(master->mpiid == 0) std::printf("WARNING field %s in [boundary][crosslist] is illegal\n", it->c_str());
+      it = crosslist.erase(it);  // erase() returns iterator of next element..
+    }
+    else
+      ++it;
+  }
+
   return 0;
+}
+
+int cboundary_surface::execcross()
+{
+  int nerror = 0;
+
+  for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
+  {
+    if(*it == "ustar")
+      nerror += model->cross->crossplane(ustar, fields->s["tmp1"]->data, "ustar");
+    else if(*it == "obuk")
+      nerror += model->cross->crossplane(obuk,  fields->s["tmp1"]->data, "obuk");
+  }  
+
+  return nerror; 
 }
 
 int cboundary_surface::save(int iotime)

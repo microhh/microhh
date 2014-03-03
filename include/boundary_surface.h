@@ -37,6 +37,7 @@ class cboundary_surface : public cboundary
     int init();
     int setvalues();
     int exec();
+    int execcross(); ///< Execute cross sections of surface
 
     int save(int);
     int load(int);
@@ -49,6 +50,10 @@ class cboundary_surface : public cboundary
     double z0h;
 
   private:
+    // cross sections
+    std::vector<std::string> crosslist;        // List with all crosses from ini file
+    std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+
     // surface scheme
     int bcvalues();
     int stability(double *, double *, double *,

@@ -150,14 +150,17 @@ int cthermo_moist::create()
   allowedcrossvars.push_back("ql");
   allowedcrossvars.push_back("qlpath");
 
-  // Check input list of cross variables (crosslist) 
-  for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
+  // Check input list of cross variables (crosslist)
+  std::vector<std::string>::iterator it=crosslist.begin();
+  while(it != crosslist.end())
   {
     if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
     {
-      nerror += 1;
-      if(master->mpiid == 0) std::printf("ERROR field %s in [thermo][crosslist] is illegal\n", it->c_str());
+      if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
+      it = crosslist.erase(it);  // erase() returns iterator of next element..
     }
+    else
+      ++it;
   }
 
   // Sort crosslist to group ql and b variables
@@ -268,15 +271,15 @@ int cthermo_moist::execcross()
     {
       getthermofield(fields->s["tmp1"], fields->s["tmp2"], "ql");
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += model->cross->crosspath(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, "ql");
+      nerror += model->cross->crosspath(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, "qlpath");
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
       getbuoyancysurf(fields->s["tmp1"]);
       if(*it == "bbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "b", "bot");
+        nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "b", "fluxbot");
+        nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
     }
   }  
 

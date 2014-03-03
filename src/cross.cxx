@@ -132,12 +132,12 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   return nerror;
 }
 
-int ccross::crossplane(double * restrict data, double * restrict tmp, std::string name, std::string type)
+int ccross::crossplane(double * restrict data, double * restrict tmp, std::string name)
 {
   int nerror = 0;
   char filename[256];
 
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), type.c_str(), model->timeloop->iotime);
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", model->timeloop->iotime);
   nerror += checkSave(grid->savexyslice(data, tmp, filename),filename);
 
   return nerror;
@@ -267,10 +267,6 @@ int ccross::crosspath(double * restrict data, double * restrict tmp, double * re
   int nerror = 0;
   char filename[256];
 
-  // for testing hard code density to 1.0 
-  // obtain either from thermo_moist, anelastic scheme, etc.
-  double rho0 = 1.0;   
-
   // Path is integrated in first full level, set to zero first
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -288,10 +284,10 @@ int ccross::crosspath(double * restrict data, double * restrict tmp, double * re
       {
         ijk1 = i + j*jj + kstart*kk;
         ijk  = i + j*jj + k*kk;
-        tmp[ijk1] += rho0 * data[ijk] * grid->dz[k];       
+        tmp[ijk1] += fields->rhoref[k] * data[ijk] * grid->dz[k];       
       }
 
-  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "path", model->timeloop->iotime);
+  std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", model->timeloop->iotime);
   nerror += checkSave(grid->savexyslice(&tmp[kstart*kk], tmp1, filename),filename);
 
   return nerror;

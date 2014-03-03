@@ -164,8 +164,7 @@ int cfields::init()
   if(crosslist.size() > 0)
   {
     for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
-      if(master->mpiid == 0) std::printf("ERROR field %s in [fields][crosslist] is illegal\n", it->c_str());
-    return 1; 
+      if(master->mpiid == 0) std::printf("WARNING field %s in [fields][crosslist] is illegal\n", it->c_str());
   } 
 
   return 0;
@@ -733,16 +732,16 @@ int cfields::execcross()
     nerror += model->cross->crosslngrad(a[*it]->data, s["tmp1"]->data, s["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
 
   for(std::vector<std::string>::iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datafluxbot, s["tmp1"]->data, a[*it]->name, "fluxbot");
+    nerror += model->cross->crossplane(a[*it]->datafluxbot, s["tmp1"]->data, a[*it]->name + "fluxbot");
 
   for(std::vector<std::string>::iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datafluxtop, s["tmp1"]->data, a[*it]->name, "fluxtop");
+    nerror += model->cross->crossplane(a[*it]->datafluxtop, s["tmp1"]->data, a[*it]->name + "fluxtop");
 
   for(std::vector<std::string>::iterator it=crossbot.begin(); it<crossbot.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->databot, s["tmp1"]->data, a[*it]->name, "bot");
+    nerror += model->cross->crossplane(a[*it]->databot, s["tmp1"]->data, a[*it]->name + "bot");
 
   for(std::vector<std::string>::iterator it=crosstop.begin(); it<crosstop.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datatop, s["tmp1"]->data, a[*it]->name, "top");
+    nerror += model->cross->crossplane(a[*it]->datatop, s["tmp1"]->data, a[*it]->name + "top");
 
   return nerror; 
 }
