@@ -267,10 +267,6 @@ int ccross::crosspath(double * restrict data, double * restrict tmp, double * re
   int nerror = 0;
   char filename[256];
 
-  // for testing hard code density to 1.0 
-  // obtain either from thermo_moist, anelastic scheme, etc.
-  double rho0 = 1.0;   
-
   // Path is integrated in first full level, set to zero first
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -288,7 +284,7 @@ int ccross::crosspath(double * restrict data, double * restrict tmp, double * re
       {
         ijk1 = i + j*jj + kstart*kk;
         ijk  = i + j*jj + k*kk;
-        tmp[ijk1] += rho0 * data[ijk] * grid->dz[k];       
+        tmp[ijk1] += fields->rhoref[k] * data[ijk] * grid->dz[k];       
       }
 
   std::sprintf(filename, "%s.%s.%07d", name.c_str(), "path", model->timeloop->iotime);
