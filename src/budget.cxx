@@ -47,23 +47,29 @@ cbudget::~cbudget()
   delete[] vmodel;
 }
 
+int cbudget::readinifile(cinput *inputin)
+{
+  int nerror = 0;
+  nerror += inputin->getItem(&swbudget, "budget", "swbudget", "", "0");
+
+  return nerror;
+}
+
 int cbudget::init()
 {
+  // copy the pointers
   grid   = model->grid;
   fields = model->fields;
   stats  = model->stats;
+
+  // if the stats is disabled, also disable the budget stats
+  if(stats->getsw() == "0")
+    swbudget = "0";
 
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
 
   return 0;
-}
-
-int cbudget::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-  nerror += inputin->getItem(&swbudget, "budget", "swbudget", "", "0");
-  return nerror;
 }
 
 int cbudget::create()
