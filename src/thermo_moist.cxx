@@ -240,8 +240,8 @@ int cthermo_moist::execstats()
   stats->calcmean (fields->s["tmp1"]->data, stats->profs["ql"].data, NO_OFFSET);
   stats->calccount(fields->s["tmp1"]->data, stats->profs["cfrac"].data, 0.);
 
-  stats->calccover(fields->s["tmp1"]->data, stats->tseries["ccover"].data,0.);
-  stats->calcpath(fields->s["tmp1"]->data, stats->tseries["lwp"].data);
+  stats->calccover(fields->s["tmp1"]->data, &stats->tseries["ccover"].data, 0.);
+  stats->calcpath(fields->s["tmp1"]->data, &stats->tseries["lwp"].data);
 
   return 0;
 }

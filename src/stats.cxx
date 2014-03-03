@@ -604,7 +604,7 @@ int cstats::addfluxes(double * restrict flux, double * restrict turb, double * r
   return 0;
 }
 
-int cstats::calcpath(double * restrict data, double & path)
+int cstats::calcpath(double * restrict data, double * restrict path)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -613,7 +613,7 @@ int cstats::calcpath(double * restrict data, double & path)
   int nerror = 0;
 
 
-  path = 0.;
+  *path = 0.;
   // Integrate with height
   for(int k=kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -621,18 +621,18 @@ int cstats::calcpath(double * restrict data, double & path)
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        path += fields->rhoref[k] * data[ijk] * grid->dz[k];
+        *path += fields->rhoref[k] * data[ijk] * grid->dz[k];
       }
 
-  path /= 1.0*grid->imax*grid->jmax;
+  *path /= 1.0*grid->imax*grid->jmax;
 
-  grid->getprof(&path,1);
+  grid->getprof(path,1);
 
   return nerror;
 }
 
 
-int cstats::calccover(double * restrict data, double& cover, double threshold)
+int cstats::calccover(double * restrict data, double * restrict cover, double threshold)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -640,7 +640,7 @@ int cstats::calccover(double * restrict data, double& cover, double threshold)
   int kstart = grid->kstart;
   int nerror = 0;
 
-  cover = 0.;
+  *cover = 0.;
   // Integrate with height
   for(int j=grid->jstart; j<grid->jend; j++)
     for(int i=grid->istart; i<grid->iend; i++)
@@ -649,14 +649,14 @@ int cstats::calccover(double * restrict data, double& cover, double threshold)
         ijk  = i + j*jj + k*kk;
         if (data[ijk]>threshold)
         {
-          cover += 1.;
+          *cover += 1.;
           break;
         }
       }
 
-  cover /= grid->imax*grid->jmax;
+  *cover /= grid->imax*grid->jmax;
 
-  grid->getprof(&cover,1);
+  grid->getprof(cover,1);
 
   return nerror;
 }
