@@ -39,6 +39,7 @@ class cthermo;
 class cbuffer;
 class cstats;
 class ccross;
+class cbudget;
 
 class cmodel
 {
@@ -70,8 +71,9 @@ class cmodel
     cbuffer   *buffer;
 
     // postprocessing modules
-    cstats *stats;
-    ccross *cross;
+    cstats  *stats;
+    ccross  *cross;
+    cbudget *budget;
 
   private:
     // switches for included schemes

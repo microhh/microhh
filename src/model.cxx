@@ -32,6 +32,7 @@
 #include "force.h"
 #include "stats.h"
 #include "cross.h"
+#include "budget.h"
 
 // boundary schemes
 #include "boundary.h"
@@ -87,13 +88,15 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   thermo   = NULL;
 
   // load the postprocessing modules
-  stats = new cstats(this);
-  cross = new ccross(this);
+  stats  = new cstats(this);
+  cross  = new ccross(this);
+  budget = new cbudget(this);
 }
 
 cmodel::~cmodel()
 {
   // delete the components in reversed order
+  delete budget;
   delete cross;
   delete stats;
   delete buffer;
@@ -238,6 +241,8 @@ int cmodel::readinifile()
     return 1;
   if(cross->readinifile(input))
     return 1;
+  if(budget->readinifile(input))
+    return 1;
 
   return 0;
 }
@@ -263,6 +268,8 @@ int cmodel::init()
     return 1;
   if(cross->init(timeloop->ifactor))
     return 1;
+  if(budget->init())
+    return 1;
 
   return 0;
 }
@@ -287,6 +294,9 @@ int cmodel::load()
   if(force->create(input))
     return 1;
   if(thermo->create())
+    return 1;
+
+  if(budget->create())
     return 1;
 
   // end with modules that require all fields to be present
@@ -371,6 +381,8 @@ int cmodel::exec()
       {
         fields->execstats();
         thermo->execstats();
+        budget->execstats();
+        stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 
