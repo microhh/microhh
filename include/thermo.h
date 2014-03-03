@@ -37,6 +37,7 @@ class cthermo
     virtual int create();
     virtual int exec();
     virtual int execstats();
+    virtual int execcross();
 
     // interfacing functions to get buoyancy properties from other classes
     virtual int checkthermofield(std::string name);

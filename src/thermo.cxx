@@ -66,6 +66,11 @@ int cthermo::execstats()
   return 0;
 }
 
+int cthermo::execcross()
+{
+  return 0;
+}
+
 int cthermo::checkthermofield(std::string name)
 {
   return 1;  // always returns error 

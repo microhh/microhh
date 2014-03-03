@@ -43,6 +43,7 @@ class cthermo_dry_slope : public cthermo
 
     int readinifile(cinput *);               ///< Processing data of the input file.
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
+    int execcross();
 
     int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
     int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.

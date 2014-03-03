@@ -76,6 +76,8 @@ class cstats
     int calcflux_4th(double *, double *, double *, double *, int, int);
     int addfluxes   (double *, double *, double *);
     int calccount   (double* data, double* prof, double threshold);
+    int calcpath    (double *, double &);
+    int calccover   (double *, double &, double);
 
   private:
     bool allocated;
