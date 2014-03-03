@@ -28,7 +28,9 @@
 #include "fields.h"
 #include "defines.h"
 #include "model.h"
+#include "stats.h"
 #include "cross.h"
+#include "diff_les2s.h"
 
 #define NO_OFFSET 0.
 
@@ -84,7 +86,7 @@ int cfields::readinifile(cinput *inputin)
   // initialize the scalars
   for(std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
   {
-    if(initpfld(*it))
+    if(initpfld(*it,*it,"-"))
       return 1;
     nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
@@ -93,12 +95,15 @@ int cfields::readinifile(cinput *inputin)
   nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
 
   // initialize the basic set of fields
-  nerror += initmomfld(u, ut, "u");
-  nerror += initmomfld(v, vt, "v");
-  nerror += initmomfld(w, wt, "w");
-  nerror += initdfld("p");
-  nerror += initdfld("tmp1");
-  nerror += initdfld("tmp2");
+  nerror += initmomfld(u, ut, "u", "U velocity", "m s-1");
+  nerror += initmomfld(v, vt, "v", "V velocity", "m s-1");
+  nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
+  nerror += initdfld("p", "Pressure", "Pa");
+  nerror += initdfld("tmp1","","");
+  nerror += initdfld("tmp2","","");
+
+  // CvH check this later
+  stats = model->stats;
 
   return nerror;
 }
@@ -132,6 +137,10 @@ int cfields::init()
 
   if(n > 0)
     return 1;
+
+  // allocate help arrays for statistics;
+  umodel = new double[grid->kcells];
+  vmodel = new double[grid->kcells];
 
   allocated = true;
 
@@ -183,13 +192,105 @@ int cfields::exec()
   return 0;
 }
 
+int cfields::statsexec()
+{
+  // calculate the means
+  stats->calcmean(u->data, stats->profs["u"].data, grid->utrans);
+  stats->calcmean(v->data, stats->profs["v"].data, grid->vtrans);
+  stats->calcmean(w->data, stats->profs["w"].data, NO_OFFSET);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->calcmean(it->second->data, stats->profs[it->first].data, NO_OFFSET);
+
+  stats->calcmean(s["p"]->data, stats->profs["p"].data, NO_OFFSET);
+
+  if(model->diff->getname() == "les2s")
+    stats->calcmean(s["evisc"]->data, stats->profs["evisc"].data, NO_OFFSET);
+
+  // calculate model means without correction for transformation
+  stats->calcmean(u->data, umodel, NO_OFFSET);
+  stats->calcmean(v->data, vmodel, NO_OFFSET);
+
+  // calculate the higher order moments
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->calcmoment(u->data, umodel, stats->profs["u"+sn].data, n, 0);
+    stats->calcmoment(v->data, vmodel, stats->profs["v"+sn].data, n, 0);
+    stats->calcmoment(w->data, stats->profs["w"].data, stats->profs["w"+sn].data, n, 1);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+sn].data, n, 0);
+  }
+
+  // calculate the gradients
+  if(grid->swspatialorder == "2")
+  {
+    stats->calcgrad_2nd(u->data, stats->profs["ugrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(v->data, stats->profs["vgrad"].data, grid->dzhi);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcgrad_2nd(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi);
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    stats->calcgrad_4th(u->data, stats->profs["ugrad"].data, grid->dzhi4);
+    stats->calcgrad_4th(v->data, stats->profs["vgrad"].data, grid->dzhi4);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcgrad_4th(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi4);
+  }
+
+  // calculate the turbulent fluxes
+  if(grid->swspatialorder == "2")
+  {
+    stats->calcflux_2nd(u->data, w->data, stats->profs["uw"].data, s["tmp1"]->data, 1, 0);
+    stats->calcflux_2nd(v->data, w->data, stats->profs["vw"].data, s["tmp1"]->data, 0, 1);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcflux_2nd(it->second->data, w->data, stats->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    stats->calcflux_4th(u->data, w->data, stats->profs["uw"].data, s["tmp1"]->data, 1, 0);
+    stats->calcflux_4th(v->data, w->data, stats->profs["vw"].data, s["tmp1"]->data, 0, 1);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcflux_4th(it->second->data, w->data, stats->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
+  }
+
+  // calculate the diffusive fluxes
+  if(grid->swspatialorder == "2")
+  {
+    if(model->diff->getname() == "les2s")
+    {
+      cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
+      stats->calcdiff_2nd(u->data, s["evisc"]->data, stats->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
+      stats->calcdiff_2nd(v->data, s["evisc"]->data, stats->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
+      for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+        stats->calcdiff_2nd(it->second->data, s["evisc"]->data, stats->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
+    }
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    stats->calcdiff_4th(u->data, stats->profs["udiff"].data, grid->dzhi4, visc);
+    stats->calcdiff_4th(v->data, stats->profs["vdiff"].data, grid->dzhi4, visc);
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->calcdiff_4th(it->second->data, stats->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc);
+  }
+
+  // calculate the total fluxes
+  stats->addfluxes(stats->profs["uflux"].data, stats->profs["uw"].data, stats->profs["udiff"].data);
+  stats->addfluxes(stats->profs["vflux"].data, stats->profs["vw"].data, stats->profs["vdiff"].data);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addfluxes(stats->profs[it->first+"flux"].data, stats->profs[it->first+"w"].data, stats->profs[it->first+"diff"].data);
+
+  return 0;
+}
+
 int cfields::setcalcprofs(bool sw)
 {
   calcprofs = sw;
   return 0;
 }
 
-int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
+int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, std::string longname, std::string unit)
 {
   if (mp.find(fldname)!=mp.end())
   {
@@ -198,11 +299,13 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   }
 
   // add a new prognostic momentum variable
-  mp[fldname] = new cfield3d(grid, master, fldname);
+  mp[fldname] = new cfield3d(grid, master, fldname, longname, unit);
 
   // add a new tendency for momentum variable
-  std::string fldtname = fldname + "t";
-  mt[fldname] = new cfield3d(grid, master, fldtname);
+  std::string fldtname  = fldname + "t";
+  std::string tunit     = unit + "s-1";
+  std::string tlongname = "Tendency of " + longname;
+  mt[fldname] = new cfield3d(grid, master, fldtname, tlongname, tunit);
 
   // TODO remove these from the model?
   fld  = mp[fldname];
@@ -217,7 +320,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname)
   return 0;
 }
 
-int cfields::initpfld(std::string fldname)
+int cfields::initpfld(std::string fldname, std::string longname, std::string unit)
 {
   if (s.find(fldname)!=s.end())
   {
@@ -226,11 +329,13 @@ int cfields::initpfld(std::string fldname)
   }
   
   // add a new scalar variable
-  sp[fldname] = new cfield3d(grid, master, fldname);
+  sp[fldname] = new cfield3d(grid, master, fldname,longname, unit);
 
   // add a new tendency for scalar variable
-  std::string fldtname = fldname + "t";
-  st[fldname] = new cfield3d(grid, master, fldtname);
+  std::string fldtname  = fldname + "t";
+  std::string tlongname = "Tendency of " + longname;
+  std::string tunit     = unit + "s-1";
+  st[fldname] = new cfield3d(grid, master, fldtname,tlongname, tunit);
 
   // add the prognostic variable and its tendency to the collection
   // of all fields and tendencies
@@ -242,7 +347,7 @@ int cfields::initpfld(std::string fldname)
   return 0;
 }
 
-int cfields::initdfld(std::string fldname)
+int cfields::initdfld(std::string fldname,std::string longname, std::string unit)
 {
   if (s.find(fldname)!=s.end())
   {
@@ -250,7 +355,7 @@ int cfields::initdfld(std::string fldname)
     return 1;
   }
 
-  sd[fldname] = new cfield3d(grid, master, fldname );
+  sd[fldname] = new cfield3d(grid, master, fldname, longname, unit);
   s [fldname] = sd[fldname];
   a [fldname] = sd[fldname];
 
@@ -430,6 +535,55 @@ int cfields::load(int n)
       if(master->mpiid == 0) std::printf("OK\n");
     }  
   }
+
+  // initalize the profiles in the stats
+  stats->addprof(u->name, u->longname, u->unit, "z" );
+  stats->addprof(v->name, v->longname, v->unit, "z" );
+  stats->addprof(w->name, w->longname, w->unit, "zh" );
+
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first,it->second->longname, it->second->unit, "z");
+  stats->addprof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+
+  if(model->diff->getname() == "les2s")
+    stats->addprof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
+
+  // moments
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->addprof(u->name + sn,"Moment "+ sn + " of the " + u->longname,"(" + u->unit + ")"+sn, "z" );
+    stats->addprof(v->name + sn,"Moment "+ sn + " of the " + v->longname,"(" + v->unit + ")"+sn, "z" );
+    stats->addprof(w->name + sn,"Moment "+ sn + " of the " + w->longname,"(" + w->unit + ")"+sn, "zh" );
+    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      stats->addprof(it->first + sn,"Moment "+ sn + " of the " + it->second->longname,"(" + it->second->unit + ")"+sn, "z" );
+  }
+
+  // gradients
+  stats->addprof(u->name + "grad", "Gradient of the " + u->longname,"s-1","zh");
+  stats->addprof(v->name + "grad", "Gradient of the " + v->longname,"s-1","zh");
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first+"grad", "Gradient of the " + it->second->longname, it->second->unit + " m-1", "zh");
+
+  // turbulent fluxes
+  stats->addprof("uw", "Turbulent flux of the " + u->longname, "m2 s-2", "zh");
+  stats->addprof("vw", "Turbulent flux of the " + v->longname, "m2 s-2", "zh");
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first+"w", "Turbulent flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
+
+  // Diffusive fluxes
+  stats->addprof("udiff", "Diffusive flux of the " + u->longname, "m2 s-2", "zh");
+  stats->addprof("vdiff", "Diffusive flux of the " + v->longname, "m2 s-2", "zh");
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first+"diff", "Diffusive flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
+
+  //Total fluxes
+  stats->addprof("uflux", "Total flux of the " + u->longname, "m2 s-2", "zh");
+  stats->addprof("vflux", "Total flux of the " + v->longname, "m2 s-2", "zh");
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->addprof(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
 
   return nerror;
 }

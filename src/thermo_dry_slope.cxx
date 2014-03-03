@@ -41,7 +41,7 @@ int cthermo_dry_slope::readinifile(cinput *inputin)
   nerror += inputin->getItem(&alpha, "thermo", "alpha", "");
   nerror += inputin->getItem(&n2   , "thermo", "n2"   , "");
 
-  nerror += fields->initpfld("s");
+  nerror += fields->initpfld("s","Buoyancy", "m s-2");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
 
   return nerror;

@@ -64,8 +64,8 @@
 
 // stats schemes
 #include "stats.h"
-#include "stats_dns.h"
-#include "stats_les.h"
+// #include "stats_dns.h"
+// #include "stats_les.h"
 
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
@@ -91,7 +91,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   thermo   = NULL;
 
   // load the postprocessing moduls
-  stats = NULL;
+  stats = new cstats(this);
   cross = new ccross(this);
 }
 
@@ -240,9 +240,10 @@ int cmodel::readinifile()
   if(buffer->readinifile(input))
     return 1;
 
+  // CvH enable stats above
   // statistics
+  /*
   if(swstats == "0")
-    stats = new cstats(this);
   else if(swstats == "dns")
     stats = new cstats_dns(this);
   else if(swstats == "les")
@@ -252,6 +253,7 @@ int cmodel::readinifile()
     std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
     return 1;
   }
+  */
 
   if(stats->readinifile(input))
     return 1;
@@ -268,6 +270,8 @@ int cmodel::init()
   if(fields->init())
     return 1;
   if(boundary->init())
+    return 1;
+  if(thermo->init())
     return 1;
   if(buffer->init())
     return 1;
@@ -286,10 +290,15 @@ int cmodel::init()
 
 int cmodel::load()
 {
+  // first load the grid and time to make their information available
   if(grid->load())
     return 1;
   if(timeloop->load(timeloop->iotime))
     return 1;
+  // initialize the statistics file to open the possiblity to add profiles
+  if(stats->create(timeloop->iotime))
+    return 1;
+
   if(fields->load(timeloop->iotime))
     return 1;
   if(boundary->load(timeloop->iotime))
@@ -300,9 +309,8 @@ int cmodel::load()
     return 1;
   if(thermo->create())
     return 1;
-  if(stats->create(timeloop->iotime))
-    return 1;
 
+  // end with modules that require all fields to be present
   if(boundary->setvalues())
     return 1;
   if(diff->setvalues())
@@ -380,9 +388,12 @@ int cmodel::exec()
     // statistics when not in substep and not directly after restart
     if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))
     {
-      stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
-      //if(cross->exec(timeloop->time, timeloop->itime, timeloop->iotime))
-      //  return 1;
+      if(stats->dostats())
+      {
+        fields->statsexec();
+        thermo->statsexec();
+        stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
+      }
 
       if(cross->docross())
         fields->execcross();

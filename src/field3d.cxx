@@ -27,11 +27,13 @@
 #include "field3d.h"
 #include "defines.h"
 
-cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein)
+cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein, std::string longnamein, std::string unitin)
 {
-  grid   = gridin;
-  name   = namein;
-  master = masterin;
+  grid     = gridin;
+  name     = namein;
+  longname = longnamein;
+  unit     = unitin;
+  master   = masterin;
 }
 
 cfield3d::~cfield3d()

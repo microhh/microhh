@@ -32,7 +32,7 @@ class cfield3d
 {
   public:
     // functions
-    cfield3d(cgrid *, cmaster *, std::string);
+    cfield3d(cgrid *, cmaster *, std::string, std::string, std::string);
     ~cfield3d();
 
     int init();
@@ -48,6 +48,8 @@ class cfield3d
     double *datafluxbot;
     double *datafluxtop;
     std::string name;
+    std::string unit;
+    std::string longname;
     double visc;
 
   private:

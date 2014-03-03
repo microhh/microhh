@@ -17,6 +17,7 @@ qlt = stats.variables["ql"][:,:]*1000.
 cft = stats.variables["cfrac"][:,:]
 
 sfluxt = stats.variables["sflux"][:,:]
+bfluxt = stats.variables["bflux"][:,:]
 ufluxt = stats.variables["uflux"][:,:]
 vfluxt = stats.variables["vflux"][:,:]
 Ufluxt = ufluxt + vfluxt
@@ -37,6 +38,7 @@ ql = numpy.mean(qlt[start:end,:], 0)
 cf = numpy.mean(cft[start:end,:], 0)
 
 sflux = numpy.mean(sfluxt[start:end,:], 0)
+bflux = numpy.mean(bfluxt[start:end,:], 0)
 uflux = numpy.mean(ufluxt[start:end,:], 0)
 vflux = numpy.mean(vfluxt[start:end,:], 0)
 Uflux = numpy.mean(Ufluxt[start:end,:], 0)
@@ -104,6 +106,13 @@ ylabel(r'z [m]')
 
 figure()
 for n in range(start,end):
+  plot(bfluxt[n,:], zh, color='#eeeeee')
+plot(bflux, zh)
+xlabel(r'w`b` [m$^2$~s$^{-3}$]')
+ylabel(r'z [m]')
+
+figure()
+for n in range(start,end):
   plot(ufluxt[n,:], zh, color='#eeeeee')
   #plot(vfluxt[n,:], zh, color='#eeeeee')
 plot(uflux, zh)
@@ -116,7 +125,7 @@ figure()
 for n in range(start,end):
   plot(w2t[n,:], zh, color='#eeeeee')
 plot(w2, zh)
-xlabel(r'w`$^2$ [m^2~s$^{-2}$]')
+xlabel(r'w`$^2$ [m$^2$~s$^{-2}$]')
 ylabel(r'z [m]')
 
 figure()

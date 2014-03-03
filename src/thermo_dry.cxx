@@ -24,8 +24,12 @@
 #include "fields.h"
 #include "thermo_dry.h"
 #include "defines.h"
+#include "model.h"
+#include "stats.h"
+#include "diff_les2s.h"
 
 #define gravity 9.81
+#define NO_OFFSET 0.
 
 cthermo_dry::cthermo_dry(cmodel *modelin) : cthermo(modelin)
 {
@@ -41,10 +45,35 @@ int cthermo_dry::readinifile(cinput *inputin)
   int nerror = 0;
   nerror += inputin->getItem(&thref, "thermo", "thref", "");
 
-  nerror += fields->initpfld("th");
+  nerror += fields->initpfld("th", "Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
 
   return nerror;
+}
+
+int cthermo_dry::init()
+{
+  stats = model->stats;
+  return 0;
+}
+
+int cthermo_dry::create()
+{
+  stats->addprof("b", "Buoyancy", "m s-2", "z");
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+  }
+
+  stats->addprof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
+  stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+  stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+  stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+
+  return 0;
 }
 
 int cthermo_dry::exec()
@@ -53,6 +82,51 @@ int cthermo_dry::exec()
     calcbuoyancytend_2nd(fields->wt->data, fields->s["th"]->data);
   else if(grid->swspatialorder == "4")
     calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data);
+
+  return 0;
+}
+
+int cthermo_dry::statsexec()
+{
+  // calculate the buoyancy and its surface flux for the profiles
+  calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data);
+  calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot);
+
+  // calculate the mean
+  stats->calcmean(fields->s["tmp1"]->data, stats->profs["b"].data, NO_OFFSET);
+
+  // calculate the moments
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->calcmoment(fields->s["tmp1"]->data, stats->profs["b"].data, stats->profs["b"+sn].data, n, 0);
+  }
+
+  // calculate the gradients
+  if(grid->swspatialorder == "2")
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+  if(grid->swspatialorder == "4")
+    stats->calcgrad_4th(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi4);
+
+  // calculate turbulent fluxes
+  if(grid->swspatialorder == "2")
+    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+  if(grid->swspatialorder == "4")
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+
+  // calculate diffusive fluxes
+  if(model->diff->getname() == "les2s")
+  {
+    cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
+    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
+  }
+  else
+    stats->calcdiff_4th(fields->s["tmp1"]->data, stats->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc);
+
+  // calculate the total fluxes
+  stats->addfluxes(stats->profs["bflux"].data, stats->profs["bw"].data, stats->profs["bdiff"].data);
 
   return 0;
 }

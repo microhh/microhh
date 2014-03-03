@@ -19,38 +19,47 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF
-#define DIFF
+#include <cstdio>
+#include "grid.h"
+#include "fields.h"
+#include "stats.h"
+#include "defines.h"
+#include "model.h"
 
-// forward declaration to speed up build time
-class cmodel;
-class cgrid;
-class cfields;
-class cmaster;
-
-class cdiff
+cstats::cstats(cmodel *modelin)
 {
-  public:
-    cdiff(cmodel *);
-    virtual ~cdiff();
+  model  = modelin;
+  grid   = model->grid;
+  fields = model->fields;
+  master = model->master;
+}
 
-    virtual int readinifile(cinput *);
-    virtual int setvalues();
-    virtual int execvisc();
-    virtual int exec();
+cstats::~cstats()
+{
+}
 
-    std::string getname();
-    virtual unsigned long gettimelim(unsigned long, double);
-    virtual double getdn(double);
+int cstats::readinifile(cinput *inputin)
+{
+  return 0;
+}
 
-    double dnmax;
+int cstats::init(double ifactor)
+{
+  return 0;
+}
 
-  protected:
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
-    cmaster *master;
+int cstats::create(int n)
+{
+  return 0;
+}
 
-    std::string swdiff;
-};
-#endif
+unsigned long cstats::gettimelim(unsigned long itime)
+{
+  return ulhuge;
+}
+
+int cstats::exec(int iteration, double time, unsigned long itime)
+{
+  return 0;
+}
+
