@@ -44,7 +44,7 @@ class cthermo
     virtual int getbuoyancysurf(cfield3d *);
     virtual int getbuoyancyfluxbot(cfield3d *);
 
-    std::string getname();
+    std::string getsw();
     virtual int getprogvars(std::vector<std::string> *);
 
   protected:

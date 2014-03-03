@@ -264,14 +264,14 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   //   calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
 
   // in case of moisture, calc ql mean
-  if(model->thermo->getname() == "moist")
-  {
+  // if(model->thermo->getname() == "moist")
+  // {
     // use a static cast to get access to the thermo moist functions
     //static_cast<cthermo_moist *>(model->thermo)->getql(fields->s["tmp1"], fields->s["tmp2"]);
     // static_cast<cthermo_moist *>(model->thermo)->getthermofield(fields->s["tmp1"], fields->s["tmp2"],"ql");
     // calcmean (fields->s["tmp1"]->data, profs["ql"].data, NO_OFFSET);
     // calccount(fields->s["tmp1"]->data, profs["cfrac"].data, 0.);
-  }
+  // }
 
   /*
   // calculate model means without correction for transformation

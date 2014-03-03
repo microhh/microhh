@@ -217,7 +217,7 @@ int cboundary_surface::setvalues()
 int cboundary_surface::bcvalues()
 {
   // start with retrieving the stability information
-  if(model->thermo->getname() == "off")
+  if(model->thermo->getsw() == "0")
   {
     stability_neutral(ustar, obuk,
                       fields->u->data, fields->v->data,

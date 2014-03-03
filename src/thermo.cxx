@@ -34,7 +34,7 @@ cthermo::cthermo(cmodel *modelin)
   fields = model->fields;
   master = model->master;
 
-  swthermo = "off";
+  swthermo = "0";
 }
 
 cthermo::~cthermo()
@@ -86,7 +86,7 @@ int cthermo::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
-std::string cthermo::getname()
+std::string cthermo::getsw()
 {
   return swthermo;
 }
