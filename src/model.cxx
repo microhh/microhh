@@ -383,7 +383,6 @@ int cmodel::exec()
         thermo->execstats();
         budget->execstats();
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
-        stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 
       if(cross->docross())

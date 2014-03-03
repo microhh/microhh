@@ -127,79 +127,21 @@ int cstats::create(int n)
 
     // create variables belonging to dimensions
     iter_var = dataFile->add_var("iter", ncInt   , t_dim );
-    nerror+= iter_var->add_att("units", "-");
-    nerror+= iter_var->add_att("longname", "Iteration oumber");
-    t_var    = dataFile->add_var("t"   , ncDouble, t_dim );
-    nerror+= t_var->add_att("units", "s");
-    nerror+= t_var->add_att("longname", "Time");
-    z_var    = dataFile->add_var("z"   , ncDouble, z_dim );
-    nerror+= z_var->add_att("units", "m");
-    nerror+= z_var->add_att("longname", "Full level height");
-    zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
-    nerror+= zh_var->add_att("units", "m");
-    nerror+= zh_var->add_att("longname", "Half level height");
+    nerror += iter_var->add_att("units", "-");
+    nerror += iter_var->add_att("longname", "Iteration number");
+
+    t_var = dataFile->add_var("t", ncDouble, t_dim );
+    nerror += t_var->add_att("units", "s");
+    nerror += t_var->add_att("longname", "Time");
+
+    z_var = dataFile->add_var("z", ncDouble, z_dim );
+    nerror += z_var->add_att("units", "m");
+    nerror += z_var->add_att("longname", "Full level height");
+
+    zh_var = dataFile->add_var("zh", ncDouble, zh_dim);
+    nerror += zh_var->add_att("units", "m");
+    nerror += zh_var->add_att("longname", "Half level height");
   }
-
-  // means
-  // addprof("u", "z" );
-  // addprof("v", "z" );
-  // addprof("w", "zh");
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   addprof(it->first, "z");
-  //   addprof("evisc", "z");
-  // addprof("p", "z");
-
-  // in case of moisture, add ql prof
-  // if(model->thermo->getname() == "moist")
-  // {
-  //     addprof("ql", "z");
-  //     addprof("cfrac", "z");
-  // }
-
-  // // 2nd order
-  // addprof("u2", "z" );
-  // addprof("v2", "z" );
-  // addprof("w2", "zh");
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   addprof(it->first+"2", "z");
-
-  // 3rd order
-  // addprof("u3", "z" );
-  // addprof("v3", "z" );
-  // addprof("w3", "zh");
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   addprof(it->first+"3", "z");
-
-  // // 4th order
-  // addprof("u4", "z" );
-  // addprof("v4", "z" );
-  // addprof("w4", "zh");
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   addprof(it->first+"4", "z");
-
-  // // gradients
-  // addprof("ugrad", "zh");
-  // addprof("vgrad", "zh");
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   addprof(it->first+"grad", "zh");
-
-  // // turbulent fluxes
-  // addprof("uw", "zh");
-  // addprof("vw", "zh");
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   addprof(it->first+"w", "zh");
-
-  // // diffusive fluxes
-  // addprof("udiff", "zh");
-  // addprof("vdiff", "zh");
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   addprof(it->first+"diff", "zh");
-
-  // // total fluxes
-  // addprof("uflux", "zh");
-  // addprof("vflux", "zh");
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   addprof(it->first+"flux", "zh");
 
   if(master->mpiid == 0)
   {
@@ -244,89 +186,12 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   if(itime % isampletime != 0)
     return 0;
 
-  // if(master->mpiid == 0) std::printf("Saving stats for time %f\n", time);
-
+  // put the data into the NetCDF file
   if(master->mpiid == 0)
   {
     t_var   ->put_rec(&time     , nstats);
     iter_var->put_rec(&iteration, nstats);
-  }
 
-  // PROFILES
-  // calculate means
-  // calcmean(fields->u->data, profs["u"].data, grid->utrans);
-  // calcmean(fields->v->data, profs["v"].data, grid->vtrans);
-  // calcmean(fields->w->data, profs["w"].data, NO_OFFSET);
-  // for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  //   calcmean(it->second->data, profs[it->first].data, NO_OFFSET);
-
-  // calcmean(fields->s["p"]->data, profs["p"].data, NO_OFFSET);
-  //   calcmean(fields->s["evisc"]->data, profs["evisc"].data, NO_OFFSET);
-
-  // in case of moisture, calc ql mean
-  // if(model->thermo->getname() == "moist")
-  // {
-    // use a static cast to get access to the thermo moist functions
-    //static_cast<cthermo_moist *>(model->thermo)->getql(fields->s["tmp1"], fields->s["tmp2"]);
-    // static_cast<cthermo_moist *>(model->thermo)->getthermofield(fields->s["tmp1"], fields->s["tmp2"],"ql");
-    // calcmean (fields->s["tmp1"]->data, profs["ql"].data, NO_OFFSET);
-    // calccount(fields->s["tmp1"]->data, profs["cfrac"].data, 0.);
-  // }
-
-  /*
-  // calculate model means without correction for transformation
-  calcmean(fields->u->data, umodel, NO_OFFSET);
-  calcmean(fields->v->data, vmodel, NO_OFFSET);
-
-  // 2nd order
-  calcmoment(fields->u->data, umodel, profs["u2"].data, 2., 0);
-  calcmoment(fields->v->data, vmodel, profs["v2"].data, 2., 0);
-  calcmoment(fields->w->data, profs["w"].data, profs["w2"].data, 2., 1);
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcmoment(it->second->data, profs[it->first].data, profs[it->first+"2"].data, 2., 0);
-
-  // 3rd order
-  calcmoment(fields->u->data, umodel, profs["u3"].data, 3., 0);
-  calcmoment(fields->v->data, vmodel, profs["v3"].data, 3., 0);
-  calcmoment(fields->w->data, profs["w"].data, profs["w3"].data, 3., 1);
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcmoment(it->second->data, profs[it->first].data, profs[it->first+"3"].data, 3., 0);
-
-  // 4th order
-  calcmoment(fields->u->data, umodel, profs["u4"].data, 4., 0);
-  calcmoment(fields->v->data, vmodel, profs["v4"].data, 4., 0);
-  calcmoment(fields->w->data, profs["w"].data, profs["w4"].data, 4., 1);
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcmoment(it->second->data, profs[it->first].data, profs[it->first+"4"].data, 3., 0);
-
-  calcgrad(fields->u->data, profs["ugrad"].data, grid->dzhi);
-  calcgrad(fields->v->data, profs["vgrad"].data, grid->dzhi);
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcgrad(it->second->data, profs[it->first+"grad"].data, grid->dzhi);
-
-  // calculate turbulent fluxes
-  calcflux(fields->u->data, fields->w->data, profs["uw"].data, fields->s["tmp1"]->data, 1, 0);
-  calcflux(fields->v->data, fields->w->data, profs["vw"].data, fields->s["tmp1"]->data, 0, 1);
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcflux(it->second->data, fields->w->data, profs[it->first+"w"].data, fields->s["tmp1"]->data, 0, 0);
-
-  // calculate diffusive fluxes
-  // TODO find a prettier solution for this cast later
-  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-  calcdiff(fields->u->data, fields->s["evisc"]->data, profs["udiff"].data, grid->dzhi, fields->u->datafluxbot, fields->u->datafluxtop, 1.);
-  calcdiff(fields->v->data, fields->s["evisc"]->data, profs["vdiff"].data, grid->dzhi, fields->v->datafluxbot, fields->v->datafluxtop, 1.);
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    calcdiff(it->second->data, fields->s["evisc"]->data, profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
-
-  addfluxes(profs["uflux"].data, profs["uw"].data, profs["udiff"].data);
-  addfluxes(profs["vflux"].data, profs["vw"].data, profs["vdiff"].data);
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    addfluxes(profs[it->first+"flux"].data, profs[it->first+"w"].data, profs[it->first+"diff"].data);
-  */
-
-  // put the data into the NetCDF file
-  if(master->mpiid == 0)
-  {
     for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
       profs[it->first].ncvar->put_rec(&profs[it->first].data[grid->kstart], nstats);
 
@@ -350,6 +215,7 @@ std::string cstats::getsw()
 int cstats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
 {
   int nerror = 0;
+
   // create the NetCDF variable
   if(master->mpiid == 0)
   {
@@ -357,16 +223,17 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
     else if(zloc == "zh")
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
-    nerror+=profs[name].ncvar->add_att("units", unit.c_str());
-    nerror+=profs[name].ncvar->add_att("long_name", longname.c_str());
-    nerror+=profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+    nerror += profs[name].ncvar->add_att("units", unit.c_str());
+    nerror += profs[name].ncvar->add_att("long_name", longname.c_str());
+    nerror += profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
   }
 
   // and allocate the memory and initialize at zero
   profs[name].data = new double[grid->kcells];
   for(int k=0; k<grid->kcells; ++k)
     profs[name].data[k] = 0.;
-  return (nerror>0);
+
+  return nerror;
 }
 
 int cstats::addfixedprof(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
@@ -381,9 +248,9 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
       var = dataFile->add_var(name.c_str(), ncDouble, z_dim );
     else if(zloc == "zh")
       var = dataFile->add_var(name.c_str(), ncDouble, zh_dim);
-    nerror+=var->add_att("units", unit.c_str());
-    nerror+=var->add_att("long_name", longname.c_str());
-    nerror+=var->add_att("_FillValue", NC_FILL_DOUBLE);
+    nerror += var->add_att("units", unit.c_str());
+    nerror += var->add_att("long_name", longname.c_str());
+    nerror += var->add_att("_FillValue", NC_FILL_DOUBLE);
 
     if(zloc == "z")
       var->put(&prof[grid->kstart], grid->kmax);
@@ -391,7 +258,7 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
       var->put(&prof[grid->kstart], grid->kmax+1);
   }
 
-  return (nerror>0);
+  return nerror;
 }
 
 int cstats::addtseries(std::string name, std::string longname, std::string unit)
@@ -401,14 +268,15 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   if(master->mpiid == 0)
   {
     tseries[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim);
-    nerror+=tseries[name].ncvar->add_att("units", unit.c_str());
-    nerror+=tseries[name].ncvar->add_att("long_name", longname.c_str());
-    nerror+=tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+    nerror += tseries[name].ncvar->add_att("units", unit.c_str());
+    nerror += tseries[name].ncvar->add_att("long_name", longname.c_str());
+    nerror += tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
   }
 
   //and allocate the memory and initialize at zero
   tseries[name].data = 0.;
-  return (nerror>0);
+
+  return nerror;
 }
 
 // COMPUTATIONAL KERNELS BELOW
