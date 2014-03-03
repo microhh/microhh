@@ -650,7 +650,7 @@ int cstats::calccover(double * restrict data, double& cover, double threshold)
         if (data[ijk]>threshold)
         {
           cover += 1.;
-          continue;
+          break;
         }
       }
 
