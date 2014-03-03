@@ -50,11 +50,15 @@ class cthermo_dry : public cthermo
 
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);
-    int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
+    int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    int getbuoyancyfluxbot(cfield3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
+    // cross sections
+    std::vector<std::string> crosslist;           ///< List with all crosses from ini file
+    std::vector<std::string> allowedcrossvars;    ///< List with allowed cross variables
+
     int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
     int calcbuoyancybot(double *, double *,
                         double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
