@@ -138,6 +138,11 @@ int cfields::init()
   if(n > 0)
     return 1;
 
+  // \TODO Define a reference density. Needs to be replaced once anelastic is there
+  rhoref = new double[grid->kcells];
+  for (int k = grid->kstart; k<grid->kend; ++k)
+    rhoref[k] = 1.;
+
   // allocate help arrays for statistics;
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];

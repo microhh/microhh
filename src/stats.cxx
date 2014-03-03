@@ -124,8 +124,8 @@ int cstats::create(int n)
     nerror+= z_var->add_att("units", "m");
     nerror+= z_var->add_att("longname", "Full level height");
     zh_var   = dataFile->add_var("zh"  , ncDouble, zh_dim);
-    nerror+= z_var->add_att("units", "m");
-    nerror+= z_var->add_att("longname", "Half level height");
+    nerror+= zh_var->add_att("units", "m");
+    nerror+= zh_var->add_att("longname", "Half level height");
   }
 
   // means
@@ -377,9 +377,10 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   //create the NetCDF variable
   if(master->mpiid == 0)
   {
-    nerror+=profs[name].ncvar->add_att("units", unit.c_str());
-    nerror+=profs[name].ncvar->add_att("long_name", longname.c_str());
-    nerror+=profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+    tseries[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim);
+    nerror+=tseries[name].ncvar->add_att("units", unit.c_str());
+    nerror+=tseries[name].ncvar->add_att("long_name", longname.c_str());
+    nerror+=tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
   }
 
   //and allocate the memory and initialize at zero
@@ -417,7 +418,6 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   return 0;
 }
 
-// COMPUTATIONAL KERNELS BELOW
 int cstats::calccount(double * restrict data, double * restrict prof, double threshold)
 {
   int ijk,jj,kk;
@@ -711,5 +711,62 @@ int cstats::addfluxes(double * restrict flux, double * restrict turb, double * r
     flux[k] = turb[k] + diff[k];
 
   return 0;
+}
+
+int cstats::calcpath(double * restrict data, double & path)
+{
+  int ijk,jj,kk;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  int kstart = grid->kstart;
+  int nerror = 0;
+
+
+  path = 0.;
+  // Integrate with height
+  for(int k=kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        path += fields->rhoref[k] * data[ijk] * grid->dz[k];
+      }
+
+  path /= 1.0*grid->imax*grid->jmax;
+
+  grid->getprof(&path,1);
+
+  return nerror;
+}
+
+
+int cstats::calccover(double * restrict data, double& cover, double threshold)
+{
+  int ijk,jj,kk;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  int kstart = grid->kstart;
+  int nerror = 0;
+
+  cover = 0.;
+  // Integrate with height
+  for(int j=grid->jstart; j<grid->jend; j++)
+    for(int i=grid->istart; i<grid->iend; i++)
+      for(int k=kstart; k<grid->kend; k++)
+      {
+        ijk  = i + j*jj + k*kk;
+        if (data[ijk]>threshold)
+        {
+          cover += 1.;
+          continue;
+        }
+      }
+
+  cover /= grid->imax*grid->jmax;
+
+  grid->getprof(&cover,1);
+
+  return nerror;
 }
 

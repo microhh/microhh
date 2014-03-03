@@ -83,6 +83,8 @@ class cfields
     // TODO remove these to and bring them to diffusion model
     double visc;
 
+    double *rhoref;
+
   private:
     // variables
     cmodel  *model;

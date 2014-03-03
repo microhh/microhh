@@ -129,6 +129,9 @@ int cthermo_moist::create()
   stats->addprof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
   stats->addprof("cfrac", "Cloud fraction", "-","z");
 
+  stats->addtseries("lwp", "Liquid water path", "kg m-2");
+  stats->addtseries("ccover", "Projected cloud cover", "-");
+
   return nerror;
 }
 
@@ -205,6 +208,9 @@ int cthermo_moist::statsexec()
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
   stats->calcmean (fields->s["tmp1"]->data, stats->profs["ql"].data, NO_OFFSET);
   stats->calccount(fields->s["tmp1"]->data, stats->profs["cfrac"].data, 0.);
+
+  stats->calccover(fields->s["tmp1"]->data, stats->tseries["ccover"].data,0.);
+  stats->calcpath(fields->s["tmp1"]->data, stats->tseries["lwp"].data);
 
   return 0;
 }
