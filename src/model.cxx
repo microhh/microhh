@@ -401,6 +401,8 @@ int cmodel::exec()
           return 1;
         if(thermo->execcross())
           return 1;
+        if(boundary->execcross())
+          return 1;
       }
     }
 

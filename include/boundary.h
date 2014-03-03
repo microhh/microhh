@@ -57,7 +57,8 @@ class cboundary
     virtual int save(int); ///< Save boundary conditions related fields for restarts.
     virtual int load(int); ///< Load boundary conditions related fields for restarts.
 
-    int exec(); ///< Update the boundary conditions.
+    int exec();              ///< Update the boundary conditions.
+    virtual int execcross(); ///< Execute cross sections of surface
 
   protected:
     cmaster *master; ///< Pointer to master class.

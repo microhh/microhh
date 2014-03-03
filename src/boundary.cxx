@@ -224,6 +224,11 @@ int cboundary::exec()
   return 0;
 }
 
+int cboundary::execcross()
+{
+  return 0;
+}
+
 int cboundary::bcvalues()
 {
   return 0;
