@@ -1,8 +1,8 @@
 import numpy
 
 # set the height
-kmax  = 40
-zsize = 3750.
+kmax  = 32
+zsize = 3000.
 dz = zsize / kmax
 
 # set the height
