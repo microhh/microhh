@@ -42,10 +42,12 @@ cinput::~cinput()
 
 int cinput::readinput()
 {
-  readinifile();
-  readproffile(&proflist, master->simname + ".prof");
+  int nerror = 0;
 
-  return 0;
+  nerror += readinifile();
+  nerror += readproffile(&proflist, master->simname + ".prof");
+
+  return nerror;
 }
 
 int cinput::clear()
