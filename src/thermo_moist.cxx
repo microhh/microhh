@@ -217,7 +217,8 @@ int cthermo_moist::create(cinput *inputin)
   allowedcrossvars.push_back("b");
   allowedcrossvars.push_back("bbot");
   allowedcrossvars.push_back("bfluxbot");
-  allowedcrossvars.push_back("blngrad");
+  if(grid->swspatialorder == "4")
+    allowedcrossvars.push_back("blngrad");
   allowedcrossvars.push_back("ql");
   allowedcrossvars.push_back("qlpath");
 

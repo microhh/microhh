@@ -162,7 +162,8 @@ int cthermo_dry::create(cinput *inputin)
   allowedcrossvars.push_back("b");
   allowedcrossvars.push_back("bbot");
   allowedcrossvars.push_back("bfluxbot");
-  allowedcrossvars.push_back("blngrad");
+  if(grid->swspatialorder == "4")
+    allowedcrossvars.push_back("blngrad");
 
   // Check input list of cross variables (crosslist)
   std::vector<std::string>::iterator it=crosslist.begin();

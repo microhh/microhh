@@ -181,8 +181,12 @@ int cfields::checkaddcross(std::string var, std::string type, std::vector<std::s
   position = std::find(crosslist->begin(), crosslist->end(), var + type);
   if(position != crosslist->end()) 
   {
-    typelist->push_back(var);
-    crosslist->erase(position);
+    // don't allow lngrad in 2nd order mode
+    if(!(type == "lngrad" && grid->swspatialorder == "2"))
+    {
+      typelist->push_back(var);
+      crosslist->erase(position);
+    }
   }
 
   return 0;
