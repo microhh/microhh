@@ -877,7 +877,12 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
 
 int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::string varname, int kmaxin)
 {
+  // container for the raw data
   datamap rawdata;
+
+  // create a typedef to store the time in string and double to allow sorting
+  typedef std::map<double, std::string> timemap;
+  timemap rawtimemap;
 
   // read the file that contains the time varying data
   if(readproffile(&rawdata, varname + ".timeprof"))
@@ -899,14 +904,19 @@ int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::s
     double timedouble;
     int n = std::sscanf(inputstring, " %lf %[^\n] ", &timedouble, temp);
     if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
-      timelist->push_back(timedouble);
+      rawtimemap[timedouble] = it->first;
     else
     {
       if(master->mpiid == 0) std::printf("ERROR header item \"%s\" is not of type DOUBLE\n", it->first.c_str());
       return 1;
     }
-    
-    int profsize = it->second.size();
+  }
+  
+  // now loop over the new time list in the correct order (sort on double rather than string)
+  for(timemap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
+  {
+    std::printf("CvH: %E\n", it->first);
+    int profsize = rawdata[it->second].size();
     if(profsize < kmaxin)
     {
       if(master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
@@ -915,11 +925,15 @@ int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::s
     if(profsize > kmaxin)
       if(master->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
 
-    // process the data
-    for(int k=0; k<kmaxin; k++)
-      (*timeprof)[timecount*kmaxin + k] = it->second[k];
+    // all checks passed, save the data now
+    // save the time data
+    timelist->push_back(it->first);
 
-    if(master->mpiid == 0) std::printf("Header item \"%s\" has been read from the input\n", it->first.c_str());
+    // save the profile
+    for(int k=0; k<kmaxin; k++)
+      (*timeprof)[timecount*kmaxin + k] = rawdata[it->second][k];
+
+    if(master->mpiid == 0) std::printf("Header item \"%s\" has been read from the input\n", it->second.c_str());
     ++timecount;
   }
 
