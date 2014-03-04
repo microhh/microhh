@@ -40,6 +40,14 @@ cinput::~cinput()
 {
 }
 
+int cinput::readinput()
+{
+  readinifile();
+  readproffile();
+
+  return 0;
+}
+
 int cinput::clear()
 {
   inputlist.clear();

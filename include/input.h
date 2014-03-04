@@ -34,8 +34,8 @@ class cinput
   public:
     cinput(cmaster *);
     ~cinput();
-    int readinifile ();
-    int readproffile();
+
+    int readinput();
     int getItem(int *        , std::string, std::string, std::string);
     int getItem(int *        , std::string, std::string, std::string, int);
     int getItem(double *     , std::string, std::string, std::string);
@@ -55,6 +55,9 @@ class cinput
 
   private:
     cmaster *master;
+
+    int readinifile ();
+    int readproffile();
 
     template <class valuetype>
     int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);

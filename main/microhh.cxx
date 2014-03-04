@@ -37,9 +37,7 @@ int main(int argc, char *argv[])
   cmodel  model (&master, &input);
 
   // read the input data
-  if(input.readinifile())
-    return 1;
-  if(input.readproffile())
+  if(input.readinput())
     return 1;
 
   if(master.readinifile(&input))
