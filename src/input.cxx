@@ -43,7 +43,7 @@ cinput::~cinput()
 int cinput::readinput()
 {
   readinifile();
-  readproffile();
+  readproffile(&proflist, master->simname);
 
   return 0;
 }
@@ -199,7 +199,7 @@ int cinput::readinifile()
   return nerrors;
 }
 
-int cinput::readproffile()
+int cinput::readproffile(profmap *profs, std::string inputname)
 {
   int nerror = 0;
   char inputline[256], temp1[256];
@@ -208,7 +208,7 @@ int cinput::readproffile()
 
   // read the input file
   FILE *inputfile;
-  std::string inputfilename = master->simname + ".prof";
+  std::string inputfilename = inputname + ".prof";
 
   if(master->mpiid == 0)
   {
@@ -372,7 +372,7 @@ int cinput::readproffile()
 
     // store the data
     for(n=0; n<nvar; n++)
-      proflist[varnames[n]].push_back(varvalues[n]);
+      (*profs)[varnames[n]].push_back(varvalues[n]);
   }
 
   if(master->mpiid == 0)

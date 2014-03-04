@@ -55,9 +55,10 @@ class cinput
 
   private:
     cmaster *master;
+    typedef std::map<std::string, std::vector<double> > profmap;
 
-    int readinifile ();
-    int readproffile();
+    int readinifile();
+    int readproffile(profmap *, std::string);
 
     template <class valuetype>
     int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);
@@ -84,7 +85,6 @@ class cinput
     typedef std::map<std::string, inputmap1d> inputmap2d;
     typedef std::map<std::string, inputmap2d> inputmap;
     inputmap inputlist;
-    typedef std::map<std::string, std::vector<double> > profmap;
     profmap proflist;
     // std::vector<std::string> varnames;
     // std::vector<double> varvalues;
