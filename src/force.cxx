@@ -128,9 +128,18 @@ int cforce::create(cinput *inputin)
   {
     nerror += inputin->getProf(&ug[grid->kstart], "ug", grid->kmax);
     nerror += inputin->getProf(&vg[grid->kstart], "vg", grid->kmax);
+
     // CvH test
-    timeprofmap test;
-    nerror += inputin->getTimeProf(&test, "ug", grid->kmax);
+    double *test;
+    std::vector<double> timelist;
+    nerror += inputin->getTimeProf(&test, &timelist, "ug", grid->kmax);
+    std::printf("TIMESIZE: %lu\n", timelist.size());
+    for(int i=0; i<timelist.size(); ++i)
+    {
+      std::printf("CvH (time): %E\n", timelist[i]);
+      for(int k=0; k<grid->kmax; ++k)
+        std::printf("%E\n", test[i*grid->kmax + k]);
+    }
   }
 
   if(swls == "1")

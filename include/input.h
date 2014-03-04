@@ -30,7 +30,6 @@
 class cmaster;
 
 typedef std::map<std::string, std::vector<double> > datamap;
-typedef std::map<double, std::vector<double> > timeprofmap;
 
 class cinput
 {
@@ -53,7 +52,7 @@ class cinput
     int getList(std::vector<std::string> *, std::string, std::string, std::string);
 
     int getProf(double *, std::string, int size);
-    int getTimeProf(timeprofmap *, std::string, int);
+    int getTimeProf(double **, std::vector<double> *, std::string, int);
     int clear();
     int printUnused();
 

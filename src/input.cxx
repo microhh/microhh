@@ -875,7 +875,7 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
   return 0;
 }
 
-int cinput::getTimeProf(timeprofmap *timeprof, std::string varname, int kmaxin)
+int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::string varname, int kmaxin)
 {
   datamap rawdata;
 
@@ -886,11 +886,27 @@ int cinput::getTimeProf(timeprofmap *timeprof, std::string varname, int kmaxin)
   // delete the column with the profile data
   rawdata.erase("z");
 
+  // allocate the 2d array containing the profiles
+  *timeprof = new double[rawdata.size()*kmaxin];
+
+  // first process the headers in order to get the time series
+  int timecount = 0;
   for(datamap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
   {
-    std::printf("CvH: time = %s\n", it->first.c_str());
-
-    int profsize = rawdata[it->first].size();
+    // check whether the item name is of type double
+    char inputstring[256], temp[256];
+    std::strcpy(inputstring, it->first.c_str());
+    double timedouble;
+    int n = std::sscanf(inputstring, " %lf %[^\n] ", &timedouble, temp);
+    if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
+      timelist->push_back(timedouble);
+    else
+    {
+      if(master->mpiid == 0) std::printf("ERROR header item \"%s\" is not of type DOUBLE\n", it->first.c_str());
+      return 1;
+    }
+    
+    int profsize = it->second.size();
     if(profsize < kmaxin)
     {
       if(master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
@@ -901,24 +917,10 @@ int cinput::getTimeProf(timeprofmap *timeprof, std::string varname, int kmaxin)
 
     // process the data
     for(int k=0; k<kmaxin; k++)
-    {
-      // check whether the item name is of type double
-      char inputstring[256], temp[256];
-      std::strcpy(inputstring, it->first.c_str());
-      double timedouble;
-      int n = std::sscanf(inputstring, " %lf %[^\n] ", &timedouble, temp);
-      if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
-         (*timeprof)[timedouble].push_back(it->second[k]);
-      else
-      {
-        if(master->mpiid == 0) std::printf("ERROR header item \"%s\" is not of type DOUBLE\n", it->first.c_str());
-        return 1;
-      }
-
-      std::printf("CvH: val = %d, %E\n", k, it->second[k]);
-    }
+      (*timeprof)[timecount*kmaxin + k] = it->second[k];
 
     if(master->mpiid == 0) std::printf("Header item \"%s\" has been read from the input\n", it->first.c_str());
+    ++timecount;
   }
 
   return 0;
