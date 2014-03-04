@@ -43,7 +43,7 @@ class cthermo_dry : public cthermo
     ~cthermo_dry();            ///< Destructor of the dry thermodynamics class.
     int readinifile(cinput *); ///< Processing data of the input file.
     int init();
-    int create();
+    int create(cinput *);
     int exec();                ///< Add the tendencies belonging to the buoyancy.
     int execstats();
     int execcross();
@@ -55,23 +55,37 @@ class cthermo_dry : public cthermo
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
+    int calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
+    int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
+    
     // cross sections
     std::vector<std::string> crosslist;           ///< List with all crosses from ini file
     std::vector<std::string> allowedcrossvars;    ///< List with allowed cross variables
 
-    int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
     int calcbuoyancybot(double *, double *,
-                        double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
-    int calcbuoyancyfluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-    int calcbuoyancytend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-    int calcbuoyancytend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+                        double *, double *,
+                        double *, double *);                ///< Calculation of the near-surface and surface buoyancy.
+    int calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
+    int calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+    int calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
     inline double interp2(const double, const double); ///< 2nd order interpolation function.
     inline double interp4(const double, const double, 
                           const double, const double); ///< 4th order interpolation function.
 
-    double thref; ///< Reference potential temperature.
+    // double thref0; ///< Reference potential temperature.
 
     cstats *stats;
+    double pbot; ///< Surface pressure.
+
+    double *thref;
+    double *pref;
+    double *exner;
+    // double *rhoref;
+
+    double *threfh;
+    double *prefh;
+    double *exnerh;
+    // double *rhorefh;
 };
 #endif

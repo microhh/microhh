@@ -45,10 +45,10 @@ class cthermo_dry_slope : public cthermo
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
     int execcross();
 
-    int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);
+    int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:

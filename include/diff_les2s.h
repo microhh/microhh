@@ -60,10 +60,10 @@ class cdiff_les2s : public cdiff
                       double *, double *,
                       double *, double *,
                       double);
-    int diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int diffw(double *, double *, double *, double *, double *, double *, double *);
-    int diffc(double *, double *, double *, double *, double *, double *, double *, double);
+    int diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int diffw(double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int diffc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
 
     double calcdnmul(double *, double *, double);
 

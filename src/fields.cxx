@@ -135,6 +135,10 @@ int cfields::init()
   for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
     n += it->second->init();
 
+  // allocate the base density profiles
+  rhoref  = new double[grid->kcells];
+  rhorefh = new double[grid->kcells];
+
   if(n > 0)
     return 1;
 

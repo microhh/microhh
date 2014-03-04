@@ -132,6 +132,6 @@ figure()
 for n in range(start,end):
   plot(tket[n,:], z, color='#eeeeee')
 plot(tke, z)
-xlabel(r'`TKE` [m$^2$~s$^{-2}$]')
+xlabel(r'TKE [m$^2$~s$^{-2}$]')
 ylabel(r'z [m]')
 
