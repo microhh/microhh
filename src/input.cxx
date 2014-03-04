@@ -43,7 +43,7 @@ cinput::~cinput()
 int cinput::readinput()
 {
   readinifile();
-  readproffile(&proflist, master->simname);
+  readproffile(&proflist, master->simname + ".prof");
 
   return 0;
 }
@@ -199,7 +199,7 @@ int cinput::readinifile()
   return nerrors;
 }
 
-int cinput::readproffile(profmap *profs, std::string inputname)
+int cinput::readproffile(datamap *profs, std::string inputname)
 {
   int nerror = 0;
   char inputline[256], temp1[256];
@@ -208,7 +208,7 @@ int cinput::readproffile(profmap *profs, std::string inputname)
 
   // read the input file
   FILE *inputfile;
-  std::string inputfilename = inputname + ".prof";
+  std::string inputfilename = inputname;
 
   if(master->mpiid == 0)
   {
@@ -270,6 +270,8 @@ int cinput::readproffile(profmap *profs, std::string inputname)
     {
       nvar++;
 
+      // CvH remove in order to make time step reading possible
+      /*
       if(!std::isalpha(substring[0]))
       {
         if(master->mpiid == 0)
@@ -279,8 +281,9 @@ int cinput::readproffile(profmap *profs, std::string inputname)
         }
         return 1;
       }
+      */
 
-      if(master->mpiid == 0) std::printf("Found variable \"%s\"\n", substring);
+      if(master->mpiid == 0) std::printf("Found header item \"%s\"\n", substring);
 
       // temporarily store the variable name
       varnames.push_back(std::string(substring));
@@ -842,7 +845,7 @@ int cinput::printUnused()
 
 int cinput::getProf(double *data, std::string varname, int kmaxin)
 {
-  profmap::const_iterator it = proflist.find(varname);
+  datamap::const_iterator it = proflist.find(varname);
 
   if(it != proflist.end())
   {
@@ -865,6 +868,39 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
     if(master->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
     for(int k=0; k<kmaxin; k++)
       data[k] = 0.;
+  }
+
+  return 0;
+}
+
+int cinput::getTimeProf(timeprofmap *timeprof, std::string varname, int kmaxin)
+{
+  datamap rawdata;
+  readproffile(&rawdata, varname + ".timeprof");
+
+  // delete the column with the profile data
+  rawdata.erase("z");
+
+  for(datamap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
+  {
+    std::printf("CvH: time = %s\n", it->first.c_str());
+
+    int profsize = rawdata[it->first].size();
+    if(profsize < kmaxin)
+    {
+      if(master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
+      return 1;
+    }
+    if(profsize > kmaxin)
+      if(master->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
+
+    for(int k=0; k<kmaxin; k++)
+    {
+      //(*timeprof)[it->first].push_back(it->second[k]);
+      std::printf("CvH: val = %d, %E\n", k, it->second[k]);
+    }
+
+    if(master->mpiid == 0) std::printf("Header item \"%s\" has been read from the input\n", varname.c_str());
   }
 
   return 0;

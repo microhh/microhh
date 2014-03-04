@@ -128,6 +128,9 @@ int cforce::create(cinput *inputin)
   {
     nerror += inputin->getProf(&ug[grid->kstart], "ug", grid->kmax);
     nerror += inputin->getProf(&vg[grid->kstart], "vg", grid->kmax);
+    // CvH test
+    timeprofmap test;
+    nerror += inputin->getTimeProf(&test, "ug", grid->kmax);
   }
 
   if(swls == "1")
