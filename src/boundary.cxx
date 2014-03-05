@@ -21,6 +21,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <algorithm>
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -28,6 +29,7 @@
 #include "boundary.h"
 #include "defines.h"
 #include "model.h"
+#include "timeloop.h"
 
 #define NO_OFFSET 0.
 #define NO_VELOCITY 0.
@@ -141,11 +143,67 @@ int cboundary::processbcs(cinput *inputin)
     }
   }
 
+  // get the list of time varying variables
+  nerror += inputin->getItem(&swtimedep  , "boundary", "swtimedep"  , "", "0");
+  nerror += inputin->getList(&timedeplist, "boundary", "timedeplist", "");
+
+  if(swtimedep == "1")
+  {
+    // update the value of the surface boundary condition
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    {
+      std::string name = "sbot[" + it->first + "]";
+      if(std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end()) 
+        nerror += inputin->getTime(&timedepdata[name], &timedeptime, name);
+    }
+  }
+
+
+
   return nerror;
 }
 
 int cboundary::init()
 {
+  return 0;
+}
+
+int cboundary::settimedep()
+{
+  if(swtimedep == "0")
+    return 0;
+
+  // first find the index for the time entries
+  int index = 0;
+  for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
+  {
+    std::printf("CvH TIMECHECK: %d, %E, %E\n", index, model->timeloop->time, *it);
+    if(model->timeloop->time < *it)
+      break;
+    else
+      ++index;
+  }
+
+  // second, calculate the weighting factor
+  double timestep;
+  double fac0, fac1;
+
+  timestep = timedeptime[index] - timedeptime[index-1];
+  fac0 = (model->timeloop->time - timedeptime[index-1]) / timestep;
+  fac1 = (timedeptime[index] - model->timeloop->time) / timestep;
+  std::printf("CvH FACTOR: %E, %E, %E,\n", fac0, fac1, fac0+fac1);
+
+  // process time dependent bcs for the surface fluxes
+  for(fieldmap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
+  {
+    std::string name = "sbot[" + it1->first + "]";
+    std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
+    if(it2 != timedepdata.end())
+    {
+      std::printf("CvH: Processing timedep for %s\n", name.c_str());
+    }
+  }
+
   return 0;
 }
 
