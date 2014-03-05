@@ -965,7 +965,6 @@ int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::s
   // now loop over the new time list in the correct order (sort on double rather than string)
   for(timemap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
   {
-    std::printf("CvH: %E\n", it->first);
     int profsize = rawdata[it->second].size();
     if(profsize < kmaxin)
     {
