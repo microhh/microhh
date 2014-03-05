@@ -208,10 +208,10 @@ int cthermo_moist::create(cinput *inputin)
 
     stats->addprof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
     stats->addprof("cfrac", "Cloud fraction", "-","z");
-  }
 
-  stats->addtseries("lwp", "Liquid water path", "kg m-2");
-  stats->addtseries("ccover", "Projected cloud cover", "-");
+    stats->addtseries("lwp", "Liquid water path", "kg m-2");
+    stats->addtseries("ccover", "Projected cloud cover", "-");
+  }
 
   // Cross sections (isn't there an easier way to populate this list?)
   allowedcrossvars.push_back("b");

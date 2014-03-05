@@ -29,13 +29,15 @@
 // forward declaration to avoid circular dependency
 class cmaster;
 
+typedef std::map<std::string, std::vector<double> > datamap;
+
 class cinput
 {
   public:
     cinput(cmaster *);
     ~cinput();
-    int readinifile ();
-    int readproffile();
+
+    int readinput();
     int getItem(int *        , std::string, std::string, std::string);
     int getItem(int *        , std::string, std::string, std::string, int);
     int getItem(double *     , std::string, std::string, std::string);
@@ -49,12 +51,17 @@ class cinput
     int getList(std::vector<int> *        , std::string, std::string, std::string);
     int getList(std::vector<std::string> *, std::string, std::string, std::string);
 
-    int getProf(double *     , std::string, int size);
+    int getProf(double *, std::string, int size);
+    int getTime(double **, std::vector<double> *, std::string);
+    int getTimeProf(double **, std::vector<double> *, std::string, int);
     int clear();
     int printUnused();
 
   private:
     cmaster *master;
+
+    int readinifile();
+    int readdatafile(datamap *, std::string, bool);
 
     template <class valuetype>
     int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);
@@ -81,10 +88,10 @@ class cinput
     typedef std::map<std::string, inputmap1d> inputmap2d;
     typedef std::map<std::string, inputmap2d> inputmap;
     inputmap inputlist;
-    typedef std::map<std::string, std::vector<double> > profmap;
-    profmap proflist;
-    std::vector<std::string> varnames;
-    std::vector<double> varvalues;
+    datamap proflist;
+    datamap timelist;
+    // std::vector<std::string> varnames;
+    // std::vector<double> varvalues;
     std::string isused;
 };
 #endif

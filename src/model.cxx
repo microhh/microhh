@@ -418,7 +418,7 @@ int cmodel::exec()
         // save the time data
         timeloop->save(timeloop->iotime);
         // save the fields
-        fields->save  (timeloop->iotime);
+        fields->save(timeloop->iotime);
         // save the boundary data
         boundary->save(timeloop->iotime);
       }

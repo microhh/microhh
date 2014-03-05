@@ -40,6 +40,19 @@ cinput::~cinput()
 {
 }
 
+int cinput::readinput()
+{
+  int nerror = 0;
+  const bool required = false;
+  const bool optional = true;
+
+  nerror += readinifile();
+  nerror += readdatafile(&proflist, master->simname + ".prof", required);
+  nerror += readdatafile(&timelist, master->simname + ".time", optional);
+
+  return nerror;
+}
+
 int cinput::clear()
 {
   inputlist.clear();
@@ -191,7 +204,7 @@ int cinput::readinifile()
   return nerrors;
 }
 
-int cinput::readproffile()
+int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
 {
   int nerror = 0;
   char inputline[256], temp1[256];
@@ -200,27 +213,36 @@ int cinput::readproffile()
 
   // read the input file
   FILE *inputfile;
-  std::string inputfilename = master->simname + ".prof";
+  std::string inputfilename = inputname;
 
+  int doreturn = 0;
   if(master->mpiid == 0)
   {
     inputfile = fopen(inputfilename.c_str(), "r");
     if(inputfile == NULL)
     {
-      std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
-      nerror++;
+      if(optional)
+        doreturn = true;
+      else
+      {
+        std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
+        nerror++;
+      }
     }
   }
 
   // broadcast the error count
-  master->broadcast(&nerror, 1);
+  master->broadcast(&nerror  , 1);
+  master->broadcast(&doreturn, 1);
   if(nerror)
     return 1;
+  if(doreturn)
+    return 0;
 
   int nlines = 0;
   int nline;
-  int nvar   = 0;
-  // std::vector<std::string> varnames;
+  int nvar = 0;
+  std::vector<std::string> varnames;
 
   if(master->mpiid == 0)
   {
@@ -262,6 +284,8 @@ int cinput::readproffile()
     {
       nvar++;
 
+      // CvH remove in order to make time step reading possible
+      /*
       if(!std::isalpha(substring[0]))
       {
         if(master->mpiid == 0)
@@ -271,8 +295,9 @@ int cinput::readproffile()
         }
         return 1;
       }
+      */
 
-      if(master->mpiid == 0) std::printf("Found variable \"%s\"\n", substring);
+      if(master->mpiid == 0) std::printf("Found header item \"%s\"\n", substring);
 
       // temporarily store the variable name
       varnames.push_back(std::string(substring));
@@ -300,7 +325,7 @@ int cinput::readproffile()
   int ncols;
   double datavalue;
 
-  // std::vector<double> varvalues;
+  std::vector<double> varvalues;
 
   // continue the loop from the exit value of nn
   for(nn++; nn<nlines; nn++)
@@ -364,7 +389,7 @@ int cinput::readproffile()
 
     // store the data
     for(n=0; n<nvar; n++)
-      proflist[varnames[n]].push_back(varvalues[n]);
+      (*series)[varnames[n]].push_back(varvalues[n]);
   }
 
   if(master->mpiid == 0)
@@ -834,7 +859,7 @@ int cinput::printUnused()
 
 int cinput::getProf(double *data, std::string varname, int kmaxin)
 {
-  profmap::const_iterator it = proflist.find(varname);
+  datamap::const_iterator it = proflist.find(varname);
 
   if(it != proflist.end())
   {
@@ -857,6 +882,108 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
     if(master->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
     for(int k=0; k<kmaxin; k++)
       data[k] = 0.;
+  }
+
+  return 0;
+}
+
+int cinput::getTime(double **data, std::vector<double> *time, std::string varname)
+{
+  // first get the time list
+  datamap::const_iterator it = timelist.find("t");
+  if(it != timelist.end())
+    *time = it->second;
+  else
+  {
+    if(master->mpiid == 0) std::printf("ERROR no header \"t\" found\n");
+    return 1;
+  }
+
+  // next, find the data
+  it = timelist.find(varname);
+  if(it != timelist.end())
+  {
+    int timesize = timelist[varname].size();
+    if(timesize != time->size())
+    {
+      if(master->mpiid == 0) std::printf("ERROR number of values does not match number of time entries\n");
+      return 1;
+    }
+    // allocate the data
+    *data = new double[timesize];
+    for(int n=0; n<timesize; ++n)
+      (*data)[n] = (it->second)[n];
+
+    if(master->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
+  }
+  else
+  {
+    if(master->mpiid == 0) std::printf("ERROR no time data found for variable \"%s\"\n", varname.c_str());
+    return 1;
+  }
+
+  return 0;
+}
+
+int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::string varname, int kmaxin)
+{
+  // container for the raw data
+  datamap rawdata;
+
+  // create a typedef to store the time in string and double to allow sorting
+  typedef std::map<double, std::string> timemap;
+  timemap rawtimemap;
+
+  // read the file that contains the time varying data
+  if(readdatafile(&rawdata, varname + ".timeprof", false))
+    return 1;
+
+  // delete the column with the profile data
+  rawdata.erase("z");
+
+  // allocate the 2d array containing the profiles
+  *timeprof = new double[rawdata.size()*kmaxin];
+
+  // first process the headers in order to get the time series
+  int timecount = 0;
+  for(datamap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
+  {
+    // check whether the item name is of type double
+    char inputstring[256], temp[256];
+    std::strcpy(inputstring, it->first.c_str());
+    double timedouble;
+    int n = std::sscanf(inputstring, " %lf %[^\n] ", &timedouble, temp);
+    if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
+      rawtimemap[timedouble] = it->first;
+    else
+    {
+      if(master->mpiid == 0) std::printf("ERROR header item \"%s\" is not of type DOUBLE\n", it->first.c_str());
+      return 1;
+    }
+  }
+  
+  // now loop over the new time list in the correct order (sort on double rather than string)
+  for(timemap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
+  {
+    int profsize = rawdata[it->second].size();
+    if(profsize < kmaxin)
+    {
+      if(master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
+      return 1;
+    }
+    if(profsize > kmaxin)
+      if(master->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
+
+    // all checks passed, save the data now
+    // save the time data
+    timelist->push_back(it->first);
+
+    // save the profile
+    for(int k=0; k<kmaxin; k++)
+      (*timeprof)[timecount*kmaxin + k] = rawdata[it->second][k];
+
+    if(master->mpiid == 0) std::printf("Header item \"%s\" has been read from the input\n", it->second.c_str());
+    ++timecount;
   }
 
   return 0;
