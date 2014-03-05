@@ -158,8 +158,6 @@ int cboundary::processbcs(cinput *inputin)
     }
   }
 
-
-
   return nerror;
 }
 
@@ -177,7 +175,6 @@ int cboundary::settimedep()
   int index = 0;
   for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
   {
-    std::printf("CvH TIMECHECK: %d, %E, %E\n", index, model->timeloop->time, *it);
     if(model->timeloop->time < *it)
       break;
     else
@@ -189,9 +186,8 @@ int cboundary::settimedep()
   double fac0, fac1;
 
   timestep = timedeptime[index] - timedeptime[index-1];
-  fac0 = (model->timeloop->time - timedeptime[index-1]) / timestep;
-  fac1 = (timedeptime[index] - model->timeloop->time) / timestep;
-  std::printf("CvH FACTOR: %E, %E, %E,\n", fac0, fac1, fac0+fac1);
+  fac0 = (timedeptime[index] - model->timeloop->time) / timestep;
+  fac1 = (model->timeloop->time - timedeptime[index-1]) / timestep;
 
   // process time dependent bcs for the surface fluxes
   for(fieldmap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
@@ -200,7 +196,9 @@ int cboundary::settimedep()
     std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
     if(it2 != timedepdata.end())
     {
-      std::printf("CvH: Processing timedep for %s\n", name.c_str());
+      sbc[it1->first]->bot = fac0*it2->second[index-1] + fac1*it2->second[index];
+      // std::printf("CvH: sbot[%s] = %E, %E, %E, %E\n", name.c_str(), fac0, it2->second[index-1], fac1, it2->second[index]);
+      setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, NO_OFFSET);
     }
   }
 
