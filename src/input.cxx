@@ -46,6 +46,7 @@ int cinput::readinput()
 
   nerror += readinifile();
   nerror += readproffile(&proflist, master->simname + ".prof");
+  nerror += readproffile(&timelist, master->simname + ".time");
 
   return nerror;
 }
@@ -870,6 +871,44 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
     if(master->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
     for(int k=0; k<kmaxin; k++)
       data[k] = 0.;
+  }
+
+  return 0;
+}
+
+int cinput::getTime(double **data, std::vector<double> *time, std::string varname)
+{
+  // first get the time list
+  datamap::const_iterator it = timelist.find("t");
+  if(it != timelist.end())
+    *time = it->second;
+  else
+  {
+    if(master->mpiid == 0) std::printf("ERROR no header \"t\" found\n");
+    return 1;
+  }
+
+  // next, find the data
+  it = timelist.find(varname);
+  if(it != timelist.end())
+  {
+    int timesize = timelist[varname].size();
+    if(timesize != time->size())
+    {
+      if(master->mpiid == 0) std::printf("ERROR number of values does not match number of time entries\n");
+      return 1;
+    }
+    // allocate the data
+    *data = new double[timesize];
+    for(int n=0; n<timesize; ++n)
+      (*data)[n] = (it->second)[n];
+
+    if(master->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
+  }
+  else
+  {
+    if(master->mpiid == 0) std::printf("ERROR no time data found for variable \"%s\"\n", varname.c_str());
+    return 1;
   }
 
   return 0;

@@ -52,6 +52,7 @@ class cinput
     int getList(std::vector<std::string> *, std::string, std::string, std::string);
 
     int getProf(double *, std::string, int size);
+    int getTime(double **, std::vector<double> *, std::string);
     int getTimeProf(double **, std::vector<double> *, std::string, int);
     int clear();
     int printUnused();
@@ -88,6 +89,7 @@ class cinput
     typedef std::map<std::string, inputmap2d> inputmap;
     inputmap inputlist;
     datamap proflist;
+    datamap timelist;
     // std::vector<std::string> varnames;
     // std::vector<double> varvalues;
     std::string isused;
