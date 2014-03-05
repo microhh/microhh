@@ -172,22 +172,41 @@ int cboundary::settimedep()
     return 0;
 
   // first find the index for the time entries
-  int index = 0;
+  int index0 = 0;
+  int index1 = 0;
   for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
   {
     if(model->timeloop->time < *it)
       break;
     else
-      ++index;
+      ++index1;
   }
 
   // second, calculate the weighting factor
-  double timestep;
   double fac0, fac1;
 
-  timestep = timedeptime[index] - timedeptime[index-1];
-  fac0 = (timedeptime[index] - model->timeloop->time) / timestep;
-  fac1 = (model->timeloop->time - timedeptime[index-1]) / timestep;
+  // correct for out of range situations where the simulation is longer than the time range in input
+  if(index1 == 0)
+  {
+    fac0 = 0.;
+    fac1 = 1.;
+    index0 = 0;
+  }
+  else if(index1 == timedeptime.size())
+  {
+    fac0 = 1.;
+    fac1 = 0.;
+    index0 = index1-1;
+    index1 = index0;
+  }
+  else
+  {
+    index0 = index1-1;
+    double timestep;
+    timestep = timedeptime[index1] - timedeptime[index0];
+    fac0 = (timedeptime[index1] - model->timeloop->time) / timestep;
+    fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
+  }
 
   // process time dependent bcs for the surface fluxes
   for(fieldmap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
@@ -196,8 +215,7 @@ int cboundary::settimedep()
     std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
     if(it2 != timedepdata.end())
     {
-      sbc[it1->first]->bot = fac0*it2->second[index-1] + fac1*it2->second[index];
-      // std::printf("CvH: sbot[%s] = %E, %E, %E, %E\n", name.c_str(), fac0, it2->second[index-1], fac1, it2->second[index]);
+      sbc[it1->first]->bot = fac0*it2->second[index0] + fac1*it2->second[index1];
       setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, NO_OFFSET);
     }
   }
