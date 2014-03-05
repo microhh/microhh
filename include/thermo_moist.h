@@ -72,8 +72,8 @@ class cthermo_moist : public cthermo
     int calcbuoyancy(double *, double *, double *, double *, double *, double *);
     int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
 
-    int calchydropres_2nd(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int calchydropres_4th(double *, double *, double *, double *, double *);
+    int calcbasestate_2nd(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int calcbasestate_4th(double *, double *, double *, double *, double *);
 
     int calcqlfield(double *, double *, double *, double *);
     int calcbuoyancybot(double *, double *,
@@ -95,25 +95,13 @@ class cthermo_moist : public cthermo
     inline double interp4(const double, const double, const double, const double);
 
     // REFERENCE PROFILES
-    double *thl0;  // Initial thl profile 
-    double *qt0;   // Initial qt profile
-    double *thvref;  //= new double[grid->kcells];
-    double *thvrefh; //= new double[grid->kcells];
-    double *exner;   //= new double[grid->kcells];
-    double *exnerh;  //= new double[grid->kcells];
-    double *press;   //= new double[grid->kcells];
-    double *pressh;  //= new double[grid->kcells];
-
-    //double *thref;
-    //double *qtref;
-    //double *pref;
-    //double *exner;
-    //// double *rhoref;
-
-    //double *threfh;
-    //double *qtrefh;
-    //double *prefh;
-    //double *exnerh;
-    // double *rhorefh;
+    double *thl0;    // Initial thl profile 
+    double *qt0;     // Initial qt profile
+    double *thvref; 
+    double *thvrefh;
+    double *exnref;
+    double *exnrefh;
+    double *pref;
+    double *prefh;
 };
 #endif
