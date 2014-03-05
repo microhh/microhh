@@ -43,10 +43,12 @@ cinput::~cinput()
 int cinput::readinput()
 {
   int nerror = 0;
+  const bool required = false;
+  const bool optional = true;
 
   nerror += readinifile();
-  nerror += readproffile(&proflist, master->simname + ".prof");
-  nerror += readproffile(&timelist, master->simname + ".time");
+  nerror += readdatafile(&proflist, master->simname + ".prof", required);
+  nerror += readdatafile(&timelist, master->simname + ".time", optional);
 
   return nerror;
 }
@@ -202,7 +204,7 @@ int cinput::readinifile()
   return nerrors;
 }
 
-int cinput::readproffile(datamap *profs, std::string inputname)
+int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
 {
   int nerror = 0;
   char inputline[256], temp1[256];
@@ -213,20 +215,29 @@ int cinput::readproffile(datamap *profs, std::string inputname)
   FILE *inputfile;
   std::string inputfilename = inputname;
 
+  int doreturn = 0;
   if(master->mpiid == 0)
   {
     inputfile = fopen(inputfilename.c_str(), "r");
     if(inputfile == NULL)
     {
-      std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
-      nerror++;
+      if(optional)
+        doreturn = true;
+      else
+      {
+        std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
+        nerror++;
+      }
     }
   }
 
   // broadcast the error count
-  master->broadcast(&nerror, 1);
+  master->broadcast(&nerror  , 1);
+  master->broadcast(&doreturn, 1);
   if(nerror)
     return 1;
+  if(doreturn)
+    return 0;
 
   int nlines = 0;
   int nline;
@@ -378,7 +389,7 @@ int cinput::readproffile(datamap *profs, std::string inputname)
 
     // store the data
     for(n=0; n<nvar; n++)
-      (*profs)[varnames[n]].push_back(varvalues[n]);
+      (*series)[varnames[n]].push_back(varvalues[n]);
   }
 
   if(master->mpiid == 0)
@@ -924,7 +935,7 @@ int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::s
   timemap rawtimemap;
 
   // read the file that contains the time varying data
-  if(readproffile(&rawdata, varname + ".timeprof"))
+  if(readdatafile(&rawdata, varname + ".timeprof", false))
     return 1;
 
   // delete the column with the profile data

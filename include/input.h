@@ -61,7 +61,7 @@ class cinput
     cmaster *master;
 
     int readinifile();
-    int readproffile(datamap *, std::string);
+    int readdatafile(datamap *, std::string, bool);
 
     template <class valuetype>
     int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);
