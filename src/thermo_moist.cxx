@@ -623,7 +623,7 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
     ph  = interp4(p[k-2] , p[k-1] , p[k] , p[k+1]); // BvS To-do: calculate pressure at full and half levels
-    exnh = exn2(ph);
+    exnh = exn(ph);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -663,7 +663,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
                                 double * restrict thvref)
 {
   int ijk,jj,kk,ij;
-  double tl, exn;
+  double tl, ex;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
@@ -671,14 +671,14 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
 
   for(int k=0; k<grid->kcells; k++)
   {
-    exn = exn2(p[k]);
+    ex = exn(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        tl  = s[ijk] * exn;
+        tl  = s[ijk] * ex;
         ql[ij]  = qt[ijk]-rslf(p[k],tl);   // not real ql, just estimate
       }
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -688,7 +688,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
         if(ql[ij] > 0)
-          ql[ij] = calcql(s[ijk], qt[ijk], p[k], exn);
+          ql[ij] = calcql(s[ijk], qt[ijk], p[k], ex);
         else
           ql[ij] = 0.;
       }
@@ -708,20 +708,20 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
 int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double * restrict qt, double * restrict p)
 {
   int ijk,jj,kk;
-  double exn;
+  double ex;
 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
   for(int k=grid->kstart; k<grid->kend; k++)
   {
-    exn = exn2(p[k]);
+    ex = exn(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        ql[ijk] = calcql(s[ijk], qt[ijk], p[k], exn);
+        ql[ijk] = calcql(s[ijk], qt[ijk], p[k], ex);
       }
   }
   return 0;
@@ -797,7 +797,7 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
 // INLINE FUNCTIONS
 inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql, const double thvref)
 {
-  return grav * ((s + lv*ql/(cp*exn2(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvref) / thvref;
+  return grav * ((s + lv*ql/(cp*exn(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvref) / thvref;
 }
 
 inline double cthermo_moist::bunoql(const double s, const double qt, const double thvref)
