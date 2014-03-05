@@ -66,7 +66,7 @@ class cthermo_moist : public cthermo
     bool allocated;
     cstats *stats;
     
-    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
+    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
 
     int calcbuoyancy(double *, double *, double *, double *, double *, double *);

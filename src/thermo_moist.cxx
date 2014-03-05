@@ -329,7 +329,7 @@ int cthermo_moist::exec()
   {
     if(swupdatebasestate)
       calchydropres_2nd(press, pressh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exner, exnerh, fields->s["s"]->datamean, fields->s["qt"]->datamean);
-    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, press,
+    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, press, pressh,
                          &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk],
                          thvrefh);
   }
@@ -660,21 +660,20 @@ int cthermo_moist::calchydropres_4th(double * restrict pmn, double * restrict s,
 
 
 int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict s, double * restrict qt, double * restrict p,
-                                        double * restrict sh, double * restrict qth, double * restrict ql,
+                                        double * restrict ph, double * restrict sh, double * restrict qth, double * restrict ql,
                                         double * restrict thvrefh)
 {
   int ijk,jj,kk,ij;
-  double tl, ph, exnh;
+  //double tl, ph, exnh;
+  double tl, exnh;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-
-  // double thvref = thvs;
 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
-    ph   = interp2(p[k-1],p[k]);   // BvS To-do: calculate pressure at full and half levels
-    exnh = exn(ph);
+    //ph   = interp2(p[k-1],p[k]);   // BvS To-do: calculate pressure at full and half levels
+    exnh = exn(ph[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -686,7 +685,7 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
         tl      = sh[ij] * exnh;
         // Calculate first estimate of ql using Tl
         // if ql(Tl)>0, saturation adjustment routine needed
-        ql[ij]  = qth[ij]-rslf(ph,tl);
+        ql[ij]  = qth[ij]-rslf(ph[k],tl);
       }
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -694,7 +693,7 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
       {
         ij  = i + j*jj;
         if(ql[ij]>0)   // already doesn't vectorize because of iteration in calcql()
-          ql[ij] = calcql(sh[ij], qth[ij], ph, exnh);
+          ql[ij] = calcql(sh[ij], qth[ij], ph[k], exnh);
         else
           ql[ij] = 0.;
       }
@@ -704,7 +703,7 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        wt[ijk] += bu(ph, sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += bu(ph[k], sh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
   return 0;
