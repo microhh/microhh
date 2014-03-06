@@ -68,6 +68,11 @@ cfields::~cfields()
     // deallocate the diagnostic scalars
     for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
       delete it->second;
+
+    // delete the arrays
+    delete[] rhoref;
+    delete[] umodel;
+    delete[] vmodel;
   }
 }
 

@@ -58,6 +58,11 @@ cforce::~cforce()
     if(swwls == "1")
       delete[] wls;
   }
+
+  // clean up time dependent data
+  for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
+    delete[] it->second;
+
 }
 
 int cforce::readinifile(cinput *inputin)

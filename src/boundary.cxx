@@ -54,6 +54,10 @@ cboundary::~cboundary()
 
   // empty the map
   sbc.clear();
+
+  // clean up time dependent data
+  for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
+    delete[] it->second;
 }
 
 int cboundary::readinifile(cinput *inputin)
