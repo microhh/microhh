@@ -162,10 +162,7 @@ int cforce::create(cinput *inputin)
     {
       std::string name = *it + "ls";
       if(std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end()) 
-      {
-        std::printf("CvH2: %s\n", name.c_str());
         nerror += inputin->getTimeProf(&timedepdata[name], &timedeptime, name, grid->kmax);
-      }
     }
   }
 
@@ -242,22 +239,20 @@ int cforce::settimedep()
     fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
   }
 
+  // process time dependent bcs for the large scale forcings
   int tt = timedepdata.size()*grid->kmax;
   int kgc = grid->kgc;
 
-  // process time dependent bcs for the large scale forcings
   for(std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
   {
     std::string name = *it1 + "ls";
     std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
+
     // update the profile
     if(it2 != timedepdata.end())
     {
       for(int k=0; k<grid->kmax; ++k)
-      {
         lsprofs[*it1][k+kgc] = fac0*it2->second[index0*tt+k] + fac1*it2->second[index1*tt+k];
-        std::printf("CvH %d, %E, %E, %E\n", k, fac0, fac1, lsprofs[*it1][k+kgc]);
-      }
     }
   }
 
