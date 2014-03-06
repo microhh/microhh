@@ -149,7 +149,7 @@ int cboundary::processbcs(cinput *inputin)
 
   if(swtimedep == "1")
   {
-    // update the value of the surface boundary condition
+    // see if there is data available for the surface boundary conditions
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       std::string name = "sbot[" + it->first + "]";

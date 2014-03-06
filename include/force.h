@@ -44,6 +44,7 @@ class cforce
     int init();                ///< Initialize the arrays that contain the profiles.
     int create(cinput *);      ///< Read the profiles of the forces from the input.
     int exec(double);          ///< Add the tendencies belonging to the large-scale processes.
+    int settimedep();          ///< Set the time dependent parameters.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
@@ -66,8 +67,13 @@ class cforce
     double *ug; ///< Pointer to array u-component geostrophic wind.
     double *vg; ///< Pointer to array v-component geostrophic wind.
 
-
     double *wls; ///< Pointer to array large-scale vertical velocity.
+
+    // time dependent variables
+    std::string swtimedep;
+    std::vector<double> timedeptime;
+    std::vector<std::string> timedeplist;
+    std::map<std::string, double *> timedepdata;
 
     int flux(double * const, const double * const,
              const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.

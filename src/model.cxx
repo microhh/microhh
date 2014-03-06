@@ -338,6 +338,8 @@ int cmodel::exec()
 {
   // update the time dependent values
   boundary->settimedep();
+  force->settimedep();
+
   // set the boundary conditions
   boundary->exec();
 
@@ -444,6 +446,8 @@ int cmodel::exec()
     }
     // update the time dependent values
     boundary->settimedep();
+    force->settimedep();
+
     // set the boundary conditions
     boundary->exec();
     // get the field means, in case needed

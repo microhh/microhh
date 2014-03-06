@@ -20,12 +20,14 @@
  */
 
 #include <cstdio>
+#include <algorithm>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "force.h"
 #include "defines.h"
 #include "model.h"
+#include "timeloop.h"
 
 cforce::cforce(cmodel *modelin)
 {
@@ -95,6 +97,10 @@ int cforce::readinifile(cinput *inputin)
     if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swwls\n", swwls.c_str());
   }
 
+  // get the list of time varying variables
+  nerror += inputin->getItem(&swtimedep  , "force", "swtimedep"  , "", "0");
+  nerror += inputin->getList(&timedeplist, "force", "timedeplist", "");
+
   return nerror;
 }
 
@@ -148,10 +154,22 @@ int cforce::create(cinput *inputin)
   if(swwls == "1")
     nerror += inputin->getProf(&wls[grid->kstart], "wls", grid->kmax);
 
-  if(nerror > 0)
-    return 1;
+  // process the profiles for the time dependent data
+  if(swtimedep == "1")
+  {
+    // process time dependent bcs for the large scale forcings
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+    {
+      std::string name = *it + "ls";
+      if(std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end()) 
+      {
+        std::printf("CvH2: %s\n", name.c_str());
+        nerror += inputin->getTimeProf(&timedepdata[name], &timedeptime, name, grid->kmax);
+      }
+    }
+  }
 
-  return 0;
+  return nerror;
 }
 
 int cforce::exec(double dt)
@@ -177,6 +195,70 @@ int cforce::exec(double dt)
   {
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       advecwls_2nd(it->second->data, fields->s[it->first]->datamean, wls, grid->dzhi);
+  }
+
+  return 0;
+}
+
+int cforce::settimedep()
+{
+  if(swtimedep == "0")
+    return 0;
+
+  // first find the index for the time entries
+  int index0 = 0;
+  int index1 = 0;
+  for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
+  {
+    if(model->timeloop->time < *it)
+      break;
+    else
+      ++index1;
+  }
+
+  // second, calculate the weighting factor
+  double fac0, fac1;
+
+  // correct for out of range situations where the simulation is longer than the time range in input
+  if(index1 == 0)
+  {
+    fac0 = 0.;
+    fac1 = 1.;
+    index0 = 0;
+  }
+  else if(index1 == timedeptime.size())
+  {
+    fac0 = 1.;
+    fac1 = 0.;
+    index0 = index1-1;
+    index1 = index0;
+  }
+  else
+  {
+    index0 = index1-1;
+    double timestep;
+    timestep = timedeptime[index1] - timedeptime[index0];
+    fac0 = (timedeptime[index1] - model->timeloop->time) / timestep;
+    fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
+  }
+
+  int tt = timedepdata.size()*grid->kmax;
+  int kgc = grid->kgc;
+
+  // process time dependent bcs for the large scale forcings
+  for(std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
+  {
+    std::string name = *it1 + "ls";
+    std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
+    // update the profile
+    if(it2 != timedepdata.end())
+    {
+      for(int k=0; k<grid->kmax; ++k)
+      {
+        lsprofs[*it1][k+kgc] = fac0*it2->second[index0*tt+k] + fac1*it2->second[index1*tt+k];
+        std::printf("CvH %d, %E, %E, %E\n", k, fac0, fac1, lsprofs[*it1][k+kgc]);
+      }
+    }
   }
 
   return 0;
