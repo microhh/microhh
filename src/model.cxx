@@ -336,11 +336,10 @@ int cmodel::save()
 
 int cmodel::exec()
 {
-
-  // set the boundary conditions
-  boundary->exec();
   // update the time dependent values
   boundary->settimedep();
+  // set the boundary conditions
+  boundary->exec();
 
   // get the field means, in case needed
   fields->exec();
@@ -443,11 +442,10 @@ int cmodel::exec()
       if(boundary->load(timeloop->iotime))
         return 1;
     }
-
-    // set the boundary conditions
-    boundary->exec();
     // update the time dependent values
     boundary->settimedep();
+    // set the boundary conditions
+    boundary->exec();
     // get the field means, in case needed
     fields->exec();
     // get the viscosity to be used in diffusion
