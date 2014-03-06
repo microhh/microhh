@@ -99,14 +99,14 @@ for n in range(t.size):
 timefile.close()
 
 # write the large scale forcing data to a file
-timeproffile = open('sls.prof','w')
-timeproffile.write('{0:^20s} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format('t', tls[0], tls[1], tls[2], tls[3], tls[4], tls[5]))
+timeproffile = open('sls.timeprof','w')
+timeproffile.write('{0:^20s} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format('z', tls[0], tls[1], tls[2], tls[3], tls[4], tls[5]))
 for k in range(kmax):
   timeproffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format(z[k], sls[0,k], sls[1,k], sls[2,k], sls[3,k], sls[4,k], sls[5,k]))
 timeproffile.close()
 
-timeproffile = open('qtls.prof','w')
-timeproffile.write('{0:^20s} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format('t', tls[0], tls[1], tls[2], tls[3], tls[4], tls[5]))
+timeproffile = open('qtls.timeprof','w')
+timeproffile.write('{0:^20s} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format('z', tls[0], tls[1], tls[2], tls[3], tls[4], tls[5]))
 for k in range(kmax):
   timeproffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format(z[k], qtls[0,k], qtls[1,k], qtls[2,k], qtls[3,k], qtls[4,k], qtls[5,k]))
 timeproffile.close()
