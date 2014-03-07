@@ -165,6 +165,8 @@ int cforce::create(cinput *inputin)
     // process time dependent bcs for the large scale forcings
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
     {
+      // \TODO make sure to give each element its own time series and remove the clear()
+      timedeptime.clear();
       std::string name = *it + "ls";
       if(std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end()) 
         nerror += inputin->getTimeProf(&timedepdata[name], &timedeptime, name, grid->kmax);
@@ -245,7 +247,7 @@ int cforce::settimedep()
   }
 
   // process time dependent bcs for the large scale forcings
-  int tt = timedepdata.size()*grid->kmax;
+  int kk = grid->kmax;
   int kgc = grid->kgc;
 
   for(std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
@@ -255,10 +257,8 @@ int cforce::settimedep()
 
     // update the profile
     if(it2 != timedepdata.end())
-    {
       for(int k=0; k<grid->kmax; ++k)
-        lsprofs[*it1][k+kgc] = fac0*it2->second[index0*tt+k] + fac1*it2->second[index1*tt+k];
-    }
+        lsprofs[*it1][k+kgc] = fac0*it2->second[index0*kk+k] + fac1*it2->second[index1*kk+k];
   }
 
   return 0;
