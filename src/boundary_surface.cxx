@@ -302,7 +302,8 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   kstart = grid->kstart;
 
   // calculate total wind
-  double utot, ubottot;
+  double du2;
+  //double utot, ubottot, du2;
   const double minval = 1.e-1;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
@@ -311,13 +312,16 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2.) + std::pow(ubot[ij+ii], 2.))
-                         + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
-      utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
-                         + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
+      // ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2.) + std::pow(ubot[ij+ii], 2.))
+      //                    + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
+      // utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
+      //                    + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
+      du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
+          + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
       // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
       // otherwise evisc at k = kstart blows up
-      dutot[ij] = std::max(std::abs(utot - ubottot), minval);
+      // dutot[ij] = std::max(std::abs(utot - ubottot), minval);
+      dutot[ij] = std::max(std::pow(du2, 0.5), minval);
     }
 
   grid->boundary_cyclic2d(dutot);
