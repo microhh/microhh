@@ -733,7 +733,7 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
 inline double cboundary_surface::fm(double zsl, double z0m, double L)
 {
   double fm;
-  fm = kappa / (std::log(zsl/z0m) - psim(zsl/L) + psih(z0m/L));
+  fm = kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
   return fm;
 }
 
