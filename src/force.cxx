@@ -162,6 +162,9 @@ int cforce::create(cinput *inputin)
   // process the profiles for the time dependent data
   if(swtimedep == "1")
   {
+    // create temporary list to check which entries are used
+    std::vector<std::string> tmplist = timedeplist;
+
     // process time dependent bcs for the large scale forcings
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
     {
@@ -169,8 +172,19 @@ int cforce::create(cinput *inputin)
       timedeptime.clear();
       std::string name = *it + "ls";
       if(std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end()) 
+      {
         nerror += inputin->getTimeProf(&timedepdata[name], &timedeptime, name, grid->kmax);
+
+        // remove the item from the tmplist
+        std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), *it);
+        if(ittmp != tmplist.end())
+          tmplist.erase(ittmp);
+      }
     }
+
+    // display a warning for the non-supported 
+    for(std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
+      if(master->mpiid == 0) std::printf("WARNING %s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
   return nerror;
@@ -210,8 +224,8 @@ int cforce::settimedep()
     return 0;
 
   // first find the index for the time entries
-  int index0 = 0;
-  int index1 = 0;
+  unsigned int index0 = 0;
+  unsigned int index1 = 0;
   for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
   {
     if(model->timeloop->time < *it)

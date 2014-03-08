@@ -151,6 +151,9 @@ int cboundary::processbcs(cinput *inputin)
   nerror += inputin->getItem(&swtimedep  , "boundary", "swtimedep"  , "", "0");
   nerror += inputin->getList(&timedeplist, "boundary", "timedeplist", "");
 
+  // create temporary list to check which entries are used
+  std::vector<std::string> tmplist = timedeplist;
+
   if(swtimedep == "1")
   {
     // see if there is data available for the surface boundary conditions
@@ -158,8 +161,19 @@ int cboundary::processbcs(cinput *inputin)
     {
       std::string name = "sbot[" + it->first + "]";
       if(std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end()) 
+      {
         nerror += inputin->getTime(&timedepdata[name], &timedeptime, name);
+
+        // remove the item from the tmplist
+        std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
+        if(ittmp != tmplist.end())
+          tmplist.erase(ittmp);
+      }
     }
+
+    // display a warning for the non-supported 
+    for(std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
+      if(master->mpiid == 0) std::printf("WARNING %s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
   return nerror;
@@ -176,8 +190,8 @@ int cboundary::settimedep()
     return 0;
 
   // first find the index for the time entries
-  int index0 = 0;
-  int index1 = 0;
+  unsigned int index0 = 0;
+  unsigned int index1 = 0;
   for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
   {
     if(model->timeloop->time < *it)
