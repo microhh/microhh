@@ -287,8 +287,13 @@ int cmodel::load()
 
   if(fields->load(timeloop->iotime))
     return 1;
+
+  // \TODO call boundary load for the data and then timedep, not nice...
   if(boundary->load(timeloop->iotime))
     return 1;
+  if(boundary->create(input))
+    return 1;
+
   if(buffer->create(input))
     return 1;
   if(force->create(input))

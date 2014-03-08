@@ -151,11 +151,23 @@ int cboundary::processbcs(cinput *inputin)
   nerror += inputin->getItem(&swtimedep  , "boundary", "swtimedep"  , "", "0");
   nerror += inputin->getList(&timedeplist, "boundary", "timedeplist", "");
 
-  // create temporary list to check which entries are used
-  std::vector<std::string> tmplist = timedeplist;
+  return nerror;
+}
+
+int cboundary::init()
+{
+  return 0;
+}
+
+int cboundary::create(cinput *inputin)
+{
+  int nerror = 0;
 
   if(swtimedep == "1")
   {
+    // create temporary list to check which entries are used
+    std::vector<std::string> tmplist = timedeplist;
+
     // see if there is data available for the surface boundary conditions
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
@@ -177,11 +189,6 @@ int cboundary::processbcs(cinput *inputin)
   }
 
   return nerror;
-}
-
-int cboundary::init()
-{
-  return 0;
 }
 
 int cboundary::settimedep()
