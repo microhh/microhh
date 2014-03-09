@@ -37,28 +37,22 @@
 cstats::cstats(cmodel *modelin)
 {
   model  = modelin;
-  grid   = model->grid;
-  fields = model->fields;
-  master = model->master;
 
-  allocated   = false;
-  initialized = false;
+  // set the pointers to NULL
+  umodel = NULL;
+  vmodel = NULL;
+  dataFile = NULL;
 }
 
 cstats::~cstats()
 {
-  if(initialized)
-    delete dataFile;
+  delete dataFile;
+  delete[] umodel;
+  delete[] vmodel;
 
-  if(allocated)
-  {
-    delete[] umodel;
-    delete[] vmodel;
-
-    // delete the profiles
-    for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
-      delete[] it->second.data;
-  }
+  // delete the profiles
+  for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
+    delete[] it->second.data;
 }
 
 int cstats::readinifile(cinput *inputin)
@@ -78,12 +72,15 @@ int cstats::readinifile(cinput *inputin)
 
 int cstats::init(double ifactor)
 {
+  // convenience pointers for short notation in class
+  grid   = model->grid;
+  fields = model->fields;
+  master = model->master;
+
   isampletime = (unsigned long)(ifactor * sampletime);
 
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
-
-  allocated = true;
 
   // set the number of stats to zero
   nstats = 0;
@@ -110,8 +107,6 @@ int cstats::create(int n)
       std::printf("ERROR cannot write statistics file\n");
       ++nerror;
     }
-    else
-      initialized = true;
   }
   // crash on all processes in case the file could not be written
   master->broadcast(&nerror, 1);
@@ -124,6 +119,8 @@ int cstats::create(int n)
     z_dim  = dataFile->add_dim("z" , grid->kmax);
     zh_dim = dataFile->add_dim("zh", grid->kmax+1);
     t_dim  = dataFile->add_dim("t");
+
+    NcVar *z_var, *zh_var;
 
     // create variables belonging to dimensions
     iter_var = dataFile->add_var("iter", ncInt   , t_dim );
@@ -141,10 +138,7 @@ int cstats::create(int n)
     zh_var = dataFile->add_var("zh", ncDouble, zh_dim);
     nerror += zh_var->add_att("units", "m");
     nerror += zh_var->add_att("longname", "Half level height");
-  }
 
-  if(master->mpiid == 0)
-  {
     // save the grid variables
     z_var ->put(&grid->z [grid->kstart], grid->kmax  );
     zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
@@ -220,9 +214,15 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
   if(master->mpiid == 0)
   {
     if(zloc == "z")
+    {
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
+      profs[name].data = NULL;
+    }
     else if(zloc == "zh")
+    {
       profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
+      profs[name].data = NULL;
+    }
     nerror += profs[name].ncvar->add_att("units", unit.c_str());
     nerror += profs[name].ncvar->add_att("long_name", longname.c_str());
     nerror += profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
@@ -264,7 +264,7 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
 int cstats::addtseries(std::string name, std::string longname, std::string unit)
 {
   int nerror = 0;
-  //create the NetCDF variable
+  // create the NetCDF variable
   if(master->mpiid == 0)
   {
     tseries[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim);
@@ -273,7 +273,7 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
     nerror += tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
   }
 
-  //and allocate the memory and initialize at zero
+  // and initialize at zero
   tseries[name].data = 0.;
 
   return nerror;
