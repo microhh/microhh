@@ -208,12 +208,15 @@ int cfields::exec()
 
 int cfields::getfilter(cfield3d *ffield, filter *f)
 {
-  calcfilter(ffield->data, f->profs["area_in"].data, stats->filtercount, w->data);
+  if(f->name == "wplus")
+    calcfilterwplus(ffield->data, f->profs["area"].data, stats->filtercount, w->data);
+  else if(f->name == "wmin")
+    calcfilterwmin (ffield->data, f->profs["area"].data, stats->filtercount, w->data);
   return 0;
 }
 
-int cfields::calcfilter(double * restrict fdata, double * restrict area, 
-                        int * restrict nfilter, double * restrict w)
+int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, 
+                             int * restrict nfilter, double * restrict w)
 {
   int ijk,ij,ii,jj,kk;
 
@@ -247,19 +250,54 @@ int cfields::calcfilter(double * restrict fdata, double * restrict area,
   return 0;
 }
 
+int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, 
+                            int * restrict nfilter, double * restrict w)
+{
+  int ijk,ij,ii,jj,kk;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  int ntmp;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    nfilter[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + k*kk;
+        ntmp = ((w[ijk]+w[ijk+kk]) <= 0.);
+        nfilter[k] += ntmp;
+        fdata[ijk] = (double)ntmp;
+      }
+  }
+
+  int ijtot = grid->itot*grid->jtot;
+  master->sum(nfilter, grid->kcells);
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    area[k] = (double)nfilter[k] / (double)ijtot;
+
+  return 0;
+}
+
 int cfields::execstats(filter *f)
 {
   // calculate the means
-  stats->calcmean(u->data, f->profs["u"].data, grid->utrans);
-  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans);
-  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET);
+  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, sd["tmp0"]->data, stats->filtercount);
+  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, sd["tmp0"]->data, stats->filtercount);
+  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, sd["tmp0"]->data, stats->filtercount);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->calcmean(it->second->data, f->profs[it->first].data, NO_OFFSET);
+    stats->calcmean(it->second->data, f->profs[it->first].data, NO_OFFSET, sd["tmp0"]->data, stats->filtercount);
 
-  stats->calcmean(s["p"]->data, f->profs["p"].data, NO_OFFSET);
+  stats->calcmean(s["p"]->data, f->profs["p"].data, NO_OFFSET, sd["tmp0"]->data, stats->filtercount);
 
   if(model->diff->getname() == "les2s")
-    stats->calcmean(s["evisc"]->data, f->profs["evisc"].data, NO_OFFSET);
+    stats->calcmean(s["evisc"]->data, f->profs["evisc"].data, NO_OFFSET, sd["tmp0"]->data, stats->filtercount);
 
   // calculate model means without correction for transformation
   stats->calcmean(u->data, umodel, NO_OFFSET);

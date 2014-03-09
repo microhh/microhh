@@ -71,6 +71,7 @@ class cstats
     int init(double);
     int create(int);
     unsigned long gettimelim(unsigned long);
+    int getfilter(cfield3d *, filter *);
     int exec(int, double, unsigned long);
     int dostats();
     std::string getsw();
@@ -88,6 +89,7 @@ class cstats
     int addtseries(std::string, std::string, std::string);
 
     int calcmean    (double *, double *, double);
+    int calcmean    (double *, double *, double, double *, int *);
     int calcmoment  (double *, double *, double *, double, int);
     int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double);
     int calcdiff_4th(double *, double *, double *, double);
@@ -108,6 +110,9 @@ class cstats
     double *umodel, *vmodel;
 
     int nstats;
+
+    // filters
+    int calcfilter(double *, double *, int *);
 
   protected:
     cmodel  *model;

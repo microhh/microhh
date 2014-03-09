@@ -93,9 +93,11 @@ int cstats::init(double ifactor)
   filters["default"].name = "default";
   filters["default"].dataFile = NULL;
 
-  // CvH a test
-  filters["w"].name = "w";
-  filters["w"].dataFile = NULL;
+  filters["wplus"].name = "wplus";
+  filters["wplus"].dataFile = NULL;
+
+  filters["wmin"].name = "wmin";
+  filters["wmin"].dataFile = NULL;
 
   // set the number of stats to zero
   nstats = 0;
@@ -169,7 +171,7 @@ int cstats::create(int n)
   }
 
   // for each filter add the area as a variable
-  addprof("area_in", "Fractional area contained in sample", "-", "z");
+  addprof("area", "Fractional area contained in sample", "-", "z");
 
   return 0;
 }
@@ -332,7 +334,43 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   return nerror;
 }
 
+int cstats::getfilter(cfield3d *ffield, filter *f)
+{
+  calcfilter(ffield->data, f->profs["area"].data, filtercount);
+  return 0;
+}
+
 // COMPUTATIONAL KERNELS BELOW
+int cstats::calcfilter(double * restrict fdata, double * restrict area, int * restrict nfilter)
+{
+  int ijk,ij,ii,jj,kk;
+  int ijtot;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->ijcells;
+  ijtot = grid->itot*grid->jtot;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + k*kk;
+        fdata[ijk] = 1.;
+      }
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    nfilter[k] = ijtot;
+    area[k] = 1.;
+  }
+
+  return 0;
+}
+
+
 int cstats::calcmean(double * restrict data, double * restrict prof, double offset)
 {
   int ijk,jj,kk;
@@ -358,6 +396,39 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcmean(double * restrict data, double * restrict prof, double offset, 
+                     double * restrict filter, int * restrict nfilter)
+{
+  int ijk,ii,jj,kk;
+  double val;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->ijcells;
+  
+  for(int k=0; k<grid->kcells; k++)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        val = data[ijk] + offset;
+        prof[k] += filter[ijk]*val;
+      }
+  }
+
+  master->sum(prof, grid->kcells);
+
+  double n = grid->itot*grid->jtot;
+  for(int k=0; k<grid->kcells; k++)
+    // avoid zero divisions in case the filter sum equals zero
+    prof[k] /= ((double)nfilter[k] + dsmall);
 
   return 0;
 }
