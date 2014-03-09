@@ -49,10 +49,13 @@ cstats::~cstats()
   delete[] umodel;
   delete[] vmodel;
 
-  // CvH edit this later
   // delete the profiles
-  // for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
-  //   delete[] it->second.data;
+  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
+  {
+    delete it->second.dataFile;
+    for(profmap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
+      delete[] it2->second.data;
+  }
 }
 
 int cstats::readinifile(cinput *inputin)
@@ -87,8 +90,8 @@ int cstats::init(double ifactor)
   filters["default"].dataFile = NULL;
 
   // CvH a test
-  // filters["default2"].name = "default2";
-  // filters["default2"].dataFile = NULL;
+  filters["default2"].name = "default2";
+  filters["default2"].dataFile = NULL;
 
   // set the number of stats to zero
   nstats = 0;
@@ -137,20 +140,20 @@ int cstats::create(int n)
 
       // create variables belonging to dimensions
       f->iter_var = f->dataFile->add_var("iter", ncInt, f->t_dim);
-      nerror += f->iter_var->add_att("units", "-");
-      nerror += f->iter_var->add_att("longname", "Iteration number");
+      f->iter_var->add_att("units", "-");
+      f->iter_var->add_att("longname", "Iteration number");
 
       f->t_var = f->dataFile->add_var("t", ncDouble, f->t_dim);
-      nerror += f->t_var->add_att("units", "s");
-      nerror += f->t_var->add_att("longname", "Time");
+      f->t_var->add_att("units", "s");
+      f->t_var->add_att("longname", "Time");
 
       z_var = f->dataFile->add_var("z", ncDouble, f->z_dim);
-      nerror += z_var->add_att("units", "m");
-      nerror += z_var->add_att("longname", "Full level height");
+      z_var->add_att("units", "m");
+      z_var->add_att("longname", "Full level height");
 
       zh_var = f->dataFile->add_var("zh", ncDouble, f->zh_dim);
-      nerror += zh_var->add_att("units", "m");
-      nerror += zh_var->add_att("longname", "Half level height");
+      zh_var->add_att("units", "m");
+      zh_var->add_att("longname", "Half level height");
 
       // save the grid variables
       z_var ->put(&grid->z [grid->kstart], grid->kmax  );
@@ -249,9 +252,9 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
         f->profs[name].ncvar = f->dataFile->add_var(name.c_str(), ncDouble, f->t_dim, f->zh_dim);
         f->profs[name].data = NULL;
       }
-      nerror += f->profs[name].ncvar->add_att("units", unit.c_str());
-      nerror += f->profs[name].ncvar->add_att("long_name", longname.c_str());
-      nerror += f->profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+      f->profs[name].ncvar->add_att("units", unit.c_str());
+      f->profs[name].ncvar->add_att("long_name", longname.c_str());
+      f->profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
     }
 
     // and allocate the memory and initialize at zero
@@ -281,9 +284,9 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
         var = f->dataFile->add_var(name.c_str(), ncDouble, f->z_dim);
       else if(zloc == "zh")
         var = f->dataFile->add_var(name.c_str(), ncDouble, f->zh_dim);
-      nerror += var->add_att("units", unit.c_str());
-      nerror += var->add_att("long_name", longname.c_str());
-      nerror += var->add_att("_FillValue", NC_FILL_DOUBLE);
+      var->add_att("units", unit.c_str());
+      var->add_att("long_name", longname.c_str());
+      var->add_att("_FillValue", NC_FILL_DOUBLE);
 
       if(zloc == "z")
         var->put(&prof[grid->kstart], grid->kmax);
@@ -309,9 +312,9 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
     if(master->mpiid == 0)
     {
       f->tseries[name].ncvar = f->dataFile->add_var(name.c_str(), ncDouble, f->t_dim);
-      nerror += f->tseries[name].ncvar->add_att("units", unit.c_str());
-      nerror += f->tseries[name].ncvar->add_att("long_name", longname.c_str());
-      nerror += f->tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+      f->tseries[name].ncvar->add_att("units", unit.c_str());
+      f->tseries[name].ncvar->add_att("long_name", longname.c_str());
+      f->tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
     }
 
     // and initialize at zero
