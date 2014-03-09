@@ -29,6 +29,7 @@ class cmaster;
 class cgrid;
 class cfields;
 class cstats;
+struct filter;
 
 class cthermo_moist : public cthermo
 {
@@ -39,7 +40,7 @@ class cthermo_moist : public cthermo
     int init();
     int create();
     int exec();
-    int execstats();
+    int execstats(filter *);
     int execcross();
 
     // functions to retrieve buoyancy properties, to be called from other classes

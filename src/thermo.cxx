@@ -61,7 +61,7 @@ int cthermo::exec()
   return 0;
 }
 
-int cthermo::execstats()
+int cthermo::execstats(filter *f)
 {
   return 0;
 }

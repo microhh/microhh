@@ -113,7 +113,7 @@ int cbudget::create()
   return 0;
 }
 
-int cbudget::execstats()
+int cbudget::execstats(filter *f)
 {
   if(swbudget == "0")
     return 0;
@@ -128,12 +128,12 @@ int cbudget::execstats()
     calctkebudget(fields->u->data, fields->v->data, fields->w->data, fields->s["p"]->data,
                   fields->s["tmp1"]->data, fields->s["tmp2"]->data,
                   umodel, vmodel,
-                  stats->profs["u2_shear"].data, stats->profs["v2_shear"].data, stats->profs["tke_shear"].data,
-                  stats->profs["u2_turb"].data, stats->profs["v2_turb"].data, stats->profs["w2_turb"].data, stats->profs["tke_turb"].data,
-                  stats->profs["u2_visc"].data, stats->profs["v2_visc"].data, stats->profs["w2_visc"].data, stats->profs["tke_visc"].data,
-                  stats->profs["u2_diss"].data, stats->profs["v2_diss"].data, stats->profs["w2_diss"].data, stats->profs["tke_diss"].data,
-                  stats->profs["w2_pres"].data, stats->profs["tke_pres"].data,
-                  stats->profs["u2_rdstr"].data, stats->profs["v2_rdstr"].data, stats->profs["w2_rdstr"].data,
+                  f->profs["u2_shear"].data, f->profs["v2_shear"].data, f->profs["tke_shear"].data,
+                  f->profs["u2_turb"].data, f->profs["v2_turb"].data, f->profs["w2_turb"].data, f->profs["tke_turb"].data,
+                  f->profs["u2_visc"].data, f->profs["v2_visc"].data, f->profs["w2_visc"].data, f->profs["tke_visc"].data,
+                  f->profs["u2_diss"].data, f->profs["v2_diss"].data, f->profs["w2_diss"].data, f->profs["tke_diss"].data,
+                  f->profs["w2_pres"].data, f->profs["tke_pres"].data,
+                  f->profs["u2_rdstr"].data, f->profs["v2_rdstr"].data, f->profs["w2_rdstr"].data,
                   grid->dzi4, grid->dzhi4, fields->visc);
 
     // calculate the buoyancy term of the TKE budget
@@ -141,7 +141,7 @@ int cbudget::execstats()
     {
       model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
       calctkebudget_buoy(fields->w->data, fields->s["tmp1"]->data,
-                    stats->profs["w2_buoy"].data, stats->profs["tke_buoy"].data);
+                    f->profs["w2_buoy"].data, f->profs["tke_buoy"].data);
     }
   }
 

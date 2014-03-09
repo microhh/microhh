@@ -388,9 +388,9 @@ int cmodel::exec()
     {
       if(stats->dostats())
       {
-        fields->execstats();
-        thermo->execstats();
-        budget->execstats();
+        fields->execstats(&stats->filters["default"]);
+        thermo->execstats(&stats->filters["default"]);
+        budget->execstats(&stats->filters["default"]);
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 

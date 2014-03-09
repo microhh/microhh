@@ -26,6 +26,7 @@
 class cmaster;
 class cgrid;
 class cfields;
+struct filter;
 
 class cthermo
 {
@@ -36,7 +37,7 @@ class cthermo
     virtual int init();
     virtual int create();
     virtual int exec();
-    virtual int execstats();
+    virtual int execstats(filter *);
     virtual int execcross();
 
     // interfacing functions to get buoyancy properties from other classes

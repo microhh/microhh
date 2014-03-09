@@ -29,6 +29,7 @@ class cmaster;
 class cmodel;
 class cgrid;
 class cstats;
+struct filter;
 
 typedef std::map<std::string, cfield3d *> fieldmap;
 
@@ -42,7 +43,7 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
-    int execstats();
+    int execstats(filter *);
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string, std::string, std::string);
     int initpfld(std::string, std::string, std::string);

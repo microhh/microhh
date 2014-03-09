@@ -30,19 +30,36 @@ class cmodel;
 class cgrid;
 class cfields;
 
-struct statsvar
+// struct for profiles
+struct profvar
 {
   NcVar *ncvar;
   double *data;
 };
 
+// struct for time series
 struct tseriesvar
 {
   NcVar *ncvar;
   double data;
 };
-typedef std::map<std::string, statsvar> profmap;
+
+// typedefs for containers of profiles and time series
+typedef std::map<std::string, profvar> profmap;
 typedef std::map<std::string, tseriesvar> tseriesmap;
+
+// structure
+struct filter
+{
+  std::string name;
+  NcFile *dataFile;
+  NcDim  *z_dim, *zh_dim, *t_dim;
+  NcVar  *t_var, *iter_var;
+  profmap profs;
+  tseriesmap tseries;
+};
+
+typedef std::map<std::string, filter> filtermap;
 
 class cstats
 {
@@ -58,9 +75,12 @@ class cstats
     int dostats();
     std::string getsw();
 
+    // container for all stats, filter as uppermost in hierarchy
+    filtermap filters;
+
     // interface functions
-    profmap profs;
-    tseriesmap tseries;
+    // profmap profs;
+    // tseriesmap tseries;
 
     int addprof(std::string, std::string, std::string, std::string);
     int addfixedprof(std::string, std::string, std::string, std::string, double *);
@@ -80,12 +100,9 @@ class cstats
     int calccover   (double *, double *, double);
 
   private:
-    bool allocated;
-    bool initialized;
-
-    NcFile *dataFile;
-    NcDim  *z_dim, *zh_dim, *t_dim;
-    NcVar  *z_var, *zh_var, *t_var, *iter_var;
+    // NcFile *dataFile;
+    // NcDim  *z_dim, *zh_dim, *t_dim;
+    // NcVar  *t_var, *iter_var;
 
     double *umodel, *vmodel;
 

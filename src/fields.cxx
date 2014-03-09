@@ -205,19 +205,19 @@ int cfields::exec()
   return 0;
 }
 
-int cfields::execstats()
+int cfields::execstats(filter *f)
 {
   // calculate the means
-  stats->calcmean(u->data, stats->profs["u"].data, grid->utrans);
-  stats->calcmean(v->data, stats->profs["v"].data, grid->vtrans);
-  stats->calcmean(w->data, stats->profs["w"].data, NO_OFFSET);
+  stats->calcmean(u->data, f->profs["u"].data, grid->utrans);
+  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans);
+  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->calcmean(it->second->data, stats->profs[it->first].data, NO_OFFSET);
+    stats->calcmean(it->second->data, f->profs[it->first].data, NO_OFFSET);
 
-  stats->calcmean(s["p"]->data, stats->profs["p"].data, NO_OFFSET);
+  stats->calcmean(s["p"]->data, f->profs["p"].data, NO_OFFSET);
 
   if(model->diff->getname() == "les2s")
-    stats->calcmean(s["evisc"]->data, stats->profs["evisc"].data, NO_OFFSET);
+    stats->calcmean(s["evisc"]->data, f->profs["evisc"].data, NO_OFFSET);
 
   // calculate model means without correction for transformation
   stats->calcmean(u->data, umodel, NO_OFFSET);
@@ -229,43 +229,43 @@ int cfields::execstats()
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(u->data, umodel, stats->profs["u"+sn].data, n, 0);
-    stats->calcmoment(v->data, vmodel, stats->profs["v"+sn].data, n, 0);
-    stats->calcmoment(w->data, stats->profs["w"].data, stats->profs["w"+sn].data, n, 1);
+    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, 0);
+    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, 0);
+    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, 1);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+sn].data, n, 0);
+      stats->calcmoment(it->second->data, f->profs[it->first].data, f->profs[it->first+sn].data, n, 0);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
   {
-    stats->calcgrad_2nd(u->data, stats->profs["ugrad"].data, grid->dzhi);
-    stats->calcgrad_2nd(v->data, stats->profs["vgrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_2nd(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi);
+      stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcgrad_4th(u->data, stats->profs["ugrad"].data, grid->dzhi4);
-    stats->calcgrad_4th(v->data, stats->profs["vgrad"].data, grid->dzhi4);
+    stats->calcgrad_4th(u->data, f->profs["ugrad"].data, grid->dzhi4);
+    stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_4th(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi4);
+      stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4);
   }
 
   // calculate the turbulent fluxes
   if(grid->swspatialorder == "2")
   {
-    stats->calcflux_2nd(u->data, w->data, stats->profs["uw"].data, s["tmp1"]->data, 1, 0);
-    stats->calcflux_2nd(v->data, w->data, stats->profs["vw"].data, s["tmp1"]->data, 0, 1);
+    stats->calcflux_2nd(u->data, w->data, f->profs["uw"].data, s["tmp1"]->data, 1, 0);
+    stats->calcflux_2nd(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, 0, 1);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_2nd(it->second->data, w->data, stats->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
+      stats->calcflux_2nd(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcflux_4th(u->data, w->data, stats->profs["uw"].data, s["tmp1"]->data, 1, 0);
-    stats->calcflux_4th(v->data, w->data, stats->profs["vw"].data, s["tmp1"]->data, 0, 1);
+    stats->calcflux_4th(u->data, w->data, f->profs["uw"].data, s["tmp1"]->data, 1, 0);
+    stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, 0, 1);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_4th(it->second->data, w->data, stats->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
+      stats->calcflux_4th(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
   }
 
   // calculate the diffusive fluxes
@@ -274,25 +274,25 @@ int cfields::execstats()
     if(model->diff->getname() == "les2s")
     {
       cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-      stats->calcdiff_2nd(u->data, s["evisc"]->data, stats->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
-      stats->calcdiff_2nd(v->data, s["evisc"]->data, stats->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
+      stats->calcdiff_2nd(u->data, s["evisc"]->data, f->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
+      stats->calcdiff_2nd(v->data, s["evisc"]->data, f->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
       for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-        stats->calcdiff_2nd(it->second->data, s["evisc"]->data, stats->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
+        stats->calcdiff_2nd(it->second->data, s["evisc"]->data, f->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
     }
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcdiff_4th(u->data, stats->profs["udiff"].data, grid->dzhi4, visc);
-    stats->calcdiff_4th(v->data, stats->profs["vdiff"].data, grid->dzhi4, visc);
+    stats->calcdiff_4th(u->data, f->profs["udiff"].data, grid->dzhi4, visc);
+    stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcdiff_4th(it->second->data, stats->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc);
+      stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc);
   }
 
   // calculate the total fluxes
-  stats->addfluxes(stats->profs["uflux"].data, stats->profs["uw"].data, stats->profs["udiff"].data);
-  stats->addfluxes(stats->profs["vflux"].data, stats->profs["vw"].data, stats->profs["vdiff"].data);
+  stats->addfluxes(f->profs["uflux"].data, f->profs["uw"].data, f->profs["udiff"].data);
+  stats->addfluxes(f->profs["vflux"].data, f->profs["vw"].data, f->profs["vdiff"].data);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addfluxes(stats->profs[it->first+"flux"].data, stats->profs[it->first+"w"].data, stats->profs[it->first+"diff"].data);
+    stats->addfluxes(f->profs[it->first+"flux"].data, f->profs[it->first+"w"].data, f->profs[it->first+"diff"].data);
 
   return 0;
 }

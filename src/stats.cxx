@@ -41,18 +41,18 @@ cstats::cstats(cmodel *modelin)
   // set the pointers to NULL
   umodel = NULL;
   vmodel = NULL;
-  dataFile = NULL;
 }
 
 cstats::~cstats()
 {
-  delete dataFile;
+  // delete dataFile;
   delete[] umodel;
   delete[] vmodel;
 
+  // CvH edit this later
   // delete the profiles
-  for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
-    delete[] it->second.data;
+  // for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
+  //   delete[] it->second.data;
 }
 
 int cstats::readinifile(cinput *inputin)
@@ -82,6 +82,14 @@ int cstats::init(double ifactor)
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
 
+  // add the default filter
+  filters["default"].name = "default";
+  filters["default"].dataFile = NULL;
+
+  // CvH a test
+  // filters["default2"].name = "default2";
+  // filters["default2"].dataFile = NULL;
+
   // set the number of stats to zero
   nstats = 0;
 
@@ -96,54 +104,60 @@ int cstats::create(int n)
 
   int nerror = 0;
 
-  // create a NetCDF file for the statistics
-  if(master->mpiid == 0)
+  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
   {
-    char filename[256];
-    std::sprintf(filename, "%s.%07d.nc", master->simname.c_str(), n);
-    dataFile = new NcFile(filename, NcFile::New);
-    if(!dataFile->is_valid())
+    // shortcut
+    filter *f = &it->second;
+
+    // create a NetCDF file for the statistics
+    if(master->mpiid == 0)
     {
-      std::printf("ERROR cannot write statistics file\n");
-      ++nerror;
+      char filename[256];
+      std::sprintf(filename, "%s.%s.%07d.nc", master->simname.c_str(), f->name.c_str(), n);
+      f->dataFile = new NcFile(filename, NcFile::New);
+      if(!f->dataFile->is_valid())
+      {
+        std::printf("ERROR cannot write statistics file\n");
+        ++nerror;
+      }
     }
-  }
-  // crash on all processes in case the file could not be written
-  master->broadcast(&nerror, 1);
-  if(nerror)
-    return 1;
+    // crash on all processes in case the file could not be written
+    master->broadcast(&nerror, 1);
+    if(nerror)
+      return 1;
 
-  // create dimensions
-  if(master->mpiid == 0)
-  {
-    z_dim  = dataFile->add_dim("z" , grid->kmax);
-    zh_dim = dataFile->add_dim("zh", grid->kmax+1);
-    t_dim  = dataFile->add_dim("t");
+    // create dimensions
+    if(master->mpiid == 0)
+    {
+      f->z_dim  = f->dataFile->add_dim("z" , grid->kmax);
+      f->zh_dim = f->dataFile->add_dim("zh", grid->kmax+1);
+      f->t_dim  = f->dataFile->add_dim("t");
 
-    NcVar *z_var, *zh_var;
+      NcVar *z_var, *zh_var;
 
-    // create variables belonging to dimensions
-    iter_var = dataFile->add_var("iter", ncInt   , t_dim );
-    nerror += iter_var->add_att("units", "-");
-    nerror += iter_var->add_att("longname", "Iteration number");
+      // create variables belonging to dimensions
+      f->iter_var = f->dataFile->add_var("iter", ncInt, f->t_dim);
+      nerror += f->iter_var->add_att("units", "-");
+      nerror += f->iter_var->add_att("longname", "Iteration number");
 
-    t_var = dataFile->add_var("t", ncDouble, t_dim );
-    nerror += t_var->add_att("units", "s");
-    nerror += t_var->add_att("longname", "Time");
+      f->t_var = f->dataFile->add_var("t", ncDouble, f->t_dim);
+      nerror += f->t_var->add_att("units", "s");
+      nerror += f->t_var->add_att("longname", "Time");
 
-    z_var = dataFile->add_var("z", ncDouble, z_dim );
-    nerror += z_var->add_att("units", "m");
-    nerror += z_var->add_att("longname", "Full level height");
+      z_var = f->dataFile->add_var("z", ncDouble, f->z_dim);
+      nerror += z_var->add_att("units", "m");
+      nerror += z_var->add_att("longname", "Full level height");
 
-    zh_var = dataFile->add_var("zh", ncDouble, zh_dim);
-    nerror += zh_var->add_att("units", "m");
-    nerror += zh_var->add_att("longname", "Half level height");
+      zh_var = f->dataFile->add_var("zh", ncDouble, f->zh_dim);
+      nerror += zh_var->add_att("units", "m");
+      nerror += zh_var->add_att("longname", "Half level height");
 
-    // save the grid variables
-    z_var ->put(&grid->z [grid->kstart], grid->kmax  );
-    zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
+      // save the grid variables
+      z_var ->put(&grid->z [grid->kstart], grid->kmax  );
+      zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
 
-    dataFile->sync();
+      f->dataFile->sync();
+    }
   }
 
   return 0;
@@ -180,20 +194,26 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   if(itime % isampletime != 0)
     return 0;
 
-  // put the data into the NetCDF file
-  if(master->mpiid == 0)
+  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
   {
-    t_var   ->put_rec(&time     , nstats);
-    iter_var->put_rec(&iteration, nstats);
+    // shortcut
+    filter *f = &it->second;
 
-    for(profmap::const_iterator it=profs.begin(); it!=profs.end(); ++it)
-      profs[it->first].ncvar->put_rec(&profs[it->first].data[grid->kstart], nstats);
+    // put the data into the NetCDF file
+    if(master->mpiid == 0)
+    {
+      f->t_var   ->put_rec(&time     , nstats);
+      f->iter_var->put_rec(&iteration, nstats);
 
-    for(tseriesmap::const_iterator it=tseries.begin(); it!=tseries.end(); ++it)
-      tseries[it->first].ncvar->put_rec(&tseries[it->first].data, nstats);
+      for(profmap::const_iterator it=f->profs.begin(); it!=f->profs.end(); ++it)
+        f->profs[it->first].ncvar->put_rec(&f->profs[it->first].data[grid->kstart], nstats);
 
-    // sync the data
-    dataFile->sync();
+      for(tseriesmap::const_iterator it=f->tseries.begin(); it!=f->tseries.end(); ++it)
+        f->tseries[it->first].ncvar->put_rec(&f->tseries[it->first].data, nstats);
+
+      // sync the data
+      f->dataFile->sync();
+    }
   }
 
   ++nstats;
@@ -210,28 +230,35 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
 {
   int nerror = 0;
 
-  // create the NetCDF variable
-  if(master->mpiid == 0)
+  // add the profile to all files
+  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
   {
-    if(zloc == "z")
-    {
-      profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, z_dim );
-      profs[name].data = NULL;
-    }
-    else if(zloc == "zh")
-    {
-      profs[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim, zh_dim);
-      profs[name].data = NULL;
-    }
-    nerror += profs[name].ncvar->add_att("units", unit.c_str());
-    nerror += profs[name].ncvar->add_att("long_name", longname.c_str());
-    nerror += profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
-  }
+    // shortcut
+    filter *f = &it->second;
 
-  // and allocate the memory and initialize at zero
-  profs[name].data = new double[grid->kcells];
-  for(int k=0; k<grid->kcells; ++k)
-    profs[name].data[k] = 0.;
+    // create the NetCDF variable
+    if(master->mpiid == 0)
+    {
+      if(zloc == "z")
+      {
+        f->profs[name].ncvar = f->dataFile->add_var(name.c_str(), ncDouble, f->t_dim, f->z_dim);
+        f->profs[name].data = NULL;
+      }
+      else if(zloc == "zh")
+      {
+        f->profs[name].ncvar = f->dataFile->add_var(name.c_str(), ncDouble, f->t_dim, f->zh_dim);
+        f->profs[name].data = NULL;
+      }
+      nerror += f->profs[name].ncvar->add_att("units", unit.c_str());
+      nerror += f->profs[name].ncvar->add_att("long_name", longname.c_str());
+      nerror += f->profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+    }
+
+    // and allocate the memory and initialize at zero
+    f->profs[name].data = new double[grid->kcells];
+    for(int k=0; k<grid->kcells; ++k)
+      f->profs[name].data[k] = 0.;
+  }
 
   return nerror;
 }
@@ -240,22 +267,29 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
 {
   int nerror = 0;
 
-  // create the NetCDF variable
-  NcVar *var;
-  if(master->mpiid == 0)
+  // add the profile to all files
+  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
   {
-    if(zloc == "z")
-      var = dataFile->add_var(name.c_str(), ncDouble, z_dim );
-    else if(zloc == "zh")
-      var = dataFile->add_var(name.c_str(), ncDouble, zh_dim);
-    nerror += var->add_att("units", unit.c_str());
-    nerror += var->add_att("long_name", longname.c_str());
-    nerror += var->add_att("_FillValue", NC_FILL_DOUBLE);
+    // shortcut
+    filter *f = &it->second;
 
-    if(zloc == "z")
-      var->put(&prof[grid->kstart], grid->kmax);
-    else if(zloc == "zh")
-      var->put(&prof[grid->kstart], grid->kmax+1);
+    // create the NetCDF variable
+    NcVar *var;
+    if(master->mpiid == 0)
+    {
+      if(zloc == "z")
+        var = f->dataFile->add_var(name.c_str(), ncDouble, f->z_dim);
+      else if(zloc == "zh")
+        var = f->dataFile->add_var(name.c_str(), ncDouble, f->zh_dim);
+      nerror += var->add_att("units", unit.c_str());
+      nerror += var->add_att("long_name", longname.c_str());
+      nerror += var->add_att("_FillValue", NC_FILL_DOUBLE);
+
+      if(zloc == "z")
+        var->put(&prof[grid->kstart], grid->kmax);
+      else if(zloc == "zh")
+        var->put(&prof[grid->kstart], grid->kmax+1);
+    }
   }
 
   return nerror;
@@ -264,17 +298,25 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
 int cstats::addtseries(std::string name, std::string longname, std::string unit)
 {
   int nerror = 0;
-  // create the NetCDF variable
-  if(master->mpiid == 0)
-  {
-    tseries[name].ncvar = dataFile->add_var(name.c_str(), ncDouble, t_dim);
-    nerror += tseries[name].ncvar->add_att("units", unit.c_str());
-    nerror += tseries[name].ncvar->add_att("long_name", longname.c_str());
-    nerror += tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
-  }
 
-  // and initialize at zero
-  tseries[name].data = 0.;
+  // add the series to all files
+  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
+  {
+    // shortcut
+    filter *f = &it->second;
+
+    // create the NetCDF variable
+    if(master->mpiid == 0)
+    {
+      f->tseries[name].ncvar = f->dataFile->add_var(name.c_str(), ncDouble, f->t_dim);
+      nerror += f->tseries[name].ncvar->add_att("units", unit.c_str());
+      nerror += f->tseries[name].ncvar->add_att("long_name", longname.c_str());
+      nerror += f->tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+    }
+
+    // and initialize at zero
+    f->tseries[name].data = 0.;
+  }
 
   return nerror;
 }

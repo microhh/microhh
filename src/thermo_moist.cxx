@@ -194,14 +194,14 @@ int cthermo_moist::exec()
   return (nerror>0);
 }
 
-int cthermo_moist::execstats()
+int cthermo_moist::execstats(filter *f)
 {
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, fields->s["tmp2"]->data);
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
 
   // mean
-  stats->calcmean(fields->s["tmp1"]->data, stats->profs["b"].data, NO_OFFSET);
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET);
 
   // moments
   for(int n=2; n<5; ++n)
@@ -209,43 +209,43 @@ int cthermo_moist::execstats()
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, stats->profs["b"].data, stats->profs["b"+sn].data, n, 0);
+    stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, 0);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi);
   if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi4);
+    stats->calcgrad_4th(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi4);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
   if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
 
   // calculate diffusive fluxes
   if(model->diff->getname() == "les2s")
   {
     cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
+    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->s["evisc"]->data, f->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
   }
   else
   {
     // take the diffusivity of temperature for that of moisture
-    stats->calcdiff_4th(fields->s["tmp1"]->data, stats->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc);
+    stats->calcdiff_4th(fields->s["tmp1"]->data, f->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc);
   }
 
   // calculate the total fluxes
-  stats->addfluxes(stats->profs["bflux"].data, stats->profs["bw"].data, stats->profs["bdiff"].data);
+  stats->addfluxes(f->profs["bflux"].data, f->profs["bw"].data, f->profs["bdiff"].data);
 
   // calculate the liquid water stats
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
-  stats->calcmean (fields->s["tmp1"]->data, stats->profs["ql"].data, NO_OFFSET);
-  stats->calccount(fields->s["tmp1"]->data, stats->profs["cfrac"].data, 0.);
+  stats->calcmean (fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET);
+  stats->calccount(fields->s["tmp1"]->data, f->profs["cfrac"].data, 0.);
 
-  stats->calccover(fields->s["tmp1"]->data, &stats->tseries["ccover"].data, 0.);
-  stats->calcpath(fields->s["tmp1"]->data, &stats->tseries["lwp"].data);
+  stats->calccover(fields->s["tmp1"]->data, &f->tseries["ccover"].data, 0.);
+  stats->calcpath(fields->s["tmp1"]->data, &f->tseries["lwp"].data);
 
   return 0;
 }
