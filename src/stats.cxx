@@ -171,7 +171,7 @@ int cstats::create(int n)
   }
 
   // for each filter add the area as a variable
-  addprof("area", "Fractional area contained in sample", "-", "z");
+  addprof("area", "Fractional area contained in conditional statistics", "-", "z");
 
   return 0;
 }
