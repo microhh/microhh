@@ -388,9 +388,18 @@ int cmodel::exec()
     {
       if(stats->dostats())
       {
+        // default loop
         fields->execstats(&stats->filters["default"]);
         thermo->execstats(&stats->filters["default"]);
         budget->execstats(&stats->filters["default"]);
+
+        // filtered loop
+        fields->getfilter(fields->sd["tmp0"], &stats->filters["w"]);
+        fields->execstats(&stats->filters["w"]);
+        thermo->execstats(&stats->filters["w"]);
+        budget->execstats(&stats->filters["w"]);
+
+        // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 

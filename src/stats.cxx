@@ -41,13 +41,15 @@ cstats::cstats(cmodel *modelin)
   // set the pointers to NULL
   umodel = NULL;
   vmodel = NULL;
+
+  filtercount = NULL;
 }
 
 cstats::~cstats()
 {
-  // delete dataFile;
   delete[] umodel;
   delete[] vmodel;
+  delete[] filtercount;
 
   // delete the profiles
   for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
@@ -85,13 +87,15 @@ int cstats::init(double ifactor)
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
 
+  filtercount = new int[grid->kcells];
+
   // add the default filter
   filters["default"].name = "default";
   filters["default"].dataFile = NULL;
 
   // CvH a test
-  filters["default2"].name = "default2";
-  filters["default2"].dataFile = NULL;
+  filters["w"].name = "w";
+  filters["w"].dataFile = NULL;
 
   // set the number of stats to zero
   nstats = 0;
@@ -161,7 +165,11 @@ int cstats::create(int n)
 
       f->dataFile->sync();
     }
+
   }
+
+  // for each filter add the area as a variable
+  addprof("area_in", "Fractional area contained in sample", "-", "z");
 
   return 0;
 }

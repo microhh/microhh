@@ -77,6 +77,7 @@ class cstats
 
     // container for all stats, filter as uppermost in hierarchy
     filtermap filters;
+    int *filtercount;
 
     // interface functions
     // profmap profs;

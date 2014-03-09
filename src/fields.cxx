@@ -104,8 +104,9 @@ int cfields::readinifile(cinput *inputin)
   nerror += initmomfld(v, vt, "v", "V velocity", "m s-1");
   nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
   nerror += initdfld("p", "Pressure", "Pa");
-  nerror += initdfld("tmp1","","");
-  nerror += initdfld("tmp2","","");
+  nerror += initdfld("tmp0", "", "");
+  nerror += initdfld("tmp1", "", "");
+  nerror += initdfld("tmp2", "", "");
 
   // \TODO check this later
   stats = model->stats;
@@ -201,6 +202,47 @@ int cfields::exec()
     for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcmean(it->second->datamean, it->second->data, grid->kcells);
   }
+
+  return 0;
+}
+
+int cfields::getfilter(cfield3d *ffield, filter *f)
+{
+  calcfilter(ffield->data, f->profs["area_in"].data, stats->filtercount, w->data);
+  return 0;
+}
+
+int cfields::calcfilter(double * restrict fdata, double * restrict area, 
+                        int * restrict nfilter, double * restrict w)
+{
+  int ijk,ij,ii,jj,kk;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  int ntmp;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    nfilter[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + k*kk;
+        ntmp = ((w[ijk]+w[ijk+kk]) > 0.);
+        nfilter[k] += ntmp;
+        fdata[ijk] = (double)ntmp;
+      }
+  }
+
+  int ijtot = grid->itot*grid->jtot;
+  master->sum(nfilter, grid->kcells);
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    area[k] = (double)nfilter[k] / (double)ijtot;
 
   return 0;
 }

@@ -43,6 +43,7 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
+    int getfilter(cfield3d *, filter *);
     int execstats(filter *);
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string, std::string, std::string);
@@ -106,6 +107,9 @@ class cfields
     std::vector<std::string> crossfluxbot;
     std::vector<std::string> crossfluxtop;
     int checkaddcross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
+
+    // filters
+    int calcfilter(double *, double *, int *, double *);
 
     // perturbations
     double rndamp;
