@@ -405,6 +405,18 @@ int cmodel::exec()
         thermo->execstats(&stats->filters["wmin"]);
         budget->execstats(&stats->filters["wmin"]);
 
+        // filtered loop
+        thermo->getfilter(fields->sd["tmp0"], &stats->filters["ql"]);
+        fields->execstats(&stats->filters["ql"]);
+        thermo->execstats(&stats->filters["ql"]);
+        budget->execstats(&stats->filters["ql"]);
+
+        // filtered loop
+        thermo->getfilter(fields->sd["tmp0"], &stats->filters["qlcore"]);
+        fields->execstats(&stats->filters["qlcore"]);
+        thermo->execstats(&stats->filters["qlcore"]);
+        budget->execstats(&stats->filters["qlcore"]);
+
         // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }

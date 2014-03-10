@@ -4,7 +4,7 @@ import netCDF4
 
 from pylab import *
 
-stats = netCDF4.Dataset("bomex.0000000.nc","r")
+stats = netCDF4.Dataset("bomex.ql.0000000.nc","r")
 t   = stats.variables["t"][:]
 z   = stats.variables["z"][:]
 zh  = stats.variables["zh"][:]
@@ -28,7 +28,7 @@ w2t  = stats.variables["w2"][:,:]
 tket = 0.5*(u2t + v2t + 0.5*(w2t[:,0:-1]+w2t[:,1::]))
 
 end   = t.size
-start = t.size - 36
+start = t.size - 12
 
 s  = numpy.mean(st [start:end,:], 0)
 qt = numpy.mean(qtt[start:end,:], 0)

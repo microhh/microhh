@@ -99,6 +99,12 @@ int cstats::init(double ifactor)
   filters["wmin"].name = "wmin";
   filters["wmin"].dataFile = NULL;
 
+  filters["ql"].name = "ql";
+  filters["ql"].dataFile = NULL;
+
+  filters["qlcore"].name = "qlcore";
+  filters["qlcore"].dataFile = NULL;
+
   // set the number of stats to zero
   nstats = 0;
 

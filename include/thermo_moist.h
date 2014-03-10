@@ -40,6 +40,7 @@ class cthermo_moist : public cthermo
     int init();
     int create();
     int exec();
+    int getfilter(cfield3d *, filter *);
     int execstats(filter *);
     int execcross();
 
@@ -62,7 +63,11 @@ class cthermo_moist : public cthermo
 
     bool allocated;
     cstats *stats;
-    
+
+    // filters
+    int calcfilterql    (double *, double *, double *, int *, double *);
+    int calcfilterqlcore(double *, double *, double *, int *, double *, double *);
+
     int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *);
 

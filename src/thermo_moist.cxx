@@ -194,6 +194,91 @@ int cthermo_moist::exec()
   return (nerror>0);
 }
 
+
+int cthermo_moist::getfilter(cfield3d *ffield, filter *f)
+{
+  if(f->name == "ql")
+    calcfilterql(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount, fields->s["tmp1"]->data);
+  else if(f->name == "qlcore")
+    calcfilterqlcore(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
+  return 0;
+}
+
+int cthermo_moist::calcfilterql(double * restrict fdata, double * restrict area, double * restrict areah,
+                             int * restrict nfilter, double * restrict ql)
+{
+  int ijk,ij,ii,jj,kk;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->ijcells;
+
+  int ntmp;
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    nfilter[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + k*kk;
+        ntmp = (ql[ijk] + ql[ijk-kk] > 0.);// \TODO WRONG! ql needs to be based on interpolated values of conserved variables.
+        nfilter[k] += ntmp;
+        fdata[ijk] = (double)ntmp;
+      }
+  }
+
+  int ijtot = grid->itot*grid->jtot;
+  master->sum(nfilter, grid->kcells);
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    areah[k] = (double)nfilter[k] / (double)ijtot;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    area[k] = 0.5*(areah[k] + areah[k+1]);
+
+  return 0;
+}
+int cthermo_moist::calcfilterqlcore(double * restrict fdata, double * restrict area, double * restrict areah,
+                             int * restrict nfilter, double * restrict ql, double * restrict bu)
+{
+  int ijk,ij,ii,jj,kk;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->ijcells;
+
+  int ntmp;
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    nfilter[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        ijk = i + j*jj + k*kk;
+        ntmp = (ql[ijk] + ql[ijk-kk] > 0.)*(bu[ijk] + bu[ijk-kk] > 0.);// \TODO WRONG! ql needs to be based on interpolated values of conserved variables.
+        nfilter[k] += ntmp;
+        fdata[ijk] = (double)ntmp;
+      }
+  }
+
+  int ijtot = grid->itot*grid->jtot;
+  master->sum(nfilter, grid->kcells);
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    areah[k] = (double)nfilter[k] / (double)ijtot;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    area[k] = 0.5*(areah[k] + areah[k+1]);
+
+  return 0;
+}
+
 int cthermo_moist::execstats(filter *f)
 {
   // calc the buoyancy and its surface flux for the profiles
@@ -244,7 +329,7 @@ int cthermo_moist::execstats(filter *f)
 
   // calculate the liquid water stats
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
-  stats->calcmean (fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET);
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET, 0, fields->s["tmp0"]->data, stats->filtercount);
   stats->calccount(fields->s["tmp1"]->data, f->profs["cfrac"].data, 0.);
 
   stats->calccover(fields->s["tmp1"]->data, &f->tseries["ccover"].data, 0.);

@@ -39,6 +39,7 @@ class cthermo
     virtual int exec();
     virtual int execstats(filter *);
     virtual int execcross();
+    virtual int getfilter(cfield3d *, filter *);
 
     // interfacing functions to get buoyancy properties from other classes
     virtual int checkthermofield(std::string name);
