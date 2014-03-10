@@ -171,7 +171,8 @@ int cstats::create(int n)
   }
 
   // for each filter add the area as a variable
-  addprof("area", "Fractional area contained in conditional statistics", "-", "z");
+  addprof("area" , "Fractional area contained in conditional statistics", "-", "z");
+  addprof("areah", "Fractional area contained in conditional statistics", "-", "zh");
 
   return 0;
 }
@@ -336,12 +337,12 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
 
 int cstats::getfilter(cfield3d *ffield, filter *f)
 {
-  calcfilter(ffield->data, f->profs["area"].data, filtercount);
+  calcfilter(ffield->data, f->profs["area"].data, f->profs["areah"].data, filtercount);
   return 0;
 }
 
 // COMPUTATIONAL KERNELS BELOW
-int cstats::calcfilter(double * restrict fdata, double * restrict area, int * restrict nfilter)
+int cstats::calcfilter(double * restrict fdata, double * restrict area, double * restrict areah, int * restrict nfilter)
 {
   int ijk,ij,ii,jj,kk;
   int ijtot;
@@ -365,8 +366,11 @@ int cstats::calcfilter(double * restrict fdata, double * restrict area, int * re
   for(int k=grid->kstart; k<grid->kend+1; k++)
   {
     nfilter[k] = ijtot;
-    area[k] = 1.;
+    areah[k] = 1.;
   }
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    area[k] = 1.;
 
   return 0;
 }

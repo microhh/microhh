@@ -114,7 +114,7 @@ class cstats
     int nstats;
 
     // filters
-    int calcfilter(double *, double *, int *);
+    int calcfilter(double *, double *, double *, int *);
 
   protected:
     cmodel  *model;

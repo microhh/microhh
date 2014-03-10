@@ -209,13 +209,13 @@ int cfields::exec()
 int cfields::getfilter(cfield3d *ffield, filter *f)
 {
   if(f->name == "wplus")
-    calcfilterwplus(ffield->data, f->profs["area"].data, stats->filtercount, w->data);
-  else if(f->name == "wmin")
-    calcfilterwmin (ffield->data, f->profs["area"].data, stats->filtercount, w->data);
+    calcfilterwplus(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount, w->data);
+  else if(f->name == "wmin")                                                  
+    calcfilterwmin (ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount, w->data);
   return 0;
 }
 
-int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, 
+int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, double * restrict areah,
                              int * restrict nfilter, double * restrict w)
 {
   int ijk,ij,ii,jj,kk;
@@ -245,12 +245,15 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area,
   master->sum(nfilter, grid->kcells);
 
   for(int k=grid->kstart; k<grid->kend+1; k++)
-    area[k] = (double)nfilter[k] / (double)ijtot;
+    areah[k] = (double)nfilter[k] / (double)ijtot;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    area[k] = 0.5*(areah[k] + areah[k+1]);
 
   return 0;
 }
 
-int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, 
+int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, double * restrict areah,
                             int * restrict nfilter, double * restrict w)
 {
   int ijk,ij,ii,jj,kk;
@@ -280,7 +283,10 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area,
   master->sum(nfilter, grid->kcells);
 
   for(int k=grid->kstart; k<grid->kend+1; k++)
-    area[k] = (double)nfilter[k] / (double)ijtot;
+    areah[k] = (double)nfilter[k] / (double)ijtot;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+    area[k] = 0.5*(areah[k] + areah[k+1]);
 
   return 0;
 }

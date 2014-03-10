@@ -109,8 +109,8 @@ class cfields
     int checkaddcross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
 
     // filters
-    int calcfilterwplus(double *, double *, int *, double *);
-    int calcfilterwmin (double *, double *, int *, double *);
+    int calcfilterwplus(double *, double *, double *, int *, double *);
+    int calcfilterwmin (double *, double *, double *, int *, double *);
 
     // perturbations
     double rndamp;
