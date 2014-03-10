@@ -309,11 +309,11 @@ int cfields::execstats(filter *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, 0);
-    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, 0);
-    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, 1);
+    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, 0, sd["tmp0"]->data, stats->filtercount);
+    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, 0, sd["tmp0"]->data, stats->filtercount);
+    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, 1, sd["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcmoment(it->second->data, f->profs[it->first].data, f->profs[it->first+sn].data, n, 0);
+      stats->calcmoment(it->second->data, f->profs[it->first].data, f->profs[it->first+sn].data, n, 0, sd["tmp0"]->data, stats->filtercount);
   }
 
   // calculate the gradients
@@ -335,10 +335,13 @@ int cfields::execstats(filter *f)
   // calculate the turbulent fluxes
   if(grid->swspatialorder == "2")
   {
-    stats->calcflux_2nd(u->data, w->data, f->profs["uw"].data, s["tmp1"]->data, 1, 0);
-    stats->calcflux_2nd(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, 0, 1);
+    stats->calcflux_2nd(u->data, w->data, f->profs["uw"].data, s["tmp1"]->data, 1, 0,
+                        s["tmp0"]->data, stats->filtercount);
+    stats->calcflux_2nd(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, 0, 1,
+                        s["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_2nd(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
+      stats->calcflux_2nd(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0,
+                          s["tmp0"]->data, stats->filtercount);
   }
   else if(grid->swspatialorder == "4")
   {

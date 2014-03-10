@@ -494,6 +494,36 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   return 0;
 }
 
+int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a,
+                       double * restrict filter, int * restrict nfilter)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+  
+  for(int k=grid->kstart; k<grid->kend+a; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk;
+        prof[k] += filter[ijk]*std::pow(data[ijk]-datamean[k], power);
+      }
+  }
+
+  master->sum(prof, grid->kcells);
+
+  double n = grid->itot*grid->jtot;
+  for(int k=0; k<grid->kcells; k++)
+    // avoid zero divisions in case the filter sum equals zero
+    prof[k] /= ((double)nfilter[k] + dsmall);
+
+  return 0;
+}
+
 int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
   int ijk,jj,kk;
@@ -532,6 +562,49 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy,
+                         double * restrict filter, int * restrict nfilter)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->icells*grid->jcells;
+
+  // set a pointer to the field that contains w, either interpolated or the original
+  double * restrict calcw = w;
+  if(locx == 1)
+  {
+    grid->interpolatex_2nd(tmp1, w, 0);
+    calcw = tmp1;
+  }
+  else if(locy == 1)
+  {
+    grid->interpolatey_2nd(tmp1, w, 0);
+    calcw = tmp1;
+  }
+  
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk;
+        prof[k] += filter[ijk]*0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
+      }
+  }
+
+  master->sum(prof, grid->kcells);
+
+  double n = grid->itot*grid->jtot;
+  for(int k=0; k<grid->kcells; k++)
+    // avoid zero divisions in case the filter sum equals zero
+    prof[k] /= ((double)nfilter[k] + dsmall);
 
   return 0;
 }

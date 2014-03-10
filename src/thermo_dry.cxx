@@ -128,7 +128,8 @@ int cthermo_dry::execstats(filter *f)
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot);
 
   // calculate the mean
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET);
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET,
+                  fields->s["tmp0"]->data, stats->filtercount);
 
   // calculate the moments
   for(int n=2; n<5; ++n)
@@ -136,7 +137,8 @@ int cthermo_dry::execstats(filter *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, 0);
+    stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, 0,
+                      fields->s["tmp0"]->data, stats->filtercount);
   }
 
   // calculate the gradients
@@ -147,7 +149,8 @@ int cthermo_dry::execstats(filter *f)
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, 0, 0,
+                        fields->s["tmp0"]->data, stats->filtercount);
   if(grid->swspatialorder == "4")
     stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
 
