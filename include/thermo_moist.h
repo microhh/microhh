@@ -53,7 +53,8 @@ class cthermo_moist : public cthermo
     double ps;
     double thvref;
     double rhos;
-    double *pmn;
+    double *pref;
+    double *prefh;
 
     // cross sections
     std::vector<std::string> crosslist;        // List with all crosses from ini file
@@ -62,12 +63,12 @@ class cthermo_moist : public cthermo
     bool allocated;
     cstats *stats;
     
-    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *);
+    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *);
 
     int calcbuoyancy(double *, double *, double *, double *, double *);
 
-    int calchydropres_2nd(double *, double *, double *, double *, double *);
+    int calchydropres_2nd(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
     int calchydropres_4th(double *, double *, double *, double *, double *);
 
     int calcqlfield(double *, double *, double *, double *);
