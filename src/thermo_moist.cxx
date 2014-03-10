@@ -484,7 +484,7 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
-    exnh = exner2(ph[k]);
+    exnh = exner(ph[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -536,7 +536,7 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
     ph  = interp4(p[k-2] , p[k-1] , p[k] , p[k+1]); // BvS To-do: calculate pressure at full and half levels
-    exnh = exner2(ph);
+    exnh = exner(ph);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -583,7 +583,7 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
 
   for(int k=0; k<grid->kcells; k++)
   {
-    exn = exner2(p[k]);
+    exn = exner(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -627,7 +627,7 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
 
   for(int k=grid->kstart; k<grid->kend; k++)
   {
-    exn = exner2(p[k]);
+    exn = exner(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -686,7 +686,7 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
 // INLINE FUNCTIONS
 inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql, const double thvref)
 {
-  return grav * ((s + lv*ql/(cp*exner2(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvref) / thvref;
+  return grav * ((s + lv*ql/(cp*exner(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvref) / thvref;
 }
 
 inline double cthermo_moist::bunoql(const double s, const double qt, const double thvref)
