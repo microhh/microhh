@@ -226,7 +226,7 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area,
 
   int ntmp;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend+1; k++)
   {
     nfilter[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -235,7 +235,7 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area,
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
-        ntmp = ((w[ijk]+w[ijk+kk]) > 0.);
+        ntmp = (w[ijk] > 0.);
         nfilter[k] += ntmp;
         fdata[ijk] = (double)ntmp;
       }
@@ -261,7 +261,7 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area,
 
   int ntmp;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend+1; k++)
   {
     nfilter[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -270,7 +270,7 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area,
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
-        ntmp = ((w[ijk]+w[ijk+kk]) <= 0.);
+        ntmp = (w[ijk] <= 0.);
         nfilter[k] += ntmp;
         fdata[ijk] = (double)ntmp;
       }

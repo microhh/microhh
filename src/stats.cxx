@@ -351,7 +351,8 @@ int cstats::calcfilter(double * restrict fdata, double * restrict area, int * re
   kk = grid->ijcells;
   ijtot = grid->itot*grid->jtot;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  // set the filter at the zh level
+  for(int k=grid->kstart; k<grid->kend+1; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -361,7 +362,7 @@ int cstats::calcfilter(double * restrict fdata, double * restrict area, int * re
         fdata[ijk] = 1.;
       }
 
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for(int k=grid->kstart; k<grid->kend+1; k++)
   {
     nfilter[k] = ijtot;
     area[k] = 1.;
