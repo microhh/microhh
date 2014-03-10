@@ -52,6 +52,7 @@ class cboundary
 
     virtual int readinifile(cinput *); ///< Process the data from the input file.
     virtual int init();                ///< Initialize the fields.
+    virtual int settimedep();          ///< Initialize the fields.
     virtual int setvalues();           ///< Set all 2d fields to the prober BC value.
 
     virtual int save(int); ///< Save boundary conditions related fields for restarts.
@@ -72,12 +73,17 @@ class cboundary
     typedef std::map<std::string, field3dbc *> bcmap;
     bcmap sbc;
 
+    // time dependent variables
+    std::string swtimedep;
+    std::vector<double> timedeptime;
+    std::vector<std::string> timedeplist;
+    std::map<std::string, double *> timedepdata;
+
     int processbcs(cinput *); ///< Process the boundary condition settings from the ini file.
     int setbc(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
 
   private:
     virtual int bcvalues(); ///< Update the boundary values.
-
 
     int setgcbot_2nd(double *, double *, int, double *, double *); ///< Set the bottom ghost cells with 2nd-order accuracy.
     int setgctop_2nd(double *, double *, int, double *, double *); ///< Set the top ghost cells with 2nd-order accuracy.
