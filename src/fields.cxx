@@ -222,7 +222,7 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, do
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   int ntmp;
 
@@ -260,7 +260,7 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, dou
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   int ntmp;
 
@@ -294,16 +294,16 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, dou
 int cfields::execstats(filter *f)
 {
   // calculate the means
-  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, sd["tmp0"]->data, stats->filtercount);
-  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, sd["tmp0"]->data, stats->filtercount);
-  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, sd["tmp0"]->data, stats->filtercount);
+  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, 0, sd["tmp0"]->data, stats->filtercount);
+  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, 0, sd["tmp0"]->data, stats->filtercount);
+  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, 1, sd["tmp0"]->data, stats->filtercount);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->calcmean(it->second->data, f->profs[it->first].data, NO_OFFSET, sd["tmp0"]->data, stats->filtercount);
+    stats->calcmean(it->second->data, f->profs[it->first].data, NO_OFFSET, 0, sd["tmp0"]->data, stats->filtercount);
 
-  stats->calcmean(s["p"]->data, f->profs["p"].data, NO_OFFSET, sd["tmp0"]->data, stats->filtercount);
+  stats->calcmean(s["p"]->data, f->profs["p"].data, NO_OFFSET, 0, sd["tmp0"]->data, stats->filtercount);
 
   if(model->diff->getname() == "les2s")
-    stats->calcmean(s["evisc"]->data, f->profs["evisc"].data, NO_OFFSET, sd["tmp0"]->data, stats->filtercount);
+    stats->calcmean(s["evisc"]->data, f->profs["evisc"].data, NO_OFFSET, 0, sd["tmp0"]->data, stats->filtercount);
 
   // calculate model means without correction for transformation
   stats->calcmean(u->data, umodel, NO_OFFSET);

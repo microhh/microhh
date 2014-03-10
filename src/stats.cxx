@@ -405,17 +405,20 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   return 0;
 }
 
-int cstats::calcmean(double * restrict data, double * restrict prof, double offset, 
+int cstats::calcmean(double * restrict data, double * restrict prof, double offset, int locz,
                      double * restrict filter, int * restrict nfilter)
 {
   int ijk,ii,jj,kk;
-  double val;
+  double filterval;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
+
+  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
+  int kkf = (1-locz)*kk;
   
-  for(int k=0; k<grid->kcells; k++)
+  for(int k=0; k<grid->kcells-1; k++)
   {
     prof[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -423,17 +426,20 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        val = data[ijk] + offset;
-        prof[k] += filter[ijk]*val;
+        filterval = 0.5*(filter[ijk] + filter[ijk+kkf]);
+        prof[k] += filterval*(data[ijk] + offset);
       }
   }
 
   master->sum(prof, grid->kcells);
 
+  // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf  = (1-locz);
+
   double n = grid->itot*grid->jtot;
-  for(int k=0; k<grid->kcells; k++)
+  for(int k=0; k<grid->kcells-1; k++)
     // avoid zero divisions in case the filter sum equals zero
-    prof[k] /= ((double)nfilter[k] + dsmall);
+    prof[k] /= (0.5*(double)(nfilter[k] + nfilter[k+kf]) + dsmall);
 
   return 0;
 }

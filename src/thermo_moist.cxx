@@ -201,7 +201,7 @@ int cthermo_moist::execstats(filter *f)
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
 
   // mean
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET,
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, 0,
                   fields->s["tmp0"]->data, stats->filtercount);
 
   // moments

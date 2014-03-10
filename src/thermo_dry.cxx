@@ -128,7 +128,7 @@ int cthermo_dry::execstats(filter *f)
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot);
 
   // calculate the mean
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET,
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, 0,
                   fields->s["tmp0"]->data, stats->filtercount);
 
   // calculate the moments
