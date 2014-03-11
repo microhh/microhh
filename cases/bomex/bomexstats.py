@@ -4,7 +4,7 @@ import netCDF4
 
 from pylab import *
 
-def plotstats(name):
+def plotstats(name, line):
   stats = netCDF4.Dataset("bomex.{}.0000000.nc".format(name),"r")
   t   = stats.variables["t"][:]
   z   = stats.variables["z"][:]
@@ -57,7 +57,7 @@ def plotstats(name):
   figure(f)
   for n in range(start,end):
     plot(st[n,:], z, color='#eeeeee')
-  plot(s, z, label=name)
+  plot(s, z, line, label=name)
   plot(st[0,:], z, 'k:')
   xlabel(r'$\theta$ [K]')
   ylabel(r'z [m]')
@@ -67,7 +67,7 @@ def plotstats(name):
   figure(f)
   for n in range(start,end):
     plot(qtt[n,:], z, color='#eeeeee')
-  plot(qt, z, label=name)
+  plot(qt, z, line, label=name)
   plot(qtt[0,:], z, 'k:')
   xlabel(r'q$_t$ [g~kg$^{-1}$]')
   ylabel(r'z [m]')
@@ -77,7 +77,7 @@ def plotstats(name):
   figure(f)
   for n in range(start,end):
     plot(bt[n,:], z, color='#eeeeee')
-  plot(b, z, label=name)
+  plot(b, z, line, label=name)
   plot(bt[0,:], z, 'k:')
   xlabel(r'b [m~s$^{-2}$]')
   ylabel(r'z [m]')
@@ -87,7 +87,7 @@ def plotstats(name):
   figure(f)
   for n in range(start,end):
     plot(ut[n,:], z, color='#eeeeee')
-  plot(u, z, label=name)
+  plot(u, z, line, label=name)
   plot(ut[0,:], z, 'k:')
   xlabel(r'u [m~s$^{-1}$]')
   ylabel(r'z [m]')
@@ -97,7 +97,7 @@ def plotstats(name):
   figure(f)
   for n in range(start,end):
     plot(vt[n,:], z, color='#eeeeee')
-  plot(v, z, label=name)
+  plot(v, z, line, label=name)
   plot(vt[0,:], z, 'k:')
   xlabel(r'v [m~s$^{-1}$]')
   ylabel(r'z [m]')
@@ -107,7 +107,7 @@ def plotstats(name):
   figure(f)
   for n in range(start,end):
     plot(qlt[n,:], z, color='#eeeeee')
-  plot(ql, z, label=name)
+  plot(ql, z, line, label=name)
   xlabel(r'q$_l$ [g~kg$^{-1}$]')
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
@@ -116,7 +116,7 @@ def plotstats(name):
   figure(f)
   for n in range(start,end):
     plot(cft[n,:], z, color='#eeeeee')
-  plot(cf, z, label=name)
+  plot(cf, z, line, label=name)
   xlabel(r'cloud fraction [-]')
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
@@ -164,16 +164,16 @@ def plotstats(name):
   figure(f)
   for n in range(start,end):
     plot(tket[n,:], z, color='#eeeeee')
-  plot(tke, z, label=name)
+  plot(tke, z, line, label=name)
   xlabel(r'TKE [m$^2$~s$^{-2}$]')
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
 
 ioff()
-plotstats("default")
-#plotstats("wplus")
-plotstats("ql")
-plotstats("qlcore")
+plotstats("default", 'b-')
+#plotstats("wplus", 'g-')
+plotstats("ql", 'r-')
+plotstats("qlcore", 'c-')
 ion()
 show()
 
