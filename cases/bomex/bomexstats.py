@@ -12,6 +12,7 @@ def plotstats(name):
   
   st  = stats.variables["s"][:,:]
   qtt = stats.variables["qt"][:,:]*1000.
+  bt  = stats.variables["b"][:,:]
   ut  = stats.variables["u"][:,:]
   vt  = stats.variables["v"][:,:]
   qlt = stats.variables["ql"][:,:]*1000.
@@ -33,6 +34,7 @@ def plotstats(name):
   
   s  = numpy.mean(st [start:end,:], 0)
   qt = numpy.mean(qtt[start:end,:], 0)
+  b  = numpy.mean(bt [start:end,:], 0)
   u  = numpy.mean(ut [start:end,:], 0)
   v  = numpy.mean(vt [start:end,:], 0)
   ql = numpy.mean(qlt[start:end,:], 0)
@@ -50,8 +52,9 @@ def plotstats(name):
   # enable LaTeX plotting
   rc('font',**{'family':'serif','serif':['Palatino']})
   rc('text', usetex=True)
-  
-  figure(1)
+
+  f = 1
+  figure(f)
   for n in range(start,end):
     plot(st[n,:], z, color='#eeeeee')
   plot(s, z, label=name)
@@ -59,8 +62,9 @@ def plotstats(name):
   xlabel(r'$\theta$ [K]')
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
-  
-  figure(2)
+ 
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(qtt[n,:], z, color='#eeeeee')
   plot(qt, z, label=name)
@@ -68,8 +72,19 @@ def plotstats(name):
   xlabel(r'q$_t$ [g~kg$^{-1}$]')
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
-  
-  figure(3)
+
+  f += 1
+  figure(f)
+  for n in range(start,end):
+    plot(bt[n,:], z, color='#eeeeee')
+  plot(b, z, label=name)
+  plot(bt[0,:], z, 'k:')
+  xlabel(r'b [m~s$^{-2}$]')
+  ylabel(r'z [m]')
+  legend(loc=0, frameon=False)
+
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(ut[n,:], z, color='#eeeeee')
   plot(u, z, label=name)
@@ -78,7 +93,8 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
   
-  figure(4)
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(vt[n,:], z, color='#eeeeee')
   plot(v, z, label=name)
@@ -87,7 +103,8 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
   
-  figure(5)
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(qlt[n,:], z, color='#eeeeee')
   plot(ql, z, label=name)
@@ -95,7 +112,8 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
   
-  figure(6)
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(cft[n,:], z, color='#eeeeee')
   plot(cf, z, label=name)
@@ -103,7 +121,8 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
   
-  figure(7)
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(sfluxt[n,:], zh, color='#eeeeee')
   plot(sflux, zh, label=name)
@@ -111,7 +130,8 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
   
-  figure(8)
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(bfluxt[n,:], zh, color='#eeeeee')
   plot(bflux, zh, label=name)
@@ -119,7 +139,8 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
   
-  figure(9)
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(ufluxt[n,:], zh, color='#eeeeee')
     #plot(vfluxt[n,:], zh, color='#eeeeee')
@@ -130,7 +151,8 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
   
-  figure(10)
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(w2t[n,:], zh, color='#eeeeee')
   plot(w2, zh, label=name)
@@ -138,7 +160,8 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
   
-  figure(11)
+  f += 1
+  figure(f)
   for n in range(start,end):
     plot(tket[n,:], z, color='#eeeeee')
   plot(tke, z, label=name)
@@ -146,8 +169,11 @@ def plotstats(name):
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
 
+ioff()
 plotstats("default")
-plotstats("wplus")
+#plotstats("wplus")
 plotstats("ql")
 plotstats("qlcore")
+ion()
+show()
 
