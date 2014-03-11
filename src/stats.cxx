@@ -444,8 +444,12 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
 
   double n = grid->itot*grid->jtot;
   for(int k=0; k<grid->kcells-1; k++)
-    // avoid zero divisions in case the filter sum equals zero
-    prof[k] /= (0.5*(double)(nfilter[k] + nfilter[k+kf]) + dsmall);
+  {
+    if(nfilter[k]+nfilter[k+kf] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k] + nfilter[k+kf]) + dsmall);
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
 
   return 0;
 }
@@ -534,9 +538,14 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   master->sum(prof, grid->kcells);
 
   double n = grid->itot*grid->jtot;
-  for(int k=0; k<grid->kcells; k++)
-    // avoid zero divisions in case the filter sum equals zero
-    prof[k] /= ((double)nfilter[k] + dsmall);
+  for(int k=0; k<grid->kcells-1; k++)
+  {
+    if(nfilter[k] > 0)
+      prof[k] /= 0.5*(double)nfilter[k];
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
+
 
   return 0;
 }
@@ -619,9 +628,13 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
   master->sum(prof, grid->kcells);
 
   double n = grid->itot*grid->jtot;
-  for(int k=0; k<grid->kcells; k++)
-    // avoid zero divisions in case the filter sum equals zero
-    prof[k] /= ((double)nfilter[k] + dsmall);
+  for(int k=0; k<grid->kcells-1; k++)
+  {
+    if(nfilter[k] > 0)
+      prof[k] /= 0.5*(double)nfilter[k];
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
 
   return 0;
 }
