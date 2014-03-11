@@ -198,9 +198,16 @@ int cthermo_moist::exec()
 int cthermo_moist::getfilter(cfield3d *ffield, filter *f)
 {
   if(f->name == "ql")
+  {
+    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
     calcfilterql(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount, fields->s["tmp1"]->data);
+  }
   else if(f->name == "qlcore")
+  {
+    calcbuoyancy(fields->s["tmp2"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn, fields->s["tmp1"]->data);
+    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pmn);
     calcfilterqlcore(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
+  }
   return 0;
 }
 
