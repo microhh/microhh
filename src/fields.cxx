@@ -219,14 +219,17 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, do
                              int * restrict nfilter, double * restrict w)
 {
   int ijk,ij,ii,jj,kk;
+  int kstart,kend;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
+  kstart = grid->kstart;
+  kend   = grid->kend;
 
   int ntmp;
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend; k++)
   {
     nfilter[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -235,20 +238,33 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, do
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
-        ntmp = (w[ijk] > 0.);
+        ntmp = (w[ijk] + w[ijk+kk]) > 0.;
         nfilter[k] += ntmp;
         fdata[ijk] = (double)ntmp;
       }
   }
 
+  // set bc's for the filter (mirror)
+  nfilter[kstart-1] = nfilter[kstart];
+  nfilter[kend    ] = nfilter[kend-1];
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj + kstart*kk;
+      fdata[ijk-kk] = fdata[ijk];
+      ijk = i + j*jj + (kend-1)*kk;
+      fdata[ijk+kk] = fdata[ijk];
+    }
+
   int ijtot = grid->itot*grid->jtot;
   master->sum(nfilter, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = (double)nfilter[k] / (double)ijtot;
-
   for(int k=grid->kstart; k<grid->kend; k++)
-    area[k] = 0.5*(areah[k] + areah[k+1]);
+    area[k] = (double)nfilter[k] / (double)ijtot;
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    areah[k] = 0.5*(area[k-1] + area[k]);
 
   return 0;
 }
@@ -257,14 +273,17 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, dou
                             int * restrict nfilter, double * restrict w)
 {
   int ijk,ij,ii,jj,kk;
+  int kstart,kend;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
+  kstart = grid->kstart;
+  kend   = grid->kend;
 
   int ntmp;
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=grid->kstart; k<grid->kend; k++)
   {
     nfilter[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -273,20 +292,33 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, dou
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
-        ntmp = (w[ijk] <= 0.);
+        ntmp = (w[ijk] + w[ijk+kk]) <= 0.;
         nfilter[k] += ntmp;
         fdata[ijk] = (double)ntmp;
       }
   }
 
+  // set bc's for the filter (mirror)
+  nfilter[kstart-1] = nfilter[kstart];
+  nfilter[kend    ] = nfilter[kend-1];
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj + kstart*kk;
+      fdata[ijk-kk] = fdata[ijk];
+      ijk = i + j*jj + (kend-1)*kk;
+      fdata[ijk+kk] = fdata[ijk];
+    }
+
   int ijtot = grid->itot*grid->jtot;
   master->sum(nfilter, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = (double)nfilter[k] / (double)ijtot;
-
   for(int k=grid->kstart; k<grid->kend; k++)
-    area[k] = 0.5*(areah[k] + areah[k+1]);
+    area[k] = (double)nfilter[k] / (double)ijtot;
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+    areah[k] = 0.5*(area[k-1] + area[k]);
 
   return 0;
 }

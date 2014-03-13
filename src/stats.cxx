@@ -422,9 +422,11 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   kk = grid->ijcells;
 
   // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
-  int kkf = (1-locz)*kk;
+  int iif = 0;
+  int jjf = 0;
+  int kkf = locz*kk;
   
-  for(int k=0; k<grid->kcells-1; k++)
+  for(int k=1; k<grid->kcells; k++)
   {
     prof[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -432,7 +434,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = 0.5*(filter[ijk] + filter[ijk+kkf]);
+        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
         prof[k] += filterval*(data[ijk] + offset);
       }
   }
@@ -440,13 +442,13 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf  = (1-locz);
+  int kf = locz;
 
   double n = grid->itot*grid->jtot;
-  for(int k=0; k<grid->kcells-1; k++)
+  for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k]+nfilter[k+kf] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k] + nfilter[k+kf]) + dsmall);
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -521,7 +523,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   for(int k=grid->kstart; k<grid->kend+a; ++k)
   {
@@ -537,15 +539,17 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 
   master->sum(prof, grid->kcells);
 
+  // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf = 0; // \TODO solve later!
+
   double n = grid->itot*grid->jtot;
-  for(int k=0; k<grid->kcells-1; k++)
+  for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k] > 0)
-      prof[k] /= 0.5*(double)nfilter[k];
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
 
   return 0;
 }
