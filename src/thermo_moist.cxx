@@ -359,7 +359,7 @@ int cthermo_moist::getprogvars(std::vector<std::string> *list)
  * @return Returns 1 on error, 0 otherwise.
  */
 int cthermo_moist::calchydropres(double * restrict pref,     double * restrict prefh,
-                                 double * restrict dn,       double * restrict dnh,
+                                 double * restrict rho,      double * restrict rhoh,
                                  double * restrict thv,      double * restrict thvh,
                                  double * restrict ex,       double * restrict exh,
                                  double * restrict thlmean,  double * restrict qtmean)
@@ -390,7 +390,7 @@ int cthermo_moist::calchydropres(double * restrict pref,     double * restrict p
   thvh[kstart]  = ssurf*(1.+(rv/rd-1)*qtsurf);
   prefh[kstart] = ps;
   exh[kstart]   = exner(ps);
-  dnh[kstart]   = ps / (rd * exh[kstart] * thvh[kstart]);
+  rhoh[kstart]  = ps / (rd * exh[kstart] * thvh[kstart]);
 
   // First full grid level pressure
   pref[kstart] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thvh[kstart])),(1./rdcp)); 
@@ -401,7 +401,7 @@ int cthermo_moist::calchydropres(double * restrict pref,     double * restrict p
     ex[k-1]  = exner(pref[k-1]);
     ql       = calcql(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
     thv[k-1] = (thlmean[k-1] + lv*ql/(cp*ex[k-1])) * (1. - (1. - rv/rd)*qtmean[k-1] - rv/rd*ql); 
-    dn[k-1]  = pref[k-1] / (rd * ex[k-1] * thv[k-1]);
+    rho[k-1] = pref[k-1] / (rd * ex[k-1] * thv[k-1]);
  
     // 2. Calculate half level pressure at zh[k] using values at z[k-1]
     prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dz[k-1] / (cp * thv[k-1])),(1./rdcp));
@@ -421,7 +421,7 @@ int cthermo_moist::calchydropres(double * restrict pref,     double * restrict p
     exh[k]   = exner(prefh[k]);
     qli      = calcql(si,qti,prefh[k],exh[k]);
     thvh[k]  = (si + lv*qli/(cp*exh[k])) * (1. - (1. - rv/rd)*qti - rv/rd*qli); 
-    dnh[k]   = prefh[k] / (rd * exh[k] * thvh[k]); 
+    rhoh[k]  = prefh[k] / (rd * exh[k] * thvh[k]); 
 
     // 4. Calculate full level pressure at z[k]
     pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thvh[k])),(1./rdcp)); 
@@ -444,8 +444,8 @@ int cthermo_moist::calchydropres(double * restrict pref,     double * restrict p
   // Needed?
   //ex[kstart-1]   = exner(pref[kstart-1]);
   //ex[kend]       = exner(pref[kend]);
-  //dn[kstart-1]   = 2.*dnh[kstart]  - dn[kstart];
-  //dn[kend]       = 2.*dnh[kend]    - dn[kend-1];
+  //rho[kstart-1]   = 2.*rhoh[kstart]  - rho[kstart];
+  //rho[kend]       = 2.*rhoh[kend]    - rho[kend-1];
   //thv[kstart-1]  = 2.*thvh[kstart] - thv[kstart];
   //thv[kend]      = 2.*thvh[kend]   - thv[kend-1];
 
