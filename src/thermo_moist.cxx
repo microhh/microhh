@@ -386,10 +386,11 @@ int cthermo_moist::calchydropres(double * restrict pref,     double * restrict p
     qttop  = interp4(qtmean[kend-2],    qtmean[kend-1],    qtmean[kend],    qtmean[kend+1]);
   }
 
-  // Calculate surface (half=kstart) values (unsaturated)
-  thvh[kstart]  = ssurf*(1.+(rv/rd-1)*qtsurf);
-  prefh[kstart] = ps;
+  // Calculate surface (half=kstart) values
   exh[kstart]   = exner(ps);
+  ql            = calcql(ssurf,qtsurf,ps,exh[kstart]); 
+  thvh[kstart]  = (ssurf + lv*ql/(cp*exh[kstart])) * (1. - (1. - rv/rd)*qtsurf - rv/rd*ql);
+  prefh[kstart] = ps;
   rhoh[kstart]  = ps / (rd * exh[kstart] * thvh[kstart]);
 
   // First full grid level pressure
