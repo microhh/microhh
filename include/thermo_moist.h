@@ -67,7 +67,7 @@ class cthermo_moist : public cthermo
 
     // filters
     int calcfilterql    (double *, double *, double *, int *, double *);
-    int calcfilterqlcore(double *, double *, double *, int *, double *, double *);
+    int calcfilterqlcore(double *, double *, double *, int *, double *, double *, double *);
 
     int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);

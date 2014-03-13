@@ -170,8 +170,8 @@ def plotstats(name, line):
   legend(loc=0, frameon=False)
 
 ioff()
-plotstats("default", 'b-')
-#plotstats("wplus", 'g-')
+plotstats("default", 'k-')
+plotstats("wplus", 'b-')
 plotstats("ql", 'r-')
 plotstats("qlcore", 'c-')
 ion()

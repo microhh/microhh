@@ -211,8 +211,11 @@ int cthermo_moist::getfilter(cfield3d *ffield, filter *f)
   else if(f->name == "qlcore")
   {
     calcbuoyancy(fields->s["tmp2"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp1"]->data);
+    // calculate the mean buoyancy to determine positive buoyancy
+    grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcfilterqlcore(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount, fields->s["tmp1"]->data, fields->s["tmp2"]->data);
+    calcfilterqlcore(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount,
+                     fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
   }
   return 0;
 }
@@ -274,7 +277,7 @@ int cthermo_moist::calcfilterql(double * restrict fdata, double * restrict area,
 }
 
 int cthermo_moist::calcfilterqlcore(double * restrict fdata, double * restrict area, double * restrict areah,
-                                    int * restrict nfilter, double * restrict ql, double * restrict bu)
+                                    int * restrict nfilter, double * restrict ql, double * restrict bu, double * restrict bumean)
 {
   int ijk,ij,ii,jj,kk;
   int kstart,kend;
@@ -296,7 +299,7 @@ int cthermo_moist::calcfilterqlcore(double * restrict fdata, double * restrict a
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
-        ntmp = (ql[ijk] > 0.)*(bu[ijk] > 0.);
+        ntmp = (ql[ijk] > 0.)*(bu[ijk]-bumean[k] > 0.);
         nfilter[k] += ntmp;
         fdata[ijk] = (double)ntmp;
       }
