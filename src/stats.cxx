@@ -350,33 +350,18 @@ int cstats::getfilter(cfield3d *ffield, filter *f)
 // COMPUTATIONAL KERNELS BELOW
 int cstats::calcfilter(double * restrict fdata, double * restrict area, double * restrict areah, int * restrict nfilter)
 {
-  int ijk,ij,ii,jj,kk;
-  int ijtot;
+  int ijtot = grid->itot*grid->jtot;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->ijcells;
-  ijtot = grid->itot*grid->jtot;
+  // set all the filter values to 1
+  for(int n=0; n<grid->ncells; ++n)
+    fdata[n] = 1.;
 
-  // set the filter at the zh level
-  for(int k=grid->kstart; k<grid->kend+1; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ij  = i + j*jj;
-        ijk = i + j*jj + k*kk;
-        fdata[ijk] = 1.;
-      }
-
-  for(int k=grid->kstart; k<grid->kend+1; k++)
+  for(int k=0; k<grid->kcells; ++k)
   {
     nfilter[k] = ijtot;
+    area[k] = 1.;
     areah[k] = 1.;
   }
-
-  for(int k=grid->kstart; k<grid->kend; k++)
-    area[k] = 1.;
 
   return 0;
 }

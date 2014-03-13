@@ -257,6 +257,8 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, do
       fdata[ijk+kk] = fdata[ijk];
     }
 
+  grid->boundary_cyclic(fdata);
+
   int ijtot = grid->itot*grid->jtot;
   master->sum(nfilter, grid->kcells);
 
@@ -310,6 +312,8 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, dou
       ijk = i + j*jj + (kend-1)*kk;
       fdata[ijk+kk] = fdata[ijk];
     }
+
+  grid->boundary_cyclic(fdata);
 
   int ijtot = grid->itot*grid->jtot;
   master->sum(nfilter, grid->kcells);

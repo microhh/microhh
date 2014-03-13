@@ -218,7 +218,7 @@ int cthermo_moist::getfilter(cfield3d *ffield, filter *f)
 }
 
 int cthermo_moist::calcfilterql(double * restrict fdata, double * restrict area, double * restrict areah,
-                             int * restrict nfilter, double * restrict ql)
+                                int * restrict nfilter, double * restrict ql)
 {
   int ijk,ij,ii,jj,kk;
   int kstart,kend;
@@ -259,6 +259,8 @@ int cthermo_moist::calcfilterql(double * restrict fdata, double * restrict area,
       fdata[ijk+kk] = fdata[ijk];
     }
 
+  grid->boundary_cyclic(fdata);
+
   int ijtot = grid->itot*grid->jtot;
   master->sum(nfilter, grid->kcells);
 
@@ -272,7 +274,7 @@ int cthermo_moist::calcfilterql(double * restrict fdata, double * restrict area,
 }
 
 int cthermo_moist::calcfilterqlcore(double * restrict fdata, double * restrict area, double * restrict areah,
-                             int * restrict nfilter, double * restrict ql, double * restrict bu)
+                                    int * restrict nfilter, double * restrict ql, double * restrict bu)
 {
   int ijk,ij,ii,jj,kk;
   int kstart,kend;
@@ -299,6 +301,8 @@ int cthermo_moist::calcfilterqlcore(double * restrict fdata, double * restrict a
         fdata[ijk] = (double)ntmp;
       }
   }
+
+  grid->boundary_cyclic(fdata);
 
   // set bc's for the filter (mirror)
   nfilter[kstart-1] = nfilter[kstart];
