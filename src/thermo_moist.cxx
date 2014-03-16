@@ -386,7 +386,8 @@ int cthermo_moist::execstats(filter *f)
   // calculate the liquid water stats
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
   stats->calcmean(fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET, sloc, fields->s["tmp0"]->data, stats->filtercount);
-  stats->calccount(fields->s["tmp1"]->data, f->profs["cfrac"].data, 0.);
+  stats->calccount(fields->s["tmp1"]->data, f->profs["cfrac"].data, 0.,
+                   fields->s["tmp0"]->data, stats->filtercount);
 
   stats->calccover(fields->s["tmp1"]->data, &f->tseries["ccover"].data, 0.);
   stats->calcpath(fields->s["tmp1"]->data, &f->tseries["lwp"].data);

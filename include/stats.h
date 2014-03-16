@@ -100,7 +100,8 @@ class cstats
     int calcflux_2nd(double *, double *, double *, double *, int, int, double *, int *);
     int calcflux_4th(double *, double *, double *, double *, int, int);
     int addfluxes   (double *, double *, double *);
-    int calccount   (double* data, double* prof, double threshold);
+    int calccount   (double *, double *, double);
+    int calccount   (double *, double *, double, double *, int *);
     int calcpath    (double *, double *);
     int calccover   (double *, double *, double);
 

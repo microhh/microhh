@@ -471,6 +471,43 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
   return 0;
 }
 
+int cstats::calccount(double * restrict data, double * restrict prof, double threshold,
+                      double * restrict filter, int * restrict nfilter)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->ijcells;
+
+  for(int k=0; k<grid->kcells; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk;
+        if(data[ijk]>threshold)
+        {
+          prof[k] += filter[ijk]*1.;
+        }
+      }
+  }
+
+  master->sum(prof, grid->kcells);
+
+  for(int k=0; k<grid->kcells; k++)
+  {
+    if(nfilter[k] > 0)
+      prof[k] /= (double)(nfilter[k]);
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
+
+  return 0;
+}
+
+
 int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
   int ijk,jj,kk;
