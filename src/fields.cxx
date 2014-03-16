@@ -218,10 +218,9 @@ int cfields::getfilter(cfield3d *ffield, filter *f)
 int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, double * restrict areah,
                              int * restrict nfilter, double * restrict w)
 {
-  int ijk,ij,ii,jj,kk;
+  int ijk,jj,kk;
   int kstart,kend;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
@@ -236,7 +235,6 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, do
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         ntmp = (w[ijk] + w[ijk+kk]) > 0.;
         nfilter[k] += ntmp;
@@ -274,10 +272,9 @@ int cfields::calcfilterwplus(double * restrict fdata, double * restrict area, do
 int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, double * restrict areah,
                             int * restrict nfilter, double * restrict w)
 {
-  int ijk,ij,ii,jj,kk;
+  int ijk,jj,kk;
   int kstart,kend;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
@@ -292,7 +289,6 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, dou
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         ntmp = (w[ijk] + w[ijk+kk]) <= 0.;
         nfilter[k] += ntmp;
@@ -329,17 +325,23 @@ int cfields::calcfilterwmin(double * restrict fdata, double * restrict area, dou
 
 int cfields::execstats(filter *f)
 {
-  // calculate the means
-  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, 0, sd["tmp0"]->data, stats->filtercount);
-  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, 0, sd["tmp0"]->data, stats->filtercount);
-  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, 1, sd["tmp0"]->data, stats->filtercount);
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->calcmean(it->second->data, f->profs[it->first].data, NO_OFFSET, 0, sd["tmp0"]->data, stats->filtercount);
+  // define locations
+  const int uloc[] = {1,0,0};
+  const int vloc[] = {0,1,0};
+  const int wloc[] = {0,0,1};
+  const int sloc[] = {0,0,0};
 
-  stats->calcmean(s["p"]->data, f->profs["p"].data, NO_OFFSET, 0, sd["tmp0"]->data, stats->filtercount);
+  // calculate the means
+  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, uloc, sd["tmp0"]->data, stats->filtercount);
+  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, vloc, sd["tmp0"]->data, stats->filtercount);
+  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, wloc, sd["tmp0"]->data, stats->filtercount);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    stats->calcmean(it->second->data, f->profs[it->first].data, NO_OFFSET, sloc, sd["tmp0"]->data, stats->filtercount);
+
+  stats->calcmean(s["p"]->data, f->profs["p"].data, NO_OFFSET, sloc, sd["tmp0"]->data, stats->filtercount);
 
   if(model->diff->getname() == "les2s")
-    stats->calcmean(s["evisc"]->data, f->profs["evisc"].data, NO_OFFSET, 0, sd["tmp0"]->data, stats->filtercount);
+    stats->calcmean(s["evisc"]->data, f->profs["evisc"].data, NO_OFFSET, sloc, sd["tmp0"]->data, stats->filtercount);
 
   // calculate model means without correction for transformation
   stats->calcmean(u->data, umodel, NO_OFFSET);

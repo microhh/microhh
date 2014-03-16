@@ -89,7 +89,7 @@ class cstats
     int addtseries(std::string, std::string, std::string);
 
     int calcmean    (double *, double *, double);
-    int calcmean    (double *, double *, double, int, double *, int *);
+    int calcmean    (double *, double *, double, const int[3], double *, int *);
     int calcmoment  (double *, double *, double *, double, int);
     int calcmoment  (double *, double *, double *, double, int, double *, int *);
     int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double);

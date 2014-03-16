@@ -127,8 +127,11 @@ int cthermo_dry::execstats(filter *f)
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data);
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot);
 
+  // define the location
+  const int sloc[] = {0,0,0};
+
   // calculate the mean
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, 0,
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, sloc,
                   fields->s["tmp0"]->data, stats->filtercount);
 
   // calculate the moments

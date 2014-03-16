@@ -338,8 +338,11 @@ int cthermo_moist::execstats(filter *f)
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data);
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
 
+  // define location
+  const int sloc[] = {0,0,0};
+
   // mean
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, 0,
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, sloc,
                   fields->s["tmp0"]->data, stats->filtercount);
 
   // moments
@@ -382,7 +385,7 @@ int cthermo_moist::execstats(filter *f)
 
   // calculate the liquid water stats
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET, 0, fields->s["tmp0"]->data, stats->filtercount);
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET, sloc, fields->s["tmp0"]->data, stats->filtercount);
   stats->calccount(fields->s["tmp1"]->data, f->profs["cfrac"].data, 0.);
 
   stats->calccover(fields->s["tmp1"]->data, &f->tseries["ccover"].data, 0.);
