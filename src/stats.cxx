@@ -471,6 +471,7 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
   return 0;
 }
 
+// \TODO the count function assumes that the variable to count is at the filter location
 int cstats::calccount(double * restrict data, double * restrict prof, double threshold,
                       double * restrict filter, int * restrict nfilter)
 {
@@ -537,15 +538,22 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   return 0;
 }
 
-int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a,
+int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
                        double * restrict filter, int * restrict nfilter)
 {
-  int ijk,jj,kk;
+  int ijk,ii,jj,kk;
+  double filterval;
 
+  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
-  
-  for(int k=grid->kstart; k<grid->kend+a; ++k)
+
+  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
+  int iif = loc[0]*ii;
+  int jjf = loc[1]*jj;
+  int kkf = loc[2]*kk;
+ 
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -553,14 +561,15 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += filter[ijk]*std::pow(data[ijk]-datamean[k], power);
+        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        prof[k] += filterval*std::pow(data[ijk]-datamean[k], power);
       }
   }
 
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = 0; // \TODO solve later!
+  int kf = loc[2];
 
   double n = grid->itot*grid->jtot;
   for(int k=1; k<grid->kcells; k++)

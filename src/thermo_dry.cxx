@@ -140,7 +140,7 @@ int cthermo_dry::execstats(filter *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, 0,
+    stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, sloc,
                       fields->s["tmp0"]->data, stats->filtercount);
   }
 

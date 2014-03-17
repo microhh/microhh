@@ -91,7 +91,7 @@ class cstats
     int calcmean    (double *, double *, double);
     int calcmean    (double *, double *, double, const int[3], double *, int *);
     int calcmoment  (double *, double *, double *, double, int);
-    int calcmoment  (double *, double *, double *, double, int, double *, int *);
+    int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
     int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double);
     int calcdiff_4th(double *, double *, double *, double);
     int calcgrad_2nd(double *, double *, double *);

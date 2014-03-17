@@ -9,6 +9,8 @@ def plotstats(name, line):
   t   = stats.variables["t"][:]
   z   = stats.variables["z"][:]
   zh  = stats.variables["zh"][:]
+
+  areat  = stats.variables["area"][:,:]
   
   st  = stats.variables["s"][:,:]
   qtt = stats.variables["qt"][:,:]*1000.
@@ -30,8 +32,10 @@ def plotstats(name, line):
   tket = 0.5*(u2t + v2t + 0.5*(w2t[:,0:-1]+w2t[:,1::]))
   
   end   = t.size
-  start = t.size - 12
+  start = t.size - 36
   
+  area = numpy.mean(areat[start:end,:], 0)
+
   s  = numpy.mean(st [start:end,:], 0)
   qt = numpy.mean(qtt[start:end,:], 0)
   b  = numpy.mean(bt [start:end,:], 0)
@@ -46,6 +50,8 @@ def plotstats(name, line):
   vflux = numpy.mean(vfluxt[start:end,:], 0)
   Uflux = numpy.mean(Ufluxt[start:end,:], 0)
   
+  u2  = numpy.mean(u2t [start:end,:], 0)
+  v2  = numpy.mean(v2t [start:end,:], 0)
   w2  = numpy.mean(w2t [start:end,:], 0)
   tke = numpy.mean(tket[start:end,:], 0)
   
@@ -54,6 +60,16 @@ def plotstats(name, line):
   rc('text', usetex=True)
 
   f = 1
+
+  figure(f)
+  for n in range(start,end):
+    plot(areat[n,:], z, color='#eeeeee')
+  plot(area, z, line, label=name)
+  xlabel(r'area coverage [-]')
+  ylabel(r'z [m]')
+  legend(loc=0, frameon=False)
+
+  f += 1
   figure(f)
   for n in range(start,end):
     plot(st[n,:], z, color='#eeeeee')
@@ -150,7 +166,25 @@ def plotstats(name, line):
   xlabel(r'u`w` [m$^2$~s$^{-2}$]')
   ylabel(r'z [m]')
   legend(loc=0, frameon=False)
-  
+
+  f += 1
+  figure(f)
+  for n in range(start,end):
+    plot(u2t[n,:], z, color='#eeeeee')
+  plot(u2, z, label=name)
+  xlabel(r'u`$^2$ [m$^2$~s$^{-2}$]')
+  ylabel(r'z [m]')
+  legend(loc=0, frameon=False)
+ 
+  f += 1
+  figure(f)
+  for n in range(start,end):
+    plot(v2t[n,:], z, color='#eeeeee')
+  plot(v2, z, label=name)
+  xlabel(r'v`$^2$ [m$^2$~s$^{-2}$]')
+  ylabel(r'z [m]')
+  legend(loc=0, frameon=False)
+ 
   f += 1
   figure(f)
   for n in range(start,end):

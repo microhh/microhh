@@ -353,11 +353,11 @@ int cfields::execstats(filter *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, 0, sd["tmp0"]->data, stats->filtercount);
-    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, 0, sd["tmp0"]->data, stats->filtercount);
-    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, 1, sd["tmp0"]->data, stats->filtercount);
+    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, uloc, sd["tmp0"]->data, stats->filtercount);
+    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, vloc, sd["tmp0"]->data, stats->filtercount);
+    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, wloc, sd["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcmoment(it->second->data, f->profs[it->first].data, f->profs[it->first+sn].data, n, 0, sd["tmp0"]->data, stats->filtercount);
+      stats->calcmoment(it->second->data, f->profs[it->first].data, f->profs[it->first+sn].data, n, sloc, sd["tmp0"]->data, stats->filtercount);
   }
 
   // calculate the gradients
