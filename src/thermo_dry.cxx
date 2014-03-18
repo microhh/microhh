@@ -158,7 +158,8 @@ int cthermo_dry::execstats(filter *f)
                         f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
                         fields->s["tmp0"]->data, stats->filtercount);
   if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+                        fields->s["tmp0"]->data, stats->filtercount);
 
   // calculate diffusive fluxes
   if(model->diff->getname() == "les2s")

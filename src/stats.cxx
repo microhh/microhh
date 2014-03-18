@@ -695,13 +695,16 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
   return 0;
 }
 
-int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
+int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
+                         double * restrict filter, int * restrict nfilter)
 {
-  int ijk,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2;
+  double filterval;
 
+  ii  = 1;
   jj  = 1*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -711,17 +714,22 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
   const int uwloc[3] = {1,0,1};
   const int vwloc[3] = {0,1,1};
 
-  if(locx == 1)
+  if(loc[0] == 1)
   {
     grid->interpolate_4th(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
-  else if(locy == 1)
+  else if(loc[1] == 1)
   {
     grid->interpolate_4th(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
-  
+ 
+  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
+  int iif = loc[0]*ii;
+  int jjf = loc[1]*jj;
+  int kkf = loc[2]*kk1;
+ 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
@@ -730,16 +738,23 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] += (ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
+        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        prof[k] += filterval*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
       }
   }
 
-  double n = grid->imax*grid->jmax;
+  master->sum(prof, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
-    prof[k] /= n;
+  // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf = loc[2];
 
-  grid->getprof(prof, grid->kcells);
+  for(int k=1; k<grid->kcells; k++)
+  {
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
 
   return 0;
 }

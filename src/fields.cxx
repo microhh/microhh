@@ -331,6 +331,10 @@ int cfields::execstats(filter *f)
   const int wloc[] = {0,0,1};
   const int sloc[] = {0,0,0};
 
+  const int uwloc[] = {1,0,1};
+  const int vwloc[] = {0,1,1};
+  const int swloc[] = {0,0,1};
+
   // calculate the means
   stats->calcmean(u->data, f->profs["u"].data, grid->utrans, uloc, sd["tmp0"]->data, stats->filtercount);
   stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, vloc, sd["tmp0"]->data, stats->filtercount);
@@ -363,22 +367,22 @@ int cfields::execstats(filter *f)
   // calculate the gradients
   if(grid->swspatialorder == "2")
   {
-    stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi, uloc,
+    stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi, uwloc,
                         sd["tmp0"]->data, stats->filtercount);
-    stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vloc,
+    stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vwloc,
                         sd["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi, sloc,
+      stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi, swloc,
                           sd["tmp0"]->data, stats->filtercount);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcgrad_4th(u->data, f->profs["ugrad"].data, grid->dzhi4, uloc,
+    stats->calcgrad_4th(u->data, f->profs["ugrad"].data, grid->dzhi4, uwloc,
                         sd["tmp0"]->data, stats->filtercount);
-    stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4, vloc,
+    stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4, vwloc,
                         sd["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4, sloc,
+      stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4, swloc,
                           sd["tmp0"]->data, stats->filtercount);
   }
 
@@ -386,22 +390,25 @@ int cfields::execstats(filter *f)
   if(grid->swspatialorder == "2")
   {
     stats->calcflux_2nd(u->data, f->profs["u"].data, w->data, f->profs["w"].data,
-                        f->profs["uw"].data, s["tmp1"]->data, uloc,
+                        f->profs["uw"].data, s["tmp1"]->data, uwloc,
                         s["tmp0"]->data, stats->filtercount);
     stats->calcflux_2nd(v->data, f->profs["v"].data, w->data, f->profs["w"].data,
-                        f->profs["vw"].data, s["tmp1"]->data, vloc,
+                        f->profs["vw"].data, s["tmp1"]->data, vwloc,
                         s["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->calcflux_2nd(it->second->data, f->profs[it->first].data, w->data, f->profs["w"].data,
-                          f->profs[it->first+"w"].data, s["tmp1"]->data, sloc,
+                          f->profs[it->first+"w"].data, s["tmp1"]->data, swloc,
                           s["tmp0"]->data, stats->filtercount);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcflux_4th(u->data, w->data, f->profs["uw"].data, s["tmp1"]->data, 1, 0);
-    stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, 0, 1);
+    stats->calcflux_4th(u->data, w->data, f->profs["uw"].data, s["tmp1"]->data, uwloc,
+                          s["tmp0"]->data, stats->filtercount);
+    stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, vwloc,
+                          s["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_4th(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
+      stats->calcflux_4th(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, swloc,
+                          s["tmp0"]->data, stats->filtercount);
   }
 
   // calculate the diffusive fluxes
@@ -418,12 +425,12 @@ int cfields::execstats(filter *f)
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcdiff_4th(u->data, f->profs["udiff"].data, grid->dzhi4, visc, uloc,
+    stats->calcdiff_4th(u->data, f->profs["udiff"].data, grid->dzhi4, visc, uwloc,
                         s["tmp0"]->data, stats->filtercount);
-    stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+    stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vwloc,
                         s["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+      stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, swloc,
                           s["tmp0"]->data, stats->filtercount);
   }
 
