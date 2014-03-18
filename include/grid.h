@@ -140,10 +140,8 @@ class cgrid
     int fftbackward(double *, double *, double *, double *, double *, double *); ///< Backward fast-fourier transform.
 
     // interpolation functions
-    int interpolatex_2nd(double *, double *, int); ///< Second order interpolation in the x-direction.
-    int interpolatey_2nd(double *, double *, int); ///< Second order interpolation in the y-direction.
-    int interpolatex_4th(double *, double *, int); ///< Fourth order interpolation in the x-direction.
-    int interpolatey_4th(double *, double *, int); ///< Fourth order interpolation in the y-direction.
+    int interpolate_2nd(double *, double *, const int[3], const int[3]); ///< Second order interpolation
+    int interpolate_4th(double *, double *, const int[3], const int[3]); ///< Fourth order interpolation
 
   private:
     cmaster *master; ///< Pointer to master class.

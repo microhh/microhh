@@ -368,56 +368,28 @@ int cgrid::calculate()
  * where a value of 1 refers to the flux level.
  * @return Returns 0.
  */
-int cgrid::interpolatex_2nd(double * restrict out, double * restrict in, int locx)
+int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
-  int ijk,ii,jj,kk,ihlf;
+  int ijk,ii,jj,kk,ihlf,jhlf,khlf;
 
   ii = 1;
   jj = icells;
   kk = ijcells;
 
-  ihlf = locx*ii;
+  ihlf = locin[0]-locout[0];
+  jhlf = locin[1]-locout[1];
+  khlf = locin[2]-locout[2];
 
-  // interpolate in x
-  for(int k=0; k<kcells; ++k)
+  // interpolate the field
+  for(int k=kstart; k<kend+locout[2]; ++k)
     for(int j=jstart; j<jend; ++j)
 #pragma ivdep
       for(int i=istart; i<iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        out[ijk] = 0.5*(in[ijk-ii+ihlf] + in[ijk+ihlf]);
-      }
-
-  return 0;
-}
-
-/**
- * This function does a second order horizontal interpolation in the y-direction
- * to the selected location on the grid.
- * @param out Pointer to the output field.
- * @param in Pointer to the input field.
- * @param locy Integer containing the location of the input field,
- * where a value of 1 refers to the flux level.
- * @return Returns 0.
- */
-int cgrid::interpolatey_2nd(double * restrict out, double * restrict in, int locy)
-{
-  int ijk,ii,jj,kk,jhlf;
-
-  ii = 1;
-  jj = icells;
-  kk = ijcells;
-
-  jhlf = locy*jj;
-
-  // interpolate in y
-  for(int k=0; k<kcells; ++k)
-    for(int j=jstart; j<jend; ++j)
-#pragma ivdep
-      for(int i=istart; i<iend; ++i)
-      {
-        ijk = i + j*jj + k*kk;
-        out[ijk] = 0.5*(in[ijk-jj+jhlf] + in[ijk+jhlf]);
+        out[ijk] = 0.5*(in[ijk] + in[ijk+ihlf*ii])
+                 + 0.5*(in[ijk] + in[ijk+jhlf*jj])
+                 + 0.5*(in[ijk] + in[ijk+khlf*kk]);
       }
 
   return 0;
@@ -432,10 +404,10 @@ int cgrid::interpolatey_2nd(double * restrict out, double * restrict in, int loc
  * where a value of 1 refers to the flux level.
  * @return Returns 0.
  */
-int cgrid::interpolatex_4th(double * restrict out, double * restrict in, int locx)
+int cgrid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   // interpolation function, locx = 1 indicates that the reference is at the half level
-  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,ihlf;
+  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,ihlf,jhlf,khlf;
 
   ii1 = 1;
   ii2 = 2;
@@ -444,52 +416,21 @@ int cgrid::interpolatex_4th(double * restrict out, double * restrict in, int loc
   kk1 = 1*ijcells;
   kk2 = 2*ijcells;
 
-  ihlf = locx*ii1;
+  // a shift to the left gives minus 1 a shift to the right +1
+  ihlf = locin[0]-locout[0];
+  jhlf = locin[1]-locout[1];
+  khlf = locin[2]-locout[2];
 
   // interpolate in x
-  for(int k=0; k<kcells; ++k)
+  for(int k=kstart; k<kend+locout[2]; ++k)
     for(int j=jstart; j<jend; ++j)
 #pragma ivdep
       for(int i=istart; i<iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
-        out[ijk] = ci0*in[ijk-ii2+ihlf] + ci1*in[ijk-ii1+ihlf] + ci2*in[ijk+ihlf] + ci3*in[ijk+ii1+ihlf];
-      }
-
-  return 0;
-}
-
-/**
- * This function does a fourth order horizontal interpolation in the y-direction
- * to the selected location on the grid.
- * @param out Pointer to the output field.
- * @param in Pointer to the input field.
- * @param locx Integer containing the location of the input field,
- * where a value of 1 refers to the flux level.
- * @return Returns 0.
- */
-int cgrid::interpolatey_4th(double * restrict out, double * restrict in, int locy)
-{
-  // interpolation function, locy = 1 indicates that the reference is at the half level
-  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,jhlf;
-
-  ii1 = 1;
-  ii2 = 2;
-  jj1 = 1*icells;
-  jj2 = 2*icells;
-  kk1 = 1*ijcells;
-  kk2 = 2*ijcells;
-
-  jhlf = locy*jj1;
-
-  // interpolate in y
-  for(int k=0; k<kcells; ++k)
-    for(int j=jstart; j<jend; ++j)
-#pragma ivdep
-      for(int i=istart; i<iend; ++i)
-      {
-        ijk = i + j*jj1 + k*kk1;
-        out[ijk] = ci0*in[ijk-jj2+jhlf] + ci1*in[ijk-jj1+jhlf] + ci2*in[ijk+jhlf] + ci3*in[ijk+jj1+jhlf];
+        out[ijk] = ci0*in[ijk-ii1*ihlf] + ci1*in[ijk*ihlf] + ci2*in[ijk+ii1*ihlf] + ci3*in[ijk+ii2*ihlf];
+                 + ci0*in[ijk-jj1*jhlf] + ci1*in[ijk*jhlf] + ci2*in[ijk+jj1*jhlf] + ci3*in[ijk+jj2*jhlf];
+                 + ci0*in[ijk-kk1*khlf] + ci1*in[ijk*khlf] + ci2*in[ijk+kk1*khlf] + ci3*in[ijk+kk2*khlf];
       }
 
   return 0;

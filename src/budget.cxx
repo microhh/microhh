@@ -160,8 +160,12 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                            double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   // get w on the x and y location
-  grid->interpolatex_4th(wx, w, 0);
-  grid->interpolatey_4th(wy, w, 0);
+  const int wloc [3] = {0,0,1};
+  const int wxloc[3] = {1,0,1};
+  const int wyloc[3] = {0,1,1};
+
+  grid->interpolate_4th(wx, w, wloc, wxloc);
+  grid->interpolate_4th(wy, w, wloc, wyloc);
 
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
 

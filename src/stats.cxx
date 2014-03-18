@@ -648,14 +648,20 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
  
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
+
+  // define the locations
+  const int wloc [3] = {0,0,1};
+  const int uwloc[3] = {1,0,1};
+  const int vwloc[3] = {0,1,1};
+
   if(loc[0] == 1)
   {
-    grid->interpolatex_2nd(tmp1, w, 0);
+    grid->interpolate_2nd(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
   else if(loc[1] == 1)
   {
-    grid->interpolatey_2nd(tmp1, w, 0);
+    grid->interpolate_2nd(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
   
@@ -699,14 +705,20 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
+
+  // define the locations
+  const int wloc [3] = {0,0,1};
+  const int uwloc[3] = {1,0,1};
+  const int vwloc[3] = {0,1,1};
+
   if(locx == 1)
   {
-    grid->interpolatex_4th(tmp1, w, 0);
+    grid->interpolate_4th(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
   else if(locy == 1)
   {
-    grid->interpolatey_4th(tmp1, w, 0);
+    grid->interpolate_4th(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
   
