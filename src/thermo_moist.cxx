@@ -357,7 +357,8 @@ int cthermo_moist::execstats(filter *f)
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi, sloc,
+                        fields->s["tmp0"]->data, stats->filtercount);
   if(grid->swspatialorder == "4")
     stats->calcgrad_4th(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi4);
 

@@ -363,10 +363,13 @@ int cfields::execstats(filter *f)
   // calculate the gradients
   if(grid->swspatialorder == "2")
   {
-    stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi);
-    stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi, uloc,
+                        sd["tmp0"]->data, stats->filtercount);
+    stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vloc,
+                        sd["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi);
+      stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi, sloc,
+                          sd["tmp0"]->data, stats->filtercount);
   }
   else if(grid->swspatialorder == "4")
   {

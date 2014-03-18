@@ -90,17 +90,18 @@ class cstats
 
     int calcmean    (double *, double *, double);
     int calcmean    (double *, double *, double, const int[3], double *, int *);
-    int calcmoment  (double *, double *, double *, double, int);
+    // int calcmoment  (double *, double *, double *, double, int);
     int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
     int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double);
     int calcdiff_4th(double *, double *, double *, double);
-    int calcgrad_2nd(double *, double *, double *);
+    // int calcgrad_2nd(double *, double *, double *);
+    int calcgrad_2nd(double *, double *, double *, const int[3], double *, int *);
     int calcgrad_4th(double *, double *, double *);
-    int calcflux_2nd(double *, double *, double *, double *, int, int);
+    // int calcflux_2nd(double *, double *, double *, double *, int, int);
     int calcflux_2nd(double *, double *, double *, double *, double *, double *, const int[3], double *, int *);
     int calcflux_4th(double *, double *, double *, double *, int, int);
     int addfluxes   (double *, double *, double *);
-    int calccount   (double *, double *, double);
+    // int calccount   (double *, double *, double);
     int calccount   (double *, double *, double, double *, int *);
     int calcpath    (double *, double *);
     int calccover   (double *, double *, double);

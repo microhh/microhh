@@ -439,6 +439,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   return 0;
 }
 
+/*
 int cstats::calccount(double * restrict data, double * restrict prof, double threshold)
 {
   int ijk,jj,kk;
@@ -470,6 +471,7 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
 
   return 0;
 }
+*/
 
 // \TODO the count function assumes that the variable to count is at the filter location
 int cstats::calccount(double * restrict data, double * restrict prof, double threshold,
@@ -508,7 +510,7 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
   return 0;
 }
 
-
+/*
 int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
   int ijk,jj,kk;
@@ -537,6 +539,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 
   return 0;
 }
+*/
 
 int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
                        double * restrict filter, int * restrict nfilter)
@@ -583,6 +586,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   return 0;
 }
 
+/*
 int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
   int ijk,jj,kk;
@@ -624,6 +628,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
 
   return 0;
 }
+*/
 
 int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
                          double * restrict prof, double * restrict tmp1, const int loc[3],
@@ -727,6 +732,7 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
   return 0;
 }
 
+/*
 int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
 {
   int ijk,jj,kk;
@@ -755,14 +761,60 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 
   return 0;
 }
+*/
+
+int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
+                         double * restrict filter, int * restrict nfilter)
+{
+  int ijk,ii,jj,kk;
+  double filterval;
+
+  ii = 1;
+  jj = grid->icells;
+  kk = grid->ijcells;
+
+  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
+  int iif = loc[0]*ii;
+  int jjf = loc[1]*jj;
+  int kkf = loc[2]*kk;
+ 
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk;
+        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        prof[k] += filterval*(data[ijk]-data[ijk-kk])*dzhi[k];
+      }
+  }
+
+  master->sum(prof, grid->kcells);
+
+  // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf = loc[2];
+
+  double n = grid->itot*grid->jtot;
+  for(int k=1; k<grid->kcells; k++)
+  {
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
+
+  return 0;
+}
 
 int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4)
 {
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
   
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
