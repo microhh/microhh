@@ -699,6 +699,14 @@ int cinput::getList(std::vector<int> *value, std::string cat, std::string item, 
   return 0;
 }
 
+int cinput::getList(std::vector<double> *value, std::string cat, std::string item, std::string el)
+{
+  if(parseList(value, cat, item, el))
+    return 1;
+
+  return 0;
+}
+
 int cinput::getList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
   if(parseList(value, cat, item, el))
@@ -831,6 +839,57 @@ int cinput::checkList(std::vector<int> *value, std::string cat, std::string item
 
   return 0;
 }
+
+int cinput::checkList(std::vector<double> *value, std::string cat, std::string item, std::string el)
+{
+  char inputstring[256], dummy[256];
+  std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
+
+  double listval;
+
+  char temp1[256];
+  char *temp2;
+  std::strcpy(temp1, inputstring);
+
+  // first, split string on the delimiter
+  temp2 = std::strtok(temp1, ",");
+
+  while(temp2 != NULL)
+  {
+    // read in the string part in temp1
+    int n = std::sscanf(temp2, " %lf %[^\n] ", &listval, dummy);
+
+    // store the contents in the vector, or throw exception
+    if(n == 1)
+    {
+      value->push_back(listval);
+    }
+    else
+    {
+      if(std::strcmp(inputstring,""))
+      {
+        if (el == "default")
+        {
+          if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
+        }
+        else
+        {
+          if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        }
+        // empty the vector
+        value->clear();
+        return 1;
+      }
+    }
+
+    // retrieve the next raw substring
+    temp2 = std::strtok(NULL, ",");
+  }
+  inputlist[cat][item][el].isused = true;
+
+  return 0;
+}
+
 
 int cinput::printUnused()
 {

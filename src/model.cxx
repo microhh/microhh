@@ -284,6 +284,8 @@ int cmodel::load()
   // initialize the statistics file to open the possiblity to add profiles
   if(stats->create(timeloop->iotime))
     return 1;
+  if(cross->create())
+    return 1;
 
   if(fields->load(timeloop->iotime))
     return 1;
