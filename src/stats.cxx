@@ -625,22 +625,30 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
   return 0;
 }
 
-int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy,
+int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
+                         double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict filter, int * restrict nfilter)
 {
-  int ijk,jj,kk;
+  int ijk,ii,jj,kk;
+  double filterval;
 
+  ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
+  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
+  int iif = loc[0]*ii;
+  int jjf = loc[1]*jj;
+  int kkf = loc[2]*kk;
+ 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
-  if(locx == 1)
+  if(loc[0] == 1)
   {
     grid->interpolatex_2nd(tmp1, w, 0);
     calcw = tmp1;
   }
-  else if(locy == 1)
+  else if(loc[1] == 1)
   {
     grid->interpolatey_2nd(tmp1, w, 0);
     calcw = tmp1;
@@ -654,17 +662,21 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += filter[ijk]*0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
+        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        prof[k] += filterval*(0.5*(data[ijk-kk]+data[ijk])-datamean[k])*(calcw[ijk]-wmean[k]);
       }
   }
 
   master->sum(prof, grid->kcells);
 
+  // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf = loc[2];
+
   double n = grid->itot*grid->jtot;
-  for(int k=0; k<grid->kcells-1; k++)
+  for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k] > 0)
-      prof[k] /= 0.5*(double)nfilter[k];
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
   }

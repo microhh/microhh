@@ -97,7 +97,7 @@ class cstats
     int calcgrad_2nd(double *, double *, double *);
     int calcgrad_4th(double *, double *, double *);
     int calcflux_2nd(double *, double *, double *, double *, int, int);
-    int calcflux_2nd(double *, double *, double *, double *, int, int, double *, int *);
+    int calcflux_2nd(double *, double *, double *, double *, double *, double *, const int[3], double *, int *);
     int calcflux_4th(double *, double *, double *, double *, int, int);
     int addfluxes   (double *, double *, double *);
     int calccount   (double *, double *, double);

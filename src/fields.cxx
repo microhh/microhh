@@ -379,12 +379,15 @@ int cfields::execstats(filter *f)
   // calculate the turbulent fluxes
   if(grid->swspatialorder == "2")
   {
-    stats->calcflux_2nd(u->data, w->data, f->profs["uw"].data, s["tmp1"]->data, 1, 0,
+    stats->calcflux_2nd(u->data, f->profs["u"].data, w->data, f->profs["w"].data,
+                        f->profs["uw"].data, s["tmp1"]->data, uloc,
                         s["tmp0"]->data, stats->filtercount);
-    stats->calcflux_2nd(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, 0, 1,
+    stats->calcflux_2nd(v->data, f->profs["v"].data, w->data, f->profs["w"].data,
+                        f->profs["vw"].data, s["tmp1"]->data, vloc,
                         s["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_2nd(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0,
+      stats->calcflux_2nd(it->second->data, f->profs[it->first].data, w->data, f->profs["w"].data,
+                          f->profs[it->first+"w"].data, s["tmp1"]->data, sloc,
                           s["tmp0"]->data, stats->filtercount);
   }
   else if(grid->swspatialorder == "4")
