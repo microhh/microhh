@@ -373,10 +373,13 @@ int cfields::execstats(filter *f)
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcgrad_4th(u->data, f->profs["ugrad"].data, grid->dzhi4);
-    stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4);
+    stats->calcgrad_4th(u->data, f->profs["ugrad"].data, grid->dzhi4, uloc,
+                        sd["tmp0"]->data, stats->filtercount);
+    stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4, vloc,
+                        sd["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4);
+      stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4, sloc,
+                          sd["tmp0"]->data, stats->filtercount);
   }
 
   // calculate the turbulent fluxes
@@ -415,10 +418,13 @@ int cfields::execstats(filter *f)
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcdiff_4th(u->data, f->profs["udiff"].data, grid->dzhi4, visc);
-    stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc);
+    stats->calcdiff_4th(u->data, f->profs["udiff"].data, grid->dzhi4, visc, uloc,
+                        s["tmp0"]->data, stats->filtercount);
+    stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+                        s["tmp0"]->data, stats->filtercount);
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc);
+      stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+                          s["tmp0"]->data, stats->filtercount);
   }
 
   // calculate the total fluxes

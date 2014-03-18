@@ -808,14 +808,22 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
   return 0;
 }
 
-int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4)
+int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
+                         double * restrict filter, int * restrict nfilter)
 {
-  int ijk,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2;
+  double filterval;
 
+  ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
-  
+
+  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
+  int iif = loc[0]*ii;
+  int jjf = loc[1]*jj;
+  int kkf = loc[2]*kk1;
+ 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
@@ -824,28 +832,44 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] += (cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        prof[k] += filterval*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 
-  double n = grid->imax*grid->jmax;
+  master->sum(prof, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
-    prof[k] /= n;
+  // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf = loc[2];
 
-  grid->getprof(prof, grid->kcells);
+  double n = grid->itot*grid->jtot;
+  for(int k=1; k<grid->kcells; k++)
+  {
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
 
   return 0;
 }
 
-int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc)
+int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
+                         double * restrict filter, int * restrict nfilter)
 {
-  int ijk,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2;
+  double filterval;
 
+  ii  = 1;
   jj  = 1*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
-  
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+
+  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
+  int iif = loc[0]*ii;
+  int jjf = loc[1]*jj;
+  int kkf = loc[2]*kk1;
+ 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
@@ -854,16 +878,22 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] += -visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        prof[k] -= filterval*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 
-  double n = grid->imax*grid->jmax;
+  // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf = loc[2];
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
-    prof[k] /= n;
-
-  grid->getprof(prof, grid->kcells);
+  double n = grid->itot*grid->jtot;
+  for(int k=1; k<grid->kcells; k++)
+  {
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
 
   return 0;
 }
