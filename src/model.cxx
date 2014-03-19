@@ -394,13 +394,13 @@ int cmodel::exec()
         thermo->execstats(&stats->filters["default"]);
         budget->execstats(&stats->filters["default"]);
 
-        /*
         // filtered loop
         fields->getfilter(fields->sd["tmp0"], &stats->filters["wplus"]);
         fields->execstats(&stats->filters["wplus"]);
         thermo->execstats(&stats->filters["wplus"]);
         budget->execstats(&stats->filters["wplus"]);
 
+        // filtered loop
         fields->getfilter(fields->sd["tmp0"], &stats->filters["wmin"]);
         fields->execstats(&stats->filters["wmin"]);
         thermo->execstats(&stats->filters["wmin"]);
@@ -417,7 +417,6 @@ int cmodel::exec()
         fields->execstats(&stats->filters["qlcore"]);
         thermo->execstats(&stats->filters["qlcore"]);
         budget->execstats(&stats->filters["qlcore"]);
-        */
 
         // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
