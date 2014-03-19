@@ -370,29 +370,27 @@ int cgrid::calculate()
  */
 int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
-  int ijk,ii,jj,kk,ihlf,jhlf,khlf;
+  int ijk,ii,jj,kk,iih,jjh,kkh;
 
   ii = 1;
   jj = icells;
   kk = ijcells;
 
-  ihlf = locin[0]-locout[0];
-  jhlf = locin[1]-locout[1];
-  khlf = locin[2]-locout[2];
+  iih = (locin[0]-locout[0])*ii;
+  jjh = (locin[1]-locout[1])*jj;
+  kkh = (locin[2]-locout[2])*kk;
 
   // interpolate the field
+  // \TODO add the vertical component
   for(int k=kstart; k<kend+locout[2]; ++k)
     for(int j=jstart; j<jend; ++j)
 #pragma ivdep
       for(int i=istart; i<iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        out[ijk] = 0.5*(in[ijk] + in[ijk+ihlf*ii])
-                 + 0.5*(in[ijk] + in[ijk+jhlf*jj])
-                 + 0.5*(in[ijk] + in[ijk+khlf*kk]);
+        out[ijk] = 0.5*(0.5*(in[ijk    ] + in[ijk+iih    ]))
+                 + 0.5*(0.5*(in[ijk+jjh] + in[ijk+iih+jjh]));
       }
-
-  return 0;
 }
 
 /**
@@ -407,30 +405,30 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
 int cgrid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   // interpolation function, locx = 1 indicates that the reference is at the half level
-  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,ihlf,jhlf,khlf;
+  int ijk,ii,jj,kk,iih1,jjh1,kkh1,iih2,jjh2;
 
-  ii1 = 1;
-  ii2 = 2;
-  jj1 = 1*icells;
-  jj2 = 2*icells;
-  kk1 = 1*ijcells;
-  kk2 = 2*ijcells;
+  ii = 1;
+  jj = icells;
+  kk = ijcells;
 
   // a shift to the left gives minus 1 a shift to the right +1
-  ihlf = locin[0]-locout[0];
-  jhlf = locin[1]-locout[1];
-  khlf = locin[2]-locout[2];
+  iih1 = 1*(locin[0]-locout[0])*ii;
+  iih2 = 2*(locin[0]-locout[0])*ii;
+  jjh1 = 1*(locin[1]-locout[1])*jj;
+  jjh2 = 2*(locin[1]-locout[1])*jj;
+  kkh1 = 1*(locin[2]-locout[2])*kk;
 
-  // interpolate in x
+  // \TODO add the vertical component
   for(int k=kstart; k<kend+locout[2]; ++k)
     for(int j=jstart; j<jend; ++j)
 #pragma ivdep
       for(int i=istart; i<iend; ++i)
       {
-        ijk = i + j*jj1 + k*kk1;
-        out[ijk] = ci0*in[ijk-ii1*ihlf] + ci1*in[ijk*ihlf] + ci2*in[ijk+ii1*ihlf] + ci3*in[ijk+ii2*ihlf];
-                 + ci0*in[ijk-jj1*jhlf] + ci1*in[ijk*jhlf] + ci2*in[ijk+jj1*jhlf] + ci3*in[ijk+jj2*jhlf];
-                 + ci0*in[ijk-kk1*khlf] + ci1*in[ijk*khlf] + ci2*in[ijk+kk1*khlf] + ci3*in[ijk+kk2*khlf];
+        ijk = i + j*jj + k*kk;
+        out[ijk] = ci0*(ci0*in[ijk-iih1-jjh1] + ci1*in[ijk-jjh1] + ci2*in[ijk+iih1-jjh1] + ci3*in[ijk+iih2-jjh1])
+                 + ci1*(ci0*in[ijk-iih1     ] + ci1*in[ijk     ] + ci2*in[ijk+iih1     ] + ci3*in[ijk+iih2     ])
+                 + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
+                 + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
       }
 
   return 0;
