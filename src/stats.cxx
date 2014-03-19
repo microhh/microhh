@@ -573,8 +573,6 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
   int kf = loc[2];
-
-  double n = grid->itot*grid->jtot;
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
@@ -682,8 +680,6 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
   int kf = loc[2];
-
-  double n = grid->itot*grid->jtot;
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
@@ -747,7 +743,6 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
   int kf = loc[2];
-
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
@@ -822,8 +817,6 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
   int kf = loc[2];
-
-  double n = grid->itot*grid->jtot;
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
@@ -868,8 +861,6 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
   int kf = loc[2];
-
-  double n = grid->itot*grid->jtot;
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
@@ -910,10 +901,10 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
       }
   }
 
+  master->sum(prof, grid->kcells);
+
   // use the same interpolation trick as for the filter field, no interpolation on half levels
   int kf = loc[2];
-
-  double n = grid->itot*grid->jtot;
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
