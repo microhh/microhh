@@ -399,10 +399,9 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
 int cstats::calcmean(double * restrict data, double * restrict prof, double offset, const int loc[3],
                      double * restrict filter, int * restrict nfilter)
 {
-  int ijk,ii,jj,kk,kkf;
+  int ijk,jj,kk,kkf;
   double filterval;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
   kkf = loc[2]*kk;
@@ -540,17 +539,12 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
                        double * restrict filter, int * restrict nfilter)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk,kkf;
   double filterval;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
-
-  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
-  int iif = loc[0]*ii;
-  int jjf = loc[1]*jj;
-  int kkf = loc[2]*kk;
+  kkf = loc[2]*kk;
  
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -560,7 +554,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
         prof[k] += filterval*std::pow(data[ijk]-datamean[k], power);
       }
   }
@@ -628,17 +622,12 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
                          double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict filter, int * restrict nfilter)
 {
-  int ijk,ii,jj,kk;
+  int ijk,ii,jj,kk,kkf;
   double filterval;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
-
-  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
-  int iif = loc[0]*ii;
-  int jjf = loc[1]*jj;
-  int kkf = loc[2]*kk;
  
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -667,7 +656,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        filterval = 0.5*(filter[ijk-kk] + filter[ijk]);
         prof[k] += filterval*(0.5*(data[ijk-kk]+data[ijk])-datamean[k])*(calcw[ijk]-wmean[k]);
       }
   }
@@ -675,11 +664,10 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nfilter[k-1]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-1] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -717,11 +705,6 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
     calcw = tmp1;
   }
  
-  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
-  int iif = loc[0]*ii;
-  int jjf = loc[1]*jj;
-  int kkf = loc[2]*kk1;
- 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
@@ -730,7 +713,7 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        filterval = 0.5*(filter[ijk-kk1] + filter[ijk]);
         prof[k] += filterval*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
       }
   }
@@ -738,11 +721,10 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nfilter[k-1]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-1] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -804,7 +786,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
         prof[k] += filterval*(data[ijk]-data[ijk-kk])*dzhi[k];
       }
   }
@@ -848,7 +830,7 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
         prof[k] += filterval*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
@@ -892,7 +874,7 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        filterval = (1./6.)*(filter[ijk-iif] + filter[ijk-jjf] + filter[ijk-kkf] + 3.*filter[ijk]);
+        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
         prof[k] -= filterval*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
@@ -978,8 +960,6 @@ int cstats::calcpath(double * restrict data, double * restrict path)
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   int kstart = grid->kstart;
-  int nerror = 0;
-
 
   *path = 0.;
   // Integrate with height
@@ -996,7 +976,7 @@ int cstats::calcpath(double * restrict data, double * restrict path)
 
   grid->getprof(path,1);
 
-  return nerror;
+  return 0;
 }
 
 
@@ -1006,7 +986,6 @@ int cstats::calccover(double * restrict data, double * restrict cover, double th
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   int kstart = grid->kstart;
-  int nerror = 0;
 
   *cover = 0.;
   // Integrate with height
@@ -1026,6 +1005,6 @@ int cstats::calccover(double * restrict data, double * restrict cover, double th
 
   grid->getprof(cover,1);
 
-  return nerror;
+  return 0;
 }
 

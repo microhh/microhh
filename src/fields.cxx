@@ -372,9 +372,26 @@ int cfields::execstats(filter *f)
     std::string sn = ss.str();
     stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, vloc, sd["tmp1"]->data, stats->filtercount);
   }
+  if(grid->swspatialorder == "2")
+  {
+    stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vloc,
+                        sd["tmp0"]->data, stats->filtercount);
+    stats->calcflux_2nd(v->data, f->profs["v"].data, w->data, f->profs["w"].data,
+                        f->profs["vw"].data, s["tmp1"]->data, vloc,
+                        s["tmp0"]->data, stats->filtercount);
+    stats->calcdiff_2nd(v->data, s["evisc"]->data, f->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4, vloc,
+                        sd["tmp0"]->data, stats->filtercount);
+    stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, vloc,
+                          s["tmp0"]->data, stats->filtercount);
+    stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+                        s["tmp0"]->data, stats->filtercount);
+  }
 
   // calculate the stats on the w location
-  // grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp0"]->data, sloc, wloc);
   stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, wloc, sd["tmp0"]->data, stats->filtercount);
   for(int n=2; n<5; ++n)
   {
@@ -385,6 +402,7 @@ int cfields::execstats(filter *f)
   }
 
   // calculate stats for the prognostic scalars
+  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
     stats->calcmean(it->second->data, f->profs[it->first].data, NO_OFFSET, sloc, sd["tmp0"]->data, stats->filtercount);
@@ -394,6 +412,25 @@ int cfields::execstats(filter *f)
       ss << n;
       std::string sn = ss.str();
       stats->calcmoment(it->second->data, f->profs[it->first].data, f->profs[it->first+sn].data, n, sloc, sd["tmp0"]->data, stats->filtercount);
+    }
+    if(grid->swspatialorder == "2")
+    {
+      stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi, sloc,
+                          sd["tmp0"]->data, stats->filtercount);
+      stats->calcflux_2nd(it->second->data, f->profs[it->first].data, w->data, f->profs["w"].data,
+                          f->profs[it->first+"w"].data, s["tmp1"]->data, sloc,
+                          s["tmp0"]->data, stats->filtercount);
+      if(model->diff->getname() == "les2s")
+        stats->calcdiff_2nd(it->second->data, s["evisc"]->data, f->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
+    }
+    else if(grid->swspatialorder == "4")
+    {
+      stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4, sloc,
+                          sd["tmp0"]->data, stats->filtercount);
+      stats->calcflux_4th(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, sloc,
+                          s["tmp0"]->data, stats->filtercount);
+      stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+                          s["tmp0"]->data, stats->filtercount);
     }
   }
 
@@ -408,64 +445,6 @@ int cfields::execstats(filter *f)
 
   if(model->diff->getname() == "les2s")
     stats->calcmean(s["evisc"]->data, f->profs["evisc"].data, NO_OFFSET, sloc, sd["tmp0"]->data, stats->filtercount);
-
-  // calculate the gradients
-  if(grid->swspatialorder == "2")
-  {
-    stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vloc,
-                        sd["tmp0"]->data, stats->filtercount);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi, sloc,
-                          sd["tmp0"]->data, stats->filtercount);
-  }
-  else if(grid->swspatialorder == "4")
-  {
-    stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4, vloc,
-                        sd["tmp0"]->data, stats->filtercount);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4, sloc,
-                          sd["tmp0"]->data, stats->filtercount);
-  }
-
-  // calculate the turbulent fluxes
-  if(grid->swspatialorder == "2")
-  {
-    stats->calcflux_2nd(v->data, f->profs["v"].data, w->data, f->profs["w"].data,
-                        f->profs["vw"].data, s["tmp1"]->data, vloc,
-                        s["tmp0"]->data, stats->filtercount);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_2nd(it->second->data, f->profs[it->first].data, w->data, f->profs["w"].data,
-                          f->profs[it->first+"w"].data, s["tmp1"]->data, sloc,
-                          s["tmp0"]->data, stats->filtercount);
-  }
-  else if(grid->swspatialorder == "4")
-  {
-    stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, vloc,
-                          s["tmp0"]->data, stats->filtercount);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_4th(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, sloc,
-                          s["tmp0"]->data, stats->filtercount);
-  }
-
-  // calculate the diffusive fluxes
-  if(grid->swspatialorder == "2")
-  {
-    if(model->diff->getname() == "les2s")
-    {
-      cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-      stats->calcdiff_2nd(v->data, s["evisc"]->data, f->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
-      for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-        stats->calcdiff_2nd(it->second->data, s["evisc"]->data, f->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
-    }
-  }
-  else if(grid->swspatialorder == "4")
-  {
-    stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vloc,
-                        s["tmp0"]->data, stats->filtercount);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
-                          s["tmp0"]->data, stats->filtercount);
-  }
 
   return 0;
 }
