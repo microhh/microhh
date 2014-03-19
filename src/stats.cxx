@@ -628,6 +628,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
   ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
+  kkf = (1-loc[2])*kk;
  
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -656,7 +657,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = 0.5*(filter[ijk-kk] + filter[ijk]);
+        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
         prof[k] += filterval*(0.5*(data[ijk-kk]+data[ijk])-datamean[k])*(calcw[ijk]-wmean[k]);
       }
   }
@@ -664,10 +665,11 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-1]+nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-1] + nfilter[k]));
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -678,13 +680,14 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict filter, int * restrict nfilter)
 {
-  int ijk,ii,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2,kkf;
   double filterval;
 
   ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
+  kkf = (1-loc[2])*kk1;
 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -713,7 +716,7 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        filterval = 0.5*(filter[ijk-kk1] + filter[ijk]);
+        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
         prof[k] += filterval*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
       }
   }
@@ -721,10 +724,11 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
+  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-1]+nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-1] + nfilter[k]));
+    if(nfilter[k-kf]+nfilter[k] > 0)
+      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -766,18 +770,14 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
                          double * restrict filter, int * restrict nfilter)
 {
-  int ijk,ii,jj,kk;
+  int ijk,ii,jj,kk,kkf;
   double filterval;
 
   ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
+  kkf = (1-loc[2])*kk;
 
-  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
-  int iif = loc[0]*ii;
-  int jjf = loc[1]*jj;
-  int kkf = loc[2]*kk;
- 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
@@ -794,7 +794,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = loc[2];
+  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
@@ -809,19 +809,15 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
                          double * restrict filter, int * restrict nfilter)
 {
-  int ijk,ii,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2,kkf;
   double filterval;
 
   ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
+  kkf = (1-loc[2])*kk1;
 
-  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
-  int iif = loc[0]*ii;
-  int jjf = loc[1]*jj;
-  int kkf = loc[2]*kk1;
- 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
@@ -838,7 +834,7 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = loc[2];
+  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
@@ -853,18 +849,14 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
                          double * restrict filter, int * restrict nfilter)
 {
-  int ijk,ii,jj,kk1,kk2;
+  int ijk,ii,jj,kk1,kk2,kkf;
   double filterval;
 
   ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
-
-  // interpolation offset, if locz = 1, which corresponds to half level, there is no interpolation
-  int iif = loc[0]*ii;
-  int jjf = loc[1]*jj;
-  int kkf = loc[2]*kk1;
+  kkf = (1-loc[2])*kk1;
  
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -882,7 +874,7 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = loc[2];
+  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
     if(nfilter[k-kf]+nfilter[k] > 0)
@@ -978,7 +970,6 @@ int cstats::calcpath(double * restrict data, double * restrict path)
 
   return 0;
 }
-
 
 int cstats::calccover(double * restrict data, double * restrict cover, double threshold)
 {
