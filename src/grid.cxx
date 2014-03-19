@@ -388,8 +388,10 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
       for(int i=istart; i<iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        out[ijk] = 0.5*(0.5*(in[ijk    ] + in[ijk+iih    ]))
-                 + 0.5*(0.5*(in[ijk+jjh] + in[ijk+iih+jjh]));
+        out[ijk] = 0.5*( 0.5*(0.5*in[ijk        ] + 0.5*in[ijk+iih        ])
+                       + 0.5*(0.5*in[ijk+jjh    ] + 0.5*in[ijk+iih+jjh    ]))
+                 + 0.5*( 0.5*(0.5*in[ijk    +kkh] + 0.5*in[ijk+iih    +kkh])
+                       + 0.5*(0.5*in[ijk+jjh+kkh] + 0.5*in[ijk+iih+jjh+kkh]));
       }
 }
 
