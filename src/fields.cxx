@@ -356,7 +356,7 @@ int cfields::execstats(filter *f)
   {
     stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi, uloc,
                         sd["tmp1"]->data, stats->filtercount);
-    stats->calcflux_2nd(u->data, f->profs["u"].data, w->data, f->profs["w"].data,
+    stats->calcflux_2nd(u->data, umodel, w->data, f->profs["w"].data,
                         f->profs["uw"].data, s["tmp1"]->data, uloc,
                         sd["tmp1"]->data, stats->filtercount);
     stats->calcdiff_2nd(u->data, s["evisc"]->data, f->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
@@ -386,7 +386,7 @@ int cfields::execstats(filter *f)
   {
     stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vloc,
                         sd["tmp1"]->data, stats->filtercount);
-    stats->calcflux_2nd(v->data, f->profs["v"].data, w->data, f->profs["w"].data,
+    stats->calcflux_2nd(v->data, vmodel, w->data, f->profs["w"].data,
                         f->profs["vw"].data, s["tmp2"]->data, vloc,
                         sd["tmp1"]->data, stats->filtercount);
     stats->calcdiff_2nd(v->data, s["evisc"]->data, f->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
