@@ -658,7 +658,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
       {
         ijk  = i + j*jj + k*kk;
         filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
-        prof[k] += filterval*(0.5*(data[ijk-kk]+data[ijk])-datamean[k])*(calcw[ijk]-wmean[k]);
+        prof[k] += filterval*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
       }
   }
 

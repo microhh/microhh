@@ -331,10 +331,20 @@ int cfields::execstats(filter *f)
   const int wloc[] = {0,0,1};
   const int sloc[] = {0,0,0};
 
+  // start with the stats on the w location, to make the wmean known for the flux calculations
+  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, wloc, sd["tmp0"]->data, stats->filtercount);
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, wloc, sd["tmp0"]->data, stats->filtercount);
+  }
+
   // calculate the stats on the u location
   grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp0"]->data, sloc, uloc);
   stats->calcmean(u->data, f->profs["u"].data, grid->utrans, uloc, sd["tmp1"]->data, stats->filtercount);
-  stats->calcmean(u->data, umodel, NO_OFFSET);
+  stats->calcmean(u->data, umodel            , NO_OFFSET   , uloc, sd["tmp1"]->data, stats->filtercount);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
@@ -364,7 +374,7 @@ int cfields::execstats(filter *f)
   // calculate the stats on the v location
   grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp0"]->data, sloc, vloc);
   stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, vloc, sd["tmp1"]->data, stats->filtercount);
-  stats->calcmean(v->data, vmodel, NO_OFFSET);
+  stats->calcmean(v->data, vmodel            , NO_OFFSET   , vloc, sd["tmp1"]->data, stats->filtercount);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
@@ -389,16 +399,6 @@ int cfields::execstats(filter *f)
                         sd["tmp1"]->data, stats->filtercount);
     stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vloc,
                         sd["tmp1"]->data, stats->filtercount);
-  }
-
-  // calculate the stats on the w location
-  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, wloc, sd["tmp0"]->data, stats->filtercount);
-  for(int n=2; n<5; ++n)
-  {
-    std::stringstream ss;
-    ss << n;
-    std::string sn = ss.str();
-    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, wloc, sd["tmp0"]->data, stats->filtercount);
   }
 
   // calculate stats for the prognostic scalars
