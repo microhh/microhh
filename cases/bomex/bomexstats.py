@@ -32,7 +32,7 @@ def plotstats(name, line):
   tket = 0.5*(u2t + v2t + 0.5*(w2t[:,0:-1]+w2t[:,1::]))
   
   end   = t.size
-  start = t.size - 36
+  start = t.size - 12
   
   area = numpy.mean(areat[start:end,:], 0)
 

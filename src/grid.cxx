@@ -391,6 +391,8 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
         out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
                  + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
       }
+
+  return 0;
 }
 
 /**
@@ -405,7 +407,7 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
 int cgrid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   // interpolation function, locx = 1 indicates that the reference is at the half level
-  int ijk,ii,jj,kk,iih1,jjh1,kkh1,iih2,jjh2;
+  int ijk,ii,jj,kk,iih1,jjh1,iih2,jjh2;
 
   ii = 1;
   jj = icells;
@@ -416,7 +418,6 @@ int cgrid::interpolate_4th(double * restrict out, double * restrict in, const in
   iih2 = 2*(locin[0]-locout[0])*ii;
   jjh1 = 1*(locin[1]-locout[1])*jj;
   jjh2 = 2*(locin[1]-locout[1])*jj;
-  kkh1 = 1*(locin[2]-locout[2])*kk;
 
   // \TODO add the vertical component
   for(int k=kstart; k<kend+locout[2]; ++k)
