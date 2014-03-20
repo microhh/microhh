@@ -345,20 +345,20 @@ int cfields::execstats(filter *f)
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi, uloc,
-                        sd["tmp0"]->data, stats->filtercount);
+                        sd["tmp1"]->data, stats->filtercount);
     stats->calcflux_2nd(u->data, f->profs["u"].data, w->data, f->profs["w"].data,
                         f->profs["uw"].data, s["tmp1"]->data, uloc,
-                        s["tmp0"]->data, stats->filtercount);
+                        sd["tmp1"]->data, stats->filtercount);
     stats->calcdiff_2nd(u->data, s["evisc"]->data, f->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
   }
   else if(grid->swspatialorder == "4")
   {
     stats->calcgrad_4th(u->data, f->profs["ugrad"].data, grid->dzhi4, uloc,
-                        sd["tmp0"]->data, stats->filtercount);
-    stats->calcflux_4th(u->data, w->data, f->profs["uw"].data, s["tmp1"]->data, uloc,
-                          s["tmp0"]->data, stats->filtercount);
+                        sd["tmp1"]->data, stats->filtercount);
+    stats->calcflux_4th(u->data, w->data, f->profs["uw"].data, s["tmp2"]->data, uloc,
+                        sd["tmp1"]->data, stats->filtercount);
     stats->calcdiff_4th(u->data, f->profs["udiff"].data, grid->dzhi4, visc, uloc,
-                        s["tmp0"]->data, stats->filtercount);
+                        sd["tmp1"]->data, stats->filtercount);
   }
 
   // calculate the stats on the v location
@@ -375,20 +375,20 @@ int cfields::execstats(filter *f)
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vloc,
-                        sd["tmp0"]->data, stats->filtercount);
+                        sd["tmp1"]->data, stats->filtercount);
     stats->calcflux_2nd(v->data, f->profs["v"].data, w->data, f->profs["w"].data,
-                        f->profs["vw"].data, s["tmp1"]->data, vloc,
-                        s["tmp0"]->data, stats->filtercount);
+                        f->profs["vw"].data, s["tmp2"]->data, vloc,
+                        sd["tmp1"]->data, stats->filtercount);
     stats->calcdiff_2nd(v->data, s["evisc"]->data, f->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
   }
   else if(grid->swspatialorder == "4")
   {
     stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4, vloc,
-                        sd["tmp0"]->data, stats->filtercount);
-    stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp1"]->data, vloc,
-                          s["tmp0"]->data, stats->filtercount);
+                        sd["tmp1"]->data, stats->filtercount);
+    stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp2"]->data, vloc,
+                        sd["tmp1"]->data, stats->filtercount);
     stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vloc,
-                        s["tmp0"]->data, stats->filtercount);
+                        sd["tmp1"]->data, stats->filtercount);
   }
 
   // calculate the stats on the w location
@@ -418,19 +418,19 @@ int cfields::execstats(filter *f)
       stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi, sloc,
                           sd["tmp0"]->data, stats->filtercount);
       stats->calcflux_2nd(it->second->data, f->profs[it->first].data, w->data, f->profs["w"].data,
-                          f->profs[it->first+"w"].data, s["tmp1"]->data, sloc,
-                          s["tmp0"]->data, stats->filtercount);
+                          f->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
+                          sd["tmp0"]->data, stats->filtercount);
       if(model->diff->getname() == "les2s")
-        stats->calcdiff_2nd(it->second->data, s["evisc"]->data, f->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
+        stats->calcdiff_2nd(it->second->data, sd["evisc"]->data, f->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
     }
     else if(grid->swspatialorder == "4")
     {
       stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4, sloc,
                           sd["tmp0"]->data, stats->filtercount);
-      stats->calcflux_4th(it->second->data, w->data, f->profs[it->first+"w"].data, s["tmp1"]->data, sloc,
-                          s["tmp0"]->data, stats->filtercount);
+      stats->calcflux_4th(it->second->data, w->data, f->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
+                          sd["tmp0"]->data, stats->filtercount);
       stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
-                          s["tmp0"]->data, stats->filtercount);
+                          sd["tmp0"]->data, stats->filtercount);
     }
   }
 
