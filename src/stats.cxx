@@ -425,7 +425,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   int kf = loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
+    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
       prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -565,7 +565,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   int kf = loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
+    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
       prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -668,7 +668,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
   int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
+    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
       prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -727,7 +727,7 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
   int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
+    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
       prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -797,7 +797,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
   int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
+    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
       prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -837,7 +837,7 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
   int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
+    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
       prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -877,7 +877,7 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
   int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf]+nfilter[k] > 0)
+    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
       prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
