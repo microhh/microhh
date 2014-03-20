@@ -418,6 +418,13 @@ int cmodel::exec()
         thermo->execstats(&stats->filters["qlcore"]);
         budget->execstats(&stats->filters["qlcore"]);
 
+        // filtered loop
+        thermo->getfilter(fields->sd["tmp0"], &stats->filters["qlcoremin"]);
+        fields->execstats(&stats->filters["qlcoremin"]);
+        thermo->execstats(&stats->filters["qlcoremin"]);
+        budget->execstats(&stats->filters["qlcoremin"]);
+
+
         // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }

@@ -105,6 +105,9 @@ int cstats::init(double ifactor)
   filters["qlcore"].name = "qlcore";
   filters["qlcore"].dataFile = NULL;
 
+  filters["qlcoremin"].name = "qlcoremin";
+  filters["qlcoremin"].dataFile = NULL;
+
   // set the number of stats to zero
   nstats = 0;
 
@@ -429,6 +432,9 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
       prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
     else
       prof[k] = NC_FILL_DOUBLE;
+
+    // if(loc[1]==1)
+    //   std::printf("CvH (id): %d, %d, %d, %E\n", master->mpiid, k, nfilter[k], prof[k]/((double)nfilter[k]));
   }
 
   return 0;
