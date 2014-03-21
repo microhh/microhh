@@ -856,16 +856,23 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
   return 0;
 }
 
-int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi,
-                         double * restrict fluxbot, double * restrict fluxtop, double tPr,
+int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
+                         double * restrict prof, double * restrict dzhi,
+                         double * restrict fluxbot, double * restrict fluxtop, double tPr, const int loc[3],
                          double * restrict filter, int * restrict nmask)
 {
-  int ijk,ij,jj,kk,kstart,kend;
+  int ijk,ij,ii,jj,kk,kstart,kend;
+  double eviscu,eviscv,eviscs;
+  double dxi,dyi;
 
+  ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
-  kend   = grid->kend;
+  kend = grid->kend;
+
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
 
   // CvH add horizontal interpolation for u and v and interpolate the eddy viscosity properly
   // bottom boundary
@@ -879,16 +886,53 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double
       prof[kstart] += filter[ijk]*fluxbot[ij];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
+  // calculate the interior
+  if(loc[0] == 1)
   {
-    prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for(int k=grid->kstart+1; k<grid->kend; ++k)
+    {
+      prof[k] = 0.;
+      for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
-      {
-        ijk  = i + j*jj + k*kk;
-        prof[k] += -filter[ijk]*0.5*(evisc[ijk-kk]+evisc[ijk])/tPr*(data[ijk]-data[ijk-kk])*dzhi[k];
-      }
+        for(int i=grid->istart; i<grid->iend; ++i)
+        {
+          ijk  = i + j*jj + k*kk;
+          // evisc * (du/dz + dw/dx)
+          eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
+          prof[k] += -filter[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+        }
+    }
+  }
+  else if(loc[1] == 1)
+  {
+    for(int k=grid->kstart+1; k<grid->kend; ++k)
+    {
+      prof[k] = 0.;
+      for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+        for(int i=grid->istart; i<grid->iend; ++i)
+        {
+          ijk  = i + j*jj + k*kk;
+          // evisc * (dv/dz + dw/dy)
+          eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
+          prof[k] += -filter[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
+        }
+    }
+  }
+  else
+  {
+    for(int k=grid->kstart+1; k<grid->kend; ++k)
+    {
+      prof[k] = 0.;
+      for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+        for(int i=grid->istart; i<grid->iend; ++i)
+        {
+          ijk  = i + j*jj + k*kk;
+          eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
+          prof[k] += -filter[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
+        }
+    }
   }
 
   // top boundary

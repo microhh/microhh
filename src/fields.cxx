@@ -371,8 +371,9 @@ int cfields::execstats(filter *f)
                         f->profs["uw"].data, s["tmp2"]->data, uloc,
                         sd["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calcdiff_2nd(u->data, s["evisc"]->data, f->profs["udiff"].data, grid->dzhi,
-                          u->datafluxbot, u->datafluxtop, 1.,
+      stats->calcdiff_2nd(u->data, w->data, s["evisc"]->data,
+                          f->profs["udiff"].data, grid->dzhi,
+                          u->datafluxbot, u->datafluxtop, 1., uloc,
                           sd["tmp1"]->data, stats->nmaskh);
   }
   else if(grid->swspatialorder == "4")
@@ -407,8 +408,9 @@ int cfields::execstats(filter *f)
                         f->profs["vw"].data, s["tmp2"]->data, vloc,
                         sd["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calcdiff_2nd(v->data, s["evisc"]->data, f->profs["vdiff"].data, grid->dzhi,
-                          v->datafluxbot, v->datafluxtop, 1.,
+      stats->calcdiff_2nd(v->data, w->data, s["evisc"]->data,
+                          f->profs["vdiff"].data, grid->dzhi,
+                          v->datafluxbot, v->datafluxtop, 1., vloc,
                           sd["tmp1"]->data, stats->nmaskh);
   }
   else if(grid->swspatialorder == "4")
@@ -441,8 +443,9 @@ int cfields::execstats(filter *f)
                           f->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
                           sd["tmp4"]->data, stats->nmaskh);
       if(model->diff->getname() == "les2s")
-        stats->calcdiff_2nd(it->second->data, sd["evisc"]->data, f->profs[it->first+"diff"].data, grid->dzhi,
-                            it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr,
+        stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
+                            f->profs[it->first+"diff"].data, grid->dzhi,
+                            it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
                             sd["tmp1"]->data, stats->nmaskh);
     }
     else if(grid->swspatialorder == "4")
