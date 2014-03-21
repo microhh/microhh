@@ -283,6 +283,12 @@ int cthermo_moist::calcfilterql(double * restrict mask, double * restrict maskh,
   for(int k=grid->kstart; k<grid->kend+1; k++)
     areah[k] = (double)nmaskh[k] / (double)ijtot;
 
+  areah[kstart] = 0;
+  areah[kend  ] = 0;
+
+  nmaskh[kstart] = 0;
+  nmaskh[kend  ] = 0;
+
   return 0;
 }
 
@@ -342,6 +348,12 @@ int cthermo_moist::calcfilterqlcore(double * restrict mask, double * restrict ma
 
   for(int k=grid->kstart; k<grid->kend+1; k++)
     areah[k] = (double)nmaskh[k] / (double)ijtot;
+
+  areah[kstart] = 0;
+  areah[kend  ] = 0;
+
+  nmaskh[kstart] = 0;
+  nmaskh[kend  ] = 0;
 
   return 0;
 }

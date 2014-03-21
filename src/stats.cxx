@@ -653,13 +653,13 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += filter[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
+        //prof[k] += filter[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
+        prof[k] += filter[ijk]*0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
       }
   }
 
   master->sum(prof, grid->kcells);
 
-  // use the same interpolation trick as for the filter field, no interpolation on half levels
   for(int k=1; k<grid->kcells; k++)
   {
     if(nmask[k] > 0)
@@ -713,7 +713,6 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
 
   master->sum(prof, grid->kcells);
 
-  // use the same interpolation trick as for the filter field, no interpolation on half levels
   for(int k=1; k<grid->kcells; k++)
   {
     if(nmask[k] > 0)
@@ -778,7 +777,6 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 
   master->sum(prof, grid->kcells);
 
-  // use the same interpolation trick as for the filter field, no interpolation on half levels
   for(int k=1; k<grid->kcells; k++)
   {
     if(nmask[k] > 0)
@@ -926,6 +924,7 @@ int cstats::calcpath(double * restrict data, double * restrict path)
   int kstart = grid->kstart;
 
   *path = 0.;
+
   // Integrate with height
   for(int k=kstart; k<grid->kend; k++)
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -951,6 +950,7 @@ int cstats::calccover(double * restrict data, double * restrict cover, double th
   int kstart = grid->kstart;
 
   *cover = 0.;
+
   // Integrate with height
   for(int j=grid->jstart; j<grid->jend; j++)
     for(int i=grid->istart; i<grid->iend; i++)

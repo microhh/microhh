@@ -109,14 +109,14 @@ int cfields::readinifile(cinput *inputin)
   nerror += initdfld("tmp3", "", "");
   nerror += initdfld("tmp4", "", "");
 
-  // \TODO check this later
-  stats = model->stats;
-
   return nerror;
 }
 
 int cfields::init()
 {
+  // set the convenience pointers
+  stats = model->stats;
+
   if(master->mpiid == 0) std::printf("Initializing fields\n");
 
   int n = 0;
@@ -222,12 +222,9 @@ int cfields::calcfilterwplus(double * restrict mask, double * restrict maskh,
                              double * restrict w)
 {
   int ijk,jj,kk;
-  int kstart,kend;
 
   jj = grid->icells;
   kk = grid->ijcells;
-  kstart = grid->kstart;
-  kend   = grid->kend;
 
   int ntmp;
 
@@ -282,12 +279,9 @@ int cfields::calcfilterwmin(double * restrict mask, double * restrict maskh,
                             double * restrict w)
 {
   int ijk,jj,kk;
-  int kstart,kend;
 
   jj = grid->icells;
   kk = grid->ijcells;
-  kstart = grid->kstart;
-  kend   = grid->kend;
 
   int ntmp;
 
@@ -355,63 +349,70 @@ int cfields::execstats(filter *f)
   }
 
   // calculate the stats on the u location
-  // grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
-  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, uloc, sd["tmp3"]->data, stats->nmask);
-  stats->calcmean(u->data, umodel            , NO_OFFSET   , uloc, sd["tmp3"]->data, stats->nmask);
+  // interpolate the mask horizontally onto the u coordinate
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
+  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, uloc, sd["tmp1"]->data, stats->nmask);
+  stats->calcmean(u->data, umodel            , NO_OFFSET   , uloc, sd["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, uloc, sd["tmp3"]->data, stats->nmask);
+    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, uloc, sd["tmp1"]->data, stats->nmask);
   }
+
+  // interpolate the mask on half level horizontally onto the u coordinate
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, sloc, uloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi, uloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        sd["tmp1"]->data, stats->nmaskh);
     stats->calcflux_2nd(u->data, umodel, w->data, f->profs["w"].data,
-                        f->profs["uw"].data, s["tmp1"]->data, uloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        f->profs["uw"].data, s["tmp2"]->data, uloc,
+                        sd["tmp1"]->data, stats->nmaskh);
     stats->calcdiff_2nd(u->data, s["evisc"]->data, f->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
   }
   else if(grid->swspatialorder == "4")
   {
     stats->calcgrad_4th(u->data, f->profs["ugrad"].data, grid->dzhi4, uloc,
-                        sd["tmp4"]->data, stats->nmaskh);
-    stats->calcflux_4th(u->data, w->data, f->profs["uw"].data, s["tmp2"]->data, uloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        sd["tmp1"]->data, stats->nmaskh);
+    stats->calcflux_4th(u->data, w->data, f->profs["uw"].data, sd["tmp2"]->data, uloc,
+                        sd["tmp1"]->data, stats->nmaskh);
     stats->calcdiff_4th(u->data, f->profs["udiff"].data, grid->dzhi4, visc, uloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        sd["tmp1"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the v location
-  // grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
-  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, vloc, sd["tmp3"]->data, stats->nmask);
-  stats->calcmean(v->data, vmodel            , NO_OFFSET   , vloc, sd["tmp3"]->data, stats->nmask);
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
+  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, vloc, sd["tmp1"]->data, stats->nmask);
+  stats->calcmean(v->data, vmodel            , NO_OFFSET   , vloc, sd["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, vloc, sd["tmp3"]->data, stats->nmask);
+    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, vloc, sd["tmp1"]->data, stats->nmask);
   }
+
+  // interpolate the mask on half level horizontally onto the u coordinate
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, sloc, vloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        sd["tmp1"]->data, stats->nmaskh);
     stats->calcflux_2nd(v->data, vmodel, w->data, f->profs["w"].data,
                         f->profs["vw"].data, s["tmp2"]->data, vloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        sd["tmp1"]->data, stats->nmaskh);
     stats->calcdiff_2nd(v->data, s["evisc"]->data, f->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
   }
   else if(grid->swspatialorder == "4")
   {
     stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4, vloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        sd["tmp1"]->data, stats->nmaskh);
     stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp2"]->data, vloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        sd["tmp1"]->data, stats->nmaskh);
     stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vloc,
-                        sd["tmp4"]->data, stats->nmaskh);
+                        sd["tmp1"]->data, stats->nmaskh);
   }
 
   // calculate stats for the prognostic scalars
