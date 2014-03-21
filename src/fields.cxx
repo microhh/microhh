@@ -345,73 +345,73 @@ int cfields::execstats(filter *f)
   const int sloc[] = {0,0,0};
 
   // start with the stats on the w location, to make the wmean known for the flux calculations
-  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, wloc, sd["tmp3"]->data, stats->nmask);
+  stats->calcmean(w->data, f->profs["w"].data, NO_OFFSET, wloc, sd["tmp4"]->data, stats->nmaskh);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, wloc, sd["tmp3"]->data, stats->nmask);
+    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, wloc, sd["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the u location
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
-  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, uloc, sd["tmp1"]->data, stats->nmask);
-  stats->calcmean(u->data, umodel            , NO_OFFSET   , uloc, sd["tmp1"]->data, stats->nmask);
+  // grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
+  stats->calcmean(u->data, f->profs["u"].data, grid->utrans, uloc, sd["tmp3"]->data, stats->nmask);
+  stats->calcmean(u->data, umodel            , NO_OFFSET   , uloc, sd["tmp3"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, uloc, sd["tmp1"]->data, stats->nmask);
+    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, uloc, sd["tmp3"]->data, stats->nmask);
   }
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, f->profs["ugrad"].data, grid->dzhi, uloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
     stats->calcflux_2nd(u->data, umodel, w->data, f->profs["w"].data,
                         f->profs["uw"].data, s["tmp1"]->data, uloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
     stats->calcdiff_2nd(u->data, s["evisc"]->data, f->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
   }
   else if(grid->swspatialorder == "4")
   {
     stats->calcgrad_4th(u->data, f->profs["ugrad"].data, grid->dzhi4, uloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
     stats->calcflux_4th(u->data, w->data, f->profs["uw"].data, s["tmp2"]->data, uloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
     stats->calcdiff_4th(u->data, f->profs["udiff"].data, grid->dzhi4, visc, uloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the v location
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
-  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, vloc, sd["tmp1"]->data, stats->nmask);
-  stats->calcmean(v->data, vmodel            , NO_OFFSET   , vloc, sd["tmp1"]->data, stats->nmask);
+  // grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
+  stats->calcmean(v->data, f->profs["v"].data, grid->vtrans, vloc, sd["tmp3"]->data, stats->nmask);
+  stats->calcmean(v->data, vmodel            , NO_OFFSET   , vloc, sd["tmp3"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, vloc, sd["tmp1"]->data, stats->nmask);
+    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, vloc, sd["tmp3"]->data, stats->nmask);
   }
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, f->profs["vgrad"].data, grid->dzhi, vloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
     stats->calcflux_2nd(v->data, vmodel, w->data, f->profs["w"].data,
                         f->profs["vw"].data, s["tmp2"]->data, vloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
     stats->calcdiff_2nd(v->data, s["evisc"]->data, f->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
   }
   else if(grid->swspatialorder == "4")
   {
     stats->calcgrad_4th(v->data, f->profs["vgrad"].data, grid->dzhi4, vloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
     stats->calcflux_4th(v->data, w->data, f->profs["vw"].data, s["tmp2"]->data, vloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
     stats->calcdiff_4th(v->data, f->profs["vdiff"].data, grid->dzhi4, visc, vloc,
-                        sd["tmp1"]->data, stats->nmask);
+                        sd["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate stats for the prognostic scalars
@@ -429,21 +429,21 @@ int cfields::execstats(filter *f)
     if(grid->swspatialorder == "2")
     {
       stats->calcgrad_2nd(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi, sloc,
-                          sd["tmp3"]->data, stats->nmask);
+                          sd["tmp4"]->data, stats->nmaskh);
       stats->calcflux_2nd(it->second->data, f->profs[it->first].data, w->data, f->profs["w"].data,
                           f->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
-                          sd["tmp3"]->data, stats->nmask);
+                          sd["tmp4"]->data, stats->nmaskh);
       if(model->diff->getname() == "les2s")
         stats->calcdiff_2nd(it->second->data, sd["evisc"]->data, f->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
     }
     else if(grid->swspatialorder == "4")
     {
       stats->calcgrad_4th(it->second->data, f->profs[it->first+"grad"].data, grid->dzhi4, sloc,
-                          sd["tmp3"]->data, stats->nmask);
+                          sd["tmp4"]->data, stats->nmaskh);
       stats->calcflux_4th(it->second->data, w->data, f->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
-                          sd["tmp3"]->data, stats->nmask);
+                          sd["tmp4"]->data, stats->nmaskh);
       stats->calcdiff_4th(it->second->data, f->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
-                          sd["tmp3"]->data, stats->nmask);
+                          sd["tmp4"]->data, stats->nmaskh);
     }
   }
 

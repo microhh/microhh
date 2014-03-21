@@ -147,19 +147,19 @@ int cthermo_dry::execstats(filter *f)
   // calculate the gradients
   if(grid->swspatialorder == "2")
     stats->calcgrad_2nd(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi, sloc,
-                        fields->s["tmp3"]->data, stats->nmask);
+                        fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
     stats->calcgrad_4th(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi4, sloc,
-                        fields->s["tmp3"]->data, stats->nmask);
+                        fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
     stats->calcflux_2nd(fields->s["tmp1"]->data, f->profs["b"].data, fields->w->data, f->profs["w"].data,
                         f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp3"]->data, stats->nmask);
+                        fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
     stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp3"]->data, stats->nmask);
+                        fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
   if(model->diff->getname() == "les2s")
@@ -169,7 +169,7 @@ int cthermo_dry::execstats(filter *f)
   }
   else
     stats->calcdiff_4th(fields->s["tmp1"]->data, f->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
-                        fields->s["tmp3"]->data, stats->nmask);
+                        fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate the total fluxes
   stats->addfluxes(f->profs["bflux"].data, f->profs["bw"].data, f->profs["bdiff"].data);
