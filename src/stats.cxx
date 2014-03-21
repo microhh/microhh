@@ -856,7 +856,9 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
   return 0;
 }
 
-int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi, double * restrict fluxbot, double * restrict fluxtop, double tPr)
+int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double * restrict prof, double * restrict dzhi,
+                         double * restrict fluxbot, double * restrict fluxtop, double tPr,
+                         double * restrict filter, int * restrict nmask)
 {
   int ijk,ij,jj,kk,kstart,kend;
 
@@ -872,8 +874,9 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
     {
-      ij = i + j*jj;
-      prof[kstart] += fluxbot[ij];
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      prof[kstart] += filter[ijk]*fluxbot[ij];
     }
 
   for(int k=grid->kstart+1; k<grid->kend; ++k)
@@ -884,7 +887,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += -0.5*(evisc[ijk-kk]+evisc[ijk])/tPr*(data[ijk]-data[ijk-kk])*dzhi[k];
+        prof[k] += -filter[ijk]*0.5*(evisc[ijk-kk]+evisc[ijk])/tPr*(data[ijk]-data[ijk-kk])*dzhi[k];
       }
   }
 
@@ -894,16 +897,20 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
     {
-      ij = i + j*jj;
-      prof[kend] += fluxtop[ij];
+      ij  = i + j*jj;
+      ijk = i + j*jj + kend*kk;
+      prof[kend] += filter[ijk]*fluxtop[ij];
     }
 
-  double n = grid->imax*grid->jmax;
+  master->sum(prof, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
-    prof[k] /= n;
-
-  grid->getprof(prof, grid->kcells);
+  for(int k=1; k<grid->kcells; k++)
+  {
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
 
   return 0;
 }
@@ -911,7 +918,12 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict evisc, double
 int cstats::addfluxes(double * restrict flux, double * restrict turb, double * restrict diff)
 {
   for(int k=grid->kstart; k<grid->kend+1; ++k)
-    flux[k] = turb[k] + diff[k];
+  {
+    if(turb[k] == NC_FILL_DOUBLE || diff[k] == NC_FILL_DOUBLE)
+      flux[k] = NC_FILL_DOUBLE;
+    else
+      flux[k] = turb[k] + diff[k];
+  }
 
   return 0;
 }

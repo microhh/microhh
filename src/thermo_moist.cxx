@@ -402,7 +402,9 @@ int cthermo_moist::execstats(filter *f)
   if(model->diff->getname() == "les2s")
   {
     cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->s["evisc"]->data, f->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
+    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->s["evisc"]->data, f->profs["bdiff"].data, grid->dzhi,
+                        fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr,
+                        fields->s["tmp4"]->data, stats->nmaskh);
   }
   else
   {
