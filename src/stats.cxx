@@ -408,14 +408,12 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
 }
 
 int cstats::calcmean(double * restrict data, double * restrict prof, double offset, const int loc[3],
-                     double * restrict filter, int * restrict nfilter)
+                     double * restrict filter, int * restrict nmask)
 {
-  int ijk,jj,kk,kkf;
-  double filterval;
+  int ijk,jj,kk;
 
   jj = grid->icells;
   kk = grid->ijcells;
-  kkf = loc[2]*kk;
 
   for(int k=1; k<grid->kcells; k++)
   {
@@ -425,24 +423,18 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
-        prof[k] += filterval*(data[ijk] + offset);
+        prof[k] += filter[ijk]*(data[ijk] + offset);
       }
   }
 
   master->sum(prof, grid->kcells);
 
-  // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
-
-    // if(loc[1]==1)
-    //   std::printf("CvH (id): %d, %d, %d, %E\n", master->mpiid, k, nfilter[k], prof[k]/((double)nfilter[k]));
   }
 
   return 0;
@@ -484,7 +476,7 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
 
 // \TODO the count function assumes that the variable to count is at the filter location
 int cstats::calccount(double * restrict data, double * restrict prof, double threshold,
-                      double * restrict filter, int * restrict nfilter)
+                      double * restrict filter, int * restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -499,10 +491,8 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        if(data[ijk]>threshold)
-        {
+        if(data[ijk] > threshold)
           prof[k] += filter[ijk]*1.;
-        }
       }
   }
 
@@ -510,8 +500,8 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
 
   for(int k=0; k<grid->kcells; k++)
   {
-    if(nfilter[k] > 0)
-      prof[k] /= (double)(nfilter[k]);
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -551,14 +541,12 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 */
 
 int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
-                       double * restrict filter, int * restrict nfilter)
+                       double * restrict filter, int * restrict nmask)
 {
-  int ijk,jj,kk,kkf;
-  double filterval;
+  int ijk,jj,kk;
 
   jj = grid->icells;
   kk = grid->ijcells;
-  kkf = loc[2]*kk;
  
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -568,19 +556,16 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
-        prof[k] += filterval*std::pow(data[ijk]-datamean[k], power);
+        prof[k] += filter[ijk]*std::pow(data[ijk]-datamean[k], power);
       }
   }
 
   master->sum(prof, grid->kcells);
 
-  // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -634,15 +619,12 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
 
 int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
                          double * restrict prof, double * restrict tmp1, const int loc[3],
-                         double * restrict filter, int * restrict nfilter)
+                         double * restrict filter, int * restrict nmask)
 {
-  int ijk,ii,jj,kk,kkf;
-  double filterval;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
-  kkf = (1-loc[2])*kk;
  
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -671,19 +653,17 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
-        prof[k] += filterval*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
+        prof[k] += filter[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
       }
   }
 
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -692,16 +672,13 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 }
 
 int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
-                         double * restrict filter, int * restrict nfilter)
+                         double * restrict filter, int * restrict nmask)
 {
-  int ijk,ii,jj,kk1,kk2,kkf;
-  double filterval;
+  int ijk,jj,kk1,kk2;
 
-  ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
-  kkf = (1-loc[2])*kk1;
 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -730,19 +707,17 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
-        prof[k] += filterval*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
+        prof[k] += filter[ijk]*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
       }
   }
 
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -782,15 +757,12 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 */
 
 int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
-                         double * restrict filter, int * restrict nfilter)
+                         double * restrict filter, int * restrict nmask)
 {
-  int ijk,ii,jj,kk,kkf;
-  double filterval;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
-  kkf = (1-loc[2])*kk;
 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -800,19 +772,17 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
-        prof[k] += filterval*(data[ijk]-data[ijk-kk])*dzhi[k];
+        prof[k] += filter[ijk]*(data[ijk]-data[ijk-kk])*dzhi[k];
       }
   }
 
   master->sum(prof, grid->kcells);
 
   // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -821,16 +791,13 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 }
 
 int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
-                         double * restrict filter, int * restrict nfilter)
+                         double * restrict filter, int * restrict nmask)
 {
-  int ijk,ii,jj,kk1,kk2,kkf;
-  double filterval;
+  int ijk,jj,kk1,kk2;
 
-  ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
-  kkf = (1-loc[2])*kk1;
 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -840,19 +807,16 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
-        prof[k] += filterval*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+        prof[k] += filter[ijk]*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 
   master->sum(prof, grid->kcells);
 
-  // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
@@ -861,16 +825,13 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 }
 
 int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
-                         double * restrict filter, int * restrict nfilter)
+                         double * restrict filter, int * restrict nmask)
 {
-  int ijk,ii,jj,kk1,kk2,kkf;
-  double filterval;
+  int ijk,jj,kk1,kk2;
 
-  ii  = 1;
   jj  = 1*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
-  kkf = (1-loc[2])*kk1;
  
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -880,19 +841,16 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        filterval = 0.5*(filter[ijk-kkf] + filter[ijk]);
-        prof[k] -= filterval*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+        prof[k] -= filter[ijk]*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 
   master->sum(prof, grid->kcells);
 
-  // use the same interpolation trick as for the filter field, no interpolation on half levels
-  int kf = 1-loc[2];
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nfilter[k-kf] > 0 && nfilter[k] > 0)
-      prof[k] /= (0.5*(double)(nfilter[k-kf] + nfilter[k]));
+    if(nmask[k] > 0)
+      prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
