@@ -43,7 +43,7 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
-    int getfilter(cfield3d *, filter *);
+    int getfilter(cfield3d *, cfield3d *, filter *);
     int execstats(filter *);
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string, std::string, std::string);
@@ -109,8 +109,8 @@ class cfields
     int checkaddcross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
 
     // filters
-    int calcfilterwplus(double *, double *, double *, int *, double *);
-    int calcfilterwmin (double *, double *, double *, int *, double *);
+    int calcfilterwplus(double *, double *, int *, int *, double *, double *, double *);
+    int calcfilterwmin (double *, double *, int *, int *, double *, double *, double *);
 
     // perturbations
     double rndamp;

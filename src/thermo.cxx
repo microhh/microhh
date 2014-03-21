@@ -101,7 +101,7 @@ int cthermo::getprogvars(std::vector<std::string> *list)
   return 0;
 }
 
-int cthermo::getfilter(cfield3d *ffield, filter *f)
+int cthermo::getfilter(cfield3d *ffield, cfield3d *ffieldh, filter *f)
 {
   return 0;
 }

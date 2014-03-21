@@ -42,14 +42,16 @@ cstats::cstats(cmodel *modelin)
   umodel = NULL;
   vmodel = NULL;
 
-  filtercount = NULL;
+  nmask  = NULL;
+  nmaskh = NULL;
 }
 
 cstats::~cstats()
 {
   delete[] umodel;
   delete[] vmodel;
-  delete[] filtercount;
+  delete[] nmask;
+  delete[] nmaskh;
 
   // delete the profiles
   for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
@@ -87,7 +89,8 @@ int cstats::init(double ifactor)
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
 
-  filtercount = new int[grid->kcells];
+  nmask  = new int[grid->kcells];
+  nmaskh = new int[grid->kcells];
 
   // add the default filter
   filters["default"].name = "default";
@@ -104,9 +107,6 @@ int cstats::init(double ifactor)
 
   filters["qlcore"].name = "qlcore";
   filters["qlcore"].dataFile = NULL;
-
-  filters["qlcoremin"].name = "qlcoremin";
-  filters["qlcoremin"].dataFile = NULL;
 
   // set the number of stats to zero
   nstats = 0;
@@ -344,25 +344,33 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   return nerror;
 }
 
-int cstats::getfilter(cfield3d *ffield, filter *f)
+int cstats::getfilter(cfield3d *ffield, cfield3d *ffieldh, filter *f)
 {
-  calcfilter(ffield->data, f->profs["area"].data, f->profs["areah"].data, filtercount);
+  calcfilter(ffield->data, ffieldh->data,
+             nmask, nmaskh,
+             f->profs["area"].data, f->profs["areah"].data);
   return 0;
 }
 
 // COMPUTATIONAL KERNELS BELOW
-int cstats::calcfilter(double * restrict fdata, double * restrict area, double * restrict areah, int * restrict nfilter)
+int cstats::calcfilter(double * restrict mask, double * restrict maskh,
+                       int * restrict nmask, int * restrict nmaskh,
+                       double * restrict area, double * restrict areah)
 {
   int ijtot = grid->itot*grid->jtot;
 
   // set all the filter values to 1
   for(int n=0; n<grid->ncells; ++n)
-    fdata[n] = 1.;
+    mask[n] = 1.;
+
+  for(int n=0; n<grid->ncells; ++n)
+    maskh[n] = 1.;
 
   for(int k=0; k<grid->kcells; ++k)
   {
-    nfilter[k] = ijtot;
-    area[k] = 1.;
+    nmask [k] = ijtot;
+    nmaskh[k] = ijtot;
+    area [k] = 1.;
     areah[k] = 1.;
   }
 

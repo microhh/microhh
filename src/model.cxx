@@ -389,41 +389,34 @@ int cmodel::exec()
       if(stats->dostats())
       {
         // default loop
-        stats->getfilter(fields->sd["tmp0"], &stats->filters["default"]);
+        stats->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["default"]);
         fields->execstats(&stats->filters["default"]);
         thermo->execstats(&stats->filters["default"]);
         budget->execstats(&stats->filters["default"]);
 
         // filtered loop
-        fields->getfilter(fields->sd["tmp0"], &stats->filters["wplus"]);
+        fields->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["wplus"]);
         fields->execstats(&stats->filters["wplus"]);
         thermo->execstats(&stats->filters["wplus"]);
         budget->execstats(&stats->filters["wplus"]);
 
         // filtered loop
-        fields->getfilter(fields->sd["tmp0"], &stats->filters["wmin"]);
+        fields->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["wmin"]);
         fields->execstats(&stats->filters["wmin"]);
         thermo->execstats(&stats->filters["wmin"]);
         budget->execstats(&stats->filters["wmin"]);
 
         // filtered loop
-        thermo->getfilter(fields->sd["tmp0"], &stats->filters["ql"]);
+        thermo->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["ql"]);
         fields->execstats(&stats->filters["ql"]);
         thermo->execstats(&stats->filters["ql"]);
         budget->execstats(&stats->filters["ql"]);
 
         // filtered loop
-        thermo->getfilter(fields->sd["tmp0"], &stats->filters["qlcore"]);
+        thermo->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["qlcore"]);
         fields->execstats(&stats->filters["qlcore"]);
         thermo->execstats(&stats->filters["qlcore"]);
         budget->execstats(&stats->filters["qlcore"]);
-
-        // filtered loop
-        thermo->getfilter(fields->sd["tmp0"], &stats->filters["qlcoremin"]);
-        fields->execstats(&stats->filters["qlcoremin"]);
-        thermo->execstats(&stats->filters["qlcoremin"]);
-        budget->execstats(&stats->filters["qlcoremin"]);
-
 
         // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);

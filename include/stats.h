@@ -71,14 +71,15 @@ class cstats
     int init(double);
     int create(int);
     unsigned long gettimelim(unsigned long);
-    int getfilter(cfield3d *, filter *);
+    int getfilter(cfield3d *, cfield3d *, filter *);
     int exec(int, double, unsigned long);
     int dostats();
     std::string getsw();
 
     // container for all stats, filter as uppermost in hierarchy
     filtermap filters;
-    int *filtercount;
+    int *nmask;
+    int *nmaskh;
 
     // interface functions
     // profmap profs;
@@ -116,7 +117,7 @@ class cstats
     int nstats;
 
     // filters
-    int calcfilter(double *, double *, double *, int *);
+    int calcfilter(double *, double *, int *, int *, double *, double *);
 
   protected:
     cmodel  *model;

@@ -201,12 +201,15 @@ int cthermo_moist::exec()
 }
 
 
-int cthermo_moist::getfilter(cfield3d *ffield, filter *f)
+int cthermo_moist::getfilter(cfield3d *ffield, cfield3d *ffieldh, filter *f)
 {
   if(f->name == "ql")
   {
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcfilterql(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount, fields->s["tmp1"]->data);
+    calcfilterql(ffield->data, ffieldh->data,
+                 stats->nmask, stats->nmaskh,
+                 f->profs["area"].data, f->profs["areah"].data,
+                 fields->s["tmp1"]->data);
   }
   else if(f->name == "qlcore")
   {
@@ -214,30 +217,23 @@ int cthermo_moist::getfilter(cfield3d *ffield, filter *f)
     // calculate the mean buoyancy to determine positive buoyancy
     grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcfilterqlcore(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount,
+    calcfilterqlcore(ffield->data, ffieldh->data,
+                     stats->nmask, stats->nmaskh,
+                     f->profs["area"].data, f->profs["areah"].data,
                      fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
-  }
-
-  else if(f->name == "qlcoremin")
-  {
-    calcbuoyancy(fields->s["tmp2"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp1"]->data);
-    // calculate the mean buoyancy to determine positive buoyancy
-    grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
-    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcfilterqlcoremin(ffield->data, f->profs["area"].data, f->profs["areah"].data, stats->filtercount,
-                        fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
   }
  
   return 0;
 }
 
-int cthermo_moist::calcfilterql(double * restrict fdata, double * restrict area, double * restrict areah,
-                                int * restrict nfilter, double * restrict ql)
+int cthermo_moist::calcfilterql(double * restrict mask, double * restrict maskh,
+                                int * restrict nmask, int * restrict nmaskh,
+                                double * restrict area, double * restrict areah,
+                                double * restrict ql)
 {
-  int ijk,ij,ii,jj,kk;
+  int ijk,jj,kk;
   int kstart,kend;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
@@ -247,53 +243,57 @@ int cthermo_moist::calcfilterql(double * restrict fdata, double * restrict area,
 
   for(int k=grid->kstart; k<grid->kend; k++)
   {
-    nfilter[k] = 0;
+    nmask[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         ntmp = ql[ijk] > 0.;
-        nfilter[k] += ntmp;
-        fdata[ijk] = (double)ntmp;
+        nmask[k] += ntmp;
+        mask[ijk] = (double)ntmp;
       }
   }
 
-  // set bc's for the filter (mirror)
-  nfilter[kstart-1] = nfilter[kstart];
-  nfilter[kend    ] = nfilter[kend-1];
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    nmaskh[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj + kstart*kk;
-      fdata[ijk-kk] = fdata[ijk];
-      ijk = i + j*jj + (kend-1)*kk;
-      fdata[ijk+kk] = fdata[ijk];
-    }
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = (ql[ijk-kk] + ql[ijk]) > 0.;
+        nmaskh[k] += ntmp;
+        maskh[ijk] = (double)ntmp;
+      }
+  }
 
-  grid->boundary_cyclic(fdata);
+  grid->boundary_cyclic(mask);
+  grid->boundary_cyclic(maskh);
+
+  master->sum(nmask , grid->kcells);
+  master->sum(nmaskh, grid->kcells);
 
   int ijtot = grid->itot*grid->jtot;
-  master->sum(nfilter, grid->kcells);
 
-  for(int k=0; k<grid->kcells; k++)
-    area[k] = (double)nfilter[k] / (double)ijtot;
+  for(int k=grid->kstart; k<grid->kend; k++)
+    area[k] = (double)nmask[k] / (double)ijtot;
 
   for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = 0.5*(area[k-1] + area[k]);
+    areah[k] = (double)nmaskh[k] / (double)ijtot;
 
   return 0;
 }
 
-int cthermo_moist::calcfilterqlcore(double * restrict fdata, double * restrict area, double * restrict areah,
-                                    int * restrict nfilter, double * restrict ql, double * restrict bu, double * restrict bumean)
+int cthermo_moist::calcfilterqlcore(double * restrict mask, double * restrict maskh,
+                                    int * restrict nmask, int * restrict nmaskh,
+                                    double * restrict area, double * restrict areah,
+                                    double * restrict ql, double * restrict b, double * restrict bmean)
 {
-  int ijk,ij,ii,jj,kk;
+  int ijk,jj,kk;
   int kstart,kend;
 
-  ii = 1;
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
@@ -303,102 +303,48 @@ int cthermo_moist::calcfilterqlcore(double * restrict fdata, double * restrict a
 
   for(int k=grid->kstart; k<grid->kend; k++)
   {
-    nfilter[k] = 0;
+    nmask[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
-        ntmp = (ql[ijk] > 0.)*(bu[ijk]-bumean[k] > 0.);
-        nfilter[k] += ntmp;
-        fdata[ijk] = (double)ntmp;
+        ntmp = (ql[ijk] > 0.)*(b[ijk]-bmean[k] > 0.);
+        nmask[k] += ntmp;
+        mask[ijk] = (double)ntmp;
       }
   }
 
-  grid->boundary_cyclic(fdata);
-
-  // set bc's for the filter (mirror)
-  nfilter[kstart-1] = nfilter[kstart];
-  nfilter[kend    ] = nfilter[kend-1];
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    nmaskh[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj + kstart*kk;
-      fdata[ijk-kk] = fdata[ijk];
-      ijk = i + j*jj + (kend-1)*kk;
-      fdata[ijk+kk] = fdata[ijk];
-    }
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = (ql[ijk-kk]+ql[ijk] > 0.)*(b[ijk-kk]+b[ijk]-bmean[k-1]-bmean[k] > 0.);
+        nmaskh[k] += ntmp;
+        maskh[ijk] = (double)ntmp;
+      }
+  }
+
+  grid->boundary_cyclic(mask);
+  grid->boundary_cyclic(maskh);
+
+  master->sum(nmask , grid->kcells);
+  master->sum(nmaskh, grid->kcells);
 
   int ijtot = grid->itot*grid->jtot;
-  master->sum(nfilter, grid->kcells);
-
-  for(int k=0; k<grid->kcells; k++)
-    area[k] = (double)nfilter[k] / (double)ijtot;
-
-  for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = 0.5*(area[k-1] + area[k]);
-
-  return 0;
-}
-
-int cthermo_moist::calcfilterqlcoremin(double * restrict fdata, double * restrict area, double * restrict areah,
-                                       int * restrict nfilter, double * restrict ql, double * restrict bu, double * restrict bumean)
-{
-  int ijk,ij,ii,jj,kk;
-  int kstart,kend;
-
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->ijcells;
-  kstart = grid->kstart;
-  kend   = grid->kend;
-
-  int ntmp;
 
   for(int k=grid->kstart; k<grid->kend; k++)
-  {
-    nfilter[k] = 0;
-    for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
-      {
-        ij  = i + j*jj;
-        ijk = i + j*jj + k*kk;
-        ntmp = !((ql[ijk] > 0.)*(bu[ijk]-bumean[k] > 0.));
-        nfilter[k] += ntmp;
-        fdata[ijk] = (double)ntmp;
-      }
-  }
-
-  grid->boundary_cyclic(fdata);
-
-  // set bc's for the filter (mirror)
-  nfilter[kstart-1] = nfilter[kstart];
-  nfilter[kend    ] = nfilter[kend-1];
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jj + kstart*kk;
-      fdata[ijk-kk] = fdata[ijk];
-      ijk = i + j*jj + (kend-1)*kk;
-      fdata[ijk+kk] = fdata[ijk];
-    }
-
-  int ijtot = grid->itot*grid->jtot;
-  master->sum(nfilter, grid->kcells);
-
-  for(int k=0; k<grid->kcells; k++)
-    area[k] = (double)nfilter[k] / (double)ijtot;
+    area[k] = (double)nmask[k] / (double)ijtot;
 
   for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = 0.5*(area[k-1] + area[k]);
+    areah[k] = (double)nmaskh[k] / (double)ijtot;
 
   return 0;
 }
-
 
 int cthermo_moist::execstats(filter *f)
 {
@@ -411,7 +357,7 @@ int cthermo_moist::execstats(filter *f)
 
   // mean
   stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, sloc,
-                  fields->s["tmp0"]->data, stats->filtercount);
+                  fields->s["tmp3"]->data, stats->nmask);
 
   // moments
   for(int n=2; n<5; ++n)
@@ -420,25 +366,25 @@ int cthermo_moist::execstats(filter *f)
     ss << n;
     std::string sn = ss.str();
     stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, sloc,
-                      fields->s["tmp0"]->data, stats->filtercount);
+                      fields->s["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
     stats->calcgrad_2nd(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
   if(grid->swspatialorder == "4")
     stats->calcgrad_4th(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi4, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
     stats->calcflux_2nd(fields->s["tmp1"]->data, f->profs["b"].data, fields->w->data, f->profs["w"].data,
                         f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
   if(grid->swspatialorder == "4")
     stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
 
   // calculate diffusive fluxes
   if(model->diff->getname() == "les2s")
@@ -450,7 +396,7 @@ int cthermo_moist::execstats(filter *f)
   {
     // take the diffusivity of temperature for that of moisture
     stats->calcdiff_4th(fields->s["tmp1"]->data, f->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
   }
 
   // calculate the total fluxes
@@ -458,9 +404,9 @@ int cthermo_moist::execstats(filter *f)
 
   // calculate the liquid water stats
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET, sloc, fields->s["tmp0"]->data, stats->filtercount);
+  stats->calcmean(fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET, sloc, fields->s["tmp3"]->data, stats->nmask);
   stats->calccount(fields->s["tmp1"]->data, f->profs["cfrac"].data, 0.,
-                   fields->s["tmp0"]->data, stats->filtercount);
+                   fields->s["tmp3"]->data, stats->nmask);
 
   stats->calccover(fields->s["tmp1"]->data, &f->tseries["ccover"].data, 0.);
   stats->calcpath(fields->s["tmp1"]->data, &f->tseries["lwp"].data);

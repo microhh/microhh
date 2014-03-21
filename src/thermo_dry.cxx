@@ -132,7 +132,7 @@ int cthermo_dry::execstats(filter *f)
 
   // calculate the mean
   stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, sloc,
-                  fields->s["tmp0"]->data, stats->filtercount);
+                  fields->s["tmp3"]->data, stats->nmask);
 
   // calculate the moments
   for(int n=2; n<5; ++n)
@@ -141,25 +141,25 @@ int cthermo_dry::execstats(filter *f)
     ss << n;
     std::string sn = ss.str();
     stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, sloc,
-                      fields->s["tmp0"]->data, stats->filtercount);
+                      fields->s["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
     stats->calcgrad_2nd(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
   if(grid->swspatialorder == "4")
     stats->calcgrad_4th(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi4, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
     stats->calcflux_2nd(fields->s["tmp1"]->data, f->profs["b"].data, fields->w->data, f->profs["w"].data,
                         f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
   if(grid->swspatialorder == "4")
     stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
 
   // calculate diffusive fluxes
   if(model->diff->getname() == "les2s")
@@ -169,7 +169,7 @@ int cthermo_dry::execstats(filter *f)
   }
   else
     stats->calcdiff_4th(fields->s["tmp1"]->data, f->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
-                        fields->s["tmp0"]->data, stats->filtercount);
+                        fields->s["tmp3"]->data, stats->nmask);
 
   // calculate the total fluxes
   stats->addfluxes(f->profs["bflux"].data, f->profs["bw"].data, f->profs["bdiff"].data);
