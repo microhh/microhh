@@ -33,6 +33,7 @@
 #include <netcdfcpp.h>
 
 #define NO_OFFSET 0.
+#define NTHRES 16
 
 cstats::cstats(cmodel *modelin)
 {
@@ -426,7 +427,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > NTHRES)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -495,7 +496,7 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
 
   for(int k=0; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > NTHRES)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -559,7 +560,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > NTHRES)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -657,7 +658,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0 && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
+    if(nmask[k] > NTHRES && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -710,7 +711,7 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > NTHRES)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -774,7 +775,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > NTHRES)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -808,7 +809,7 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > NTHRES)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -842,7 +843,7 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > NTHRES)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -945,7 +946,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > NTHRES)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
