@@ -662,7 +662,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > 0)
+    if(nmask[k] > 0 && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
