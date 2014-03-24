@@ -85,6 +85,7 @@ class cstats
     // profmap profs;
     // tseriesmap tseries;
 
+    int addmask(std::string);
     int addprof(std::string, std::string, std::string, std::string);
     int addfixedprof(std::string, std::string, std::string, std::string, double *);
     int addtseries(std::string, std::string, std::string);

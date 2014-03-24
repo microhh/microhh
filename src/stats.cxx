@@ -84,6 +84,9 @@ int cstats::init(double ifactor)
   fields = model->fields;
   master = model->master;
 
+  // add the default mask
+  addmask("default");
+
   isampletime = (unsigned long)(ifactor * sampletime);
 
   umodel = new double[grid->kcells];
@@ -91,22 +94,6 @@ int cstats::init(double ifactor)
 
   nmask  = new int[grid->kcells];
   nmaskh = new int[grid->kcells];
-
-  // add the default filter
-  filters["default"].name = "default";
-  filters["default"].dataFile = NULL;
-
-  filters["wplus"].name = "wplus";
-  filters["wplus"].dataFile = NULL;
-
-  filters["wmin"].name = "wmin";
-  filters["wmin"].dataFile = NULL;
-
-  filters["ql"].name = "ql";
-  filters["ql"].dataFile = NULL;
-
-  filters["qlcore"].name = "qlcore";
-  filters["qlcore"].dataFile = NULL;
 
   // set the number of stats to zero
   nstats = 0;
@@ -247,6 +234,14 @@ int cstats::exec(int iteration, double time, unsigned long itime)
 std::string cstats::getsw()
 {
   return swstats;
+}
+
+int cstats::addmask(std::string maskname)
+{
+  filters[maskname].name = maskname;
+  filters[maskname].dataFile = NULL;
+
+  return 0;
 }
 
 int cstats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
@@ -1013,7 +1008,7 @@ int cstats::calccover(double * restrict data, double * restrict cover, double th
       for(int k=kstart; k<grid->kend; k++)
       {
         ijk  = i + j*jj + k*kk;
-        if (data[ijk]>threshold)
+        if(data[ijk]>threshold)
         {
           *cover += 1.;
           break;

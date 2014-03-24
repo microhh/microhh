@@ -132,6 +132,19 @@ int cmodel::readinifile()
   nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
 
+  // get the list of masks
+  nerror += input->getList(&masklist, "stats", "masklist", "");
+  for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+  {
+    if(*it != "wplus" &&
+       *it != "wmin"  &&
+       *it != "ql"    &&
+       *it != "qlcore")
+      std::printf("WARNING %s is an undefined mask for conditional statistics\n", it->c_str());
+    else
+      stats->addmask(*it);
+  }
+
   // if one or more arguments fails, then crash
   if(nerror > 0)
     return 1;
@@ -388,24 +401,24 @@ int cmodel::exec()
     {
       if(stats->dostats())
       {
-        // default loop
+        // always process the default mask
         stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["default"]);
         calcstats("default");
 
-        fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["wplus"]);
-        calcstats("wplus");
-
-        // filtered loop
-        fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["wmin"]);
-        calcstats("wmin");
-
-        // filtered loop
-        thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["ql"]);
-        calcstats("ql");
-
-        // filtered loop
-        thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["qlcore"]);
-        calcstats("qlcore");
+        // work through the potential masks for the statistics
+        for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+        {
+          if(*it == "wplus" || *it == "wmin")
+          {
+            fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters[*it]);
+            calcstats(*it);
+          }
+          else if(*it == "ql" || *it == "qlcore")
+          {
+            thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters[*it]);
+            calcstats(*it);
+          }
+        }
 
         // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
