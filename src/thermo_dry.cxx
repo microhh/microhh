@@ -121,7 +121,7 @@ int cthermo_dry::exec()
   return 0;
 }
 
-int cthermo_dry::execstats(mask *f)
+int cthermo_dry::execstats(mask *m)
 {
   // calculate the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data);
@@ -131,7 +131,7 @@ int cthermo_dry::execstats(mask *f)
   const int sloc[] = {0,0,0};
 
   // calculate the mean
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, sloc,
+  stats->calcmean(fields->s["tmp1"]->data, m->profs["b"].data, NO_OFFSET, sloc,
                   fields->s["tmp3"]->data, stats->nmask);
 
   // calculate the moments
@@ -140,25 +140,25 @@ int cthermo_dry::execstats(mask *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, sloc,
+    stats->calcmoment(fields->s["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
                       fields->s["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi, sloc,
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi4, sloc,
+    stats->calcgrad_4th(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, f->profs["b"].data, fields->w->data, f->profs["w"].data,
-                        f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+    stats->calcflux_2nd(fields->s["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+                        m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
@@ -166,16 +166,16 @@ int cthermo_dry::execstats(mask *f)
   {
     cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
     stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
-                        f->profs["bdiff"].data, grid->dzhi,
+                        m->profs["bdiff"].data, grid->dzhi,
                         fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   }
   else
-    stats->calcdiff_4th(fields->s["tmp1"]->data, f->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
+    stats->calcdiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate the total fluxes
-  stats->addfluxes(f->profs["bflux"].data, f->profs["bw"].data, f->profs["bdiff"].data);
+  stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   return 0;
 }

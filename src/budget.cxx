@@ -113,7 +113,7 @@ int cbudget::create()
   return 0;
 }
 
-int cbudget::execstats(mask *f)
+int cbudget::execstats(mask *m)
 {
   if(swbudget == "0")
     return 0;
@@ -128,12 +128,12 @@ int cbudget::execstats(mask *f)
     calctkebudget(fields->u->data, fields->v->data, fields->w->data, fields->s["p"]->data,
                   fields->s["tmp1"]->data, fields->s["tmp2"]->data,
                   umodel, vmodel,
-                  f->profs["u2_shear"].data, f->profs["v2_shear"].data, f->profs["tke_shear"].data,
-                  f->profs["u2_turb"].data, f->profs["v2_turb"].data, f->profs["w2_turb"].data, f->profs["tke_turb"].data,
-                  f->profs["u2_visc"].data, f->profs["v2_visc"].data, f->profs["w2_visc"].data, f->profs["tke_visc"].data,
-                  f->profs["u2_diss"].data, f->profs["v2_diss"].data, f->profs["w2_diss"].data, f->profs["tke_diss"].data,
-                  f->profs["w2_pres"].data, f->profs["tke_pres"].data,
-                  f->profs["u2_rdstr"].data, f->profs["v2_rdstr"].data, f->profs["w2_rdstr"].data,
+                  m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data,
+                  m->profs["u2_turb"].data, m->profs["v2_turb"].data, m->profs["w2_turb"].data, m->profs["tke_turb"].data,
+                  m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data,
+                  m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data,
+                  m->profs["w2_pres"].data, m->profs["tke_pres"].data,
+                  m->profs["u2_rdstr"].data, m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data,
                   grid->dzi4, grid->dzhi4, fields->visc);
 
     // calculate the buoyancy term of the TKE budget
@@ -141,7 +141,7 @@ int cbudget::execstats(mask *f)
     {
       model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
       calctkebudget_buoy(fields->w->data, fields->s["tmp1"]->data,
-                    f->profs["w2_buoy"].data, f->profs["tke_buoy"].data);
+                    m->profs["w2_buoy"].data, m->profs["tke_buoy"].data);
     }
   }
 

@@ -112,15 +112,15 @@ int cstats::create(int n)
   for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *f = &it->second;
+    mask *m = &it->second;
 
     // create a NetCDF file for the statistics
     if(master->mpiid == 0)
     {
       char filename[256];
-      std::sprintf(filename, "%s.%s.%07d.nc", master->simname.c_str(), f->name.c_str(), n);
-      f->dataFile = new NcFile(filename, NcFile::New);
-      if(!f->dataFile->is_valid())
+      std::sprintf(filename, "%s.%s.%07d.nc", master->simname.c_str(), m->name.c_str(), n);
+      m->dataFile = new NcFile(filename, NcFile::New);
+      if(!m->dataFile->is_valid())
       {
         std::printf("ERROR cannot write statistics file\n");
         ++nerror;
@@ -134,26 +134,26 @@ int cstats::create(int n)
     // create dimensions
     if(master->mpiid == 0)
     {
-      f->z_dim  = f->dataFile->add_dim("z" , grid->kmax);
-      f->zh_dim = f->dataFile->add_dim("zh", grid->kmax+1);
-      f->t_dim  = f->dataFile->add_dim("t");
+      m->z_dim  = m->dataFile->add_dim("z" , grid->kmax);
+      m->zh_dim = m->dataFile->add_dim("zh", grid->kmax+1);
+      m->t_dim  = m->dataFile->add_dim("t");
 
       NcVar *z_var, *zh_var;
 
       // create variables belonging to dimensions
-      f->iter_var = f->dataFile->add_var("iter", ncInt, f->t_dim);
-      f->iter_var->add_att("units", "-");
-      f->iter_var->add_att("longname", "Iteration number");
+      m->iter_var = m->dataFile->add_var("iter", ncInt, m->t_dim);
+      m->iter_var->add_att("units", "-");
+      m->iter_var->add_att("longname", "Iteration number");
 
-      f->t_var = f->dataFile->add_var("t", ncDouble, f->t_dim);
-      f->t_var->add_att("units", "s");
-      f->t_var->add_att("longname", "Time");
+      m->t_var = m->dataFile->add_var("t", ncDouble, m->t_dim);
+      m->t_var->add_att("units", "s");
+      m->t_var->add_att("longname", "Time");
 
-      z_var = f->dataFile->add_var("z", ncDouble, f->z_dim);
+      z_var = m->dataFile->add_var("z", ncDouble, m->z_dim);
       z_var->add_att("units", "m");
       z_var->add_att("longname", "Full level height");
 
-      zh_var = f->dataFile->add_var("zh", ncDouble, f->zh_dim);
+      zh_var = m->dataFile->add_var("zh", ncDouble, m->zh_dim);
       zh_var->add_att("units", "m");
       zh_var->add_att("longname", "Half level height");
 
@@ -161,7 +161,7 @@ int cstats::create(int n)
       z_var ->put(&grid->z [grid->kstart], grid->kmax  );
       zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
 
-      f->dataFile->sync();
+      m->dataFile->sync();
     }
 
   }
@@ -207,22 +207,22 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *f = &it->second;
+    mask *m = &it->second;
 
     // put the data into the NetCDF file
     if(master->mpiid == 0)
     {
-      f->t_var   ->put_rec(&time     , nstats);
-      f->iter_var->put_rec(&iteration, nstats);
+      m->t_var   ->put_rec(&time     , nstats);
+      m->iter_var->put_rec(&iteration, nstats);
 
-      for(profmap::const_iterator it=f->profs.begin(); it!=f->profs.end(); ++it)
-        f->profs[it->first].ncvar->put_rec(&f->profs[it->first].data[grid->kstart], nstats);
+      for(profmap::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
+        m->profs[it->first].ncvar->put_rec(&m->profs[it->first].data[grid->kstart], nstats);
 
-      for(tseriesmap::const_iterator it=f->tseries.begin(); it!=f->tseries.end(); ++it)
-        f->tseries[it->first].ncvar->put_rec(&f->tseries[it->first].data, nstats);
+      for(tseriesmap::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
+        m->tseries[it->first].ncvar->put_rec(&m->tseries[it->first].data, nstats);
 
       // sync the data
-      f->dataFile->sync();
+      m->dataFile->sync();
     }
   }
 
@@ -252,30 +252,30 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
   for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *f = &it->second;
+    mask *m = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
     {
       if(zloc == "z")
       {
-        f->profs[name].ncvar = f->dataFile->add_var(name.c_str(), ncDouble, f->t_dim, f->z_dim);
-        f->profs[name].data = NULL;
+        m->profs[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim, m->z_dim);
+        m->profs[name].data = NULL;
       }
       else if(zloc == "zh")
       {
-        f->profs[name].ncvar = f->dataFile->add_var(name.c_str(), ncDouble, f->t_dim, f->zh_dim);
-        f->profs[name].data = NULL;
+        m->profs[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim, m->zh_dim);
+        m->profs[name].data = NULL;
       }
-      f->profs[name].ncvar->add_att("units", unit.c_str());
-      f->profs[name].ncvar->add_att("long_name", longname.c_str());
-      f->profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+      m->profs[name].ncvar->add_att("units", unit.c_str());
+      m->profs[name].ncvar->add_att("long_name", longname.c_str());
+      m->profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
     }
 
     // and allocate the memory and initialize at zero
-    f->profs[name].data = new double[grid->kcells];
+    m->profs[name].data = new double[grid->kcells];
     for(int k=0; k<grid->kcells; ++k)
-      f->profs[name].data[k] = 0.;
+      m->profs[name].data[k] = 0.;
   }
 
   return nerror;
@@ -289,16 +289,16 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
   for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *f = &it->second;
+    mask *m = &it->second;
 
     // create the NetCDF variable
     NcVar *var;
     if(master->mpiid == 0)
     {
       if(zloc == "z")
-        var = f->dataFile->add_var(name.c_str(), ncDouble, f->z_dim);
+        var = m->dataFile->add_var(name.c_str(), ncDouble, m->z_dim);
       else if(zloc == "zh")
-        var = f->dataFile->add_var(name.c_str(), ncDouble, f->zh_dim);
+        var = m->dataFile->add_var(name.c_str(), ncDouble, m->zh_dim);
       var->add_att("units", unit.c_str());
       var->add_att("long_name", longname.c_str());
       var->add_att("_FillValue", NC_FILL_DOUBLE);
@@ -321,29 +321,29 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *f = &it->second;
+    mask *m = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
     {
-      f->tseries[name].ncvar = f->dataFile->add_var(name.c_str(), ncDouble, f->t_dim);
-      f->tseries[name].ncvar->add_att("units", unit.c_str());
-      f->tseries[name].ncvar->add_att("long_name", longname.c_str());
-      f->tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+      m->tseries[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim);
+      m->tseries[name].ncvar->add_att("units", unit.c_str());
+      m->tseries[name].ncvar->add_att("long_name", longname.c_str());
+      m->tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
     }
 
     // and initialize at zero
-    f->tseries[name].data = 0.;
+    m->tseries[name].data = 0.;
   }
 
   return nerror;
 }
 
-int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
+int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
   calcmask(mfield->data, mfieldh->data,
              nmask, nmaskh,
-             f->profs["area"].data, f->profs["areah"].data);
+             m->profs["area"].data, m->profs["areah"].data);
   return 0;
 }
 

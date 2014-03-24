@@ -201,17 +201,17 @@ int cthermo_moist::exec()
 }
 
 
-int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
+int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
-  if(f->name == "ql")
+  if(m->name == "ql")
   {
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
     calcmaskql(mfield->data, mfieldh->data,
                stats->nmask, stats->nmaskh,
-               f->profs["area"].data, f->profs["areah"].data,
+               m->profs["area"].data, m->profs["areah"].data,
                fields->s["tmp1"]->data);
   }
-  else if(f->name == "qlcore")
+  else if(m->name == "qlcore")
   {
     calcbuoyancy(fields->s["tmp2"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp1"]->data);
     // calculate the mean buoyancy to determine positive buoyancy
@@ -219,7 +219,7 @@ int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
     calcmaskqlcore(mfield->data, mfieldh->data,
                    stats->nmask, stats->nmaskh,
-                   f->profs["area"].data, f->profs["areah"].data,
+                   m->profs["area"].data, m->profs["areah"].data,
                    fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
   }
  
@@ -358,7 +358,7 @@ int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict mask
   return 0;
 }
 
-int cthermo_moist::execstats(mask *f)
+int cthermo_moist::execstats(mask *m)
 {
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data);
@@ -368,7 +368,7 @@ int cthermo_moist::execstats(mask *f)
   const int sloc[] = {0,0,0};
 
   // mean
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["b"].data, NO_OFFSET, sloc,
+  stats->calcmean(fields->s["tmp1"]->data, m->profs["b"].data, NO_OFFSET, sloc,
                   fields->s["tmp3"]->data, stats->nmask);
 
   // moments
@@ -377,25 +377,25 @@ int cthermo_moist::execstats(mask *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, f->profs["b"].data, f->profs["b"+sn].data, n, sloc,
+    stats->calcmoment(fields->s["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
                       fields->s["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi, sloc,
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->s["tmp1"]->data, f->profs["bgrad"].data, grid->dzhi4, sloc,
+    stats->calcgrad_4th(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, f->profs["b"].data, fields->w->data, f->profs["w"].data,
-                        f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+    stats->calcflux_2nd(fields->s["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+                        m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, f->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
@@ -403,28 +403,28 @@ int cthermo_moist::execstats(mask *f)
   {
     cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
     stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
-                        f->profs["bdiff"].data, grid->dzhi,
+                        m->profs["bdiff"].data, grid->dzhi,
                         fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   }
   else
   {
     // take the diffusivity of temperature for that of moisture
-    stats->calcdiff_4th(fields->s["tmp1"]->data, f->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
+    stats->calcdiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
-  stats->addfluxes(f->profs["bflux"].data, f->profs["bw"].data, f->profs["bdiff"].data);
+  stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the liquid water stats
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-  stats->calcmean(fields->s["tmp1"]->data, f->profs["ql"].data, NO_OFFSET, sloc, fields->s["tmp3"]->data, stats->nmask);
-  stats->calccount(fields->s["tmp1"]->data, f->profs["cfrac"].data, 0.,
+  stats->calcmean(fields->s["tmp1"]->data, m->profs["ql"].data, NO_OFFSET, sloc, fields->s["tmp3"]->data, stats->nmask);
+  stats->calccount(fields->s["tmp1"]->data, m->profs["cfrac"].data, 0.,
                    fields->s["tmp3"]->data, stats->nmask);
 
-  stats->calccover(fields->s["tmp1"]->data, &f->tseries["ccover"].data, 0.);
-  stats->calcpath(fields->s["tmp1"]->data, &f->tseries["lwp"].data);
+  stats->calccover(fields->s["tmp1"]->data, &m->tseries["ccover"].data, 0.);
+  stats->calcpath(fields->s["tmp1"]->data, &m->tseries["lwp"].data);
 
   return 0;
 }
