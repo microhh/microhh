@@ -389,34 +389,23 @@ int cmodel::exec()
       if(stats->dostats())
       {
         // default loop
-        stats->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["default"]);
-        fields->execstats(&stats->filters["default"]);
-        thermo->execstats(&stats->filters["default"]);
-        budget->execstats(&stats->filters["default"]);
+        stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["default"]);
+        calcstats("default");
+
+        fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["wplus"]);
+        calcstats("wplus");
 
         // filtered loop
-        fields->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["wplus"]);
-        fields->execstats(&stats->filters["wplus"]);
-        thermo->execstats(&stats->filters["wplus"]);
-        budget->execstats(&stats->filters["wplus"]);
+        fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["wmin"]);
+        calcstats("wmin");
 
         // filtered loop
-        fields->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["wmin"]);
-        fields->execstats(&stats->filters["wmin"]);
-        thermo->execstats(&stats->filters["wmin"]);
-        budget->execstats(&stats->filters["wmin"]);
+        thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["ql"]);
+        calcstats("ql");
 
         // filtered loop
-        thermo->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["ql"]);
-        fields->execstats(&stats->filters["ql"]);
-        thermo->execstats(&stats->filters["ql"]);
-        budget->execstats(&stats->filters["ql"]);
-
-        // filtered loop
-        thermo->getfilter(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["qlcore"]);
-        fields->execstats(&stats->filters["qlcore"]);
-        thermo->execstats(&stats->filters["qlcore"]);
-        budget->execstats(&stats->filters["qlcore"]);
+        thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["qlcore"]);
+        calcstats("qlcore");
 
         // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
@@ -492,6 +481,15 @@ int cmodel::exec()
       return 1;
 
   }
+
+  return 0;
+}
+
+int cmodel::calcstats(std::string maskname)
+{
+  fields->execstats(&stats->filters[maskname]);
+  thermo->execstats(&stats->filters[maskname]);
+  budget->execstats(&stats->filters[maskname]);
 
   return 0;
 }

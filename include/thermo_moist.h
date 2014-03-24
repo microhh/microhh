@@ -40,7 +40,7 @@ class cthermo_moist : public cthermo
     int init();
     int create();
     int exec();
-    int getfilter(cfield3d *, cfield3d *, filter *);
+    int getmask(cfield3d *, cfield3d *, filter *);
     int execstats(filter *);
     int execcross();
 

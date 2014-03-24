@@ -207,12 +207,12 @@ int cfields::exec()
   return 0;
 }
 
-int cfields::getfilter(cfield3d *ffield, cfield3d *ffieldh, filter *f)
+int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, filter *f)
 {
   if(f->name == "wplus")
-    calcfilterwplus(ffield->data, ffieldh->data, stats->nmask, stats->nmaskh, f->profs["area"].data, f->profs["areah"].data, w->data);
+    calcfilterwplus(mfield->data, mfieldh->data, stats->nmask, stats->nmaskh, f->profs["area"].data, f->profs["areah"].data, w->data);
   else if(f->name == "wmin")                                                  
-    calcfilterwmin (ffield->data, ffieldh->data, stats->nmask, stats->nmaskh, f->profs["area"].data, f->profs["areah"].data, w->data);
+    calcfilterwmin (mfield->data, mfieldh->data, stats->nmask, stats->nmaskh, f->profs["area"].data, f->profs["areah"].data, w->data);
   return 0;
 }
 

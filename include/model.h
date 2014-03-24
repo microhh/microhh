@@ -84,6 +84,7 @@ class cmodel
     std::string swthermo;
 
     int outputfile(bool);
+    int calcstats(std::string);
     int settimestep();
 };
 #endif

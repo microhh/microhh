@@ -43,7 +43,7 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
-    int getfilter(cfield3d *, cfield3d *, filter *);
+    int getmask(cfield3d *, cfield3d *, filter *);
     int execstats(filter *);
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string, std::string, std::string);

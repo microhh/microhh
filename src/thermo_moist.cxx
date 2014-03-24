@@ -201,12 +201,12 @@ int cthermo_moist::exec()
 }
 
 
-int cthermo_moist::getfilter(cfield3d *ffield, cfield3d *ffieldh, filter *f)
+int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, filter *f)
 {
   if(f->name == "ql")
   {
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcfilterql(ffield->data, ffieldh->data,
+    calcfilterql(mfield->data, mfieldh->data,
                  stats->nmask, stats->nmaskh,
                  f->profs["area"].data, f->profs["areah"].data,
                  fields->s["tmp1"]->data);
@@ -217,7 +217,7 @@ int cthermo_moist::getfilter(cfield3d *ffield, cfield3d *ffieldh, filter *f)
     // calculate the mean buoyancy to determine positive buoyancy
     grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcfilterqlcore(ffield->data, ffieldh->data,
+    calcfilterqlcore(mfield->data, mfieldh->data,
                      stats->nmask, stats->nmaskh,
                      f->profs["area"].data, f->profs["areah"].data,
                      fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);

@@ -71,7 +71,7 @@ class cstats
     int init(double);
     int create(int);
     unsigned long gettimelim(unsigned long);
-    int getfilter(cfield3d *, cfield3d *, filter *);
+    int getmask(cfield3d *, cfield3d *, filter *);
     int exec(int, double, unsigned long);
     int dostats();
     std::string getsw();

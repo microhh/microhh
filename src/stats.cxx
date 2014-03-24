@@ -344,9 +344,9 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   return nerror;
 }
 
-int cstats::getfilter(cfield3d *ffield, cfield3d *ffieldh, filter *f)
+int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, filter *f)
 {
-  calcfilter(ffield->data, ffieldh->data,
+  calcfilter(mfield->data, mfieldh->data,
              nmask, nmaskh,
              f->profs["area"].data, f->profs["areah"].data);
   return 0;
