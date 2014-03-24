@@ -345,7 +345,8 @@ int cfields::execstats(filter *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, wloc, sd["tmp4"]->data, stats->nmaskh);
+    stats->calcmoment(w->data, f->profs["w"].data, f->profs["w"+sn].data, n, wloc,
+                      sd["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the u location
@@ -358,7 +359,8 @@ int cfields::execstats(filter *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, uloc, sd["tmp1"]->data, stats->nmask);
+    stats->calcmoment(u->data, umodel, f->profs["u"+sn].data, n, uloc,
+                      sd["tmp1"]->data, stats->nmask);
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
@@ -395,7 +397,8 @@ int cfields::execstats(filter *f)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, vloc, sd["tmp1"]->data, stats->nmask);
+    stats->calcmoment(v->data, vmodel, f->profs["v"+sn].data, n, vloc,
+                      sd["tmp1"]->data, stats->nmask);
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
@@ -433,7 +436,8 @@ int cfields::execstats(filter *f)
       std::stringstream ss;
       ss << n;
       std::string sn = ss.str();
-      stats->calcmoment(it->second->data, f->profs[it->first].data, f->profs[it->first+sn].data, n, sloc, sd["tmp3"]->data, stats->nmask);
+      stats->calcmoment(it->second->data, f->profs[it->first].data, f->profs[it->first+sn].data, n, sloc,
+                        sd["tmp3"]->data, stats->nmask);
     }
     if(grid->swspatialorder == "2")
     {
@@ -446,7 +450,7 @@ int cfields::execstats(filter *f)
         stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             f->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
-                            sd["tmp1"]->data, stats->nmaskh);
+                            sd["tmp4"]->data, stats->nmaskh);
     }
     else if(grid->swspatialorder == "4")
     {
@@ -512,7 +516,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, st
 
 int cfields::initpfld(std::string fldname, std::string longname, std::string unit)
 {
-  if (s.find(fldname)!=s.end())
+  if(s.find(fldname)!=s.end())
   {
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
@@ -539,7 +543,7 @@ int cfields::initpfld(std::string fldname, std::string longname, std::string uni
 
 int cfields::initdfld(std::string fldname,std::string longname, std::string unit)
 {
-  if (s.find(fldname)!=s.end())
+  if(s.find(fldname)!=s.end())
   {
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
