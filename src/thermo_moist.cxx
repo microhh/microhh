@@ -201,15 +201,15 @@ int cthermo_moist::exec()
 }
 
 
-int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, filter *f)
+int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
 {
   if(f->name == "ql")
   {
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcfilterql(mfield->data, mfieldh->data,
-                 stats->nmask, stats->nmaskh,
-                 f->profs["area"].data, f->profs["areah"].data,
-                 fields->s["tmp1"]->data);
+    calcmaskql(mfield->data, mfieldh->data,
+               stats->nmask, stats->nmaskh,
+               f->profs["area"].data, f->profs["areah"].data,
+               fields->s["tmp1"]->data);
   }
   else if(f->name == "qlcore")
   {
@@ -217,19 +217,19 @@ int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, filter *f)
     // calculate the mean buoyancy to determine positive buoyancy
     grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcfilterqlcore(mfield->data, mfieldh->data,
-                     stats->nmask, stats->nmaskh,
-                     f->profs["area"].data, f->profs["areah"].data,
-                     fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
+    calcmaskqlcore(mfield->data, mfieldh->data,
+                   stats->nmask, stats->nmaskh,
+                   f->profs["area"].data, f->profs["areah"].data,
+                   fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
   }
  
   return 0;
 }
 
-int cthermo_moist::calcfilterql(double * restrict mask, double * restrict maskh,
-                                int * restrict nmask, int * restrict nmaskh,
-                                double * restrict area, double * restrict areah,
-                                double * restrict ql)
+int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh,
+                              int * restrict nmask, int * restrict nmaskh,
+                              double * restrict area, double * restrict areah,
+                              double * restrict ql)
 {
   int ijk,jj,kk;
   int kstart,kend;
@@ -292,7 +292,7 @@ int cthermo_moist::calcfilterql(double * restrict mask, double * restrict maskh,
   return 0;
 }
 
-int cthermo_moist::calcfilterqlcore(double * restrict mask, double * restrict maskh,
+int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict maskh,
                                     int * restrict nmask, int * restrict nmaskh,
                                     double * restrict area, double * restrict areah,
                                     double * restrict ql, double * restrict b, double * restrict bmean)
@@ -358,7 +358,7 @@ int cthermo_moist::calcfilterqlcore(double * restrict mask, double * restrict ma
   return 0;
 }
 
-int cthermo_moist::execstats(filter *f)
+int cthermo_moist::execstats(mask *f)
 {
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data);

@@ -26,7 +26,7 @@
 class cmaster;
 class cgrid;
 class cfields;
-struct filter;
+struct mask;
 
 class cthermo
 {
@@ -37,9 +37,9 @@ class cthermo
     virtual int init();
     virtual int create();
     virtual int exec();
-    virtual int execstats(filter *);
+    virtual int execstats(mask *);
     virtual int execcross();
-    virtual int getmask(cfield3d *, cfield3d *, filter *);
+    virtual int getmask(cfield3d *, cfield3d *, mask *);
 
     // interfacing functions to get buoyancy properties from other classes
     virtual int checkthermofield(std::string name);

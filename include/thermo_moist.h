@@ -29,7 +29,7 @@ class cmaster;
 class cgrid;
 class cfields;
 class cstats;
-struct filter;
+struct mask;
 
 class cthermo_moist : public cthermo
 {
@@ -40,8 +40,8 @@ class cthermo_moist : public cthermo
     int init();
     int create();
     int exec();
-    int getmask(cfield3d *, cfield3d *, filter *);
-    int execstats(filter *);
+    int getmask(cfield3d *, cfield3d *, mask *);
+    int execstats(mask *);
     int execcross();
 
     // functions to retrieve buoyancy properties, to be called from other classes
@@ -65,9 +65,9 @@ class cthermo_moist : public cthermo
     bool allocated;
     cstats *stats;
 
-    // filters
-    int calcfilterql    (double *, double *, int *, int *, double *, double *, double *);
-    int calcfilterqlcore(double *, double *, int *, int *, double *, double *, double *, double *, double *);
+    // masks
+    int calcmaskql    (double *, double *, int *, int *, double *, double *, double *);
+    int calcmaskqlcore(double *, double *, int *, int *, double *, double *, double *, double *, double *);
 
     int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);

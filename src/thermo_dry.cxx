@@ -121,7 +121,7 @@ int cthermo_dry::exec()
   return 0;
 }
 
-int cthermo_dry::execstats(filter *f)
+int cthermo_dry::execstats(mask *f)
 {
   // calculate the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data);

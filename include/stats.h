@@ -49,7 +49,7 @@ typedef std::map<std::string, profvar> profmap;
 typedef std::map<std::string, tseriesvar> tseriesmap;
 
 // structure
-struct filter
+struct mask
 {
   std::string name;
   NcFile *dataFile;
@@ -59,7 +59,7 @@ struct filter
   tseriesmap tseries;
 };
 
-typedef std::map<std::string, filter> filtermap;
+typedef std::map<std::string, mask> maskmap;
 
 class cstats
 {
@@ -71,13 +71,13 @@ class cstats
     int init(double);
     int create(int);
     unsigned long gettimelim(unsigned long);
-    int getmask(cfield3d *, cfield3d *, filter *);
+    int getmask(cfield3d *, cfield3d *, mask *);
     int exec(int, double, unsigned long);
     int dostats();
     std::string getsw();
 
-    // container for all stats, filter as uppermost in hierarchy
-    filtermap filters;
+    // container for all stats, masks as uppermost in hierarchy
+    maskmap masks;
     int *nmask;
     int *nmaskh;
 
@@ -117,8 +117,8 @@ class cstats
 
     int nstats;
 
-    // filters
-    int calcfilter(double *, double *, int *, int *, double *, double *);
+    // mask calculations
+    int calcmask(double *, double *, int *, int *, double *, double *);
 
   protected:
     cmodel  *model;

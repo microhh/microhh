@@ -402,7 +402,7 @@ int cmodel::exec()
       if(stats->dostats())
       {
         // always process the default mask
-        stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters["default"]);
+        stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks["default"]);
         calcstats("default");
 
         // work through the potential masks for the statistics
@@ -410,12 +410,12 @@ int cmodel::exec()
         {
           if(*it == "wplus" || *it == "wmin")
           {
-            fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters[*it]);
+            fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
             calcstats(*it);
           }
           else if(*it == "ql" || *it == "qlcore")
           {
-            thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->filters[*it]);
+            thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
             calcstats(*it);
           }
         }
@@ -500,9 +500,9 @@ int cmodel::exec()
 
 int cmodel::calcstats(std::string maskname)
 {
-  fields->execstats(&stats->filters[maskname]);
-  thermo->execstats(&stats->filters[maskname]);
-  budget->execstats(&stats->filters[maskname]);
+  fields->execstats(&stats->masks[maskname]);
+  thermo->execstats(&stats->masks[maskname]);
+  budget->execstats(&stats->masks[maskname]);
 
   return 0;
 }

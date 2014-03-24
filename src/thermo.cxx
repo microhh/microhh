@@ -61,7 +61,7 @@ int cthermo::exec()
   return 0;
 }
 
-int cthermo::execstats(filter *f)
+int cthermo::execstats(mask *f)
 {
   return 0;
 }
@@ -101,7 +101,7 @@ int cthermo::getprogvars(std::vector<std::string> *list)
   return 0;
 }
 
-int cthermo::getmask(cfield3d *mfield, cfield3d *mfieldh, filter *f)
+int cthermo::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
 {
   return 0;
 }

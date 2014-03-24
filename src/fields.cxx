@@ -207,16 +207,16 @@ int cfields::exec()
   return 0;
 }
 
-int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, filter *f)
+int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
 {
   if(f->name == "wplus")
-    calcfilterwplus(mfield->data, mfieldh->data, stats->nmask, stats->nmaskh, f->profs["area"].data, f->profs["areah"].data, w->data);
+    calcmaskwplus(mfield->data, mfieldh->data, stats->nmask, stats->nmaskh, f->profs["area"].data, f->profs["areah"].data, w->data);
   else if(f->name == "wmin")                                                  
-    calcfilterwmin (mfield->data, mfieldh->data, stats->nmask, stats->nmaskh, f->profs["area"].data, f->profs["areah"].data, w->data);
+    calcmaskwmin (mfield->data, mfieldh->data, stats->nmask, stats->nmaskh, f->profs["area"].data, f->profs["areah"].data, w->data);
   return 0;
 }
 
-int cfields::calcfilterwplus(double * restrict mask, double * restrict maskh,
+int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh,
                              int * restrict nmask, int * restrict nmaskh,
                              double * restrict area, double * restrict areah,
                              double * restrict w)
@@ -273,7 +273,7 @@ int cfields::calcfilterwplus(double * restrict mask, double * restrict maskh,
   return 0;
 }
 
-int cfields::calcfilterwmin(double * restrict mask, double * restrict maskh,
+int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh,
                             int * restrict nmask, int * restrict nmaskh,
                             double * restrict area, double * restrict areah,
                             double * restrict w)
@@ -330,7 +330,7 @@ int cfields::calcfilterwmin(double * restrict mask, double * restrict maskh,
   return 0;
 }
 
-int cfields::execstats(filter *f)
+int cfields::execstats(mask *f)
 {
   // define locations
   const int uloc[] = {1,0,0};

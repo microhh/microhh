@@ -54,7 +54,7 @@ cstats::~cstats()
   delete[] nmaskh;
 
   // delete the profiles
-  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
+  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     delete it->second.dataFile;
     for(profmap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
@@ -109,10 +109,10 @@ int cstats::create(int n)
 
   int nerror = 0;
 
-  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
+  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    filter *f = &it->second;
+    mask *f = &it->second;
 
     // create a NetCDF file for the statistics
     if(master->mpiid == 0)
@@ -166,9 +166,9 @@ int cstats::create(int n)
 
   }
 
-  // for each filter add the area as a variable
-  addprof("area" , "Fractional area contained in conditional statistics", "-", "z");
-  addprof("areah", "Fractional area contained in conditional statistics", "-", "zh");
+  // for each mask add the area as a variable
+  addprof("area" , "Fractional area contained in mask", "-", "z");
+  addprof("areah", "Fractional area contained in mask", "-", "zh");
 
   return 0;
 }
@@ -204,10 +204,10 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   if(itime % isampletime != 0)
     return 0;
 
-  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
+  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    filter *f = &it->second;
+    mask *f = &it->second;
 
     // put the data into the NetCDF file
     if(master->mpiid == 0)
@@ -238,8 +238,8 @@ std::string cstats::getsw()
 
 int cstats::addmask(std::string maskname)
 {
-  filters[maskname].name = maskname;
-  filters[maskname].dataFile = NULL;
+  masks[maskname].name = maskname;
+  masks[maskname].dataFile = NULL;
 
   return 0;
 }
@@ -249,10 +249,10 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
   int nerror = 0;
 
   // add the profile to all files
-  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
+  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    filter *f = &it->second;
+    mask *f = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
@@ -286,10 +286,10 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
   int nerror = 0;
 
   // add the profile to all files
-  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
+  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    filter *f = &it->second;
+    mask *f = &it->second;
 
     // create the NetCDF variable
     NcVar *var;
@@ -318,10 +318,10 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   int nerror = 0;
 
   // add the series to all files
-  for(filtermap::iterator it=filters.begin(); it!=filters.end(); ++it)
+  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    filter *f = &it->second;
+    mask *f = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
@@ -339,22 +339,22 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   return nerror;
 }
 
-int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, filter *f)
+int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
 {
-  calcfilter(mfield->data, mfieldh->data,
+  calcmask(mfield->data, mfieldh->data,
              nmask, nmaskh,
              f->profs["area"].data, f->profs["areah"].data);
   return 0;
 }
 
 // COMPUTATIONAL KERNELS BELOW
-int cstats::calcfilter(double * restrict mask, double * restrict maskh,
+int cstats::calcmask(double * restrict mask, double * restrict maskh,
                        int * restrict nmask, int * restrict nmaskh,
                        double * restrict area, double * restrict areah)
 {
   int ijtot = grid->itot*grid->jtot;
 
-  // set all the filter values to 1
+  // set all the mask values to 1
   for(int n=0; n<grid->ncells; ++n)
     mask[n] = 1.;
 
@@ -403,7 +403,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
 }
 
 int cstats::calcmean(double * restrict data, double * restrict prof, double offset, const int loc[3],
-                     double * restrict filter, int * restrict nmask)
+                     double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -418,7 +418,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += filter[ijk]*(data[ijk] + offset);
+        prof[k] += mask[ijk]*(data[ijk] + offset);
       }
   }
 
@@ -469,9 +469,9 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
 }
 */
 
-// \TODO the count function assumes that the variable to count is at the filter location
+// \TODO the count function assumes that the variable to count is at the mask location
 int cstats::calccount(double * restrict data, double * restrict prof, double threshold,
-                      double * restrict filter, int * restrict nmask)
+                      double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -487,7 +487,7 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
       {
         ijk  = i + j*jj + k*kk;
         if(data[ijk] > threshold)
-          prof[k] += filter[ijk]*1.;
+          prof[k] += mask[ijk]*1.;
       }
   }
 
@@ -536,7 +536,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 */
 
 int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
-                       double * restrict filter, int * restrict nmask)
+                       double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -551,7 +551,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += filter[ijk]*std::pow(data[ijk]-datamean[k], power);
+        prof[k] += mask[ijk]*std::pow(data[ijk]-datamean[k], power);
       }
   }
 
@@ -614,7 +614,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
 
 int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
                          double * restrict prof, double * restrict tmp1, const int loc[3],
-                         double * restrict filter, int * restrict nmask)
+                         double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -648,8 +648,8 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        //prof[k] += filter[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
-        prof[k] += filter[ijk]*0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
+        //prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
+        prof[k] += mask[ijk]*0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
       }
   }
 
@@ -667,7 +667,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 }
 
 int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
-                         double * restrict filter, int * restrict nmask)
+                         double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk1,kk2;
 
@@ -702,7 +702,7 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] += filter[ijk]*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
+        prof[k] += mask[ijk]*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
       }
   }
 
@@ -751,7 +751,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 */
 
 int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
-                         double * restrict filter, int * restrict nmask)
+                         double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -766,7 +766,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] += filter[ijk]*(data[ijk]-data[ijk-kk])*dzhi[k];
+        prof[k] += mask[ijk]*(data[ijk]-data[ijk-kk])*dzhi[k];
       }
   }
 
@@ -784,7 +784,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 }
 
 int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
-                         double * restrict filter, int * restrict nmask)
+                         double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk1,kk2;
 
@@ -800,7 +800,7 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] += filter[ijk]*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+        prof[k] += mask[ijk]*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 
@@ -818,7 +818,7 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 }
 
 int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
-                         double * restrict filter, int * restrict nmask)
+                         double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk1,kk2;
 
@@ -834,7 +834,7 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
-        prof[k] -= filter[ijk]*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
+        prof[k] -= mask[ijk]*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
       }
   }
 
@@ -854,7 +854,7 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
 int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
                          double * restrict prof, double * restrict dzhi,
                          double * restrict fluxbot, double * restrict fluxtop, double tPr, const int loc[3],
-                         double * restrict filter, int * restrict nmask)
+                         double * restrict mask, int * restrict nmask)
 {
   int ijk,ij,ii,jj,kk,kstart,kend;
   double eviscu,eviscv,eviscs;
@@ -878,7 +878,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      prof[kstart] += filter[ijk]*fluxbot[ij];
+      prof[kstart] += mask[ijk]*fluxbot[ij];
     }
 
   // calculate the interior
@@ -894,7 +894,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
           ijk  = i + j*jj + k*kk;
           // evisc * (du/dz + dw/dx)
           eviscu = 0.25*(evisc[ijk-ii-kk]+evisc[ijk-ii]+evisc[ijk-kk]+evisc[ijk]);
-          prof[k] += -filter[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
+          prof[k] += -mask[ijk]*eviscu*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-ii])*dxi );
         }
     }
   }
@@ -910,7 +910,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
           ijk  = i + j*jj + k*kk;
           // evisc * (dv/dz + dw/dy)
           eviscv = 0.25*(evisc[ijk-jj-kk]+evisc[ijk-jj]+evisc[ijk-kk]+evisc[ijk]);
-          prof[k] += -filter[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
+          prof[k] += -mask[ijk]*eviscv*( (data[ijk]-data[ijk-kk])*dzhi[k] + (w[ijk]-w[ijk-jj])*dyi );
         }
     }
   }
@@ -925,7 +925,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
         {
           ijk  = i + j*jj + k*kk;
           eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
-          prof[k] += -filter[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
+          prof[k] += -mask[ijk]*eviscs*(data[ijk]-data[ijk-kk])*dzhi[k];
         }
     }
   }
@@ -938,7 +938,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kend*kk;
-      prof[kend] += filter[ijk]*fluxtop[ij];
+      prof[kend] += mask[ijk]*fluxtop[ij];
     }
 
   master->sum(prof, grid->kcells);

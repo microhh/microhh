@@ -113,7 +113,7 @@ int cbudget::create()
   return 0;
 }
 
-int cbudget::execstats(filter *f)
+int cbudget::execstats(mask *f)
 {
   if(swbudget == "0")
     return 0;

@@ -30,7 +30,7 @@ class cinput;
 class cstats;
 class cgrid;
 class cfields;
-struct filter;
+struct mask;
 
 class cbudget
 {
@@ -41,7 +41,7 @@ class cbudget
     int readinifile(cinput *);
     int init();
     int create();
-    int execstats(filter *);
+    int execstats(mask *);
 
   private:
     cmodel  *model;
