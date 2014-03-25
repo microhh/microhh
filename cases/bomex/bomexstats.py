@@ -13,6 +13,7 @@ def plotstats(name, line):
   zh  = stats.variables["zh"][:]
 
   areat  = stats.variables["area"][:,:]
+  areaht = stats.variables["areah"][:,:]
   
   st  = stats.variables["s"][:,:]
   qtt = stats.variables["qt"][:,:]*1000.
@@ -38,24 +39,24 @@ def plotstats(name, line):
   
   area = numpy.mean(areat[start:end,:], 0)
 
-  s  = numpy.mean(st [start:end,:], 0)
-  qt = numpy.mean(qtt[start:end,:], 0)
-  b  = numpy.mean(bt [start:end,:], 0)
-  u  = numpy.mean(ut [start:end,:], 0)
-  v  = numpy.mean(vt [start:end,:], 0)
-  ql = numpy.mean(qlt[start:end,:], 0)
-  cf = numpy.mean(cft[start:end,:], 0)
+  s  = numpy.sum(areat[start:end,:]*st [start:end,:], 0) / numpy.sum(areat[start:end,:], 0)
+  qt = numpy.sum(areat[start:end,:]*qtt[start:end,:], 0) / numpy.sum(areat[start:end,:], 0)
+  b  = numpy.sum(areat[start:end,:]*bt [start:end,:], 0) / numpy.sum(areat[start:end,:], 0)
+  u  = numpy.sum(areat[start:end,:]*ut [start:end,:], 0) / numpy.sum(areat[start:end,:], 0)
+  v  = numpy.sum(areat[start:end,:]*vt [start:end,:], 0) / numpy.sum(areat[start:end,:], 0)
+  ql = numpy.sum(areat[start:end,:]*qlt[start:end,:], 0) / numpy.sum(areat[start:end,:], 0)
+  cf = numpy.sum(areat[start:end,:]*cft[start:end,:], 0) / numpy.sum(areat[start:end,:], 0)
   
-  sflux = numpy.mean(sfluxt[start:end,:], 0)
-  bflux = numpy.mean(bfluxt[start:end,:], 0)
-  uflux = numpy.mean(ufluxt[start:end,:], 0)
-  vflux = numpy.mean(vfluxt[start:end,:], 0)
-  Uflux = numpy.mean(Ufluxt[start:end,:], 0)
+  sflux = numpy.sum(areaht[start:end,:]*sfluxt[start:end,:], 0) / numpy.sum(areaht[start:end,:], 0)
+  bflux = numpy.sum(areaht[start:end,:]*bfluxt[start:end,:], 0) / numpy.sum(areaht[start:end,:], 0)
+  uflux = numpy.sum(areaht[start:end,:]*ufluxt[start:end,:], 0) / numpy.sum(areaht[start:end,:], 0)
+  vflux = numpy.sum(areaht[start:end,:]*vfluxt[start:end,:], 0) / numpy.sum(areaht[start:end,:], 0)
+  Uflux = numpy.sum(areaht[start:end,:]*Ufluxt[start:end,:], 0) / numpy.sum(areaht[start:end,:], 0)
   
-  u2  = numpy.mean(u2t [start:end,:], 0)
-  v2  = numpy.mean(v2t [start:end,:], 0)
-  w2  = numpy.mean(w2t [start:end,:], 0)
-  tke = numpy.mean(tket[start:end,:], 0)
+  u2  = numpy.sum(areat [start:end,:]*u2t [start:end,:], 0) / numpy.sum(areat [start:end,:], 0)
+  v2  = numpy.sum(areat [start:end,:]*v2t [start:end,:], 0) / numpy.sum(areat [start:end,:], 0)
+  w2  = numpy.sum(areaht[start:end,:]*w2t [start:end,:], 0) / numpy.sum(areaht[start:end,:], 0)
+  tke = numpy.sum(areat [start:end,:]*tket[start:end,:], 0) / numpy.sum(areat [start:end,:], 0)
   
   # enable LaTeX plotting
   rc('font',**{'family':'serif','serif':['Palatino']})

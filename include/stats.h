@@ -90,6 +90,7 @@ class cstats
     int addfixedprof(std::string, std::string, std::string, std::string, double *);
     int addtseries(std::string, std::string, std::string);
 
+    int calcarea    (double *, const int[3], int *);
     int calcmean    (double *, double *, double);
     int calcmean    (double *, double *, double, const int[3], double *, int *);
     // int calcmoment  (double *, double *, double *, double, int);

@@ -366,8 +366,6 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh,
   {
     nmask [k] = ijtot;
     nmaskh[k] = ijtot;
-    area [k] = 1.;
-    areah[k] = 1.;
   }
 
   return 0;
@@ -399,6 +397,21 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
+
+  return 0;
+}
+
+int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nmask)
+{
+  int ijtot = grid->itot*grid->jtot;
+
+  for(int k=grid->kstart; k<grid->kend+loc[2]; k++)
+  {
+    if(nmask[k] > NTHRES)
+      area[k] = (double)(nmask[k]) / (double)ijtot;
+    else
+      area[k] = 0.;
+  }
 
   return 0;
 }
@@ -649,8 +662,8 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        //prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
-        prof[k] += mask[ijk]*0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
+        prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
+        // prof[k] += mask[ijk]*0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
       }
   }
 

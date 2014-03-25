@@ -275,17 +275,6 @@ int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh,
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
 
-  int ijtot = grid->itot*grid->jtot;
-
-  for(int k=grid->kstart; k<grid->kend; k++)
-    area[k] = (double)nmask[k] / (double)ijtot;
-
-  for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = (double)nmaskh[k] / (double)ijtot;
-
-  areah[kstart] = 0;
-  areah[kend  ] = 0;
-
   nmaskh[kstart] = 0;
   nmaskh[kend  ] = 0;
 
@@ -340,17 +329,6 @@ int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict mask
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
-
-  int ijtot = grid->itot*grid->jtot;
-
-  for(int k=grid->kstart; k<grid->kend; k++)
-    area[k] = (double)nmask[k] / (double)ijtot;
-
-  for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = (double)nmaskh[k] / (double)ijtot;
-
-  areah[kstart] = 0;
-  areah[kend  ] = 0;
 
   nmaskh[kstart] = 0;
   nmaskh[kend  ] = 0;

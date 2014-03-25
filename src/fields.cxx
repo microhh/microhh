@@ -262,14 +262,6 @@ int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh,
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
 
-  int ijtot = grid->itot*grid->jtot;
-
-  for(int k=grid->kstart; k<grid->kend; k++)
-    area[k] = (double)nmask[k] / (double)ijtot;
-
-  for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = (double)nmaskh[k] / (double)ijtot;
-
   return 0;
 }
 
@@ -319,14 +311,6 @@ int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh,
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
 
-  int ijtot = grid->itot*grid->jtot;
-
-  for(int k=grid->kstart; k<grid->kend; k++)
-    area[k] = (double)nmask[k] / (double)ijtot;
-
-  for(int k=grid->kstart; k<grid->kend+1; k++)
-    areah[k] = (double)nmaskh[k] / (double)ijtot;
-
   return 0;
 }
 
@@ -337,6 +321,10 @@ int cfields::execstats(mask *m)
   const int vloc[] = {0,1,0};
   const int wloc[] = {0,0,1};
   const int sloc[] = {0,0,0};
+
+  // save the area coverage of the mask
+  stats->calcarea(m->profs["area" ].data, sloc, stats->nmask );
+  stats->calcarea(m->profs["areah"].data, wloc, stats->nmaskh);
 
   // start with the stats on the w location, to make the wmean known for the flux calculations
   stats->calcmean(w->data, m->profs["w"].data, NO_OFFSET, wloc, sd["tmp4"]->data, stats->nmaskh);
