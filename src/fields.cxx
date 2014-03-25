@@ -322,6 +322,9 @@ int cfields::execstats(mask *m)
   const int wloc[] = {0,0,1};
   const int sloc[] = {0,0,0};
 
+  const int uwloc[] = {1,0,1};
+  const int vwloc[] = {0,1,1};
+
   // save the area coverage of the mask
   stats->calcarea(m->profs["area" ].data, sloc, stats->nmask );
   stats->calcarea(m->profs["areah"].data, wloc, stats->nmaskh);
@@ -352,7 +355,7 @@ int cfields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, sloc, uloc);
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, uwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
@@ -390,7 +393,7 @@ int cfields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, sloc, vloc);
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, vwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
