@@ -83,6 +83,8 @@ int cthermo_dry::create()
     stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
     stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
     stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+
+    stats->addprof("bsort", "Sorted buoyancy", "m s-2", "z");
   }
 
   // Cross sections (isn't there an easier way to populate this list?)
@@ -176,6 +178,9 @@ int cthermo_dry::execstats(mask *m)
 
   // calculate the total fluxes
   stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
+
+  // calculate the sorted buoyancy profile
+  stats->calcsortprof(fields->sd["tmp1"]->data, (int *)fields->sd["tmp2"]->data, m->profs["bsort"].data);
 
   return 0;
 }

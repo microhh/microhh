@@ -109,6 +109,8 @@ class cstats
     int calcpath    (double *, double *);
     int calccover   (double *, double *, double);
 
+    int calcsortprof(double *, int *, double *);
+
   private:
     // NcFile *dataFile;
     // NcDim  *z_dim, *zh_dim, *t_dim;

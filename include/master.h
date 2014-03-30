@@ -51,6 +51,12 @@ class cmaster
     int sum(int *, int);
     int sum(double *, int);
 
+    // overload the max function
+    int max(double *, int);
+
+    // overload the min function
+    int min(double *, int);
+
     std::string mode;
     std::string simname;
 

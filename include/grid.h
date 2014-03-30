@@ -55,10 +55,12 @@ class cgrid
     int itot; ///< Total number of grid cells in the x-direction.
     int jtot; ///< Total number of grid cells in the y-direction.
     int ktot; ///< Total number of grid cells in the z-direction.
+    int ntot; ///< Total number of grid cells.
 
     int imax; ///< Number of grid cells in the x-direction for one process.
     int jmax; ///< Number of grid cells in the y-direction for one process.
     int kmax; ///< Number of grid cells in the z-direction for one process.
+    int nmax; ///< Number of grid cells for one process.
 
     int iblock; ///< Number of grid cells in the x-direction for calculation blocks in transposes.
     int jblock; ///< Number of grid cells in the y-direction for calculation blocks in transposes.

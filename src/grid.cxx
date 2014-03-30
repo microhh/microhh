@@ -165,10 +165,14 @@ int cgrid::init()
     return 1;
   }
 
+  // calculate the total number of grid cells
+  ntot = itot*jtot*ktot;
+
   // calculate the grid dimensions per process
-  imax   = itot / master->npx;
-  jmax   = jtot / master->npy;
-  kmax   = ktot;
+  imax = itot / master->npx;
+  jmax = jtot / master->npy;
+  kmax = ktot;
+  nmax = imax*jmax*kmax;
 
   // calculate the block sizes for the transposes
   iblock = itot / master->npy;

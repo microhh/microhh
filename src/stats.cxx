@@ -449,6 +449,85 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   return 0;
 }
 
+int cstats::calcsortprof(double * restrict data, int * restrict bin, double * restrict prof)
+{
+  int ijk,jj,kk,index;
+  double minval,maxval,range;
+
+  jj = grid->icells;
+  kk = grid->ijcells;
+
+  minval =  dhuge;
+  maxval = -dhuge;
+
+  // first, get min and max
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        if(data[ijk] < minval)
+          minval = data[ijk];
+        if(data[ijk] > maxval)
+          maxval = data[ijk];
+      }
+
+  master->min(&minval, 1);
+  master->max(&maxval, 1);
+
+  // make sure that the max ends up in the last bin (introduce 1E-9 error)
+  maxval *= (1.+dsmall);
+
+  range = maxval-minval;
+
+  // create bins, equal to twice the number of grid cells per proc
+  int bins = grid->nmax;
+
+  // calculate bin width
+  double dbin = range / (double)bins;
+
+  // set the bin array to zero
+  for(int n=0; n<grid->ncells; ++n)
+    bin[n] = 0;
+
+  // check in which bin each value falls and increment the bin count
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        index = (int)((data[ijk] - minval) / dbin - dtiny);
+        bin[index] += 1;
+        if(index < 0 || index >= bins) std::printf("CvH %d, %E\n", index, (data[ijk] - minval) / dbin - dtiny);
+      }
+
+  // get the bin count
+  master->sum(bin, bins);
+
+  // now reconstruct the profile
+  // calculate the equivalent vertical width for one bin count
+  double dzbin = grid->zsize / (grid->ntot);
+
+  // height is the middle of the bin
+  double zbin = 0.5*dzbin;
+  index = 0;
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    while(zbin < grid->z[k])
+    {
+      zbin += dzbin*bin[index];
+      ++index;
+    }
+
+    prof[k] = minval + index*dbin;
+  }
+
+  return 0;
+}
+
+
 /*
 int cstats::calccount(double * restrict data, double * restrict prof, double threshold)
 {
