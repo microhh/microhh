@@ -482,13 +482,14 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
   range = maxval-minval;
 
   // create bins, equal to twice the number of grid cells per proc
-  int bins = grid->nmax;
+  // make sure that bins is not larger than 2*ncells, otherwise segfault
+  int bins = 2*grid->nmax;
 
   // calculate bin width
   double dbin = range / (double)bins;
 
   // set the bin array to zero
-  for(int n=0; n<grid->ncells; ++n)
+  for(int n=0; n<bins; ++n)
     bin[n] = 0;
 
   // check in which bin each value falls and increment the bin count
@@ -512,15 +513,17 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
   // height is the middle of the bin
   double zbin = 0.5*dzbin;
   index = 0;
+  double profval = minval;
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
     while(zbin < grid->z[k])
     {
       zbin += dzbin*bin[index];
+      profval += dbin;
       ++index;
     }
 
-    prof[k] = minval + index*dbin;
+    prof[k] = profval;
   }
 
   return 0;
