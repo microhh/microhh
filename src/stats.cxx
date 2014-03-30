@@ -500,7 +500,6 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
         ijk = i + j*jj + k*kk;
         index = (int)((data[ijk] - minval) / dbin - dtiny);
         bin[index] += 1;
-        if(index < 0 || index >= bins) std::printf("CvH %d, %E\n", index, (data[ijk] - minval) / dbin - dtiny);
       }
 
   // get the bin count
