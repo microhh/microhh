@@ -483,7 +483,7 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
 
   // create bins, equal to twice the number of grid cells per proc
   // make sure that bins is not larger than 2*ncells, otherwise segfault
-  int bins = 2*grid->nmax;
+  int bins = grid->nmax;
 
   // calculate bin width
   double dbin = range / (double)bins;
@@ -494,9 +494,9 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
 
   // check in which bin each value falls and increment the bin count
   for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+      // do not add a ivdep pragma here, because multiple instances could write the same bin[index]
+      for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         index = (int)((data[ijk] - minval) / dbin - dtiny);
@@ -505,6 +505,10 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
 
   // get the bin count
   master->sum(bin, bins);
+
+  int binsum = 0;
+  for(int n=0; n<bins; ++n)
+    binsum += bin[n];
 
   // now reconstruct the profile
   // calculate the equivalent vertical width for one bin count
