@@ -481,8 +481,8 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
 
   range = maxval-minval;
 
-  // create bins, equal to twice the number of grid cells per proc
-  // make sure that bins is not larger than 2*ncells, otherwise segfault
+  // create bins, equal to the number of grid cells per proc
+  // make sure that bins is not larger than the memory of one 3d field
   int bins = grid->nmax;
 
   // calculate bin width
@@ -506,10 +506,6 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
   // get the bin count
   master->sum(bin, bins);
 
-  int binsum = 0;
-  for(int n=0; n<bins; ++n)
-    binsum += bin[n];
-
   // now reconstruct the profile
   // calculate the equivalent vertical width for one bin count
   double dzbin = grid->zsize / (grid->ntot);
@@ -520,6 +516,9 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
   double profval = minval;
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
+    // Integrate the profile up to the bin count.
+    // Escape the while loop when the integrated profile 
+    // exceeds the next grid point.
     while(zbin < grid->z[k])
     {
       zbin += dzbin*bin[index];
