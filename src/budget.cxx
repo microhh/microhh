@@ -61,6 +61,7 @@ int cbudget::init()
   grid   = model->grid;
   fields = model->fields;
   stats  = model->stats;
+  master = model->master;
 
   // if the stats is disabled, also disable the budget stats
   if(stats->getsw() == "0")
@@ -77,7 +78,7 @@ int cbudget::create()
   if(swbudget == "0")
     return 0;
 
-  // add the profiles to the statistics
+  // add the profiles for the kinetic energy budget to the statistics
   stats->addprof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z");
   stats->addprof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z");
   stats->addprof("tke_shear", "Shear production term in TKE budget", "m2 s-3", "z");
@@ -108,6 +109,15 @@ int cbudget::create()
   {
     stats->addprof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
     stats->addprof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
+  }
+
+  // add the profiles for the potential energy budget to the statistics
+  if(model->thermo->getsw() != "0")
+  {
+    stats->addprof("bsort"   , "Sorted buoyancy", "m s-2", "z");
+    stats->addprof("pe_total", "Total potential energy" , "m2 s-2", "z");
+    stats->addprof("pe_avail", "Total potential energy" , "m2 s-2", "z");
+    stats->addprof("pe_bg"   , "Total potential energy" , "m2 s-2", "z");
   }
 
   return 0;
@@ -142,6 +152,16 @@ int cbudget::execstats(mask *m)
       model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
       calctkebudget_buoy(fields->w->data, fields->s["tmp1"]->data,
                     m->profs["w2_buoy"].data, m->profs["tke_buoy"].data);
+    }
+
+    // calculate the potential energy budget
+    if(model->thermo->getsw() != "0")
+    {
+      // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
+      stats->calcsortprof(fields->sd["tmp1"]->data, (int *)fields->sd["tmp2"]->data, m->profs["bsort"].data);
+      calcpebudget(fields->sd["tmp1"]->data, grid->z,
+                   m->profs["bsort"].data,
+                   m->profs["pe_total"].data, m->profs["pe_avail"].data, m->profs["pe_bg"].data);
     }
   }
 
@@ -551,3 +571,32 @@ int cbudget::calctkebudget_buoy(double * restrict w, double * restrict b,
   return 0;
 }
 
+int cbudget::calcpebudget(double * restrict b, double * restrict z,
+                          double * restrict bsort,
+                          double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg)
+{
+  int ijk,jj,kk;
+
+  jj = grid->icells;
+  kk = grid->ijcells;
+
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    pe_total[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        pe_total[k] += b[ijk] * z[k];
+      }
+  }
+
+  master->sum(pe_total, grid->kcells);
+
+  int n = grid->itot*grid->jtot;
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    pe_total[k] /= n;
+    
+  return 0;
+}
