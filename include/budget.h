@@ -55,6 +55,11 @@ class cbudget
 
     double *umodel, *vmodel;
 
+    int calcke(double *, double *, double *,
+               double *, double *,
+               double, double,
+               double *, double *);
+
     int calctkebudget(double *, double *, double *, double *,
                       double *, double *,
                       double *, double *,
@@ -65,10 +70,12 @@ class cbudget
                       double *, double *,
                       double *, double *, double *,
                       double *, double *, double);
+
     int calctkebudget_buoy(double *, double *, double *, double *);
-    int calcpebudget(double *, double *,
-                     double *,
-                     double *, double *, double *,
-                     double *);
+
+    int calcpe(double *, double *,
+               double *,
+               double *, double *, double *,
+               double *);
 };
 #endif

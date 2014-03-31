@@ -78,6 +78,10 @@ int cbudget::create()
   if(swbudget == "0")
     return 0;
 
+  // add the profiles for the kinetic energy to the statistics
+  stats->addprof("ke" , "Kinetic energy" , "m2 s-2", "z");
+  stats->addprof("tke", "Turbulent kinetic energy" , "m2 s-2", "z");
+
   // add the profiles for the kinetic energy budget to the statistics
   stats->addprof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z");
   stats->addprof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z");
@@ -136,6 +140,11 @@ int cbudget::execstats(mask *m)
   if(grid->swspatialorder == "4")
   {
     // calculate the TKE budget
+    calcke(fields->u->data, fields->v->data, fields->w->data,
+           umodel, vmodel,
+           grid->utrans, grid->vtrans,
+           m->profs["ke"].data, m->profs["tke"].data);
+
     calctkebudget(fields->u->data, fields->v->data, fields->w->data, fields->s["p"]->data,
                   fields->s["tmp1"]->data, fields->s["tmp2"]->data,
                   umodel, vmodel,
@@ -160,11 +169,70 @@ int cbudget::execstats(mask *m)
     {
       // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
       stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
-      calcpebudget(fields->sd["tmp1"]->data, grid->z,
-                   m->profs["bsort"].data,
-                   m->profs["pe_total"].data, m->profs["pe_avail"].data, m->profs["pe_bg"].data,
-                   m->profs["zsort"].data);
+      calcpe(fields->sd["tmp1"]->data, grid->z,
+             m->profs["bsort"].data,
+             m->profs["pe_total"].data, m->profs["pe_avail"].data, m->profs["pe_bg"].data,
+             m->profs["zsort"].data);
     }
+  }
+
+  return 0;
+}
+
+int cbudget::calcke(double * restrict u, double * restrict v, double * restrict w, 
+                    double * restrict umodel, double * restrict vmodel,
+                    double utrans, double vtrans,
+                    double * restrict ke, double * restrict tke)
+{
+  int ijk,ii1,ii2,jj1,jj2,kk1,kk2;
+  double u2,v2,w2;
+
+  ii1 = 1;
+  ii2 = 2;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    ke [k] = 0;
+    tke[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        u2 = ci0*std::pow(u[ijk-ii1] + utrans, 2) + ci1*std::pow(u[ijk    ] + utrans, 2) 
+           + ci2*std::pow(u[ijk+ii1] + utrans, 2) + ci3*std::pow(u[ijk+ii2] + utrans, 2);
+        v2 = ci0*std::pow(v[ijk-jj1] + vtrans, 2) + ci1*std::pow(v[ijk    ] + vtrans, 2)
+           + ci2*std::pow(v[ijk+jj1] + vtrans, 2) + ci3*std::pow(v[ijk+jj2] + vtrans, 2);
+        w2 = ci0*std::pow(w[ijk-kk1], 2) + ci1*std::pow(w[ijk], 2) + ci2*std::pow(w[ijk+kk1], 2) + ci3*std::pow(w[ijk+kk2], 2);
+        ke[k] += 0.5*(u2 + v2 + w2);
+      }
+
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        u2 = ci0*std::pow(u[ijk-ii1] - umodel[k], 2) + ci1*std::pow(u[ijk    ] - umodel[k], 2) 
+           + ci2*std::pow(u[ijk+ii1] - umodel[k], 2) + ci3*std::pow(u[ijk+ii2] - umodel[k], 2);
+        v2 = ci0*std::pow(v[ijk-jj1] - vmodel[k], 2) + ci1*std::pow(v[ijk    ] - vmodel[k], 2)
+           + ci2*std::pow(v[ijk+jj1] - vmodel[k], 2) + ci3*std::pow(v[ijk+jj2] - vmodel[k], 2);
+        w2 = ci0*std::pow(w[ijk-kk1], 2) + ci1*std::pow(w[ijk], 2) + ci2*std::pow(w[ijk+kk1], 2) + ci3*std::pow(w[ijk+kk2], 2);
+        tke[k] += 0.5*(u2 + v2 + w2);
+      }
+  }
+
+  master->sum(ke , grid->kcells);
+  master->sum(tke, grid->kcells);
+
+  int n = grid->itot*grid->jtot;
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    ke [k] /= n;
+    tke[k] /= n;
   }
 
   return 0;
@@ -573,10 +641,10 @@ int cbudget::calctkebudget_buoy(double * restrict w, double * restrict b,
   return 0;
 }
 
-int cbudget::calcpebudget(double * restrict b, double * restrict z,
-                          double * restrict bsort,
-                          double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg,
-                          double * restrict zsort)
+int cbudget::calcpe(double * restrict b, double * restrict z,
+                    double * restrict bsort,
+                    double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg,
+                    double * restrict zsort)
 {
   int ijk,jj,kk;
 
