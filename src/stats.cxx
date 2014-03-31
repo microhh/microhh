@@ -449,7 +449,7 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   return 0;
 }
 
-int cstats::calcsortprof(double * restrict data, int * restrict bin, double * restrict prof)
+int cstats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
 {
   int ijk,jj,kk,index;
   double minval,maxval,range;
@@ -500,18 +500,19 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
       {
         ijk = i + j*jj + k*kk;
         index = (int)((data[ijk] - minval) / dbin - dtiny);
-        bin[index] += 1;
+        bin[index] += grid->dz[k];
       }
 
   // get the bin count
   master->sum(bin, bins);
 
   // now reconstruct the profile
-  // calculate the equivalent vertical width for one bin count
-  double dzbin = grid->zsize / (grid->ntot);
+  // calculate the division factor of one equivalent height unit
+  // (the total volume saved is itot*jtot*zsize)
+  double nslice = (double)(grid->itot*grid->jtot);
 
   // height is the middle of the bin
-  double zbin = 0.5*dzbin;
+  double zbin = 0.;
   index = 0;
   double profval = minval;
   for(int k=grid->kstart; k<grid->kend; ++k)
@@ -521,7 +522,7 @@ int cstats::calcsortprof(double * restrict data, int * restrict bin, double * re
     // exceeds the next grid point.
     while(zbin < grid->z[k])
     {
-      zbin += dzbin*bin[index];
+      zbin += bin[index] / nslice;
       profval += dbin;
       ++index;
     }

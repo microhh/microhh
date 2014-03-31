@@ -158,7 +158,7 @@ int cbudget::execstats(mask *m)
     if(model->thermo->getsw() != "0")
     {
       // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
-      stats->calcsortprof(fields->sd["tmp1"]->data, (int *)fields->sd["tmp2"]->data, m->profs["bsort"].data);
+      stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
       calcpebudget(fields->sd["tmp1"]->data, grid->z,
                    m->profs["bsort"].data,
                    m->profs["pe_total"].data, m->profs["pe_avail"].data, m->profs["pe_bg"].data);

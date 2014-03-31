@@ -109,7 +109,7 @@ class cstats
     int calcpath    (double *, double *);
     int calccover   (double *, double *, double);
 
-    int calcsortprof(double *, int *, double *);
+    int calcsortprof(double *, double *, double *);
 
   private:
     // NcFile *dataFile;

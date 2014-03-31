@@ -180,7 +180,7 @@ int cthermo_dry::execstats(mask *m)
   stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the sorted buoyancy profile
-  stats->calcsortprof(fields->sd["tmp1"]->data, (int *)fields->sd["tmp2"]->data, m->profs["bsort"].data);
+  stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 
   return 0;
 }
