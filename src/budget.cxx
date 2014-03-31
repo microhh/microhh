@@ -162,7 +162,8 @@ int cbudget::execstats(mask *m)
       stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
       calcpebudget(fields->sd["tmp1"]->data, grid->z,
                    m->profs["bsort"].data,
-                   m->profs["pe_total"].data, m->profs["pe_avail"].data, m->profs["pe_bg"].data);
+                   m->profs["pe_total"].data, m->profs["pe_avail"].data, m->profs["pe_bg"].data,
+                   m->profs["zsort"].data);
     }
   }
 
@@ -574,7 +575,8 @@ int cbudget::calctkebudget_buoy(double * restrict w, double * restrict b,
 
 int cbudget::calcpebudget(double * restrict b, double * restrict z,
                           double * restrict bsort,
-                          double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg)
+                          double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg,
+                          double * restrict zsort)
 {
   int ijk,jj,kk;
 
@@ -589,7 +591,7 @@ int cbudget::calcpebudget(double * restrict b, double * restrict z,
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        pe_total[k] += b[ijk] * z[k];
+        pe_total[k] -= b[ijk] * z[k];
       }
   }
 
@@ -598,6 +600,56 @@ int cbudget::calcpebudget(double * restrict b, double * restrict z,
   int n = grid->itot*grid->jtot;
   for(int k=grid->kstart; k<grid->kend; ++k)
     pe_total[k] /= n;
-    
+
+  // now find out the available potential energy
+  int ks;
+  double zsortval;
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    zsort[k]    = 0.;
+    pe_bg   [k] = 0.;
+    pe_avail[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        ks  = k;
+        if(b[ijk] > bsort[k])
+        {
+          while(b[ijk] > bsort[ks])
+            ++ks;
+
+          // linearly interpolate the height
+          zsortval = z[ks-1] + (b[ijk]-bsort[ks-1])/(bsort[ks]-bsort[ks-1]) * (z[ks]-z[ks-1]);
+
+        }
+        else if(b[ijk] < bsort[k])
+        {
+          while(b[ijk] < bsort[ks])
+            --ks;
+
+          // linearly interpolate the height
+          zsortval = z[ks] + (b[ijk]-bsort[ks])/(bsort[ks+1]-bsort[ks]) * (z[ks+1]-z[ks]);
+        }
+
+        // TODO create an interpolation instead of this nearest neighbor approach
+        zsort   [k] += zsortval;
+        pe_bg   [k] -= zsortval*b[ijk];
+        pe_avail[k] -= (z[k]-zsortval)*b[ijk];
+      }
+  }
+
+  master->sum(zsort   , grid->kcells);
+  master->sum(pe_bg   , grid->kcells);
+  master->sum(pe_avail, grid->kcells);
+
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    zsort   [k] /= n;
+    pe_bg   [k] /= n;
+    pe_avail[k] /= n;
+  }
+
   return 0;
 }

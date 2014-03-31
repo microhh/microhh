@@ -68,6 +68,7 @@ class cbudget
     int calctkebudget_buoy(double *, double *, double *, double *);
     int calcpebudget(double *, double *,
                      double *,
-                     double *, double *, double *);
+                     double *, double *, double *,
+                     double *);
 };
 #endif
