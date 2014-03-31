@@ -115,6 +115,7 @@ int cbudget::create()
   if(model->thermo->getsw() != "0")
   {
     stats->addprof("bsort"   , "Sorted buoyancy", "m s-2", "z");
+    stats->addprof("zsort"   , "Height diff buoyancy and sorted buoyancy", "m", "z");
     stats->addprof("pe_total", "Total potential energy" , "m2 s-2", "z");
     stats->addprof("pe_avail", "Total potential energy" , "m2 s-2", "z");
     stats->addprof("pe_bg"   , "Total potential energy" , "m2 s-2", "z");

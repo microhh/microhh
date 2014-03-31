@@ -451,11 +451,13 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
 
 int cstats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
 {
-  int ijk,jj,kk,index;
+  int ijk,jj,kk,index,kstart,kend;
   double minval,maxval,range;
 
   jj = grid->icells;
   kk = grid->ijcells;
+  kstart = grid->kstart;
+  kend = grid->kend;
 
   minval =  dhuge;
   maxval = -dhuge;
@@ -528,6 +530,23 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
     }
 
     prof[k] = profval;
+  }
+
+  // now calculate the ghost cells
+  double profbot = minval;
+  double proftop = maxval;
+
+  if(grid->swspatialorder == "2")
+  {
+    prof[kstart-1] = 2.*profbot - prof[kstart];
+    prof[kend]     = 2.*proftop - prof[kend-1];
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    prof[kstart-1] = (8./3.)*profbot - 2.*prof[kstart] + (1./3.)*prof[kstart+1];
+    prof[kstart-2] = 8.*profbot      - 9.*prof[kstart] + 2.*prof[kstart+1];
+    prof[kend]     = (8./3.)*proftop - 2.*prof[kend-1] + (1./3.)*prof[kend-2];
+    prof[kend+1]   = 8.*proftop      - 9.*prof[kend-1] + 2.*prof[kend-2];
   }
 
   return 0;
