@@ -498,6 +498,10 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   for(int n=0; n<bins; ++n)
     bin[n] = 0;
 
+  // calculate the division factor of one equivalent height unit
+  // (the total volume saved is itot*jtot*zsize)
+  double nslice = (double)(grid->itot*grid->jtot);
+
   // check in which bin each value falls and increment the bin count
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -506,21 +510,17 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
       {
         ijk = i + j*jj + k*kk;
         index = (int)((data[ijk] - minval) / dbin);
-        bin[index] += grid->dz[k];
+        bin[index] += grid->dz[k] / nslice;
       }
 
   // get the bin count
   master->sum(bin, bins);
 
-  // now reconstruct the profile
-  // calculate the division factor of one equivalent height unit
-  // (the total volume saved is itot*jtot*zsize)
-  double nslice = (double)(grid->itot*grid->jtot);
-
   // set the starting values of the loop
   index = 0;
   double zbin = 0.5*bin[index];
-  double profval,dzfrac;
+  double profval = minval + 0.5*dbin;
+  double dzfrac;
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
     // Integrate the profile up to the bin count.
@@ -528,13 +528,15 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
     // exceeds the next grid point.
     while(zbin < grid->z[k])
     {
-      zbin += (0.5*bin[index]+0.5*bin[index+1]) / nslice;
+      zbin += 0.5*(bin[index]+bin[index+1]);
+      profval += dbin;
       ++index;
     }
 
-    dzfrac = (zbin-grid->z[k]) / (zbin-bin[index-1]/nslice);
+    // dzfrac = (zbin-grid->z[k]) / (zbin-(0.5*bin[index]+0.5*bin[index+1])/nslice);
+    // std::printf("CvH %d, %E, %E, %E, %E\n", k, dzfrac, zbin, grid->z[k], bin[index-1] / nslice);
 
-    prof[k] = minval + index*dbin - dzfrac*dbin;
+    prof[k] = profval;// - dzfrac*dbin;
   }
 
   // now calculate the ghost cells
@@ -556,7 +558,6 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
 
   return 0;
 }
-
 
 /*
 int cstats::calccount(double * restrict data, double * restrict prof, double threshold)
