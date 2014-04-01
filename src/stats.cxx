@@ -487,8 +487,12 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   // make sure that bins is not larger than the memory of one 3d field
   int bins = grid->nmax;
 
-  // calculate bin width
-  double dbin = range / (double)bins;
+  // calculate bin width, subtract one to make the minimum and maximum 
+  // are in the middle of the bin range and add half a bin size on both sides
+  // |----x----|----x----|----x----|
+  double dbin = range / (double)(bins-1);
+  minval -= 0.5*dbin;
+  maxval += 0.5*dbin;
 
   // set the bin array to zero
   for(int n=0; n<bins; ++n)
@@ -501,7 +505,7 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        index = (int)((data[ijk] - minval) / dbin - dtiny);
+        index = (int)((data[ijk] - minval) / dbin);
         bin[index] += grid->dz[k];
       }
 
@@ -513,11 +517,10 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   // (the total volume saved is itot*jtot*zsize)
   double nslice = (double)(grid->itot*grid->jtot);
 
+  // set the starting values of the loop
   index = 0;
-
-  // set the starting height and the starting value in the middle of the range
-  double zbin = 0.5*bin[index] / nslice;
-  double profval = minval;
+  double zbin = 0.5*bin[index];
+  double profval,dzfrac;
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
     // Integrate the profile up to the bin count.
@@ -525,12 +528,13 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
     // exceeds the next grid point.
     while(zbin < grid->z[k])
     {
-      zbin += 0.5*(bin[index-1]+bin[index]) / nslice;
-      profval += dbin;
+      zbin += (0.5*bin[index]+0.5*bin[index+1]) / nslice;
       ++index;
     }
 
-    prof[k] = profval;
+    dzfrac = (zbin-grid->z[k]) / (zbin-bin[index-1]/nslice);
+
+    prof[k] = minval + index*dbin - dzfrac*dbin;
   }
 
   // now calculate the ghost cells
