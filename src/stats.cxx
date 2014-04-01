@@ -533,10 +533,9 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
       ++index;
     }
 
-    // dzfrac = (zbin-grid->z[k]) / (zbin-(0.5*bin[index]+0.5*bin[index+1])/nslice);
-    // std::printf("CvH %d, %E, %E, %E, %E\n", k, dzfrac, zbin, grid->z[k], bin[index-1] / nslice);
+    dzfrac = (zbin-grid->z[k]) / (0.5*(bin[index-1]+bin[index]));
 
-    prof[k] = profval;// - dzfrac*dbin;
+    prof[k] = profval - dzfrac*dbin;
   }
 
   // now calculate the ghost cells
