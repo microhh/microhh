@@ -700,6 +700,8 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
           // linearly interpolate the height
           zsortval = z[ks] + (b[ijk]-bsort[ks])/(bsort[ks+1]-bsort[ks]) * (z[ks+1]-z[ks]);
         }
+        else
+          zsortval = z[ks];
 
         // TODO create an interpolation instead of this nearest neighbor approach
         zsort   [k] += zsortval;
