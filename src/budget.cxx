@@ -685,7 +685,7 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
         ks  = k;
         if(b[ijk] > bsort[k])
         {
-          while(b[ijk] > bsort[ks])
+          while(b[ijk] > bsort[ks] && ks < grid->kend-1)
             ++ks;
 
           // linearly interpolate the height
@@ -694,7 +694,7 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
         }
         else if(b[ijk] < bsort[k])
         {
-          while(b[ijk] < bsort[ks])
+          while(b[ijk] < bsort[ks] && ks > grid->kstart)
             --ks;
 
           // linearly interpolate the height
