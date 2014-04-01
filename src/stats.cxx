@@ -513,9 +513,10 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   // (the total volume saved is itot*jtot*zsize)
   double nslice = (double)(grid->itot*grid->jtot);
 
-  // height is the middle of the bin
-  double zbin = 0.;
   index = 0;
+
+  // set the starting height and the starting value in the middle of the range
+  double zbin = 0.5*bin[index] / nslice;
   double profval = minval;
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
@@ -524,7 +525,7 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
     // exceeds the next grid point.
     while(zbin < grid->z[k])
     {
-      zbin += bin[index] / nslice;
+      zbin += 0.5*(bin[index-1]+bin[index]) / nslice;
       profval += dbin;
       ++index;
     }
