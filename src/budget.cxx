@@ -659,7 +659,7 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        pe_total[k] -= b[ijk] * z[k];
+        pe_total[k] += b[ijk] * z[k];
       }
   }
 
@@ -705,8 +705,8 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
 
         // TODO create an interpolation instead of this nearest neighbor approach
         zsort   [k] += zsortval;
-        pe_bg   [k] -= zsortval*b[ijk];
-        pe_avail[k] -= (z[k]-zsortval)*b[ijk];
+        pe_bg   [k] += zsortval*b[ijk];
+        pe_avail[k] += (zsortval-z[k])*b[ijk];
       }
   }
 
