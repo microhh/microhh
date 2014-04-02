@@ -77,5 +77,9 @@ class cbudget
                double *,
                double *, double *, double *,
                double *);
+
+    int calcpebudget(double *, double *,
+                     double *, double *, double *,
+                     double *, double *, double);
 };
 #endif

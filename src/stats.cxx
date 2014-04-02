@@ -371,7 +371,6 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh,
   return 0;
 }
 
-
 int cstats::calcmean(double * restrict data, double * restrict prof, double offset)
 {
   int ijk,jj,kk;

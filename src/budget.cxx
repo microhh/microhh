@@ -115,14 +115,19 @@ int cbudget::create()
     stats->addprof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
   }
 
-  // add the profiles for the potential energy budget to the statistics
   if(model->thermo->getsw() != "0")
   {
+    // add the profiles for the potential energy budget to the statistics
     stats->addprof("bsort"   , "Sorted buoyancy", "m s-2", "z");
     stats->addprof("zsort"   , "Height diff buoyancy and sorted buoyancy", "m", "z");
     stats->addprof("pe_total", "Total potential energy" , "m2 s-2", "z");
     stats->addprof("pe_avail", "Available potential energy" , "m2 s-2", "z");
     stats->addprof("pe_bg"   , "Background potential energy" , "m2 s-2", "z");
+
+    // add the budget terms
+    stats->addprof("pe_turb", "Turbulent transport term in potential energy budget", "m2 s-3", "z");
+    stats->addprof("pe_visc", "Viscous transport term in potential energy budget", "m2 s-3", "z");
+    stats->addprof("pe_bous", "Boussinesq term in potential energy budget", "m2 s-3", "z");
   }
 
   return 0;
@@ -173,6 +178,11 @@ int cbudget::execstats(mask *m)
              m->profs["bsort"].data,
              m->profs["pe_total"].data, m->profs["pe_avail"].data, m->profs["pe_bg"].data,
              m->profs["zsort"].data);
+
+      calcpebudget(fields->w->data, fields->sd["tmp1"]->data,
+                   m->profs["pe_turb"].data, m->profs["pe_visc"].data, m->profs["pe_bous"].data,
+                   // TODO put the correct value for visc here!!!!!
+                   grid->dzi4, grid->dzhi4, fields->visc);
     }
   }
 
@@ -719,6 +729,164 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
     zsort   [k] /= n;
     pe_bg   [k] /= n;
     pe_avail[k] /= n;
+  }
+
+  return 0;
+}
+
+int cbudget::calcpebudget(double * restrict w, double * restrict b,
+                          double * restrict pe_turb, double * restrict pe_visc, double * restrict pe_bous,
+                          double * restrict dzi4, double * restrict dzhi4, double visc)
+{
+  int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
+  int kstart,kend;
+
+  ii1 = 1;
+  ii2 = 2;
+  ii3 = 3;
+  jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  jj3 = 3*grid->icells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+  kk3 = 3*grid->ijcells;
+  kstart = grid->kstart;
+  kend = grid->kend;
+
+  // calculate the advective transport term
+  // bottom boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + kstart*kk1;
+      pe_turb[kstart] -= ( cg0*(w[ijk-kk1] * (bi0*b[ijk-kk2] + bi1*b[ijk-kk1] + bi2*b[ijk    ] + bi3*b[ijk+kk1]))
+                         + cg1*(w[ijk    ] * (ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1]))
+                         + cg2*(w[ijk+kk1] * (ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2]))
+                         + cg3*(w[ijk+kk2] * (ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3])) )
+                         * dzi4[kstart];
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        pe_turb[k] -= ( cg0*(w[ijk-kk1] * (ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ]))
+                      + cg1*(w[ijk    ] * (ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1]))
+                      + cg2*(w[ijk+kk1] * (ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2]))
+                      + cg3*(w[ijk+kk2] * (ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3])) )
+                      * dzi4[k];
+      }
+
+  // top boundary
+  pe_turb[kend-1] = 0.;
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + (kend-1)*kk1;
+      pe_turb[kend-1] -= ( cg0*(w[ijk-kk1] * (ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ]))
+                         + cg1*(w[ijk    ] * (ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1]))
+                         + cg2*(w[ijk+kk1] * (ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2]))
+                         + cg3*(w[ijk+kk2] * (ti0*b[ijk-kk1] + ti1*b[ijk    ] + ti2*b[ijk+kk1] + ti3*b[ijk+kk2])) )
+                         * dzi4[kend-1];
+    }
+
+  // calculate the diffusion of potential energy
+  double dxidxi = 1./(grid->dx * grid->dx);
+  double dyidyi = 1./(grid->dy * grid->dy);
+
+  // bottom boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + kstart*kk1;
+      pe_visc[kstart] += visc * ( cg0*(bg0*b[ijk-kk2] + bg1*b[ijk-kk1] + bg2*b[ijk    ] + bg3*b[ijk+kk1]) * dzhi4[kstart-1]
+                                + cg1*(cg0*b[ijk-kk2] + cg1*b[ijk-kk1] + cg2*b[ijk    ] + cg3*b[ijk+kk1]) * dzhi4[kstart  ]
+                                + cg2*(cg0*b[ijk-kk1] + cg1*b[ijk    ] + cg2*b[ijk+kk1] + cg3*b[ijk+kk2]) * dzhi4[kstart+1]
+                                + cg3*(cg0*b[ijk    ] + cg1*b[ijk+kk1] + cg2*b[ijk+kk2] + cg3*b[ijk+kk3]) * dzhi4[kstart+2] )
+                                * dzi4[kstart];
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        pe_visc[k] += visc * ( cg0*(cg0*b[ijk-kk3] + cg1*b[ijk-kk2] + cg2*b[ijk-kk1] + cg3*b[ijk    ]) * dzhi4[k-1]
+                             + cg1*(cg0*b[ijk-kk2] + cg1*b[ijk-kk1] + cg2*b[ijk    ] + cg3*b[ijk+kk1]) * dzhi4[k  ]
+                             + cg2*(cg0*b[ijk-kk1] + cg1*b[ijk    ] + cg2*b[ijk+kk1] + cg3*b[ijk+kk2]) * dzhi4[k+1]
+                             + cg3*(cg0*b[ijk    ] + cg1*b[ijk+kk1] + cg2*b[ijk+kk2] + cg3*b[ijk+kk3]) * dzhi4[k+2] )
+                             * dzi4[k];
+      }
+
+  // top boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + (kend-1)*kk1;
+      pe_visc[kend-1] += visc * ( cg0*(cg0*b[ijk-kk3] + cg1*b[ijk-kk2] + cg2*b[ijk-kk1] + cg3*b[ijk    ]) * dzhi4[kend-2]
+                                + cg1*(cg0*b[ijk-kk2] + cg1*b[ijk-kk1] + cg2*b[ijk    ] + cg3*b[ijk+kk1]) * dzhi4[kend-1]
+                                + cg2*(cg0*b[ijk-kk1] + cg1*b[ijk    ] + cg2*b[ijk+kk1] + cg3*b[ijk+kk2]) * dzhi4[kend  ]
+                                + cg3*(tg0*b[ijk-kk1] + tg1*b[ijk    ] + tg2*b[ijk+kk1] + tg3*b[ijk+kk2]) * dzhi4[kend+1] )
+                                * dzi4[kend-1];
+    }
+
+  // calculate the Boussinesq term (2*kappa*db/dz)
+  // bottom boundary
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + kstart*kk1;
+      pe_bous[kstart] -= 2.*visc * ( cg0*(bi0*b[ijk-kk2] + bi1*b[ijk-kk1] + bi2*b[ijk    ] + bi3*b[ijk+kk1])
+                                   + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                                   + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                                   + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) )
+                                   * dzi4[kstart];
+    }
+
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj1 + k*kk1;
+        pe_bous[k] -= 2.*visc * ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
+                                + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                                + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                                + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) )
+                                * dzi4[k];
+      }
+
+  // top boundary
+  pe_turb[kend-1] = 0.;
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jj1 + (kend-1)*kk1;
+      pe_bous[kend-1] -= 2.*visc * ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
+                                   + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                                   + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                                   + cg3*(ti0*b[ijk-kk1] + ti1*b[ijk    ] + ti2*b[ijk+kk1] + ti3*b[ijk+kk2]) )
+                                   * dzi4[kend-1];
+    }
+
+  master->sum(pe_turb, grid->kcells);
+  master->sum(pe_visc, grid->kcells);
+  master->sum(pe_bous, grid->kcells);
+
+  int n = grid->itot*grid->jtot;
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    pe_turb[k] /= n;
+    pe_visc[k] /= n;
   }
 
   return 0;
