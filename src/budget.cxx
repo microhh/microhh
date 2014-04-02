@@ -118,11 +118,11 @@ int cbudget::create()
   if(model->thermo->getsw() != "0")
   {
     // add the profiles for the potential energy budget to the statistics
-    stats->addprof("bsort"   , "Sorted buoyancy", "m s-2", "z");
-    stats->addprof("zsort"   , "Height diff buoyancy and sorted buoyancy", "m", "z");
-    stats->addprof("pe_total", "Total potential energy" , "m2 s-2", "z");
-    stats->addprof("pe_avail", "Available potential energy" , "m2 s-2", "z");
-    stats->addprof("pe_bg"   , "Background potential energy" , "m2 s-2", "z");
+    stats->addprof("bsort", "Sorted buoyancy", "m s-2", "z");
+    stats->addprof("zsort", "Height diff buoyancy and sorted buoyancy", "m", "z");
+    stats->addprof("pe"   , "Total potential energy", "m2 s-2", "z");
+    stats->addprof("ape"  , "Available potential energy", "m2 s-2", "z");
+    stats->addprof("bpe"  , "Background potential energy", "m2 s-2", "z");
 
     // add the budget terms
     stats->addprof("pe_turb", "Turbulent transport term in potential energy budget", "m2 s-3", "z");
@@ -176,7 +176,7 @@ int cbudget::execstats(mask *m)
       stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
       calcpe(fields->sd["tmp1"]->data, grid->z,
              m->profs["bsort"].data,
-             m->profs["pe_total"].data, m->profs["pe_avail"].data, m->profs["pe_bg"].data,
+             m->profs["pe"].data, m->profs["ape"].data, m->profs["bpe"].data,
              m->profs["zsort"].data);
 
       calcpebudget(fields->w->data, fields->sd["tmp1"]->data,
@@ -755,6 +755,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
 
   // calculate the advective transport term
   // bottom boundary
+  pe_turb[kstart] = 0.;
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -768,6 +769,8 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; k++)
+  {
+    pe_turb[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -779,6 +782,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
                       + cg3*(w[ijk+kk2] * (ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3])) )
                       * dzi4[k];
       }
+  }
 
   // top boundary
   pe_turb[kend-1] = 0.;
@@ -795,10 +799,8 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
     }
 
   // calculate the diffusion of potential energy
-  double dxidxi = 1./(grid->dx * grid->dx);
-  double dyidyi = 1./(grid->dy * grid->dy);
-
   // bottom boundary
+  pe_visc[kstart] = 0.;
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -812,6 +814,8 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; k++)
+  {
+    pe_visc[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -823,8 +827,10 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
                              + cg3*(cg0*b[ijk    ] + cg1*b[ijk+kk1] + cg2*b[ijk+kk2] + cg3*b[ijk+kk3]) * dzhi4[k+2] )
                              * dzi4[k];
       }
+  }
 
   // top boundary
+  pe_visc[kend-1] = 0.;
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -839,6 +845,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
 
   // calculate the Boussinesq term (2*kappa*db/dz)
   // bottom boundary
+  pe_bous[kstart] = 0.;
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -852,6 +859,8 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; k++)
+  {
+    pe_bous[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -863,9 +872,10 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
                                 + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) )
                                 * dzi4[k];
       }
+  }
 
   // top boundary
-  pe_turb[kend-1] = 0.;
+  pe_bous[kend-1] = 0.;
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -887,6 +897,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b,
   {
     pe_turb[k] /= n;
     pe_visc[k] /= n;
+    pe_bous[k] /= n;
   }
 
   return 0;
