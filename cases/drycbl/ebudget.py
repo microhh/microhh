@@ -8,7 +8,7 @@ stats = netCDF4.Dataset("drycbl.default.0000000.nc","r")
 
 t = stats.variables["t"][:]
 end   = t.size
-start = t.size-4
+start = t.size-10
 
 z  = stats.variables["z"][:]
 zh = stats.variables["zh"][:]
@@ -28,7 +28,10 @@ pe_sum  = pe_turb + pe_visc + pe_bous + pe_buoy
 
 e_sum = tke_sum + pe_sum
 
-dz = zh[1::] - zh[0:-1]
+#dz = zh[1::] - zh[0:-1]
+#pe_int  = numpy.sum(dz[:]*pe_sum [:])
+#tke_int = numpy.sum(dz[:]*tke_sum[:])
+#print(pe_int, tke_int, pe_int+tke_int)
 
 # enable LaTeX plotting
 rc('font',**{'family':'serif','serif':['Palatino']})
@@ -42,7 +45,7 @@ plot(tke_pres, z, 'g-' , label='pres')
 plot(tke_diss, z, 'm-' , label='diss')
 plot(tke_buoy, z, 'c-' , label='buoy')
 plot(tke_sum , z, 'k--', label='sum' )
-xlabel(r'dTKE/dt [m$^2$~s$^{-3}$]')
+xlabel(r'de$_k$/dt [m$^2$~s$^{-3}$]')
 ylabel(r'z [m]')
 legend(loc=0, frameon=False)
 ylim(0,0.5)
@@ -53,16 +56,16 @@ plot(pe_visc, z, 'r-' , label='visc')
 plot(pe_bous, z, 'g-' , label='bous')
 plot(pe_buoy, z, 'c-' , label='buoy')
 plot(pe_sum , z, 'k--', label='sum' )
-xlabel(r'dPE/dt [m$^2$~s$^{-3}$]')
+xlabel(r'de$_p$/dt [m$^2$~s$^{-3}$]')
 ylabel(r'z [m]')
 legend(loc=0, frameon=False)
 ylim(0,0.5)
 
 figure()
-plot(tke_sum, z, 'r-', label='tke')
-plot(pe_sum , z, 'b-', label='pe' )
+plot(tke_sum, z, 'r-', label='e$_k$')
+plot(pe_sum , z, 'b-', label='e$_p$' )
 plot(e_sum  , z, 'g-', label='e'  )
-xlabel(r'PE/dt [m$^2$~s$^{-3}$]')
+xlabel(r'de/dt [m$^2$~s$^{-3}$]')
 ylabel(r'z [m]')
 legend(loc=0, frameon=False)
 ylim(0,0.5)
