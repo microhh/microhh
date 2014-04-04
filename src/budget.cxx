@@ -482,9 +482,24 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
   }
 
   // 4. CALCULATE THE PRESSURE TRANSPORT TERM
-  n = grid->imax*grid->jmax;
+  // bottom boundary
+  k = grid->kstart;
+  w2_pres [k] = 0.;
+  tke_pres[k] = 0.;
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      tke_pres[k] -= ( cg0*((bi0*p[ijk-kk2] + bi1*p[ijk-kk1] + bi2*p[ijk    ] + bi3*p[ijk+kk1])*w[ijk-kk1])
+                     + cg1*((ci0*p[ijk-kk2] + ci1*p[ijk-kk1] + ci2*p[ijk    ] + ci3*p[ijk+kk1])*w[ijk    ])
+                     + cg2*((ci0*p[ijk-kk1] + ci1*p[ijk    ] + ci2*p[ijk+kk1] + ci3*p[ijk+kk2])*w[ijk+kk1])
+                     + cg3*((ci0*p[ijk    ] + ci1*p[ijk+kk1] + ci2*p[ijk+kk2] + ci3*p[ijk+kk3])*w[ijk+kk2]) ) * dzi4[k];
+    }
+
+  // interior
+  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     w2_pres [k] = 0.;
     tke_pres[k] = 0.;
@@ -500,6 +515,24 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                        + cg3*((ci0*p[ijk    ] + ci1*p[ijk+kk1] + ci2*p[ijk+kk2] + ci3*p[ijk+kk3])*w[ijk+kk2]) ) * dzi4[k];
       }
   }
+
+  // top boundary
+  k = grid->kend-1;
+  w2_pres [k] = 0.;
+  tke_pres[k] = 0.;
+
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      tke_pres[k] -= ( cg0*((ci0*p[ijk-kk3] + ci1*p[ijk-kk2] + ci2*p[ijk-kk1] + ci3*p[ijk    ])*w[ijk-kk1])
+                     + cg1*((ci0*p[ijk-kk2] + ci1*p[ijk-kk1] + ci2*p[ijk    ] + ci3*p[ijk+kk1])*w[ijk    ])
+                     + cg2*((ci0*p[ijk-kk1] + ci1*p[ijk    ] + ci2*p[ijk+kk1] + ci3*p[ijk+kk2])*w[ijk+kk1])
+                     + cg3*((ti0*p[ijk-kk1] + ti1*p[ijk    ] + ti2*p[ijk+kk1] + ti3*p[ijk+kk2])*w[ijk+kk2]) ) * dzi4[k];
+    }
+ 
+  // calculate the vertical velocity term, which is zero at the boundaries
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -512,16 +545,16 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                          + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])*p[ijk+kk1]) ) * dzhi4[k];
       }
 
+  master->sum(w2_pres , grid->kcells);
+  master->sum(tke_pres, grid->kcells);
+
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
     w2_pres [k] /= n;
     tke_pres[k] /= n;
   }
 
-  grid->getprof(w2_pres , grid->kcells);
-  grid->getprof(tke_pres, grid->kcells);
-
-  // calculate the viscous transport term
+  // 5. CALCULATE THE VISCOUS TRANSPORT TERM
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_visc [k] = 0.;
