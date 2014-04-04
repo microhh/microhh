@@ -260,7 +260,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                            double * restrict u2_rdstr, double * restrict v2_rdstr, double * restrict w2_rdstr,
                            double * restrict dzi4, double * restrict dzhi4, double visc)
 {
-  // get w on the x and y location
+  // 1. INTERPOLATE THE VERTICAL VELOCITY TO U AND V LOCATION
   const int wloc [3] = {0,0,1};
   const int wxloc[3] = {1,0,1};
   const int wyloc[3] = {0,1,1};
@@ -280,10 +280,36 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
   kk2 = 2*grid->ijcells;
   kk3 = 3*grid->ijcells;
 
-  double n = grid->imax*grid->jmax;
+  double n = grid->itot*grid->jtot;
 
-  // calculate the shear term u'w*dumean/dz
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  // 2. CALCULATE THE SHEAR TERM u'w*dumean/dz
+  // bottom boundary
+  int k = grid->kstart;
+  u2_shear [k] = 0.;
+  v2_shear [k] = 0.;
+  tke_shear[k] = 0.;
+
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      u2_shear[k] -= 2.*(u[ijk]-umean[k])*(ci0*wx[ijk-kk1] + ci1*wx[ijk] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2])
+                   * ( cg0*(bi0*umean[k-2] + bi1*umean[k-1] + bi2*umean[k  ] + bi3*umean[k+1])
+                     + cg1*(ci0*umean[k-2] + ci1*umean[k-1] + ci2*umean[k  ] + ci3*umean[k+1])
+                     + cg2*(ci0*umean[k-1] + ci1*umean[k  ] + ci2*umean[k+1] + ci3*umean[k+2])
+                     + cg3*(ci0*umean[k  ] + ci1*umean[k+1] + ci2*umean[k+2] + ci3*umean[k+3])) * dzi4[k];
+
+      v2_shear[k] -= 2.*(v[ijk]-vmean[k])*(ci0*wy[ijk-kk1] + ci1*wy[ijk] + ci2*wy[ijk+kk1] + ci3*wy[ijk+kk2])
+                   * ( cg0*(bi0*vmean[k-2] + bi1*vmean[k-1] + bi2*vmean[k  ] + bi3*vmean[k+1])
+                     + cg1*(ci0*vmean[k-2] + ci1*vmean[k-1] + ci2*vmean[k  ] + ci3*vmean[k+1])
+                     + cg2*(ci0*vmean[k-1] + ci1*vmean[k  ] + ci2*vmean[k+1] + ci3*vmean[k+2])
+                     + cg3*(ci0*vmean[k  ] + ci1*vmean[k+1] + ci2*vmean[k+2] + ci3*vmean[k+3])) * dzi4[k];
+    }
+  tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
+
+  // interior
+  for(int k=grid->kstart-1; k<grid->kend-1; ++k)
   {
     u2_shear [k] = 0.;
     v2_shear [k] = 0.;
@@ -308,6 +334,36 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
     tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
   }
 
+  // top boundary
+  k = grid->kend-1;
+
+  u2_shear [k] = 0.;
+  v2_shear [k] = 0.;
+  tke_shear[k] = 0.;
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      u2_shear[k] -= 2.*(u[ijk]-umean[k])*(ci0*wx[ijk-kk1] + ci1*wx[ijk] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2])
+                   * ( cg0*(ci0*umean[k-3] + ci1*umean[k-2] + ci2*umean[k-1] + ci3*umean[k  ])
+                     + cg1*(ci0*umean[k-2] + ci1*umean[k-1] + ci2*umean[k  ] + ci3*umean[k+1])
+                     + cg2*(ci0*umean[k-1] + ci1*umean[k  ] + ci2*umean[k+1] + ci3*umean[k+2])
+                     + cg3*(ti0*umean[k  ] + ti1*umean[k+1] + ti2*umean[k+2] + ti3*umean[k+3])) * dzi4[k];
+
+      v2_shear[k] -= 2.*(v[ijk]-vmean[k])*(ci0*wy[ijk-kk1] + ci1*wy[ijk] + ci2*wy[ijk+kk1] + ci3*wy[ijk+kk2])
+                   * ( cg0*(ci0*vmean[k-3] + ci1*vmean[k-2] + ci2*vmean[k-1] + ci3*vmean[k  ])
+                     + cg1*(ci0*vmean[k-2] + ci1*vmean[k-1] + ci2*vmean[k  ] + ci3*vmean[k+1])
+                     + cg2*(ci0*vmean[k-1] + ci1*vmean[k  ] + ci2*vmean[k+1] + ci3*vmean[k+2])
+                     + cg3*(ti0*vmean[k-1] + ti1*vmean[k  ] + ti2*vmean[k+1] + ti3*vmean[k+2])) * dzi4[k];
+    }
+  tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
+
+  // create the profiles
+  master->sum(u2_shear, grid->kcells);
+  master->sum(v2_shear, grid->kcells);
+  master->sum(tke_shear, grid->kcells);
+
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_shear [k] /= n;
@@ -315,12 +371,36 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
     tke_shear[k] /= n;
   }
 
-  grid->getprof(u2_shear , grid->kcells);
-  grid->getprof(v2_shear , grid->kcells);
-  grid->getprof(tke_shear, grid->kcells);
+  // 3. CALCULATE TURBULENT FLUXES
+  // bottom boundary
+  k = grid->kstart;
 
-  // calculate the turbulent transport term
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  u2_turb [k] = 0.;
+  v2_turb [k] = 0.;
+  w2_turb [k] = 0.;
+  tke_turb[k] = 0.;
+
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      u2_turb[k]  -= ( cg0*((bi0*std::pow(u[ijk-kk2]-umean[k-2],2.) + bi1*std::pow(u[ijk-kk1]-umean[k-1],2.) + bi2*std::pow(u[ijk    ]-umean[k  ],2.) + bi3*std::pow(u[ijk+kk1]-umean[k+1],2.))*wx[ijk-kk1])
+                     + cg1*((ci0*std::pow(u[ijk-kk2]-umean[k-2],2.) + ci1*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci2*std::pow(u[ijk    ]-umean[k  ],2.) + ci3*std::pow(u[ijk+kk1]-umean[k+1],2.))*wx[ijk    ])
+                     + cg2*((ci0*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci1*std::pow(u[ijk    ]-umean[k  ],2.) + ci2*std::pow(u[ijk+kk1]-umean[k+1],2.) + ci3*std::pow(u[ijk+kk2]-umean[k+2],2.))*wx[ijk+kk1])
+                     + cg3*((ci0*std::pow(u[ijk    ]-umean[k  ],2.) + ci1*std::pow(u[ijk+kk1]-umean[k+1],2.) + ci2*std::pow(u[ijk+kk2]-umean[k+2],2.) + ci3*std::pow(u[ijk+kk3]-umean[k+3],2.))*wx[ijk+kk2]) ) * dzi4[k];
+
+      v2_turb[k]  -= ( cg0*((bi0*std::pow(v[ijk-kk2]-vmean[k-2],2.) + bi1*std::pow(v[ijk-kk1]-vmean[k-1],2.) + bi2*std::pow(v[ijk    ]-vmean[k  ],2.) + bi3*std::pow(v[ijk+kk1]-vmean[k+1],2.))*wy[ijk-kk1])
+                     + cg1*((ci0*std::pow(v[ijk-kk2]-vmean[k-2],2.) + ci1*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ci2*std::pow(v[ijk    ]-vmean[k  ],2.) + ci3*std::pow(v[ijk+kk1]-vmean[k+1],2.))*wy[ijk    ]) 
+                     + cg2*((ci0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ci1*std::pow(v[ijk    ]-vmean[k  ],2.) + ci2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + ci3*std::pow(v[ijk+kk2]-vmean[k+2],2.))*wy[ijk+kk1]) 
+                     + cg3*((ci0*std::pow(v[ijk    ]-vmean[k  ],2.) + ci1*std::pow(v[ijk+kk1]-vmean[k+1],2.) + ci2*std::pow(v[ijk+kk2]-vmean[k+2],2.) + ci3*std::pow(v[ijk+kk3]-vmean[k+3],2.))*wy[ijk+kk2]) ) * dzi4[k];
+
+      tke_turb[k] -= 0.5*( cg0*std::pow(w[ijk-kk1], 3.) + cg1*std::pow(w[ijk], 3.) + cg2*std::pow(w[ijk+kk1], 3.) + cg3*std::pow(w[ijk+kk2], 3.)) * dzi4[k];
+    }
+  tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
+
+  // interior
+  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     u2_turb [k] = 0.;
     v2_turb [k] = 0.;
@@ -346,6 +426,35 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
       }
     tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
   }
+
+  // top boundary
+  k = grid->kend-1;
+
+  u2_turb [k] = 0.;
+  v2_turb [k] = 0.;
+  w2_turb [k] = 0.;
+  tke_turb[k] = 0.;
+
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      u2_turb[k]  -= ( cg0*((ci0*std::pow(u[ijk-kk3]-umean[k-3],2.) + ci1*std::pow(u[ijk-kk2]-umean[k-2],2.) + ci2*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci3*std::pow(u[ijk    ]-umean[k  ],2.))*wx[ijk-kk1])
+                     + cg1*((ci0*std::pow(u[ijk-kk2]-umean[k-2],2.) + ci1*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci2*std::pow(u[ijk    ]-umean[k  ],2.) + ci3*std::pow(u[ijk+kk1]-umean[k+1],2.))*wx[ijk    ])
+                     + cg2*((ci0*std::pow(u[ijk-kk1]-umean[k-1],2.) + ci1*std::pow(u[ijk    ]-umean[k  ],2.) + ci2*std::pow(u[ijk+kk1]-umean[k+1],2.) + ci3*std::pow(u[ijk+kk2]-umean[k+2],2.))*wx[ijk+kk1])
+                     + cg3*((ti0*std::pow(u[ijk-kk1]-umean[k-1],2.) + ti1*std::pow(u[ijk    ]-umean[k  ],2.) + ti2*std::pow(u[ijk+kk1]-umean[k+1],2.) + ti3*std::pow(u[ijk+kk2]-umean[k+2],2.))*wx[ijk+kk1]) ) * dzi4[k];
+
+      v2_turb[k]  -= ( cg0*((ci0*std::pow(v[ijk-kk3]-vmean[k-3],2.) + ci1*std::pow(v[ijk-kk2]-vmean[k-2],2.) + ci2*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ci3*std::pow(v[ijk    ]-vmean[k  ],2.))*wy[ijk-kk1]) 
+                     + cg1*((ci0*std::pow(v[ijk-kk2]-vmean[k-2],2.) + ci1*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ci2*std::pow(v[ijk    ]-vmean[k  ],2.) + ci3*std::pow(v[ijk+kk1]-vmean[k+1],2.))*wy[ijk    ]) 
+                     + cg2*((ci0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ci1*std::pow(v[ijk    ]-vmean[k  ],2.) + ci2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + ci3*std::pow(v[ijk+kk2]-vmean[k+2],2.))*wy[ijk+kk1]) 
+                     + cg3*((ti0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + ti1*std::pow(v[ijk    ]-vmean[k  ],2.) + ti2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + ti3*std::pow(v[ijk+kk2]-vmean[k+2],2.))*wy[ijk+kk1]) ) * dzi4[k];
+
+      tke_turb[k] -= 0.5*( cg0*std::pow(w[ijk-kk1], 3.) + cg1*std::pow(w[ijk], 3.) + cg2*std::pow(w[ijk+kk1], 3.) + cg3*std::pow(w[ijk+kk2], 3.)) * dzi4[k];
+    }
+  tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
+
+  // calculate the vertical velocity term, which is zero at the boundaries
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -358,7 +467,13 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                       + cg3*(ci0*std::pow(w[ijk    ],3.) + ci1*std::pow(w[ijk+kk1],3.) + ci2*std::pow(w[ijk+kk2],3.) + ci3*std::pow(w[ijk+kk3],3.)) ) * dzhi4[k];
       }
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  // calculate the profiles
+  master->sum(u2_turb , grid->kcells);
+  master->sum(v2_turb , grid->kcells);
+  master->sum(w2_turb , grid->kcells);
+  master->sum(tke_turb, grid->kcells);
+
+  for(k=grid->kstart; k<grid->kend; ++k)
   {
     u2_turb [k] /= n;
     v2_turb [k] /= n;
@@ -366,12 +481,9 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
     tke_turb[k] /= n;
   }
 
-  grid->getprof(u2_turb , grid->kcells);
-  grid->getprof(v2_turb , grid->kcells);
-  grid->getprof(w2_turb , grid->kcells);
-  grid->getprof(tke_turb, grid->kcells);
+  // 4. CALCULATE THE PRESSURE TRANSPORT TERM
+  n = grid->imax*grid->jmax;
 
-  // calculate the pressure transport term
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
     w2_pres [k] = 0.;
