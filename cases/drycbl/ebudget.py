@@ -8,7 +8,7 @@ stats = netCDF4.Dataset("drycbl.default.0000000.nc","r")
 
 t = stats.variables["t"][:]
 end   = t.size
-start = t.size-10
+start = t.size-1
 
 z  = stats.variables["z"][:]
 zh = stats.variables["zh"][:]

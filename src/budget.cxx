@@ -670,7 +670,7 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        pe_total[k] += b[ijk] * z[k];
+        pe_total[k] -= b[ijk] * z[k];
       }
   }
 
@@ -685,7 +685,7 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
   double zsortval;
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
-    zsort[k]    = 0.;
+    zsort   [k] = 0.;
     pe_bg   [k] = 0.;
     pe_avail[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -714,10 +714,9 @@ int cbudget::calcpe(double * restrict b, double * restrict z,
         else
           zsortval = z[ks];
 
-        // TODO create an interpolation instead of this nearest neighbor approach
         zsort   [k] += zsortval;
-        pe_bg   [k] += zsortval*b[ijk];
-        pe_avail[k] += (zsortval-z[k])*b[ijk];
+        pe_bg   [k] -= zsortval*b[ijk];
+        pe_avail[k] -= (z[k]-zsortval)*b[ijk];
       }
   }
 
@@ -765,7 +764,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict bz, double * re
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      pe_bous[kstart] -= 2.*visc * ( cg0*(bi0*bz[ijk-kk2] + bi1*bz[ijk-kk1] + bi2*bz[ijk    ] + bi3*bz[ijk+kk1])
+      pe_bous[kstart] += 2.*visc * ( cg0*(bi0*bz[ijk-kk2] + bi1*bz[ijk-kk1] + bi2*bz[ijk    ] + bi3*bz[ijk+kk1])
                                    + cg1*(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
                                    + cg2*(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
                                    + cg3*(ci0*bz[ijk    ] + ci1*bz[ijk+kk1] + ci2*bz[ijk+kk2] + ci3*bz[ijk+kk3]) )
@@ -780,7 +779,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict bz, double * re
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        pe_bous[k] -= 2.*visc * ( cg0*(ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ])
+        pe_bous[k] += 2.*visc * ( cg0*(ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ])
                                 + cg1*(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
                                 + cg2*(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
                                 + cg3*(ci0*bz[ijk    ] + ci1*bz[ijk+kk1] + ci2*bz[ijk+kk2] + ci3*bz[ijk+kk3]) )
@@ -795,7 +794,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict bz, double * re
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
-      pe_bous[kend-1] -= 2.*visc * ( cg0*(ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ])
+      pe_bous[kend-1] += 2.*visc * ( cg0*(ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ])
                                    + cg1*(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
                                    + cg2*(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
                                    + cg3*(ti0*bz[ijk-kk1] + ti1*bz[ijk    ] + ti2*bz[ijk+kk1] + ti3*bz[ijk+kk2]) )
@@ -810,7 +809,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict bz, double * re
     {
       ij  = i + j*jj1;
       ijk = i + j*jj1 + (kend-1)*kk1;
-      bztop[ij] = zsize*(ci0*bz[ijk-kk1] + ci1*bz[ijk] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2]);
+      bztop[ij] = -zsize*(ci0*bz[ijk-kk1] + ci1*bz[ijk] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2]);
     }
 
   // calculate the potential energy
@@ -820,7 +819,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict bz, double * re
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
-        bz[ijk] = bz[ijk] * z[k];
+        bz[ijk] = -bz[ijk] * z[k];
       }
 
   // calculate the ghost cells at the bottom, making use of the fact that bz = 0
