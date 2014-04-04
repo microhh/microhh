@@ -871,7 +871,6 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
   {
     u2_rdstr [k] = 0.;
     v2_rdstr [k] = 0.;
-    w2_rdstr [k] = 0.;
 
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -890,7 +889,10 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                         + cg3*((ci0*(v[ijk    ]-vmean[k]) + ci1*(v[ijk+jj1]-vmean[k]) + ci2*(v[ijk+jj2]-vmean[k]) + ci3*(v[ijk+jj3]-vmean[k]))) ) * cgi*dyi;
       }
   }
+
   for(int k=grid->kstart+1; k<grid->kend; ++k)
+  {
+    w2_rdstr[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
@@ -902,17 +904,18 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                        + cg2*(ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])
                        + cg3*(ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) ) * dzhi4[k];
       }
+  }
+
+  master->sum(u2_rdstr , grid->kcells);
+  master->sum(v2_rdstr , grid->kcells);
+  master->sum(w2_rdstr , grid->kcells);
 
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
-    u2_rdstr [k] /= n;
-    v2_rdstr [k] /= n;
-    w2_rdstr [k] /= n;
+    u2_rdstr[k] /= n;
+    v2_rdstr[k] /= n;
+    w2_rdstr[k] /= n;
   }
-
-  grid->getprof(u2_rdstr , grid->kcells);
-  grid->getprof(v2_rdstr , grid->kcells);
-  grid->getprof(w2_rdstr , grid->kcells);
 
   return 0;
 }
