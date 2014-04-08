@@ -1317,7 +1317,7 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
-        bz[ijk] = -b[ijk] * bz[k];
+        bz[ijk] = -b[ijk] * bz[ijk];
       }
 
   // calculate the ghost cells at the bottom, making use of the fact that bz = 0

@@ -31,13 +31,6 @@ bpe_visc = average(stats.variables["bpe_visc"][start:end,:], 0)
 bpe_diss = average(stats.variables["bpe_diss"][start:end,:], 0)
 bpe_sum  = bpe_turb + bpe_visc + bpe_diss
 
-e_sum = tke_sum + pe_sum
-
-#dz = zh[1::] - zh[0:-1]
-#pe_int  = numpy.sum(dz[:]*pe_sum [:])
-#tke_int = numpy.sum(dz[:]*tke_sum[:])
-#print(pe_int, tke_int, pe_int+tke_int)
-
 # enable LaTeX plotting
 rc('font',**{'family':'serif','serif':['Palatino']})
 rc('text', usetex=True)
@@ -69,19 +62,10 @@ ylim(0,0.5)
 figure()
 plot(bpe_turb, z, 'b-', label='turb')
 plot(bpe_visc, z, 'g-', label='visc')
-plot(bpe_diss, z, 'r-', label='buoy')
+plot(bpe_diss, z, 'r-', label='diss')
 plot(bpe_sum , z, 'k:', label='sum' )
 xlabel(r'de$_p$/dt [m$^2$~s$^{-3}$]')
 ylabel(r'z [m]')
 legend(loc=0, frameon=False)
 ylim(0,0.5)
-
-#figure()
-#plot(tke_sum, z, 'r-', label='e$_k$')
-#plot(pe_sum , z, 'b-', label='e$_p$' )
-#plot(e_sum  , z, 'g-', label='e'  )
-#xlabel(r'de/dt [m$^2$~s$^{-3}$]')
-#ylabel(r'z [m]')
-#legend(loc=0, frameon=False)
-#ylim(0,0.5)
 
