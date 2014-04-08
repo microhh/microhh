@@ -73,14 +73,19 @@ class cbudget
 
     int calctkebudget_buoy(double *, double *, double *, double *);
 
-    int calcpe(double *, double *,
+    int calcpe(double *, double *, double *,
                double *,
                double *, double *, double *,
                double *);
 
-    int calcpebudget(double *, double *, double *,
+    int calcpebudget(double *, double *, double *, double *,
                      double *, double *, double *,
                      double *, double *, double *,
                      double);
+
+    int calcbpebudget(double *, double *, double *, double *,
+                      double *, double *, double *,
+                      double *, double *, double *,
+                      double);
 };
 #endif
