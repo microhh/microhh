@@ -183,7 +183,8 @@ int cbudget::execstats(mask *m)
 
       // calculate the potential energy back, tmp1 contains the buoyancy, tmp2 will contain height that the local buoyancy
       // will reach in the sorted profile
-      calcpe(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->z,
+      calcpe(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->databot, fields->sd["tmp2"]->datatop,
+             grid->z,
              m->profs["bsort"].data,
              m->profs["pe"].data, m->profs["ape"].data, m->profs["bpe"].data,
              m->profs["zsort"].data);
@@ -191,14 +192,14 @@ int cbudget::execstats(mask *m)
 
       // calculate the budget of background potential energy, start with this one, because tmp2 contains the needed height
       // which will be overwritten inside of the routine
-      calcbpebudget(fields->w->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->databot,
+      calcbpebudget(fields->w->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->databot, fields->sd["tmp2"]->datatop,
                     m->profs["bpe_turb"].data, m->profs["bpe_visc"].data, m->profs["bpe_diss"].data,
                     // TODO put the correct value for visc here!!!!!
                     grid->z, grid->dzi4, grid->dzhi4,
                     fields->visc);
 
       // calculate the budget of potential energy
-      calcpebudget(fields->w->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->databot,
+      calcpebudget(fields->w->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->datatop,
                    m->profs["pe_turb"].data, m->profs["pe_visc"].data, m->profs["pe_bous"].data,
                    // TODO put the correct value for visc here!!!!!
                    grid->z, grid->dzi4, grid->dzhi4,
@@ -985,15 +986,19 @@ int cbudget::calctkebudget_buoy(double * restrict w, double * restrict b,
   return 0;
 }
 
-int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restrict z,
+int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restrict zsortbot, double * restrict zsorttop,
+                    double * restrict z,
                     double * restrict bsort,
                     double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg,
                     double * restrict zsortprof)
 {
-  int ijk,jj,kk;
+  int ij,ijk,jj,kk1,kk2,kstart,kend;
 
   jj = grid->icells;
-  kk = grid->ijcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+  kstart = grid->kstart;
+  kend = grid->kend;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
@@ -1002,7 +1007,7 @@ int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restr
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
-        ijk = i + j*jj + k*kk;
+        ijk = i + j*jj + k*kk1;
         pe_total[k] -= b[ijk] * z[k];
       }
   }
@@ -1014,7 +1019,7 @@ int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restr
     pe_total[k] /= n;
 
   // now find out the available potential energy
-  int ks;
+  // int ks;
   double zsortval;
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
@@ -1025,7 +1030,8 @@ int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restr
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
-        ijk = i + j*jj + k*kk;
+        ijk = i + j*jj + k*kk1;
+        /*
         ks  = k;
         if(b[ijk] > bsort[k])
         {
@@ -1046,7 +1052,8 @@ int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restr
         }
         else
           zsortval = z[ks];
-
+          */
+        zsortval = calczsort(b[ijk], bsort, z, k);
         zsort[ijk] = zsortval;
 
         zsortprof[k] += zsortval;
@@ -1066,7 +1073,56 @@ int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restr
     pe_avail [k] /= n;
   }
 
+  // now, calculate the boundary conditions for zsort
+  // bottom bc
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk1;
+      zsortbot[ij] = calczsort(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1], bsort, z, kstart);
+    }
+
+  // top bc
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + (kend-1)*kk1;
+      zsorttop[ij] = calczsort(ci0*b[ijk-kk1] + ci1*b[ijk] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2], bsort, z, kend-1);
+    }
+
   return 0;
+}
+
+double cbudget::calczsort(double b, double * restrict bsort, double * restrict z, int k)
+{
+  double zsortval;
+  int ks = k;
+
+  if(b > bsort[k])
+  {
+    while(b > bsort[ks] && ks < grid->kend-1)
+      ++ks;
+
+    // linearly interpolate the height
+    zsortval = z[ks-1] + (b-bsort[ks-1])/(bsort[ks]-bsort[ks-1]) * (z[ks]-z[ks-1]);
+
+  }
+  else if(b < bsort[k])
+  {
+    while(b < bsort[ks] && ks > grid->kstart)
+      --ks;
+
+    // linearly interpolate the height
+    zsortval = z[ks] + (b-bsort[ks])/(bsort[ks+1]-bsort[ks]) * (z[ks+1]-z[ks]);
+  }
+  else
+    zsortval = z[ks];
+
+  return zsortval;
 }
 
 int cbudget::calcpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
@@ -1279,14 +1335,13 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
   return 0;
 }
 
-int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
+int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bzbot, double * restrict bztop,
                            double * restrict bpe_turb, double * restrict bpe_visc, double * restrict bpe_diss,
                            double * restrict z, double * restrict dzi4, double * restrict dzhi4,
                            double visc)
 {
   int ij,ijk,jj1,kk1,kk2,kk3;
   int kstart,kend;
-  double zsize;
 
   jj1 = 1*grid->icells;
   kk1 = 1*grid->ijcells;
@@ -1294,20 +1349,29 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
   kk3 = 3*grid->ijcells;
   kstart = grid->kstart;
   kend = grid->kend;
-  zsize = grid->zsize;
 
   // calculate the background potential energy field, the bz field contains the heights that a parcel with the 
   // given buoyancy will reach in the sorted profile
 
-  // first, before destroying the field, calculate the potential energy at the top
-  // \TODO FIX THIS FIX THIS FIX THIS FIX THIS, THE BC IS NOT CORRECT BUT WILL WORK FINE FOR CBL
+  // first, calculate the potential energy at the bottom, the bot field contains the zsort at the bottom boundary
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ij  = i + j*jj1;
+      ijk = i + j*jj1 + kstart*kk1;
+      bzbot[ij] *= -(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1]);
+    }
+
+
+  // calculate the potential energy at the top, the top field contains the zsort at the top boundary
   for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj1;
       ijk = i + j*jj1 + (kend-1)*kk1;
-      bztop[ij] = -zsize*(ci0*b[ijk-kk1] + ci1*b[ijk] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2]);
+      bztop[ij] *= -(ci0*b[ijk-kk1] + ci1*b[ijk] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2]);
     }
 
   // calculate the potential energy
@@ -1320,15 +1384,15 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
         bz[ijk] = -b[ijk] * bz[ijk];
       }
 
-  // calculate the ghost cells at the bottom, making use of the fact that bz = 0
+  // calculate the ghost cells at the bottom
   for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj1;
       ijk = i + j*jj1 + kstart*kk1;
-      bz[ijk-kk1] = - 2.*bz[ijk] + (1./3.)*bz[ijk+kk1];
-      bz[ijk-kk2] = - 9.*bz[ijk] + 2.*bz[ijk+kk1];
+      bz[ijk-kk1] = (8./3.)*bzbot[ij] - 2.*bz[ijk] + (1./3.)*bz[ijk+kk1];
+      bz[ijk-kk2] = 8.*bzbot[ij] - 9.*bz[ijk] + 2.*bz[ijk+kk1];
     }
 
   // calculate the ghost cells at the top
