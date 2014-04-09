@@ -1340,10 +1340,15 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
                            double * restrict z, double * restrict dzi4, double * restrict dzhi4,
                            double visc)
 {
-  int ij,ijk,jj1,kk1,kk2,kk3;
+  int ij,ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;
 
+  ii1 = 1;
+  ii2 = 2;
+  ii3 = 3;
   jj1 = 1*grid->icells;
+  jj2 = 2*grid->icells;
+  jj3 = 3*grid->icells;
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
   kk3 = 3*grid->ijcells;
@@ -1495,6 +1500,86 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
                                  + cg3*(tg0*bz[ijk-kk1] + tg1*bz[ijk    ] + tg2*bz[ijk+kk1] + tg3*bz[ijk+kk2]) * dzhi4[kend+1] )
                                  * dzi4[kend-1];
     }
+
+  // calculate the dissipation term
+  double dxi,dyi;
+  dxi = 1./grid->dx;
+  dyi = 1./grid->dy;
+
+  bpe_diss[kstart] = 0.;
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk  = i + j*jj1 + kstart*kk1;
+      bpe_diss[kstart] += (
+                         std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
+                                   + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])
+                                   + cg2*(ci0*b[ijk-ii1] + ci1*b[ijk    ] + ci2*b[ijk+ii1] + ci3*b[ijk+ii2])
+                                   + cg3*(ci0*b[ijk    ] + ci1*b[ijk+ii1] + ci2*b[ijk+ii2] + ci3*b[ijk+ii3]) ) * cgi*dxi, 2.)
+
+                       + std::pow( ( cg0*(ci0*b[ijk-jj3] + ci1*b[ijk-jj2] + ci2*b[ijk-jj1] + ci3*b[ijk    ])
+                                   + cg1*(ci0*b[ijk-jj2] + ci1*b[ijk-jj1] + ci2*b[ijk    ] + ci3*b[ijk+jj1])
+                                   + cg2*(ci0*b[ijk-jj1] + ci1*b[ijk    ] + ci2*b[ijk+jj1] + ci3*b[ijk+jj2])
+                                   + cg3*(ci0*b[ijk    ] + ci1*b[ijk+jj1] + ci2*b[ijk+jj2] + ci3*b[ijk+jj3]) ) * cgi*dyi, 2.)
+
+                       + std::pow( ( cg0*(bi0*b[ijk-kk2] + bi1*b[ijk-kk1] + bi2*b[ijk    ] + bi3*b[ijk+kk1])
+                                   + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                                   + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                                   + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) ) * dzi4[kstart], 2.) );
+    }
+
+  // interior
+  for(int k=grid->kstart+1; k<grid->kend-1; k++)
+  {
+    bpe_diss[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj1 + k*kk1;
+        bpe_diss[k] += (
+                        std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
+                                  + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])
+                                  + cg2*(ci0*b[ijk-ii1] + ci1*b[ijk    ] + ci2*b[ijk+ii1] + ci3*b[ijk+ii2])
+                                  + cg3*(ci0*b[ijk    ] + ci1*b[ijk+ii1] + ci2*b[ijk+ii2] + ci3*b[ijk+ii3]) ) * cgi*dxi, 2.)
+
+                      + std::pow( ( cg0*(ci0*b[ijk-jj3] + ci1*b[ijk-jj2] + ci2*b[ijk-jj1] + ci3*b[ijk    ])
+                                  + cg1*(ci0*b[ijk-jj2] + ci1*b[ijk-jj1] + ci2*b[ijk    ] + ci3*b[ijk+jj1])
+                                  + cg2*(ci0*b[ijk-jj1] + ci1*b[ijk    ] + ci2*b[ijk+jj1] + ci3*b[ijk+jj2])
+                                  + cg3*(ci0*b[ijk    ] + ci1*b[ijk+jj1] + ci2*b[ijk+jj2] + ci3*b[ijk+jj3]) ) * cgi*dyi, 2.)
+
+                      + std::pow( ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
+                                  + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                                  + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                                  + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) ) * dzi4[k], 2.) );
+      }
+  }
+
+  // top
+  bpe_diss[kend-1] = 0.;
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk  = i + j*jj1 + (kend-1)*kk1;
+      bpe_diss[kend-1] += (
+                      std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
+                                + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])
+                                + cg2*(ci0*b[ijk-ii1] + ci1*b[ijk    ] + ci2*b[ijk+ii1] + ci3*b[ijk+ii2])
+                                + cg3*(ci0*b[ijk    ] + ci1*b[ijk+ii1] + ci2*b[ijk+ii2] + ci3*b[ijk+ii3]) ) * cgi*dxi, 2.)
+
+                    + std::pow( ( cg0*(ci0*b[ijk-jj3] + ci1*b[ijk-jj2] + ci2*b[ijk-jj1] + ci3*b[ijk    ])
+                                + cg1*(ci0*b[ijk-jj2] + ci1*b[ijk-jj1] + ci2*b[ijk    ] + ci3*b[ijk+jj1])
+                                + cg2*(ci0*b[ijk-jj1] + ci1*b[ijk    ] + ci2*b[ijk+jj1] + ci3*b[ijk+jj2])
+                                + cg3*(ci0*b[ijk    ] + ci1*b[ijk+jj1] + ci2*b[ijk+jj2] + ci3*b[ijk+jj3]) ) * cgi*dyi, 2.)
+
+                    + std::pow( ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
+                                + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                                + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                                + cg3*(ti0*b[ijk-kk1] + ti1*b[ijk    ] + ti2*b[ijk+kk1] + ti3*b[ijk+kk2]) ) * dzi4[kend-1], 2.) );
+    }
+
 
   master->sum(bpe_turb, grid->kcells);
   master->sum(bpe_visc, grid->kcells);
