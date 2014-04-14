@@ -202,7 +202,7 @@ int cbudget::execstats(mask *m)
       calcpebudget(fields->w->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->datatop,
                    m->profs["pe_turb"].data, m->profs["pe_visc"].data, m->profs["pe_bous"].data,
                    // TODO put the correct value for visc here!!!!!
-                   grid->z, grid->dzi4, grid->dzhi4,
+                   grid->z, grid->zh, grid->dzi4, grid->dzhi4,
                    fields->visc);
     }
   }
@@ -1149,7 +1149,7 @@ double cbudget::calczsort(double b, double * restrict bsort, double * restrict z
 
 int cbudget::calcpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
                           double * restrict pe_turb, double * restrict pe_visc, double * restrict pe_bous,
-                          double * restrict z, double * restrict dzi4, double * restrict dzhi4,
+                          double * restrict z, double * restrict zh, double * restrict dzi4, double * restrict dzhi4,
                           double visc)
 {
   int ij,ijk,jj1,kk1,kk2,kk3;
@@ -1164,7 +1164,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
   kend = grid->kend;
   zsize = grid->zsize;
 
-  // first, calculate the Boussinesq term (2*kappa*db/dz). Here bz contains the buoyancy and not the PE yet
+  // first, calculate the Boussinesq term (kappa*db/dz). Here bz contains the buoyancy and not the PE yet
   // bottom boundary
   pe_bous[kstart] = 0.;
   for(int j=grid->jstart; j<grid->jend; ++j)
@@ -1172,11 +1172,11 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      pe_bous[kstart] += 2.*visc * ( cg0*(bi0*b[ijk-kk2] + bi1*b[ijk-kk1] + bi2*b[ijk    ] + bi3*b[ijk+kk1])
-                                   + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
-                                   + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
-                                   + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) )
-                                   * dzi4[kstart];
+      pe_bous[kstart] += visc * ( cg0*(bi0*b[ijk-kk2] + bi1*b[ijk-kk1] + bi2*b[ijk    ] + bi3*b[ijk+kk1])
+                                + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                                + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                                + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) )
+                                * dzi4[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; ++k)
@@ -1187,11 +1187,11 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
-        pe_bous[k] += 2.*visc * ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
-                                + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
-                                + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
-                                + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) )
-                                * dzi4[k];
+        pe_bous[k] += visc * ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
+                             + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                             + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                             + cg3*(ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3]) )
+                             * dzi4[k];
       }
   }
 
@@ -1202,11 +1202,11 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
-      pe_bous[kend-1] += 2.*visc * ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
-                                   + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
-                                   + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
-                                   + cg3*(ti0*b[ijk-kk1] + ti1*b[ijk    ] + ti2*b[ijk+kk1] + ti3*b[ijk+kk2]) )
-                                   * dzi4[kend-1];
+      pe_bous[kend-1] += visc * ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
+                                + cg1*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1])
+                                + cg2*(ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2])
+                                + cg3*(ti0*b[ijk-kk1] + ti1*b[ijk    ] + ti2*b[ijk+kk1] + ti3*b[ijk+kk2]) )
+                                * dzi4[kend-1];
     }
 
   // now, convert the buoyancy field into a potential energy field
@@ -1305,10 +1305,10 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      pe_visc[kstart] += visc * ( cg0*(bg0*bz[ijk-kk2] + bg1*bz[ijk-kk1] + bg2*bz[ijk    ] + bg3*bz[ijk+kk1]) * dzhi4[kstart-1]
-                                + cg1*(cg0*bz[ijk-kk2] + cg1*bz[ijk-kk1] + cg2*bz[ijk    ] + cg3*bz[ijk+kk1]) * dzhi4[kstart  ]
-                                + cg2*(cg0*bz[ijk-kk1] + cg1*bz[ijk    ] + cg2*bz[ijk+kk1] + cg3*bz[ijk+kk2]) * dzhi4[kstart+1]
-                                + cg3*(cg0*bz[ijk    ] + cg1*bz[ijk+kk1] + cg2*bz[ijk+kk2] + cg3*bz[ijk+kk3]) * dzhi4[kstart+2] )
+      pe_visc[kstart] -= visc * ( cg0*zh[kstart-1]*(bg0*b[ijk-kk2] + bg1*b[ijk-kk1] + bg2*b[ijk    ] + bg3*b[ijk+kk1]) * dzhi4[kstart-1]
+                                + cg1*zh[kstart  ]*(cg0*b[ijk-kk2] + cg1*b[ijk-kk1] + cg2*b[ijk    ] + cg3*b[ijk+kk1]) * dzhi4[kstart  ]
+                                + cg2*zh[kstart+1]*(cg0*b[ijk-kk1] + cg1*b[ijk    ] + cg2*b[ijk+kk1] + cg3*b[ijk+kk2]) * dzhi4[kstart+1]
+                                + cg3*zh[kstart+2]*(cg0*b[ijk    ] + cg1*b[ijk+kk1] + cg2*b[ijk+kk2] + cg3*b[ijk+kk3]) * dzhi4[kstart+2] )
                                 * dzi4[kstart];
     }
 
@@ -1320,10 +1320,10 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
-        pe_visc[k] += visc * ( cg0*(cg0*bz[ijk-kk3] + cg1*bz[ijk-kk2] + cg2*bz[ijk-kk1] + cg3*bz[ijk    ]) * dzhi4[k-1]
-                             + cg1*(cg0*bz[ijk-kk2] + cg1*bz[ijk-kk1] + cg2*bz[ijk    ] + cg3*bz[ijk+kk1]) * dzhi4[k  ]
-                             + cg2*(cg0*bz[ijk-kk1] + cg1*bz[ijk    ] + cg2*bz[ijk+kk1] + cg3*bz[ijk+kk2]) * dzhi4[k+1]
-                             + cg3*(cg0*bz[ijk    ] + cg1*bz[ijk+kk1] + cg2*bz[ijk+kk2] + cg3*bz[ijk+kk3]) * dzhi4[k+2] )
+        pe_visc[k] -= visc * ( cg0*zh[k-1]*(cg0*b[ijk-kk3] + cg1*b[ijk-kk2] + cg2*b[ijk-kk1] + cg3*b[ijk    ]) * dzhi4[k-1]
+                             + cg1*zh[k  ]*(cg0*b[ijk-kk2] + cg1*b[ijk-kk1] + cg2*b[ijk    ] + cg3*b[ijk+kk1]) * dzhi4[k  ]
+                             + cg2*zh[k+1]*(cg0*b[ijk-kk1] + cg1*b[ijk    ] + cg2*b[ijk+kk1] + cg3*b[ijk+kk2]) * dzhi4[k+1]
+                             + cg3*zh[k+2]*(cg0*b[ijk    ] + cg1*b[ijk+kk1] + cg2*b[ijk+kk2] + cg3*b[ijk+kk3]) * dzhi4[k+2] )
                              * dzi4[k];
       }
   }
@@ -1335,10 +1335,10 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
-      pe_visc[kend-1] += visc * ( cg0*(cg0*bz[ijk-kk3] + cg1*bz[ijk-kk2] + cg2*bz[ijk-kk1] + cg3*bz[ijk    ]) * dzhi4[kend-2]
-                                + cg1*(cg0*bz[ijk-kk2] + cg1*bz[ijk-kk1] + cg2*bz[ijk    ] + cg3*bz[ijk+kk1]) * dzhi4[kend-1]
-                                + cg2*(cg0*bz[ijk-kk1] + cg1*bz[ijk    ] + cg2*bz[ijk+kk1] + cg3*bz[ijk+kk2]) * dzhi4[kend  ]
-                                + cg3*(tg0*bz[ijk-kk1] + tg1*bz[ijk    ] + tg2*bz[ijk+kk1] + tg3*bz[ijk+kk2]) * dzhi4[kend+1] )
+      pe_visc[kend-1] -= visc * ( cg0*zh[kend-2]*(cg0*b[ijk-kk3] + cg1*b[ijk-kk2] + cg2*b[ijk-kk1] + cg3*b[ijk    ]) * dzhi4[kend-2]
+                                + cg1*zh[kend-1]*(cg0*b[ijk-kk2] + cg1*b[ijk-kk1] + cg2*b[ijk    ] + cg3*b[ijk+kk1]) * dzhi4[kend-1]
+                                + cg2*zh[kend  ]*(cg0*b[ijk-kk1] + cg1*b[ijk    ] + cg2*b[ijk+kk1] + cg3*b[ijk+kk2]) * dzhi4[kend  ]
+                                + cg3*zh[kend+1]*(tg0*b[ijk-kk1] + tg1*b[ijk    ] + tg2*b[ijk+kk1] + tg3*b[ijk+kk2]) * dzhi4[kend+1] )
                                 * dzi4[kend-1];
     }
 
