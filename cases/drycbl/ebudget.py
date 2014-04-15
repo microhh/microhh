@@ -8,10 +8,28 @@ stats = netCDF4.Dataset("drycbl.default.0000000.nc","r")
 
 t = stats.variables["t"][:]
 end   = t.size
-start = t.size-1
+start = t.size-50
 
 z  = stats.variables["z"][:]
 zh = stats.variables["zh"][:]
+dz = zh[1::] - zh[0:-1]
+
+B0 = 0.0032
+N2 = 3.
+L0 = (B0/N2**1.5)**.5
+henct = (2.*B0/N2 * t)**.5
+benct = henct*N2
+wenct = (B0*henct)**(1./3.)
+tenct = henct/(B0/N2**1.5)**.5
+
+henc  = numpy.mean(henct[start:end])
+benc  = numpy.mean(benct[start:end])
+wenc  = numpy.mean(wenct[start:end])
+
+tke = numpy.dot(stats.variables["tke"][:,:], dz)
+pe  = numpy.dot(stats.variables["pe" ][:,:], dz)
+ape = numpy.dot(stats.variables["ape"][:,:], dz)
+bpe = numpy.dot(stats.variables["bpe"][:,:], dz)
 
 tke_turb = average(stats.variables["tke_turb"][start:end,:], 0)
 tke_visc = average(stats.variables["tke_visc"][start:end,:], 0)
@@ -37,6 +55,37 @@ ape_diss = -bpe_diss
 ape_bous = pe_bous
 ape_buoy = pe_buoy
 ape_sum  = ape_turb + ape_visc + ape_diss + ape_bous + ape_buoy
+
+tke_turb_time = numpy.dot(stats.variables["tke_turb"][:,:], dz)
+tke_visc_time = numpy.dot(stats.variables["tke_visc"][:,:], dz)
+tke_pres_time = numpy.dot(stats.variables["tke_pres"][:,:], dz)
+tke_diss_time = numpy.dot(stats.variables["tke_diss"][:,:], dz)
+tke_buoy_time = numpy.dot(stats.variables["tke_buoy"][:,:], dz)
+tke_sum_time  = tke_turb_time + tke_visc_time + tke_pres_time + tke_diss_time + tke_buoy_time
+
+pe_turb_time = numpy.dot(stats.variables["pe_turb" ][:,:], dz)
+pe_visc_time = numpy.dot(stats.variables["pe_visc" ][:,:], dz)
+pe_buoy_time = numpy.dot(stats.variables["tke_buoy"][:,:], dz) * -1.
+pe_bous_time = numpy.dot(stats.variables["pe_bous" ][:,:], dz)
+pe_sum_time  = pe_turb_time + pe_visc_time + pe_buoy_time + pe_bous_time
+
+ape_turb_time = numpy.dot(stats.variables["pe_turb" ][:,:] - stats.variables["bpe_turb"][:,:], dz)
+ape_visc_time = numpy.dot(stats.variables["pe_visc" ][:,:] - stats.variables["bpe_visc"][:,:], dz)
+#ape_diss_time = numpy.dot(stats.variables["bpe_diss"][:,:], dz) * -1.
+# CvH HACK bug to fix
+ape_diss_time = numpy.dot(stats.variables["bpe_diss"][:,0:-1], dz[0:-1]) * -1.
+ape_buoy_time = numpy.dot(stats.variables["tke_buoy"][:,:], dz) * -1.
+ape_bous_time = numpy.dot(stats.variables["pe_bous" ][:,:], dz)
+ape_sum_time  = ape_turb_time + ape_visc_time + ape_diss_time + ape_buoy_time + ape_bous_time
+
+bpe_turb_time = numpy.dot(stats.variables["bpe_turb"][:,:], dz)
+bpe_visc_time = numpy.dot(stats.variables["bpe_visc"][:,:], dz)
+bpe_diss_time = numpy.dot(stats.variables["bpe_diss"][:,0:-1], dz[0:-1])
+bpe_sum_time  = bpe_turb_time + bpe_visc_time + bpe_diss_time
+
+eff0 = (ape_diss_time - ape_bous_time) / (ape_diss_time - ape_bous_time + tke_diss_time)
+eff1 = 1 - ape_bous_time / ape_diss_time
+eff2 = ape_diss_time / (ape_diss_time + ape_bous_time)
 
 # enable LaTeX plotting
 rc('font',**{'family':'serif','serif':['Palatino']})
@@ -71,7 +120,7 @@ plot(bpe_turb, z, 'b-', label='turb')
 plot(bpe_visc, z, 'g-', label='visc')
 plot(bpe_diss, z, 'r-', label='diss')
 plot(bpe_sum , z, 'k:', label='sum' )
-xlabel(r'de$_p$/dt [m$^2$~s$^{-3}$]')
+xlabel(r'de$_b$/dt [m$^2$~s$^{-3}$]')
 ylabel(r'z [m]')
 legend(loc=0, frameon=False)
 ylim(0,0.5)
@@ -83,8 +132,75 @@ plot(ape_bous, z, 'm-', label='bous')
 plot(ape_buoy, z, 'c-', label='buoy')
 plot(ape_diss, z, 'r-', label='diss')
 plot(ape_sum , z, 'k:', label='sum' )
-xlabel(r'de$_p$/dt [m$^2$~s$^{-3}$]')
+xlabel(r'de$_a$/dt [m$^2$~s$^{-3}$]')
 ylabel(r'z [m]')
 legend(loc=0, frameon=False)
 ylim(0,0.5)
+
+figure()
+plot(tenct, tke_turb_time / (henct*B0), 'b-', label='turb')
+plot(tenct, tke_visc_time / (henct*B0), 'g-', label='visc')
+plot(tenct, tke_diss_time / (henct*B0), 'r-', label='diss')
+plot(tenct, tke_buoy_time / (henct*B0), 'c-', label='buoy')
+plot(tenct, tke_pres_time / (henct*B0), 'm-', label='pres')
+plot(tenct, tke_sum_time  / (henct*B0), 'k:', label='sum' )
+xlabel(r'h$_{enc}$/L$_0$')
+ylabel(r'de$_k$/dt / B$_0$')
+legend(loc=0, frameon=False)
+
+figure()
+plot(tenct, pe_turb_time / (henct*B0), 'b-', label='turb')
+plot(tenct, pe_visc_time / (henct*B0), 'g-', label='visc')
+plot(tenct, pe_buoy_time / (henct*B0), 'c-', label='buoy')
+plot(tenct, pe_bous_time / (henct*B0), 'm-', label='bous')
+plot(tenct, pe_sum_time  / (henct*B0), 'k:', label='sum' )
+xlabel(r'h$_{enc}$/L$_0$')
+ylabel(r'de$_p$/dt / B$_0$')
+legend(loc=0, frameon=False)
+
+figure()
+plot(tenct, ape_turb_time / (henct*B0), 'b-', label='turb')
+plot(tenct, ape_visc_time / (henct*B0), 'g-', label='visc')
+plot(tenct, ape_diss_time / (henct*B0), 'r-', label='diss')
+plot(tenct, ape_buoy_time / (henct*B0), 'c-', label='buoy')
+plot(tenct, ape_bous_time / (henct*B0), 'm-', label='bous')
+plot(tenct, ape_sum_time  / (henct*B0), 'k:', label='sum' )
+xlabel(r'h$_{enc}$/L$_0$')
+ylabel(r'de$_a$/dt / B$_0$')
+legend(loc=0, frameon=False)
+
+figure()
+plot(tenct, eff0, 'b-', label='$\eta$ (Gayen)')
+plot(tenct, eff1, 'g-', label='$\eta$ (Gayen2)')
+plot(tenct, eff2, 'r-', label='$\eta$ (Scotti)')
+xlabel(r'h$_{enc}$/L$_0$')
+ylabel(r'$\eta$ [-]')
+legend(loc=0, frameon=False)
+
+figure()
+plot(tenct, tke_sum_time / (henct*B0), 'b-', label='e$_k$')
+plot(tenct, pe_sum_time  / (henct*B0), 'g-', label='e$_p$')
+plot(tenct, (tke_sum_time + pe_sum_time) / (henct*B0), 'k:', label='e$_k$ + e$_p$')
+xlabel(r'h$_{enc}$/L$_0$')
+ylabel(r'de/dt / B$_0$')
+legend(loc=0, frameon=False)
+
+figure()
+plot(tenct, tke_sum_time / (henct*B0), 'b-', label='e$_k$')
+plot(tenct, ape_sum_time / (henct*B0), 'r-', label='e$_a$')
+plot(tenct, bpe_sum_time / (henct*B0), 'c-', label='e$_b$')
+plot(tenct, (tke_sum_time + ape_sum_time + bpe_sum_time) / (henct*B0), 'k:', label='e$_k$ + e$_a$ + e$_b$')
+xlabel(r'h$_{enc}$/L$_0$')
+ylabel(r'de/dt / B$_0$')
+legend(loc=0, frameon=False)
+
+figure()
+plot(tenct, (tke       ) / (henct*wenct**2.), 'b-', label='tke')
+plot(tenct, (pe-pe[0]  ) / (henct*wenct**2.), 'g-', label='pe' )
+plot(tenct, (ape       ) / (henct*wenct**2.), 'r-', label='ape')
+plot(tenct, (bpe-bpe[0]) / (henct*wenct**2.), 'm-', label='bpe')
+plot(tenct, tke/ape                         , 'k:', label='tke/ape')
+xlabel(r'h$_{enc}$/L$_0$')
+ylabel(r'E/w$_{enc}^2$')
+legend(loc=0, frameon=False)
 
