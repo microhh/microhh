@@ -195,6 +195,7 @@ int cbudget::execstats(mask *m)
       calcbpebudget(fields->w->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->databot, fields->sd["tmp2"]->datatop,
                     m->profs["bpe_turb"].data, m->profs["bpe_visc"].data, m->profs["bpe_diss"].data,
                     // TODO put the correct value for visc here!!!!!
+                    m->profs["bsort"].data,
                     grid->z, grid->dzi4, grid->dzhi4,
                     fields->visc);
 
@@ -1125,6 +1126,41 @@ double cbudget::calczsort(double b, double * restrict bsort, double * restrict z
   return zsortval;
 }
 
+double cbudget::calcdzstardb(double b, double * restrict bsort, double * restrict z)
+{
+  // start the iteration below the grid to make sure not to miss values below the first full level
+  int k = grid->kstart-1;
+  while(bsort[k+1] < b)
+    ++k;
+
+  // our required value is in between bsort[k] and bsort[k+1]
+  // calculate a spline of the form zstar(b) = a*zstar(b_k) + b*zstar(b_(k+1)) + c * zstar''(b_k) + d * zstar''(b_(k+1))
+  double ca, cb;//, cc, cd;
+  ca = (bsort[k+1]-b) / (bsort[k+1]-bsort[k]);
+  cb = 1.-ca;
+  // cc = (1./6.) * (ca*ca*ca-ca) * std::pow(bsort[k+1]-bsort[k],2);
+  // cd = (1./6.) * (cb*cb*cb-cb) * std::pow(bsort[k+1]-bsort[k],2);
+
+  // calculate the second derivatives using second order accuracy since the profile is very smooth
+  double d2zstarb2k, d2zstarb2kp;
+  d2zstarb2k  = 2.*((z[k+1]-z[k  ])/(bsort[k+1]-bsort[k  ]) - (z[k  ]-z[k-1])/(bsort[k  ]-bsort[k-1])) / (bsort[k+1]-bsort[k-1]);
+  d2zstarb2kp = 2.*((z[k+2]-z[k+1])/(bsort[k+2]-bsort[k+1]) - (z[k+1]-z[k  ])/(bsort[k+1]-bsort[k  ])) / (bsort[k+2]-bsort[k  ]);
+
+  // std::printf("CvH %E, %E, %E, %E, %E, %E\n", bsort[k], b, bsort[k+1], z[k], ca*z[k] + cb*z[k+1], z[k+1]);
+
+  // the derivative is computed according to:
+  // dzstar/db = (zstar[k+1]-zstar[k])/(b[k+1]-b[k]) 
+  //           - (3*a^2-1)/6 * (b[k+1]-b[k])*zstar''(b_k) 
+  //           + (3*b^2-1)/6 * (b[k+1]-b[k])*zstar''(b_(k+1))
+
+  double dzstardb = (z[k+1]-z[k]) / (bsort[k+1]-bsort[k]) 
+                  - (3.*ca*ca-1.)/6. * (bsort[k+1]-bsort[k])*d2zstarb2k
+                  + (3.*cb*cb-1.)/6. * (bsort[k+1]-bsort[k])*d2zstarb2kp;
+
+  return dzstardb;
+}
+
+
 int cbudget::calcpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
                           double * restrict pe_turb, double * restrict pe_visc, double * restrict pe_bous,
                           double * restrict z, double * restrict dzi4, double * restrict dzhi4,
@@ -1337,11 +1373,13 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
 
 int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bzbot, double * restrict bztop,
                            double * restrict bpe_turb, double * restrict bpe_visc, double * restrict bpe_diss,
+                           double * restrict bsort,
                            double * restrict z, double * restrict dzi4, double * restrict dzhi4,
                            double visc)
 {
   int ij,ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;
+  double dzstardb;
 
   ii1 = 1;
   ii2 = 2;
@@ -1363,15 +1401,16 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      bpe_visc[kstart] += visc * ( cg0*(bg0*b [ijk-kk2] + bg1*b [ijk-kk1] + bg2*b [ijk    ] + bg3*b [ijk+kk1]) * dzhi4[kstart-1]
-                                      *(bi0*bz[ijk-kk2] + bi1*bz[ijk-kk1] + bi2*bz[ijk    ] + bi3*bz[ijk+kk1])
-                                 + cg1*(cg0*b [ijk-kk2] + cg1*b [ijk-kk1] + cg2*b [ijk    ] + cg3*b [ijk+kk1]) * dzhi4[kstart  ]
-                                      *(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
-                                 + cg2*(cg0*b [ijk-kk1] + cg1*b [ijk    ] + cg2*b [ijk+kk1] + cg3*b [ijk+kk2]) * dzhi4[kstart+1]
-                                      *(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
-                                 + cg3*(cg0*b [ijk    ] + cg1*b [ijk+kk1] + cg2*b [ijk+kk2] + cg3*b [ijk+kk3]) * dzhi4[kstart+2]
-                                      *(ci0*bz[ijk    ] + ci1*bz[ijk+kk1] + ci2*bz[ijk+kk2] + ci3*bz[ijk+kk3]) )
-                                 * dzi4[kstart];
+      bpe_visc[kstart] += visc *
+                            ( cg0*(bg0*b [ijk-kk2] + bg1*b [ijk-kk1] + bg2*b [ijk    ] + bg3*b [ijk+kk1]) * dzhi4[kstart-1]
+                                 *(bi0*bz[ijk-kk2] + bi1*bz[ijk-kk1] + bi2*bz[ijk    ] + bi3*bz[ijk+kk1])
+                            + cg1*(cg0*b [ijk-kk2] + cg1*b [ijk-kk1] + cg2*b [ijk    ] + cg3*b [ijk+kk1]) * dzhi4[kstart  ]
+                                 *(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
+                            + cg2*(cg0*b [ijk-kk1] + cg1*b [ijk    ] + cg2*b [ijk+kk1] + cg3*b [ijk+kk2]) * dzhi4[kstart+1]
+                                 *(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
+                            + cg3*(cg0*b [ijk    ] + cg1*b [ijk+kk1] + cg2*b [ijk+kk2] + cg3*b [ijk+kk3]) * dzhi4[kstart+2]
+                                 *(ci0*bz[ijk    ] + ci1*bz[ijk+kk1] + ci2*bz[ijk+kk2] + ci3*bz[ijk+kk3]) )
+                            * dzi4[kstart];
     }
 
   for(int k=grid->kstart+1; k<grid->kend-1; ++k)
@@ -1382,15 +1421,16 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
-        bpe_visc[k] += visc * ( cg0*(cg0*b [ijk-kk3] + cg1*b [ijk-kk2] + cg2*b [ijk-kk1] + cg3*b [ijk    ]) * dzhi4[k-1]
-                                   *(ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ])
-                              + cg1*(cg0*b [ijk-kk2] + cg1*b [ijk-kk1] + cg2*b [ijk    ] + cg3*b [ijk+kk1]) * dzhi4[k  ]
-                                   *(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
-                              + cg2*(cg0*b [ijk-kk1] + cg1*b [ijk    ] + cg2*b [ijk+kk1] + cg3*b [ijk+kk2]) * dzhi4[k+1]
-                                   *(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
-                              + cg3*(cg0*b [ijk    ] + cg1*b [ijk+kk1] + cg2*b [ijk+kk2] + cg3*b [ijk+kk3]) * dzhi4[k+2]
-                                   *(ci0*bz[ijk    ] + ci1*bz[ijk+kk1] + ci2*bz[ijk+kk2] + ci3*bz[ijk+kk3]) )
-                              * dzi4[k];
+        bpe_visc[k] += visc *
+                         ( cg0*(cg0*b [ijk-kk3] + cg1*b [ijk-kk2] + cg2*b [ijk-kk1] + cg3*b [ijk    ]) * dzhi4[k-1]
+                              *(ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ])
+                         + cg1*(cg0*b [ijk-kk2] + cg1*b [ijk-kk1] + cg2*b [ijk    ] + cg3*b [ijk+kk1]) * dzhi4[k  ]
+                              *(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
+                         + cg2*(cg0*b [ijk-kk1] + cg1*b [ijk    ] + cg2*b [ijk+kk1] + cg3*b [ijk+kk2]) * dzhi4[k+1]
+                              *(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
+                         + cg3*(cg0*b [ijk    ] + cg1*b [ijk+kk1] + cg2*b [ijk+kk2] + cg3*b [ijk+kk3]) * dzhi4[k+2]
+                              *(ci0*bz[ijk    ] + ci1*bz[ijk+kk1] + ci2*bz[ijk+kk2] + ci3*bz[ijk+kk3]) )
+                         * dzi4[k];
       }
   }
 
@@ -1401,15 +1441,16 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
-      bpe_visc[kend-1] += visc * ( cg0*(cg0*b [ijk-kk3] + cg1*b [ijk-kk2] + cg2*b [ijk-kk1] + cg3*b [ijk    ]) * dzhi4[kend-2]
-                                      *(ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ])
-                                 + cg1*(cg0*b [ijk-kk2] + cg1*b [ijk-kk1] + cg2*b [ijk    ] + cg3*b [ijk+kk1]) * dzhi4[kend-1]
-                                      *(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
-                                 + cg2*(cg0*b [ijk-kk1] + cg1*b [ijk    ] + cg2*b [ijk+kk1] + cg3*b [ijk+kk2]) * dzhi4[kend  ]
-                                      *(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
-                                 + cg3*(tg0*b [ijk-kk1] + tg1*b [ijk    ] + tg2*b [ijk+kk1] + tg3*b [ijk+kk2]) * dzhi4[kend+1]
-                                      *(ti0*bz[ijk-kk1] + ti1*bz[ijk    ] + ti2*bz[ijk+kk1] + ti3*bz[ijk+kk2]) )
-                                 * dzi4[kend-1];
+      bpe_visc[kend-1] += visc *
+                            ( cg0*(cg0*b [ijk-kk3] + cg1*b [ijk-kk2] + cg2*b [ijk-kk1] + cg3*b [ijk    ]) * dzhi4[kend-2]
+                                 *(ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ])
+                            + cg1*(cg0*b [ijk-kk2] + cg1*b [ijk-kk1] + cg2*b [ijk    ] + cg3*b [ijk+kk1]) * dzhi4[kend-1]
+                                 *(ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1])
+                            + cg2*(cg0*b [ijk-kk1] + cg1*b [ijk    ] + cg2*b [ijk+kk1] + cg3*b [ijk+kk2]) * dzhi4[kend  ]
+                                 *(ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2])
+                            + cg3*(tg0*b [ijk-kk1] + tg1*b [ijk    ] + tg2*b [ijk+kk1] + tg3*b [ijk+kk2]) * dzhi4[kend+1]
+                                 *(ti0*bz[ijk-kk1] + ti1*bz[ijk    ] + ti2*bz[ijk+kk1] + ti3*bz[ijk+kk2]) )
+                            * dzi4[kend-1];
     }
 
   // calculate the dissipation term
@@ -1423,7 +1464,8 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk  = i + j*jj1 + kstart*kk1;
-      bpe_diss[kstart] += visc * (
+      dzstardb = calcdzstardb(b[ijk], bsort, z);
+      bpe_diss[kstart] += visc * dzstardb * (
                          std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
                                    + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])
                                    + cg2*(ci0*b[ijk-ii1] + ci1*b[ijk    ] + ci2*b[ijk+ii1] + ci3*b[ijk+ii2])
@@ -1449,7 +1491,8 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj1 + k*kk1;
-        bpe_diss[k] += visc * (
+        dzstardb = calcdzstardb(b[ijk], bsort, z);
+        bpe_diss[k] += visc * dzstardb * (
                         std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
                                   + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])
                                   + cg2*(ci0*b[ijk-ii1] + ci1*b[ijk    ] + ci2*b[ijk+ii1] + ci3*b[ijk+ii2])
@@ -1473,8 +1516,9 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk  = i + j*jj1 + (kend-1)*kk1;
-      bpe_diss[kend-1] += visc * (
+      ijk = i + j*jj1 + (kend-1)*kk1;
+      dzstardb = calcdzstardb(b[ijk], bsort, z);
+      bpe_diss[kend-1] += visc * dzstardb * (
                       std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
                                 + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])
                                 + cg2*(ci0*b[ijk-ii1] + ci1*b[ijk    ] + ci2*b[ijk+ii1] + ci3*b[ijk+ii2])

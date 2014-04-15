@@ -86,9 +86,11 @@ class cbudget
 
     int calcbpebudget(double *, double *, double *, double *, double *,
                       double *, double *, double *,
+                      double *,
                       double *, double *, double *,
                       double);
 
-    double calczsort(double, double *, double *, int);
+    double calczsort   (double, double *, double *, int);
+    double calcdzstardb(double, double *, double *);
 };
 #endif
