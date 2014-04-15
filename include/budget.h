@@ -81,7 +81,7 @@ class cbudget
 
     int calcpebudget(double *, double *, double *, double *,
                      double *, double *, double *,
-                     double *, double *, double *,
+                     double *, double *, double *, double *,
                      double);
 
     int calcbpebudget(double *, double *, double *, double *, double *,
