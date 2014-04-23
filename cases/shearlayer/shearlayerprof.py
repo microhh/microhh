@@ -2,7 +2,7 @@ import numpy
 from pylab import *
 
 # set the height
-kmax  = 64
+kmax  = 256
 zsize = 1.
 dz = zsize / kmax
 
@@ -16,7 +16,7 @@ b = numpy.zeros(numpy.size(z))
 du = 1.
 db = 1.
 delta = 0.167
-visc = 3.e-4
+visc = 5.e-5
 N2 = db / delta
 Ri = N2 * delta**2 / du**2
 Re = delta * du / visc
