@@ -2,7 +2,7 @@ import numpy
 from pylab import *
 
 # set the height
-kmax  = 256
+kmax  = 128
 zsize = 1.
 dz = zsize / kmax
 
