@@ -4,7 +4,7 @@ import netCDF4
 
 from pylab import *
 
-stats = netCDF4.Dataset("drycbl.default.0000000.nc","r")
+stats = netCDF4.Dataset("drycbl.default.nc","r")
 
 t = stats.variables["t"][:]
 end   = t.size
@@ -93,9 +93,11 @@ bpe_visc_time = numpy.dot(stats.variables["bpe_visc"][:,:], dz)
 bpe_diss_time = numpy.dot(stats.variables["bpe_diss"][:,0:-1], dz[0:-1])
 bpe_sum_time  = bpe_turb_time + bpe_visc_time + bpe_diss_time
 
-eff0 = (ape_diss_time - ape_bous_time) / (ape_diss_time - ape_bous_time + tke_diss_time)
-eff1 = 1 - ape_bous_time / ape_diss_time
-eff2 = ape_diss_time / (ape_diss_time + ape_bous_time)
+effbous   = (ape_diss_time + ape_bous_time) / (ape_diss_time + ape_bous_time + tke_diss_time)
+effnobous = ape_diss_time / (ape_diss_time + tke_diss_time)
+effAPE    = -(ape_diss_time + ape_bous_time)                 / (ape_visc_time + ape_turb_time + tke_visc_time + tke_pres_time + tke_turb_time)
+effTKE    = -tke_diss_time                                   / (ape_visc_time + ape_turb_time + tke_visc_time + tke_pres_time + tke_turb_time)
+effsum    = -(ape_diss_time + ape_bous_time + tke_diss_time) / (ape_visc_time + ape_turb_time + tke_visc_time + tke_pres_time + tke_turb_time)
 
 # enable LaTeX plotting
 rc('font',**{'family':'serif','serif':['Palatino']})
@@ -184,12 +186,15 @@ ylabel(r'de$_a$/dt / B$_0$')
 legend(loc=0, frameon=False)
 
 figure()
-plot(tenct, eff0, 'b-', label='$\eta$ (Gayen)')
-plot(tenct, eff1, 'g-', label='$\eta$ (Gayen2)')
-plot(tenct, eff2, 'r-', label='$\eta$ (Scotti)')
+plot(tenct, effbous  , 'b-' , label='$\eta$ (bous)')
+plot(tenct, effnobous, 'g-' , label='$\eta$ (nobous)')
+plot(tenct, effAPE   , 'r:' , label='loss APE')
+plot(tenct, effTKE   , 'r--', label='loss TKE')
+plot(tenct, effsum   , 'r-' , label='loss sum')
 xlabel(r'h$_{enc}$/L$_0$')
 ylabel(r'$\eta$ [-]')
 legend(loc=0, frameon=False)
+ylim(0,1)
 
 figure()
 plot(tenct, tke_sum_time / (henct*B0), 'b-', label='e$_k$')
