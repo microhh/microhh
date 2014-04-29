@@ -4,11 +4,11 @@ import netCDF4
 
 from pylab import *
 
-stats = netCDF4.Dataset("drycbl.default.nc","r")
+stats = netCDF4.Dataset("drycbl.default.0000000.nc","r")
 
 t = stats.variables["t"][:]
 end   = t.size
-start = t.size-20
+start = t.size-40
 dt = t[1] - t[0]
 
 z  = stats.variables["z"][:]
@@ -31,6 +31,11 @@ tke = numpy.dot(stats.variables["tke"][:,:], dz)
 pe  = numpy.dot(stats.variables["pe" ][:,:], dz)
 ape = numpy.dot(stats.variables["ape"][:,:], dz)
 bpe = numpy.dot(stats.variables["bpe"][:,:], dz)
+
+tke_dt = numpy.gradient(numpy.dot(stats.variables["tke"][:,:], dz), dt)
+pe_dt  = numpy.gradient(numpy.dot(stats.variables["pe" ][:,:], dz), dt)
+ape_dt = numpy.gradient(numpy.dot(stats.variables["ape"][:,:], dz), dt)
+bpe_dt = numpy.gradient(numpy.dot(stats.variables["bpe"][:,:], dz), dt)
 
 bdzstardt = zeros(stats.variables["zsort"][:,:].shape)
 zsort = stats.variables["zsort"][:,:]
@@ -160,6 +165,7 @@ plot(tenct, tke_diss_time / (henct*B0), 'r-', label='diss')
 plot(tenct, tke_buoy_time / (henct*B0), 'c-', label='buoy')
 plot(tenct, tke_pres_time / (henct*B0), 'm-', label='pres')
 plot(tenct, tke_sum_time  / (henct*B0), 'k:', label='sum' )
+plot(tenct, tke_dt        / (henct*B0), 'k-', label='ref' )
 xlabel(r'h$_{enc}$/L$_0$')
 ylabel(r'de$_k$/dt / B$_0$')
 legend(loc=0, frameon=False)
@@ -170,8 +176,19 @@ plot(tenct, pe_visc_time / (henct*B0), 'g-', label='visc')
 plot(tenct, pe_buoy_time / (henct*B0), 'c-', label='buoy')
 plot(tenct, pe_bous_time / (henct*B0), 'm-', label='bous')
 plot(tenct, pe_sum_time  / (henct*B0), 'k:', label='sum' )
+plot(tenct, pe_dt        / (henct*B0), 'k-', label='ref' )
 xlabel(r'h$_{enc}$/L$_0$')
 ylabel(r'de$_p$/dt / B$_0$')
+legend(loc=0, frameon=False)
+
+figure()
+plot(tenct, bpe_turb_time / (henct*B0), 'b-', label='turb')
+plot(tenct, bpe_visc_time / (henct*B0), 'g-', label='visc')
+plot(tenct, bpe_diss_time / (henct*B0), 'r-', label='diss')
+plot(tenct, bpe_sum_time  / (henct*B0), 'k:', label='sum' )
+plot(tenct, bpe_dt        / (henct*B0), 'k-', label='ref' )
+xlabel(r'h$_{enc}$/L$_0$')
+ylabel(r'de$_b$/dt / B$_0$')
 legend(loc=0, frameon=False)
 
 figure()
@@ -181,6 +198,7 @@ plot(tenct, ape_diss_time / (henct*B0), 'r-', label='diss')
 plot(tenct, ape_buoy_time / (henct*B0), 'c-', label='buoy')
 plot(tenct, ape_bous_time / (henct*B0), 'm-', label='bous')
 plot(tenct, ape_sum_time  / (henct*B0), 'k:', label='sum' )
+plot(tenct, ape_dt        / (henct*B0), 'k-', label='ref' )
 xlabel(r'h$_{enc}$/L$_0$')
 ylabel(r'de$_a$/dt / B$_0$')
 legend(loc=0, frameon=False)
