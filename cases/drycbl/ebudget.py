@@ -36,7 +36,7 @@ bdzstardt = zeros(stats.variables["zsort"][:,:].shape)
 zsort = stats.variables["zsort"][:,:]
 b     = stats.variables["b"]    [:,:]
 for k in range(z.size):
-  bdzstardt[:,k] = b[:,k] * numpy.gradient(zsort[:,k], dt)
+  bdzstardt[:,k] = -b[:,k] * numpy.gradient(zsort[:,k], dt)
 del(b, zsort)
 
 tke_turb = average(stats.variables["tke_turb"][start:end,:], 0)
