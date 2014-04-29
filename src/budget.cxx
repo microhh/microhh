@@ -1557,6 +1557,7 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
                                 + cg3*(ti0*b[ijk-kk1] + ti1*b[ijk    ] + ti2*b[ijk+kk1] + ti3*b[ijk+kk2]) ) * dzi4[kend-1], 2.) );
     }
 
+  /*
   // CONVERT THE BZ FIELD INTO BACKGROUND POTENTIAL ENERGY
   // first, calculate the potential energy at the bottom, the bot field contains the zsort at the bottom boundary
   for(int j=grid->jstart; j<grid->jend; ++j)
@@ -1610,6 +1611,7 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
       bz[ijk+kk1] = (8./3.)*bztop[ij] - 2.*bz[ijk] + (1./3.)*bz[ijk-kk1];
       bz[ijk+kk2] = 8.*bztop[ij] - 9.*bz[ijk] + 2.*bz[ijk-kk1];
     }
+  */
 
   // calculate the advective transport term
   // bottom boundary
@@ -1619,10 +1621,11 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + kstart*kk1;
-      bpe_turb[kstart] -= ( cg0*(w[ijk-kk1] * (bi0*bz[ijk-kk2] + bi1*bz[ijk-kk1] + bi2*bz[ijk    ] + bi3*bz[ijk+kk1]))
-                          + cg1*(w[ijk    ] * (ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1]))
-                          + cg2*(w[ijk+kk1] * (ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2]))
-                          + cg3*(w[ijk+kk2] * (ci0*bz[ijk    ] + ci1*bz[ijk+kk1] + ci2*bz[ijk+kk2] + ci3*bz[ijk+kk3])) )
+      bpe_turb[kstart] -= bz[ijk]*
+                          ( cg0*(w[ijk-kk1] * (bi0*b[ijk-kk2] + bi1*b[ijk-kk1] + bi2*b[ijk    ] + bi3*b[ijk+kk1]))
+                          + cg1*(w[ijk    ] * (ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1]))
+                          + cg2*(w[ijk+kk1] * (ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2]))
+                          + cg3*(w[ijk+kk2] * (ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3])) )
                           * dzi4[kstart];
     }
 
@@ -1634,10 +1637,11 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
-        bpe_turb[k] -= ( cg0*(w[ijk-kk1] * (ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ]))
-                       + cg1*(w[ijk    ] * (ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1]))
-                       + cg2*(w[ijk+kk1] * (ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2]))
-                       + cg3*(w[ijk+kk2] * (ci0*bz[ijk    ] + ci1*bz[ijk+kk1] + ci2*bz[ijk+kk2] + ci3*bz[ijk+kk3])) )
+        bpe_turb[k] -= bz[ijk]*
+                       ( cg0*(w[ijk-kk1] * (ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ]))
+                       + cg1*(w[ijk    ] * (ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1]))
+                       + cg2*(w[ijk+kk1] * (ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2]))
+                       + cg3*(w[ijk+kk2] * (ci0*b[ijk    ] + ci1*b[ijk+kk1] + ci2*b[ijk+kk2] + ci3*b[ijk+kk3])) )
                        * dzi4[k];
       }
   }
@@ -1649,13 +1653,13 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
-      bpe_turb[kend-1] -= ( cg0*(w[ijk-kk1] * (ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ]))
-                          + cg1*(w[ijk    ] * (ci0*bz[ijk-kk2] + ci1*bz[ijk-kk1] + ci2*bz[ijk    ] + ci3*bz[ijk+kk1]))
-                          + cg2*(w[ijk+kk1] * (ci0*bz[ijk-kk1] + ci1*bz[ijk    ] + ci2*bz[ijk+kk1] + ci3*bz[ijk+kk2]))
-                          + cg3*(w[ijk+kk2] * (ti0*bz[ijk-kk1] + ti1*bz[ijk    ] + ti2*bz[ijk+kk1] + ti3*bz[ijk+kk2])) )
+      bpe_turb[kend-1] -= bz[ijk]*
+                          ( cg0*(w[ijk-kk1] * (ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ]))
+                          + cg1*(w[ijk    ] * (ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk    ] + ci3*b[ijk+kk1]))
+                          + cg2*(w[ijk+kk1] * (ci0*b[ijk-kk1] + ci1*b[ijk    ] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2]))
+                          + cg3*(w[ijk+kk2] * (ti0*b[ijk-kk1] + ti1*b[ijk    ] + ti2*b[ijk+kk1] + ti3*b[ijk+kk2])) )
                           * dzi4[kend-1];
     }
-
 
   master->sum(bpe_turb, grid->kcells);
   master->sum(bpe_visc, grid->kcells);

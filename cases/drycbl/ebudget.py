@@ -8,7 +8,8 @@ stats = netCDF4.Dataset("drycbl.default.0000000.nc","r")
 
 t = stats.variables["t"][:]
 end   = t.size
-start = t.size-50
+start = t.size-20
+dt = t[1] - t[0]
 
 z  = stats.variables["z"][:]
 zh = stats.variables["zh"][:]
@@ -31,6 +32,13 @@ pe  = numpy.dot(stats.variables["pe" ][:,:], dz)
 ape = numpy.dot(stats.variables["ape"][:,:], dz)
 bpe = numpy.dot(stats.variables["bpe"][:,:], dz)
 
+bdzstardt = zeros(stats.variables["zsort"][:,:].shape)
+zsort = stats.variables["zsort"][:,:]
+b     = stats.variables["b"]    [:,:]
+for k in range(z.size):
+  bdzstardt[:,k] = b[:,k] * numpy.gradient(zsort[:,k], dt)
+del(b, zsort)
+
 tke_turb = average(stats.variables["tke_turb"][start:end,:], 0)
 tke_visc = average(stats.variables["tke_visc"][start:end,:], 0)
 tke_pres = average(stats.variables["tke_pres"][start:end,:], 0)
@@ -47,14 +55,16 @@ pe_sum  = pe_turb + pe_visc + pe_bous + pe_buoy
 bpe_turb = average(stats.variables["bpe_turb"][start:end,:], 0)
 bpe_visc = average(stats.variables["bpe_visc"][start:end,:], 0)
 bpe_diss = average(stats.variables["bpe_diss"][start:end,:], 0)
-bpe_sum  = bpe_turb + bpe_visc + bpe_diss
+bpe_dzdt = average(bdzstardt[start:end,:], 0)
+bpe_sum  = bpe_turb + bpe_visc + bpe_diss + bpe_dzdt
 
 ape_turb = pe_turb - bpe_turb
 ape_visc = pe_visc - bpe_visc
 ape_diss = -bpe_diss
 ape_bous = pe_bous
 ape_buoy = pe_buoy
-ape_sum  = ape_turb + ape_visc + ape_diss + ape_bous + ape_buoy
+ape_dzdt = -bpe_dzdt
+ape_sum  = ape_turb + ape_visc + ape_diss + ape_bous + ape_buoy + ape_dzdt
 
 tke_turb_time = numpy.dot(stats.variables["tke_turb"][:,:], dz)
 tke_visc_time = numpy.dot(stats.variables["tke_visc"][:,:], dz)
@@ -121,6 +131,7 @@ figure()
 plot(bpe_turb/B0, z/henc, 'b-', label='turb')
 plot(bpe_visc/B0, z/henc, 'g-', label='visc')
 plot(bpe_diss/B0, z/henc, 'r-', label='diss')
+plot(bpe_dzdt/B0, z/henc, 'c-', label='dzdt')
 plot(bpe_sum /B0, z/henc, 'k:', label='sum' )
 xlabel(r'de$_b$/dt / B$_0$')
 ylabel(r'z/h$_{enc}$')
@@ -132,6 +143,7 @@ plot(ape_turb/B0, z/henc, 'b-', label='turb')
 plot(ape_visc/B0, z/henc, 'g-', label='visc')
 plot(ape_bous/B0, z/henc, 'm-', label='bous')
 plot(ape_buoy/B0, z/henc, 'c-', label='buoy')
+plot(ape_dzdt/B0, z/henc, 'y-', label='dzdt')
 plot(ape_diss/B0, z/henc, 'r-', label='diss')
 plot(ape_sum /B0, z/henc, 'k:', label='sum' )
 xlabel(r'de$_a$/dt / B$_0$')
