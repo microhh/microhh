@@ -20,6 +20,7 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include <algorithm>    // std::count
 #include "master.h"
@@ -88,7 +89,7 @@ int cboundary_surface::readinifile(cinput *inputin)
   for(bcmap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
   {
     surfsbcbot[it->first] = it->second->bcbot;
-    it->second->bcbot = BC_FLUX;
+    //it->second->bcbot = BC_FLUX;
 
     // crash in case fixed gradient is prescribed
     if(surfsbcbot[it->first] == BC_NEUMANN)
@@ -710,6 +711,7 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
+
     }
 
     // convergence has been reached
@@ -726,6 +728,7 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
 
   if(m > 1)
     std::printf("ERROR convergence has not been reached in Obukhov length calculation\n");
+    //exit(1);
 
   return L;
 }
