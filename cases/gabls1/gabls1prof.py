@@ -1,7 +1,7 @@
 import numpy
 
 # set the height
-kmax  = 32
+kmax  = 64
 zsize = 400.
 dz = zsize / kmax
 
@@ -29,3 +29,9 @@ for k in range(kmax):
   proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} \n'.format(z[k], th[k], u[k], ug[k]))
 proffile.close()
 
+# write surface temperature
+timefile = open('gabls1.time','w')
+timefile.write('t     sbot[th] \n')
+timefile.write('0     265 \n')
+timefile.write('32400 262.75 \n')
+timefile.close()
