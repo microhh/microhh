@@ -1,8 +1,14 @@
 import numpy
 
+# Get number of vertical levels from .ini file
+with open('gabls1.ini') as f:
+  for line in f:
+    if(line.split('=')[0]=='ktot'):
+      kmax = int(line.split('=')[1])
+    if(line.split('=')[0]=='zsize'):
+      zsize = float(line.split('=')[1])
+
 # set the height
-kmax  = 64
-zsize = 400.
 dz = zsize / kmax
 
 dthetadz = 0.01
