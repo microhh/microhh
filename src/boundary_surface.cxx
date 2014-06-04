@@ -706,12 +706,11 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
       fx     = zsl/L - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2.);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, Lend), 2.))
-               - (zsl/Lstart - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
+      fxdif  = ( (zsl/Lend - kappa*zsl*db*fh(zsl, z0h, Lend) / std::pow(du * fm(zsl, z0m, Lend), 2.))
+               - (zsl/Lstart - kappa*zsl*db*fh(zsl, z0h, Lstart) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
-
     }
 
     // convergence has been reached
