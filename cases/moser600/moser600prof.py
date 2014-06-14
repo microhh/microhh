@@ -23,7 +23,7 @@ for k in range(kmax):
   u[k] = 1./(2.*visc)*dpdxls*(z[k]**2. - zsize*z[k])
 
 # write the data to a file
-proffile = open('moser180.prof','w')
+proffile = open('moser600.prof','w')
 proffile.write('{0:^14s} {1:^14s} {2:^14s}\n'.format('z', 'u', 's'))
 for k in range(kmax):
   proffile.write('{0:1.8E} {1:1.8E} {2:1.8E}\n'.format(z[k], u[k], s[k]))
