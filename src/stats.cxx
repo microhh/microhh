@@ -66,8 +66,10 @@ cstats::~cstats()
 int cstats::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&swstats   , "stats", "swstats"   , "");
-  nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
+  nerror += inputin->getItem(&swstats, "stats", "swstats", "", "0");
+
+  if(swstats == "1")
+    nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
 
   if(!(swstats == "0" || swstats == "1" ))
   {
@@ -176,7 +178,10 @@ int cstats::create(int n)
 
 unsigned long cstats::gettimelim(unsigned long itime)
 {
-  unsigned long idtlim = isampletime -  itime % isampletime;
+  if(swstats == "0")
+    return ulhuge;
+
+  unsigned long idtlim = isampletime - itime % isampletime;
   return idtlim;
 }
 
