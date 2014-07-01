@@ -334,7 +334,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
   tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
 
   // interior
-  for(int k=grid->kstart-1; k<grid->kend-1; ++k)
+  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     u2_shear [k] = 0.;
     v2_shear [k] = 0.;
