@@ -657,7 +657,22 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
   tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
 
   // calculate the viscous transport of vertical velocity variance
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  // bottom
+  k = grid->kstart;
+  w2_visc[k] = 0.;
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      w2_visc[k] += visc * ( cg0*((bg0*std::pow(w[ijk-kk2],2.) + bg1*std::pow(w[ijk-kk1],2.) + bg2*std::pow(w[ijk    ],2.) + bg3*std::pow(w[ijk+kk1],2.)) * dzi4[k-2])
+                           + cg1*((cg0*std::pow(w[ijk-kk2],2.) + cg1*std::pow(w[ijk-kk1],2.) + cg2*std::pow(w[ijk    ],2.) + cg3*std::pow(w[ijk+kk1],2.)) * dzi4[k-1])
+                           + cg2*((cg0*std::pow(w[ijk-kk1],2.) + cg1*std::pow(w[ijk    ],2.) + cg2*std::pow(w[ijk+kk1],2.) + cg3*std::pow(w[ijk+kk2],2.)) * dzi4[k  ])
+                           + cg3*((cg0*std::pow(w[ijk    ],2.) + cg1*std::pow(w[ijk+kk1],2.) + cg2*std::pow(w[ijk+kk2],2.) + cg3*std::pow(w[ijk+kk3],2.)) * dzi4[k+1]) ) * dzhi4[k];
+    }
+
+  // interior
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
   {
     w2_visc[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -671,6 +686,20 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                              + cg3*((cg0*std::pow(w[ijk    ],2.) + cg1*std::pow(w[ijk+kk1],2.) + cg2*std::pow(w[ijk+kk2],2.) + cg3*std::pow(w[ijk+kk3],2.)) * dzi4[k+1]) ) * dzhi4[k];
       }
   }
+
+  // top boundary
+  k = grid->kend;
+  w2_visc[k] = 0.;
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      w2_visc[k] += visc * ( cg0*((cg0*std::pow(w[ijk-kk3],2.) + cg1*std::pow(w[ijk-kk2],2.) + cg2*std::pow(w[ijk-kk1],2.) + cg3*std::pow(w[ijk    ],2.)) * dzi4[k-2])
+                           + cg1*((cg0*std::pow(w[ijk-kk2],2.) + cg1*std::pow(w[ijk-kk1],2.) + cg2*std::pow(w[ijk    ],2.) + cg3*std::pow(w[ijk+kk1],2.)) * dzi4[k-1])
+                           + cg2*((cg0*std::pow(w[ijk-kk1],2.) + cg1*std::pow(w[ijk    ],2.) + cg2*std::pow(w[ijk+kk1],2.) + cg3*std::pow(w[ijk+kk2],2.)) * dzi4[k  ])
+                           + cg3*((tg0*std::pow(w[ijk-kk1],2.) + tg1*std::pow(w[ijk    ],2.) + tg2*std::pow(w[ijk+kk1],2.) + tg3*std::pow(w[ijk+kk2],2.)) * dzi4[k+1]) ) * dzhi4[k];
+    }
 
   master->sum(u2_visc , grid->kcells);
   master->sum(v2_visc , grid->kcells);
@@ -1399,7 +1428,7 @@ int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * re
                            double * restrict z, double * restrict dzi4, double * restrict dzhi4,
                            double visc)
 {
-  int ij,ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
+  int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;
   double dzstardb;
 
