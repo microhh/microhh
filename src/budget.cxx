@@ -634,10 +634,10 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                             + cg2*((cg0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + cg1*std::pow(v[ijk    ]-vmean[k  ],2.) + cg2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + cg3*std::pow(v[ijk+kk2]-vmean[k+2],2.)) * dzhi4[k+1])
                             + cg3*((cg0*std::pow(v[ijk    ]-vmean[k  ],2.) + cg1*std::pow(v[ijk+kk1]-vmean[k+1],2.) + cg2*std::pow(v[ijk+kk2]-vmean[k+2],2.) + cg3*std::pow(v[ijk+kk3]-vmean[k+3],2.)) * dzhi4[k+2]) ) * dzi4[k];
 
-      tke_visc[k] += visc * ( cg0*((bg0*std::pow(wx[ijk-kk2],2.) + bg1*std::pow(wx[ijk-kk1],2.) + bg2*std::pow(wx[ijk    ],2.) + bg3*std::pow(wx[ijk+kk1],2.)) * dzhi4[k-1])
-                            + cg1*((cg0*std::pow(wx[ijk-kk2],2.) + cg1*std::pow(wx[ijk-kk1],2.) + cg2*std::pow(wx[ijk    ],2.) + cg3*std::pow(wx[ijk+kk1],2.)) * dzhi4[k  ])
-                            + cg2*((cg0*std::pow(wx[ijk-kk1],2.) + cg1*std::pow(wx[ijk    ],2.) + cg2*std::pow(wx[ijk+kk1],2.) + cg3*std::pow(wx[ijk+kk2],2.)) * dzhi4[k+1])
-                            + cg3*((cg0*std::pow(wx[ijk    ],2.) + cg1*std::pow(wx[ijk+kk1],2.) + cg2*std::pow(wx[ijk+kk2],2.) + cg3*std::pow(wx[ijk+kk3],2.)) * dzhi4[k+2]) ) * dzi4[k];
+      tke_visc[k] += 0.5 * visc * ( cg0*((bg0*std::pow(wx[ijk-kk2],2.) + bg1*std::pow(wx[ijk-kk1],2.) + bg2*std::pow(wx[ijk    ],2.) + bg3*std::pow(wx[ijk+kk1],2.)) * dzhi4[k-1])
+                                  + cg1*((cg0*std::pow(wx[ijk-kk2],2.) + cg1*std::pow(wx[ijk-kk1],2.) + cg2*std::pow(wx[ijk    ],2.) + cg3*std::pow(wx[ijk+kk1],2.)) * dzhi4[k  ])
+                                  + cg2*((cg0*std::pow(wx[ijk-kk1],2.) + cg1*std::pow(wx[ijk    ],2.) + cg2*std::pow(wx[ijk+kk1],2.) + cg3*std::pow(wx[ijk+kk2],2.)) * dzhi4[k+1])
+                                  + cg3*((cg0*std::pow(wx[ijk    ],2.) + cg1*std::pow(wx[ijk+kk1],2.) + cg2*std::pow(wx[ijk+kk2],2.) + cg3*std::pow(wx[ijk+kk3],2.)) * dzhi4[k+2]) ) * dzi4[k];
       // tke_visc[k] += 0.5*visc * ( cg0*std::pow(w[ijk-kk1],2.) + cg1*std::pow(w[ijk],2.) + cg2*std::pow(w[ijk+kk1],2.) + cg3*std::pow(w[ijk+kk2],2.)) * dzi4[k];
     }
     tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
@@ -664,11 +664,10 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                               + cg2*((cg0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + cg1*std::pow(v[ijk    ]-vmean[k  ],2.) + cg2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + cg3*std::pow(v[ijk+kk2]-vmean[k+2],2.)) * dzhi4[k+1])
                               + cg3*((cg0*std::pow(v[ijk    ]-vmean[k  ],2.) + cg1*std::pow(v[ijk+kk1]-vmean[k+1],2.) + cg2*std::pow(v[ijk+kk2]-vmean[k+2],2.) + cg3*std::pow(v[ijk+kk3]-vmean[k+3],2.)) * dzhi4[k+2]) ) * dzi4[k];
 
-        tke_visc[k] += visc * ( cg0*((cg0*std::pow(wx[ijk-kk3],2.) + cg1*std::pow(wx[ijk-kk2],2.) + cg2*std::pow(wx[ijk-kk1],2.) + cg3*std::pow(wx[ijk    ],2.)) * dzhi4[k-1])
-                              + cg1*((cg0*std::pow(wx[ijk-kk2],2.) + cg1*std::pow(wx[ijk-kk1],2.) + cg2*std::pow(wx[ijk    ],2.) + cg3*std::pow(wx[ijk+kk1],2.)) * dzhi4[k  ])
-                              + cg2*((cg0*std::pow(wx[ijk-kk1],2.) + cg1*std::pow(wx[ijk    ],2.) + cg2*std::pow(wx[ijk+kk1],2.) + cg3*std::pow(wx[ijk+kk2],2.)) * dzhi4[k+1])
-                              + cg3*((cg0*std::pow(wx[ijk    ],2.) + cg1*std::pow(wx[ijk+kk1],2.) + cg2*std::pow(wx[ijk+kk2],2.) + cg3*std::pow(wx[ijk+kk3],2.)) * dzhi4[k+2]) ) * dzi4[k];
-
+        tke_visc[k] += 0.5 * visc * ( cg0*((cg0*std::pow(wx[ijk-kk3],2.) + cg1*std::pow(wx[ijk-kk2],2.) + cg2*std::pow(wx[ijk-kk1],2.) + cg3*std::pow(wx[ijk    ],2.)) * dzhi4[k-1])
+                                    + cg1*((cg0*std::pow(wx[ijk-kk2],2.) + cg1*std::pow(wx[ijk-kk1],2.) + cg2*std::pow(wx[ijk    ],2.) + cg3*std::pow(wx[ijk+kk1],2.)) * dzhi4[k  ])
+                                    + cg2*((cg0*std::pow(wx[ijk-kk1],2.) + cg1*std::pow(wx[ijk    ],2.) + cg2*std::pow(wx[ijk+kk1],2.) + cg3*std::pow(wx[ijk+kk2],2.)) * dzhi4[k+1])
+                                    + cg3*((cg0*std::pow(wx[ijk    ],2.) + cg1*std::pow(wx[ijk+kk1],2.) + cg2*std::pow(wx[ijk+kk2],2.) + cg3*std::pow(wx[ijk+kk3],2.)) * dzhi4[k+2]) ) * dzi4[k];
         // tke_visc[k] += 0.5*visc * ( cg0*std::pow(w[ijk-kk1],2.) + cg1*std::pow(w[ijk],2.) + cg2*std::pow(w[ijk+kk1],2.) + cg3*std::pow(w[ijk+kk2],2.)) * dzi4[k];
       }
     tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
@@ -695,10 +694,10 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                             + cg2*((cg0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + cg1*std::pow(v[ijk    ]-vmean[k  ],2.) + cg2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + cg3*std::pow(v[ijk+kk2]-vmean[k+2],2.)) * dzhi4[k+1])
                             + cg3*((tg0*std::pow(v[ijk-kk1]-vmean[k-1],2.) + tg1*std::pow(v[ijk    ]-vmean[k  ],2.) + tg2*std::pow(v[ijk+kk1]-vmean[k+1],2.) + tg3*std::pow(v[ijk+kk2]-vmean[k+2],2.)) * dzhi4[k+2]) ) * dzi4[k];
 
-      tke_visc[k] += visc * ( cg0*((cg0*std::pow(wx[ijk-kk3],2.) + cg1*std::pow(wx[ijk-kk2],2.) + cg2*std::pow(wx[ijk-kk1],2.) + cg3*std::pow(wx[ijk    ],2.)) * dzhi4[k-1])
-                            + cg1*((cg0*std::pow(wx[ijk-kk2],2.) + cg1*std::pow(wx[ijk-kk1],2.) + cg2*std::pow(wx[ijk    ],2.) + cg3*std::pow(wx[ijk+kk1],2.)) * dzhi4[k  ])
-                            + cg2*((cg0*std::pow(wx[ijk-kk1],2.) + cg1*std::pow(wx[ijk    ],2.) + cg2*std::pow(wx[ijk+kk1],2.) + cg3*std::pow(wx[ijk+kk2],2.)) * dzhi4[k+1])
-                            + cg3*((tg0*std::pow(wx[ijk-kk1],2.) + tg1*std::pow(wx[ijk    ],2.) + tg2*std::pow(wx[ijk+kk1],2.) + tg3*std::pow(wx[ijk+kk2],2.)) * dzhi4[k+2]) ) * dzi4[k];
+      tke_visc[k] += 0.5 * visc * ( cg0*((cg0*std::pow(wx[ijk-kk3],2.) + cg1*std::pow(wx[ijk-kk2],2.) + cg2*std::pow(wx[ijk-kk1],2.) + cg3*std::pow(wx[ijk    ],2.)) * dzhi4[k-1])
+                                  + cg1*((cg0*std::pow(wx[ijk-kk2],2.) + cg1*std::pow(wx[ijk-kk1],2.) + cg2*std::pow(wx[ijk    ],2.) + cg3*std::pow(wx[ijk+kk1],2.)) * dzhi4[k  ])
+                                  + cg2*((cg0*std::pow(wx[ijk-kk1],2.) + cg1*std::pow(wx[ijk    ],2.) + cg2*std::pow(wx[ijk+kk1],2.) + cg3*std::pow(wx[ijk+kk2],2.)) * dzhi4[k+1])
+                                  + cg3*((tg0*std::pow(wx[ijk-kk1],2.) + tg1*std::pow(wx[ijk    ],2.) + tg2*std::pow(wx[ijk+kk1],2.) + tg3*std::pow(wx[ijk+kk2],2.)) * dzhi4[k+2]) ) * dzi4[k];
 
       // tke_visc[k] += 0.5*visc * ( cg0*std::pow(w[ijk-kk1],2.) + cg1*std::pow(w[ijk],2.) + cg2*std::pow(w[ijk+kk1],2.) + cg3*std::pow(w[ijk+kk2],2.)) * dzi4[k];
     }
