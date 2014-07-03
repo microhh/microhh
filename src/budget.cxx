@@ -556,8 +556,23 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                      + cg3*((ti0*p[ijk-kk1] + ti1*p[ijk    ] + ti2*p[ijk+kk1] + ti3*p[ijk+kk2])*w[ijk+kk2]) ) * dzi4[k];
     }
  
-  // calculate the vertical velocity term, which is zero at the boundaries
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  // calculate the vertical velocity pressure transport term
+  // bottom boundary
+  k = grid->kstart;
+  w2_pres[k] = 0.;
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      w2_pres[k] -= 2.*( cg0*((bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1])*p[ijk-kk2])
+                       + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1])*p[ijk-kk1])
+                       + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*p[ijk    ])
+                       + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])*p[ijk+kk1]) ) * dzhi4[k];
+    }
+
+  // interior
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
   {
     w2_pres[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -571,6 +586,20 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                          + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])*p[ijk+kk1]) ) * dzhi4[k];
       }
   }
+
+  // top boundary
+  k = grid->kend;
+  w2_pres[k] = 0.;
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      w2_pres[k] -= 2.*( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ])*p[ijk-kk2])
+                       + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1])*p[ijk-kk1])
+                       + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*p[ijk    ])
+                       + cg3*((ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2])*p[ijk+kk1]) ) * dzhi4[k];
+    }
 
   master->sum(w2_pres , grid->kcells);
   master->sum(tke_pres, grid->kcells);
