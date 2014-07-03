@@ -1228,7 +1228,7 @@ double cbudget::calcdzstardb(double b, double * restrict bsort, double * restric
 {
   // start the iteration below the grid to make sure not to miss values below the first full level
   int k = grid->kstart-1;
-  while(bsort[k+1] < b)
+  while(bsort[k+1] < b && k < grid->kend)
     ++k;
 
   // our required value is in between bsort[k] and bsort[k+1]

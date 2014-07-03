@@ -538,6 +538,7 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   }
 
   // now calculate the ghost cells
+  // \TODO this is not accurate enough, extrapolate properly
   double profbot = minval;
   double proftop = maxval;
 
