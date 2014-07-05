@@ -477,9 +477,22 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
   tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
 
   // calculate the vertical velocity term, which is zero at the boundaries
+  k = grid->kstart;
+  w2_turb[k] = 0.;
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      w2_turb[k] -= ( cg0*(bi0*std::pow(w[ijk-kk2],3.) + bi1*std::pow(w[ijk-kk1],3.) + bi2*std::pow(w[ijk    ],3.) + bi3*std::pow(w[ijk+kk1],3.))
+                    + cg1*(ci0*std::pow(w[ijk-kk2],3.) + ci1*std::pow(w[ijk-kk1],3.) + ci2*std::pow(w[ijk    ],3.) + ci3*std::pow(w[ijk+kk1],3.))
+                    + cg2*(ci0*std::pow(w[ijk-kk1],3.) + ci1*std::pow(w[ijk    ],3.) + ci2*std::pow(w[ijk+kk1],3.) + ci3*std::pow(w[ijk+kk2],3.))
+                    + cg3*(ci0*std::pow(w[ijk    ],3.) + ci1*std::pow(w[ijk+kk1],3.) + ci2*std::pow(w[ijk+kk2],3.) + ci3*std::pow(w[ijk+kk3],3.)) ) * dzhi4[k];
+    }
+
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
-    w2_turb [k] = 0.;
+    w2_turb[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
@@ -491,6 +504,19 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                       + cg3*(ci0*std::pow(w[ijk    ],3.) + ci1*std::pow(w[ijk+kk1],3.) + ci2*std::pow(w[ijk+kk2],3.) + ci3*std::pow(w[ijk+kk3],3.)) ) * dzhi4[k];
       }
   }
+
+  k = grid->kend;
+  w2_turb[k] = 0.;
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ijk  = i + j*jj1 + k*kk1;
+      w2_turb[k] -= ( cg0*(ci0*std::pow(w[ijk-kk3],3.) + ci1*std::pow(w[ijk-kk2],3.) + ci2*std::pow(w[ijk-kk1],3.) + ci3*std::pow(w[ijk    ],3.))
+                    + cg1*(ci0*std::pow(w[ijk-kk2],3.) + ci1*std::pow(w[ijk-kk1],3.) + ci2*std::pow(w[ijk    ],3.) + ci3*std::pow(w[ijk+kk1],3.))
+                    + cg2*(ci0*std::pow(w[ijk-kk1],3.) + ci1*std::pow(w[ijk    ],3.) + ci2*std::pow(w[ijk+kk1],3.) + ci3*std::pow(w[ijk+kk2],3.))
+                    + cg3*(ti0*std::pow(w[ijk-kk1],3.) + ti1*std::pow(w[ijk    ],3.) + ti2*std::pow(w[ijk+kk1],3.) + ti3*std::pow(w[ijk+kk2],3.)) ) * dzhi4[k];
+    }
 
   // calculate the profiles
   master->sum(u2_turb , grid->kcells);
@@ -609,7 +635,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
     w2_pres [k] /= n;
-
+  
   // 5. CALCULATE THE VISCOUS TRANSPORT TERM
   // first, interpolate the vertical velocity to the scalar levels using temporary array wx
   for(int k=grid->kstart; k<grid->kend; ++k)
