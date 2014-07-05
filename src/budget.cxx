@@ -476,7 +476,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
     }
   tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
 
-  // calculate the vertical velocity term, which is zero at the boundaries
+  // calculate the vertical velocity term
   k = grid->kstart;
   w2_turb[k] = 0.;
   for(int j=grid->jstart; j<grid->jend; ++j)
@@ -490,7 +490,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
                     + cg3*(ci0*std::pow(w[ijk    ],3.) + ci1*std::pow(w[ijk+kk1],3.) + ci2*std::pow(w[ijk+kk2],3.) + ci3*std::pow(w[ijk+kk3],3.)) ) * dzhi4[k];
     }
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
   {
     w2_turb[k] = 0.;
     for(int j=grid->jstart; j<grid->jend; ++j)
