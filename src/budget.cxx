@@ -583,6 +583,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
     }
  
   // calculate the vertical velocity pressure transport term
+  // \TODO implement the proper BC as soon as the full BC's for pressure are added
   // bottom boundary
   k = grid->kstart;
   w2_pres[k] = 0.;
@@ -591,7 +592,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
-      w2_pres[k] -= 2.*( cg0*((bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1])*p[ijk-kk2])
+      w2_pres[k] -= 0.*( cg0*((bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1])*p[ijk-kk2])
                        + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1])*p[ijk-kk1])
                        + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*p[ijk    ])
                        + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])*p[ijk+kk1]) ) * dzhi4[k];
@@ -621,7 +622,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
-      w2_pres[k] -= 2.*( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ])*p[ijk-kk2])
+      w2_pres[k] -= 0.*( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ])*p[ijk-kk2])
                        + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1])*p[ijk-kk1])
                        + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*p[ijk    ])
                        + cg3*((ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2])*p[ijk+kk1]) ) * dzhi4[k];
