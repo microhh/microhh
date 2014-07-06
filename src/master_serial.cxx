@@ -138,4 +138,24 @@ int cmaster::broadcast(double *data, int datasize)
 {
   return 0;
 }
+
+int cmaster::sum(int *var, int datasize)
+{
+  return 0;
+}
+
+int cmaster::sum(double *var, int datasize)
+{
+  return 0;
+}
+
+int cmaster::max(double *var, int datasize)
+{
+  return 0;
+}
+
+int cmaster::min(double *var, int datasize)
+{
+  return 0;
+}
 #endif
