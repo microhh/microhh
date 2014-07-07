@@ -1,21 +1,40 @@
 import numpy
-#from pylab import *
+#from scipy.special import erf
+from pylab import *
 
-# set the height
+# set the height (ktot = 512)
 kmax = 512
 dn   = 1./kmax
 
-n  = numpy.linspace(dn, 1.-dn, kmax)
+n = numpy.linspace(dn, 1.-dn, kmax)
 
 nloc1 = 80.*dn
 nbuf1 = 16.*dn
 
 nloc2 = 512.*dn
-nbuf2 = 128.*dn
+nbuf2 = 72.*dn
 
 dz1 = 0.001
 dz2 = 0.002
-dz3 = 0.01
+dz3 = 0.016
+
+# set the height (ktot = 1024)
+"""
+kmax = 1024
+dn   = 1./kmax
+
+n  = numpy.linspace(dn, 1.-dn, kmax)
+
+nloc1 = 150.*dn
+nbuf1 = 32.*dn
+
+nloc2 = 1024.*dn
+nbuf2 = 192.*dn
+
+dz1 = 0.0004 #z0 is calculated as 7.37e-4
+dz2 = 0.0009765625
+dz3 = 0.008
+"""
 
 dzdn1 = dz1/dn
 dzdn2 = dz2/dn
@@ -45,19 +64,23 @@ N2    = 3.
 b = numpy.zeros(numpy.size(z))
 
 for k in range(kmax):
+  #b[k] = N2*z[k] + b0*erf(-0.5*z[k]/delta) + b0
   b[k] = N2*z[k]
 
 # write the data to a file
-proffile = open('thermal.prof','w')
+proffile = open('breeze.prof','w')
 proffile.write('{0:^20s} {1:^20s}\n'.format('z','b'))
 for k in range(kmax):
   proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], b[k]))
 proffile.close()
 
+"""
 #plot the grid
-#subplot(131)
-#plot(n,z)
-#subplot(132)
-#plot(n,dz)
-#subplot(133)
-#plot(n,stretch)
+figure()
+subplot(131)
+plot(n,z)
+subplot(132)
+plot(n,dz)
+subplot(133)
+plot(n,stretch)
+"""

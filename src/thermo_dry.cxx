@@ -156,6 +156,8 @@ int cthermo_dry::create(cinput *inputin)
     stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
     stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
     stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+
+    stats->addprof("bsort", "Sorted buoyancy", "m s-2", "z");
   }
 
   // Cross sections (isn't there an easier way to populate this list?)
@@ -194,14 +196,18 @@ int cthermo_dry::exec()
   return 0;
 }
 
-int cthermo_dry::execstats()
+int cthermo_dry::execstats(mask *m)
 {
   // calculate the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot, threfh);
 
+  // define the location
+  const int sloc[] = {0,0,0};
+
   // calculate the mean
-  stats->calcmean(fields->s["tmp1"]->data, stats->profs["b"].data, NO_OFFSET);
+  stats->calcmean(fields->s["tmp1"]->data, m->profs["b"].data, NO_OFFSET, sloc,
+                  fields->s["tmp3"]->data, stats->nmask);
 
   // calculate the moments
   for(int n=2; n<5; ++n)
@@ -209,32 +215,45 @@ int cthermo_dry::execstats()
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, stats->profs["b"].data, stats->profs["b"+sn].data, n, 0);
+    stats->calcmoment(fields->s["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+                      fields->s["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi4);
+    stats->calcgrad_4th(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+    stats->calcflux_2nd(fields->s["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+                        m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
   if(model->diff->getname() == "les2s")
   {
     cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
+    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
+                        m->profs["bdiff"].data, grid->dzhi,
+                        fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
   }
   else
-    stats->calcdiff_4th(fields->s["tmp1"]->data, stats->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc);
+    stats->calcdiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate the total fluxes
-  stats->addfluxes(stats->profs["bflux"].data, stats->profs["bw"].data, stats->profs["bdiff"].data);
+  stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
+
+  // calculate the sorted buoyancy profile
+  stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 
   return 0;
 }

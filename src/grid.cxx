@@ -165,10 +165,14 @@ int cgrid::init()
     return 1;
   }
 
+  // calculate the total number of grid cells
+  ntot = itot*jtot*ktot;
+
   // calculate the grid dimensions per process
-  imax   = itot / master->npx;
-  jmax   = jtot / master->npy;
-  kmax   = ktot;
+  imax = itot / master->npx;
+  jmax = jtot / master->npy;
+  kmax = ktot;
+  nmax = imax*jmax*kmax;
 
   // calculate the block sizes for the transposes
   iblock = itot / master->npy;
@@ -368,56 +372,28 @@ int cgrid::calculate()
  * where a value of 1 refers to the flux level.
  * @return Returns 0.
  */
-int cgrid::interpolatex_2nd(double * restrict out, double * restrict in, int locx)
+int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
-  int ijk,ii,jj,kk,ihlf;
+  int ijk,ii,jj,kk,iih,jjh,kkh;
 
   ii = 1;
   jj = icells;
   kk = ijcells;
 
-  ihlf = locx*ii;
+  iih = (locin[0]-locout[0])*ii;
+  jjh = (locin[1]-locout[1])*jj;
+  kkh = (locin[2]-locout[2])*kk;
 
-  // interpolate in x
+  // interpolate the field
+  // \TODO add the vertical component
   for(int k=0; k<kcells; ++k)
     for(int j=jstart; j<jend; ++j)
 #pragma ivdep
       for(int i=istart; i<iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        out[ijk] = 0.5*(in[ijk-ii+ihlf] + in[ijk+ihlf]);
-      }
-
-  return 0;
-}
-
-/**
- * This function does a second order horizontal interpolation in the y-direction
- * to the selected location on the grid.
- * @param out Pointer to the output field.
- * @param in Pointer to the input field.
- * @param locy Integer containing the location of the input field,
- * where a value of 1 refers to the flux level.
- * @return Returns 0.
- */
-int cgrid::interpolatey_2nd(double * restrict out, double * restrict in, int locy)
-{
-  int ijk,ii,jj,kk,jhlf;
-
-  ii = 1;
-  jj = icells;
-  kk = ijcells;
-
-  jhlf = locy*jj;
-
-  // interpolate in y
-  for(int k=0; k<kcells; ++k)
-    for(int j=jstart; j<jend; ++j)
-#pragma ivdep
-      for(int i=istart; i<iend; ++i)
-      {
-        ijk = i + j*jj + k*kk;
-        out[ijk] = 0.5*(in[ijk-jj+jhlf] + in[ijk+jhlf]);
+        out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
+                 + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
       }
 
   return 0;
@@ -432,64 +408,32 @@ int cgrid::interpolatey_2nd(double * restrict out, double * restrict in, int loc
  * where a value of 1 refers to the flux level.
  * @return Returns 0.
  */
-int cgrid::interpolatex_4th(double * restrict out, double * restrict in, int locx)
+int cgrid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   // interpolation function, locx = 1 indicates that the reference is at the half level
-  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,ihlf;
+  int ijk,ii,jj,kk,iih1,jjh1,iih2,jjh2;
 
-  ii1 = 1;
-  ii2 = 2;
-  jj1 = 1*icells;
-  jj2 = 2*icells;
-  kk1 = 1*ijcells;
-  kk2 = 2*ijcells;
+  ii = 1;
+  jj = icells;
+  kk = ijcells;
 
-  ihlf = locx*ii1;
+  // a shift to the left gives minus 1 a shift to the right +1
+  iih1 = 1*(locin[0]-locout[0])*ii;
+  iih2 = 2*(locin[0]-locout[0])*ii;
+  jjh1 = 1*(locin[1]-locout[1])*jj;
+  jjh2 = 2*(locin[1]-locout[1])*jj;
 
-  // interpolate in x
+  // \TODO add the vertical component
   for(int k=0; k<kcells; ++k)
     for(int j=jstart; j<jend; ++j)
 #pragma ivdep
       for(int i=istart; i<iend; ++i)
       {
-        ijk = i + j*jj1 + k*kk1;
-        out[ijk] = ci0*in[ijk-ii2+ihlf] + ci1*in[ijk-ii1+ihlf] + ci2*in[ijk+ihlf] + ci3*in[ijk+ii1+ihlf];
-      }
-
-  return 0;
-}
-
-/**
- * This function does a fourth order horizontal interpolation in the y-direction
- * to the selected location on the grid.
- * @param out Pointer to the output field.
- * @param in Pointer to the input field.
- * @param locx Integer containing the location of the input field,
- * where a value of 1 refers to the flux level.
- * @return Returns 0.
- */
-int cgrid::interpolatey_4th(double * restrict out, double * restrict in, int locy)
-{
-  // interpolation function, locy = 1 indicates that the reference is at the half level
-  int ijk,ii1,ii2,jj1,jj2,kk1,kk2,jhlf;
-
-  ii1 = 1;
-  ii2 = 2;
-  jj1 = 1*icells;
-  jj2 = 2*icells;
-  kk1 = 1*ijcells;
-  kk2 = 2*ijcells;
-
-  jhlf = locy*jj1;
-
-  // interpolate in y
-  for(int k=0; k<kcells; ++k)
-    for(int j=jstart; j<jend; ++j)
-#pragma ivdep
-      for(int i=istart; i<iend; ++i)
-      {
-        ijk = i + j*jj1 + k*kk1;
-        out[ijk] = ci0*in[ijk-jj2+jhlf] + ci1*in[ijk-jj1+jhlf] + ci2*in[ijk+jhlf] + ci3*in[ijk+jj1+jhlf];
+        ijk = i + j*jj + k*kk;
+        out[ijk] = ci0*(ci0*in[ijk-iih1-jjh1] + ci1*in[ijk-jjh1] + ci2*in[ijk+iih1-jjh1] + ci3*in[ijk+iih2-jjh1])
+                 + ci1*(ci0*in[ijk-iih1     ] + ci1*in[ijk     ] + ci2*in[ijk+iih1     ] + ci3*in[ijk+iih2     ])
+                 + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
+                 + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
       }
 
   return 0;

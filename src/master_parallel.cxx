@@ -252,4 +252,16 @@ int cmaster::sum(double *var, int datasize)
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_SUM, commxy);
   return 0;
 }
+
+int cmaster::max(double *var, int datasize)
+{
+  MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MAX, commxy);
+  return 0;
+}
+
+int cmaster::min(double *var, int datasize)
+{
+  MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MIN, commxy);
+  return 0;
+}
 #endif

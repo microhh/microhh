@@ -52,6 +52,7 @@ class cboundary
 
     virtual int readinifile(cinput *); ///< Process the data from the input file.
     virtual int init();                ///< Initialize the fields.
+    virtual int create(cinput *);      ///< Initialize the fields.
     virtual int settimedep();          ///< Initialize the fields.
     virtual int setvalues();           ///< Set all 2d fields to the prober BC value.
 

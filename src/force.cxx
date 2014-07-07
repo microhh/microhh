@@ -20,12 +20,14 @@
  */
 
 #include <cstdio>
+#include <algorithm>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "force.h"
 #include "defines.h"
 #include "model.h"
+#include "timeloop.h"
 
 cforce::cforce(cmodel *modelin)
 {
@@ -56,6 +58,11 @@ cforce::~cforce()
     if(swwls == "1")
       delete[] wls;
   }
+
+  // clean up time dependent data
+  for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
+    delete[] it->second;
+
 }
 
 int cforce::readinifile(cinput *inputin)
@@ -94,6 +101,10 @@ int cforce::readinifile(cinput *inputin)
     ++nerror;
     if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swwls\n", swwls.c_str());
   }
+
+  // get the list of time varying variables
+  nerror += inputin->getItem(&swtimedep  , "force", "swtimedep"  , "", "0");
+  nerror += inputin->getList(&timedeplist, "force", "timedeplist", "");
 
   return nerror;
 }
@@ -148,10 +159,35 @@ int cforce::create(cinput *inputin)
   if(swwls == "1")
     nerror += inputin->getProf(&wls[grid->kstart], "wls", grid->kmax);
 
-  if(nerror > 0)
-    return 1;
+  // process the profiles for the time dependent data
+  if(swtimedep == "1")
+  {
+    // create temporary list to check which entries are used
+    std::vector<std::string> tmplist = timedeplist;
 
-  return 0;
+    // process time dependent bcs for the large scale forcings
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+    {
+      // \TODO make sure to give each element its own time series and remove the clear()
+      timedeptime.clear();
+      std::string name = *it + "ls";
+      if(std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end()) 
+      {
+        nerror += inputin->getTimeProf(&timedepdata[name], &timedeptime, name, grid->kmax);
+
+        // remove the item from the tmplist
+        std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), *it);
+        if(ittmp != tmplist.end())
+          tmplist.erase(ittmp);
+      }
+    }
+
+    // display a warning for the non-supported 
+    for(std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
+      if(master->mpiid == 0) std::printf("WARNING %s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
+  }
+
+  return nerror;
 }
 
 int cforce::exec(double dt)
@@ -177,6 +213,66 @@ int cforce::exec(double dt)
   {
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       advecwls_2nd(it->second->data, fields->s[it->first]->datamean, wls, grid->dzhi);
+  }
+
+  return 0;
+}
+
+int cforce::settimedep()
+{
+  if(swtimedep == "0")
+    return 0;
+
+  // first find the index for the time entries
+  unsigned int index0 = 0;
+  unsigned int index1 = 0;
+  for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
+  {
+    if(model->timeloop->time < *it)
+      break;
+    else
+      ++index1;
+  }
+
+  // second, calculate the weighting factor
+  double fac0, fac1;
+
+  // correct for out of range situations where the simulation is longer than the time range in input
+  if(index1 == 0)
+  {
+    fac0 = 0.;
+    fac1 = 1.;
+    index0 = 0;
+  }
+  else if(index1 == timedeptime.size())
+  {
+    fac0 = 1.;
+    fac1 = 0.;
+    index0 = index1-1;
+    index1 = index0;
+  }
+  else
+  {
+    index0 = index1-1;
+    double timestep;
+    timestep = timedeptime[index1] - timedeptime[index0];
+    fac0 = (timedeptime[index1] - model->timeloop->time) / timestep;
+    fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
+  }
+
+  // process time dependent bcs for the large scale forcings
+  int kk = grid->kmax;
+  int kgc = grid->kgc;
+
+  for(std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
+  {
+    std::string name = *it1 + "ls";
+    std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
+
+    // update the profile
+    if(it2 != timedepdata.end())
+      for(int k=0; k<grid->kmax; ++k)
+        lsprofs[*it1][k+kgc] = fac0*it2->second[index0*kk+k] + fac1*it2->second[index1*kk+k];
   }
 
   return 0;

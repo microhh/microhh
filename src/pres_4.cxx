@@ -475,16 +475,17 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
   jj = imax;
   kk = imax*jmax;
 
-  int ijkp,jjp,kkp;
+  int ijkp,jjp,kkp1,kkp2;
   jjp = grid->icells;
-  kkp = grid->icells*grid->jcells;
+  kkp1 = 1*grid->ijcells;
+  kkp2 = 2*grid->ijcells;
 
   for(int k=0; k<grid->kmax; k++)
     for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
       for(int i=0; i<grid->imax; i++)
       {
-        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
+        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp1;
         ijk  = i + j*jj + k*kk;
         p[ijkp] = work3d[ijk];
       }
@@ -495,8 +496,9 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk = i + j*jjp + (grid->kstart-1)*kkp;
-      p[ijk] = p[ijk+kkp];
+      ijk = i + j*jjp + grid->kstart*kkp1;
+      p[ijk-kkp1] = p[ijk     ];
+      p[ijk-kkp2] = p[ijk+kkp1];
     }
 
   // set a zero gradient boundary at the top
@@ -504,8 +506,9 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
-      ijk = i + j*jjp + (grid->kend)*kkp;
-      p[ijk] = p[ijk-kkp];
+      ijk = i + j*jjp + (grid->kend-1)*kkp1;
+      p[ijk+kkp1] = p[ijk     ];
+      p[ijk+kkp2] = p[ijk-kkp1];
     }
 
   // set the cyclic boundary conditions
@@ -515,7 +518,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 }
 
 int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                       double * restrict p , double * restrict dzhi4)
+                      double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart;
