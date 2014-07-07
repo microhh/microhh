@@ -102,6 +102,11 @@ int cthermo_moist::readinifile(cinput *inputin)
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
 
+  // BvS test for updating hydrostatic prssure during run
+  // swupdate..=0 -> initial base state pressure used in saturation calc
+  // swupdate..=1 -> base state pressure updated before saturation calc
+  nerror += inputin->getItem(&swupdatebasestate,"thermo","swupdatebasestate","");
+
   return (nerror > 0);
 }
 
@@ -155,16 +160,15 @@ int cthermo_moist::create(cinput *inputin)
   // Calculate the initial/reference base state
   calcbasestate(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, thl0, qt0);
 
-  // BvS debug
-  //for(int k=0; k<grid->kcells; ++k)
-  //  std::printf("%E, %E, %E, %E, %E, %E\n", grid->z[k], thl0[k], qt0[k], exnref[k], pref[k], fields->rhoref[k]);
-  //printf("---");
-  //for(int k=0; k<grid->kcells; ++k)
-  //  std::printf("%E, %E, %E, %E\n", grid->zh[k], exnrefh[k], prefh[k], fields->rhorefh[k]);
-
   // add variables to the statistics
   if(stats->getsw() == "1")
   {
+    // Add base state pressure and density to statistics
+    stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
+    stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
+    stats->addfixedprof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
+    stats->addfixedprof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
+
     stats->addprof("b", "Buoyancy", "m s-2", "z");
     for(int n=2; n<5; ++n)
     {
@@ -218,15 +222,15 @@ int cthermo_moist::exec()
 {
   int kk,nerror;
   kk = grid->icells*grid->jcells;
-
-  // tmp field is used for catching the "dummy" return data fro calchydropres()
-  double * restrict tmp2 = fields->s["tmp2"]->data;
-
+  int kcells = grid->kcells;
   nerror = 0;
 
-  //if(swupdatebasestate)
-  //  calcbasestate(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, fields->s["s"]->datamean, fields->s["qt"]->datamean);
-
+  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
+  double * restrict tmp2 = fields->s["tmp2"]->data;
+  if(swupdatebasestate)
+    calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
+  
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder == "2")
   {
@@ -246,6 +250,14 @@ int cthermo_moist::exec()
 
 int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
+  int kcells = grid->kcells;
+
+  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
+  double * restrict tmp2 = fields->s["tmp2"]->data;
+  if(swupdatebasestate)
+    calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
+
   if(m->name == "ql")
   {
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
@@ -381,6 +393,14 @@ int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict mask
 
 int cthermo_moist::execstats(mask *m)
 {
+  int kcells = grid->kcells;
+
+  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
+  double * restrict tmp2 = fields->s["tmp2"]->data;
+  if(swupdatebasestate)
+    calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
+
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
@@ -498,12 +518,13 @@ int cthermo_moist::checkthermofield(std::string name)
 int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 {
   int kk = grid->icells*grid->jcells;
-  // tmp field is used for catching the "dummy" return data fro calchydropres()
-  double * restrict tmp2 = fields->s["tmp2"]->data;
+  int kcells = grid->kcells;
 
-  // calculate the hydrostatic pressure
-  //if(swupdatebasestate)
-  //  calcbasestate(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, fields->s["s"]->datamean, fields->s["qt"]->datamean);
+  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
+  double * restrict tmp2 = fields->s["tmp2"]->data;
+  if(swupdatebasestate)
+    calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
 
   if(name == "b")
     calcbuoyancy(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pref, tmp->data, thvref);

@@ -55,6 +55,8 @@ class cthermo_moist : public cthermo
     double ps;
     double rhos;
 
+    int swupdatebasestate;
+
     // cross sections
     std::vector<std::string> crosslist;        // List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; // List with allowed cross variables
