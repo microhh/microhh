@@ -21,6 +21,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <algorithm>
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -28,6 +29,7 @@
 #include "boundary.h"
 #include "defines.h"
 #include "model.h"
+#include "timeloop.h"
 
 #define NO_OFFSET 0.
 #define NO_VELOCITY 0.
@@ -141,11 +143,83 @@ int cboundary::processbcs(cinput *inputin)
     }
   }
 
+  // get the list of time varying variables
+  nerror += inputin->getItem(&swtimedep  , "boundary", "swtimedep"  , "", "0");
+  nerror += inputin->getList(&timedeplist, "boundary", "timedeplist", "");
+
+  if(swtimedep == "1")
+  {
+    // update the value of the surface boundary condition
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    {
+      std::string name = "sbot[" + it->first + "]";
+      if(std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end()) 
+        nerror += inputin->getTime(&timedepdata[name], &timedeptime, name);
+    }
+  }
+
   return nerror;
 }
 
 int cboundary::init()
 {
+  return 0;
+}
+
+int cboundary::settimedep()
+{
+  if(swtimedep == "0")
+    return 0;
+
+  // first find the index for the time entries
+  int index0 = 0;
+  int index1 = 0;
+  for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
+  {
+    if(model->timeloop->time < *it)
+      break;
+    else
+      ++index1;
+  }
+
+  // second, calculate the weighting factor
+  double fac0, fac1;
+
+  // correct for out of range situations where the simulation is longer than the time range in input
+  if(index1 == 0)
+  {
+    fac0 = 0.;
+    fac1 = 1.;
+    index0 = 0;
+  }
+  else if(index1 == timedeptime.size())
+  {
+    fac0 = 1.;
+    fac1 = 0.;
+    index0 = index1-1;
+    index1 = index0;
+  }
+  else
+  {
+    index0 = index1-1;
+    double timestep;
+    timestep = timedeptime[index1] - timedeptime[index0];
+    fac0 = (timedeptime[index1] - model->timeloop->time) / timestep;
+    fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
+  }
+
+  // process time dependent bcs for the surface fluxes
+  for(fieldmap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
+  {
+    std::string name = "sbot[" + it1->first + "]";
+    std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
+    if(it2 != timedepdata.end())
+    {
+      sbc[it1->first]->bot = fac0*it2->second[index0] + fac1*it2->second[index1];
+      setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, NO_OFFSET);
+    }
+  }
+
   return 0;
 }
 
