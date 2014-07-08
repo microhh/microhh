@@ -13,10 +13,28 @@ th   = numpy.zeros(numpy.size(z))
 thls = numpy.zeros(numpy.size(z))
 wls  = numpy.zeros(numpy.size(z))
 
+# linearly stratified profile
 for k in range(kmax):
   th  [k] = 300. + dthetadz*z[k]
   thls[k] = 2.*(z[k]/zsize - 0.5) / 3600.
   wls [k] = -0.01*(z[k]/zsize)
+
+"""
+# well mixed profile with jump
+h    = 1000.
+dth  = 10.
+dthz = 100.
+
+for k in range(kmax):
+  if(z[k] <= h - 0.5*dthz):
+    th[k] = 300.
+  elif(z[k] <= h + 0.5*dthz):
+    th[k] = 300. + dth/dthz * (z[k]-(h-0.5*dthz))
+  else:
+    th[k] = 300. + dth + dthetadz*(z[k]-(h+0.5*dthz))
+  thls[k] = 2.*(z[k]/zsize - 0.5) / 3600.
+  wls [k] = -0.01*(z[k]/zsize)
+"""
 
 # write the data to a file
 proffile = open('drycblles.prof','w')

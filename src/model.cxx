@@ -132,6 +132,19 @@ int cmodel::readinifile()
   nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
 
+  // get the list of masks
+  nerror += input->getList(&masklist, "stats", "masklist", "");
+  for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+  {
+    if(*it != "wplus" &&
+       *it != "wmin"  &&
+       *it != "ql"    &&
+       *it != "qlcore")
+      std::printf("WARNING %s is an undefined mask for conditional statistics\n", it->c_str());
+    else
+      stats->addmask(*it);
+  }
+
   // if one or more arguments fails, then crash
   if(nerror > 0)
     return 1;
@@ -289,8 +302,13 @@ int cmodel::load()
 
   if(fields->load(timeloop->iotime))
     return 1;
+
+  // \TODO call boundary load for the data and then timedep, not nice...
   if(boundary->load(timeloop->iotime))
     return 1;
+  if(boundary->create(input))
+    return 1;
+
   if(buffer->create(input))
     return 1;
   if(force->create(input))
@@ -338,11 +356,12 @@ int cmodel::save()
 
 int cmodel::exec()
 {
+  // update the time dependent values
+  boundary->settimedep();
+  force->settimedep();
 
   // set the boundary conditions
   boundary->exec();
-  // update the time dependent values
-  boundary->settimedep();
 
   // get the field means, in case needed
   fields->exec();
@@ -384,9 +403,26 @@ int cmodel::exec()
     {
       if(stats->dostats())
       {
-        fields->execstats();
-        thermo->execstats();
-        budget->execstats();
+        // always process the default mask
+        stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks["default"]);
+        calcstats("default");
+
+        // work through the potential masks for the statistics
+        for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+        {
+          if(*it == "wplus" || *it == "wmin")
+          {
+            fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
+            calcstats(*it);
+          }
+          else if(*it == "ql" || *it == "qlcore")
+          {
+            thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
+            calcstats(*it);
+          }
+        }
+
+        // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 
@@ -445,11 +481,12 @@ int cmodel::exec()
       if(boundary->load(timeloop->iotime))
         return 1;
     }
+    // update the time dependent values
+    boundary->settimedep();
+    force->settimedep();
 
     // set the boundary conditions
     boundary->exec();
-    // update the time dependent values
-    boundary->settimedep();
     // get the field means, in case needed
     fields->exec();
     // get the viscosity to be used in diffusion
@@ -459,6 +496,15 @@ int cmodel::exec()
       return 1;
 
   }
+
+  return 0;
+}
+
+int cmodel::calcstats(std::string maskname)
+{
+  fields->execstats(&stats->masks[maskname]);
+  thermo->execstats(&stats->masks[maskname]);
+  budget->execstats(&stats->masks[maskname]);
 
   return 0;
 }

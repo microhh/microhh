@@ -29,6 +29,7 @@ class cmaster;
 class cmodel;
 class cgrid;
 class cstats;
+struct mask;
 
 typedef std::map<std::string, cfield3d *> fieldmap;
 
@@ -42,7 +43,8 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
-    int execstats();
+    int getmask(cfield3d *, cfield3d *, mask *);
+    int execstats(mask *);
 
     int initmomfld(cfield3d*&, cfield3d*&, std::string, std::string, std::string);
     int initpfld(std::string, std::string, std::string);
@@ -107,6 +109,10 @@ class cfields
     std::vector<std::string> crossfluxbot;
     std::vector<std::string> crossfluxtop;
     int checkaddcross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
+
+    // masks
+    int calcmaskwplus(double *, double *, int *, int *, double *, double *, double *);
+    int calcmaskwmin (double *, double *, int *, int *, double *, double *, double *);
 
     // perturbations
     double rndamp;

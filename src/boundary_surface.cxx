@@ -302,7 +302,8 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   kstart = grid->kstart;
 
   // calculate total wind
-  double utot, ubottot;
+  double du2;
+  //double utot, ubottot, du2;
   const double minval = 1.e-1;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
@@ -311,13 +312,16 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2.) + std::pow(ubot[ij+ii], 2.))
-                         + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
-      utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
-                         + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
+      // ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2.) + std::pow(ubot[ij+ii], 2.))
+      //                    + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
+      // utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
+      //                    + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
+      du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
+          + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
       // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
       // otherwise evisc at k = kstart blows up
-      dutot[ij] = std::max(std::abs(utot - ubottot), minval);
+      // dutot[ij] = std::max(std::abs(utot - ubottot), minval);
+      dutot[ij] = std::max(std::pow(du2, 0.5), minval);
     }
 
   grid->boundary_cyclic2d(dutot);
@@ -573,6 +577,7 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
+        // if(ij=100) std::printf("CvH: ustar,fh, var[ijk]: %E, %E, %E\n", ustar[ij], obuk[ij], var[ijk]);
         varbot[ij] = varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
         // use the linearly interpolated grad, rather than the MO grad,
@@ -700,8 +705,8 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
       fx     = zsl/L - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2.);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, Lend), 2.))
-               - (zsl/Lstart - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
+      fxdif  = ( (zsl/Lend - kappa*zsl*db*fh(zsl, z0h, Lend) / std::pow(du * fm(zsl, z0m, Lend), 2.))
+               - (zsl/Lstart - kappa*zsl*db*fh(zsl, z0h, Lstart) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
@@ -728,7 +733,7 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
 inline double cboundary_surface::fm(double zsl, double z0m, double L)
 {
   double fm;
-  fm = kappa / (std::log(zsl/z0m) - psim(zsl/L) + psih(z0m/L));
+  fm = kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
   return fm;
 }
 
@@ -754,7 +759,7 @@ inline double cboundary_surface::psim(double zeta)
   }
   else
   {
-    psim = -2./3.*(zeta - 5./0.35) * exp(-0.35 * zeta) - zeta - (10./3.) / 0.35;
+    psim = -2./3.*(zeta - 5./0.35) * std::exp(-0.35 * zeta) - zeta - (10./3.) / 0.35;
   }
   return psim;
 }
@@ -774,7 +779,7 @@ inline double cboundary_surface::psih(double zeta)
   }
   else
   {
-    psih  = -2./3. * (zeta-5./0.35) * exp(-0.35*zeta) - std::pow(1. + (2./3.) * zeta, 1.5) - (10./3.) / 0.35 + 1.;
+    psih  = (-2./3.) * (zeta-5./0.35) * std::exp(-0.35*zeta) - std::pow(1. + (2./3.) * zeta, 1.5) - (10./3.) / 0.35 + 1.;
   }
   return psih;
 }
@@ -785,8 +790,7 @@ inline double cboundary_surface::phim(double zeta)
   if(zeta <= 0.)
   {
     // Businger-Dyer functions
-    //x     = (1. - 16. * zeta) ** (0.25)
-    //psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
+    // phim  = (1. - 16. * zeta) ** (-0.25)
     // Wilson functions
     phim = std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
   }
@@ -802,8 +806,7 @@ inline double cboundary_surface::phih(double zeta)
   if(zeta <= 0.)
   {
     // Businger-Dyer functions
-    // x     = (1. - 16. * zeta) ** (0.25)
-    // psih  = 2. * log( (1. + x ** 2.) / 2. )
+    // phih  = (1. - 16. * zeta) ** (-0.5)
     // Wilson functions
     phih = std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
   }

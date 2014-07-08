@@ -42,34 +42,54 @@ for k in range(kmax):
   # ug-wind component
   ug[k] = 10.
 
-#figure()
-#plot(s, z, 'ro-')
-#figure()
-#plot(qt, z, 'ro-')
-
 # normalize profiles to SI
-qt /= 1000.  # from g/kg to kg/kg
+qt /= 1000.  # g to kg
 
 # set the time series
 t  = numpy.array([  0.,   4.,  6.5,  7.5,  10., 12.5, 14.5])
 H  = numpy.array([-30.,  90., 140., 140., 100., -10.,  -10])
 LE = numpy.array([  5., 250., 450., 500., 420., 180.,    0])
 
-# write the data to a file
+advs  = numpy.array([ 0.   , 0.  ,  0.  , -0.08, -0.16, -0.16])
+rads  = numpy.array([-0.125, 0.  ,  0.  ,  0.  ,  0.   , -0.1])
+advqt = numpy.array([ 0.08 , 0.02, -0.04, -0.10, -0.16, -0.30])
+
+tls  = numpy.array([  0.,   3.,  6.,  9.,  12., 14.5])
+sls  = numpy.zeros((t.size, kmax))
+qtls = numpy.zeros((t.size, kmax))
+
+# large scale forcings
+for n in range(tls.size):
+  tends  = advs [n] + rads[n]
+  tendqt = advqt[n]
+  for k in range(kmax):
+    # temperature
+    if(z[k] <= 1000.):
+      sls [n,k] = tends
+      qtls[n,k] = tendqt
+    else:
+      sls [n,k] = tends  - (z[k]-1000.)*(tends )/(5500.-1000.)
+      qtls[n,k] = tendqt - (z[k]-1000.)*(tendqt)/(5500.-1000.)
+tls  *= 3600. # h to s
+sls  /= 3600. # h to s
+qtls /= 3600. # h to s
+qtls /= 1000. # g to kg
+
+# write the prof data to a file
 proffile = open('arm.prof','w')
 proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s} {4:^20s}\n'.format('z','s','qt','u','ug'))
 for k in range(kmax):
   proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E}\n'.format(z[k], s[k], qt[k], u[k], ug[k]))
 proffile.close()
 
-# write the data to a file
+# write the time data to a file
 Rd  = 287.
 cp  = 1005.
 Lv  = 2.5e6
 p0  = 97000.
 rho = p0/(Rd*s[0]*(1. + 0.61*qt[0]))
 print('rho = ', rho)
-t *= 3600.
+t *= 3600. # h to s
 sbots  = H/(rho*cp)
 sbotqt = LE/(rho*Lv)
 timefile = open('arm.time','w')
@@ -77,4 +97,17 @@ timefile.write('{0:^20s} {1:^20s} {2:^20s}\n'.format('t','sbot[s]', 'sbot[qt]'))
 for n in range(t.size):
   timefile.write('{0:1.14E} {1:1.14E} {2:1.14E}\n'.format(t[n], sbots[n], sbotqt[n]))
 timefile.close()
+
+# write the large scale forcing data to a file
+timeproffile = open('sls.timeprof','w')
+timeproffile.write('{0:^20s} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format('z', tls[0], tls[1], tls[2], tls[3], tls[4], tls[5]))
+for k in range(kmax):
+  timeproffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format(z[k], sls[0,k], sls[1,k], sls[2,k], sls[3,k], sls[4,k], sls[5,k]))
+timeproffile.close()
+
+timeproffile = open('qtls.timeprof','w')
+timeproffile.write('{0:^20s} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format('z', tls[0], tls[1], tls[2], tls[3], tls[4], tls[5]))
+for k in range(kmax):
+  timeproffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E}\n'.format(z[k], qtls[0,k], qtls[1,k], qtls[2,k], qtls[3,k], qtls[4,k], qtls[5,k]))
+timeproffile.close()
 

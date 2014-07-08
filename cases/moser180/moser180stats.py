@@ -4,9 +4,9 @@ import netCDF4
 
 from pylab import *
 
-start = 20
-end   = 34
-plotens = False
+start = 0
+end   = 60
+plotens = True
 
 # read Moser's data
 Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
@@ -45,7 +45,7 @@ tke_viscMoser  = Mosertke[:,7]
 tke_dissMoser  = Mosertke[:,2]
 tke_presMoser  = Mosertke[:,5]
 
-stats = netCDF4.Dataset("moser180.0000000.nc","r")
+stats = netCDF4.Dataset("moser180.default.0007200.nc","r")
 t  = stats.variables["t"] [start:end]
 z  = stats.variables["z"] [:]
 zh = stats.variables["zh"][:]

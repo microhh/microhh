@@ -30,19 +30,36 @@ class cmodel;
 class cgrid;
 class cfields;
 
-struct statsvar
+// struct for profiles
+struct profvar
 {
   NcVar *ncvar;
   double *data;
 };
 
+// struct for time series
 struct tseriesvar
 {
   NcVar *ncvar;
   double data;
 };
-typedef std::map<std::string, statsvar> profmap;
+
+// typedefs for containers of profiles and time series
+typedef std::map<std::string, profvar> profmap;
 typedef std::map<std::string, tseriesvar> tseriesmap;
+
+// structure
+struct mask
+{
+  std::string name;
+  NcFile *dataFile;
+  NcDim  *z_dim, *zh_dim, *t_dim;
+  NcVar  *t_var, *iter_var;
+  profmap profs;
+  tseriesmap tseries;
+};
+
+typedef std::map<std::string, mask> maskmap;
 
 class cstats
 {
@@ -54,42 +71,57 @@ class cstats
     int init(double);
     int create(int);
     unsigned long gettimelim(unsigned long);
+    int getmask(cfield3d *, cfield3d *, mask *);
     int exec(int, double, unsigned long);
     int dostats();
     std::string getsw();
 
-    // interface functions
-    profmap profs;
-    tseriesmap tseries;
+    // container for all stats, masks as uppermost in hierarchy
+    maskmap masks;
+    int *nmask;
+    int *nmaskh;
 
+    // interface functions
+    // profmap profs;
+    // tseriesmap tseries;
+
+    int addmask(std::string);
     int addprof(std::string, std::string, std::string, std::string);
     int addfixedprof(std::string, std::string, std::string, std::string, double *);
     int addtseries(std::string, std::string, std::string);
 
+    int calcarea    (double *, const int[3], int *);
     int calcmean    (double *, double *, double);
-    int calcmoment  (double *, double *, double *, double, int);
-    int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double);
-    int calcdiff_4th(double *, double *, double *, double);
-    int calcgrad_2nd(double *, double *, double *);
-    int calcgrad_4th(double *, double *, double *);
-    int calcflux_2nd(double *, double *, double *, double *, int, int);
-    int calcflux_4th(double *, double *, double *, double *, int, int);
+    int calcmean    (double *, double *, double, const int[3], double *, int *);
+    // int calcmoment  (double *, double *, double *, double, int);
+    int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
+    int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
+    int calcdiff_4th(double *, double *, double *, double, const int[3], double *, int *);
+    // int calcgrad_2nd(double *, double *, double *);
+    int calcgrad_2nd(double *, double *, double *, const int[3], double *, int *);
+    int calcgrad_4th(double *, double *, double *, const int[3], double *, int *);
+    // int calcflux_2nd(double *, double *, double *, double *, int, int);
+    int calcflux_2nd(double *, double *, double *, double *, double *, double *, const int[3], double *, int *);
+    int calcflux_4th(double *, double *, double *, double *, const int[3], double *, int *);
     int addfluxes   (double *, double *, double *);
-    int calccount   (double* data, double* prof, double threshold);
+    // int calccount   (double *, double *, double);
+    int calccount   (double *, double *, double, double *, int *);
     int calcpath    (double *, double *);
     int calccover   (double *, double *, double);
 
-  private:
-    bool allocated;
-    bool initialized;
+    int calcsortprof(double *, double *, double *);
 
-    NcFile *dataFile;
-    NcDim  *z_dim, *zh_dim, *t_dim;
-    NcVar  *z_var, *zh_var, *t_var, *iter_var;
+  private:
+    // NcFile *dataFile;
+    // NcDim  *z_dim, *zh_dim, *t_dim;
+    // NcVar  *t_var, *iter_var;
 
     double *umodel, *vmodel;
 
     int nstats;
+
+    // mask calculations
+    int calcmask(double *, double *, int *, int *, double *, double *);
 
   protected:
     cmodel  *model;

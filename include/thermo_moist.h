@@ -29,6 +29,7 @@ class cmaster;
 class cgrid;
 class cfields;
 class cstats;
+struct mask;
 
 class cthermo_moist : public cthermo
 {
@@ -39,7 +40,8 @@ class cthermo_moist : public cthermo
     int init();
     int create(cinput *);
     int exec();
-    int execstats();
+    int getmask(cfield3d *, cfield3d *, mask *);
+    int execstats(mask *);
     int execcross();
 
     // functions to retrieve buoyancy properties, to be called from other classes
@@ -51,11 +53,7 @@ class cthermo_moist : public cthermo
 
   private:
     double ps;
-    //double thvref;
     double rhos;
-    //double *pmn;
-    //double *pmnh;
-    //double *ql;
 
     int swupdatebasestate;
 
@@ -65,15 +63,18 @@ class cthermo_moist : public cthermo
 
     bool allocated;
     cstats *stats;
-    
-    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *, double *);
+
+    // masks
+    int calcmaskql    (double *, double *, int *, int *, double *, double *, double *);
+    int calcmaskqlcore(double *, double *, int *, int *, double *, double *, double *, double *, double *);
+
+    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
 
     int calcbuoyancy(double *, double *, double *, double *, double *, double *);
     int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
 
-    int calcbasestate_2nd(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int calcbasestate_4th(double *, double *, double *, double *, double *);
+    int calcbasestate(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
     int calcqlfield(double *, double *, double *, double *);
     int calcbuoyancybot(double *, double *,
