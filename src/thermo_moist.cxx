@@ -250,14 +250,6 @@ int cthermo_moist::exec()
 
 int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
-  int kcells = grid->kcells;
-
-  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
-  double * restrict tmp2 = fields->s["tmp2"]->data;
-  if(swupdatebasestate)
-    calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
-                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
-
   if(m->name == "ql")
   {
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
@@ -393,14 +385,6 @@ int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict mask
 
 int cthermo_moist::execstats(mask *m)
 {
-  int kcells = grid->kcells;
-
-  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
-  double * restrict tmp2 = fields->s["tmp2"]->data;
-  if(swupdatebasestate)
-    calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
-                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
-
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
@@ -520,7 +504,8 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
   int kk = grid->icells*grid->jcells;
   int kcells = grid->kcells;
 
-  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
+  // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
+  // Pass dummy as rhoref,thvref to prevent overwriting base state 
   double * restrict tmp2 = fields->s["tmp2"]->data;
   if(swupdatebasestate)
     calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
