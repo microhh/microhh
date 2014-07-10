@@ -52,8 +52,6 @@ class cthermo_moist : public cthermo
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
-    double pbot;
-    double rhos;
 
     int swupdatebasestate;
 
@@ -94,6 +92,9 @@ class cthermo_moist : public cthermo
 
     inline double interp2(const double, const double);
     inline double interp4(const double, const double, const double, const double);
+
+    double pbot;
+    double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
 
     // REFERENCE PROFILES
     double *thl0;    // Initial thl profile 

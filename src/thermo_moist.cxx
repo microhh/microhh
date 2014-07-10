@@ -99,6 +99,10 @@ int cthermo_moist::readinifile(cinput *inputin)
   nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
 
+  // Only in case of Boussinesq, read in reference potential temperature
+  if(model->swbasestate == "boussinesq") 
+    nerror += inputin->getItem(&thvref0, "thermo", "thvref0", "");
+
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
 
@@ -122,6 +126,7 @@ int cthermo_moist::init()
   exnrefh = new double[grid->kcells];
   pref    = new double[grid->kcells];
   prefh   = new double[grid->kcells];
+  allocated = true;
 
   return 0;
 }
@@ -135,39 +140,50 @@ int cthermo_moist::create(cinput *inputin)
   // Enable automated calculation of horizontally averaged fields
   fields->setcalcprofs(true);
 
-  allocated = true;
+  if(model->swbasestate == "anelastic")
+  {
+    // Calculate the base state profiles. With swupdatebasestate=1, these profiles 
+    // are updated on every tstep. First take the initial profile as the reference
+    if(inputin->getProf(&thl0[grid->kstart], "s", grid->kmax))
+      return 1;
+    if(inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
+      return 1;
 
-  // Calculate the base state profiles. With swupdatebasestate=1, these profiles 
-  // are updated on every tstep. First take the initial profile as the reference
-  if(inputin->getProf(&thl0[grid->kstart], "s", grid->kmax))
-    return 1;
-  if(inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
-    return 1;
+    // Calculate surface and model top values thl and qt
+    double thl0s, qt0s, thl0t, qt0t;
+    thl0s = thl0[kstart] - grid->z[kstart]*(thl0[kstart+1]-thl0[kstart])*grid->dzhi[kstart+1];
+    qt0s  = qt0[kstart]  - grid->z[kstart]*(qt0[kstart+1] -qt0[kstart] )*grid->dzhi[kstart+1];
+    thl0t = thl0[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thl0[kend-1]-thl0[kend-2])*grid->dzhi[kend-1];
+    qt0t  = qt0[kend-1]  + (grid->zh[kend]-grid->z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*grid->dzhi[kend-1];
 
-  // Calculate surface and model top values thl and qt
-  double thl0s, qt0s, thl0t, qt0t;
-  thl0s = thl0[kstart] - grid->z[kstart]*(thl0[kstart+1]-thl0[kstart])*grid->dzhi[kstart+1];
-  qt0s  = qt0[kstart]  - grid->z[kstart]*(qt0[kstart+1] -qt0[kstart] )*grid->dzhi[kstart+1];
-  thl0t = thl0[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thl0[kend-1]-thl0[kend-2])*grid->dzhi[kend-1];
-  qt0t  = qt0[kend-1]  + (grid->zh[kend]-grid->z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*grid->dzhi[kend-1];
+    // Set the ghost cells for the reference temperature and moisture
+    thl0[kstart-1]  = 2.*thl0s - thl0[kstart];
+    thl0[kend]      = 2.*thl0t - thl0[kend-1];
+    qt0[kstart-1]   = 2.*qt0s  - qt0[kstart];
+    qt0[kend]       = 2.*qt0t  - qt0[kend-1];
 
-  // Set the ghost cells for the reference temperature and moisture
-  thl0[kstart-1]  = 2.*thl0s - thl0[kstart];
-  thl0[kend]      = 2.*thl0t - thl0[kend-1];
-  qt0[kstart-1]   = 2.*qt0s  - qt0[kstart];
-  qt0[kend]       = 2.*qt0t  - qt0[kend-1];
-
-  // Calculate the initial/reference base state
-  calcbasestate(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, thl0, qt0);
+    // Calculate the initial/reference base state
+    calcbasestate(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, thl0, qt0);
+  }
+  else
+  {
+    for(int k=0; k<grid->kcells; ++k)
+    {
+      thvref[k]  = thvref0;
+      thvrefh[k] = thvref0;
+    }
+  }
 
   // add variables to the statistics
   if(stats->getsw() == "1")
   {
-    // Add base state pressure and density to statistics
+    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
     stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
     stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
     stats->addfixedprof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
     stats->addfixedprof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
+    stats->addfixedprof("thvref",  "Full level reference virtual potential temperature", "K", "z",thvref);
+    stats->addfixedprof("thvrefh", "Half level reference virtual potential temperature", "K", "zh",thvref);
 
     stats->addprof("b", "Buoyancy", "m s-2", "z");
     for(int n=2; n<5; ++n)

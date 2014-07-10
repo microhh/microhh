@@ -126,12 +126,28 @@ int cmodel::readinifile()
     return 1;
 
   // first, get the switches for the schemes
-  nerror += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
-  nerror += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
-  nerror += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
-  nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
-  nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
+  nerror += input->getItem(&swadvec     , "advec"   , "swadvec"   , "", grid->swspatialorder);
+  nerror += input->getItem(&swdiff      , "diff"    , "swdiff"    , "", grid->swspatialorder);
+  nerror += input->getItem(&swpres      , "pres"    , "swpres"    , "", grid->swspatialorder);
+  nerror += input->getItem(&swboundary  , "boundary", "swboundary", "", "default");
+  nerror += input->getItem(&swthermo    , "thermo"  , "swthermo"  , "", "0");
 
+  // Get base state option (boussinesq or anelastic)
+  nerror += input->getItem(&swbasestate , "grid"  , "swbasestate" , "", "");  // BvS: where to put switch??
+
+  if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
+  {
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
+    return 1;
+  }
+
+  // 2nd order with LES diffusion is only option supporting anelastic (for now) 
+  if(swdiff != "les2s" and swbasestate != "boussinesq")
+  {
+    std::printf("ERROR swdiff=%s is not allowed with swbasestate=%s \n", swdiff.c_str(),swbasestate.c_str());
+    return 1;
+  }
+ 
   // get the list of masks
   nerror += input->getList(&masklist, "stats", "masklist", "");
   for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -144,6 +160,8 @@ int cmodel::readinifile()
     else
       stats->addmask(*it);
   }
+
+
 
   // if one or more arguments fails, then crash
   if(nerror > 0)

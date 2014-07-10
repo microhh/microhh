@@ -150,9 +150,12 @@ int cfields::init()
     return 1;
 
   // \TODO Define a reference density. Needs to be replaced once anelastic is there
-  rhoref = new double[grid->kcells];
-  for (int k = grid->kstart; k<grid->kend; ++k)
+  // BvS: Always init rhoref at 1 for situation with e.g. thermo=0? For anelastic, overwrite it.
+  for (int k = 0; k<grid->kcells; ++k)
+  {
     rhoref[k] = 1.;
+    rhorefh[k] = 1.; 
+  }
 
   // allocate help arrays for statistics;
   umodel = new double[grid->kcells];

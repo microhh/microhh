@@ -75,6 +75,9 @@ class cmodel
     ccross  *cross;
     cbudget *budget;
 
+    // BvS where to best put this..?
+    std::string swbasestate;
+
   private:
     // switches for included schemes
     std::string swadvec;
@@ -82,6 +85,7 @@ class cmodel
     std::string swpres;
     std::string swboundary;
     std::string swthermo;
+
 
     // list of masks for statistics
     std::vector<std::string> masklist;

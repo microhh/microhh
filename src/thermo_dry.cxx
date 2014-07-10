@@ -45,16 +45,28 @@ cthermo_dry::cthermo_dry(cmodel *modelin) : cthermo(modelin)
 
 cthermo_dry::~cthermo_dry()
 {
+  if(allocated)
+  {
+    delete[] threfh;
+    delete[] thref; 
+    delete[] pref;
+    delete[] exner;
+    delete[] prefh;
+    delete[] exnerh;
+  }
 }
 
 int cthermo_dry::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  // nerror += inputin->getItem(&thref0, "thermo", "thref0", "");
   nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
   nerror += fields->initpfld("th", "Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
+
+  // Only in case of Boussinesq, read in reference potential temperature
+  if(model->swbasestate == "boussinesq") 
+    nerror += inputin->getItem(&thref0, "thermo", "thref0", "");
 
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
@@ -67,82 +79,96 @@ int cthermo_dry::init()
   // copy pointers
   stats = model->stats;
 
-  // fields for anelastic solver
+  // fields for Boussinesq and anelastic solver
+  threfh  = new double[grid->kcells];
   thref   = new double[grid->kcells];
   pref    = new double[grid->kcells];
   exner   = new double[grid->kcells];
-  // rhoref  = new double[grid->kcells];
-
-  threfh  = new double[grid->kcells];
   prefh   = new double[grid->kcells];
   exnerh  = new double[grid->kcells];
-  // rhorefh = new double[grid->kcells];
+
+  allocated = true; 
 
   return 0;
 }
 
 int cthermo_dry::create(cinput *inputin)
 {
-  // take the initial profile as the reference
-  if(inputin->getProf(&thref[grid->kstart], "th", grid->kmax))
-    return 1;
-
-  int kstart = grid->kstart;
-  int kend   = grid->kend;
-
-  // extrapolate the profile to get the bottom value
-  threfh[kstart] = thref[kstart] - grid->z[kstart]*(thref[kstart+1]-thref[kstart])*grid->dzhi[kstart+1];
-
-  // extrapolate the profile to get the top value
-  threfh[kend] = thref[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thref[kend-1]-thref[kend-2])*grid->dzhi[kend-1];
-
-  // set the ghost cells for the reference temperature
-  thref[kstart-1] = 2.*threfh[kstart] - thref[kstart];
-  thref[kend]     = 2.*threfh[kend]   - thref[kend-1];
-
-  // interpolate the reference temperature profile
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
-    threfh[k] = 0.5*(thref[k-1] + thref[k]);
-
-  // ANELASTIC
-  // calculate the base state pressure and density
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  // Setup base state for anelastic solver
+  if(model->swbasestate == "anelastic")
   {
-    pref [k] = pbot*std::exp(-grav/(Rd*thref[k])*grid->z[k]);
-    exner[k] = std::pow(pref[k]/pbot, Rd/cp);
+    // take the initial profile as the reference
+    if(inputin->getProf(&thref[grid->kstart], "th", grid->kmax))
+      return 1;
 
-    // set the base density for the entire model
-    fields->rhoref[k] = pref[k] / (Rd*exner[k]*thref[k]);
+    int kstart = grid->kstart;
+    int kend   = grid->kend;
+
+    // extrapolate the profile to get the bottom value
+    threfh[kstart] = thref[kstart] - grid->z[kstart]*(thref[kstart+1]-thref[kstart])*grid->dzhi[kstart+1];
+
+    // extrapolate the profile to get the top value
+    threfh[kend] = thref[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thref[kend-1]-thref[kend-2])*grid->dzhi[kend-1];
+
+    // set the ghost cells for the reference temperature
+    thref[kstart-1] = 2.*threfh[kstart] - thref[kstart];
+    thref[kend]     = 2.*threfh[kend]   - thref[kend-1];
+
+    // interpolate the reference temperature profile
+    for(int k=grid->kstart+1; k<grid->kend; ++k)
+      threfh[k] = 0.5*(thref[k-1] + thref[k]);
+
+    // ANELASTIC
+    // calculate the base state pressure and density
+    for(int k=grid->kstart; k<grid->kend; ++k)
+    {
+      pref [k] = pbot*std::exp(-grav/(Rd*thref[k])*grid->z[k]);
+      exner[k] = std::pow(pref[k]/pbot, Rd/cp);
+
+      // set the base density for the entire model
+      fields->rhoref[k] = pref[k] / (Rd*exner[k]*thref[k]);
+    }
+
+    for(int k=grid->kstart; k<grid->kend+1; ++k)
+    {
+      prefh [k] = pbot*std::exp(-grav/(Rd*threfh[k])*grid->zh[k]);
+      exnerh[k] = std::pow(prefh[k]/pbot, Rd/cp);
+
+      // set the base density for the entire model
+      fields->rhorefh[k] = prefh[k] / (Rd*exnerh[k]*threfh[k]);
+    }
+
+    // set the ghost cells for the reference variables
+    // CvH for now in 2nd order
+    pref [kstart-1] = 2.*prefh [kstart] - pref [kstart];
+    exner[kstart-1] = 2.*exnerh[kstart] - exner[kstart];
+    fields->rhoref[kstart-1] = 2.*fields->rhorefh[kstart] - fields->rhoref[kstart];
+
+    pref [kend] = 2.*prefh [kend] - pref [kend-1];
+    exner[kend] = 2.*exnerh[kend] - exner[kend-1];
+    fields->rhoref[kend] = 2.*fields->rhorefh[kend] - fields->rhoref[kend-1];
   }
-
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  else
   {
-    prefh [k] = pbot*std::exp(-grav/(Rd*threfh[k])*grid->zh[k]);
-    exnerh[k] = std::pow(prefh[k]/pbot, Rd/cp);
-
-    // set the base density for the entire model
-    fields->rhorefh[k] = prefh[k] / (Rd*exnerh[k]*threfh[k]);
+    // Set entire column to reference value
+    for(int k=0; k<grid->kcells; ++k)
+    {
+      thref[k]  = thref0;
+      threfh[k] = thref0;
+    }
   }
-
-  // set the ghost cells for the reference variables
-  // CvH for now in 2nd order
-  pref [kstart-1] = 2.*prefh [kstart] - pref [kstart];
-  exner[kstart-1] = 2.*exnerh[kstart] - exner[kstart];
-  fields->rhoref[kstart-1] = 2.*fields->rhorefh[kstart] - fields->rhoref[kstart];
-
-  pref [kend] = 2.*prefh [kend] - pref [kend-1];
-  exner[kend] = 2.*exnerh[kend] - exner[kend-1];
-  fields->rhoref[kend] = 2.*fields->rhorefh[kend] - fields->rhoref[kend-1];
-
-  // for(int k=0; k<grid->kcells; ++k)
-  //   std::printf("%E, %E, %E, %E, %E\n", grid->z[k], thref[k], exner[k], pref[k], fields->rhoref[k]);
-
-  // for(int k=0; k<grid->kcells; ++k)
-  //   std::printf("%E, %E, %E, %E, %E\n", grid->zh[k], threfh[k], exnerh[k], prefh[k], fields->rhorefh[k]);
-  //
+  
   // add variables to the statistics
   if(stats->getsw() == "1")
   {
+    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
+    //stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
+    //stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
+    stats->addfixedprof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
+    stats->addfixedprof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
+    stats->addfixedprof("thref",   "Full level reference potential temperature", "K", "z",thref);
+    stats->addfixedprof("threfh",  "Half level reference potential temperature", "K", "zh",thref);
+
     stats->addprof("b", "Buoyancy", "m s-2", "z");
     for(int n=2; n<5; ++n)
     {
