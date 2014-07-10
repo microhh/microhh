@@ -92,7 +92,7 @@ cthermo_moist::~cthermo_moist()
 int cthermo_moist::readinifile(cinput *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&ps    , "thermo", "ps"    , "");
+  nerror += inputin->getItem(&pbot    , "thermo", "pbot"    , "");
 
   nerror += fields->initpfld("s", "Liquid water potential temperature", "K");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
@@ -592,14 +592,14 @@ int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict p
   }
 
   // Calculate surface (half=kstart) values
-  exh[kstart]   = exn(ps);
-  ql            = calcql(ssurf,qtsurf,ps,exh[kstart]); 
+  exh[kstart]   = exn(pbot);
+  ql            = calcql(ssurf,qtsurf,pbot,exh[kstart]); 
   thvh[kstart]  = (ssurf + lv*ql/(cp*exh[kstart])) * (1. - (1. - rv/rd)*qtsurf - rv/rd*ql);
-  prefh[kstart] = ps;
-  rhoh[kstart]  = ps / (rd * exh[kstart] * thvh[kstart]);
+  prefh[kstart] = pbot;
+  rhoh[kstart]  = pbot / (rd * exh[kstart] * thvh[kstart]);
 
   // First full grid level pressure
-  pref[kstart] = pow((pow(ps,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thvh[kstart])),(1./rdcp)); 
+  pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thvh[kstart])),(1./rdcp)); 
 
   for(int k=kstart+1; k<kend+1; k++)
   {

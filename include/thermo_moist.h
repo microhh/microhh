@@ -52,7 +52,7 @@ class cthermo_moist : public cthermo
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
-    double ps;
+    double pbot;
     double rhos;
 
     int swupdatebasestate;
