@@ -727,7 +727,6 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
 
   if(m > 1)
     std::printf("ERROR convergence has not been reached in Obukhov length calculation\n");
-    //exit(1);
 
   return L;
 }

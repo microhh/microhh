@@ -240,7 +240,6 @@ int cboundary::settimedep()
     std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
     if(it2 != timedepdata.end())
     {
-      //printf("%s %i\n",it1->first.c_str(),sbc[it1->first]->bcbot);
       sbc[it1->first]->bot = fac0*it2->second[index0] + fac1*it2->second[index1];
       setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, NO_OFFSET);
     }
