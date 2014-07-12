@@ -142,11 +142,11 @@ int cmodel::readinifile()
   }
 
   // 2nd order with LES diffusion is only option supporting anelastic (for now) 
-  if(swdiff != "les2s" and swbasestate != "boussinesq")
-  {
-    std::printf("ERROR swdiff=%s is not allowed with swbasestate=%s \n", swdiff.c_str(),swbasestate.c_str());
-    return 1;
-  }
+  //if(swdiff != "les2s" and swbasestate != "boussinesq")
+  //{
+  //  std::printf("ERROR swdiff=%s is not allowed with swbasestate=%s \n", swdiff.c_str(),swbasestate.c_str());
+  //  return 1;
+  //}
  
   // get the list of masks
   nerror += input->getList(&masklist, "stats", "masklist", "");
