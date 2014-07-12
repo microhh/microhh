@@ -223,7 +223,7 @@ int cgrid::boundary_cyclic(double * restrict data)
     for(int k=kstart; k<kend; k++)
       for(int j=0; j<jgc; j++)
 #pragma ivdep
-        for(int i=istart; i<iend; i++)
+        for(int i=0; i<icells; i++)
         {
           ijkref   = i + jstart*jj   + k*kk;
           ijknorth = i + j*jj        + k*kk;
