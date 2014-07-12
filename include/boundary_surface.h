@@ -84,8 +84,8 @@ class cboundary_surface : public cboundary
     bool allocated;
 
     typedef std::map<std::string, int> bcbotmap;
-    int surfmbcbot;
-    bcbotmap surfsbcbot;
+    // int surfmbcbot;
+    // bcbotmap surfsbcbot;
 
     int thermobc;
 };
