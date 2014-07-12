@@ -759,6 +759,30 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
+  // Fill ghost cells with zeros to prevent problems in calculating ql or qlcore masks 
+  for(int k=0; k<grid->kstart; k++)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ql[ijk] = 0.;
+      }
+  }
+
+  for(int k=grid->kend; k<grid->kcells; k++)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ql[ijk] = 0.;
+      }
+  }
+
+  // Calculate the ql field
   for(int k=grid->kstart; k<grid->kend; k++)
   {
     exn = exner(p[k]);
