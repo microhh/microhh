@@ -26,6 +26,7 @@
 
 // forward declarations to reduce compilation time
 class cmodel;
+class cmaster;
 class cinput;
 class cstats;
 class cgrid;
@@ -45,6 +46,7 @@ class cbudget
 
   private:
     cmodel  *model;
+    cmaster *master;
     cstats  *stats;
     cgrid   *grid;
     cfields *fields;
@@ -52,6 +54,11 @@ class cbudget
     std::string swbudget;
 
     double *umodel, *vmodel;
+
+    int calcke(double *, double *, double *,
+               double *, double *,
+               double, double,
+               double *, double *);
 
     int calctkebudget(double *, double *, double *, double *,
                       double *, double *,
@@ -63,6 +70,27 @@ class cbudget
                       double *, double *,
                       double *, double *, double *,
                       double *, double *, double);
+
     int calctkebudget_buoy(double *, double *, double *, double *);
+
+    int calcpe(double *, double *, double *, double *,
+               double *,
+               double *,
+               double *, double *, double *,
+               double *);
+
+    int calcpebudget(double *, double *, double *, double *,
+                     double *, double *, double *,
+                     double *, double *, double *, double *,
+                     double);
+
+    int calcbpebudget(double *, double *, double *, double *, double *,
+                      double *, double *, double *,
+                      double *,
+                      double *, double *, double *,
+                      double);
+
+    double calczsort   (double, double *, double *, int);
+    double calcdzstardb(double, double *, double *);
 };
 #endif

@@ -165,10 +165,14 @@ int cgrid::init()
     return 1;
   }
 
+  // calculate the total number of grid cells
+  ntot = itot*jtot*ktot;
+
   // calculate the grid dimensions per process
-  imax   = itot / master->npx;
-  jmax   = jtot / master->npy;
-  kmax   = ktot;
+  imax = itot / master->npx;
+  jmax = jtot / master->npy;
+  kmax = ktot;
+  nmax = imax*jmax*kmax;
 
   // calculate the block sizes for the transposes
   iblock = itot / master->npy;
@@ -382,7 +386,7 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
 
   // interpolate the field
   // \TODO add the vertical component
-  for(int k=kstart; k<kend+locout[2]; ++k)
+  for(int k=0; k<kcells; ++k)
     for(int j=jstart; j<jend; ++j)
 #pragma ivdep
       for(int i=istart; i<iend; ++i)
@@ -420,7 +424,7 @@ int cgrid::interpolate_4th(double * restrict out, double * restrict in, const in
   jjh2 = 2*(locin[1]-locout[1])*jj;
 
   // \TODO add the vertical component
-  for(int k=kstart; k<kend+locout[2]; ++k)
+  for(int k=0; k<kcells; ++k)
     for(int j=jstart; j<jend; ++j)
 #pragma ivdep
       for(int i=istart; i<iend; ++i)

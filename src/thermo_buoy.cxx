@@ -106,14 +106,8 @@ int cthermo_buoy::calcbuoyancy(double * restrict b, double * restrict bin)
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  for(int k=0; k<grid->kcells; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
-      {
-        ijk = i + j*jj + k*kk;
-        b[ijk] = bin[ijk]; 
-      }
+  for(int n=0; n<grid->ncells; ++n)
+    b[n] = bin[n];
 
   return 0;
 }

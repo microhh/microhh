@@ -376,7 +376,6 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh,
   return 0;
 }
 
-
 int cstats::calcmean(double * restrict data, double * restrict prof, double offset)
 {
   int ijk,jj,kk;
@@ -449,6 +448,116 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
+  }
+
+  return 0;
+}
+
+int cstats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
+{
+  int ijk,jj,kk,index,kstart,kend;
+  double minval,maxval,range;
+
+  jj = grid->icells;
+  kk = grid->ijcells;
+  kstart = grid->kstart;
+  kend = grid->kend;
+
+  minval =  dhuge;
+  maxval = -dhuge;
+
+  // first, get min and max
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk  = i + j*jj + k*kk;
+        if(data[ijk] < minval)
+          minval = data[ijk];
+        if(data[ijk] > maxval)
+          maxval = data[ijk];
+      }
+
+  master->min(&minval, 1);
+  master->max(&maxval, 1);
+
+  // make sure that the max ends up in the last bin (introduce 1E-9 error)
+  maxval *= (1.+dsmall);
+
+  range = maxval-minval;
+
+  // create bins, equal to the number of grid cells per proc
+  // make sure that bins is not larger than the memory of one 3d field
+  int bins = grid->nmax;
+
+  // calculate bin width, subtract one to make the minimum and maximum 
+  // are in the middle of the bin range and add half a bin size on both sides
+  // |----x----|----x----|----x----|
+  double dbin = range / (double)(bins-1);
+  minval -= 0.5*dbin;
+  maxval += 0.5*dbin;
+
+  // set the bin array to zero
+  for(int n=0; n<bins; ++n)
+    bin[n] = 0;
+
+  // calculate the division factor of one equivalent height unit
+  // (the total volume saved is itot*jtot*zsize)
+  double nslice = (double)(grid->itot*grid->jtot);
+
+  // check in which bin each value falls and increment the bin count
+  for(int k=grid->kstart; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+      // do not add a ivdep pragma here, because multiple instances could write the same bin[index]
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk;
+        index = (int)((data[ijk] - minval) / dbin);
+        bin[index] += grid->dz[k] / nslice;
+      }
+
+  // get the bin count
+  master->sum(bin, bins);
+
+  // set the starting values of the loop
+  index = 0;
+  double zbin = 0.5*bin[index];
+  double profval = minval + 0.5*dbin;
+  double dzfrac;
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    // Integrate the profile up to the bin count.
+    // Escape the while loop when the integrated profile 
+    // exceeds the next grid point.
+    while(zbin < grid->z[k])
+    {
+      zbin += 0.5*(bin[index]+bin[index+1]);
+      profval += dbin;
+      ++index;
+    }
+
+    dzfrac = (zbin-grid->z[k]) / (0.5*(bin[index-1]+bin[index]));
+
+    prof[k] = profval - dzfrac*dbin;
+  }
+
+  // now calculate the ghost cells
+  // \TODO this is not accurate enough, extrapolate properly
+  double profbot = minval;
+  double proftop = maxval;
+
+  if(grid->swspatialorder == "2")
+  {
+    prof[kstart-1] = 2.*profbot - prof[kstart];
+    prof[kend]     = 2.*proftop - prof[kend-1];
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    prof[kstart-1] = (8./3.)*profbot - 2.*prof[kstart] + (1./3.)*prof[kstart+1];
+    prof[kstart-2] = 8.*profbot      - 9.*prof[kstart] + 2.*prof[kstart+1];
+    prof[kend]     = (8./3.)*proftop - 2.*prof[kend-1] + (1./3.)*prof[kend-2];
+    prof[kend+1]   = 8.*proftop      - 9.*prof[kend-1] + 2.*prof[kend-2];
   }
 
   return 0;
