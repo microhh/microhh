@@ -347,16 +347,14 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
 
 int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
-  calcmask(mfield->data, mfieldh->data,
-             nmask, nmaskh,
-             m->profs["area"].data, m->profs["areah"].data);
+  calcmask(mfield->data, mfieldh->data, mfieldh->databot,
+             nmask, nmaskh, nmaskbot);
   return 0;
 }
 
 // COMPUTATIONAL KERNELS BELOW
-int cstats::calcmask(double * restrict mask, double * restrict maskh,
-                       int * restrict nmask, int * restrict nmaskh,
-                       double * restrict area, double * restrict areah)
+int cstats::calcmask(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                     int * restrict nmask, int * restrict nmaskh, int nmaskbot)
 {
   int ijtot = grid->itot*grid->jtot;
 
@@ -367,11 +365,15 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh,
   for(int n=0; n<grid->ncells; ++n)
     maskh[n] = 1.;
 
+  for(int n=0; n<grid->ijcells; ++n)
+    maskbot[n] = 1.;
+
   for(int k=0; k<grid->kcells; ++k)
   {
     nmask [k] = ijtot;
     nmaskh[k] = ijtot;
   }
+  nmaskbot = ijtot;
 
   return 0;
 }

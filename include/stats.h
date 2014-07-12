@@ -80,6 +80,7 @@ class cstats
     maskmap masks;
     int *nmask;
     int *nmaskh;
+    int nmaskbot;
 
     // interface functions
     // profmap profs;
@@ -121,7 +122,7 @@ class cstats
     int nstats;
 
     // mask calculations
-    int calcmask(double *, double *, int *, int *, double *, double *);
+    int calcmask(double *, double *, double *, int *, int *, int);
 
   protected:
     cmodel  *model;

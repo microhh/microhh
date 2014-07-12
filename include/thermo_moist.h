@@ -66,12 +66,11 @@ class cthermo_moist : public cthermo
     cstats *stats;
 
     // masks
-    int calcmaskql    (double *, double *, int *, int *, double *, double *, double *);
-    int calcmaskqlcore(double *, double *, int *, int *, double *, double *, double *, double *, double *);
+    int calcmaskql    (double *, double *, double *, int *, int *, int, double *);
+    int calcmaskqlcore(double *, double *, double *, int *, int *, int, double *, double *, double *);
 
     int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
-
 
     int calcbuoyancy(double *, double *, double *, double *, double *);
 
