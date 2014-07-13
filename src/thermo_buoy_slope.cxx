@@ -45,8 +45,8 @@ int cthermo_buoy_slope::readinifile(cinput *inputin)
   nerror += inputin->getItem(&alpha, "thermo", "alpha", "");
   nerror += inputin->getItem(&n2   , "thermo", "n2"   , "");
 
-  nerror += fields->initpfld("s", "Buoyancy", "m s-2");
-  nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
+  nerror += fields->initpfld("b", "Buoyancy", "m s-2");
+  nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
 
   if(grid->swspatialorder == "2")
   {
@@ -59,9 +59,9 @@ int cthermo_buoy_slope::readinifile(cinput *inputin)
 
 int cthermo_buoy_slope::exec()
 {
-  calcbuoyancytendu_4th(fields->ut->data, fields->s["s"]->data);
-  calcbuoyancytendw_4th(fields->wt->data, fields->s["s"]->data);
-  calcbuoyancytendb_4th(fields->st["s"]->data, fields->u->data, fields->w->data);
+  calcbuoyancytendu_4th(fields->ut->data, fields->s["b"]->data);
+  calcbuoyancytendw_4th(fields->wt->data, fields->s["b"]->data);
+  calcbuoyancytendb_4th(fields->st["b"]->data, fields->u->data, fields->w->data);
 
   return 0;
 }
@@ -81,27 +81,27 @@ int cthermo_buoy_slope::checkthermofield(std::string name)
 
 int cthermo_buoy_slope::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
 {
-  calcbuoyancy(field->data, fields->s["s"]->data);
+  calcbuoyancy(field->data, fields->s["b"]->data);
   return 0;
 }
 
 int cthermo_buoy_slope::getbuoyancyfluxbot(cfield3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->datafluxbot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
   return 0;
 }
 
 int cthermo_buoy_slope::getbuoyancysurf(cfield3d *bfield)
 {
   calcbuoyancybot(bfield->data        , bfield->databot,
-                  fields->s["s"]->data, fields->s["s"]->databot);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->datafluxbot);
+                  fields->s["b"]->data, fields->s["b"]->databot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
   return 0;
 }
 
 int cthermo_buoy_slope::getprogvars(std::vector<std::string> *list)
 {
-  list->push_back("s");
+  list->push_back("b");
   return 0;
 }
 
