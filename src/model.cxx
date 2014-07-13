@@ -140,7 +140,7 @@ int cmodel::readinifile()
        *it != "wmin"  &&
        *it != "ql"    &&
        *it != "qlcore")
-      std::printf("WARNING %s is an undefined mask for conditional statistics\n", it->c_str());
+      if(master->mpiid == 0) std::printf("WARNING %s is an undefined mask for conditional statistics\n", it->c_str());
     else
       stats->addmask(*it);
   }
@@ -162,7 +162,7 @@ int cmodel::readinifile()
     advec = new cadvec_4m(this);
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     return 1;
   }
   if(advec->readinifile(input))
@@ -182,13 +182,13 @@ int cmodel::readinifile()
     // the subgrid model requires a surface model because of the MO matching at first level
     if(swboundary != "surface")
     {
-      std::printf("ERROR swdiff == \"les2s\" requires swboundary == \"surface\"\n");
+      if(master->mpiid == 0) std::printf("ERROR swdiff == \"les2s\" requires swboundary == \"surface\"\n");
       return 1;
     }
   }
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
     return 1;
   }
   if(diff->readinifile(input))
@@ -203,7 +203,7 @@ int cmodel::readinifile()
     pres = new cpres_4(this);
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());
     return 1;
   }
   if(pres->readinifile(input))
@@ -227,7 +227,7 @@ int cmodel::readinifile()
     thermo = new cthermo(this);
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
     return 1;
   }
   if(thermo->readinifile(input))
@@ -242,7 +242,7 @@ int cmodel::readinifile()
     boundary = new cboundary(this);
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
     return 1;
   }
   if(boundary->readinifile(input))
@@ -354,6 +354,7 @@ int cmodel::save()
 
 int cmodel::exec()
 {
+  if(master->mpiid == 0) std::printf("Starting time integration\n");
   // update the time dependent values
   boundary->settimedep();
   force->settimedep();
