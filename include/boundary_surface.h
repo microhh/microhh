@@ -23,9 +23,11 @@
 #define BOUNDARY_SURFACE
 
 #include "boundary.h"
+#include "stats.h"
 
 // forward declaration
 class cmodel;
+class cstats;
 
 class cboundary_surface : public cboundary
 {
@@ -35,9 +37,11 @@ class cboundary_surface : public cboundary
 
     int readinifile(cinput *);
     int init();
+    int create(cinput *);
     int setvalues();
     int exec();
     int execcross(); ///< Execute cross sections of surface
+    int execstats(); ///< Execute statistics of surface
 
     int save(int);
     int load(int);
@@ -82,6 +86,7 @@ class cboundary_surface : public cboundary
     double ustarin;
 
     bool allocated;
+    cstats *stats;
 
     typedef std::map<std::string, int> bcbotmap;
     int surfmbcbot;

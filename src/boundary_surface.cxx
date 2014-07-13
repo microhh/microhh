@@ -125,12 +125,27 @@ int cboundary_surface::readinifile(cinput *inputin)
   return nerror;
 }
 
+
+int cboundary_surface::create(cinput *inputin)
+{
+  // add variables to the statistics
+  if(stats->getsw() == "1")
+  {
+    stats->addtseries("ustar", "Surface friction velocity", "m s-1");
+    stats->addtseries("L", "Obukhov length", "m");
+  }
+
+  return 0;
+}
+
 int cboundary_surface::init()
 {
   obuk  = new double[grid->icells*grid->jcells];
   ustar = new double[grid->icells*grid->jcells];
 
   allocated = true;
+
+  stats = model->stats;
 
   int ij,jj;
   jj = grid->icells;
@@ -177,6 +192,33 @@ int cboundary_surface::execcross()
   }  
 
   return nerror; 
+}
+
+int cboundary_surface::execstats()
+{
+  int ij,jj;
+  double obukl, ustarl;
+  jj = grid->icells;
+
+  // Sum values over local grid
+  obukl  = 0.;
+  ustarl = 0.;
+  for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; ++i)
+    {
+      ij  = i + j*jj;
+      obukl += obuk[ij]; 
+      ustarl += ustar[ij];
+    }
+  
+  obukl  /= grid->imax*grid->jmax;
+  ustarl /= grid->imax*grid->jmax;
+
+  grid->getprof(&obukl,1);
+  grid->getprof(&ustarl,1);
+
+  return 0; 
 }
 
 int cboundary_surface::save(int iotime)

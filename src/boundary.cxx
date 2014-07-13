@@ -328,6 +328,11 @@ int cboundary::execcross()
   return 0;
 }
 
+int cboundary::execstats()
+{
+  return 0;
+}
+
 int cboundary::bcvalues()
 {
   return 0;
