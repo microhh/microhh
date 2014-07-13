@@ -347,16 +347,14 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
 
 int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
-  calcmask(mfield->data, mfieldh->data,
-             nmask, nmaskh,
-             m->profs["area"].data, m->profs["areah"].data);
+  calcmask(mfield->data, mfieldh->data, mfieldh->databot,
+             nmask, nmaskh, &nmaskbot);
   return 0;
 }
 
 // COMPUTATIONAL KERNELS BELOW
-int cstats::calcmask(double * restrict mask, double * restrict maskh,
-                       int * restrict nmask, int * restrict nmaskh,
-                       double * restrict area, double * restrict areah)
+int cstats::calcmask(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                     int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot)
 {
   int ijtot = grid->itot*grid->jtot;
 
@@ -367,11 +365,15 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh,
   for(int n=0; n<grid->ncells; ++n)
     maskh[n] = 1.;
 
+  for(int n=0; n<grid->ijcells; ++n)
+    maskbot[n] = 1.;
+
   for(int k=0; k<grid->kcells; ++k)
   {
     nmask [k] = ijtot;
     nmaskh[k] = ijtot;
   }
+  *nmaskbot = ijtot;
 
   return 0;
 }
@@ -1095,57 +1097,76 @@ int cstats::addfluxes(double * restrict flux, double * restrict turb, double * r
   return 0;
 }
 
-int cstats::calcpath(double * restrict data, double * restrict path)
+/**
+ * This function calculates the total domain integrated path of variable data over maskbot
+ */
+int cstats::calcpath(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict path)
 {
-  int ijk,jj,kk;
+  int ijk,ij,jj,kk;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   int kstart = grid->kstart;
 
   *path = 0.;
 
-  // Integrate with height
-  for(int k=kstart; k<grid->kend; k++)
+  if(*nmaskbot > NTHRES)
+  {
+    // Integrate liquid water
     for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk  = i + j*jj + k*kk;
-        *path += fields->rhoref[k] * data[ijk] * grid->dz[k];
+        ij  = i + j*jj;
+        if(maskbot[ij] == 1)
+          for(int k=kstart; k<grid->kend; k++)
+          {
+            ijk = i + j*jj + k*kk;
+            *path += fields->rhoref[k] * data[ijk] * grid->dz[k];
+          }
       }
-
-  *path /= 1.0*grid->imax*grid->jmax;
-
-  grid->getprof(path,1);
+    *path /= (double)*nmaskbot;
+    grid->getprof(path,1);
+  }
+  else
+    *path = NC_FILL_DOUBLE;
 
   return 0;
 }
 
-int cstats::calccover(double * restrict data, double * restrict cover, double threshold)
+/**
+ * This function calculates the vertical projected cover of variable data over maskbot
+ */
+int cstats::calccover(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict cover, double threshold)
 {
-  int ijk,jj,kk;
+  int ijk,ij,jj,kk;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
   int kstart = grid->kstart;
 
   *cover = 0.;
 
-  // Integrate with height
-  for(int j=grid->jstart; j<grid->jend; j++)
-    for(int i=grid->istart; i<grid->iend; i++)
-      for(int k=kstart; k<grid->kend; k++)
+  if(*nmaskbot > NTHRES)
+  {
+    // Per column, check if cloud present
+    for(int j=grid->jstart; j<grid->jend; j++)
+      for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk  = i + j*jj + k*kk;
-        if(data[ijk]>threshold)
-        {
-          *cover += 1.;
-          break;
-        }
+        ij  = i + j*jj;
+        if(maskbot[ij] == 1)
+          for(int k=kstart; k<grid->kend; k++)
+          {
+            ijk = i + j*jj + k*kk;
+            if(data[ijk]>threshold)
+            {
+              *cover += 1.;
+              break;
+            }
+          }
       }
-
-  *cover /= grid->imax*grid->jmax;
-
-  grid->getprof(cover,1);
+    *cover /= (double)*nmaskbot;
+    grid->getprof(cover,1);
+  }
+  else
+    *cover = NC_FILL_DOUBLE;
 
   return 0;
 }

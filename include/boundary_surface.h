@@ -89,8 +89,8 @@ class cboundary_surface : public cboundary
     cstats *stats;
 
     typedef std::map<std::string, int> bcbotmap;
-    int surfmbcbot;
-    bcbotmap surfsbcbot;
+    // int surfmbcbot;
+    // bcbotmap surfsbcbot;
 
     int thermobc;
 };

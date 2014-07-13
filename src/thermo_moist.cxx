@@ -206,9 +206,8 @@ int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
   if(m->name == "ql")
   {
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcmaskql(mfield->data, mfieldh->data,
-               stats->nmask, stats->nmaskh,
-               m->profs["area"].data, m->profs["areah"].data,
+    calcmaskql(mfield->data, mfieldh->data, mfieldh->databot,
+               stats->nmask, stats->nmaskh, &stats->nmaskbot,
                fields->s["tmp1"]->data);
   }
   else if(m->name == "qlcore")
@@ -217,21 +216,19 @@ int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
     // calculate the mean buoyancy to determine positive buoyancy
     grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcmaskqlcore(mfield->data, mfieldh->data,
-                   stats->nmask, stats->nmaskh,
-                   m->profs["area"].data, m->profs["areah"].data,
+    calcmaskqlcore(mfield->data, mfieldh->data, mfieldh->databot,
+                   stats->nmask, stats->nmaskh, &stats->nmaskbot,
                    fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
   }
  
   return 0;
 }
 
-int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh,
-                              int * restrict nmask, int * restrict nmaskh,
-                              double * restrict area, double * restrict areah,
+int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                              int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                               double * restrict ql)
 {
-  int ijk,jj,kk;
+  int ijk,ij,jj,kk;
   int kstart,kend;
 
   jj = grid->icells;
@@ -264,29 +261,43 @@ int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh,
       {
         ijk = i + j*jj + k*kk;
         ntmp = (ql[ijk-kk] + ql[ijk]) > 0.;
+
         nmaskh[k] += ntmp;
         maskh[ijk] = (double)ntmp;
       }
   }
 
+  // Set the mask for surface projected quantities
+  // In this case: ql at surface
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      maskbot[ij] = maskh[ijk];
+    }
+
   grid->boundary_cyclic(mask);
   grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
+  *nmaskbot = nmaskh[grid->kstart];
 
-  nmaskh[kstart] = 0;
-  nmaskh[kend  ] = 0;
+  // BvS: should no longer be necessary now that the ql ghost cells are set to zero
+  //nmaskh[kstart] = 0;
+  //nmaskh[kend  ] = 0;
 
   return 0;
 }
 
-int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict maskh,
-                                    int * restrict nmask, int * restrict nmaskh,
-                                    double * restrict area, double * restrict areah,
-                                    double * restrict ql, double * restrict b, double * restrict bmean)
+int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                                  int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                                  double * restrict ql, double * restrict b, double * restrict bmean)
 {
-  int ijk,jj,kk;
+  int ijk,ij,jj,kk;
   int kstart,kend;
 
   jj = grid->icells;
@@ -324,14 +335,28 @@ int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict mask
       }
   }
 
+  // Set the mask for surface projected quantities
+  // In this case: qlcore at surface
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      maskbot[ij] = maskh[ijk];
+    }
+
   grid->boundary_cyclic(mask);
   grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
+  *nmaskbot = nmaskh[grid->kstart];
 
-  nmaskh[kstart] = 0;
-  nmaskh[kend  ] = 0;
+  // BvS: should no longer be necessary now that the ql ghost cells are set to zero
+  //nmaskh[kstart] = 0;
+  //nmaskh[kend  ] = 0;
 
   return 0;
 }
@@ -401,8 +426,8 @@ int cthermo_moist::execstats(mask *m)
   stats->calccount(fields->s["tmp1"]->data, m->profs["cfrac"].data, 0.,
                    fields->s["tmp3"]->data, stats->nmask);
 
-  stats->calccover(fields->s["tmp1"]->data, &m->tseries["ccover"].data, 0.);
-  stats->calcpath(fields->s["tmp1"]->data, &m->tseries["lwp"].data);
+  stats->calccover(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
+  stats->calcpath(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
   return 0;
 }
@@ -759,6 +784,30 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
+  // Fill ghost cells with zeros to prevent problems in calculating ql or qlcore masks 
+  for(int k=0; k<grid->kstart; k++)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ql[ijk] = 0.;
+      }
+  }
+
+  for(int k=grid->kend; k<grid->kcells; k++)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ql[ijk] = 0.;
+      }
+  }
+
+  // Calculate the ql field
   for(int k=grid->kstart; k<grid->kend; k++)
   {
     exn = exner(p[k]);
