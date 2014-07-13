@@ -207,7 +207,7 @@ int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
   {
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
     calcmaskql(mfield->data, mfieldh->data, mfieldh->databot,
-               stats->nmask, stats->nmaskh, stats->nmaskbot,
+               stats->nmask, stats->nmaskh, &stats->nmaskbot,
                fields->s["tmp1"]->data);
   }
   else if(m->name == "qlcore")
@@ -217,7 +217,7 @@ int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
     grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
     calcmaskqlcore(mfield->data, mfieldh->data, mfieldh->databot,
-                   stats->nmask, stats->nmaskh, stats->nmaskbot,
+                   stats->nmask, stats->nmaskh, &stats->nmaskbot,
                    fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
   }
  
@@ -225,7 +225,7 @@ int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 }
 
 int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                              int * restrict nmask, int * restrict nmaskh, int nmaskbot,
+                              int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                               double * restrict ql)
 {
   int ijk,ij,jj,kk;
@@ -284,7 +284,7 @@ int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, d
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
-  nmaskbot = nmaskh[grid->kstart];
+  *nmaskbot = nmaskh[grid->kstart];
 
   // BvS: should no longer be necessary now that the ql ghost cells are set to zero
   //nmaskh[kstart] = 0;
@@ -294,7 +294,7 @@ int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, d
 }
 
 int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                                  int * restrict nmask, int * restrict nmaskh, int nmaskbot,
+                                  int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                                   double * restrict ql, double * restrict b, double * restrict bmean)
 {
   int ijk,ij,jj,kk;
@@ -352,7 +352,7 @@ int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict mask
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
-  nmaskbot = nmaskh[grid->kstart];
+  *nmaskbot = nmaskh[grid->kstart];
 
   // BvS: should no longer be necessary now that the ql ghost cells are set to zero
   //nmaskh[kstart] = 0;
@@ -426,8 +426,8 @@ int cthermo_moist::execstats(mask *m)
   stats->calccount(fields->s["tmp1"]->data, m->profs["cfrac"].data, 0.,
                    fields->s["tmp3"]->data, stats->nmask);
 
-  stats->calccover(fields->s["tmp1"]->data, &m->tseries["ccover"].data, 0.);
-  stats->calcpath(fields->s["tmp1"]->data, &m->tseries["lwp"].data);
+  stats->calccover(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
+  stats->calcpath(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
   return 0;
 }

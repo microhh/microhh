@@ -211,15 +211,15 @@ int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
   if(m->name == "wplus")
     calcmaskwplus(mfield->data, mfieldh->data, mfieldh->databot, 
-                  stats->nmask, stats->nmaskh, stats->nmaskbot, w->data);
+                  stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
   else if(m->name == "wmin")                                                  
     calcmaskwmin (mfield->data, mfieldh->data, mfieldh->databot,
-                  stats->nmask, stats->nmaskh, stats->nmaskbot, w->data);
+                  stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
   return 0;
 }
 
 int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                           int * restrict nmask, int * restrict nmaskh, int nmaskbot,
+                           int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                            double * restrict w)
 {
   int ijk,ij,jj,kk,kstart;
@@ -275,13 +275,13 @@ int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh, doub
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
-  nmaskbot = nmaskh[grid->kstart];
+  *nmaskbot = nmaskh[grid->kstart];
 
   return 0;
 }
 
 int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                          int * restrict nmask, int * restrict nmaskh, int nmaskbot,
+                          int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                           double * restrict w)
 {
   int ijk,ij,jj,kk,kstart;
@@ -337,7 +337,7 @@ int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh, doubl
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
-  nmaskbot = nmaskh[grid->kstart];
+  *nmaskbot = nmaskh[grid->kstart];
 
   return 0;
 }

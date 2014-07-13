@@ -107,8 +107,8 @@ class cstats
     int addfluxes   (double *, double *, double *);
     // int calccount   (double *, double *, double);
     int calccount   (double *, double *, double, double *, int *);
-    int calcpath    (double *, double *);
-    int calccover   (double *, double *, double);
+    int calcpath    (double *, double *, int *, double *);
+    int calccover   (double *, double *, int *, double *, double);
 
     int calcsortprof(double *, double *, double *);
 
@@ -122,7 +122,7 @@ class cstats
     int nstats;
 
     // mask calculations
-    int calcmask(double *, double *, double *, int *, int *, int);
+    int calcmask(double *, double *, double *, int *, int *, int *);
 
   protected:
     cmodel  *model;

@@ -109,8 +109,8 @@ class cfields
     int checkaddcross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
 
     // masks
-    int calcmaskwplus(double *, double *, double *, int *, int *, int, double *);
-    int calcmaskwmin (double *, double *, double *, int *, int *, int, double *);
+    int calcmaskwplus(double *, double *, double *, int *, int *, int *, double *);
+    int calcmaskwmin (double *, double *, double *, int *, int *, int *, double *);
 
     // perturbations
     double rndamp;
