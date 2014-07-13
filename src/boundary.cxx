@@ -328,7 +328,7 @@ int cboundary::execcross()
   return 0;
 }
 
-int cboundary::execstats()
+int cboundary::execstats(mask *m)
 {
   return 0;
 }

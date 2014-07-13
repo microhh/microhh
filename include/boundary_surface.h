@@ -28,6 +28,7 @@
 // forward declaration
 class cmodel;
 class cstats;
+struct mask;
 
 class cboundary_surface : public cboundary
 {
@@ -41,7 +42,7 @@ class cboundary_surface : public cboundary
     int setvalues();
     int exec();
     int execcross(); ///< Execute cross sections of surface
-    int execstats(); ///< Execute statistics of surface
+    int execstats(mask *); ///< Execute statistics of surface
 
     int save(int);
     int load(int);

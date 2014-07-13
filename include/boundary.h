@@ -27,6 +27,7 @@ class cmaster;
 class cmodel;
 class cgrid;
 class cfields;
+struct mask;
 
 /**
  * Structure containing the boundary options and values per 3d field.
@@ -61,7 +62,7 @@ class cboundary
 
     int exec();              ///< Update the boundary conditions.
     virtual int execcross(); ///< Execute cross sections of surface
-    virtual int execstats(); ///< Execute statistics of surface
+    virtual int execstats(mask *); ///< Execute statistics of surface
 
   protected:
     cmaster *master; ///< Pointer to master class.

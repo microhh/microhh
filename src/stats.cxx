@@ -455,6 +455,31 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
   return 0;
 }
 
+int cstats::calcmean2d(double * restrict data, double * restrict mean, double offset,
+                       double * restrict mask, int * restrict nmask)
+{
+  int ij,jj;
+  jj = grid->icells;
+
+  if(*nmask > NTHRES)
+  {
+    *mean = 0.;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ij  = i + j*jj;
+        *mean += mask[ij]*(data[ij] + offset);
+      }
+    master->sum(mean,1);
+    *mean /= (double)*nmask;
+  }
+  else
+    *mean = NC_FILL_DOUBLE; 
+
+  return 0;
+}
+
 int cstats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
 {
   int ijk,jj,kk,index,kstart,kend;

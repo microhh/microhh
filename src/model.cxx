@@ -503,7 +503,7 @@ int cmodel::calcstats(std::string maskname)
   fields->execstats(&stats->masks[maskname]);
   thermo->execstats(&stats->masks[maskname]);
   budget->execstats(&stats->masks[maskname]);
-  boundary->execstats();
+  boundary->execstats(&stats->masks[maskname]);
 
   return 0;
 }
