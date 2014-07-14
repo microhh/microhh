@@ -127,6 +127,10 @@ int cboundary_surface::readinifile(cinput *inputin)
 
 int cboundary_surface::create(cinput *inputin)
 {
+
+  int nerror = 0;
+  nerror += processtimedep(inputin);
+
   // add variables to the statistics
   if(stats->getsw() == "1")
   {
@@ -134,7 +138,7 @@ int cboundary_surface::create(cinput *inputin)
     stats->addtseries("obuk", "Obukhov length", "m");
   }
 
-  return 0;
+  return nerror;
 }
 
 int cboundary_surface::init()

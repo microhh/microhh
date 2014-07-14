@@ -83,6 +83,7 @@ class cboundary
     std::map<std::string, double *> timedepdata;
 
     int processbcs(cinput *); ///< Process the boundary condition settings from the ini file.
+    int processtimedep(cinput *); ///< Process the time dependent settings from the ini file.
     int setbc(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
 
   private:

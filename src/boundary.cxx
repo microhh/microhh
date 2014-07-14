@@ -162,6 +162,13 @@ int cboundary::init()
 int cboundary::create(cinput *inputin)
 {
   int nerror = 0;
+  nerror += processtimedep(inputin);
+  return nerror;
+}
+
+int cboundary::processtimedep(cinput *inputin)
+{
+  int nerror = 0;
 
   if(swtimedep == "1")
   {
