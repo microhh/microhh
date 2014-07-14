@@ -23,44 +23,55 @@
 #include <cmath>
 #include "grid.h"
 #include "fields.h"
-#include "thermo_dry_slope.h"
+#include "thermo_buoy_slope.h"
 #include "defines.h"
+#include "model.h"
+#include "master.h"
 
-cthermo_dry_slope::cthermo_dry_slope(cmodel *modelin) : cthermo(modelin)
+cthermo_buoy_slope::cthermo_buoy_slope(cmodel *modelin) : cthermo(modelin)
 {
   swthermo = "slope";
+  master = modelin->master;
 }
 
-cthermo_dry_slope::~cthermo_dry_slope()
+cthermo_buoy_slope::~cthermo_buoy_slope()
 {
 }
 
-int cthermo_dry_slope::readinifile(cinput *inputin)
+int cthermo_buoy_slope::readinifile(cinput *inputin)
 {
   int nerror = 0;
+
   nerror += inputin->getItem(&alpha, "thermo", "alpha", "");
   nerror += inputin->getItem(&n2   , "thermo", "n2"   , "");
 
-  nerror += fields->initpfld("s","Buoyancy", "m s-2");
-  nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
+  nerror += fields->initpfld("b", "Buoyancy", "m s-2");
+  nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
+
+  if(grid->swspatialorder == "2")
+  {
+    if(master->mpiid == 0) std::printf("ERROR swthermo = buoy_slope is incompatible with swspatialorder = 2\n");
+    ++nerror;
+  }
 
   return nerror;
 }
 
-int cthermo_dry_slope::exec()
+int cthermo_buoy_slope::exec()
 {
-  calcbuoyancytendu_4th(fields->ut->data, fields->s["s"]->data);
-  calcbuoyancytendw_4th(fields->wt->data, fields->s["s"]->data);
-  calcbuoyancytendb_4th(fields->st["s"]->data, fields->u->data, fields->w->data);
+  calcbuoyancytendu_4th(fields->ut->data, fields->s["b"]->data);
+  calcbuoyancytendw_4th(fields->wt->data, fields->s["b"]->data);
+  calcbuoyancytendb_4th(fields->st["b"]->data, fields->u->data, fields->w->data);
+
   return 0;
 }
 
-int cthermo_dry_slope::execcross()
+int cthermo_buoy_slope::execcross()
 {
   return 0;
 }
 
-int cthermo_dry_slope::checkthermofield(std::string name)
+int cthermo_buoy_slope::checkthermofield(std::string name)
 {
   if(name == "b")
     return 0;
@@ -68,33 +79,33 @@ int cthermo_dry_slope::checkthermofield(std::string name)
     return 1;
 }
 
-int cthermo_dry_slope::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+int cthermo_buoy_slope::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
 {
-  calcbuoyancy(field->data, fields->s["s"]->data);
+  calcbuoyancy(field->data, fields->s["b"]->data);
   return 0;
 }
 
-int cthermo_dry_slope::getbuoyancyfluxbot(cfield3d *bfield)
+int cthermo_buoy_slope::getbuoyancyfluxbot(cfield3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->datafluxbot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
   return 0;
 }
 
-int cthermo_dry_slope::getbuoyancysurf(cfield3d *bfield)
+int cthermo_buoy_slope::getbuoyancysurf(cfield3d *bfield)
 {
   calcbuoyancybot(bfield->data        , bfield->databot,
-                  fields->s["s"]->data, fields->s["s"]->databot);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->datafluxbot);
+                  fields->s["b"]->data, fields->s["b"]->databot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
   return 0;
 }
 
-int cthermo_dry_slope::getprogvars(std::vector<std::string> *list)
+int cthermo_buoy_slope::getprogvars(std::vector<std::string> *list)
 {
-  list->push_back("s");
+  list->push_back("b");
   return 0;
 }
 
-int cthermo_dry_slope::calcbuoyancy(double * restrict b, double * restrict s)
+int cthermo_buoy_slope::calcbuoyancy(double * restrict b, double * restrict s)
 {
   int ijk,jj,kk;
   double ql;
@@ -113,7 +124,7 @@ int cthermo_dry_slope::calcbuoyancy(double * restrict b, double * restrict s)
   return 0;
 }
 
-int cthermo_dry_slope::calcbuoyancybot(double * restrict b , double * restrict bbot,
+int cthermo_buoy_slope::calcbuoyancybot(double * restrict b , double * restrict bbot,
                                  double * restrict s , double * restrict sbot)
 {
   int ij,ijk,jj,kk,kstart;
@@ -134,7 +145,7 @@ int cthermo_dry_slope::calcbuoyancybot(double * restrict b , double * restrict b
   return 0;
 }
 
-int cthermo_dry_slope::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
+int cthermo_buoy_slope::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
 {
   int ij,jj,kk;
   jj = grid->icells;
@@ -150,7 +161,7 @@ int cthermo_dry_slope::calcbuoyancyfluxbot(double * restrict bfluxbot, double * 
   return 0;
 }
 
-int cthermo_dry_slope::calcbuoyancytendw_4th(double * restrict wt, double * restrict s)
+int cthermo_buoy_slope::calcbuoyancytendw_4th(double * restrict wt, double * restrict s)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -173,7 +184,7 @@ int cthermo_dry_slope::calcbuoyancytendw_4th(double * restrict wt, double * rest
   return 0;
 }
 
-int cthermo_dry_slope::calcbuoyancytendu_4th(double * restrict ut, double * restrict s)
+int cthermo_buoy_slope::calcbuoyancytendu_4th(double * restrict ut, double * restrict s)
 {
   int ijk,ii1,ii2,jj,kk;
 
@@ -196,7 +207,7 @@ int cthermo_dry_slope::calcbuoyancytendu_4th(double * restrict ut, double * rest
   return 0;
 }
 
-int cthermo_dry_slope::calcbuoyancytendb_4th(double * restrict st, double * restrict u, double * restrict w)
+int cthermo_buoy_slope::calcbuoyancytendb_4th(double * restrict st, double * restrict u, double * restrict w)
 {
   int ijk,ii1,ii2,jj,kk1,kk2;
 
@@ -222,7 +233,7 @@ int cthermo_dry_slope::calcbuoyancytendb_4th(double * restrict st, double * rest
   return 0;
 }
 
-inline double cthermo_dry_slope::interp4(const double a, const double b, const double c, const double d)
+inline double cthermo_buoy_slope::interp4(const double a, const double b, const double c, const double d)
 {
   return (-a + 9.*b + 9.*c - d) / 16.;
 }
