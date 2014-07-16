@@ -80,6 +80,7 @@ class cstats
     maskmap masks;
     int *nmask;
     int *nmaskh;
+    int nmaskbot;
 
     // interface functions
     // profmap profs;
@@ -93,6 +94,7 @@ class cstats
     int calcarea    (double *, const int[3], int *);
     int calcmean    (double *, double *, double);
     int calcmean    (double *, double *, double, const int[3], double *, int *);
+    int calcmean2d  (double *, double *, double, double *, int *);
     // int calcmoment  (double *, double *, double *, double, int);
     int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
     int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
@@ -106,8 +108,8 @@ class cstats
     int addfluxes   (double *, double *, double *);
     // int calccount   (double *, double *, double);
     int calccount   (double *, double *, double, double *, int *);
-    int calcpath    (double *, double *);
-    int calccover   (double *, double *, double);
+    int calcpath    (double *, double *, int *, double *);
+    int calccover   (double *, double *, int *, double *, double);
 
     int calcsortprof(double *, double *, double *);
 
@@ -121,7 +123,7 @@ class cstats
     int nstats;
 
     // mask calculations
-    int calcmask(double *, double *, int *, int *, double *, double *);
+    int calcmask(double *, double *, double *, int *, int *, int *);
 
   protected:
     cmodel  *model;

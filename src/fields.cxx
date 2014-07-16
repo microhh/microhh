@@ -217,21 +217,23 @@ int cfields::exec()
 int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
   if(m->name == "wplus")
-    calcmaskwplus(mfield->data, mfieldh->data, stats->nmask, stats->nmaskh, m->profs["area"].data, m->profs["areah"].data, w->data);
+    calcmaskwplus(mfield->data, mfieldh->data, mfieldh->databot, 
+                  stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
   else if(m->name == "wmin")                                                  
-    calcmaskwmin (mfield->data, mfieldh->data, stats->nmask, stats->nmaskh, m->profs["area"].data, m->profs["areah"].data, w->data);
+    calcmaskwmin (mfield->data, mfieldh->data, mfieldh->databot,
+                  stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
   return 0;
 }
 
-int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh,
-                           int * restrict nmask, int * restrict nmaskh,
-                           double * restrict area, double * restrict areah,
+int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                           int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                            double * restrict w)
 {
-  int ijk,jj,kk;
+  int ijk,ij,jj,kk,kstart;
 
   jj = grid->icells;
   kk = grid->ijcells;
+  kstart = grid->kstart;
 
   int ntmp;
 
@@ -263,24 +265,37 @@ int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh,
       }
   }
 
+  // Set the mask for surface projected quantities
+  // In this case: velocity at surface, so zero
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      maskbot[ij] = maskh[ijk];
+    }
+
   grid->boundary_cyclic(mask);
   grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
+  *nmaskbot = nmaskh[grid->kstart];
 
   return 0;
 }
 
-int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh,
-                          int * restrict nmask, int * restrict nmaskh,
-                          double * restrict area, double * restrict areah,
+int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                          int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                           double * restrict w)
 {
-  int ijk,jj,kk;
+  int ijk,ij,jj,kk,kstart;
 
   jj = grid->icells;
   kk = grid->ijcells;
+  kstart = grid->kstart;
 
   int ntmp;
 
@@ -312,11 +327,24 @@ int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh,
       }
   }
 
+  // Set the mask for surface projected quantities
+  // In this case: velocity at surface, so zero
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      maskbot[ij] = maskh[ijk];
+    }
+
   grid->boundary_cyclic(mask);
   grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
+  *nmaskbot = nmaskh[grid->kstart];
 
   return 0;
 }
