@@ -111,7 +111,11 @@ int cboundary_surface::readinifile(cinput *inputin)
   model->thermo->getprogvars(&thermolist);
 
   std::vector<std::string>::const_iterator it = thermolist.begin();
-  thermobc = sbc[*it]->bcbot;
+
+  // save the bc of the first thermo field in case thermo is enabled
+  if(it != thermolist.end())
+    thermobc = sbc[*it]->bcbot;
+
   while(it != thermolist.end())
   {
     if(sbc[*it]->bcbot != thermobc)
