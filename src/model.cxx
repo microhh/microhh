@@ -140,7 +140,9 @@ int cmodel::readinifile()
        *it != "wmin"  &&
        *it != "ql"    &&
        *it != "qlcore")
+    {
       if(master->mpiid == 0) std::printf("WARNING %s is an undefined mask for conditional statistics\n", it->c_str());
+    }
     else
       stats->addmask(*it);
   }
