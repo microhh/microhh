@@ -27,6 +27,7 @@ class cmaster;
 class cmodel;
 class cgrid;
 class cfields;
+struct mask;
 
 /**
  * Structure containing the boundary options and values per 3d field.
@@ -61,6 +62,7 @@ class cboundary
 
     int exec();              ///< Update the boundary conditions.
     virtual int execcross(); ///< Execute cross sections of surface
+    virtual int execstats(mask *); ///< Execute statistics of surface
 
   protected:
     cmaster *master; ///< Pointer to master class.
@@ -81,6 +83,7 @@ class cboundary
     std::map<std::string, double *> timedepdata;
 
     int processbcs(cinput *); ///< Process the boundary condition settings from the ini file.
+    int processtimedep(cinput *); ///< Process the time dependent settings from the ini file.
     int setbc(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
 
   private:

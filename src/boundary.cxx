@@ -162,6 +162,13 @@ int cboundary::init()
 int cboundary::create(cinput *inputin)
 {
   int nerror = 0;
+  nerror += processtimedep(inputin);
+  return nerror;
+}
+
+int cboundary::processtimedep(cinput *inputin)
+{
+  int nerror = 0;
 
   if(swtimedep == "1")
   {
@@ -324,6 +331,11 @@ int cboundary::exec()
 }
 
 int cboundary::execcross()
+{
+  return 0;
+}
+
+int cboundary::execstats(mask *m)
 {
   return 0;
 }

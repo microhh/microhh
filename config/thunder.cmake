@@ -3,7 +3,7 @@
 set(ENV{CXX} mpicxx) # compiler for parallel build
 
 set(USER_CXX_FLAGS "-restrict")
-set(USER_CXX_FLAGS_RELEASE "-xAVX -O3")
+set(USER_CXX_FLAGS_RELEASE "-march=corei7-avx -O3")
 set(USER_CXX_FLAGS_DEBUG "-traceback -check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common")
 
 set(FFTW_INCLUDE_DIR   "/sw/squeeze-x64/numerics/fftw-3.3-openmp-gccsys/include")

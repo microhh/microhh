@@ -200,14 +200,179 @@ int cthermo_moist::exec()
   return (nerror>0);
 }
 
-int cthermo_moist::execstats()
+
+int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
+{
+  if(m->name == "ql")
+  {
+    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
+    calcmaskql(mfield->data, mfieldh->data, mfieldh->databot,
+               stats->nmask, stats->nmaskh, &stats->nmaskbot,
+               fields->s["tmp1"]->data);
+  }
+  else if(m->name == "qlcore")
+  {
+    calcbuoyancy(fields->s["tmp2"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp1"]->data);
+    // calculate the mean buoyancy to determine positive buoyancy
+    grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
+    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
+    calcmaskqlcore(mfield->data, mfieldh->data, mfieldh->databot,
+                   stats->nmask, stats->nmaskh, &stats->nmaskbot,
+                   fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
+  }
+ 
+  return 0;
+}
+
+int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                              int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                              double * restrict ql)
+{
+  int ijk,ij,jj,kk;
+  int kstart,kend;
+
+  jj = grid->icells;
+  kk = grid->ijcells;
+  kstart = grid->kstart;
+  kend   = grid->kend;
+
+  int ntmp;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    nmask[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = ql[ijk] > 0.;
+        nmask[k] += ntmp;
+        mask[ijk] = (double)ntmp;
+      }
+  }
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    nmaskh[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = (ql[ijk-kk] + ql[ijk]) > 0.;
+
+        nmaskh[k] += ntmp;
+        maskh[ijk] = (double)ntmp;
+      }
+  }
+
+  // Set the mask for surface projected quantities
+  // In this case: ql at surface
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      maskbot[ij] = maskh[ijk];
+    }
+
+  grid->boundary_cyclic(mask);
+  grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic2d(maskbot);
+
+  master->sum(nmask , grid->kcells);
+  master->sum(nmaskh, grid->kcells);
+  *nmaskbot = nmaskh[grid->kstart];
+
+  // BvS: should no longer be necessary now that the ql ghost cells are set to zero
+  //nmaskh[kstart] = 0;
+  //nmaskh[kend  ] = 0;
+
+  return 0;
+}
+
+int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                                  int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                                  double * restrict ql, double * restrict b, double * restrict bmean)
+{
+  int ijk,ij,jj,kk;
+  int kstart,kend;
+
+  jj = grid->icells;
+  kk = grid->ijcells;
+  kstart = grid->kstart;
+  kend   = grid->kend;
+
+  int ntmp;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    nmask[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = (ql[ijk] > 0.)*(b[ijk]-bmean[k] > 0.);
+        nmask[k] += ntmp;
+        mask[ijk] = (double)ntmp;
+      }
+  }
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    nmaskh[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = (ql[ijk-kk]+ql[ijk] > 0.)*(b[ijk-kk]+b[ijk]-bmean[k-1]-bmean[k] > 0.);
+        nmaskh[k] += ntmp;
+        maskh[ijk] = (double)ntmp;
+      }
+  }
+
+  // Set the mask for surface projected quantities
+  // In this case: qlcore at surface
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      maskbot[ij] = maskh[ijk];
+    }
+
+  grid->boundary_cyclic(mask);
+  grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic2d(maskbot);
+
+  master->sum(nmask , grid->kcells);
+  master->sum(nmaskh, grid->kcells);
+  *nmaskbot = nmaskh[grid->kstart];
+
+  // BvS: should no longer be necessary now that the ql ghost cells are set to zero
+  //nmaskh[kstart] = 0;
+  //nmaskh[kend  ] = 0;
+
+  return 0;
+}
+
+int cthermo_moist::execstats(mask *m)
 {
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data);
   calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot);
 
+  // define location
+  const int sloc[] = {0,0,0};
+
   // mean
-  stats->calcmean(fields->s["tmp1"]->data, stats->profs["b"].data, NO_OFFSET);
+  stats->calcmean(fields->s["tmp1"]->data, m->profs["b"].data, NO_OFFSET, sloc,
+                  fields->s["tmp3"]->data, stats->nmask);
 
   // moments
   for(int n=2; n<5; ++n)
@@ -215,43 +380,54 @@ int cthermo_moist::execstats()
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, stats->profs["b"].data, stats->profs["b"+sn].data, n, 0);
+    stats->calcmoment(fields->s["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+                      fields->s["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi);
+    stats->calcgrad_2nd(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->s["tmp1"]->data, stats->profs["bgrad"].data, grid->dzhi4);
+    stats->calcgrad_4th(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+    stats->calcflux_2nd(fields->s["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+                        m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
   if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, stats->profs["bw"].data, fields->s["tmp2"]->data, 0, 0);
+    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
   if(model->diff->getname() == "les2s")
   {
     cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->s["evisc"]->data, stats->profs["bdiff"].data, grid->dzhi, fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr);
+    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
+                        m->profs["bdiff"].data, grid->dzhi,
+                        fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
   }
   else
   {
     // take the diffusivity of temperature for that of moisture
-    stats->calcdiff_4th(fields->s["tmp1"]->data, stats->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc);
+    stats->calcdiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
+                        fields->s["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
-  stats->addfluxes(stats->profs["bflux"].data, stats->profs["bw"].data, stats->profs["bdiff"].data);
+  stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the liquid water stats
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-  stats->calcmean (fields->s["tmp1"]->data, stats->profs["ql"].data, NO_OFFSET);
-  stats->calccount(fields->s["tmp1"]->data, stats->profs["cfrac"].data, 0.);
+  stats->calcmean(fields->s["tmp1"]->data, m->profs["ql"].data, NO_OFFSET, sloc, fields->s["tmp3"]->data, stats->nmask);
+  stats->calccount(fields->s["tmp1"]->data, m->profs["cfrac"].data, 0.,
+                   fields->s["tmp3"]->data, stats->nmask);
 
-  stats->calccover(fields->s["tmp1"]->data, &stats->tseries["ccover"].data, 0.);
-  stats->calcpath(fields->s["tmp1"]->data, &stats->tseries["lwp"].data);
+  stats->calccover(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
+  stats->calcpath(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
   return 0;
 }
@@ -608,6 +784,30 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
+  // Fill ghost cells with zeros to prevent problems in calculating ql or qlcore masks 
+  for(int k=0; k<grid->kstart; k++)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ql[ijk] = 0.;
+      }
+  }
+
+  for(int k=grid->kend; k<grid->kcells; k++)
+  {
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ql[ijk] = 0.;
+      }
+  }
+
+  // Calculate the ql field
   for(int k=grid->kstart; k<grid->kend; k++)
   {
     exn = exner(p[k]);

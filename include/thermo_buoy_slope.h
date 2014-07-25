@@ -19,8 +19,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO_DRY_SLOPE
-#define THERMO_DRY_SLOPE
+#ifndef THERMO_BUOY_SLOPE
+#define THERMO_BUOY_SLOPE
 
 #include "thermo.h"
 
@@ -35,11 +35,11 @@ class cfields;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-class cthermo_dry_slope : public cthermo
+class cthermo_buoy_slope : public cthermo
 {
   public:
-    cthermo_dry_slope(cmodel *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_dry_slope();        ///< Destructor of the dry thermodynamics class.
+    cthermo_buoy_slope(cmodel *); ///< Constructor of the dry thermodynamics class.
+    ~cthermo_buoy_slope();        ///< Destructor of the dry thermodynamics class.
 
     int readinifile(cinput *);               ///< Processing data of the input file.
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
@@ -63,7 +63,9 @@ class cthermo_dry_slope : public cthermo
     inline double interp4(const double, const double, 
                           const double, const double); ///< 4th order interpolation function.
 
-    double alpha;
-    double n2;
+    double alpha; ///< Slope angle in radians.
+    double n2;    ///< Background stratification.
+
+    cmaster *master; ///< Pointer to master class.
 };
 #endif

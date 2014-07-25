@@ -60,9 +60,9 @@
 // thermo schemes
 #include "thermo.h"
 #include "thermo_buoy.h"
+#include "thermo_buoy_slope.h"
 #include "thermo_dry.h"
 #include "thermo_moist.h"
-#include "thermo_dry_slope.h"
 
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
@@ -132,6 +132,19 @@ int cmodel::readinifile()
   nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
 
+  // get the list of masks
+  nerror += input->getList(&masklist, "stats", "masklist", "");
+  for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+  {
+    if(*it != "wplus" &&
+       *it != "wmin"  &&
+       *it != "ql"    &&
+       *it != "qlcore")
+      if(master->mpiid == 0) std::printf("WARNING %s is an undefined mask for conditional statistics\n", it->c_str());
+    else
+      stats->addmask(*it);
+  }
+
   // if one or more arguments fails, then crash
   if(nerror > 0)
     return 1;
@@ -149,7 +162,7 @@ int cmodel::readinifile()
     advec = new cadvec_4m(this);
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     return 1;
   }
   if(advec->readinifile(input))
@@ -169,13 +182,13 @@ int cmodel::readinifile()
     // the subgrid model requires a surface model because of the MO matching at first level
     if(swboundary != "surface")
     {
-      std::printf("ERROR swdiff == \"les2s\" requires swboundary == \"surface\"\n");
+      if(master->mpiid == 0) std::printf("ERROR swdiff == \"les2s\" requires swboundary == \"surface\"\n");
       return 1;
     }
   }
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swdiff\n", swdiff.c_str());
     return 1;
   }
   if(diff->readinifile(input))
@@ -190,7 +203,7 @@ int cmodel::readinifile()
     pres = new cpres_4(this);
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swpres\n", swpres.c_str());
     return 1;
   }
   if(pres->readinifile(input))
@@ -208,13 +221,13 @@ int cmodel::readinifile()
     thermo = new cthermo_buoy(this);
   else if(swthermo == "dry")
     thermo = new cthermo_dry(this);
-  else if(swthermo == "dry_slope")
-    thermo = new cthermo_dry_slope(this);
+  else if(swthermo == "buoy_slope")
+    thermo = new cthermo_buoy_slope(this);
   else if(swthermo == "0")
     thermo = new cthermo(this);
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swthermo\n", swthermo.c_str());
     return 1;
   }
   if(thermo->readinifile(input))
@@ -229,7 +242,7 @@ int cmodel::readinifile()
     boundary = new cboundary(this);
   else
   {
-    std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swboundary\n", swboundary.c_str());
     return 1;
   }
   if(boundary->readinifile(input))
@@ -343,6 +356,7 @@ int cmodel::save()
 
 int cmodel::exec()
 {
+  if(master->mpiid == 0) std::printf("Starting time integration\n");
   // update the time dependent values
   boundary->settimedep();
   force->settimedep();
@@ -390,9 +404,26 @@ int cmodel::exec()
     {
       if(stats->dostats())
       {
-        fields->execstats();
-        thermo->execstats();
-        budget->execstats();
+        // always process the default mask
+        stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks["default"]);
+        calcstats("default");
+
+        // work through the potential masks for the statistics
+        for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+        {
+          if(*it == "wplus" || *it == "wmin")
+          {
+            fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
+            calcstats(*it);
+          }
+          else if(*it == "ql" || *it == "qlcore")
+          {
+            thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
+            calcstats(*it);
+          }
+        }
+
+        // store the stats data
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 
@@ -466,6 +497,16 @@ int cmodel::exec()
       return 1;
 
   }
+
+  return 0;
+}
+
+int cmodel::calcstats(std::string maskname)
+{
+  fields->execstats(&stats->masks[maskname]);
+  thermo->execstats(&stats->masks[maskname]);
+  budget->execstats(&stats->masks[maskname]);
+  boundary->execstats(&stats->masks[maskname]);
 
   return 0;
 }

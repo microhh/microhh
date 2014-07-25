@@ -83,7 +83,11 @@ class cmodel
     std::string swboundary;
     std::string swthermo;
 
+    // list of masks for statistics
+    std::vector<std::string> masklist;
+
     int outputfile(bool);
+    int calcstats(std::string);
     int settimestep();
 };
 #endif

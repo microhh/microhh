@@ -104,17 +104,19 @@ int cfields::readinifile(cinput *inputin)
   nerror += initmomfld(v, vt, "v", "V velocity", "m s-1");
   nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
   nerror += initdfld("p", "Pressure", "Pa");
-  nerror += initdfld("tmp1","","");
-  nerror += initdfld("tmp2","","");
-
-  // \TODO check this later
-  stats = model->stats;
+  nerror += initdfld("tmp1", "", "");
+  nerror += initdfld("tmp2", "", "");
+  nerror += initdfld("tmp3", "", "");
+  nerror += initdfld("tmp4", "", "");
 
   return nerror;
 }
 
 int cfields::init()
 {
+  // set the convenience pointers
+  stats = model->stats;
+
   if(master->mpiid == 0) std::printf("Initializing fields\n");
 
   int n = 0;
@@ -205,94 +207,292 @@ int cfields::exec()
   return 0;
 }
 
-int cfields::execstats()
+int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
-  // calculate the means
-  stats->calcmean(u->data, stats->profs["u"].data, grid->utrans);
-  stats->calcmean(v->data, stats->profs["v"].data, grid->vtrans);
-  stats->calcmean(w->data, stats->profs["w"].data, NO_OFFSET);
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->calcmean(it->second->data, stats->profs[it->first].data, NO_OFFSET);
+  if(m->name == "wplus")
+    calcmaskwplus(mfield->data, mfieldh->data, mfieldh->databot, 
+                  stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
+  else if(m->name == "wmin")                                                  
+    calcmaskwmin (mfield->data, mfieldh->data, mfieldh->databot,
+                  stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
+  return 0;
+}
 
-  stats->calcmean(s["p"]->data, stats->profs["p"].data, NO_OFFSET);
+int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                           int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                           double * restrict w)
+{
+  int ijk,ij,jj,kk,kstart;
 
-  if(model->diff->getname() == "les2s")
-    stats->calcmean(s["evisc"]->data, stats->profs["evisc"].data, NO_OFFSET);
+  jj = grid->icells;
+  kk = grid->ijcells;
+  kstart = grid->kstart;
 
-  // calculate model means without correction for transformation
-  stats->calcmean(u->data, umodel, NO_OFFSET);
-  stats->calcmean(v->data, vmodel, NO_OFFSET);
+  int ntmp;
 
-  // calculate the higher order moments
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    nmask[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = (w[ijk] + w[ijk+kk]) > 0.;
+        nmask[k] += ntmp;
+        mask[ijk] = (double)ntmp;
+      }
+  }
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    nmaskh[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = w[ijk] > 0.;
+        nmaskh[k] += ntmp;
+        maskh[ijk] = (double)ntmp;
+      }
+  }
+
+  // Set the mask for surface projected quantities
+  // In this case: velocity at surface, so zero
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      maskbot[ij] = maskh[ijk];
+    }
+
+  grid->boundary_cyclic(mask);
+  grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic2d(maskbot);
+
+  master->sum(nmask , grid->kcells);
+  master->sum(nmaskh, grid->kcells);
+  *nmaskbot = nmaskh[grid->kstart];
+
+  return 0;
+}
+
+int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                          int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                          double * restrict w)
+{
+  int ijk,ij,jj,kk,kstart;
+
+  jj = grid->icells;
+  kk = grid->ijcells;
+  kstart = grid->kstart;
+
+  int ntmp;
+
+  for(int k=grid->kstart; k<grid->kend; k++)
+  {
+    nmask[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = (w[ijk] + w[ijk+kk]) <= 0.;
+        nmask[k] += ntmp;
+        mask[ijk] = (double)ntmp;
+      }
+  }
+
+  for(int k=grid->kstart; k<grid->kend+1; k++)
+  {
+    nmaskh[k] = 0;
+    for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; i++)
+      {
+        ijk = i + j*jj + k*kk;
+        ntmp = w[ijk] <= 0.;
+        nmaskh[k] += ntmp;
+        maskh[ijk] = (double)ntmp;
+      }
+  }
+
+  // Set the mask for surface projected quantities
+  // In this case: velocity at surface, so zero
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ij  = i + j*jj;
+      ijk = i + j*jj + kstart*kk;
+      maskbot[ij] = maskh[ijk];
+    }
+
+  grid->boundary_cyclic(mask);
+  grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic2d(maskbot);
+
+  master->sum(nmask , grid->kcells);
+  master->sum(nmaskh, grid->kcells);
+  *nmaskbot = nmaskh[grid->kstart];
+
+  return 0;
+}
+
+int cfields::execstats(mask *m)
+{
+  // define locations
+  const int uloc[] = {1,0,0};
+  const int vloc[] = {0,1,0};
+  const int wloc[] = {0,0,1};
+  const int sloc[] = {0,0,0};
+
+  const int uwloc[] = {1,0,1};
+  const int vwloc[] = {0,1,1};
+
+  // save the area coverage of the mask
+  stats->calcarea(m->profs["area" ].data, sloc, stats->nmask );
+  stats->calcarea(m->profs["areah"].data, wloc, stats->nmaskh);
+
+  // start with the stats on the w location, to make the wmean known for the flux calculations
+  stats->calcmean(w->data, m->profs["w"].data, NO_OFFSET, wloc, sd["tmp4"]->data, stats->nmaskh);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(u->data, umodel, stats->profs["u"+sn].data, n, 0);
-    stats->calcmoment(v->data, vmodel, stats->profs["v"+sn].data, n, 0);
-    stats->calcmoment(w->data, stats->profs["w"].data, stats->profs["w"+sn].data, n, 1);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcmoment(it->second->data, stats->profs[it->first].data, stats->profs[it->first+sn].data, n, 0);
+    stats->calcmoment(w->data, m->profs["w"].data, m->profs["w"+sn].data, n, wloc,
+                      sd["tmp4"]->data, stats->nmaskh);
   }
 
-  // calculate the gradients
-  if(grid->swspatialorder == "2")
+  // calculate the stats on the u location
+  // interpolate the mask horizontally onto the u coordinate
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
+  stats->calcmean(u->data, m->profs["u"].data, grid->utrans, uloc, sd["tmp1"]->data, stats->nmask);
+  stats->calcmean(u->data, umodel            , NO_OFFSET   , uloc, sd["tmp1"]->data, stats->nmask);
+  for(int n=2; n<5; ++n)
   {
-    stats->calcgrad_2nd(u->data, stats->profs["ugrad"].data, grid->dzhi);
-    stats->calcgrad_2nd(v->data, stats->profs["vgrad"].data, grid->dzhi);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_2nd(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi);
-  }
-  else if(grid->swspatialorder == "4")
-  {
-    stats->calcgrad_4th(u->data, stats->profs["ugrad"].data, grid->dzhi4);
-    stats->calcgrad_4th(v->data, stats->profs["vgrad"].data, grid->dzhi4);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcgrad_4th(it->second->data, stats->profs[it->first+"grad"].data, grid->dzhi4);
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->calcmoment(u->data, umodel, m->profs["u"+sn].data, n, uloc,
+                      sd["tmp1"]->data, stats->nmask);
   }
 
-  // calculate the turbulent fluxes
+  // interpolate the mask on half level horizontally onto the u coordinate
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, uwloc);
   if(grid->swspatialorder == "2")
   {
-    stats->calcflux_2nd(u->data, w->data, stats->profs["uw"].data, s["tmp1"]->data, 1, 0);
-    stats->calcflux_2nd(v->data, w->data, stats->profs["vw"].data, s["tmp1"]->data, 0, 1);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_2nd(it->second->data, w->data, stats->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
-  }
-  else if(grid->swspatialorder == "4")
-  {
-    stats->calcflux_4th(u->data, w->data, stats->profs["uw"].data, s["tmp1"]->data, 1, 0);
-    stats->calcflux_4th(v->data, w->data, stats->profs["vw"].data, s["tmp1"]->data, 0, 1);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcflux_4th(it->second->data, w->data, stats->profs[it->first+"w"].data, s["tmp1"]->data, 0, 0);
-  }
-
-  // calculate the diffusive fluxes
-  if(grid->swspatialorder == "2")
-  {
+    stats->calcgrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+    stats->calcflux_2nd(u->data, umodel, w->data, m->profs["w"].data,
+                        m->profs["uw"].data, s["tmp2"]->data, uloc,
+                        sd["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-    {
-      cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-      stats->calcdiff_2nd(u->data, s["evisc"]->data, stats->profs["udiff"].data, grid->dzhi, u->datafluxbot, u->datafluxtop, 1.);
-      stats->calcdiff_2nd(v->data, s["evisc"]->data, stats->profs["vdiff"].data, grid->dzhi, v->datafluxbot, v->datafluxtop, 1.);
-      for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-        stats->calcdiff_2nd(it->second->data, s["evisc"]->data, stats->profs[it->first+"diff"].data, grid->dzhi, it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr);
-    }
+      stats->calcdiff_2nd(u->data, w->data, s["evisc"]->data,
+                          m->profs["udiff"].data, grid->dzhi,
+                          u->datafluxbot, u->datafluxtop, 1., uloc,
+                          sd["tmp1"]->data, stats->nmaskh);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcdiff_4th(u->data, stats->profs["udiff"].data, grid->dzhi4, visc);
-    stats->calcdiff_4th(v->data, stats->profs["vdiff"].data, grid->dzhi4, visc);
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->calcdiff_4th(it->second->data, stats->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc);
+    stats->calcgrad_4th(u->data, m->profs["ugrad"].data, grid->dzhi4, uloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+    stats->calcflux_4th(u->data, w->data, m->profs["uw"].data, sd["tmp2"]->data, uloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+    stats->calcdiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+  }
+
+  // calculate the stats on the v location
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
+  stats->calcmean(v->data, m->profs["v"].data, grid->vtrans, vloc, sd["tmp1"]->data, stats->nmask);
+  stats->calcmean(v->data, vmodel            , NO_OFFSET   , vloc, sd["tmp1"]->data, stats->nmask);
+  for(int n=2; n<5; ++n)
+  {
+    std::stringstream ss;
+    ss << n;
+    std::string sn = ss.str();
+    stats->calcmoment(v->data, vmodel, m->profs["v"+sn].data, n, vloc,
+                      sd["tmp1"]->data, stats->nmask);
+  }
+
+  // interpolate the mask on half level horizontally onto the u coordinate
+  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, vwloc);
+  if(grid->swspatialorder == "2")
+  {
+    stats->calcgrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+    stats->calcflux_2nd(v->data, vmodel, w->data, m->profs["w"].data,
+                        m->profs["vw"].data, s["tmp2"]->data, vloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+    if(model->diff->getname() == "les2s")
+      stats->calcdiff_2nd(v->data, w->data, s["evisc"]->data,
+                          m->profs["vdiff"].data, grid->dzhi,
+                          v->datafluxbot, v->datafluxtop, 1., vloc,
+                          sd["tmp1"]->data, stats->nmaskh);
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    stats->calcgrad_4th(v->data, m->profs["vgrad"].data, grid->dzhi4, vloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+    stats->calcflux_4th(v->data, w->data, m->profs["vw"].data, s["tmp2"]->data, vloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+    stats->calcdiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+                        sd["tmp1"]->data, stats->nmaskh);
+  }
+
+  // calculate stats for the prognostic scalars
+  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
+  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+  {
+    stats->calcmean(it->second->data, m->profs[it->first].data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
+    for(int n=2; n<5; ++n)
+    {
+      std::stringstream ss;
+      ss << n;
+      std::string sn = ss.str();
+      stats->calcmoment(it->second->data, m->profs[it->first].data, m->profs[it->first+sn].data, n, sloc,
+                        sd["tmp3"]->data, stats->nmask);
+    }
+    if(grid->swspatialorder == "2")
+    {
+      stats->calcgrad_2nd(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi, sloc,
+                          sd["tmp4"]->data, stats->nmaskh);
+      stats->calcflux_2nd(it->second->data, m->profs[it->first].data, w->data, m->profs["w"].data,
+                          m->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
+                          sd["tmp4"]->data, stats->nmaskh);
+      if(model->diff->getname() == "les2s")
+        stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
+                            m->profs[it->first+"diff"].data, grid->dzhi,
+                            it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
+                            sd["tmp4"]->data, stats->nmaskh);
+    }
+    else if(grid->swspatialorder == "4")
+    {
+      stats->calcgrad_4th(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi4, sloc,
+                          sd["tmp4"]->data, stats->nmaskh);
+      stats->calcflux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
+                          sd["tmp4"]->data, stats->nmaskh);
+      stats->calcdiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+                          sd["tmp4"]->data, stats->nmaskh);
+    }
   }
 
   // calculate the total fluxes
-  stats->addfluxes(stats->profs["uflux"].data, stats->profs["uw"].data, stats->profs["udiff"].data);
-  stats->addfluxes(stats->profs["vflux"].data, stats->profs["vw"].data, stats->profs["vdiff"].data);
+  stats->addfluxes(m->profs["uflux"].data, m->profs["uw"].data, m->profs["udiff"].data);
+  stats->addfluxes(m->profs["vflux"].data, m->profs["vw"].data, m->profs["vdiff"].data);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addfluxes(stats->profs[it->first+"flux"].data, stats->profs[it->first+"w"].data, stats->profs[it->first+"diff"].data);
+    stats->addfluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
+
+  // other statistics
+  stats->calcmean(s["p"]->data, m->profs["p"].data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
+
+  if(model->diff->getname() == "les2s")
+    stats->calcmean(s["evisc"]->data, m->profs["evisc"].data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
 
   return 0;
 }
@@ -335,7 +535,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, st
 
 int cfields::initpfld(std::string fldname, std::string longname, std::string unit)
 {
-  if (s.find(fldname)!=s.end())
+  if(s.find(fldname)!=s.end())
   {
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
@@ -362,7 +562,7 @@ int cfields::initpfld(std::string fldname, std::string longname, std::string uni
 
 int cfields::initdfld(std::string fldname,std::string longname, std::string unit)
 {
-  if (s.find(fldname)!=s.end())
+  if(s.find(fldname)!=s.end())
   {
     std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
     return 1;
