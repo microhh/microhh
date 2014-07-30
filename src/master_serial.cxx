@@ -20,7 +20,6 @@
  */
 
 #ifndef PARALLEL
-#include <cstdio>
 #include <sys/time.h>
 #include "grid.h"
 #include "defines.h"
@@ -34,7 +33,7 @@ cmaster::cmaster()
 
 cmaster::~cmaster()
 {
-  if(mpiid == 0) std::printf("Finished run on %d processes\n", nprocs);
+  printMessage("Finished run on %d processes\n", nprocs);
 }
 
 int cmaster::readinifile(cinput *inputin)
@@ -59,12 +58,12 @@ int cmaster::startup(int argc, char *argv[])
   // set the number of processes to 1
   nprocs = 1;
 
-  if(mpiid == 0) std::printf("Starting run on %d processes\n", nprocs);
+  printMessage("Starting run on %d processes\n", nprocs);
 
   // process the command line options
   if(argc <= 1)
   {
-    if(mpiid == 0) std::printf("ERROR: specify init, run or post mode\n");
+    printError("Specify init, run or post mode\n");
     return 1;
   }
   else
@@ -73,7 +72,7 @@ int cmaster::startup(int argc, char *argv[])
     mode = argv[1];
     if(mode != "init" && mode != "run" && mode != "post")
     {
-      if(mpiid == 0) std::printf("ERROR: specify init, run or post mode\n");
+      printError("Specify init, run or post mode\n");
       return 1;
     }
     // set the name of the simulation
@@ -90,7 +89,7 @@ int cmaster::init()
 {
   if(nprocs != npx*npy)
   {
-    if(mpiid == 0) std::printf("ERROR npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
+    printError("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
     return 1;
   }
 
