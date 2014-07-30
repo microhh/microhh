@@ -20,7 +20,6 @@
  */
 
 #ifdef PARALLEL
-#include <cstdio>
 #include <mpi.h>
 #include "grid.h"
 #include "defines.h"
@@ -30,6 +29,8 @@ cmaster::cmaster()
 {
   initialized = false;
   allocated   = false;
+
+  mpiid = 0;
 }
 
 cmaster::~cmaster()
@@ -42,7 +43,7 @@ cmaster::~cmaster()
     MPI_Comm_free(&commy);
   }
 
-  if(mpiid == 0) std::printf("Finished run on %d processes\n", nprocs);
+  printMessage("Finished run on %d processes\n", nprocs);
 
   if(initialized)
     MPI_Finalize();
@@ -87,12 +88,12 @@ int cmaster::startup(int argc, char *argv[])
   if(checkerror(n))
     return 1;
 
-  if(mpiid == 0) std::printf("Starting run on %d processes\n", nprocs);
+  printMessage("Starting run on %d processes\n", nprocs);
 
   // process the command line options
   if(argc <= 1)
   {
-    if(mpiid == 0) std::printf("ERROR specify init, run or post mode\n");
+    printError("Specify init, run or post mode\n");
     return 1;
   }
   else
@@ -101,7 +102,7 @@ int cmaster::startup(int argc, char *argv[])
     mode = argv[1];
     if(mode != "init" && mode != "run" && mode != "post")
     {
-      if(mpiid == 0) std::printf("ERROR specify init, run or post mode\n");
+      printError("Specify init, run or post mode\n");
       return 1;
     }
     // set the name of the simulation
@@ -120,7 +121,7 @@ int cmaster::init()
 
   if(nprocs != npx*npy)
   {
-    if(mpiid == 0) std::printf("ERROR nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
+    printError("nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
     return 1;
   }
 
@@ -137,10 +138,12 @@ int cmaster::init()
   n = MPI_Comm_free(&commxy);
   if(checkerror(n))
     return 1;
+
   // for now, do not reorder processes, blizzard gives large performance loss
   n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
   if(checkerror(n))
     return 1;
+
   n = MPI_Comm_rank(commxy, &mpiid);
   if(checkerror(n))
     return 1;
@@ -199,7 +202,7 @@ int cmaster::checkerror(int n)
   if(n != MPI_SUCCESS)
   {
     MPI_Error_string(n, errbuffer, &errlen);
-    std::printf("ERROR MPI %s\n", errbuffer);
+    printError("MPI: %s\n", errbuffer);
     return 1;
   }
 
