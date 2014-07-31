@@ -21,6 +21,13 @@ rm -f *.00* conservation.out
 ../microhh run conservation
 cd ..
 
+cd conservation800_3rd
+python conservationprof.py
+rm -f *.00* conservation.out
+../microhh init conservation
+../microhh run conservation
+cd ..
+
 cd conservation100_4th
 python conservationprof.py
 rm -f *.00* conservation.out
@@ -42,3 +49,9 @@ rm -f *.00* conservation.out
 ../microhh run conservation
 cd ..
 
+cd conservation800_4th
+python conservationprof.py
+rm -f *.00* conservation.out
+../microhh init conservation
+../microhh run conservation
+cd ..
