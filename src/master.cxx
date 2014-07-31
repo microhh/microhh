@@ -13,6 +13,22 @@ void cmaster::printMessage(const char *format, ...)
   }
 }
 
+void cmaster::printWarning(const char *format, ...)
+{
+  std::string warningstr("WARNING: ");
+  warningstr += std::string(format);
+
+  const char *warningformat = warningstr.c_str();
+
+  if(mpiid == 0)
+  {
+    va_list args;
+    va_start(args, format);
+    std::vfprintf(stdout, warningformat, args);
+    va_end(args);
+  }
+}
+
 void cmaster::printError(const char *format, ...)
 {
   std::string errorstr("ERROR: ");
