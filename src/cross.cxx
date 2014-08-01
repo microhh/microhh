@@ -104,29 +104,28 @@ int ccross::create()
 
     if(*it < 0 || *it > grid->ysize) // Check if cross location is inside domain
     {
-      if(master->mpiid == 0) std::printf("ERROR %f in [cross][xz] is outside domain\n", *it);
+      master->printError("ERROR %f in [cross][xz] is outside domain\n", *it);
       nerror += 1;
     }
     else
     {
+      if(*it == grid->ysize) // Exception for full level when requesting domain size
+        --temploc;
+
       if(std::find(jxz.begin(), jxz.end(), temploc) != jxz.end()) // Check for duplicate entries
-      {
-        if(master->mpiid == 0) std::printf("WARNING removed duplicate entry j=%i (full, xz=%f) in [cross][xz]\n", temploc, *it);
-      }
+        master->printWarning("removed duplicate entry y=%f for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],*it);
       else // Add to cross-list
       {
         jxz.push_back(temploc);
-        //printf("DEBUG Added full for y=%f at j=%i\n",*it,temploc); // DEBUG
+        master->printMessage("Addex XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],temploc,*it);
       } 
 
       if(std::find(jxzh.begin(), jxzh.end(), temploch) != jxzh.end()) // Check for duplicate entries
-      {
-        if(master->mpiid == 0) std::printf("WARNING removed duplicate entry j=%i (half, xz=%f) in [cross][xz]\n", temploch, *it);
-      }
+        master->printWarning("removed duplicate entry yh=%f for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],*it);
       else // Add to cross-list
       {
         jxzh.push_back(temploch);
-        //printf("DEBUG Added half for y=%f at j=%i\n",*it,temploch); // DEBUG
+        master->printMessage("Addex XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],temploch,*it);
       } 
     }
   }
@@ -137,46 +136,47 @@ int ccross::create()
     hoffset = 0;
     if(*it < 0 || *it > grid->zsize) // Check if cross location is inside domain
     {
-      if(master->mpiid == 0) std::printf("ERROR %f in [cross][xy] is outside domain\n", *it);
+      master->printError("ERROR %f in [cross][xy] is outside domain\n", *it);
       nerror += 1;
     }
     else
     {
-      // Loop over height to find the nearest full level
-      for(int k=grid->kstart; k<grid->kend; k++) 
+      if(*it == grid->zsize) // Exception for domain top: use half level at domain top, full level below
       {
-        if((*it >= grid->zh[k]) && (*it < grid->zh[k+1]))
+          temploc = grid->kmax-1;
+          hoffset = 1;
+      }
+      else
+      {
+        for(int k=grid->kstart; k<grid->kend; k++) // Loop over height to find the nearest full level
         {
-          temploc = k - grid->kgc;
-          if(*it >= grid->z[k]) // Add offset for half level
-            hoffset = 1;
-          break;
+          if((*it >= grid->zh[k]) && (*it < grid->zh[k+1]))
+          {
+            temploc = k - grid->kgc;
+            if(*it >= grid->z[k]) // Add offset for half level
+              hoffset = 1;
+            break;
+          }
         }
       }
 
       if(std::find(kxy.begin(), kxy.end(), temploc) != kxy.end()) // Check for duplicate entries
-      {
-        if(master->mpiid == 0) std::printf("WARNING removed duplicate entry k=%i (full, xy=%f) in [cross][xy]\n", temploc, *it);
-      }
+        master->printWarning("removed duplicate entry z=%f for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],*it);
       else // Add to cross-list
       {
         kxy.push_back(temploc);
-        //printf("DEBUG Added full for z=%f at k=%i\n",*it,temploc); // DEBUG
-      }  
-
+        master->printMessage("Addex XY cross at z=%f (k=%i) for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],temploc,*it);
+      } 
+ 
       if(std::find(kxyh.begin(), kxyh.end(), temploc+hoffset) != kxyh.end()) // Check for duplicate entries
-      {
-        if(master->mpiid == 0) std::printf("WARNING removed duplicate entry k=%i (half, xy=%f) in [cross][xy]\n", temploc+hoffset, *it);
-      }
+        master->printWarning("removed duplicate entry zh=%f for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],*it);
       else // Add to cross-list
       {
         kxyh.push_back(temploc+hoffset);
-        //printf("DEBUG Added half for z=%f at k=%i\n",*it,temploc+hoffset);  // DEBUG
+        master->printMessage("Addex XY cross at zh=%f (k=%i) for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],temploc+hoffset,*it);
       }  
     }
   }
-
-  //exit(1);
 
   return nerror;
 }
