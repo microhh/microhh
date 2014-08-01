@@ -57,6 +57,10 @@ class cmaster
     // overload the min function
     int min(double *, int);
 
+    void printMessage(const char *format, ...);
+    void printWarning(const char *format, ...);
+    void printError  (const char *format, ...);
+
     std::string mode;
     std::string simname;
 

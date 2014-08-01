@@ -146,19 +146,19 @@ int cstats::create(int n)
       // create variables belonging to dimensions
       m->iter_var = m->dataFile->add_var("iter", ncInt, m->t_dim);
       m->iter_var->add_att("units", "-");
-      m->iter_var->add_att("longname", "Iteration number");
+      m->iter_var->add_att("long_name", "Iteration number");
 
       m->t_var = m->dataFile->add_var("t", ncDouble, m->t_dim);
       m->t_var->add_att("units", "s");
-      m->t_var->add_att("longname", "Time");
+      m->t_var->add_att("long_name", "Time");
 
       z_var = m->dataFile->add_var("z", ncDouble, m->z_dim);
       z_var->add_att("units", "m");
-      z_var->add_att("longname", "Full level height");
+      z_var->add_att("long_name", "Full level height");
 
       zh_var = m->dataFile->add_var("zh", ncDouble, m->zh_dim);
       zh_var->add_att("units", "m");
-      zh_var->add_att("longname", "Half level height");
+      zh_var->add_att("long_name", "Half level height");
 
       // save the grid variables
       z_var ->put(&grid->z [grid->kstart], grid->kmax  );
