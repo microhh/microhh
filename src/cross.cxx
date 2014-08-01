@@ -68,15 +68,15 @@ int ccross::readinifile(cinput *inputin)
 // check whether saving the slice was successful and print appropriate message
 int ccross::checkSave(int error, char * filename)
 {
-  if(master->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
+  master->printMessage("Saving \"%s\" ... ", filename);
   if(error == 0)
   {
-    if(master->mpiid == 0) std::printf("OK\n");
+    master->printMessage("OK\n");
     return 0;
   }
   else
   {
-    if(master->mpiid == 0) std::printf("FAILED\n");
+    master->printMessage("FAILED\n");
     return 1;
   }
 }
