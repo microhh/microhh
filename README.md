@@ -1,21 +1,20 @@
 MicroHH
 -------
-MicroHH is a computational fluid dynamics code made for Direct Numerical Simulation (DNS) and Large-Eddy Simulation of turbulent flows in the atmospheric boundary layer.
+MicroHH is a computational fluid dynamics code made for Direct Numerical Simulation (DNS) and Large-Eddy Simulation of turbulent flows in the atmospheric boundary layer. The code is written in C++.
 
-MicroHH is created by Chiel van Heerwaarden (chielvanheerwaarden at gmail.com) and Thijs Heus.
-The latest version of the source code can be found on http://github.com/microhh
+MicroHH is hosted on GitHub (http://github.com/microhh). Here, the latest version of the source code can be found, as well as all releases. In case of any questions, please contact Chiel van Heerwaarden (chielvanheerwaarden at gmail.com). Bug notifications and fixes are always welcome.
 
-MicroHH is described in detail in Van Heerwaarden & Heus (in preparation). In case you decide to use MicroHH for your own research, the developers would appreciate to be notified and kindly request to cite their reference paper. Bug notifications and fixes are always welcome.
+MicroHH is described in detail in Van Heerwaarden et al. (in preparation). In case you decide to use MicroHH for your own research, the developers would appreciate to be notified and kindly request to cite their reference paper.
 
 Requirements
 ------------
 In order to compile MicroHH you need:
 * C++ compiler
-* MPI2 implementation (optional, but recommended)
+* MPI2 implementation (optional, serial mode is supported)
 * FFTW3 libraries
 * NetCDF4
 * CMake
-* Doxygen (optional for creating documentation)
+* Doxygen (optional for creating automatic documentation)
 * Python + numpy (optional for running example cases)
 * Ipython + python-netcdf4 + matplotlib (optional for plotting results example cases)
 
