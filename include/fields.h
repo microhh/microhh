@@ -22,10 +22,12 @@
 #ifndef FIELDS
 #define FIELDS
 #include <map>
+#include <vector>
 #include "field3d.h"
 
 // forward declarations to reduce compilation time
 class cmaster;
+class cinput;
 class cmodel;
 class cgrid;
 class cstats;
@@ -43,6 +45,7 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
+    int prepareGPU();
     int getmask(cfield3d *, cfield3d *, mask *);
     int execstats(mask *);
 

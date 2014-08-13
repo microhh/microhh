@@ -99,6 +99,11 @@ class cgrid
     double *dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
 
     double *dz_g;
+    double *dzh_g;
+    double *dzi_g;
+    double *dzhi_g;
+    double *dzi4_g;
+    double *dzhi4_g;
     
     double *x;  ///< Grid coordinate of cell center in x-direction.
     double *y;  ///< Grid coordinate of cell center in y-direction.

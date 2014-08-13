@@ -23,7 +23,7 @@ set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_
 
 if(USECUDA)
   set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-  set(CUDA_NVCC_FLAGS "-arch=sm_50")
+  set(CUDA_NVCC_FLAGS "-arch=sm_20")
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)

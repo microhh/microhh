@@ -358,6 +358,11 @@ int cmodel::save()
 
 int cmodel::exec()
 {
+  master->printMessage("Preparing the GPU\n");
+  // copy the necessary fields to GPU
+  grid->prepareGPU();
+  fields->prepareGPU();
+
   master->printMessage("Starting time integration\n");
   // update the time dependent values
   boundary->settimedep();
