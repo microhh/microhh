@@ -59,6 +59,11 @@ else()
   message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
 
+# load the cuda settings in case cuda is used
+if(USECUDA)
+  find_package(CUDA)
+endif()
+
 # set the include dirs
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
