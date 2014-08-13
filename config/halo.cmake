@@ -1,6 +1,6 @@
 # MPI-PC
 # set(ENV{CXX} g++) # compiler for serial build
-set(ENV{CXX} /sw/centos58-x64/mpi/openmpi-1.4.3-static-gcc46/bin/mpicxx) # compiler for parallel build
+set(ENV{CXX} /sw/centos58-x64/mpi/openmpi-1.8.1-cuda-shared-gcc47/bin/mpicxx) # compiler for parallel build
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
