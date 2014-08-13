@@ -1,4 +1,4 @@
-FILE(GLOB sourcefiles "../src/*.cxx")
+FILE(GLOB sourcefiles "../src/*.cxx" "../src/*.cu")
 include_directories(${INCLUDE_DIRS} "../include")
 
-add_library(microhhc STATIC ${sourcefiles})
+cuda_add_library(microhhc STATIC ${sourcefiles})

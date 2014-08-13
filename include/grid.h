@@ -52,6 +52,8 @@ class cgrid
     int save();                ///< Saves grid data to file.
     int load();                ///< Loads grid data to file.
 
+    int prepareGPU(); ///< Load the arrays onto the GPU
+
     int itot; ///< Total number of grid cells in the x-direction.
     int jtot; ///< Total number of grid cells in the y-direction.
     int ktot; ///< Total number of grid cells in the z-direction.
@@ -88,12 +90,15 @@ class cgrid
 
     double dx;     ///< Distance between the center of two grid cell in the x-direction.
     double dy;     ///< Distance between the center of two grid cell in the y-direction.
+
     double *dz;    ///< Distance between the center of two grid cell in the z-direction.
     double *dzh;   ///< Distance between the two grid cell faces in the z-direction.
     double *dzi;   ///< Reciprocal of dz.
     double *dzhi;  ///< Reciprocal of dzh.
     double *dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
     double *dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
+
+    double *dz_g;
     
     double *x;  ///< Grid coordinate of cell center in x-direction.
     double *y;  ///< Grid coordinate of cell center in y-direction.

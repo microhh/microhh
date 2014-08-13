@@ -24,7 +24,7 @@ else()
 endif()
 
 # start the project only after the system specific settings are loaded
-project(microhhc CXX)
+project(microhhc)
 
 # enable or disable MPI, enabled by default
 set(MPI TRUE CACHE BOOL "Choose to enable MPI or not.")
@@ -39,12 +39,18 @@ endif()
 # only set the compiler flags when the cache is created
 # to enable editing of the flags in the CMakeCache.txt file
 if(NOT HASCACHE)
+  set(CMAKE_C_FLAGS ${USER_C_FLAGS} CACHE STRING
+    "Flags used by the C-compiler during all build types." FORCE)
+  set(CMAKE_C_FLAGS_DEBUG ${USER_C_FLAGS_DEBUG} CACHE STRING
+    "Flags used by the C-compiler during debug builds." FORCE)
+  set(CMAKE_C_FLAGS_RELEASE ${USER_C_FLAGS_RELEASE} CACHE STRING
+    "Flags used by the C-compiler during release builds." FORCE)
   set(CMAKE_CXX_FLAGS ${USER_CXX_FLAGS} CACHE STRING
-    "Flags used by the compiler during all build types." FORCE)
+    "Flags used by the CXX-compiler during all build types." FORCE)
   set(CMAKE_CXX_FLAGS_DEBUG ${USER_CXX_FLAGS_DEBUG} CACHE STRING
-    "Flags used by the compiler during debug builds." FORCE)
+    "Flags used by the CXX-compiler during debug builds." FORCE)
   set(CMAKE_CXX_FLAGS_RELEASE ${USER_CXX_FLAGS_RELEASE} CACHE STRING
-    "Flags used by the compiler during release builds." FORCE)
+    "Flags used by the CXX-compiler during release builds." FORCE)
   message(STATUS "Build Type: " ${CMAKE_BUILD_TYPE})
   set(HASCACHE TRUE CACHE BOOL "CMakeCache.txt created." FORCE)
   # make sure that ccmake only contains build type and MPI setting
