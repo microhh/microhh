@@ -364,6 +364,7 @@ int cmodel::exec()
   fields->prepareGPU();
 
   master->printMessage("Starting time integration\n");
+
   // update the time dependent values
   boundary->settimedep();
   force->settimedep();

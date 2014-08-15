@@ -52,6 +52,9 @@ class cfield3d
     std::string longname;
     double visc;
 
+    // GPU fields
+    double *data_g;
+
   private:
     cgrid   *grid;
     cmaster *master;

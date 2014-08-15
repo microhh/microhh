@@ -45,7 +45,6 @@ class cfields
     int init();
     int create(cinput *);
     int exec();
-    int prepareGPU();
     int getmask(cfield3d *, cfield3d *, mask *);
     int execstats(mask *);
 
@@ -62,6 +61,11 @@ class cfields
 
     int setcalcprofs(bool);
     int execcross();
+
+    // GPU functions
+    int prepareGPU();
+    int forwardGPU();
+    int backwardGPU();
 
     // 3d fields for momentum
     cfield3d *u;
