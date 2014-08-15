@@ -3,7 +3,8 @@
 
 __global__ void rk3_kernel(double * __restrict__ a, double * __restrict__ at, double dt,
                            int substep, int jj, int kk,
-                           int istart, int jstart, int kstart)
+                           int istart, int jstart, int kstart,
+                           int iend, int jend, int kend)
 {
   const double cA[] = {0., -5./9., -153./128.};
   const double cB[] = {1./3., 15./16., 8./15.};
@@ -12,18 +13,21 @@ __global__ void rk3_kernel(double * __restrict__ a, double * __restrict__ at, do
   int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
   int k = blockIdx.z + kstart;
 
-  int ijk = i + j*jj + k*kk;
-  a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
 
-  int substepn = (substep+1) % 3;
-
-  // substep 0 resets the tendencies, because cA[0] == 0
-  at[ijk] = cA[substepn]*at[ijk];
+    int substepn = (substep+1) % 3;
+    // substep 0 resets the tendencies, because cA[0] == 0
+    at[ijk] = cA[substepn]*at[ijk];
+  }
 }
 
 __global__ void rk4_kernel(double * __restrict__ a, double * __restrict__ at, double dt,
                            int substep, int jj, int kk,
-                           int istart, int jstart, int kstart)
+                           int istart, int jstart, int kstart,
+                           int iend, int jend, int kend)
 {
   const double cA [] = {
       0.,
@@ -43,35 +47,49 @@ __global__ void rk4_kernel(double * __restrict__ a, double * __restrict__ at, do
   int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
   int k = blockIdx.z + kstart;
 
-  int ijk = i + j*jj + k*kk;
-  a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
 
-  int substepn = (substep+1) % 5;
-
-  // substep 0 resets the tendencies, because cA[0] == 0
-  at[ijk] = cA[substepn]*at[ijk];
+    int substepn = (substep+1) % 5;
+    // substep 0 resets the tendencies, because cA[0] == 0
+    at[ijk] = cA[substepn]*at[ijk];
+  }
 }
 
 int ctimeloop::rk3_GPU(double *a, double *at, double dt)
 {
-  dim3 gridGPU(grid->imax, grid->jmax, grid->kmax);
-  dim3 blockGPU(1,1,1);
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kmax);
+  dim3 blockGPU(blocki, blockj, 1);
 
   rk3_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
                                     substep, grid->icells, grid->ijcells,
-                                    grid->istart, grid->jstart, grid->kstart);
+                                    grid->istart, grid->jstart, grid->kstart,
+                                    grid->iend, grid->jend, grid->kend);
 
   return 0;
 }
 
 int ctimeloop::rk4_GPU(double *a, double *at, double dt)
 {
-  dim3 gridGPU(grid->imax, grid->jmax, grid->kmax);
-  dim3 blockGPU(1,1,1);
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kmax);
+  dim3 blockGPU(blocki, blockj, 1);
 
   rk4_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
                                     substep, grid->icells, grid->ijcells,
-                                    grid->istart, grid->jstart, grid->kstart);
+                                    grid->istart, grid->jstart, grid->kstart,
+                                    grid->iend, grid->jend, grid->kend);
 
   return 0;
 }
