@@ -106,5 +106,8 @@ class ctimeloop
     int rk4(double *, double *, double);
     double rk3subdt(double);
     double rk4subdt(double);
+
+    int rk3_GPU(double *, double *, double);
+    int rk4_GPU(double *, double *, double);
 };
 #endif

@@ -36,10 +36,10 @@ int cfields::backwardGPU()
   const int nmemsize = grid->ncells*sizeof(double);
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-    cudaMemcpy(it->second->data, it->second->data_g, nmemsize, cudaMemcpyHostToDevice);
+    cudaMemcpy(it->second->data, it->second->data_g, nmemsize, cudaMemcpyDeviceToHost);
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-    cudaMemcpy(it->second->data, it->second->data_g, nmemsize, cudaMemcpyHostToDevice);
+    cudaMemcpy(it->second->data, it->second->data_g, nmemsize, cudaMemcpyDeviceToHost);
 
   return 0;
 }
