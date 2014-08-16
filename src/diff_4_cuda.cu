@@ -198,6 +198,10 @@ int cdiff_4::exec()
 
   fields->backwardGPU();
 
+  cudaError_t error = cudaGetLastError();
+  if(error != cudaSuccess)
+    printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
+
   return 0;
 }
 #endif
