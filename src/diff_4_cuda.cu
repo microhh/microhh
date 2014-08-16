@@ -27,11 +27,11 @@
 #include "model.h"
 
 __global__ void diffc_kernel(double * __restrict__ at, double * __restrict__ a, const double visc,
+                             double * __restrict__ dzi4, double * __restrict__ dzhi4,
+                             const double dx, const double dy,
                              const int jj, const int kk,
                              const int istart, const int jstart, const int kstart,
-                             const int iend, const int jend, const int kend,
-                             const double dx, const double dy,
-                             double * __restrict__ dzi4, double * __restrict__ dzhi4)
+                             const int iend, const int jend, const int kend)
 {
   const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
   const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -91,11 +91,11 @@ __global__ void diffc_kernel(double * __restrict__ at, double * __restrict__ a, 
 }
 
 __global__ void diffw_kernel(double * __restrict__ at, double * __restrict__ a, const double visc,
+                             double * __restrict__ dzi4, double * __restrict__ dzhi4,
+                             const double dx, const double dy,
                              const int jj, const int kk,
                              const int istart, const int jstart, const int kstart,
-                             const int iend, const int jend, const int kend,
-                             const double dx, const double dy,
-                             double * __restrict__ dzi4, double * __restrict__ dzhi4)
+                             const int iend, const int jend, const int kend)
 {
   const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
   const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -167,34 +167,34 @@ int cdiff_4::exec()
 
   fields->forwardGPU();
   diffc_kernel<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g, fields->visc,
+                                      grid->dzi4_g, grid->dzhi4_g,
+                                      grid->dx, grid->dy,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
-                                      grid->iend, grid->jend, grid->kend,
-                                      grid->dx, grid->dy,
-                                      grid->dzi4_g, grid->dzhi4_g);
+                                      grid->iend, grid->jend, grid->kend);
 
   diffc_kernel<<<gridGPU, blockGPU>>>(fields->vt->data_g, fields->v->data_g, fields->visc,
+                                      grid->dzi4_g, grid->dzhi4_g,
+                                      grid->dx, grid->dy,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
-                                      grid->iend, grid->jend, grid->kend,
-                                      grid->dx, grid->dy,
-                                      grid->dzi4_g, grid->dzhi4_g);
+                                      grid->iend, grid->jend, grid->kend);
 
   diffw_kernel<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->w->data_g, fields->visc,
+                                      grid->dzi4_g, grid->dzhi_g,
+                                      grid->dx, grid->dy,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
-                                      grid->iend, grid->jend, grid->kend,
-                                      grid->dx, grid->dy,
-                                      grid->dzi4_g, grid->dzhi_g);
+                                      grid->iend, grid->jend, grid->kend);
 
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc_kernel<<<gridGPU, blockGPU>>>(it->second->data_g, fields->sp[it->first]->data_g, fields->sp[it->first]->visc,
+                                        grid->dzi4_g, grid->dzhi4_g,
+                                        grid->dx, grid->dy,
                                         grid->icells, grid->ijcells,
                                         grid->istart, grid->jstart, grid->kstart,
-                                        grid->iend, grid->jend, grid->kend,
-                                        grid->dx, grid->dy,
-                                        grid->dzi4_g, grid->dzhi4_g);
+                                        grid->iend, grid->jend, grid->kend);
 
   fields->backwardGPU();
 
