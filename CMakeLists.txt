@@ -68,6 +68,7 @@ endif()
 # load the cuda settings in case cuda is used
 if(USECUDA)
   find_package(CUDA)
+  add_definitions("-DUSECUDA")
 endif()
 
 # set the include dirs
