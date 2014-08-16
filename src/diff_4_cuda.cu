@@ -26,35 +26,33 @@
 #include "defines.h"
 #include "model.h"
 
-__global__ void diffc_kernel(double * __restrict__ at, double * __restrict__ a, double visc,
-                             int jj, int kk,
-                             int istart, int jstart, int kstart,
-                             int iend, int jend, int kend,
-                             double dx, double dy,
+__global__ void diffc_kernel(double * __restrict__ at, double * __restrict__ a, const double visc,
+                             const int jj, const int kk,
+                             const int istart, const int jstart, const int kstart,
+                             const int iend, const int jend, const int kend,
+                             const double dx, const double dy,
                              double * __restrict__ dzi4, double * __restrict__ dzhi4)
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart;
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
 
   if(i < iend && j < jend && k < kend)
   {
-    int ijk = i + j*jj + k*kk;
-    int ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
-    double dxidxi,dyidyi;
+    const int ijk = i + j*jj + k*kk;
 
-    ii1 = 1;
-    ii2 = 2;
-    ii3 = 3;
-    jj1 = 1*jj;
-    jj2 = 2*jj;
-    jj3 = 3*jj;
-    kk1 = 1*kk;
-    kk2 = 2*kk;
-    kk3 = 3*kk;
+    const int ii1 = 1;
+    const int ii2 = 2;
+    const int ii3 = 3;
+    const int jj1 = 1*jj;
+    const int jj2 = 2*jj;
+    const int jj3 = 3*jj;
+    const int kk1 = 1*kk;
+    const int kk2 = 2*kk;
+    const int kk3 = 3*kk;
 
-    dxidxi = 1./(dx*dx);
-    dyidyi = 1./(dy*dy);
+    const double dxidxi = 1./(dx*dx);
+    const double dyidyi = 1./(dy*dy);
 
     // bottom boundary
     if(k == kstart)
@@ -92,35 +90,33 @@ __global__ void diffc_kernel(double * __restrict__ at, double * __restrict__ a, 
   }
 }
 
-__global__ void diffw_kernel(double * __restrict__ at, double * __restrict__ a, double visc,
-                             int jj, int kk,
-                             int istart, int jstart, int kstart,
-                             int iend, int jend, int kend,
-                             double dx, double dy,
+__global__ void diffw_kernel(double * __restrict__ at, double * __restrict__ a, const double visc,
+                             const int jj, const int kk,
+                             const int istart, const int jstart, const int kstart,
+                             const int iend, const int jend, const int kend,
+                             const double dx, const double dy,
                              double * __restrict__ dzi4, double * __restrict__ dzhi4)
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart;
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
 
   if(i < iend && j < jend && k < kend)
   {
-    int ijk = i + j*jj + k*kk;
-    int ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
-    double dxidxi,dyidyi;
+    const int ijk = i + j*jj + k*kk;
 
-    ii1 = 1;
-    ii2 = 2;
-    ii3 = 3;
-    jj1 = 1*jj;
-    jj2 = 2*jj;
-    jj3 = 3*jj;
-    kk1 = 1*kk;
-    kk2 = 2*kk;
-    kk3 = 3*kk;
+    const int ii1 = 1;
+    const int ii2 = 2;
+    const int ii3 = 3;
+    const int jj1 = 1*jj;
+    const int jj2 = 2*jj;
+    const int jj3 = 3*jj;
+    const int kk1 = 1*kk;
+    const int kk2 = 2*kk;
+    const int kk3 = 3*kk;
 
-    dxidxi = 1./(dx*dx);
-    dyidyi = 1./(dy*dy);
+    const double dxidxi = 1./(dx*dx);
+    const double dyidyi = 1./(dy*dy);
 
     // bottom boundary
     if(k == kstart+1)
@@ -160,16 +156,16 @@ __global__ void diffw_kernel(double * __restrict__ at, double * __restrict__ a, 
 
 int cdiff_4::diffc_GPU(double *at, double *a, double *dzi4, double *dzhi4, double visc)
 {
-  const int blocki = 1;//128;
-  const int blockj = 1;//2;
+  const int blocki = 128;
+  const int blockj = 2;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
-  cudaError_t err = cudaGetLastError();
-  master->printMessage("CvH diffc before: %s\n", cudaGetErrorString(err));
+  // cudaError_t err = cudaGetLastError();
+  // master->printMessage("CvH diffc before: %s\n", cudaGetErrorString(err));
   diffc_kernel<<<gridGPU, blockGPU>>>(at, a, visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
@@ -177,31 +173,25 @@ int cdiff_4::diffc_GPU(double *at, double *a, double *dzi4, double *dzhi4, doubl
                                       grid->dx, grid->dy,
                                       grid->dzi4, grid->dzhi4);
 
-  master->printMessage("CvH diffc after : %s\n", cudaGetErrorString(err));
-
   return 0;
 }
 
 int cdiff_4::diffw_GPU(double *at, double *a, double *dzi4, double *dzhi4, double visc)
 {
-  const int blocki = 1;//128;
-  const int blockj = 1;//2;
+  const int blocki = 128;
+  const int blockj = 2;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
-  cudaError_t err = cudaGetLastError();
-  master->printMessage("CvH diffw before: %s\n", cudaGetErrorString(err));
   diffw_kernel<<<gridGPU, blockGPU>>>(at, a, visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend,
                                       grid->dx, grid->dy,
                                       grid->dzi4, grid->dzhi4);
-
-  master->printMessage("CvH diffw after : %s\n", cudaGetErrorString(err));
 
   return 0;
 }

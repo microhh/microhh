@@ -3,32 +3,32 @@
 #include "master.h"
 
 __global__ void rk3_kernel(double * __restrict__ a, double * __restrict__ at, double dt,
-                           int substep, int jj, int kk,
-                           int istart, int jstart, int kstart,
-                           int iend, int jend, int kend)
+                           const int substep, const int jj, const int kk,
+                           const int istart, const int jstart, const int kstart,
+                           const int iend, const int jend, const int kend)
 {
   const double cA[] = {0., -5./9., -153./128.};
   const double cB[] = {1./3., 15./16., 8./15.};
   
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart;
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
 
   if(i < iend && j < jend && k < kend)
   {
-    int ijk = i + j*jj + k*kk;
+    const int ijk = i + j*jj + k*kk;
     a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
 
-    int substepn = (substep+1) % 3;
+    const int substepn = (substep+1) % 3;
     // substep 0 resets the tendencies, because cA[0] == 0
     at[ijk] = cA[substepn]*at[ijk];
   }
 }
 
 __global__ void rk4_kernel(double * __restrict__ a, double * __restrict__ at, double dt,
-                           int substep, int jj, int kk,
-                           int istart, int jstart, int kstart,
-                           int iend, int jend, int kend)
+                           const int substep, const int jj, const int kk,
+                           const int istart, const int jstart, const int kstart,
+                           const int iend, const int jend, const int kend)
 {
   const double cA [] = {
       0.,
@@ -44,16 +44,16 @@ __global__ void rk4_kernel(double * __restrict__ a, double * __restrict__ at, do
     3134564353537./ 4481467310338.,
     2277821191437./14882151754819.};
   
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart;
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
 
   if(i < iend && j < jend && k < kend)
   {
-    int ijk = i + j*jj + k*kk;
+    const int ijk = i + j*jj + k*kk;
     a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
 
-    int substepn = (substep+1) % 5;
+    const int substepn = (substep+1) % 5;
     // substep 0 resets the tendencies, because cA[0] == 0
     at[ijk] = cA[substepn]*at[ijk];
   }
