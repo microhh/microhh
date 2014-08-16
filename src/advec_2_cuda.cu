@@ -50,6 +50,10 @@ int cadvec_2::advecu_GPU(double * ut, double * u, double * v, double * w, double
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend,   grid->jend, grid->kend);
 
+  cudaError_t error = cudaGetLastError();
+  if(error != cudaSuccess)
+    printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
+
   return 0;
 }
 
