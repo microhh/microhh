@@ -17,6 +17,15 @@ __global__ void advecu_kernel(double * __restrict__ ut, double * __restrict__ u,
   int k = blockIdx.z + kstart;
   int ii = 1;
 
+  //if(i==5 && j==5 && k==5)
+  //{
+  //  printf("GPU says hi!\n");
+  //  printf("1. %f %f %f\n",dzi[k],dxi,dyi);
+  //  printf("2. %i %i %i\n",ii,jj,kk);
+  //  printf("3. %i %i %i\n",istart,jstart,kstart);
+  //  printf("4. %i %i %i\n",iend,jend,kend);
+  //}
+
   if(i < iend && j < jend && k < kend)
   {
     int ijk = i + j*jj + k*kk;

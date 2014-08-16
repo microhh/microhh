@@ -62,7 +62,7 @@ int cadvec_2::exec()
 {
   #ifdef USECUDA
   fields->forwardGPU();
-  advecu_GPU(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
+  advecu_GPU(fields->ut->data_g, fields->u->data_g, fields->v->data_g, fields->w->data_g, grid->dzi_g);
   fields->backwardGPU();
   #else
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
