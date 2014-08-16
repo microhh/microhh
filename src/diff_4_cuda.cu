@@ -26,7 +26,7 @@
 #include "defines.h"
 #include "model.h"
 
-__global__ void diffc_kernel(double * __restrict__ a, double * __restrict__ at, double visc,
+__global__ void diffc_kernel(double * __restrict__ at, double * __restrict__ a, double visc,
                              int jj, int kk,
                              int istart, int jstart, int kstart,
                              int iend, int jend, int kend,
@@ -92,7 +92,7 @@ __global__ void diffc_kernel(double * __restrict__ a, double * __restrict__ at, 
   }
 }
 
-__global__ void diffw_kernel(double * __restrict__ a, double * __restrict__ at, double visc,
+__global__ void diffw_kernel(double * __restrict__ at, double * __restrict__ a, double visc,
                              int jj, int kk,
                              int istart, int jstart, int kstart,
                              int iend, int jend, int kend,
@@ -135,17 +135,6 @@ __global__ void diffw_kernel(double * __restrict__ a, double * __restrict__ at, 
     }
     else if(k == kend-1)
     {
-      // interior
-      at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
-      at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzi4[k-2]
-                        + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[k-1]
-                        + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[k  ]
-                        + cg3*(cg0*a[ijk    ] + cg1*a[ijk+kk1] + cg2*a[ijk+kk2] + cg3*a[ijk+kk3]) * dzi4[k+1] )
-                        * dzhi4[k];
-    }
-    else
-    {
       // top boundary
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
       at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
@@ -153,6 +142,17 @@ __global__ void diffw_kernel(double * __restrict__ a, double * __restrict__ at, 
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[k-1]
                         + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[k  ]
                         + cg3*(tg0*a[ijk-kk1] + tg1*a[ijk    ] + tg2*a[ijk+kk1] + tg3*a[ijk+kk2]) * dzi4[k+1] )
+                        * dzhi4[k];
+    }
+    else
+    {
+      // interior
+      at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
+      at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
+      at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzi4[k-2]
+                        + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[k-1]
+                        + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[k  ]
+                        + cg3*(cg0*a[ijk    ] + cg1*a[ijk+kk1] + cg2*a[ijk+kk2] + cg3*a[ijk+kk3]) * dzi4[k+1] )
                         * dzhi4[k];
     }
   }
@@ -168,12 +168,15 @@ int cdiff_4::diffc_GPU(double *at, double *a, double *dzi4, double *dzhi4, doubl
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
-  diffc_kernel<<<gridGPU, blockGPU>>>(a, at, visc,
+  diffc_kernel<<<gridGPU, blockGPU>>>(at, a, visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend,
                                       grid->dx, grid->dy,
                                       grid->dzi4, grid->dzhi4);
+
+  cudaError_t err = cudaGetLastError();
+  master->printMessage("CvH diffc: %s\n", cudaGetErrorString(err));
 
   return 0;
 }
@@ -188,12 +191,15 @@ int cdiff_4::diffw_GPU(double *at, double *a, double *dzi4, double *dzhi4, doubl
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
-  diffw_kernel<<<gridGPU, blockGPU>>>(a, at, visc,
+  diffw_kernel<<<gridGPU, blockGPU>>>(at, a, visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend,
                                       grid->dx, grid->dy,
                                       grid->dzi4, grid->dzhi4);
+
+  cudaError_t err = cudaGetLastError();
+  master->printMessage("CvH diffw: %s\n", cudaGetErrorString(err));
 
   return 0;
 }
