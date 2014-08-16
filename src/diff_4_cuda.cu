@@ -101,7 +101,7 @@ __global__ void diffw_kernel(double * __restrict__ at, double * __restrict__ a, 
   const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
   const int k = blockIdx.z + kstart;
 
-  if(i < iend && j < jend && k < kend)
+  if(i < iend && j < jend && k > kstart && k < kend)
   {
     const int ijk = i + j*jj + k*kk;
 
@@ -173,12 +173,12 @@ int cdiff_4::exec()
                                       grid->dx, grid->dy,
                                       grid->dzi4_g, grid->dzhi4_g);
 
-  diffc_kernel<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g, fields->visc,
+  diffc_kernel<<<gridGPU, blockGPU>>>(fields->vt->data_g, fields->v->data_g, fields->visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend,
                                       grid->dx, grid->dy,
-                                      grid->dzi4, grid->dzhi4);
+                                      grid->dzi4_g, grid->dzhi4_g);
 
   diffw_kernel<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->w->data_g, fields->visc,
                                       grid->icells, grid->ijcells,
@@ -189,7 +189,7 @@ int cdiff_4::exec()
 
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc_kernel<<<gridGPU, blockGPU>>>(it->second->data_g, fields->s[it->first]->data_g, fields->s[it->first]->visc,
+    diffc_kernel<<<gridGPU, blockGPU>>>(it->second->data_g, fields->sp[it->first]->data_g, fields->sp[it->first]->visc,
                                         grid->icells, grid->ijcells,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend,
