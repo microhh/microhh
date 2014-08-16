@@ -160,14 +160,16 @@ __global__ void diffw_kernel(double * __restrict__ at, double * __restrict__ a, 
 
 int cdiff_4::diffc_GPU(double *at, double *a, double *dzi4, double *dzhi4, double visc)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = 1;//128;
+  const int blockj = 1;//2;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
+  cudaError_t err = cudaGetLastError();
+  master->printMessage("CvH diffc before: %s\n", cudaGetErrorString(err));
   diffc_kernel<<<gridGPU, blockGPU>>>(at, a, visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
@@ -175,22 +177,23 @@ int cdiff_4::diffc_GPU(double *at, double *a, double *dzi4, double *dzhi4, doubl
                                       grid->dx, grid->dy,
                                       grid->dzi4, grid->dzhi4);
 
-  cudaError_t err = cudaGetLastError();
-  master->printMessage("CvH diffc: %s\n", cudaGetErrorString(err));
+  master->printMessage("CvH diffc after : %s\n", cudaGetErrorString(err));
 
   return 0;
 }
 
 int cdiff_4::diffw_GPU(double *at, double *a, double *dzi4, double *dzhi4, double visc)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = 1;//128;
+  const int blockj = 1;//2;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
+  cudaError_t err = cudaGetLastError();
+  master->printMessage("CvH diffw before: %s\n", cudaGetErrorString(err));
   diffw_kernel<<<gridGPU, blockGPU>>>(at, a, visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
@@ -198,8 +201,7 @@ int cdiff_4::diffw_GPU(double *at, double *a, double *dzi4, double *dzhi4, doubl
                                       grid->dx, grid->dy,
                                       grid->dzi4, grid->dzhi4);
 
-  cudaError_t err = cudaGetLastError();
-  master->printMessage("CvH diffw: %s\n", cudaGetErrorString(err));
+  master->printMessage("CvH diffw after : %s\n", cudaGetErrorString(err));
 
   return 0;
 }

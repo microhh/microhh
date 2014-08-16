@@ -1,5 +1,6 @@
 #include "timeloop.h"
 #include "grid.h"
+#include "master.h"
 
 __global__ void rk3_kernel(double * __restrict__ a, double * __restrict__ at, double dt,
                            int substep, int jj, int kk,
@@ -60,26 +61,29 @@ __global__ void rk4_kernel(double * __restrict__ a, double * __restrict__ at, do
 
 int ctimeloop::rk3_GPU(double *a, double *at, double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = 1;//128;
+  const int blockj = 1;//2;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
+  cudaError_t err = cudaGetLastError();
+  master->printMessage("CvH rk3 before: %s\n", cudaGetErrorString(err));
   rk3_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
                                     substep, grid->icells, grid->ijcells,
                                     grid->istart, grid->jstart, grid->kstart,
                                     grid->iend, grid->jend, grid->kend);
+  master->printMessage("CvH rk3 after : %s\n", cudaGetErrorString(err));
 
   return 0;
 }
 
 int ctimeloop::rk4_GPU(double *a, double *at, double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = 1;//128;
+  const int blockj = 1;//2;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
