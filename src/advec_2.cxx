@@ -58,22 +58,7 @@ unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-#ifdef USECUDA
-int cadvec_2::exec()
-{
-  fields->forwardGPU();
-
-  advecu_g(fields->ut->data_g, fields->u->data_g, fields->v->data_g, fields->w->data_g, grid->dzi_g);
-  advecv_g(fields->vt->data_g, fields->u->data_g, fields->v->data_g, fields->w->data_g, grid->dzi_g);
-  advecw_g(fields->wt->data_g, fields->u->data_g, fields->v->data_g, fields->w->data_g, grid->dzhi_g);
-
-  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advecs_g((*it->second).data_g, (*fields->s[it->first]).data_g, fields->u->data_g, fields->v->data_g, fields->w->data_g, grid->dzi_g);
-
-  fields->backwardGPU();
-  return 0;
-}
-#else
+#ifndef USECUDA
 int cadvec_2::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );

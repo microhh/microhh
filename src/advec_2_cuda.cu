@@ -1,5 +1,6 @@
 #include "advec_2.h"
 #include "grid.h"
+#include "fields.h"
 
 __device__ double interp2(double a, double b)
 {
@@ -110,12 +111,15 @@ __global__ void advecs_kernel(double * __restrict__ st, double * __restrict__ s,
   }
 }
 
-int cadvec_2::advecu_g(double * ut, double * u, double * v, double * w, double * dzi)
+#ifdef USECUDA
+int cadvec_2::exec()
 {
+  fields->forwardGPU();
+
   const int blocki = 128;
   const int blockj = 2;
-  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
@@ -123,89 +127,37 @@ int cadvec_2::advecu_g(double * ut, double * u, double * v, double * w, double *
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
-  advecu_kernel<<<gridGPU, blockGPU>>>(ut, u, v, w, dzi, dxi, dyi,
-                                      grid->icells, grid->ijcells,
-                                      grid->istart, grid->jstart, grid->kstart,
-                                      grid->iend,   grid->jend, grid->kend);
+  advecu_kernel<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g, fields->v->data_g, 
+                                       fields->w->data_g, grid->dzi_g, dxi, dyi,
+                                       grid->icells, grid->ijcells,
+                                       grid->istart, grid->jstart, grid->kstart,
+                                       grid->iend,   grid->jend, grid->kend);
+
+  advecv_kernel<<<gridGPU, blockGPU>>>(fields->vt->data_g, fields->u->data_g, fields->v->data_g, 
+                                       fields->w->data_g, grid->dzi_g, dxi, dyi,
+                                       grid->icells, grid->ijcells,
+                                       grid->istart, grid->jstart, grid->kstart,
+                                       grid->iend,   grid->jend, grid->kend);
+
+  advecw_kernel<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->u->data_g, fields->v->data_g, 
+                                       fields->w->data_g, grid->dzhi_g, dxi, dyi,
+                                       grid->icells, grid->ijcells,
+                                       grid->istart, grid->jstart, grid->kstart,
+                                       grid->iend,   grid->jend, grid->kend);
+
+  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    advecs_kernel<<<gridGPU, blockGPU>>>((*it->second).data_g, (*fields->s[it->first]).data_g, 
+                                         fields->u->data_g, fields->v->data_g, fields->w->data_g, 
+                                         grid->dzi_g, dxi, dyi,
+                                         grid->icells, grid->ijcells,
+                                         grid->istart, grid->jstart, grid->kstart,
+                                         grid->iend,   grid->jend, grid->kend);
 
   cudaError_t error = cudaGetLastError();
   if(error != cudaSuccess)
     printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
 
+  fields->backwardGPU();
   return 0;
 }
-
-int cadvec_2::advecv_g(double * vt, double * u, double * v, double * w, double * dzi)
-{
-  const int blocki = 128;
-  const int blockj = 2;
-  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-  dim3 gridGPU (gridi, gridj, grid->kmax);
-  dim3 blockGPU(blocki, blockj, 1);
-
-  const double dxi = 1./grid->dx;
-  const double dyi = 1./grid->dy;
-
-  advecv_kernel<<<gridGPU, blockGPU>>>(vt, u, v, w, dzi, dxi, dyi,
-                                      grid->icells, grid->ijcells,
-                                      grid->istart, grid->jstart, grid->kstart,
-                                      grid->iend,   grid->jend, grid->kend);
-
-  cudaError_t error = cudaGetLastError();
-  if(error != cudaSuccess)
-    printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
-
-  return 0;
-}
-
-int cadvec_2::advecw_g(double * wt, double * u, double * v, double * w, double * dzhi)
-{
-  const int blocki = 128;
-  const int blockj = 2;
-  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-  dim3 gridGPU (gridi, gridj, grid->kmax);
-  dim3 blockGPU(blocki, blockj, 1);
-
-  const double dxi = 1./grid->dx;
-  const double dyi = 1./grid->dy;
-
-  advecw_kernel<<<gridGPU, blockGPU>>>(wt, u, v, w, dzhi, dxi, dyi,
-                                      grid->icells, grid->ijcells,
-                                      grid->istart, grid->jstart, grid->kstart,
-                                      grid->iend,   grid->jend, grid->kend);
-
-  cudaError_t error = cudaGetLastError();
-  if(error != cudaSuccess)
-    printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
-
-  return 0;
-}
-
-int cadvec_2::advecs_g(double * st, double * s, double * u, double * v, double * w, double * dzi)
-{
-  const int blocki = 128;
-  const int blockj = 2;
-  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-  dim3 gridGPU (gridi, gridj, grid->kmax);
-  dim3 blockGPU(blocki, blockj, 1);
-
-  const double dxi = 1./grid->dx;
-  const double dyi = 1./grid->dy;
-
-  advecs_kernel<<<gridGPU, blockGPU>>>(st, s, u, v, w, dzi, dxi, dyi,
-                                      grid->icells, grid->ijcells,
-                                      grid->istart, grid->jstart, grid->kstart,
-                                      grid->iend,   grid->jend, grid->kend);
-
-  cudaError_t error = cudaGetLastError();
-  if(error != cudaSuccess)
-    printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
-
-  return 0;
-}
+#endif
