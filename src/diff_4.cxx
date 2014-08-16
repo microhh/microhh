@@ -72,12 +72,24 @@ double cdiff_4::getdn(double dt)
 
 int cdiff_4::exec()
 {
+#ifdef USECUDA
+  fields->forwardGPU();
+  diffc_GPU(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
+  diffc_GPU(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
+  diffw_GPU(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
+
+  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    diffc_GPU(it->second->data, fields->s[it->first]->data, grid->dzi4, grid->dzhi4, fields->s[it->first]->visc);
+  fields->backwardGPU();
+
+#else
   diffc(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
   diffw(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi4, grid->dzhi4, fields->s[it->first]->visc);
+#endif
 
   return 0;
 }

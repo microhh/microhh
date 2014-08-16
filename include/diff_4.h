@@ -44,5 +44,8 @@ class cdiff_4 : public cdiff
 
     int diffc(double *, double *, double *, double *, double);
     int diffw(double *, double *, double *, double *, double);
+
+    int diffc_GPU(double *, double *, double *, double *, double);
+    int diffw_GPU(double *, double *, double *, double *, double);
 };
 #endif
