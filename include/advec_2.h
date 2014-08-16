@@ -46,7 +46,6 @@ class cadvec_2 : public cadvec
     int advecv(double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
     int advecw(double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
     int advecs(double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
-
     inline double interp2(const double, const double); ///< 2nd order interpolation function.
 };
 #endif
