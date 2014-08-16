@@ -179,7 +179,7 @@ int ctimeloop::settimestep()
   return 0;
 }
 
-#if USECUDA == TRUE
+#ifdef USECUDA
 int ctimeloop::exec()
 {
   fields->forwardGPU();
