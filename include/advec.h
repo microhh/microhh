@@ -27,6 +27,7 @@ class cmaster;
 class cmodel;
 class cgrid;
 class cfields;
+class cinput;
 
 /**
  * Base class for the advection scheme.

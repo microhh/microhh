@@ -60,7 +60,16 @@ unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
 
 int cadvec_2::exec()
 {
+  //#if USECUDA == TRUE
+  //fields->forwardGPU();
+  //advecu_GPU(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
+  //fields->backwardGPU();
+  //#else
+  //advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
+  //#endif
+
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
+
   advecv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
   advecw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi);
 
