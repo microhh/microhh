@@ -145,37 +145,39 @@ __global__ void pres_2_solvein(double * __restrict__ p,
     }
   }
 }
-/*
 
-__global__ void pres_tdma(double * __restrict__ a, double * __restrict__ b, double * __restrict__ c, 
-                          double * __restrict__ p, double * __restrict__ work3d,
-                          int kmax, int jj, int kk)
+__global__ void pres_2_tdma(double * __restrict__ a, double * __restrict__ b, double * __restrict__ c, 
+                            double * __restrict__ p, double * __restrict__ work3d,
+                            const int jj, const int kk,
+                            const int imax, const int jmax, const int kmax)
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x;
-  int j = blockIdx.y*blockDim.y + threadIdx.y;
-  int ij = i + j*jj;
+  const int i = blockIdx.x*blockDim.x + threadIdx.x;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
-  int k,ijk;
-
-  double work2d = b[ij];
-  p[ij] /= work2d;
-
-  for(k=1; k<kmax; k++)
+  if(i < imax && j < jmax)
   {
-    ijk = ij + k*kk;
-    work3d[ijk] = c[k-1] / work2d;
-    work2d = b[ijk] - a[k]*work3d[ijk];
-    p[ijk] -= a[k]*p[ijk-kk];
-    p[ijk] /= work2d;
-  }
+    const int ij = i + j*jj;
+    int k,ijk;
 
-  for(k=kmax-2; k>=0; k--)
-  {
-    ijk = ij + k*kk;
-    p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
+    double work2d = b[ij];
+    p[ij] /= work2d;
+
+    for(k=1; k<kmax; k++)
+    {
+      ijk = ij + k*kk;
+      work3d[ijk] = c[k-1] / work2d;
+      work2d = b[ijk] - a[k]*work3d[ijk];
+      p[ijk] -= a[k]*p[ijk-kk];
+      p[ijk] /= work2d;
+    }
+
+    for(k=kmax-2; k>=0; k--)
+    {
+      ijk = ij + k*kk;
+      p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
+    }
   }
 }
-}*/
 
 int cpres_2::prepareGPU()
 {
@@ -239,10 +241,15 @@ int cpres_2::exec(double dt)
                                         grid->imax, grid->imax*grid->jmax,
                                         grid->imax, grid->jmax, grid->kmax,
                                         grid->kstart);
-  fields->backwardGPU();
 
-  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
-             grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  dim3 grid2dGPU (gridi, gridj);
+  dim3 block2dGPU(blocki, blockj);
+
+  pres_2_tdma<<<grid2dGPU, block2dGPU>>>(a_g, fields->sd["tmp2"]->data_g, c_g,
+                                         fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
+                                         grid->imax, grid->imax*grid->jmax,
+                                         grid->imax, grid->jmax, grid->kmax);
+  fields->backwardGPU();
 
   grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
                     grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
@@ -263,79 +270,6 @@ int cpres_2::exec(double dt)
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
   fields->backwardGPU();
-
-  return 0;
-}
-#endif
-
-#ifdef USECUDA
-int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
-                        double * restrict fftini, double * restrict fftouti, 
-                        double * restrict fftinj, double * restrict fftoutj)
-
-{
-  /*
-  int i,j,k,jj,kk,ijk;
-  int imax,jmax,kmax;
-  int itot,jtot;
-  int iblock,jblock,kblock;
-  int igc,jgc,kgc;
-  int iindex,jindex;
-
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  iblock = grid->iblock;
-  jblock = grid->jblock;
-  kblock = grid->kblock;
-  igc    = grid->igc;
-  jgc    = grid->jgc;
-  kgc    = grid->kgc;
-
-  jj = iblock;
-  kk = iblock*jblock;
-
-  // solve the tridiagonal system
-  // create vectors that go into the tridiagonal matrix solver
-  for(k=0; k<kmax; k++)
-    for(j=0; j<jblock; j++)
-#pragma ivdep
-      for(i=0; i<iblock; i++)
-      {
-        // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-        iindex = master->mpicoordy * iblock + i;
-        jindex = master->mpicoordx * jblock + j;
-
-        ijk  = i + j*jj + k*kk;
-        b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
-        p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
-      }
-
-  for(j=0; j<jblock; j++)
-#pragma ivdep
-    for(i=0; i<iblock; i++)
-    {
-      iindex = master->mpicoordy * iblock + i;
-      jindex = master->mpicoordx * jblock + j;
-
-      // substitute BC's
-      ijk = i + j*jj;
-      b[ijk] += a[0];
-
-      // for wave number 0, which contains average, set pressure at top to zero
-      ijk  = i + j*jj + (kmax-1)*kk;
-      if(iindex == 0 && jindex == 0)
-        b[ijk] -= c[kmax-1];
-      // set dp/dz at top to zero
-      else
-        b[ijk] += c[kmax-1];
-    }
-    */
-
-  // call tdma solver
-  tdma(a, b, c, p, work2d, work3d);
 
   return 0;
 }
