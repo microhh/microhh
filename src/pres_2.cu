@@ -233,8 +233,8 @@ int cpres_2::exec(double dt)
   // grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
   //                   grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
-  // fields->forwardGPU();
-  // grid->boundary_cyclic(fields->sd["p"]->data_g);
+  fields->forwardGPU();
+  grid->boundary_cyclic(fields->sd["p"]->data_g);
 
   pres_2_presout<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
                                         fields->sd["p"]->data_g,
@@ -344,9 +344,6 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
       ijk = i + j*jjp + grid->kstart*kkp;
       p[ijk-kkp] = p[ijk];
     }
-
-  // set the cyclic boundary conditions
-  grid->boundary_cyclic(p);
 
   return 0;
 }
