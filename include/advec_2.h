@@ -42,6 +42,7 @@ class cadvec_2 : public cadvec
 
   private:
     double calccfl(double *, double *, double *, double *, double);         ///< Calculate the CFL number.
+    double calccfl2(double *, double *, double *, double *, double); // TMP BVS         ///< Calculate the CFL number.
     int advecu(double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
     int advecv(double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
     int advecw(double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
