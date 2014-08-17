@@ -185,7 +185,6 @@ int cdiff_4::exec()
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
-
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diff_4_diffc<<<gridGPU, blockGPU>>>(it->second->data_g, fields->sp[it->first]->data_g,
                                         grid->dzi4_g, grid->dzhi4_g,

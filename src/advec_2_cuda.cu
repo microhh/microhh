@@ -129,11 +129,8 @@ __global__ void calccfl_kernel(double * __restrict__ u, double * __restrict__ v,
   {
     int ijk = i + j*jj + k*kk;
     tmp1[ijk] = std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k];
-
-    //if(i==5 && j==5 && k==5)
-    //  printf("cfl gpu=%f\n",tmp1[ijk]);
-
   }
+
 }
 
 #ifdef USECUDA
@@ -189,7 +186,6 @@ int cadvec_2::exec()
 
 double cadvec_2::calccfl2(double * u, double * v, double * w, double * dzi, double dt)
 {
-  fields->forwardGPU();
 
   const int blocki = 128;
   const int blockj = 2;
@@ -203,16 +199,26 @@ double cadvec_2::calccfl2(double * u, double * v, double * w, double * dzi, doub
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
+  for(int i=0; i<grid->ncells; i++)
+    fields->a["tmp1"]->data[i] = 0.; 
+
+  fields->forwardGPU();
+
   calccfl_kernel<<<gridGPU, blockGPU>>>(fields->u->data_g, fields->v->data_g, fields->w->data_g, 
                                         (*fields->a["tmp1"]).data_g, grid->dzi_g, dxi, dyi,
                                         grid->icells, grid->ijcells,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend,   grid->jend, grid->kend);
 
-  //thrust::device_ptr<double> cfl_g = thrust::device_pointer_cast((*fields->a["tmp1"]).data_g);
-  //cfl = thrust::reduce(cfl_g, cfl_g + grid->ncells, -1, thrust::maximum<double>()); 
-
   fields->backwardGPU();
+
+  thrust::device_ptr<double> cfl_g = thrust::device_pointer_cast(fields->a["tmp1"]->data_g);
+  cfl = thrust::reduce(cfl_g, cfl_g + grid->ncells, -1.0, thrust::maximum<double>()); 
+
+  grid->getmax(&cfl);
+
+  cfl = cfl*dt;
+
 
   return cfl;
 }

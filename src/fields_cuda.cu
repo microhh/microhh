@@ -33,6 +33,9 @@ int cfields::forwardGPU()
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaMemcpy(it->second->data_g, it->second->data, nmemsize, cudaMemcpyHostToDevice);
 
+  // BvS for testing..
+  cudaMemcpy(a["tmp1"]->data_g, a["tmp1"]->data, nmemsize, cudaMemcpyHostToDevice);  
+
   return 0;
 }
 
@@ -46,8 +49,8 @@ int cfields::backwardGPU()
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaMemcpy(it->second->data, it->second->data_g, nmemsize, cudaMemcpyDeviceToHost);
 
-  // BvS Ok, copy it back for now....
-  cudaMemcpy(a["tmp1"]->data, a["tmp1"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
+  // BvS for testing..
+  //cudaMemcpy(a["tmp1"]->data, a["tmp1"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
 
   return 0;
 }
