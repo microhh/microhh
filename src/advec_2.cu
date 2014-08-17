@@ -118,18 +118,21 @@ __global__ void advec_2_advecs(double * __restrict__ st, double * __restrict__ s
 __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
                                 double * __restrict__ tmp1, double * __restrict__ dzi, double dxi, double dyi, 
                                 int jj, int kk, int istart, int jstart, int kstart,
-                                int iend, int jend, int kend)
+                                int iend, int jend, int kend,
+                                int icells, int jcells, int kcells)
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart;
+  int i = blockIdx.x*blockDim.x + threadIdx.x; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y; 
+  int k = blockIdx.z; 
   int ii = 1;
+  int ijk = i + j*jj + k*kk;
 
-  if(i < iend && j < jend && k < kend)
-  {
-    int ijk = i + j*jj + k*kk;
-    tmp1[ijk] = std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k];
-  }
+  if(i >= istart && i < iend && j >= jstart && j < jend && k >= kstart && k < kend)
+    tmp1[ijk] = std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + 
+                std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + 
+                std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k];
+  else if(i < icells && j < jcells && k < kcells) 
+    tmp1[ijk] = 0.;
 }
 
 #ifdef USECUDA
@@ -188,18 +191,15 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
 {
   const int blocki = 128;
   const int blockj = 2;
-  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+  const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
+  const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
   double cfl = 0;
 
-  dim3 gridGPU (gridi, gridj, grid->kmax);
+  dim3 gridGPU (gridi, gridj, grid->kcells);
   dim3 blockGPU(blocki, blockj, 1);
 
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
-
-  for(int i=0; i<grid->ncells; i++)
-    fields->a["tmp1"]->data[i] = 0.; 
 
   fields->forwardGPU();
 
@@ -207,7 +207,8 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
                                          (*fields->a["tmp1"]).data_g, grid->dzi_g, dxi, dyi,
                                          grid->icells, grid->ijcells,
                                          grid->istart, grid->jstart, grid->kstart,
-                                         grid->iend,   grid->jend, grid->kend);
+                                         grid->iend,   grid->jend, grid->kend,
+                                         grid->icells, grid->jcells, grid->kcells);
 
   fields->backwardGPU();
 
