@@ -94,7 +94,7 @@ __global__ void pres_2_solveout(double * __restrict__ p, double * __restrict__ w
   const int ijk  = i + j*jj + k*kk;
   const int ijkp = i+istart + (j+jstart)*jjp + (k+kstart)*kkp;
 
-  if(i < imax && j < jmax && k << kmax)
+  if(i < imax && j < jmax && k < kmax)
   {
     p[ijkp] = work3d[ijk];
 
@@ -222,18 +222,16 @@ int cpres_2::exec(double dt)
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
-  fields->forwardGPU();
-  // pres_2_solveout<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
-  //                                        grid->icells, grid->ijcells,
-  //                                        grid->imax, grid->jmax,
-  //                                        grid->istart, grid->jstart, grid->kstart,
-  //                                        grid->imax, grid->jmax, grid->kmax);
-  // fields->backwardGPU();
-
   // grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
   //                   grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   fields->forwardGPU();
+  pres_2_solveout<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
+                                         grid->imax, grid->imax*grid->jmax,
+                                         grid->icells, grid->ijcells,
+                                         grid->istart, grid->jstart, grid->kstart,
+                                         grid->imax, grid->jmax, grid->kmax);
+
   grid->boundary_cyclic(fields->sd["p"]->data_g);
 
   pres_2_presout<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
@@ -250,8 +248,8 @@ int cpres_2::exec(double dt)
 
 #ifdef USECUDA
 int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
-                         double * restrict fftini, double * restrict fftouti, 
-                         double * restrict fftinj, double * restrict fftoutj)
+                        double * restrict fftini, double * restrict fftouti, 
+                        double * restrict fftinj, double * restrict fftoutj)
 
 {
   int i,j,k,jj,kk,ijk;
@@ -316,7 +314,8 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
   tdma(a, b, c, p, work2d, work3d);
 
   grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
-        
+  
+  /*
   jj = imax;
   kk = imax*jmax;
 
@@ -344,6 +343,7 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
       ijk = i + j*jjp + grid->kstart*kkp;
       p[ijk-kkp] = p[ijk];
     }
+    */
 
   return 0;
 }
