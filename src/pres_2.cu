@@ -228,18 +228,17 @@ int cpres_2::exec(double dt)
                                          grid->imax, grid->jmax,
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->imax, grid->jmax, grid->kmax);
+  fields->backwardGPU();
 
   grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
                     grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
-  grid->boundary_cyclic(fields->sd["p"]->data_g);
-  fields->backwardGPU();
-
-  // get the pressure tendencies from the pressure field
   fields->forwardGPU();
+  grid->boundary_cyclic(fields->sd["p"]->data_g);
+
   pres_2_presout<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
                                         fields->sd["p"]->data_g,
-                                        grid->dzhi, grid->dx, grid->dy,
+                                        grid->dzhi_g, grid->dx, grid->dy,
                                         grid->icells, grid->ijcells,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
