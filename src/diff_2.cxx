@@ -70,6 +70,7 @@ double cdiff_2::getdn(double dt)
   return dn;
 }
 
+#ifndef USECUDA
 int cdiff_2::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
@@ -81,6 +82,7 @@ int cdiff_2::exec()
   
   return 0;
 }
+#endif
 
 int cdiff_2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
 {
