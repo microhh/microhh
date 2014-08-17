@@ -16,6 +16,7 @@ int cfields::prepareGPU()
 
   cudaMalloc(&a["p"]->data_g, nmemsize);
   cudaMalloc(&a["tmp1"]->data_g, nmemsize);
+  cudaMalloc(&a["tmp2"]->data_g, nmemsize);
 
   // copy all the data to the GPU
   forwardGPU();
@@ -35,6 +36,7 @@ int cfields::forwardGPU()
 
   cudaMemcpy(a["p"]->data_g, a["p"]->data, nmemsize, cudaMemcpyHostToDevice);  
   cudaMemcpy(a["tmp1"]->data_g, a["tmp1"]->data, nmemsize, cudaMemcpyHostToDevice);  
+  cudaMemcpy(a["tmp2"]->data_g, a["tmp2"]->data, nmemsize, cudaMemcpyHostToDevice);  
 
   return 0;
 }
@@ -51,6 +53,7 @@ int cfields::backwardGPU()
 
   cudaMemcpy(a["p"]->data, a["p"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
   cudaMemcpy(a["tmp1"]->data, a["tmp1"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
+  cudaMemcpy(a["tmp2"]->data, a["tmp2"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
 
   return 0;
 }

@@ -103,42 +103,49 @@ __global__ void pres_2_solveout(double * __restrict__ p, double * __restrict__ w
   }
 }
 
-/*
-__global__ void pres_solve_in(double * __restrict__ a, double * __restrict__ b, double * __restrict__ c,
-                              double * __restrict__ p, double * __restrict__ work3d,
-                              double * __restrict__ dz, double * __restrict__ bmati, double * __restrict__ bmatj,
-                              int kmax, int jj, int kk, int kgc)
+__global__ void pres_2_solvein(double * __restrict__ p,
+                               double * __restrict__ work3d, double * __restrict__ b,
+                               double * __restrict__ a, double * __restrict__ c,
+                               double * __restrict__ dz, double * __restrict__ bmati, double * __restrict__ bmatj,
+                               const int jj, const int kk, 
+                               const int imax, const int jmax, const int kmax,
+                               const int kstart)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x;
   int j = blockIdx.y*blockDim.y + threadIdx.y;
   int k = blockIdx.z;
-  int ijk = i + j*jj + k*kk;
 
-  // CvH this needs to be taken into account in case of an MPI run
-  // iindex = mpi->mpicoordy * iblock + i;
-  // jindex = mpi->mpicoordx * jblock + j;
-  // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
-  //  if(iindex == 0 && jindex == 0)
-
-  b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[i]+bmatj[j]) - (a[k]+c[k]);
-  p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
-
-  if(k == 0)
+  if(i < imax && j < jmax && k < kmax)
   {
-    // substitute BC's
-    // ijk = i + j*jj;
-    b[ijk] += a[0];
-  }
-  else if(k == kmax-1)
-  {
-    // for wave number 0, which contains average, set pressure at top to zero
-    if(i == 0 && j == 0)
-      b[ijk] -= c[k];
-    // set dp/dz at top to zero
-    else
-      b[ijk] += c[k];
+    int ijk = i + j*jj + k*kk;
+
+    // CvH this needs to be taken into account in case of an MPI run
+    // iindex = mpi->mpicoordy * iblock + i;
+    // jindex = mpi->mpicoordx * jblock + j;
+    // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+    //  if(iindex == 0 && jindex == 0)
+
+    b[ijk] = dz[k+kstart]*dz[k+kstart] * (bmati[i]+bmatj[j]) - (a[k]+c[k]);
+    p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
+
+    if(k == 0)
+    {
+      // substitute BC's
+      // ijk = i + j*jj;
+      b[ijk] += a[0];
+    }
+    else if(k == kmax-1)
+    {
+      // for wave number 0, which contains average, set pressure at top to zero
+      if(i == 0 && j == 0)
+        b[ijk] -= c[k];
+      // set dp/dz at top to zero
+      else
+        b[ijk] += c[k];
+    }
   }
 }
+/*
 
 __global__ void pres_tdma(double * __restrict__ a, double * __restrict__ b, double * __restrict__ c, 
                           double * __restrict__ p, double * __restrict__ work3d,
@@ -224,6 +231,16 @@ int cpres_2::exec(double dt)
   grid->fftforward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
                    grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
+  fields->forwardGPU();
+  pres_2_solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
+                                        fields->sd["tmp1"]->data_g, fields->sd["tmp2"]->data_g,
+                                        a_g, c_g,
+                                        grid->dz_g, bmati_g, bmatj_g,
+                                        grid->imax, grid->imax*grid->jmax,
+                                        grid->imax, grid->jmax, grid->kmax,
+                                        grid->kstart);
+  fields->backwardGPU();
+
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
@@ -257,6 +274,7 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
                         double * restrict fftinj, double * restrict fftoutj)
 
 {
+  /*
   int i,j,k,jj,kk,ijk;
   int imax,jmax,kmax;
   int itot,jtot;
@@ -314,6 +332,7 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
       else
         b[ijk] += c[kmax-1];
     }
+    */
 
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);

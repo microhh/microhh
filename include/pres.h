@@ -41,6 +41,8 @@ class cpres
     virtual int exec(double);
     virtual double check();
 
+    virtual int prepareGPU();
+
   protected:
     cmaster *master;
     cmodel  *model;
