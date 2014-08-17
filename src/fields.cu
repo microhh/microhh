@@ -14,7 +14,7 @@ int cfields::prepareGPU()
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaMalloc(&it->second->data_g, nmemsize);
 
-  // BvS Allocate one tmp field for now (don't copy it..)
+  cudaMalloc(&a["p"]->data_g, nmemsize);
   cudaMalloc(&a["tmp1"]->data_g, nmemsize);
 
   // copy all the data to the GPU
@@ -33,8 +33,6 @@ int cfields::forwardGPU()
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaMemcpy(it->second->data_g, it->second->data, nmemsize, cudaMemcpyHostToDevice);
 
-  // BvS for testing..
-  //cudaMemcpy(a["tmp1"]->data_g, a["tmp1"]->data, nmemsize, cudaMemcpyHostToDevice);  
   cudaMemcpy(a["p"]->data_g, a["p"]->data, nmemsize, cudaMemcpyHostToDevice);  
 
   return 0;
@@ -50,8 +48,6 @@ int cfields::backwardGPU()
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaMemcpy(it->second->data, it->second->data_g, nmemsize, cudaMemcpyDeviceToHost);
 
-  // BvS for testing..
-  //cudaMemcpy(a["tmp1"]->data, a["tmp1"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
   cudaMemcpy(a["p"]->data, a["p"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
 
   return 0;

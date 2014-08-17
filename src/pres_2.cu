@@ -34,7 +34,9 @@ __global__ void pres_2_presin(double * __restrict__ p,
                               double * __restrict__ u ,  double * __restrict__ v , double * __restrict__ w ,
                               double * __restrict__ ut,  double * __restrict__ vt, double * __restrict__ wt,
                               double * __restrict__ dzi, double dx, double dy, double dt,
-                              const int jj, const int kk, const int jjp, const int kkp,
+                              const int jj, const int kk,
+                              const int jjp, const int kkp,
+                              const int imax, const int jmax, const int kmax,
                               const int igc, const int jgc, const int kgc)
 {
   const int ii = 1;
@@ -45,11 +47,14 @@ __global__ void pres_2_presin(double * __restrict__ p,
   const double dxi = 1./dx;
   const double dyi = 1./dy;
 
-  const int ijkp = i + j*jjp + k*kkp;
-  const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-  p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
-          + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
-          + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k+kgc];
+  if(i < imax && j < jmax && k < kmax)
+  {
+    const int ijkp = i + j*jjp + k*kkp;
+    const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+    p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
+            + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
+            + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k+kgc];
+  }
 }
 
 /*
@@ -164,11 +169,17 @@ int cpres_2::exec(double dt)
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
+  // calculate the cyclic BCs first
+  grid->boundary_cyclic(fields->ut->data_g);
+  grid->boundary_cyclic(fields->vt->data_g);
+  grid->boundary_cyclic(fields->wt->data_g);
+
   pres_2_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
-                                       fields->ut->data_g, fields->ut->data_g, fields->w->data_g,
+                                       fields->u->data_g, fields->v->data_g, fields->w->data_g,
                                        fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
                                        grid->dzi_g, grid->dx, grid->dy, dt,
                                        grid->icells, grid->ijcells, grid->imax, grid->imax*grid->jmax, 
+                                       grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
   fields->backwardGPU();
 
