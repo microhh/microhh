@@ -35,6 +35,7 @@ int cfields::forwardGPU()
 
   // BvS for testing..
   cudaMemcpy(a["tmp1"]->data_g, a["tmp1"]->data, nmemsize, cudaMemcpyHostToDevice);  
+  cudaMemcpy(a["p"]->data_g, a["p"]->data, nmemsize, cudaMemcpyHostToDevice);  
 
   return 0;
 }
@@ -51,6 +52,7 @@ int cfields::backwardGPU()
 
   // BvS for testing..
   //cudaMemcpy(a["tmp1"]->data, a["tmp1"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
+  cudaMemcpy(a["p"]->data, a["p"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
 
   return 0;
 }
