@@ -26,9 +26,9 @@
 #include "defines.h"
 #include "model.h"
 
-__global__ void diffc_kernel(double * __restrict__ at, double * __restrict__ a, const double visc,
-                             double * __restrict__ dzi4, double * __restrict__ dzhi4,
-                             const double dx, const double dy,
+__global__ void diffc_kernel(double * __restrict__ const at, const double * __restrict__ const a,
+                             const double * __restrict__ const dzi4, const double * __restrict__ const dzhi4,
+                             const double dx, const double dy, const double visc,
                              const int jj, const int kk,
                              const int istart, const int jstart, const int kstart,
                              const int iend, const int jend, const int kend)
@@ -90,9 +90,9 @@ __global__ void diffc_kernel(double * __restrict__ at, double * __restrict__ a, 
   }
 }
 
-__global__ void diffw_kernel(double * __restrict__ at, double * __restrict__ a, const double visc,
-                             double * __restrict__ dzi4, double * __restrict__ dzhi4,
-                             const double dx, const double dy,
+__global__ void diffw_kernel(double * __restrict__ const at, const double * __restrict__ const a,
+                             const double * __restrict__ const dzi4, const double * __restrict__ const dzhi4,
+                             const double dx, const double dy, const double visc,
                              const int jj, const int kk,
                              const int istart, const int jstart, const int kstart,
                              const int iend, const int jend, const int kend)
@@ -166,32 +166,32 @@ int cdiff_4::exec()
   dim3 blockGPU(blocki, blockj, 1);
 
   fields->forwardGPU();
-  diffc_kernel<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g, fields->visc,
+  diffc_kernel<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g,
                                       grid->dzi4_g, grid->dzhi4_g,
-                                      grid->dx, grid->dy,
+                                      grid->dx, grid->dy, fields->visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
-  diffc_kernel<<<gridGPU, blockGPU>>>(fields->vt->data_g, fields->v->data_g, fields->visc,
+  diffc_kernel<<<gridGPU, blockGPU>>>(fields->vt->data_g, fields->v->data_g,
                                       grid->dzi4_g, grid->dzhi4_g,
-                                      grid->dx, grid->dy,
+                                      grid->dx, grid->dy, fields->visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
-  diffw_kernel<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->w->data_g, fields->visc,
+  diffw_kernel<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->w->data_g,
                                       grid->dzi4_g, grid->dzhi_g,
-                                      grid->dx, grid->dy,
+                                      grid->dx, grid->dy, fields->visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc_kernel<<<gridGPU, blockGPU>>>(it->second->data_g, fields->sp[it->first]->data_g, fields->sp[it->first]->visc,
+    diffc_kernel<<<gridGPU, blockGPU>>>(it->second->data_g, fields->sp[it->first]->data_g,
                                         grid->dzi4_g, grid->dzhi4_g,
-                                        grid->dx, grid->dy,
+                                        grid->dx, grid->dy, fields->sp[it->first]->visc,
                                         grid->icells, grid->ijcells,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
