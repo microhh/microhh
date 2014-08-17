@@ -77,8 +77,8 @@ int cdiff_2::exec()
   diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
   diffw(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
 
-  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi, grid->dzhi, fields->s[it->first]->visc);
+  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s[it->first]->visc);
   
   return 0;
 }
