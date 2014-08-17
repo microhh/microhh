@@ -7,10 +7,15 @@ int cfields::prepareGPU()
   const int nmemsize = grid->ncells*sizeof(double);
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  {
     cudaMalloc(&it->second->data_g, nmemsize);
+  }
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaMalloc(&it->second->data_g, nmemsize);
+
+  // BvS Allocate one tmp field for now (don't copy it..)
+  cudaMalloc(&a["tmp1"]->data_g, nmemsize);
 
   // copy all the data to the GPU
   forwardGPU();
@@ -40,6 +45,9 @@ int cfields::backwardGPU()
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaMemcpy(it->second->data, it->second->data_g, nmemsize, cudaMemcpyDeviceToHost);
+
+  // BvS Ok, copy it back for now....
+  cudaMemcpy(a["tmp1"]->data, a["tmp1"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
 
   return 0;
 }

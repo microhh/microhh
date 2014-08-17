@@ -48,12 +48,19 @@ double cadvec_2::getcfl(double dt)
 unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
-  double cfl;
+  double cfl,cfl2;
 
   cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   // avoid zero divisons
   cfl = std::max(dsmall, cfl);
+
+  cfl2 = calccfl2(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+  // avoid zero divisons
+  cfl2 = std::max(dsmall, cfl2);
+
   idtlim = idt * cflmax / cfl;
+
+  printf("gettimelim: cfl cpu=%f, gpu=%f\n",cfl,cfl2);
 
   return idtlim;
 }
@@ -72,7 +79,6 @@ int cadvec_2::exec()
 }
 #endif
 
-
 double cadvec_2::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii,jj,kk;
@@ -84,7 +90,6 @@ double cadvec_2::calccfl(double * restrict u, double * restrict v, double * rest
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
-
 
   double cfl = 0;
 
