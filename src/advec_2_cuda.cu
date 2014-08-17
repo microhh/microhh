@@ -183,9 +183,9 @@ int cadvec_2::exec()
 }
 #endif
 
-double cadvec_2::calccfl2(double * u, double * v, double * w, double * dzi, double dt)
+#ifdef USECUDA
+double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, double dt)
 {
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -218,8 +218,8 @@ double cadvec_2::calccfl2(double * u, double * v, double * w, double * dzi, doub
 
   cfl = cfl*dt;
 
-
   return cfl;
 }
+#endif
 
 
