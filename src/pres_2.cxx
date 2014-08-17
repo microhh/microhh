@@ -48,6 +48,7 @@ cpres_2::~cpres_2()
   }
 }
 
+#ifndef USECUDA
 int cpres_2::exec(double dt)
 {
   // create the input for the pressure solver
@@ -66,6 +67,7 @@ int cpres_2::exec(double dt)
 
   return 0;
 }
+#endif
 
 double cpres_2::check()
 {
