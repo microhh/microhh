@@ -362,6 +362,7 @@ int cmodel::exec()
   // copy the necessary fields to GPU
   grid->prepareGPU();
   fields->prepareGPU();
+  pres->prepareGPU();
 
   master->printMessage("Starting time integration\n");
 

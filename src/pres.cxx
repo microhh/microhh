@@ -66,3 +66,8 @@ double cpres::check()
   double divmax = 0.;
   return divmax;
 }
+
+int cpres::prepareGPU()
+{
+  return 0;
+}
