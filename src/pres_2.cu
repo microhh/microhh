@@ -57,21 +57,32 @@ __global__ void pres_2_presin(double * __restrict__ p,
   }
 }
 
-/*
-__global__ void pres_out_kernel(double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt,
-                                double * __restrict__ p , double * __restrict__ dzhi, double dxi, double dyi,
-                                int jj, int kk, int igc, int jgc, int kgc)
+__global__ void pres_2_presout(double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt,
+                               double * __restrict__ p,
+                               double * __restrict__ dzhi, const double dx, const double dy,
+                               const int jj, const int kk,
+                               const int istart, const int jstart, const int kstart,
+                               const int iend, const int jend, const int kend)
 {
-  int ii = 1;
-  int i = blockIdx.x*blockDim.x + threadIdx.x + igc;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jgc;
-  int k = blockIdx.z + kgc;
-  int ijk = i + j*jj + k*kk;
-  ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
-  vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
-  wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
+
+  const int ii = 1;
+
+  const double dxi = 1./dx;
+  const double dyi = 1./dy;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
+    vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
+    wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
+  }
 }
 
+/*
 __global__ void pres_solve_in(double * __restrict__ a, double * __restrict__ b, double * __restrict__ c,
                               double * __restrict__ p, double * __restrict__ work3d,
                               double * __restrict__ dz, double * __restrict__ bmati, double * __restrict__ bmatj,
@@ -188,8 +199,14 @@ int cpres_2::exec(double dt)
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   // get the pressure tendencies from the pressure field
-  pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
-           fields->sd["p"]->data, grid->dzhi);
+  fields->forwardGPU();
+  pres_2_presout<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
+                                        fields->sd["p"]->data_g,
+                                        grid->dzhi, grid->dx, grid->dy,
+                                        grid->icells, grid->ijcells,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend, grid->jend, grid->kend);
+  fields->backwardGPU();
 
 
   return 0;
