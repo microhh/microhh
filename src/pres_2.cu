@@ -222,8 +222,8 @@ int cpres_2::exec(double dt)
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
-  // grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
-  //                   grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
+                    grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   fields->forwardGPU();
   pres_2_solveout<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
@@ -312,38 +312,6 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
 
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);
-
-  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
-  
-  /*
-  jj = imax;
-  kk = imax*jmax;
-
-  int ijkp,jjp,kkp;
-  jjp = grid->icells;
-  kkp = grid->icells*grid->jcells;
-
-  // put the pressure back onto the original grid including ghost cells
-  for(int k=0; k<grid->kmax; k++)
-    for(int j=0; j<grid->jmax; j++)
-#pragma ivdep
-      for(int i=0; i<grid->imax; i++)
-      {
-        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
-        ijk  = i + j*jj + k*kk;
-        p[ijkp] = work3d[ijk];
-      }
-
-  // set the boundary conditions
-  // set a zero gradient boundary at the bottom
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jjp + grid->kstart*kkp;
-      p[ijk-kkp] = p[ijk];
-    }
-    */
 
   return 0;
 }
