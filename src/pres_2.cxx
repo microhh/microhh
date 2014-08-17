@@ -187,6 +187,7 @@ int cpres_2::pres_in(double * restrict p,
   return 0;
 }
 
+#ifndef USECUDA
 int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
                          double * restrict fftini, double * restrict fftouti, 
                          double * restrict fftinj, double * restrict fftoutj)
@@ -290,6 +291,7 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
 
   return 0;
 }
+#endif
 
 int cpres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
                        double * restrict p , double * restrict dzhi)

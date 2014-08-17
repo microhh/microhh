@@ -195,6 +195,9 @@ int cpres_2::exec(double dt)
   fields->backwardGPU();
 
   // solve the system
+  grid->fftforward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
+                   grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
@@ -213,3 +216,106 @@ int cpres_2::exec(double dt)
 }
 #endif
 
+#ifdef USECUDA
+int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
+                        double * restrict fftini, double * restrict fftouti, 
+                        double * restrict fftinj, double * restrict fftoutj)
+
+{
+  int i,j,k,jj,kk,ijk;
+  int imax,jmax,kmax;
+  int itot,jtot;
+  int iblock,jblock,kblock;
+  int igc,jgc,kgc;
+  int iindex,jindex;
+
+  imax   = grid->imax;
+  jmax   = grid->jmax;
+  kmax   = grid->kmax;
+  itot   = grid->itot;
+  jtot   = grid->jtot;
+  iblock = grid->iblock;
+  jblock = grid->jblock;
+  kblock = grid->kblock;
+  igc    = grid->igc;
+  jgc    = grid->jgc;
+  kgc    = grid->kgc;
+
+  jj = iblock;
+  kk = iblock*jblock;
+
+  // solve the tridiagonal system
+  // create vectors that go into the tridiagonal matrix solver
+  for(k=0; k<kmax; k++)
+    for(j=0; j<jblock; j++)
+#pragma ivdep
+      for(i=0; i<iblock; i++)
+      {
+        // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
+        iindex = master->mpicoordy * iblock + i;
+        jindex = master->mpicoordx * jblock + j;
+
+        ijk  = i + j*jj + k*kk;
+        b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
+        p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
+      }
+
+  for(j=0; j<jblock; j++)
+#pragma ivdep
+    for(i=0; i<iblock; i++)
+    {
+      iindex = master->mpicoordy * iblock + i;
+      jindex = master->mpicoordx * jblock + j;
+
+      // substitute BC's
+      ijk = i + j*jj;
+      b[ijk] += a[0];
+
+      // for wave number 0, which contains average, set pressure at top to zero
+      ijk  = i + j*jj + (kmax-1)*kk;
+      if(iindex == 0 && jindex == 0)
+        b[ijk] -= c[kmax-1];
+      // set dp/dz at top to zero
+      else
+        b[ijk] += c[kmax-1];
+    }
+
+  // call tdma solver
+  tdma(a, b, c, p, work2d, work3d);
+
+  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+        
+  jj = imax;
+  kk = imax*jmax;
+
+  int ijkp,jjp,kkp;
+  jjp = grid->icells;
+  kkp = grid->icells*grid->jcells;
+
+  // put the pressure back onto the original grid including ghost cells
+  for(int k=0; k<grid->kmax; k++)
+    for(int j=0; j<grid->jmax; j++)
+#pragma ivdep
+      for(int i=0; i<grid->imax; i++)
+      {
+        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
+        ijk  = i + j*jj + k*kk;
+        p[ijkp] = work3d[ijk];
+      }
+
+  // set the boundary conditions
+  // set a zero gradient boundary at the bottom
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jjp + grid->kstart*kkp;
+      p[ijk-kkp] = p[ijk];
+    }
+
+  // set the cyclic boundary conditions
+  grid->boundary_cyclic(p);
+
+  return 0;
+}
+#endif
