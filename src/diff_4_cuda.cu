@@ -181,12 +181,11 @@ int cdiff_4::exec()
                                       grid->iend, grid->jend, grid->kend);
 
   diffw_kernel<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->w->data_g,
-                                      grid->dzi4_g, grid->dzhi_g,
+                                      grid->dzi4_g, grid->dzhi4_g,
                                       grid->dx, grid->dy, fields->visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
-
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc_kernel<<<gridGPU, blockGPU>>>(it->second->data_g, fields->sp[it->first]->data_g,
