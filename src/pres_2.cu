@@ -82,6 +82,27 @@ __global__ void pres_2_presout(double * __restrict__ ut, double * __restrict__ v
   }
 }
 
+__global__ void pres_2_solveout(double * __restrict__ p, double * __restrict__ work3d,
+                                const int jj, const int kk,
+                                const int jjp, const int kkp,
+                                const int istart, const int jstart, const int kstart,
+                                const int imax, const int jmax, const int kmax)
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y;
+  const int k = blockIdx.z;
+  const int ijk  = i + j*jj + k*kk;
+  const int ijkp = i+istart + (j+jstart)*jjp + (k+kstart)*kkp;
+
+  if(i < imax && j < jmax && k << kmax)
+  {
+    p[ijkp] = work3d[ijk];
+
+    if(k == 0)
+      p[ijkp-kkp] = p[ijkp];
+  }
+}
+
 /*
 __global__ void pres_solve_in(double * __restrict__ a, double * __restrict__ b, double * __restrict__ c,
                               double * __restrict__ p, double * __restrict__ work3d,
@@ -201,6 +222,19 @@ int cpres_2::exec(double dt)
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
+  fields->forwardGPU();
+  pres_2_solveout<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
+                                         grid->icells, grid->ijcells,
+                                         grid->imax, grid->jmax,
+                                         grid->istart, grid->jstart, grid->kstart,
+                                         grid->imax, grid->jmax, grid->kmax);
+
+  grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
+                    grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+
+  grid->boundary_cyclic(fields->sd["p"]->data_g);
+  fields->backwardGPU();
+
   // get the pressure tendencies from the pressure field
   fields->forwardGPU();
   pres_2_presout<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
@@ -210,7 +244,6 @@ int cpres_2::exec(double dt)
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
   fields->backwardGPU();
-
 
   return 0;
 }
@@ -282,39 +315,6 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
 
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);
-
-  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
-        
-  jj = imax;
-  kk = imax*jmax;
-
-  int ijkp,jjp,kkp;
-  jjp = grid->icells;
-  kkp = grid->icells*grid->jcells;
-
-  // put the pressure back onto the original grid including ghost cells
-  for(int k=0; k<grid->kmax; k++)
-    for(int j=0; j<grid->jmax; j++)
-#pragma ivdep
-      for(int i=0; i<grid->imax; i++)
-      {
-        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
-        ijk  = i + j*jj + k*kk;
-        p[ijkp] = work3d[ijk];
-      }
-
-  // set the boundary conditions
-  // set a zero gradient boundary at the bottom
-  for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
-    {
-      ijk = i + j*jjp + grid->kstart*kkp;
-      p[ijk-kkp] = p[ijk];
-    }
-
-  // set the cyclic boundary conditions
-  grid->boundary_cyclic(p);
 
   return 0;
 }
