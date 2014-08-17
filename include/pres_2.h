@@ -38,12 +38,18 @@ class cpres_2 : public cpres
     int exec(double);
     double check();
 
+    int prepareGPU();
+
   private:
     bool allocated;
 
     double *bmati, *bmatj;
     double *a, *c;
     double *work2d;
+
+    double *bmati_g, *bmatj_g;
+    double *a_g, *c_g;
+    double *work2d_g;
 
     int pres_in(double *, 
                 double *, double *, double *,

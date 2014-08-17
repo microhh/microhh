@@ -168,25 +168,30 @@ __global__ void pres_tdma(double * __restrict__ a, double * __restrict__ b, doub
     p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
   }
 }
-
-__global__ void pres_solve_out(double * __restrict__ p, double * __restrict__ work3d,
-                               int jj, int kk, int jjp, int kkp, int igc, int jgc, int kgc)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x;
-  int j = blockIdx.y*blockDim.y + threadIdx.y;
-  int k = blockIdx.z;
-  int ijk  = i + j*jj + k*kk;
-  int ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
-
-  p[ijkp] = work3d[ijk];
-
-  if(k == 0)
-    p[ijkp-kkp] = p[ijkp];
-
-  //for(int j=grid->jstart; j<grid->jend; j++)
-  //  for(int i=grid->istart; i<grid->iend; i++)
-  //      ijk = i + j*jjp + grid->kstart*kkp;
 }*/
+
+int cpres_2::prepareGPU()
+{
+  const int kmemsize = grid->kmax*sizeof(double);
+  const int imemsize = grid->itot*sizeof(double);
+  const int jmemsize = grid->jtot*sizeof(double);
+
+  const int ijmemsize = grid->imax*grid->jmax*sizeof(double);
+
+  cudaMalloc((void**)&bmati_g, imemsize);
+  cudaMalloc((void**)&bmatj_g, jmemsize);
+  cudaMalloc((void**)&a_g, kmemsize);
+  cudaMalloc((void**)&c_g, kmemsize);
+  cudaMalloc((void**)&work2d_g, ijmemsize);
+
+  cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(a_g, a, kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice);
+
+  return 0;
+}
 
 #ifdef USECUDA
 int cpres_2::exec(double dt)
