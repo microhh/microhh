@@ -223,18 +223,18 @@ int cpres_2::exec(double dt)
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   fields->forwardGPU();
-  pres_2_solveout<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
-                                         grid->icells, grid->ijcells,
-                                         grid->imax, grid->jmax,
-                                         grid->istart, grid->jstart, grid->kstart,
-                                         grid->imax, grid->jmax, grid->kmax);
-  fields->backwardGPU();
+  // pres_2_solveout<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
+  //                                        grid->icells, grid->ijcells,
+  //                                        grid->imax, grid->jmax,
+  //                                        grid->istart, grid->jstart, grid->kstart,
+  //                                        grid->imax, grid->jmax, grid->kmax);
+  // fields->backwardGPU();
 
-  grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
-                    grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  // grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
+  //                   grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
-  fields->forwardGPU();
-  grid->boundary_cyclic(fields->sd["p"]->data_g);
+  // fields->forwardGPU();
+  // grid->boundary_cyclic(fields->sd["p"]->data_g);
 
   pres_2_presout<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
                                         fields->sd["p"]->data_g,
@@ -250,8 +250,8 @@ int cpres_2::exec(double dt)
 
 #ifdef USECUDA
 int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b, double * restrict dz,
-                        double * restrict fftini, double * restrict fftouti, 
-                        double * restrict fftinj, double * restrict fftoutj)
+                         double * restrict fftini, double * restrict fftouti, 
+                         double * restrict fftinj, double * restrict fftoutj)
 
 {
   int i,j,k,jj,kk,ijk;
@@ -314,6 +314,39 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
 
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);
+
+  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+        
+  jj = imax;
+  kk = imax*jmax;
+
+  int ijkp,jjp,kkp;
+  jjp = grid->icells;
+  kkp = grid->icells*grid->jcells;
+
+  // put the pressure back onto the original grid including ghost cells
+  for(int k=0; k<grid->kmax; k++)
+    for(int j=0; j<grid->jmax; j++)
+#pragma ivdep
+      for(int i=0; i<grid->imax; i++)
+      {
+        ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
+        ijk  = i + j*jj + k*kk;
+        p[ijkp] = work3d[ijk];
+      }
+
+  // set the boundary conditions
+  // set a zero gradient boundary at the bottom
+  for(int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+    for(int i=grid->istart; i<grid->iend; i++)
+    {
+      ijk = i + j*jjp + grid->kstart*kkp;
+      p[ijk-kkp] = p[ijk];
+    }
+
+  // set the cyclic boundary conditions
+  grid->boundary_cyclic(p);
 
   return 0;
 }
