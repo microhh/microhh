@@ -346,9 +346,9 @@ int cpres_2::exec(double dt)
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->imax, grid->jmax, grid->kmax);
 
-  fields->backwardGPU();
-  grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
-                    grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  //fields->backwardGPU();
+  //grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
+  //                  grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
   //fields->forwardGPU();
 
   // Backward FFT 
