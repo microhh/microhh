@@ -358,11 +358,14 @@ int cmodel::save()
 
 int cmodel::exec()
 {
-  master->printMessage("Preparing the GPU\n");
+
+#ifdef USECUDA
   // copy the necessary fields to GPU
+  master->printMessage("Preparing the GPU\n");
   grid->prepareGPU();
   fields->prepareGPU();
   pres->prepareGPU();
+#endif
 
   master->printMessage("Starting time integration\n");
 
