@@ -31,7 +31,6 @@
 #include "defines.h"
 #include "model.h"
 
-
 __global__ void pres_2_presin(double * __restrict__ p,
                               double * __restrict__ u ,  double * __restrict__ v , double * __restrict__ w ,
                               double * __restrict__ ut,  double * __restrict__ vt, double * __restrict__ wt,
@@ -181,7 +180,7 @@ __global__ void pres_2_tdma(double * __restrict__ a, double * __restrict__ b, do
   }
 }
 
-__global__ void complex2real_x(cufftDoubleComplex * fftout, double * field, const unsigned int itot, const unsigned int jtot)
+__global__ void pres_2_complex_double_x(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, bool forward)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x;
   int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -190,14 +189,24 @@ __global__ void complex2real_x(cufftDoubleComplex * fftout, double * field, cons
   int ij2 = (itot-i) + j*itot;
   int imax = itot/2+1;
 
-  if((j < jtot) && (i < imax)) // not very efficient.....
+  if((j < jtot) && (i < imax))
   {
-    field[ij]  = fftout[ij].x;
-    if(i>0 && i<imax-1) field[ij2] = fftout[ij].y;
+    if(forward) // complex -> double
+    {
+      ddata[ij]  = cdata[ij].x;
+      if(i>0 && i<imax-1) 
+        ddata[ij2] = cdata[ij].y;
+    }
+    else // double -> complex
+    {
+      cdata[ij].x = ddata[ij];
+      if(i>0 && i<imax-1) 
+        cdata[ij].y = ddata[ij2];
+    }
   }
 } 
 
-__global__ void complex2real_y(cufftDoubleComplex * fftout, double * field, const unsigned int itot, const unsigned int jtot)
+__global__ void pres_2_complex_double_y(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, bool forward)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x;
   int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -206,13 +215,32 @@ __global__ void complex2real_y(cufftDoubleComplex * fftout, double * field, cons
   int ij2 = i + (jtot-j)*itot;
   int jmax = jtot/2+1; 
 
-  if((i < itot) && (j < jmax)) // not very efficient
+  if((i < itot) && (j < jmax))
   {
-    field[ij] = fftout[ij].x;
-    if(j>0 && j<jmax-1) field[ij2] = fftout[ij].y;
+    if(forward) // complex -> double
+    {
+      ddata[ij] = cdata[ij].x;
+      if(j>0 && j<jmax-1) 
+        ddata[ij2] = cdata[ij].y;
+    }
+    else // double -> complex
+    {
+      cdata[ij].x = ddata[ij];
+      if(j>0 && j<jmax-1) 
+        cdata[ij].y = ddata[ij2];
+    }
   }
-} 
+}
 
+ __global__ void pres_2_normalize(double * __restrict__ data, const unsigned int itot, const unsigned int jtot, const unsigned int n)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+  int ij = i + j * itot;
+  if((i < itot) && (j < jtot))
+    data[ij] = data[ij] / (double)n;
+} 
 
 int cpres_2::prepareGPU()
 {
@@ -235,10 +263,8 @@ int cpres_2::prepareGPU()
   cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice);
 
   // cuFFT
-  cudaMalloc((void**)&fftini_g, ijmemsize);
-  cudaMalloc((void**)&fftinj_g, ijmemsize);
-  cudaMalloc((void **)&fftouti_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)));
-  cudaMalloc((void **)&fftoutj_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1)));
+  cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)));
+  cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1)));
 
   // Make cuFFT plan
   int rank = 1;
@@ -251,21 +277,22 @@ int cpres_2::prepareGPU()
 
   cufftPlanMany(&iplanf, rank, ni, ni, istride, idist, ni, istride, idist, CUFFT_D2Z, grid->jtot);
   cufftPlanMany(&jplanf, rank, nj, nj, jstride, jdist, nj, jstride, jdist, CUFFT_D2Z, grid->itot);
+  cufftPlanMany(&iplanb, rank, ni, ni, istride, idist, ni, istride, idist, CUFFT_Z2D, grid->jtot);
+  cufftPlanMany(&jplanb, rank, nj, nj, jstride, jdist, nj, jstride, jdist, CUFFT_Z2D, grid->itot);
 
   return 0;
 }
-
-
 
 #ifdef USECUDA
 int cpres_2::exec(double dt)
 {
   fields->forwardGPU();
 
-  const int blocki = 128;
-  const int blockj = 2;
-  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+  int kk;
+  const int blocki  = 128;
+  const int blockj  = 2;
+  const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj   = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
@@ -285,31 +312,27 @@ int cpres_2::exec(double dt)
                                        grid->icells, grid->ijcells, grid->imax, grid->imax*grid->jmax, 
                                        grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
-  //fields->backwardGPU();
 
-  //// solve the system
+  //fields->backwardGPU();
   //grid->fftforward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
   //                grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  //fields->forwardGPU();
 
   // Forward FFT -> how to get rid of the loop at the host side....
   // A massive FFT (e.g. 3D field) would require large host fields for the FFT output
-  int kk;
   for (int k=0; k<grid->ktot; ++k)
   {
     kk = k*grid->itot*grid->jtot;
 
-    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk], fftouti_g);
+    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk], ffti_complex_g);
     cudaThreadSynchronize();
+    pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[kk],grid->itot,grid->jtot, true); 
 
-    complex2real_x<<<grid2dGPU,block2dGPU>>>(fftouti_g,&fields->sd["p"]->data_g[kk],grid->itot,grid->jtot); 
-
-    cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk], fftoutj_g);
+    cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk], fftj_complex_g);
     cudaThreadSynchronize();
-
-    complex2real_y<<<grid2dGPU,block2dGPU>>>(fftoutj_g,&fields->sd["p"]->data_g[kk],grid->itot,grid->jtot); 
+    pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[kk],grid->itot,grid->jtot, true); 
   } 
 
-  //fields->forwardGPU();
   pres_2_solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                         fields->sd["tmp1"]->data_g, fields->sd["tmp2"]->data_g,
                                         a_g, c_g,
@@ -318,17 +341,34 @@ int cpres_2::exec(double dt)
                                         grid->imax, grid->jmax, grid->kmax,
                                         grid->kstart);
 
-
   pres_2_tdma<<<grid2dGPU, block2dGPU>>>(a_g, fields->sd["tmp2"]->data_g, c_g,
                                          fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->imax, grid->jmax, grid->kmax);
-  fields->backwardGPU();
 
+  fields->backwardGPU();
   grid->fftbackward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
                     grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  //fields->forwardGPU();
 
-  fields->forwardGPU();
+  // Backward FFT 
+  for (int k=0; k<grid->ktot; ++k)
+  {
+    kk = k*grid->itot*grid->jtot;
+
+    pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, false); 
+    cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk]);
+    cudaThreadSynchronize();
+    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, grid->jtot);
+
+    pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, false); 
+    cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk]);
+    cudaThreadSynchronize();
+    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, grid->itot);
+  } 
+
+  cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToDevice);
+
   pres_2_solveout<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->icells, grid->ijcells,
@@ -348,3 +388,37 @@ int cpres_2::exec(double dt)
   return 0;
 }
 #endif
+
+
+// DEBUG TOOLS....
+  //kk = 1;
+  //int ij;
+
+  //printf("host:\n");
+  //for (int j=0; j<grid->jtot; ++j)
+  //{
+  //  for (int i=0; i<grid->itot; ++i)
+  //  {
+  //    ij = i + j*grid->itot + kk*grid->itot*grid->jtot;
+  //    printf("%12.8f ",fields->sd["tmp1"]->data[ij]);
+  //  }
+  //  printf("\n");    
+  //}
+
+  //cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToDevice);
+
+  //cudaMemcpy(fields->sd["tmp2"]->data, fields->sd["tmp1"]->data_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToHost);  
+
+  //printf("device:\n");
+  //for (int j=0; j<grid->jtot; ++j)
+  //{
+  //  for (int i=0; i<grid->itot; ++i)
+  //  {
+  //    ij = i + j*grid->itot + kk*grid->itot*grid->jtot;
+  //    printf("%12.8f ",fields->sd["tmp2"]->data[ij]);
+  //  }
+  //  printf("\n");    
+  //}
+
+  //exit(1);
+

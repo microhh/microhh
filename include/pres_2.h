@@ -42,7 +42,9 @@ class cpres_2 : public cpres
     int exec(double);
     double check();
 
+#ifdef USECUDA
     int prepareGPU();
+#endif
 
   private:
     bool allocated;
@@ -52,14 +54,15 @@ class cpres_2 : public cpres
     double *work2d;
 
     // GPU
+#ifdef USECUDA
     double *bmati_g, *bmatj_g;
     double *a_g, *c_g;
     double *work2d_g;
 
-    double *fftini_g, *fftinj_g;  
-    cufftDoubleComplex *fftouti_g, *fftoutj_g; 
+    cufftDoubleComplex *ffti_complex_g, *fftj_complex_g; 
     cufftHandle iplanf, jplanf; 
     cufftHandle iplanb, jplanb; 
+#endif
 
     int pres_in(double *, 
                 double *, double *, double *,
