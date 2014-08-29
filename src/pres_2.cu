@@ -23,12 +23,14 @@
 #include <cmath>
 #include <algorithm>
 #include <fftw3.h>
+#include <cufft.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
 #include "pres_2.h"
 #include "defines.h"
 #include "model.h"
+
 
 __global__ void pres_2_presin(double * __restrict__ p,
                               double * __restrict__ u ,  double * __restrict__ v , double * __restrict__ w ,
@@ -179,6 +181,39 @@ __global__ void pres_2_tdma(double * __restrict__ a, double * __restrict__ b, do
   }
 }
 
+__global__ void complex2real_x(cufftDoubleComplex * fftout, double * field, const unsigned int itot, const unsigned int jtot)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+  int ij = i + j * itot;
+  int ij2 = (itot-i) + j*itot;
+  int imax = itot/2+1;
+
+  if((j < jtot) && (i < imax)) // not very efficient.....
+  {
+    field[ij]  = fftout[ij].x;
+    if(i>0 && i<imax-1) field[ij2] = fftout[ij].y;
+  }
+} 
+
+__global__ void complex2real_y(cufftDoubleComplex * fftout, double * field, const unsigned int itot, const unsigned int jtot)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+  int ij = i + j * itot;
+  int ij2 = i + (jtot-j)*itot;
+  int jmax = jtot/2+1; 
+
+  if((i < itot) && (j < jmax)) // not very efficient
+  {
+    field[ij] = fftout[ij].x;
+    if(j>0 && j<jmax-1) field[ij2] = fftout[ij].y;
+  }
+} 
+
+
 int cpres_2::prepareGPU()
 {
   const int kmemsize = grid->kmax*sizeof(double);
@@ -199,8 +234,28 @@ int cpres_2::prepareGPU()
   cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice);
   cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice);
 
+  // cuFFT
+  cudaMalloc((void**)&fftini_g, ijmemsize);
+  cudaMalloc((void**)&fftinj_g, ijmemsize);
+  cudaMalloc((void **)&fftouti_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)));
+  cudaMalloc((void **)&fftoutj_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1)));
+
+  // Make cuFFT plan
+  int rank = 1;
+  int ni[] = {grid->itot};
+  int nj[] = {grid->jtot};
+  int istride = 1;
+  int jstride = grid->itot;
+  int idist = grid->itot;
+  int jdist = 1;
+
+  cufftPlanMany(&iplanf, rank, ni, ni, istride, idist, ni, istride, idist, CUFFT_D2Z, grid->jtot);
+  cufftPlanMany(&jplanf, rank, nj, nj, jstride, jdist, nj, jstride, jdist, CUFFT_D2Z, grid->itot);
+
   return 0;
 }
+
+
 
 #ifdef USECUDA
 int cpres_2::exec(double dt)
@@ -215,6 +270,9 @@ int cpres_2::exec(double dt)
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
+  dim3 grid2dGPU (gridi, gridj);
+  dim3 block2dGPU(blocki, blockj);
+
   // calculate the cyclic BCs first
   grid->boundary_cyclic(fields->ut->data_g);
   grid->boundary_cyclic(fields->vt->data_g);
@@ -227,13 +285,31 @@ int cpres_2::exec(double dt)
                                        grid->icells, grid->ijcells, grid->imax, grid->imax*grid->jmax, 
                                        grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
-  fields->backwardGPU();
+  //fields->backwardGPU();
 
-  // solve the system
-  grid->fftforward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
-                   grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  //// solve the system
+  //grid->fftforward(fields->sd["p"]->data, fields->sd["tmp1"]->data,
+  //                grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
-  fields->forwardGPU();
+  // Forward FFT -> how to get rid of the loop at the host side....
+  // A massive FFT (e.g. 3D field) would require large host fields for the FFT output
+  int kk;
+  for (int k=0; k<grid->ktot; ++k)
+  {
+    kk = k*grid->itot*grid->jtot;
+
+    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk], fftouti_g);
+    cudaThreadSynchronize();
+
+    complex2real_x<<<grid2dGPU,block2dGPU>>>(fftouti_g,&fields->sd["p"]->data_g[kk],grid->itot,grid->jtot); 
+
+    cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk], fftoutj_g);
+    cudaThreadSynchronize();
+
+    complex2real_y<<<grid2dGPU,block2dGPU>>>(fftoutj_g,&fields->sd["p"]->data_g[kk],grid->itot,grid->jtot); 
+  } 
+
+  //fields->forwardGPU();
   pres_2_solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                         fields->sd["tmp1"]->data_g, fields->sd["tmp2"]->data_g,
                                         a_g, c_g,
@@ -242,8 +318,6 @@ int cpres_2::exec(double dt)
                                         grid->imax, grid->jmax, grid->kmax,
                                         grid->kstart);
 
-  dim3 grid2dGPU (gridi, gridj);
-  dim3 block2dGPU(blocki, blockj);
 
   pres_2_tdma<<<grid2dGPU, block2dGPU>>>(a_g, fields->sd["tmp2"]->data_g, c_g,
                                          fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,

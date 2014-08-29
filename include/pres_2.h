@@ -24,6 +24,10 @@
 
 #include "pres.h"
 
+#ifdef USECUDA
+#include <cufft.h>
+#endif
+
 // forward declaration
 class cmodel;
 
@@ -47,9 +51,15 @@ class cpres_2 : public cpres
     double *a, *c;
     double *work2d;
 
+    // GPU
     double *bmati_g, *bmatj_g;
     double *a_g, *c_g;
     double *work2d_g;
+
+    double *fftini_g, *fftinj_g;  
+    cufftDoubleComplex *fftouti_g, *fftoutj_g; 
+    cufftHandle iplanf, jplanf; 
+    cufftHandle iplanb, jplanb; 
 
     int pres_in(double *, 
                 double *, double *, double *,
