@@ -69,6 +69,10 @@ endif()
 if(USECUDA)
   find_package(CUDA)
   add_definitions("-DUSECUDA")
+
+  set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
+    "Flags used by NVCC." FORCE)
+  message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
 endif()
 
 # set the include dirs
