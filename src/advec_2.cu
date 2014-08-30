@@ -1,116 +1,7 @@
 #include "advec_2.h"
 #include "grid.h"
 #include "fields.h"
-
-template <unsigned int blockSize, bool nispow2>
-__device__ void reduceBlocks(const double *data, double *idata, unsigned int n)
-{
-  extern __shared__ double sdata[];
-  unsigned int tid = threadIdx.x;
-  unsigned int i = blockIdx.x*(blockSize*2) + threadIdx.x;
-  unsigned int gridSize = blockSize*2*gridDim.x;
-
-  double max = -1e12;
-  while (i < n)
-  {
-    max = fmax(max,data[i]);
-    if (nispow2 || i + blockSize < n)
-      max = fmax(max,data[i+blockSize]);
-    i += gridSize;
-  }
-  sdata[tid] = max;
-  __syncthreads();
-
-  if (blockSize >= 512) { if (tid < 256) { sdata[tid] = fmax(sdata[tid],sdata[tid + 256]); } __syncthreads(); }
-  if (blockSize >= 256) { if (tid < 128) { sdata[tid] = fmax(sdata[tid],sdata[tid + 128]); } __syncthreads(); }
-  if (blockSize >= 128) { if (tid <  64) { sdata[tid] = fmax(sdata[tid],sdata[tid +  64]); } __syncthreads(); }
-
-  if (tid < 32)
-  {
-    volatile double *smem = sdata;
-    if (blockSize >=  64) { smem[tid] = fmax(smem[tid],smem[tid + 32]); }
-    if (blockSize >=  32) { smem[tid] = fmax(smem[tid],smem[tid + 16]); }
-    if (blockSize >=  16) { smem[tid] = fmax(smem[tid],smem[tid +  8]); }
-    if (blockSize >=   8) { smem[tid] = fmax(smem[tid],smem[tid +  4]); }
-    if (blockSize >=   4) { smem[tid] = fmax(smem[tid],smem[tid +  2]); }
-    if (blockSize >=   2) { smem[tid] = fmax(smem[tid],smem[tid +  1]); }
-  }
-
-  if (tid == 0)
-    idata[blockIdx.x] = sdata[0];
-}
-
-template <unsigned int blockSize, bool nispow2>
-__global__ void reduceMultiPass(const double *data, double *idata, unsigned int n)
-{
-  reduceBlocks<blockSize, nispow2>(data, idata, n);
-}
-
-bool ispow2(unsigned int x)
-{
-  return ((x&(x-1))==0);
-}
-
-void max_multipass(int size, int threads, int blocks, double *data, double *idata)
-{
-  dim3 dimBlock(threads, 1, 1);
-  dim3 dimGrid(blocks, 1, 1);
-  unsigned int nsmem = max(64,threads);
-  int smemSize = nsmem * sizeof(double);
-
-  if (ispow2(size))
-  {
-    switch (threads)
-    {
-      case 512:
-        reduceMultiPass<512, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 256:
-        reduceMultiPass<256, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 128:
-        reduceMultiPass<128, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 64:
-        reduceMultiPass< 64, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 32:
-        reduceMultiPass< 32, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 16:
-        reduceMultiPass< 16, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case  8:
-        reduceMultiPass<  8, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case  4:
-        reduceMultiPass<  4, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case  2:
-        reduceMultiPass<  2, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case  1:
-        reduceMultiPass<  1, true><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-    }
-  }
-  else
-  {
-    switch (threads)
-    {
-      case 512:
-        reduceMultiPass<512, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 256:
-        reduceMultiPass<256, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 128:
-        reduceMultiPass<128, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 64:
-        reduceMultiPass< 64, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 32:
-        reduceMultiPass< 32, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case 16:
-        reduceMultiPass< 16, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case  8:
-        reduceMultiPass<  8, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case  4:
-        reduceMultiPass<  4, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case  2:
-        reduceMultiPass<  2, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-      case  1:
-        reduceMultiPass<  1, false><<< dimGrid, dimBlock, smemSize >>>(data, idata, size); break;
-    }
-  }
-}
+#include "tools.h"
 
 __device__ double interp2(double a, double b)
 {
@@ -329,29 +220,8 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
                                          grid->iend,   grid->jend, grid->kend,
                                          grid->icells, grid->jcells, grid->kcells);
 
-  // Reduce cfl in tmp field
-  unsigned int blocksize = 256; // # threads / block
-  unsigned int nblocks = (int)ceil((double)grid->ncells / (double)blocksize); // # of blocks
-
-  double *idata; // Array holding max values from first reduction step
-  double *dmax; // Array holding max value from second reduction step
-
-  cudaMalloc((void**)&idata, (nblocks)*sizeof(double));
-  cudaMalloc((void**)&dmax, sizeof(double));
-
-  // Do the reduction in two steps
-  max_multipass(grid->ncells, blocksize, nblocks, fields->a["tmp1"]->data_g,  idata);
-  max_multipass(nblocks,      blocksize, 1,       idata,                      dmax);
-
-  // Get max value from GPU
-  cudaMemcpy(&cfl, dmax, sizeof(double), cudaMemcpyDeviceToHost);
-
-  // For now allocate and free per call, should probably be done once in init function
-  cudaFree(idata);
-  cudaFree(dmax);
-
+  cfl = maximum_gpu(fields->a["tmp1"]->data_g, grid->ncells);
   grid->getmax(&cfl);
-
   cfl = cfl*dt;
 
   return cfl;
