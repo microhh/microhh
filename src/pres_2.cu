@@ -30,6 +30,7 @@
 #include "pres_2.h"
 #include "defines.h"
 #include "model.h"
+#include "tools.h"
 
 __global__ void pres_2_presin(double * __restrict__ p,
                               double * __restrict__ u ,  double * __restrict__ v , double * __restrict__ w ,
@@ -283,6 +284,24 @@ int cpres_2::prepareGPU()
   return 0;
 }
 
+__global__ void pres_2_calcdiv(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
+                               double * __restrict__ div, double * __restrict__ dzi, double dxi, double dyi, 
+                               int jj, int kk, int istart, int jstart, int kstart,
+                               int iend, int jend, int kend,
+                               int icells, int jcells, int kcells)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y; 
+  int k = blockIdx.z; 
+  int ii = 1;
+  int ijk = i + j*jj + k*kk;
+
+  if(i >= istart && i < iend && j >= jstart && j < jend && k >= kstart && k < kend)
+    div[ijk] = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
+  else if(i < icells && j < jcells && k < kcells) 
+    div[ijk] = 0.;
+}
+
 #ifdef USECUDA
 int cpres_2::exec(double dt)
 {
@@ -394,36 +413,32 @@ int cpres_2::exec(double dt)
 }
 #endif
 
+#ifdef USECUDA
+double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+{
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
+  const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
+  double divmax = 0;
 
-// DEBUG TOOLS....
-  //kk = 1;
-  //int ij;
+  dim3 gridGPU (gridi, gridj, grid->kcells);
+  dim3 blockGPU(blocki, blockj, 1);
 
-  //printf("host:\n");
-  //for (int j=0; j<grid->jtot; ++j)
-  //{
-  //  for (int i=0; i<grid->itot; ++i)
-  //  {
-  //    ij = i + j*grid->itot + kk*grid->itot*grid->jtot;
-  //    printf("%12.8f ",fields->sd["tmp1"]->data[ij]);
-  //  }
-  //  printf("\n");    
-  //}
+  const double dxi = 1./grid->dx;
+  const double dyi = 1./grid->dy;
 
-  //cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToDevice);
+  pres_2_calcdiv<<<gridGPU, blockGPU>>>(fields->u->data_g, fields->v->data_g, fields->w->data_g, 
+                                        fields->a["tmp1"]->data_g, grid->dzi_g, dxi, dyi,
+                                        grid->icells, grid->ijcells,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend,   grid->jend, grid->kend,
+                                        grid->icells, grid->jcells, grid->kcells);
 
-  //cudaMemcpy(fields->sd["tmp2"]->data, fields->sd["tmp1"]->data_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToHost);  
+  divmax = maximum_gpu(fields->a["tmp1"]->data_g, grid->ncells);
+  grid->getmax(&divmax);
 
-  //printf("device:\n");
-  //for (int j=0; j<grid->jtot; ++j)
-  //{
-  //  for (int i=0; i<grid->itot; ++i)
-  //  {
-  //    ij = i + j*grid->itot + kk*grid->itot*grid->jtot;
-  //    printf("%12.8f ",fields->sd["tmp2"]->data[ij]);
-  //  }
-  //  printf("\n");    
-  //}
-
-  //exit(1);
+  return divmax;
+}
+#endif
 
