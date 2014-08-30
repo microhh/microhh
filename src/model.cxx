@@ -358,9 +358,7 @@ int cmodel::save()
 
 int cmodel::exec()
 {
-
 #ifdef USECUDA
-  // copy the necessary fields to GPU
   master->printMessage("Preparing the GPU\n");
   grid->prepareGPU();
   fields->prepareGPU();
@@ -416,6 +414,10 @@ int cmodel::exec()
     {
       if(stats->dostats())
       {
+#ifdef USECUDA
+        fields->backwardGPU();
+#endif
+
         // always process the default mask
         stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks["default"]);
         calcstats("default");
@@ -441,6 +443,10 @@ int cmodel::exec()
 
       if(cross->docross())
       {
+#ifdef USECUDA
+        fields->backwardGPU();
+#endif
+
         if(fields->execcross())
           return 1;
         if(thermo->execcross())
@@ -467,6 +473,10 @@ int cmodel::exec()
       // save the data for a restart
       if(timeloop->dosave() && !timeloop->insubstep())
       {
+#ifdef USECUDA
+        fields->backwardGPU();
+#endif
+
         // save the time data
         timeloop->save(timeloop->iotime);
         // save the fields
@@ -508,7 +518,10 @@ int cmodel::exec()
     if(outputfile(!timeloop->loop))
       return 1;
 
-  }
+  } // end time loop
+
+  fields->backwardGPU();
+  fields->clearGPU();
 
   return 0;
 }

@@ -95,7 +95,8 @@ int cdiff_2::exec()
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
-  fields->forwardGPU();
+  //fields->forwardGPU();
+
   diff_2_diffc<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g,
                                       grid->dzi_g, grid->dzhi_g,
                                       grid->dx, grid->dy, fields->visc,
@@ -126,7 +127,7 @@ int cdiff_2::exec()
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
 
-  fields->backwardGPU();
+  //fields->backwardGPU();
 
   return 0;
 }

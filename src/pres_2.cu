@@ -286,7 +286,7 @@ int cpres_2::prepareGPU()
 #ifdef USECUDA
 int cpres_2::exec(double dt)
 {
-  fields->forwardGPU();
+  //fields->forwardGPU();
 
   int kk;
   const int blocki  = 128;
@@ -301,9 +301,13 @@ int cpres_2::exec(double dt)
   dim3 block2dGPU(blocki, blockj);
 
   // calculate the cyclic BCs first
-  grid->boundary_cyclic(fields->ut->data_g);
-  grid->boundary_cyclic(fields->vt->data_g);
-  grid->boundary_cyclic(fields->wt->data_g);
+  //grid->boundary_cyclic(fields->ut->data_g);
+  //grid->boundary_cyclic(fields->vt->data_g);
+  //grid->boundary_cyclic(fields->wt->data_g);
+
+  grid->boundary_cyclic_gpu(fields->ut->data_g);
+  grid->boundary_cyclic_gpu(fields->vt->data_g);
+  grid->boundary_cyclic_gpu(fields->wt->data_g);
 
   pres_2_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        fields->u->data_g, fields->v->data_g, fields->w->data_g,
@@ -375,7 +379,8 @@ int cpres_2::exec(double dt)
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->imax, grid->jmax, grid->kmax);
 
-  grid->boundary_cyclic(fields->sd["p"]->data_g);
+  //grid->boundary_cyclic(fields->sd["p"]->data_g);
+  grid->boundary_cyclic_gpu(fields->sd["p"]->data_g);
 
   pres_2_presout<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
                                         fields->sd["p"]->data_g,
@@ -383,7 +388,7 @@ int cpres_2::exec(double dt)
                                         grid->icells, grid->ijcells,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
-  fields->backwardGPU();
+  //fields->backwardGPU();
 
   return 0;
 }

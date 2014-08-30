@@ -56,6 +56,8 @@ int cfields::forwardGPU()
   cudaMemcpy(a["tmp1"]->data_g, a["tmp1"]->data, nmemsize, cudaMemcpyHostToDevice);  
   cudaMemcpy(a["tmp2"]->data_g, a["tmp2"]->data, nmemsize, cudaMemcpyHostToDevice);  
 
+  printf("--> forwardGPU\n");
+
   return 0;
 }
 
@@ -82,5 +84,33 @@ int cfields::backwardGPU()
   cudaMemcpy(a["tmp1"]->data, a["tmp1"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
   cudaMemcpy(a["tmp2"]->data, a["tmp2"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
 
+  printf("--> backwardGPU\n");
+
   return 0;
 }
+
+int cfields::clearGPU()
+{
+  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  {
+    cudaFree(&it->second->data_g);
+    cudaFree(&it->second->databot_g);
+    cudaFree(&it->second->datatop_g);
+    cudaFree(&it->second->datagradbot_g);
+    cudaFree(&it->second->datagradtop_g);
+    cudaFree(&it->second->datafluxbot_g);
+    cudaFree(&it->second->datafluxtop_g);
+  }
+
+  for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
+  {
+    cudaFree(&it->second->data_g);
+  }
+
+  cudaFree(&a["p"]->data_g);
+  cudaFree(&a["tmp1"]->data_g);
+  cudaFree(&a["tmp2"]->data_g);
+
+  return 0;
+}
+

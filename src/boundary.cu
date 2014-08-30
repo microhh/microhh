@@ -85,7 +85,7 @@ __global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restri
 #ifdef USECUDA
 int cboundary::exec()
 {
-  fields->forwardGPU();
+  //fields->forwardGPU();
 
   const int blocki = 128;
   const int blockj = 2;
@@ -96,12 +96,16 @@ int cboundary::exec()
   dim3 block2dGPU(blocki, blockj);
 
   // cyclic boundary conditions, do this before the bottom BC's
-  grid->boundary_cyclic(fields->u->data_g);
-  grid->boundary_cyclic(fields->v->data_g);
-  grid->boundary_cyclic(fields->w->data_g);
+  //grid->boundary_cyclic(fields->u->data_g);
+  //grid->boundary_cyclic(fields->v->data_g);
+  //grid->boundary_cyclic(fields->w->data_g);
+
+  grid->boundary_cyclic_gpu(fields->u->data_g);
+  grid->boundary_cyclic_gpu(fields->v->data_g);
+  grid->boundary_cyclic_gpu(fields->w->data_g);
 
   for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
-    grid->boundary_cyclic(it->second->data_g);
+    grid->boundary_cyclic_gpu(it->second->data_g);
 
   // calculate boundary values
   bcvalues();
@@ -145,7 +149,7 @@ int cboundary::exec()
   //}
 
 
-  fields->backwardGPU();
+  //fields->backwardGPU();
 
   return 0;
 }

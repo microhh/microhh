@@ -66,6 +66,7 @@ class cfields
     int prepareGPU();
     int forwardGPU();
     int backwardGPU();
+    int clearGPU();
 
     // 3d fields for momentum
     cfield3d *u;

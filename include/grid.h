@@ -121,6 +121,7 @@ class cgrid
     int initmpi(); ///< Creates the MPI data types used in grid operations.
     int exitmpi(); ///< Destructs the MPI data types used in grid operations.
     int boundary_cyclic  (double *); ///< Fills the ghost cells in the periodic directions.
+    int boundary_cyclic_gpu(double *); ///< Fills the ghost cells in the periodic directions.
     int boundary_cyclic2d(double *); ///< Fills the ghost cells of one slice in the periodic direction.
     int transposezx(double *, double *); ///< Changes the transpose orientation from z to x.
     int transposexz(double *, double *); ///< Changes the transpose orientation from x to z.

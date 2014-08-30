@@ -244,7 +244,7 @@ __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v
 #ifdef USECUDA
 int cadvec_2::exec()
 {
-  fields->forwardGPU();
+  //fields->forwardGPU();
 
   const int blocki = 128;
   const int blockj = 2;
@@ -300,7 +300,7 @@ int cadvec_2::exec()
   if(error != cudaSuccess)
     printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
 
-  fields->backwardGPU();
+  //fields->backwardGPU();
   return 0;
 }
 #endif
@@ -320,7 +320,7 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
-  fields->forwardGPU();
+  //fields->forwardGPU();
 
   advec_2_calccfl<<<gridGPU, blockGPU>>>(fields->u->data_g, fields->v->data_g, fields->w->data_g, 
                                          (*fields->a["tmp1"]).data_g, grid->dzi_g, dxi, dyi,
