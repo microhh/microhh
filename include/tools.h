@@ -3,5 +3,6 @@
 
 double maximum_gpu(double *, int);
 void max_multipass(int, int, int, double *, double *);
+void CudaCheckError();
 
 #endif

@@ -148,12 +148,6 @@ int cadvec_2::exec()
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
-  // Cuda timer:
-  //cudaEvent_t start, stop;
-  //cudaEventCreate(&start);
-  //cudaEventCreate(&stop);
-  //cudaEventRecord(start);
-
   advec_2_advecu<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g, fields->v->data_g, 
                                         fields->w->data_g, grid->dzi_g, dxi, dyi,
                                         grid->icells, grid->ijcells,
@@ -180,17 +174,6 @@ int cadvec_2::exec()
                                           grid->istart, grid->jstart, grid->kstart,
                                           grid->iend,   grid->jend, grid->kend);
 
-  
-  //cudaEventRecord(stop);  
-  //cudaEventSynchronize(stop);
-  //float elapsed;
-  //cudaEventElapsedTime(&elapsed, start, stop);
-  //printf("advec_2 = %f ms\n",elapsed);
-
-  cudaError_t error = cudaGetLastError();
-  if(error != cudaSuccess)
-    printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
-
   //fields->backwardGPU();
   return 0;
 }
@@ -214,7 +197,7 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
   //fields->forwardGPU();
 
   advec_2_calccfl<<<gridGPU, blockGPU>>>(fields->u->data_g, fields->v->data_g, fields->w->data_g, 
-                                         (*fields->a["tmp1"]).data_g, grid->dzi_g, dxi, dyi,
+                                         fields->a["tmp1"]->data_g, grid->dzi_g, dxi, dyi,
                                          grid->icells, grid->ijcells,
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->iend,   grid->jend, grid->kend,

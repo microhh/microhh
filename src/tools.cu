@@ -1,4 +1,5 @@
-#include <tools.h>
+#include <stdio.h>
+#include "tools.h"
 
 template <unsigned int blockSize, bool nispow2>
 __device__ void reduceBlocks(const double *data, double *idata, unsigned int n)
@@ -136,4 +137,23 @@ double maximum_gpu(double * field, int nvalues)
   cudaFree(maxval_g);
 
   return maxval;
+}
+
+
+// CUDA error checking. 
+void CudaCheckError()
+{
+  cudaError err = cudaGetLastError();
+  if(cudaSuccess != err)
+    printf("CUDA error : %s\n",cudaGetErrorString(err));
+
+  //err = cudaDeviceSynchronize();
+  //if(cudaSuccess != err)
+  //{
+  //  fprintf( stderr, "cudaCheckError() with sync failed at %s:%i : %s\n",
+  //           file, line, cudaGetErrorString( err ) );
+  //  exit( -1 );
+  //}
+ 
+  return;
 }
