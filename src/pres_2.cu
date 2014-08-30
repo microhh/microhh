@@ -35,7 +35,7 @@
 __global__ void pres_2_presin(double * __restrict__ p,
                               double * __restrict__ u ,  double * __restrict__ v , double * __restrict__ w ,
                               double * __restrict__ ut,  double * __restrict__ vt, double * __restrict__ wt,
-                              double * __restrict__ dzi, double dx, double dy, double dt,
+                              double * __restrict__ dzi, double dxi, double dyi, double dt,
                               const int jj, const int kk,
                               const int jjp, const int kkp,
                               const int imax, const int jmax, const int kmax,
@@ -45,9 +45,6 @@ __global__ void pres_2_presin(double * __restrict__ p,
   const int i = blockIdx.x*blockDim.x + threadIdx.x;
   const int j = blockIdx.y*blockDim.y + threadIdx.y;
   const int k = blockIdx.z;
-
-  const double dxi = 1./dx;
-  const double dyi = 1./dy;
 
   if(i < imax && j < jmax && k < kmax)
   {
@@ -61,7 +58,7 @@ __global__ void pres_2_presin(double * __restrict__ p,
 
 __global__ void pres_2_presout(double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt,
                                double * __restrict__ p,
-                               double * __restrict__ dzhi, const double dx, const double dy,
+                               double * __restrict__ dzhi, const double dxi, const double dyi,
                                const int jj, const int kk,
                                const int istart, const int jstart, const int kstart,
                                const int iend, const int jend, const int kend)
@@ -71,9 +68,6 @@ __global__ void pres_2_presout(double * __restrict__ ut, double * __restrict__ v
   const int k = blockIdx.z + kstart;
 
   const int ii = 1;
-
-  const double dxi = 1./dx;
-  const double dyi = 1./dy;
 
   if(i < iend && j < jend && k < kend)
   {
@@ -233,14 +227,14 @@ __global__ void pres_2_complex_double_y(cufftDoubleComplex * __restrict__ cdata,
   }
 }
 
- __global__ void pres_2_normalize(double * __restrict__ data, const unsigned int itot, const unsigned int jtot, const unsigned int n)
+ __global__ void pres_2_normalize(double * __restrict__ data, const unsigned int itot, const unsigned int jtot, const double in)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x;
   int j = blockIdx.y*blockDim.y + threadIdx.y;
 
   int ij = i + j * itot;
   if((i < itot) && (j < jtot))
-    data[ij] = data[ij] / (double)n;
+    data[ij] = data[ij] * in;
 } 
 
 int cpres_2::prepareGPU()
@@ -331,7 +325,7 @@ int cpres_2::exec(double dt)
   pres_2_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        fields->u->data_g, fields->v->data_g, fields->w->data_g,
                                        fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
-                                       grid->dzi_g, grid->dx, grid->dy, dt,
+                                       grid->dzi_g, 1./grid->dx, 1./grid->dy, dt,
                                        grid->icells, grid->ijcells, grid->imax, grid->imax*grid->jmax, 
                                        grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
@@ -382,12 +376,12 @@ int cpres_2::exec(double dt)
     pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, false); 
     cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk]);
     cudaThreadSynchronize();
-    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, grid->jtot);
+    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, 1./grid->jtot);
 
     pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, false); 
     cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk]);
     cudaThreadSynchronize();
-    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, grid->itot);
+    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, 1./grid->itot);
   } 
 
   cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToDevice);
@@ -403,7 +397,7 @@ int cpres_2::exec(double dt)
 
   pres_2_presout<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
                                         fields->sd["p"]->data_g,
-                                        grid->dzhi_g, grid->dx, grid->dy,
+                                        grid->dzhi_g, 1./grid->dx, 1./grid->dy,
                                         grid->icells, grid->ijcells,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
