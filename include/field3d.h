@@ -38,7 +38,7 @@ class cfield3d
     int init();
     int checkfornan();
 
-    // variables
+    // variables at CPU
     double *data;
     double *databot;
     double *datatop;
@@ -52,8 +52,14 @@ class cfield3d
     std::string longname;
     double visc;
 
-    // GPU fields
+    // variables at GPU
     double *data_g;
+    double *databot_g;
+    double *datatop_g;
+    double *datagradbot_g;
+    double *datagradtop_g;
+    double *datafluxbot_g;
+    double *datafluxtop_g;
 
   private:
     cgrid   *grid;

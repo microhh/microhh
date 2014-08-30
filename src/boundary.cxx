@@ -282,6 +282,7 @@ int cboundary::setvalues()
   return 0;
 }
 
+#ifndef USECUDA
 int cboundary::exec()
 {
   // cyclic boundary conditions, do this before the bottom BC's
@@ -329,6 +330,7 @@ int cboundary::exec()
 
   return 0;
 }
+#endif
 
 int cboundary::execcross()
 {
