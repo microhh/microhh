@@ -1,10 +1,10 @@
 #include "grid.h"
 
-__global__ void grid_cyclic(double * __restrict__ data, 
-                            const int icells, const int jcells, const int kcells,
-                            const int istart, const int jstart,
-                            const int iend,   const int jend, 
-                            const int igc,    const int jgc)
+__global__ void grid_cyclic_x(double * __restrict__ data, 
+                              const int icells, const int jcells, const int kcells,
+                              const int istart, const int jstart,
+                              const int iend,   const int jend, 
+                              const int igc,    const int jgc)
 {
   const int i = blockIdx.x*blockDim.x + threadIdx.x;
   const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -13,39 +13,46 @@ __global__ void grid_cyclic(double * __restrict__ data,
   const int jj = icells;
   const int kk = icells*jcells;
 
-  int ijk0 = i          + j*jj + k*kk;
-  int ijk1 = iend-igc+i + j*jj + k*kk;
+  int ijk0, ijk1, ijk2, ijk3;
 
   // East-west
   if(k < kcells && j < jcells && i < igc)
   {
     ijk0 = i          + j*jj + k*kk;
     ijk1 = iend-igc+i + j*jj + k*kk;
-    data[ijk0] = data[ijk1];
-  }
+    ijk2 = i+iend     + j*jj + k*kk;
+    ijk3 = i+istart   + j*jj + k*kk;
 
-  if(k < kcells && j < jcells && i < igc)
-  {
-    ijk0 = i+iend   + j*jj + k*kk;
-    ijk1 = i+istart + j*jj + k*kk;
     data[ijk0] = data[ijk1];
+    data[ijk2] = data[ijk3];
   }
+}
 
-  // North-east
+__global__ void grid_cyclic_y(double * __restrict__ data, 
+                              const int icells, const int jcells, const int kcells,
+                              const int istart, const int jstart,
+                              const int iend,   const int jend, 
+                              const int igc,    const int jgc)
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y;
+  const int k = blockIdx.z;
+
+  const int jj = icells;
+  const int kk = icells*jcells;
+
+  int ijk0, ijk1, ijk2, ijk3;
+
+  // North-south
   if(k < kcells && j < jgc && i < icells)
   {
     ijk0 = i + j           *jj + k*kk;
     ijk1 = i + (jend-jgc+j)*jj + k*kk;
+    ijk2 = i + (j+jend  )*jj + k*kk;
+    ijk3 = i + (j+jstart)*jj + k*kk;
     data[ijk0] = data[ijk1];
+    data[ijk2] = data[ijk3];
   }
-
-  if(k < kcells && j < jgc && i < icells)
-  {
-    ijk0 = i + (j+jend  )*jj + k*kk;
-    ijk1 = i + (j+jstart)*jj + k*kk;
-    data[ijk0] = data[ijk1];
-  }
-
 }
 
 int cgrid::prepareGPU()
@@ -71,18 +78,31 @@ int cgrid::prepareGPU()
 
 int cgrid::boundary_cyclic_gpu(double * data)
 {
-  const int blocki  = 128;
-  const int blockj  = 2;
-  const int gridi   = icells/blocki + (icells%blocki > 0);
-  const int gridj   = jcells/blockj + (jcells%blockj > 0);
+  const int blocki_x = igc;
+  const int blockj_x = 256 / igc + (256%igc > 0);
+  const int gridi_x  = 1;
+  const int gridj_x  = jcells/blockj_x + (jcells%blockj_x > 0);
 
-  dim3 gridGPU (gridi, gridj, kcells);
-  dim3 blockGPU(blocki, blockj, 1);
+  const int blocki_y = 256 / igc + (256%jgc > 0);
+  const int blockj_y = jgc;
+  const int gridi_y  = icells/blocki_y + (icells%blocki_y > 0);
+  const int gridj_y  = 1;
 
-  grid_cyclic<<<gridGPU,blockGPU>>>(data, icells, jcells, kcells,
-                                    istart, jstart,
-                                    iend,   jend,
-                                    igc,    jgc);
- 
+  dim3 gridGPUx (gridi_x, gridj_x, kcells);
+  dim3 blockGPUx(blocki_x, blockj_x, 1);
+
+  dim3 gridGPUy (gridi_y, gridj_y, kcells);
+  dim3 blockGPUy(blocki_y, blockj_y, 1);
+
+  grid_cyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells,
+                                        istart, jstart,
+                                        iend,   jend,
+                                        igc,    jgc);
+
+  grid_cyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells,
+                                        istart, jstart,
+                                        iend,   jend,
+                                        igc,    jgc);
+
   return 0;
 }
