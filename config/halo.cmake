@@ -22,8 +22,9 @@ set(SZIP_LIB           "/sw/centos58-x64/szip-latest-static/lib/libsz.a")
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
 
 if(USECUDA)
-  #set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-  set(CUDA_NVCC_FLAGS "-arch=sm_20")
+  set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+  set(LIBS ${LIBS} -rdynamic /usr/local/cuda/lib64/libcufft.so)
+  set(USER_CUDA_NVCC_FLAGS "-arch=sm_20")
 endif()
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
