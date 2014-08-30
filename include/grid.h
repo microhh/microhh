@@ -53,6 +53,7 @@ class cgrid
     int load();                ///< Loads grid data to file.
 
     int prepareGPU(); ///< Load the arrays onto the GPU
+    int clearGPU();   ///< Deallocate the arrays onto the GPU
 
     int itot; ///< Total number of grid cells in the x-direction.
     int jtot; ///< Total number of grid cells in the y-direction.

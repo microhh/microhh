@@ -520,8 +520,11 @@ int cmodel::exec()
 
   } // end time loop
 
+#ifdef USECUDA
   fields->backwardGPU();
   fields->clearGPU();
+  grid->clearGPU();
+#endif
 
   return 0;
 }

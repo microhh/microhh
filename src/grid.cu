@@ -76,6 +76,18 @@ int cgrid::prepareGPU()
   return 0;
 }
 
+int cgrid::clearGPU()
+{
+  cudaFree(dz_g   );
+  cudaFree(dzh_g  );
+  cudaFree(dzi_g  );
+  cudaFree(dzhi_g );
+  cudaFree(dzi4_g );
+  cudaFree(dzhi4_g);
+
+  return 0;
+}
+
 int cgrid::boundary_cyclic_gpu(double * data)
 {
   const int blocki_x = igc;
