@@ -26,7 +26,7 @@
 
 __global__ void diff_2_diffc(double * __restrict__ const at, const double * __restrict__ const a,
                              const double * __restrict__ const dzi, const double * __restrict__ const dzhi,
-                             const double dx, const double dy, const double visc,
+                             const double dxidxi, const double dyidyi, const double visc,
                              const int jj, const int kk,
                              const int istart, const int jstart, const int kstart,
                              const int iend, const int jend, const int kend)
@@ -38,11 +38,7 @@ __global__ void diff_2_diffc(double * __restrict__ const at, const double * __re
   if(i < iend && j < jend && k < kend)
   {
     const int ijk = i + j*jj + k*kk;
-
     const int ii = 1;
-
-    const double dxidxi = 1./(dx*dx);
-    const double dyidyi = 1./(dy*dy);
 
     at[ijk] += visc * (
           + (  (a[ijk+ii] - a[ijk   ]) 
@@ -56,7 +52,7 @@ __global__ void diff_2_diffc(double * __restrict__ const at, const double * __re
 
 __global__ void diff_2_diffw(double * __restrict__ const at, const double * __restrict__ const a,
                              const double * __restrict__ const dzi, const double * __restrict__ const dzhi,
-                             const double dx, const double dy, const double visc,
+                             const double dxidxi, const double dyidyi, const double visc,
                              const int jj, const int kk,
                              const int istart, const int jstart, const int kstart,
                              const int iend, const int jend, const int kend)
@@ -68,11 +64,7 @@ __global__ void diff_2_diffw(double * __restrict__ const at, const double * __re
   if(i < iend && j < jend && k > kstart && k < kend)
   {
     const int ijk = i + j*jj + k*kk;
-
     const int ii = 1;
-
-    const double dxidxi = 1./(dx*dx);
-    const double dyidyi = 1./(dy*dy);
 
     at[ijk] += visc * (
           + (  (a[ijk+ii] - a[ijk   ])
@@ -95,25 +87,28 @@ int cdiff_2::exec()
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
+  const double dxidxi = 1./(grid->dx*grid->dx);
+  const double dyidyi = 1./(grid->dy*grid->dy);
+
   //fields->forwardGPU();
 
   diff_2_diffc<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g,
                                       grid->dzi_g, grid->dzhi_g,
-                                      grid->dx, grid->dy, fields->visc,
+                                      dxidxi, dyidyi, fields->visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
   diff_2_diffc<<<gridGPU, blockGPU>>>(fields->vt->data_g, fields->v->data_g,
                                       grid->dzi_g, grid->dzhi_g,
-                                      grid->dx, grid->dy, fields->visc,
+                                      dxidxi, dyidyi, fields->visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
   diff_2_diffw<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->w->data_g,
                                       grid->dzi_g, grid->dzhi_g,
-                                      grid->dx, grid->dy, fields->visc,
+                                      dxidxi, dyidyi, fields->visc,
                                       grid->icells, grid->ijcells,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
@@ -122,7 +117,7 @@ int cdiff_2::exec()
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diff_2_diffc<<<gridGPU, blockGPU>>>(it->second->data_g, fields->sp[it->first]->data_g,
                                         grid->dzi_g, grid->dzhi_g,
-                                        grid->dx, grid->dy, fields->sp[it->first]->visc,
+                                        dxidxi, dyidyi, fields->sp[it->first]->visc,
                                         grid->icells, grid->ijcells,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
