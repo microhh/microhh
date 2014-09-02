@@ -35,7 +35,7 @@
 __global__ void pres_2_presin(double * __restrict__ p,
                               double * __restrict__ u ,  double * __restrict__ v , double * __restrict__ w ,
                               double * __restrict__ ut,  double * __restrict__ vt, double * __restrict__ wt,
-                              double * __restrict__ dzi, double dxi, double dyi, double dt,
+                              double * __restrict__ dzi, double dxi, double dyi, double dti,
                               const int jj, const int kk,
                               const int jjp, const int kkp,
                               const int imax, const int jmax, const int kmax,
@@ -50,9 +50,9 @@ __global__ void pres_2_presin(double * __restrict__ p,
   {
     const int ijkp = i + j*jjp + k*kkp;
     const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-    p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
-            + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
-            + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k+kgc];
+    p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
+            + ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
+            + ( (wt[ijk+kk] + w[ijk+kk] * dti) - (wt[ijk] + w[ijk] * dti) ) * dzi[k+kgc];
   }
 }
 
@@ -325,7 +325,7 @@ int cpres_2::exec(double dt)
   pres_2_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        fields->u->data_g, fields->v->data_g, fields->w->data_g,
                                        fields->ut->data_g, fields->vt->data_g, fields->wt->data_g,
-                                       grid->dzi_g, 1./grid->dx, 1./grid->dy, dt,
+                                       grid->dzi_g, 1./grid->dx, 1./grid->dy, 1./dt,
                                        grid->icells, grid->ijcells, grid->imax, grid->imax*grid->jmax, 
                                        grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
