@@ -2,6 +2,13 @@
 #include "grid.h"
 #include "master.h"
 
+#define cA0 0.
+#define cA1 -5./9.
+#define cA2 -153./128.
+#define cB0 1./3.
+#define cB1 15./16.
+#define cB2 8./15.
+
 __global__ void rk3_kernel(double * __restrict__ a, double * __restrict__ at, double dt,
                            const int substep, const int jj, const int kk,
                            const int istart, const int jstart, const int kstart,
@@ -22,6 +29,35 @@ __global__ void rk3_kernel(double * __restrict__ a, double * __restrict__ at, do
     const int substepn = (substep+1) % 3;
     // substep 0 resets the tendencies, because cA[0] == 0
     at[ijk] = cA[substepn]*at[ijk];
+  }
+}
+
+template<int substep>
+__global__ void rk3_kernel2(double * __restrict__ a, double * __restrict__ at, double dt,
+                           const int jj, const int kk,
+                           const int istart, const int jstart, const int kstart,
+                           const int iend, const int jend, const int kend)
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    const int ijk = i + j*jj + k*kk;
+
+    switch(substep)
+    {
+      case 0:
+        a[ijk]  = a[ijk] + cB0*dt*at[ijk];
+        at[ijk] = cA1*at[ijk];
+      case 1:
+        a[ijk]  = a[ijk] + cB1*dt*at[ijk];
+        at[ijk] = cA2*at[ijk];
+      case 2:
+        a[ijk]  = a[ijk] + cB2*dt*at[ijk];
+        at[ijk] = 0.; 
+    }
   }
 }
 
@@ -69,10 +105,26 @@ int ctimeloop::rk3_GPU(double *a, double *at, double dt)
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
-  rk3_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
-                                    substep, grid->icells, grid->ijcells,
-                                    grid->istart, grid->jstart, grid->kstart,
-                                    grid->iend, grid->jend, grid->kend);
+  if(substep==0) 
+    rk3_kernel2<0><<<gridGPU, blockGPU>>>(a, at, dt,
+                                      grid->icells, grid->ijcells,
+                                      grid->istart, grid->jstart, grid->kstart,
+                                      grid->iend, grid->jend, grid->kend); 
+  else if(substep==1) 
+    rk3_kernel2<1><<<gridGPU, blockGPU>>>(a, at, dt,
+                                      grid->icells, grid->ijcells,
+                                      grid->istart, grid->jstart, grid->kstart,
+                                      grid->iend, grid->jend, grid->kend); 
+  else if(substep==2) 
+    rk3_kernel2<2><<<gridGPU, blockGPU>>>(a, at, dt,
+                                      grid->icells, grid->ijcells,
+                                      grid->istart, grid->jstart, grid->kstart,
+                                      grid->iend, grid->jend, grid->kend); 
+
+  //rk3_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
+  //                                  substep, grid->icells, grid->ijcells,
+  //                                  grid->istart, grid->jstart, grid->kstart,
+  //                                  grid->iend, grid->jend, grid->kend);
 
   return 0;
 }
