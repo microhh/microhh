@@ -157,6 +157,12 @@ class cgrid
     int interpolate_2nd(double *, double *, const int[3], const int[3]); ///< Second order interpolation
     int interpolate_4th(double *, double *, const int[3], const int[3]); ///< Fourth order interpolation
 
+    // Extra variables for aligning global memory on GPU
+    int memoffset;
+    int icellsp;
+    int ijcellsp;
+    int ncellsp;
+
   private:
     cmaster *master; ///< Pointer to master class.
     bool allocated;  ///< Boolean to check whether grid data is allocated.

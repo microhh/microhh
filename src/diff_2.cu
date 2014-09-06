@@ -90,39 +90,41 @@ int cdiff_2::exec()
   const double dxidxi = 1./(grid->dx*grid->dx);
   const double dyidyi = 1./(grid->dy*grid->dy);
 
-  //fields->forwardGPU();
+  const int offs = grid->memoffset;
 
-  diff_2_diffc<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g,
+  fields->forwardGPU();
+
+  diff_2_diffc<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs],
                                       grid->dzi_g, grid->dzhi_g,
                                       dxidxi, dyidyi, fields->visc,
-                                      grid->icells, grid->ijcells,
+                                      grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
-  diff_2_diffc<<<gridGPU, blockGPU>>>(fields->vt->data_g, fields->v->data_g,
+  diff_2_diffc<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->v->data_g[offs],
                                       grid->dzi_g, grid->dzhi_g,
                                       dxidxi, dyidyi, fields->visc,
-                                      grid->icells, grid->ijcells,
+                                      grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
-  diff_2_diffw<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->w->data_g,
+  diff_2_diffw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->w->data_g[offs],
                                       grid->dzi_g, grid->dzhi_g,
                                       dxidxi, dyidyi, fields->visc,
-                                      grid->icells, grid->ijcells,
+                                      grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diff_2_diffc<<<gridGPU, blockGPU>>>(it->second->data_g, fields->sp[it->first]->data_g,
+    diff_2_diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs],
                                         grid->dzi_g, grid->dzhi_g,
                                         dxidxi, dyidyi, fields->sp[it->first]->visc,
-                                        grid->icells, grid->ijcells,
+                                        grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
 
-  //fields->backwardGPU();
+  fields->backwardGPU();
 
   return 0;
 }

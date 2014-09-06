@@ -4,8 +4,8 @@
 
 int cfields::prepareGPU()
 {
-  const int nmemsize = grid->ncells*sizeof(double);
-  const int nmemsize2d = grid->ijcells*sizeof(double);
+  const int nmemsize = grid->ncellsp*sizeof(double);
+  const int nmemsize2d = grid->ijcellsp*sizeof(double);
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
@@ -35,56 +35,60 @@ int cfields::prepareGPU()
 
 int cfields::forwardGPU()
 {
-  const int nmemsize = grid->ncells*sizeof(double);
-  const int nmemsize2d = grid->ijcells*sizeof(double);
+  const int jcells    = grid->jcells;
+  const int jkcells   = grid->jcells * grid->kcells;
+  const int imemsizep = grid->icellsp * sizeof(double);
+  const int imemsize  = grid->icells  * sizeof(double);
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    cudaMemcpy(it->second->data_g,        it->second->data,        nmemsize,   cudaMemcpyHostToDevice);
-    cudaMemcpy(it->second->databot_g,     it->second->databot,     nmemsize2d, cudaMemcpyHostToDevice);
-    cudaMemcpy(it->second->datatop_g,     it->second->datatop,     nmemsize2d, cudaMemcpyHostToDevice);
-    cudaMemcpy(it->second->datagradbot_g, it->second->datagradbot, nmemsize2d, cudaMemcpyHostToDevice);
-    cudaMemcpy(it->second->datagradtop_g, it->second->datagradtop, nmemsize2d, cudaMemcpyHostToDevice);
-    cudaMemcpy(it->second->datafluxbot_g, it->second->datafluxbot, nmemsize2d, cudaMemcpyHostToDevice);
-    cudaMemcpy(it->second->datafluxtop_g, it->second->datafluxtop, nmemsize2d, cudaMemcpyHostToDevice);
+    cudaMemcpy2D(&it->second->data_g[grid->memoffset],        imemsizep, it->second->data,        imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);
+    cudaMemcpy2D(&it->second->databot_g[grid->memoffset],     imemsizep, it->second->databot,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
+    cudaMemcpy2D(&it->second->datatop_g[grid->memoffset],     imemsizep, it->second->datatop,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
+    cudaMemcpy2D(&it->second->datagradbot_g[grid->memoffset], imemsizep, it->second->datagradbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
+    cudaMemcpy2D(&it->second->datagradtop_g[grid->memoffset], imemsizep, it->second->datagradtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
+    cudaMemcpy2D(&it->second->datafluxbot_g[grid->memoffset], imemsizep, it->second->datafluxbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
+    cudaMemcpy2D(&it->second->datafluxtop_g[grid->memoffset], imemsizep, it->second->datafluxtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
   }
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-    cudaMemcpy(it->second->data_g, it->second->data, nmemsize, cudaMemcpyHostToDevice);
+    cudaMemcpy2D(&it->second->data_g[grid->memoffset],        imemsizep, it->second->data,        imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);
 
-  cudaMemcpy(a["p"]->data_g, a["p"]->data, nmemsize, cudaMemcpyHostToDevice);  
-  cudaMemcpy(a["tmp1"]->data_g, a["tmp1"]->data, nmemsize, cudaMemcpyHostToDevice);  
-  cudaMemcpy(a["tmp2"]->data_g, a["tmp2"]->data, nmemsize, cudaMemcpyHostToDevice);  
+  cudaMemcpy2D(&a["p"]->data_g[grid->memoffset],              imemsizep, a["p"]->data,            imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
+  cudaMemcpy2D(&a["tmp1"]->data_g[grid->memoffset],           imemsizep, a["tmp1"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
+  cudaMemcpy2D(&a["tmp2"]->data_g[grid->memoffset],           imemsizep, a["tmp2"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
 
-  printf("--> forwardGPU\n");
+  //printf("--> forwardGPU\n");
 
   return 0;
 }
 
 int cfields::backwardGPU()
 {
-  const int nmemsize = grid->ncells*sizeof(double);
-  const int nmemsize2d = grid->ijcells*sizeof(double);
+  const int jcells    = grid->jcells;
+  const int jkcells   = grid->jcells * grid->kcells;
+  const int imemsizep = grid->icellsp * sizeof(double);
+  const int imemsize  = grid->icells  * sizeof(double);
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    cudaMemcpy(it->second->data,        it->second->data_g,        nmemsize,   cudaMemcpyDeviceToHost);
-    cudaMemcpy(it->second->databot,     it->second->databot_g,     nmemsize2d, cudaMemcpyDeviceToHost);
-    cudaMemcpy(it->second->datatop,     it->second->datatop_g,     nmemsize2d, cudaMemcpyDeviceToHost);
-    cudaMemcpy(it->second->datagradbot, it->second->datagradbot_g, nmemsize2d, cudaMemcpyDeviceToHost);
-    cudaMemcpy(it->second->datagradtop, it->second->datagradtop_g, nmemsize2d, cudaMemcpyDeviceToHost);
-    cudaMemcpy(it->second->datafluxbot, it->second->datafluxbot_g, nmemsize2d, cudaMemcpyDeviceToHost);
-    cudaMemcpy(it->second->datafluxtop, it->second->datafluxtop_g, nmemsize2d, cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(it->second->databot,     imemsize, &it->second->databot_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(it->second->datatop,     imemsize, &it->second->datatop_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(it->second->datagradbot, imemsize, &it->second->datagradbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(it->second->datagradtop, imemsize, &it->second->datagradtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(it->second->datafluxbot, imemsize, &it->second->datafluxbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(it->second->datafluxtop, imemsize, &it->second->datafluxtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
   }
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-    cudaMemcpy(it->second->data, it->second->data_g, nmemsize, cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);
 
-  cudaMemcpy(a["p"]->data, a["p"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
-  cudaMemcpy(a["tmp1"]->data, a["tmp1"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
-  cudaMemcpy(a["tmp2"]->data, a["tmp2"]->data_g, nmemsize, cudaMemcpyDeviceToHost);  
+  cudaMemcpy2D(a["p"]->data,              imemsize, &a["p"]->data_g[grid->memoffset],            imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
+  cudaMemcpy2D(a["tmp1"]->data,           imemsize, &a["tmp1"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
+  cudaMemcpy2D(a["tmp2"]->data,           imemsize, &a["tmp2"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
 
-  printf("--> backwardGPU\n");
+  //printf("--> backwardGPU\n");
 
   return 0;
 }

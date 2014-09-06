@@ -48,7 +48,7 @@ cpres_2::~cpres_2()
   }
 }
 
-#ifndef USECUDA
+//#ifndef USECUDA
 int cpres_2::exec(double dt)
 {
   // create the input for the pressure solver
@@ -67,7 +67,7 @@ int cpres_2::exec(double dt)
 
   return 0;
 }
-#endif
+//#endif
 
 double cpres_2::check()
 {
@@ -390,7 +390,7 @@ int cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c,
   return 0;
 }
 
-#ifndef USECUDA
+//#ifndef USECUDA
 double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
@@ -422,4 +422,4 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
 
   return divmax;
 }
-#endif
+//#endif

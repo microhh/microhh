@@ -296,6 +296,7 @@ __global__ void pres_2_calcdiv(double * __restrict__ u, double * __restrict__ v,
     div[ijk] = 0.;
 }
 
+/*
 #ifdef USECUDA
 int cpres_2::exec(double dt)
 {
@@ -435,4 +436,4 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
   return divmax;
 }
 #endif
-
+*/

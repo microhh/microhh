@@ -81,6 +81,7 @@ __global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restri
   }
 } 
 
+/*
 #ifdef USECUDA
 int cboundary::exec()
 {
@@ -153,7 +154,7 @@ int cboundary::exec()
   return 0;
 }
 #endif
-
+*/
 
 
 
