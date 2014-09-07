@@ -181,11 +181,11 @@ __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v
     tmp1[ijk] = 0.;
 }
 
-/*
+
 #ifdef USECUDA
 int cadvec_2::exec()
 {
-  //fields->forwardGPU();
+  fields->forwardGPU();
 
   const int blocki = 128;
   const int blockj = 2;
@@ -198,7 +198,8 @@ int cadvec_2::exec()
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
   
-  
+  const int offs = grid->memoffset;
+
   //advec_2_advecu<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g, fields->v->data_g, 
   //                                      fields->w->data_g, grid->dzi_g, dxi, dyi,
   //                                      grid->icells, grid->ijcells,
@@ -217,32 +218,36 @@ int cadvec_2::exec()
   //                                      grid->istart, grid->jstart, grid->kstart,
   //                                      grid->iend,   grid->jend, grid->kend);
 
-  advec_2_advecuvw<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->vt->data_g, fields->wt->data_g, 
-                                          fields->u->data_g,  fields->v->data_g,  fields->w->data_g, 
+  advec_2_advecuvw<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs], 
+                                          &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs], 
                                           grid->dzi_g, grid->dzhi_g, dxi, dyi,
-                                          grid->icells, grid->ijcells,
+                                          grid->icellsp, grid->ijcellsp,
                                           grid->istart, grid->jstart, grid->kstart,
                                           grid->iend,   grid->jend, grid->kend);
   
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advec_2_advecs<<<gridGPU, blockGPU>>>((*it->second).data_g, (*fields->s[it->first]).data_g, 
-                                          fields->u->data_g, fields->v->data_g, fields->w->data_g, 
+    advec_2_advecs<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], 
+                                          &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
                                           grid->dzi_g, dxi, dyi,
-                                          grid->icells, grid->ijcells,
+                                          grid->icellsp, grid->ijcellsp,
                                           grid->istart, grid->jstart, grid->kstart,
                                           grid->iend,   grid->jend, grid->kend);
 
-  //fields->backwardGPU();
+  fields->backwardGPU();
+
   return 0;
 }
 #endif
 
+
 #ifdef USECUDA
 double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, double dt)
 {
+  fields->forwardGPU();
+
   const int blocki = 128;
   const int blockj = 2;
-  const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
+  const int gridi  = grid->icellsp/blocki + (grid->icellsp%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
   double cfl = 0;
 
@@ -252,21 +257,23 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
-  //fields->forwardGPU();
+  const int offs = grid->memoffset;
 
-  advec_2_calccfl<<<gridGPU, blockGPU>>>(fields->u->data_g, fields->v->data_g, fields->w->data_g, 
-                                         fields->a["tmp1"]->data_g, grid->dzi_g, dxi, dyi,
-                                         grid->icells, grid->ijcells,
-                                         grid->istart, grid->jstart, grid->kstart,
-                                         grid->iend,   grid->jend, grid->kend,
-                                         grid->icells, grid->jcells, grid->kcells);
+  /* TODO: write algoritm that reduces only the domain itself, excluding ghost and padding cells
+     With padding, the overhead of the ghost/padding cells can get quite large */
+  advec_2_calccfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
+                                         &fields->a["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
+                                         grid->icellsp, grid->ijcellsp,
+                                         grid->istart,  grid->jstart, grid->kstart,
+                                         grid->iend,    grid->jend,   grid->kend,
+                                         grid->icellsp, grid->jcells, grid->kcells);
 
-  cfl = maximum_gpu(fields->a["tmp1"]->data_g, grid->ncells);
+  cfl = maximum_gpu(&fields->a["tmp1"]->data_g[offs], grid->ncellsp-offs);
   grid->getmax(&cfl);
   cfl = cfl*dt;
 
   return cfl;
 }
 #endif
-*/
+
 

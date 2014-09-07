@@ -60,10 +60,10 @@ int cgrid::prepareGPU()
   /* Align the interior of the grid (i.e. excluding ghost cells) with 
      the 128 byte memory blocks of the GPU's global memory */
   memoffset = 16 - igc;           // Padding at start of array 
-  int padl  = 16-(int)itot%16;    // Elements left in last 128 byte block
-  icellsp   = itot + padl + (padl < 2*igc) * 16;
+  int padl  = 16-(int)imax%16;    // Elements left in last 128 byte block
+  icellsp   = imax + padl + (padl < 2*igc) * 16;
   ijcellsp  = icellsp * jcells;  
-  ncellsp   = ijcellsp * kcells;
+  ncellsp   = ijcellsp * kcells + memoffset;
 
   const int kmemsize = kcells*sizeof(double);
 
