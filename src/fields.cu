@@ -4,8 +4,8 @@
 
 int cfields::prepareGPU()
 {
-  const int nmemsize = grid->ncellsp*sizeof(double);
-  const int nmemsize2d = grid->ijcellsp*sizeof(double);
+  const int nmemsize   = grid->ncellsp*sizeof(double);
+  const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {

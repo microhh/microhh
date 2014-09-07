@@ -41,14 +41,14 @@
 
 __global__ void boundary_setgcbot_2nd(double * __restrict__ a, double * __restrict__ dzh, int sw, 
                                       double * __restrict__ abot, double * __restrict__ agradbot,
-                                      const unsigned int icells, const unsigned int jcells, const unsigned int kstart)
+                                      const unsigned int icells, const unsigned int icellsp, const unsigned int jcells, const unsigned int kstart)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x;
   int j = blockIdx.y*blockDim.y + threadIdx.y;
 
-  int kk  = icells*jcells;
-  int ij  = i + j*jcells;
-  int ijk = i + j*jcells + kstart*kk;
+  int kk  = icellsp*jcells;
+  int ij  = i + j*icellsp;
+  int ijk = i + j*icellsp + kstart*kk;
 
   if(i < icells && j < jcells)
   {
@@ -62,14 +62,14 @@ __global__ void boundary_setgcbot_2nd(double * __restrict__ a, double * __restri
 
 __global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restrict__ dzh, int sw, 
                                       double * __restrict__ atop, double * __restrict__ agradtop,
-                                      const unsigned int icells, const unsigned int jcells, const unsigned int kend)
+                                      const unsigned int icells, const unsigned int icellsp, const unsigned int jcells, const unsigned int kend)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x;
   int j = blockIdx.y*blockDim.y + threadIdx.y;
 
-  int kk  = icells*jcells;
-  int ij  = i + j*jcells;
-  int ijk = i + j*jcells + (kend-1)*kk;
+  int kk  = icellsp*jcells;
+  int ij  = i + j*icellsp;
+  int ijk = i + j*icellsp + (kend-1)*kk;
 
   if(i < icells && j < jcells)
   {
@@ -81,11 +81,11 @@ __global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restri
   }
 } 
 
-/*
+
 #ifdef USECUDA
 int cboundary::exec()
 {
-  //fields->forwardGPU();
+  fields->forwardGPU();
 
   const int blocki = 128;
   const int blockj = 2;
@@ -100,34 +100,42 @@ int cboundary::exec()
   //grid->boundary_cyclic(fields->v->data_g);
   //grid->boundary_cyclic(fields->w->data_g);
 
-  grid->boundary_cyclic_gpu(fields->u->data_g);
-  grid->boundary_cyclic_gpu(fields->v->data_g);
-  grid->boundary_cyclic_gpu(fields->w->data_g);
+  const int offs = grid->memoffset;
+
+  grid->boundary_cyclic_gpu(&fields->u->data_g[offs]);
+  grid->boundary_cyclic_gpu(&fields->v->data_g[offs]);
+  grid->boundary_cyclic_gpu(&fields->w->data_g[offs]);
 
   for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
-    grid->boundary_cyclic_gpu(it->second->data_g);
+    grid->boundary_cyclic_gpu(&it->second->data_g[offs]);
 
   // calculate boundary values
   bcvalues();
 
   if(grid->swspatialorder == "2")
   {
-    boundary_setgcbot_2nd<<<grid2dGPU, block2dGPU>>>(fields->u->data_g, grid->dzh_g, mbcbot, fields->u->databot_g, fields->u->datagradbot_g,
-                                                     grid->icells, grid->jcells, grid->kstart);
-    boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(fields->u->data_g, grid->dzh_g, mbctop, fields->u->datatop_g, fields->u->datagradtop_g,
-                                                     grid->icells, grid->jcells, grid->kend);
+    boundary_setgcbot_2nd<<<grid2dGPU, block2dGPU>>>(&fields->u->data_g[offs], grid->dzh_g, mbcbot, 
+                                                     &fields->u->databot_g[offs], &fields->u->datagradbot_g[offs],
+                                                     grid->icells, grid->icellsp, grid->jcells, grid->kstart);
+    boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(&fields->u->data_g[offs], grid->dzh_g, mbctop, 
+                                                     &fields->u->datatop_g[offs], &fields->u->datagradtop_g[offs],
+                                                     grid->icells, grid->icellsp, grid->jcells, grid->kend);
 
-    boundary_setgcbot_2nd<<<grid2dGPU, block2dGPU>>>(fields->v->data_g, grid->dzh_g, mbcbot, fields->v->databot_g, fields->v->datagradbot_g,
-                                                     grid->icells, grid->jcells, grid->kstart);
-    boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(fields->v->data_g, grid->dzh_g, mbctop, fields->v->datatop_g, fields->v->datagradtop_g,
-                                                     grid->icells, grid->jcells, grid->kend);
+    boundary_setgcbot_2nd<<<grid2dGPU, block2dGPU>>>(&fields->v->data_g[offs], grid->dzh_g, mbcbot, 
+                                                     &fields->v->databot_g[offs], &fields->v->datagradbot_g[offs],
+                                                     grid->icells, grid->icellsp, grid->jcells, grid->kstart);
+    boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(&fields->v->data_g[offs], grid->dzh_g, mbctop, 
+                                                     &fields->v->datatop_g[offs], &fields->v->datagradtop_g[offs],
+                                                     grid->icells, grid->icellsp, grid->jcells, grid->kend);
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-      boundary_setgcbot_2nd<<<grid2dGPU, block2dGPU>>>(it->second->data_g, grid->dzh_g, sbc[it->first]->bcbot, it->second->databot_g, it->second->datagradbot_g,
-                                                       grid->icells, grid->jcells, grid->kstart);
-      boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(it->second->data_g, grid->dzh_g, sbc[it->first]->bctop, it->second->datatop_g, it->second->datagradtop_g,
-                                                       grid->icells, grid->jcells, grid->kend);
+      boundary_setgcbot_2nd<<<grid2dGPU, block2dGPU>>>(&it->second->data_g[offs], grid->dzh_g, sbc[it->first]->bcbot, 
+                                                       &it->second->databot_g[offs], &it->second->datagradbot_g[offs],
+                                                       grid->icells, grid->icellsp, grid->jcells, grid->kstart);
+      boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(&it->second->data_g[offs], grid->dzh_g, sbc[it->first]->bctop, 
+                                                       &it->second->datatop_g[offs], &it->second->datagradtop_g[offs],
+                                                       grid->icells, grid->icellsp, grid->jcells, grid->kend);
     }
   }
   //else if(grid->swspatialorder == "4")
@@ -149,12 +157,12 @@ int cboundary::exec()
   //}
 
 
-  //fields->backwardGPU();
+  fields->backwardGPU();
 
   return 0;
 }
 #endif
-*/
+
 
 
 

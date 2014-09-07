@@ -2,6 +2,7 @@
 
 __global__ void grid_cyclic_x(double * __restrict__ data, 
                               const int icells, const int jcells, const int kcells,
+                              const int icellsp,
                               const int istart, const int jstart,
                               const int iend,   const int jend, 
                               const int igc,    const int jgc)
@@ -10,8 +11,8 @@ __global__ void grid_cyclic_x(double * __restrict__ data,
   const int j = blockIdx.y*blockDim.y + threadIdx.y;
   const int k = blockIdx.z;
 
-  const int jj = icells;
-  const int kk = icells*jcells;
+  const int jj = icellsp;
+  const int kk = icellsp*jcells;
 
   int ijk0, ijk1, ijk2, ijk3;
 
@@ -30,6 +31,7 @@ __global__ void grid_cyclic_x(double * __restrict__ data,
 
 __global__ void grid_cyclic_y(double * __restrict__ data, 
                               const int icells, const int jcells, const int kcells,
+                              const int icellsp,
                               const int istart, const int jstart,
                               const int iend,   const int jend, 
                               const int igc,    const int jgc)
@@ -38,8 +40,8 @@ __global__ void grid_cyclic_y(double * __restrict__ data,
   const int j = blockIdx.y*blockDim.y + threadIdx.y;
   const int k = blockIdx.z;
 
-  const int jj = icells;
-  const int kk = icells*jcells;
+  const int jj = icellsp;
+  const int kk = icellsp*jcells;
 
   int ijk0, ijk1, ijk2, ijk3;
 
@@ -50,6 +52,7 @@ __global__ void grid_cyclic_y(double * __restrict__ data,
     ijk1 = i + (jend-jgc+j)*jj + k*kk;
     ijk2 = i + (j+jend  )*jj + k*kk;
     ijk3 = i + (j+jstart)*jj + k*kk;
+
     data[ijk0] = data[ijk1];
     data[ijk2] = data[ijk3];
   }
@@ -103,7 +106,7 @@ int cgrid::boundary_cyclic_gpu(double * data)
   const int gridi_x  = 1;
   const int gridj_x  = jcells/blockj_x + (jcells%blockj_x > 0);
 
-  const int blocki_y = 256 / igc + (256%jgc > 0);
+  const int blocki_y = 256 / jgc + (256%jgc > 0);
   const int blockj_y = jgc;
   const int gridi_y  = icells/blocki_y + (icells%blocki_y > 0);
   const int gridj_y  = 1;
@@ -114,12 +117,12 @@ int cgrid::boundary_cyclic_gpu(double * data)
   dim3 gridGPUy (gridi_y, gridj_y, kcells);
   dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-  grid_cyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells,
+  grid_cyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
                                         istart, jstart,
                                         iend,   jend,
                                         igc,    jgc);
 
-  grid_cyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells,
+  grid_cyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
                                         istart, jstart,
                                         iend,   jend,
                                         igc,    jgc);
