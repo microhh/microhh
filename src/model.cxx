@@ -28,6 +28,7 @@
 #include "model.h"
 #include "defines.h"
 #include "timeloop.h"
+#include "advec.h"
 #include "buffer.h"
 #include "force.h"
 #include "stats.h"
@@ -38,13 +39,6 @@
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_user.h"
-
-// advection schemes
-#include "advec.h"
-#include "advec_2.h"
-#include "advec_2int4.h"
-#include "advec_4.h"
-#include "advec_4m.h"
 
 // diffusion schemes
 #include "diff.h"
@@ -152,17 +146,8 @@ int cmodel::readinifile()
     return 1;
 
   // check the advection scheme
-  if(swadvec == "0")
-    advec = new cadvec(this);
-  else if(swadvec == "2")
-    advec = new cadvec_2(this);
-  else if(swadvec == "2int4")
-    advec = new cadvec_2int4(this);
-  else if(swadvec == "4")
-    advec = new cadvec_4(this);
-  else if(swadvec == "4m")
-    advec = new cadvec_4m(this);
-  else
+  advec = cadvec::factory(this, swadvec);
+  if(advec == 0)
   {
     master->printError("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     return 1;

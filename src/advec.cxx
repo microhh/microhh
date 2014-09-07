@@ -28,6 +28,11 @@
 #include "defines.h"
 #include "model.h"
 
+#include "advec_2.h"
+#include "advec_2int4.h"
+#include "advec_4.h"
+#include "advec_4m.h"
+
 cadvec::cadvec(cmodel *modelin)
 {
   model  = modelin;
@@ -69,3 +74,19 @@ int cadvec::exec()
   return 0;
 }
 
+cadvec* cadvec::factory(cmodel *modelin, std::string swadvec)
+{
+  // check the advection scheme
+  if(swadvec == "0")
+    return new cadvec(modelin);
+  else if(swadvec == "2")
+    return new cadvec_2(modelin);
+  else if(swadvec == "2int4")
+    return new cadvec_2int4(modelin);
+  else if(swadvec == "4")
+    return new cadvec_4(modelin);
+  else if(swadvec == "4m")
+    return new cadvec_4m(modelin);
+  else
+    return 0;
+}

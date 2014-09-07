@@ -46,6 +46,8 @@ class cadvec
 
     virtual unsigned long gettimelim(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
 
+    static cadvec* factory(cmodel *, std::string);
+
 
   protected:
     cmaster *master; ///< Pointer to master class.
