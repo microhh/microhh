@@ -31,6 +31,7 @@
 #include "advec.h"
 #include "diff.h"
 #include "pres.h"
+#include "thermo.h"
 #include "buffer.h"
 #include "force.h"
 #include "stats.h"
@@ -41,13 +42,6 @@
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_user.h"
-
-// thermo schemes
-#include "thermo.h"
-#include "thermo_buoy.h"
-#include "thermo_buoy_slope.h"
-#include "thermo_dry.h"
-#include "thermo_moist.h"
 
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
@@ -112,7 +106,6 @@ int cmodel::readinifile()
 
   // first, get the switches for the schemes
   nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
-  nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
 
   // get the list of masks
   nerror += input->getList(&masklist, "stats", "masklist", "");
@@ -160,21 +153,10 @@ int cmodel::readinifile()
   if(timeloop->readinifile(input))
     return 1;
 
-  if(swthermo== "moist")
-    thermo = new cthermo_moist(this);
-  else if(swthermo == "buoy")
-    thermo = new cthermo_buoy(this);
-  else if(swthermo == "dry")
-    thermo = new cthermo_dry(this);
-  else if(swthermo == "buoy_slope")
-    thermo = new cthermo_buoy_slope(this);
-  else if(swthermo == "0")
-    thermo = new cthermo(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+  // check the thermo scheme
+  thermo = cthermo::factory(master, input, this);
+  if(thermo == 0)
     return 1;
-  }
   if(thermo->readinifile(input))
     return 1;
 

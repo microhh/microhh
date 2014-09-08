@@ -78,7 +78,6 @@ class cmodel
   private:
     // switches for included schemes
     std::string swboundary;
-    std::string swthermo;
 
     // list of masks for statistics
     std::vector<std::string> masklist;
