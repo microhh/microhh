@@ -29,6 +29,7 @@
 #include "defines.h"
 #include "timeloop.h"
 #include "advec.h"
+#include "diff.h"
 #include "buffer.h"
 #include "force.h"
 #include "stats.h"
@@ -39,12 +40,6 @@
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_user.h"
-
-// diffusion schemes
-#include "diff.h"
-#include "diff_2.h"
-#include "diff_4.h"
-#include "diff_les2s.h"
 
 // pressure schemes
 #include "pres.h"
@@ -75,11 +70,11 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   buffer   = new cbuffer(this);
 
   // set null pointers for classes that will be initialized later
-  boundary = NULL;
-  advec    = NULL;
-  diff     = NULL;
-  pres     = NULL;
-  thermo   = NULL;
+  boundary = 0;
+  advec    = 0;
+  diff     = 0;
+  pres     = 0;
+  thermo   = 0;
 
   // load the postprocessing modules
   stats  = new cstats(this);
@@ -120,7 +115,6 @@ int cmodel::readinifile()
     return 1;
 
   // first, get the switches for the schemes
-  nerror += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
   nerror += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
@@ -152,28 +146,9 @@ int cmodel::readinifile()
     return 1;
 
   // check the diffusion scheme
-  if(swdiff == "0")
-    diff = new cdiff(this);
-  else if(swdiff == "2")
-    diff = new cdiff_2(this);
-  else if(swdiff == "4")
-    diff = new cdiff_4(this);
-  // TODO move to new model file later?
-  else if(swdiff == "les2s")
-  {
-    diff = new cdiff_les2s(this);
-    // the subgrid model requires a surface model because of the MO matching at first level
-    if(swboundary != "surface")
-    {
-      master->printError("swdiff == \"les2s\" requires swboundary == \"surface\"\n");
-      return 1;
-    }
-  }
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
+  diff = cdiff::factory(master, input, this, grid->swspatialorder);
+  if(diff == 0)
     return 1;
-  }
   if(diff->readinifile(input))
     return 1;
 
