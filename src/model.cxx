@@ -120,7 +120,6 @@ int cmodel::readinifile()
     return 1;
 
   // first, get the switches for the schemes
-  nerror += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
   nerror += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
   nerror += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
@@ -146,12 +145,9 @@ int cmodel::readinifile()
     return 1;
 
   // check the advection scheme
-  advec = cadvec::factory(this, swadvec);
+  advec = cadvec::factory(master, input, this, grid->swspatialorder);
   if(advec == 0)
-  {
-    master->printError("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     return 1;
-  }
   if(advec->readinifile(input))
     return 1;
 

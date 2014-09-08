@@ -26,6 +26,7 @@
 #include "fields.h"
 #include "advec.h"
 #include "defines.h"
+#include "master.h"
 #include "model.h"
 
 #include "advec_2.h"
@@ -74,9 +75,12 @@ int cadvec::exec()
   return 0;
 }
 
-cadvec* cadvec::factory(cmodel *modelin, std::string swadvec)
+cadvec* cadvec::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)
 {
-  // check the advection scheme
+  std::string swadvec;
+  if(inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
+    return 0;
+
   if(swadvec == "0")
     return new cadvec(modelin);
   else if(swadvec == "2")
@@ -88,5 +92,8 @@ cadvec* cadvec::factory(cmodel *modelin, std::string swadvec)
   else if(swadvec == "4m")
     return new cadvec_4m(modelin);
   else
+  {
+    masterin->printError("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     return 0;
+  }
 }

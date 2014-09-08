@@ -77,7 +77,6 @@ class cmodel
 
   private:
     // switches for included schemes
-    std::string swadvec;
     std::string swdiff;
     std::string swpres;
     std::string swboundary;
