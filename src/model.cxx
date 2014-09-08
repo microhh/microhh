@@ -32,16 +32,12 @@
 #include "diff.h"
 #include "pres.h"
 #include "thermo.h"
+#include "boundary.h"
 #include "buffer.h"
 #include "force.h"
 #include "stats.h"
 #include "cross.h"
 #include "budget.h"
-
-// boundary schemes
-#include "boundary.h"
-#include "boundary_surface.h"
-#include "boundary_user.h"
 
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
@@ -104,9 +100,6 @@ int cmodel::readinifile()
   if(fields->readinifile(input))
     return 1;
 
-  // first, get the switches for the schemes
-  nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
-
   // get the list of masks
   nerror += input->getList(&masklist, "stats", "masklist", "");
   for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -161,17 +154,9 @@ int cmodel::readinifile()
     return 1;
 
   // read the boundary and buffer in the end because they need to know the requested fields
-  if(swboundary == "surface")
-    boundary = new cboundary_surface(this);
-  else if(swboundary == "user")
-    boundary = new cboundary_user(this);
-  else if(swboundary == "default")
-    boundary = new cboundary(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+  boundary = cboundary::factory(master, input, this);
+  if(boundary == 0)
     return 1;
-  }
   if(boundary->readinifile(input))
     return 1;
   if(buffer->readinifile(input))

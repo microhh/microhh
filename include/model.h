@@ -76,9 +76,6 @@ class cmodel
     cbudget *budget;
 
   private:
-    // switches for included schemes
-    std::string swboundary;
-
     // list of masks for statistics
     std::vector<std::string> masklist;
 
