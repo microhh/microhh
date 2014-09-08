@@ -38,6 +38,7 @@ class cadvec
   public:
     cadvec(cmodel *);  ///< Constructor of the advection class.
     virtual ~cadvec(); ///< Destructor of the advection class.
+    static cadvec* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for advection class generation.
 
     virtual int readinifile(cinput *); ///< Processes the data from the input file.
     virtual int exec();                ///< Execute the advection scheme.
@@ -45,8 +46,6 @@ class cadvec
     virtual double getcfl(double); ///< Retrieve the CFL number.
 
     virtual unsigned long gettimelim(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-
-    static cadvec* factory(cmaster *, cinput *, cmodel *, const std::string);
 
   protected:
     cmaster *master; ///< Pointer to master class.

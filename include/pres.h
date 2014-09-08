@@ -33,6 +33,7 @@ class cpres
   public:
     cpres(cmodel *);
     virtual ~cpres();
+    static cpres* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for pres class generation.
 
     virtual int readinifile(cinput *);
 

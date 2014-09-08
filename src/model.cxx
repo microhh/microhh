@@ -30,6 +30,7 @@
 #include "timeloop.h"
 #include "advec.h"
 #include "diff.h"
+#include "pres.h"
 #include "buffer.h"
 #include "force.h"
 #include "stats.h"
@@ -40,11 +41,6 @@
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_user.h"
-
-// pressure schemes
-#include "pres.h"
-#include "pres_2.h"
-#include "pres_4.h"
 
 // thermo schemes
 #include "thermo.h"
@@ -115,7 +111,6 @@ int cmodel::readinifile()
     return 1;
 
   // first, get the switches for the schemes
-  nerror += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
   nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
   nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
 
@@ -153,17 +148,9 @@ int cmodel::readinifile()
     return 1;
 
   // check the pressure scheme
-  if(swpres == "0")
-    pres = new cpres(this);
-  else if(swpres == "2")
-    pres = new cpres_2(this);
-  else if(swpres == "4")
-    pres = new cpres_4(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());
+  pres = cpres::factory(master, input, this, grid->swspatialorder);
+  if(pres == 0)
     return 1;
-  }
   if(pres->readinifile(input))
     return 1;
 
