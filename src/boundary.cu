@@ -85,7 +85,7 @@ __global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restri
 #ifdef USECUDA
 int cboundary::exec()
 {
-  fields->forwardGPU();
+  //fields->forwardGPU();
 
   const int blocki = 128;
   const int blockj = 2;
@@ -157,7 +157,7 @@ int cboundary::exec()
   //}
 
 
-  fields->backwardGPU();
+  //fields->backwardGPU();
 
   return 0;
 }

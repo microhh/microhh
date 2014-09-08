@@ -182,7 +182,7 @@ int ctimeloop::settimestep()
 #ifdef USECUDA
 int ctimeloop::exec()
 {
-  fields->forwardGPU();
+  //fields->forwardGPU();
 
   if(rkorder == 3)
   {
@@ -200,7 +200,7 @@ int ctimeloop::exec()
     substep = (substep+1) % 5;
   }
 
-  fields->backwardGPU();
+  //fields->backwardGPU();
 
   return substep;
 }

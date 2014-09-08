@@ -48,7 +48,7 @@ cpres_2::~cpres_2()
   }
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 int cpres_2::exec(double dt)
 {
   // create the input for the pressure solver
@@ -67,7 +67,7 @@ int cpres_2::exec(double dt)
 
   return 0;
 }
-//#endif
+#endif
 
 double cpres_2::check()
 {
@@ -179,6 +179,7 @@ int cpres_2::pres_in(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+
         p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
                 + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
                 + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k+kgc];
@@ -215,6 +216,10 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
 
   jj = iblock;
   kk = iblock*jblock;
+
+  //for (int i=0; i<itot*jtot; ++i)
+  //  printf("%i %e\n",i,p[i]);
+  //exit(1);
 
   // solve the tridiagonal system
   // create vectors that go into the tridiagonal matrix solver
@@ -390,7 +395,7 @@ int cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c,
   return 0;
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
 {
   int    ijk,ii,jj,kk;
@@ -422,4 +427,4 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
 
   return divmax;
 }
-//#endif
+#endif
