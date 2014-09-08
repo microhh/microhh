@@ -38,6 +38,7 @@ class ccross
 
     int readinifile(cinput *);
     int init(int);
+    int create();
     unsigned long gettimelim(unsigned long);
     //int exec(double, unsigned long, int);
 
@@ -58,8 +59,12 @@ class ccross
     double sampletime;
     unsigned long isampletime;
 
-    std::vector<int> jxz;
-    std::vector<int> kxy;
+    std::vector<int> jxz;   ///< Index of nearest full y position of xz input
+    std::vector<int> kxy;   ///< Index of nearest full height level of xy input
+    std::vector<int> jxzh;  ///< Index of nearest half y position of xz input
+    std::vector<int> kxyh;  ///< Index of nearest half height level of xy input
+    std::vector<double> xz; ///< Y-position [m] xz cross from ini file
+    std::vector<double> xy; ///< Z-position [m] xy cross from ini file
 
     std::vector<std::string> simple;
     std::vector<std::string> bot;

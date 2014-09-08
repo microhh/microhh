@@ -25,9 +25,14 @@
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
-#include "diff.h"
 #include "defines.h"
 #include "model.h"
+
+// diffusion schemes
+#include "diff.h"
+#include "diff_2.h"
+#include "diff_4.h"
+#include "diff_les2s.h"
 
 cdiff::cdiff(cmodel *modelin)
 {
@@ -86,4 +91,39 @@ int cdiff::exec()
 std::string cdiff::getname()
 {
   return swdiff;
+}
+
+cdiff* cdiff::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)
+{
+  std::string swdiff;
+  std::string swboundary;
+
+  int nerror = 0;
+  nerror += inputin->getItem(&swdiff, "diff", "swdiff", "", swspatialorder);
+  // load the boundary switch as well in order to be able to check whether the surface model is used
+  nerror += inputin->getItem(&swboundary, "boundary", "swboundary", "", "default");
+  if(nerror)
+    return 0;
+
+  if(swdiff == "0")
+    return new cdiff(modelin);
+  else if(swdiff == "2")
+    return new cdiff_2(modelin);
+  else if(swdiff == "4")
+    return new cdiff_4(modelin);
+  else if(swdiff == "les2s")
+  {
+    // the subgrid model requires a surface model because of the MO matching at first level
+    if(swboundary != "surface")
+    {
+      masterin->printError("swdiff == \"les2s\" requires swboundary == \"surface\"\n");
+      return 0;
+    }
+    return new cdiff_les2s(modelin);
+  }
+  else
+  {
+    masterin->printError("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
+    return 0;
+  }
 }

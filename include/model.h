@@ -79,13 +79,6 @@ class cmodel
     std::string swbasestate;
 
   private:
-    // switches for included schemes
-    std::string swadvec;
-    std::string swdiff;
-    std::string swpres;
-    std::string swboundary;
-    std::string swthermo;
-
 
     // list of masks for statistics
     std::vector<std::string> masklist;

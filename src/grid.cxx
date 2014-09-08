@@ -20,6 +20,7 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include "master.h"
 #include "grid.h"

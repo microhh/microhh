@@ -26,10 +26,14 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "boundary.h"
 #include "defines.h"
 #include "model.h"
 #include "timeloop.h"
+
+// boundary schemes
+#include "boundary.h"
+#include "boundary_surface.h"
+#include "boundary_user.h"
 
 #define NO_OFFSET 0.
 #define NO_VELOCITY 0.
@@ -343,6 +347,25 @@ int cboundary::execstats(mask *m)
 int cboundary::bcvalues()
 {
   return 0;
+}
+
+cboundary* cboundary::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
+{
+  std::string swboundary;
+  if(inputin->getItem(&swboundary, "boundary", "swboundary", "", "default"))
+    return 0;
+
+  if(swboundary == "surface")
+    return new cboundary_surface(modelin);
+  else if(swboundary == "user")
+    return new cboundary_user(modelin);
+  else if(swboundary == "default")
+    return new cboundary(modelin);
+  else
+  {
+    masterin->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+    return 0;
+  }
 }
 
 int cboundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset)

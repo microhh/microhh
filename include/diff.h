@@ -33,6 +33,7 @@ class cdiff
   public:
     cdiff(cmodel *);
     virtual ~cdiff();
+    static cdiff* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for diff class generation.
 
     virtual int readinifile(cinput *);
     virtual int setvalues();

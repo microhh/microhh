@@ -28,41 +28,16 @@
 #include "model.h"
 #include "defines.h"
 #include "timeloop.h"
+#include "advec.h"
+#include "diff.h"
+#include "pres.h"
+#include "thermo.h"
+#include "boundary.h"
 #include "buffer.h"
 #include "force.h"
 #include "stats.h"
 #include "cross.h"
 #include "budget.h"
-
-// boundary schemes
-#include "boundary.h"
-#include "boundary_surface.h"
-#include "boundary_user.h"
-
-// advection schemes
-#include "advec.h"
-#include "advec_2.h"
-#include "advec_2int4.h"
-#include "advec_4.h"
-#include "advec_4m.h"
-
-// diffusion schemes
-#include "diff.h"
-#include "diff_2.h"
-#include "diff_4.h"
-#include "diff_les2s.h"
-
-// pressure schemes
-#include "pres.h"
-#include "pres_2.h"
-#include "pres_4.h"
-
-// thermo schemes
-#include "thermo.h"
-#include "thermo_buoy.h"
-#include "thermo_buoy_slope.h"
-#include "thermo_dry.h"
-#include "thermo_moist.h"
 
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
@@ -81,11 +56,11 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   buffer   = new cbuffer(this);
 
   // set null pointers for classes that will be initialized later
-  boundary = NULL;
-  advec    = NULL;
-  diff     = NULL;
-  pres     = NULL;
-  thermo   = NULL;
+  boundary = 0;
+  advec    = 0;
+  diff     = 0;
+  pres     = 0;
+  thermo   = 0;
 
   // load the postprocessing modules
   stats  = new cstats(this);
@@ -125,13 +100,6 @@ int cmodel::readinifile()
   if(fields->readinifile(input))
     return 1;
 
-  // first, get the switches for the schemes
-  nerror += input->getItem(&swadvec     , "advec"   , "swadvec"   , "", grid->swspatialorder);
-  nerror += input->getItem(&swdiff      , "diff"    , "swdiff"    , "", grid->swspatialorder);
-  nerror += input->getItem(&swpres      , "pres"    , "swpres"    , "", grid->swspatialorder);
-  nerror += input->getItem(&swboundary  , "boundary", "swboundary", "", "default");
-  nerror += input->getItem(&swthermo    , "thermo"  , "swthermo"  , "", "0");
-
   // Get base state option (boussinesq or anelastic)
   nerror += input->getItem(&swbasestate , "grid"  , "swbasestate" , "", "");  // BvS: where to put switch??
 
@@ -170,62 +138,23 @@ int cmodel::readinifile()
     return 1;
 
   // check the advection scheme
-  if(swadvec == "0")
-    advec = new cadvec(this);
-  else if(swadvec == "2")
-    advec = new cadvec_2(this);
-  else if(swadvec == "2int4")
-    advec = new cadvec_2int4(this);
-  else if(swadvec == "4")
-    advec = new cadvec_4(this);
-  else if(swadvec == "4m")
-    advec = new cadvec_4m(this);
-  else
-  {
-    master->printError("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
+  advec = cadvec::factory(master, input, this, grid->swspatialorder);
+  if(advec == 0)
     return 1;
-  }
   if(advec->readinifile(input))
     return 1;
 
   // check the diffusion scheme
-  if(swdiff == "0")
-    diff = new cdiff(this);
-  else if(swdiff == "2")
-    diff = new cdiff_2(this);
-  else if(swdiff == "4")
-    diff = new cdiff_4(this);
-  // TODO move to new model file later?
-  else if(swdiff == "les2s")
-  {
-    diff = new cdiff_les2s(this);
-    // the subgrid model requires a surface model because of the MO matching at first level
-    if(swboundary != "surface")
-    {
-      master->printError("swdiff == \"les2s\" requires swboundary == \"surface\"\n");
-      return 1;
-    }
-  }
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
+  diff = cdiff::factory(master, input, this, grid->swspatialorder);
+  if(diff == 0)
     return 1;
-  }
   if(diff->readinifile(input))
     return 1;
 
   // check the pressure scheme
-  if(swpres == "0")
-    pres = new cpres(this);
-  else if(swpres == "2")
-    pres = new cpres_2(this);
-  else if(swpres == "4")
-    pres = new cpres_4(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());
+  pres = cpres::factory(master, input, this, grid->swspatialorder);
+  if(pres == 0)
     return 1;
-  }
   if(pres->readinifile(input))
     return 1;
 
@@ -235,36 +164,17 @@ int cmodel::readinifile()
   if(timeloop->readinifile(input))
     return 1;
 
-  if(swthermo== "moist")
-    thermo = new cthermo_moist(this);
-  else if(swthermo == "buoy")
-    thermo = new cthermo_buoy(this);
-  else if(swthermo == "dry")
-    thermo = new cthermo_dry(this);
-  else if(swthermo == "buoy_slope")
-    thermo = new cthermo_buoy_slope(this);
-  else if(swthermo == "0")
-    thermo = new cthermo(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+  // check the thermo scheme
+  thermo = cthermo::factory(master, input, this);
+  if(thermo == 0)
     return 1;
-  }
   if(thermo->readinifile(input))
     return 1;
 
   // read the boundary and buffer in the end because they need to know the requested fields
-  if(swboundary == "surface")
-    boundary = new cboundary_surface(this);
-  else if(swboundary == "user")
-    boundary = new cboundary_user(this);
-  else if(swboundary == "default")
-    boundary = new cboundary(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+  boundary = cboundary::factory(master, input, this);
+  if(boundary == 0)
     return 1;
-  }
   if(boundary->readinifile(input))
     return 1;
   if(buffer->readinifile(input))
@@ -318,6 +228,8 @@ int cmodel::load()
     return 1;
   // initialize the statistics file to open the possiblity to add profiles
   if(stats->create(timeloop->iotime))
+    return 1;
+  if(cross->create())
     return 1;
 
   if(fields->load(timeloop->iotime))

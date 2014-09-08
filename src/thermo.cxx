@@ -23,9 +23,15 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
-#include "thermo.h"
 #include "defines.h"
 #include "model.h"
+
+// thermo schemes
+#include "thermo.h"
+#include "thermo_buoy.h"
+#include "thermo_buoy_slope.h"
+#include "thermo_dry.h"
+#include "thermo_moist.h"
 
 cthermo::cthermo(cmodel *modelin)
 {
@@ -104,4 +110,27 @@ int cthermo::getprogvars(std::vector<std::string> *list)
 int cthermo::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
 {
   return 0;
+}
+
+cthermo* cthermo::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
+{
+  std::string swthermo;
+  if(inputin->getItem(&swthermo, "thermo", "swthermo", "", "0"))
+    return 0;
+
+  if(swthermo== "moist")
+    return new cthermo_moist(modelin);
+  else if(swthermo == "buoy")
+    return new cthermo_buoy(modelin);
+  else if(swthermo == "dry")
+    return new cthermo_dry(modelin);
+  else if(swthermo == "buoy_slope")
+    return new cthermo_buoy_slope(modelin);
+  else if(swthermo == "0")
+    return new cthermo(modelin);
+  else
+  {
+    masterin->printError("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+    return 0;
+  }
 }

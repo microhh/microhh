@@ -23,11 +23,15 @@
 #include <cmath>
 #include <algorithm>
 #include <fftw3.h>
+#include "master.h"
 #include "grid.h"
 #include "fields.h"
-#include "pres.h"
 #include "defines.h"
 #include "model.h"
+
+#include "pres.h"
+#include "pres_2.h"
+#include "pres_4.h"
 
 cpres::cpres(cmodel *modelin)
 {
@@ -65,4 +69,23 @@ double cpres::check()
 {
   double divmax = 0.;
   return divmax;
+}
+
+cpres* cpres::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)
+{
+  std::string swpres;
+  if(inputin->getItem(&swpres, "pres", "swpres", "", swspatialorder))
+    return 0;
+
+  if(swpres == "0")
+    return new cpres(modelin);
+  else if(swpres == "2")
+    return new cpres_2(modelin);
+  else if(swpres == "4")
+    return new cpres_4(modelin);
+  else
+  {
+    masterin->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());
+    return 0;
+  }
 }

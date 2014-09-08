@@ -26,7 +26,13 @@
 #include "fields.h"
 #include "advec.h"
 #include "defines.h"
+#include "master.h"
 #include "model.h"
+
+#include "advec_2.h"
+#include "advec_2int4.h"
+#include "advec_4.h"
+#include "advec_4m.h"
 
 cadvec::cadvec(cmodel *modelin)
 {
@@ -69,3 +75,25 @@ int cadvec::exec()
   return 0;
 }
 
+cadvec* cadvec::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)
+{
+  std::string swadvec;
+  if(inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
+    return 0;
+
+  if(swadvec == "0")
+    return new cadvec(modelin);
+  else if(swadvec == "2")
+    return new cadvec_2(modelin);
+  else if(swadvec == "2int4")
+    return new cadvec_2int4(modelin);
+  else if(swadvec == "4")
+    return new cadvec_4(modelin);
+  else if(swadvec == "4m")
+    return new cadvec_4m(modelin);
+  else
+  {
+    masterin->printError("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
+    return 0;
+  }
+}

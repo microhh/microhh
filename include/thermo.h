@@ -33,6 +33,8 @@ class cthermo
   public:
     cthermo(cmodel *);
     virtual ~cthermo();
+    static cthermo* factory(cmaster *, cinput *, cmodel *); ///< Factory function for thermo class generation.
+
     virtual int readinifile(cinput *);
     virtual int init();
     virtual int create(cinput *);
