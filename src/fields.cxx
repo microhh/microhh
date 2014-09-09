@@ -34,7 +34,7 @@
 
 #define NO_OFFSET 0.
 
-cfields::cfields(cmodel *modelin)
+cfields::cfields(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -42,6 +42,40 @@ cfields::cfields(cmodel *modelin)
 
   allocated = false;
   calcprofs = false;
+
+  // input parameters
+  int nerror = 0;
+
+  // obligatory parameters
+  nerror += inputin->getItem(&visc, "fields", "visc", "");
+
+  // read the name of the passive scalars
+  std::vector<std::string> slist;
+  nerror += inputin->getList(&slist, "fields", "slist", "");
+
+  // initialize the scalars
+  for(std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
+  {
+    if(initpfld(*it, *it, "-"))
+      throw 1;
+    nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
+  }
+
+  // Read list of cross sections
+  nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
+
+  // initialize the basic set of fields
+  nerror += initmomfld(u, ut, "u", "U velocity", "m s-1");
+  nerror += initmomfld(v, vt, "v", "V velocity", "m s-1");
+  nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
+  nerror += initdfld("p", "Pressure", "Pa");
+  nerror += initdfld("tmp1", "", "");
+  nerror += initdfld("tmp2", "", "");
+  nerror += initdfld("tmp3", "", "");
+  nerror += initdfld("tmp4", "", "");
+
+  if(nerror)
+    throw 1;
 }
 
 cfields::~cfields()
@@ -74,42 +108,6 @@ cfields::~cfields()
     delete[] umodel;
     delete[] vmodel;
   }
-}
-
-int cfields::readinifile(cinput *inputin)
-{
-  // input parameters
-  int nerror = 0;
-
-  // obligatory parameters
-  nerror += inputin->getItem(&visc, "fields", "visc", "");
-
-  // read the name of the passive scalars
-  std::vector<std::string> slist;
-  nerror += inputin->getList(&slist, "fields", "slist", "");
-
-  // initialize the scalars
-  for(std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
-  {
-    if(initpfld(*it,*it,"-"))
-      return 1;
-    nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
-  }
-
-  // Read list of cross sections
-  nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
-
-  // initialize the basic set of fields
-  nerror += initmomfld(u, ut, "u", "U velocity", "m s-1");
-  nerror += initmomfld(v, vt, "v", "V velocity", "m s-1");
-  nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
-  nerror += initdfld("p", "Pressure", "Pa");
-  nerror += initdfld("tmp1", "", "");
-  nerror += initdfld("tmp2", "", "");
-  nerror += initdfld("tmp3", "", "");
-  nerror += initdfld("tmp4", "", "");
-
-  return nerror;
 }
 
 int cfields::init()

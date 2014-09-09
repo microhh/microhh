@@ -45,10 +45,13 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   input  = inputin;
 
   // create the grid class
-  grid = new cgrid(this);
+  grid = new cgrid(this, input);
 
   // create the fields class
-  fields = new cfields(this);
+  fields = new cfields(this, input);
+
+  // create the model components
+  advec = cadvec::factory(master, input, this, grid->swspatialorder);
 
   // create the instances of the model operations
   timeloop = new ctimeloop(this);
@@ -70,14 +73,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   // input parameters
   int nerror = 0;
 
-  // grid
-  if(grid->readinifile(input))
-    throw 1;
-
-  // fields
-  if(fields->readinifile(input))
-    throw 1;
-
   // get the list of masks
   nerror += input->getList(&masklist, "stats", "masklist", "");
   for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -95,13 +90,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   // if one or more arguments fails, then crash
   if(nerror > 0)
-    throw 1;
-
-  // check the advection scheme
-  advec = cadvec::factory(master, input, this, grid->swspatialorder);
-  if(advec == 0)
-    throw 1;
-  if(advec->readinifile(input))
     throw 1;
 
   // check the diffusion scheme

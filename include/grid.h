@@ -42,15 +42,14 @@ class cmaster;
 class cgrid
 {
   public:
-    cgrid(cmodel *); ///< Constructor of the grid class.
-    ~cgrid();        ///< Destructor of the grid class.
+    cgrid(cmodel *, cinput *); ///< Constructor of the grid class.
+    ~cgrid();                  ///< Destructor of the grid class.
 
-    int readinifile(cinput *); ///< Processes data from the input file.
-    int init();                ///< Initialization of the grid arrays.
-    int create(cinput *);      ///< Creation of the grid data.
-    int calculate();           ///< Computation of dimensions, faces and ghost cells.
-    int save();                ///< Saves grid data to file.
-    int load();                ///< Loads grid data to file.
+    int init();           ///< Initialization of the grid arrays.
+    int create(cinput *); ///< Creation of the grid data.
+    int calculate();      ///< Computation of dimensions, faces and ghost cells.
+    int save();           ///< Saves grid data to file.
+    int load();           ///< Loads grid data to file.
 
     int itot; ///< Total number of grid cells in the x-direction.
     int jtot; ///< Total number of grid cells in the y-direction.

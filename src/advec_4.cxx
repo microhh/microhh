@@ -28,7 +28,7 @@
 #include "defines.h"
 #include "model.h"
 
-cadvec_4::cadvec_4(cmodel *modelin) : cadvec(modelin)
+cadvec_4::cadvec_4(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
 {
 }
 

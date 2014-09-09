@@ -31,14 +31,54 @@
 /**
  * This function constructs the grid class.
  * @param modelin Pointer to the model class.
+ * @param inputin Pointer to the input class.
  */
-cgrid::cgrid(cmodel *modelin)
+cgrid::cgrid(cmodel *modelin, cinput *inputin)
 {
   master = modelin->master;
 
   allocated = false;
   mpitypes  = false;
   fftwplan  = false;
+  
+  int nerror = 0;
+
+  nerror += inputin->getItem(&xsize, "grid", "xsize", "");
+  nerror += inputin->getItem(&ysize, "grid", "ysize", "");
+  nerror += inputin->getItem(&zsize, "grid", "zsize", "");
+
+  nerror += inputin->getItem(&itot, "grid", "itot", "");
+  nerror += inputin->getItem(&jtot, "grid", "jtot", "");
+  nerror += inputin->getItem(&ktot, "grid", "ktot", "");
+
+  nerror += inputin->getItem(&utrans, "grid", "utrans", "", 0.);
+  nerror += inputin->getItem(&vtrans, "grid", "vtrans", "", 0.);
+
+  nerror += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
+
+  if(nerror)
+    throw 1;
+
+  if(!(swspatialorder == "2" || swspatialorder == "4"))
+  {
+    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+    throw 1;
+  }
+ 
+  // 2nd order scheme requires only 1 ghost cell
+  if(swspatialorder == "2")
+  {
+    igc = 1;
+    jgc = 1;
+    kgc = 1;
+  }
+  // 4th order scheme requires 3 ghost cells
+  else if(swspatialorder == "4")
+  {
+    igc = 3;
+    jgc = 3;
+    kgc = 3;
+  }
 }
 
 /**
@@ -78,57 +118,6 @@ cgrid::~cgrid()
   }
 
   exitmpi();
-}
-
-/**
- * This function processes the input data and stores them in the class
- * variables.
- * @param inputin Pointer to the input class.
- * @return Returns 1 on error, 0 otherwise.
- */
-int cgrid::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-
-  nerror += inputin->getItem(&xsize, "grid", "xsize", "");
-  nerror += inputin->getItem(&ysize, "grid", "ysize", "");
-  nerror += inputin->getItem(&zsize, "grid", "zsize", "");
-
-  nerror += inputin->getItem(&itot, "grid", "itot", "");
-  nerror += inputin->getItem(&jtot, "grid", "jtot", "");
-  nerror += inputin->getItem(&ktot, "grid", "ktot", "");
-
-  // velocity of the grid for gaelian transformation
-  nerror += inputin->getItem(&utrans, "grid", "utrans", "", 0.);
-  nerror += inputin->getItem(&vtrans, "grid", "vtrans", "", 0.);
-
-  nerror += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
-
-  if(nerror > 0)
-    return nerror;
-
-  if(!(swspatialorder == "2" || swspatialorder == "4"))
-  {
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
-    return 1;
-  }
- 
-  // 2nd order scheme requires only 1 ghost cell
-  if(swspatialorder == "2")
-  {
-    igc = 1;
-    jgc = 1;
-    kgc = 1;
-  }
-  // 4th order scheme requires 3 ghost cells
-  else if(swspatialorder == "4")
-  {
-    igc = 3;
-    jgc = 3;
-    kgc = 3;
-  }
-
-  return 0;
 }
 
 /**

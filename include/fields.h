@@ -37,9 +37,9 @@ class cfields
 {
   public:
     // functions
-    cfields(cmodel *);
+    cfields(cmodel *, cinput *);
     ~cfields();
-    int readinifile(cinput *);
+
     int init();
     int create(cinput *);
     int exec();
