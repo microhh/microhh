@@ -35,10 +35,9 @@ class cfields;
 class ctimeloop
 {
   public:
-    ctimeloop(cmodel *);
+    ctimeloop(cmodel *, cinput *);
     ~ctimeloop();
 
-    int readinifile(cinput *);
     int timestep();
     int postprocstep();
     int settimestep();

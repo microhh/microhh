@@ -55,8 +55,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   diff  = cdiff ::factory(master, input, this, grid->swspatialorder);
   pres  = cpres ::factory(master, input, this, grid->swspatialorder);
 
-  // create the instances of the model operations
-  timeloop = new ctimeloop(this);
+  timeloop = new ctimeloop(this, input);
   force    = new cforce(this);
   buffer   = new cbuffer(this);
 
@@ -92,8 +91,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   // model operations
   if(force->readinifile(input))
-    throw 1;
-  if(timeloop->readinifile(input))
     throw 1;
 
   // check the thermo scheme

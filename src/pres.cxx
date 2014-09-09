@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <fftw3.h>
 #include "master.h"
+#include "input.h"
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
