@@ -182,24 +182,24 @@ __global__ void pres_2_complex_double_x(cufftDoubleComplex * __restrict__ cdata,
   int i = blockIdx.x*blockDim.x + threadIdx.x;
   int j = blockIdx.y*blockDim.y + threadIdx.y;
 
-  int ij = i + j * itot;
-  int ij2 = (itot-i) + j*itot;
+  int ij   = i + j * itot;        // index real part in ddata
+  int ij2  = (itot-i) + j*itot;   // index complex part in ddata
   int imax = itot/2+1;
+  int ijc  = i + j * imax;        // index in cdata
 
   if((j < jtot) && (i < imax))
   {
     if(forward) // complex -> double
     {
-      ddata[ij]  = cdata[ij].x;
+      ddata[ij]  = cdata[ijc].x;
       if(i>0 && i<imax-1) 
-        ddata[ij2] = cdata[ij].y;
-      //printf("i=%i j=%i ij=%i ij2=%i %e %e\n",i,j,ij,ij2,cdata[ij].x,cdata[ij2].y);
+        ddata[ij2] = cdata[ijc].y;
     }
     else // double -> complex
     {
-      cdata[ij].x = ddata[ij];
+      cdata[ijc].x = ddata[ij];
       if(i>0 && i<imax-1) 
-        cdata[ij].y = ddata[ij2];
+        cdata[ijc].y = ddata[ij2];
     }
   }
 } 
@@ -209,9 +209,10 @@ __global__ void pres_2_complex_double_y(cufftDoubleComplex * __restrict__ cdata,
   int i = blockIdx.x*blockDim.x + threadIdx.x;
   int j = blockIdx.y*blockDim.y + threadIdx.y;
 
-  int ij = i + j * itot;
-  int ij2 = i + (jtot-j)*itot;
+  int ij   = i + j * itot;        // index real part in ddata
+  int ij2 = i + (jtot-j)*itot;    // index complex part in ddata
   int jmax = jtot/2+1; 
+  // ijc equals ij
 
   if((i < itot) && (j < jmax))
   {
@@ -265,18 +266,32 @@ int cpres_2::prepareGPU()
   cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1)));
 
   // Make cuFFT plan
-  int rank = 1;
-  int ni[] = {grid->itot};
-  int nj[] = {grid->jtot};
-  int istride = 1;
-  int jstride = grid->itot;
-  int idist = grid->itot;
-  int jdist = 1;
+  int rank      = 1;
 
-  cufftPlanMany(&iplanf, rank, ni, ni, istride, idist, ni, istride, idist, CUFFT_D2Z, grid->jtot);
-  cufftPlanMany(&jplanf, rank, nj, nj, jstride, jdist, nj, jstride, jdist, CUFFT_D2Z, grid->itot);
-  cufftPlanMany(&iplanb, rank, ni, ni, istride, idist, ni, istride, idist, CUFFT_Z2D, grid->jtot);
-  cufftPlanMany(&jplanb, rank, nj, nj, jstride, jdist, nj, jstride, jdist, CUFFT_Z2D, grid->itot);
+  // Double input
+  int i_ni[]    = {grid->itot}; 
+  int i_nj[]    = {grid->jtot};  
+  int i_istride = 1;
+  int i_jstride = grid->itot;
+  int i_idist   = grid->itot;
+  int i_jdist   = 1;
+
+  // Double-complex output
+  int o_ni[]    = {grid->itot/2+1};
+  int o_nj[]    = {grid->jtot/2+1};
+  int o_istride = 1;
+  int o_jstride = grid->itot;
+  int o_idist   = grid->itot/2+1;
+  int o_jdist   = 1;
+
+  // Forward FFTs
+  cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist, o_ni, o_istride, o_idist, CUFFT_D2Z, grid->jtot);
+  cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist, o_nj, o_jstride, o_jdist, CUFFT_D2Z, grid->itot);
+
+  // Backward FFTs
+  // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1 
+  cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot);
+  cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist, i_nj, i_jstride, i_jdist, CUFFT_Z2D, grid->itot);
 
   return 0;
 }
