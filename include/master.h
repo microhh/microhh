@@ -28,6 +28,8 @@
 #include <string>
 #include "input.h"
 
+class cinput;
+
 class cmaster
 {
   public:
@@ -35,9 +37,7 @@ class cmaster
     ~cmaster();
 
     void startup(int, char**);
-
-    int readinifile(cinput *);
-    int init();
+    void init(cinput *);
 
     double gettime();
     int waitall();

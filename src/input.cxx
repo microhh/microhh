@@ -31,35 +31,34 @@
 #include <iomanip>
 #include <sstream>
 
+// Public functions
 cinput::cinput(cmaster *masterin)
 {
   master = masterin;
+
+  const bool required = false;
+  const bool optional = true;
+
+  int nerror = 0;
+  nerror += readinifile();
+  nerror += readdatafile(&proflist, master->simname + ".prof", required);
+  nerror += readdatafile(&timelist, master->simname + ".time", optional);
+
+  if(nerror)
+    throw 1;
 }
 
 cinput::~cinput()
 {
 }
 
-int cinput::readinput()
-{
-  int nerror = 0;
-  const bool required = false;
-  const bool optional = true;
-
-  nerror += readinifile();
-  nerror += readdatafile(&proflist, master->simname + ".prof", required);
-  nerror += readdatafile(&timelist, master->simname + ".time", optional);
-
-  return nerror;
-}
-
-int cinput::clear()
+void cinput::clear()
 {
   inputlist.clear();
   proflist.clear();
-  return 0;
 }
 
+// Private functions
 int cinput::readinifile()
 {
   int nerror = 0;

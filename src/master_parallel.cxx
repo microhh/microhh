@@ -51,19 +51,6 @@ cmaster::~cmaster()
     MPI_Finalize();
 }
 
-int cmaster::readinifile(cinput *inputin)
-{
-  int n = 0;
-
-  n += inputin->getItem(&npx, "mpi", "npx", "", 1);
-  n += inputin->getItem(&npy, "mpi", "npy", "", 1);
-
-  if(n > 0)
-    return 1;
-  
-  return 0;
-}
-
 void cmaster::startup(int argc, char *argv[])
 {
   int n;
@@ -115,44 +102,50 @@ void cmaster::startup(int argc, char *argv[])
   }
 }
 
-int cmaster::init()
+void cmaster::init(cinput *inputin)
 {
-  int n;
+
+  int nerror = 0;
+  nerror += inputin->getItem(&npx, "mpi", "npx", "", 1);
+  nerror += inputin->getItem(&npy, "mpi", "npy", "", 1);
+  if(nerror)
+    throw 1;
 
   if(nprocs != npx*npy)
   {
     printError("nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
-    return 1;
+    throw 1;
   }
 
+  int n;
   int dims    [2] = {npy, npx};
   int periodic[2] = {true, true};
 
   // define the dimensions of the 2-D grid layout
   n = MPI_Dims_create(nprocs, 2, dims);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   // create a 2-D grid communicator that is optimized for grid to grid transfer
   // first, free our temporary copy of COMM_WORLD
   n = MPI_Comm_free(&commxy);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   // for now, do not reorder processes, blizzard gives large performance loss
   n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   n = MPI_Comm_rank(commxy, &mpiid);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   // retrieve the x- and y-coordinates in the 2-D grid for each process
   int mpicoords[2];
   n = MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   mpicoordx = mpicoords[1];
   mpicoordy = mpicoords[0];
@@ -162,18 +155,20 @@ int cmaster::init()
 
   n = MPI_Cart_sub(commxy, dimx, &commx);
   if(checkerror(n))
-    return 1;
+    throw 1;
+
   n = MPI_Cart_sub(commxy, dimy, &commy);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   // find out who are the neighbors of this process to facilitate the communication routines
   n = MPI_Cart_shift(commxy, 1, 1, &nwest , &neast );
   if(checkerror(n))
-    return 1;
+    throw 1;
+
   n = MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   // create the requests arrays for the nonblocking sends
   int npmax;
@@ -185,8 +180,6 @@ int cmaster::init()
   reqsn = 0;
 
   allocated = true;
-
-  return 0;
 }
 
 double cmaster::gettime()

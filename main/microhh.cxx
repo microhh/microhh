@@ -32,24 +32,18 @@ int main(int argc, char *argv[])
     // start up the master class
     master.startup(argc, argv);
 
-    // print the current status of the model
+    // print the current version of the model
     master.printMessage("Microhh git-hash: " GITHASH "\n");
 
-    // create the instances of the objects
-    cinput  input (&master);
-    cmodel  model (&master, &input);
-
     // read the input data
-    if(input.readinput())
-      return 1;
+    cinput input(&master);
 
-    if(master.readinifile(&input))
-      return 1;
+    cmodel model(&master, &input);
+
+    // initialize the master
+    master.init(&input);
+
     if(model.readinifile())
-      return 1;
-
-    // init the mpi 
-    if(master.init())
       return 1;
     if(model.init())
       return 1;
