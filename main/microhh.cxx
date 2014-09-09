@@ -19,64 +19,83 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
+#include <iostream>
 #include "master.h"
 #include "model.h"
 
 int main(int argc, char *argv[])
 {
+  // initialize the master class, it cannot fail
   cmaster master;
-  if(master.startup(argc, argv))
-    return 1;
-
-  // start up the message passing interface
-  if(master.mpiid == 0) std::printf("Microhh git-hash: " GITHASH "\n");
-
-  // create the instances of the objects
-  cinput  input (&master);
-  cmodel  model (&master, &input);
-
-  // read the input data
-  if(input.readinput())
-    return 1;
-
-  if(master.readinifile(&input))
-    return 1;
-  if(model.readinifile())
-    return 1;
-
-  // init the mpi 
-  if(master.init())
-    return 1;
-  if(model.init())
-    return 1;
-
-  if(master.mode == "init")
+  try
   {
-    if(model.create())
+    // start up the master class
+    master.startup(argc, argv);
+
+    // print the current status of the model
+    master.printMessage("Microhh git-hash: " GITHASH "\n");
+
+    // create the instances of the objects
+    cinput  input (&master);
+    cmodel  model (&master, &input);
+
+    // read the input data
+    if(input.readinput())
       return 1;
 
-    // save the data
-    if(model.save())
+    if(master.readinifile(&input))
       return 1;
+    if(model.readinifile())
+      return 1;
+
+    // init the mpi 
+    if(master.init())
+      return 1;
+    if(model.init())
+      return 1;
+
+    if(master.mode == "init")
+    {
+      if(model.create())
+        return 1;
+
+      // save the data
+      if(model.save())
+        return 1;
+    }
+    else
+    {
+      // load the data
+      if(model.load())
+        return 1;
+    }
+
+    // check unused input
+    input.printUnused(); 
+    // free the memory of the input
+    input.clear();
+
+    // run the model
+    if(master.mode != "init")
+      if(model.exec())
+        return 1;
   }
-  else
+
+  // return 1 if the model exits with an exception
+  catch (std::exception &e)
   {
-    // load the data
-    if(model.load())
-      return 1;
+    master.printError("MicroHH has exited with error: %s\n", e.what());
+    return 1;
   }
 
-  // check unused input
-  input.printUnused(); 
-  // free the memory of the input
-  input.clear();
+  // catch any unknown exceptions
+  catch (...)
+  {
+    std::cerr << "MicroHH has exited with an unknown error" << std::endl;
+    return 1;
+  }
 
-  // run the model
-  if(master.mode != "init")
-    if(model.exec())
-      return 1;
-
+  // return 0 in case the model exits properly
   return 0;
 }
 

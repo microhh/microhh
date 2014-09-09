@@ -34,7 +34,8 @@ class cmaster
     cmaster();
     ~cmaster();
 
-    int startup(int, char**);
+    void startup(int, char**);
+
     int readinifile(cinput *);
     int init();
 

@@ -21,6 +21,7 @@
 
 #ifdef PARALLEL
 #include <mpi.h>
+#include <stdexcept>
 #include "grid.h"
 #include "defines.h"
 #include "master.h"
@@ -30,6 +31,7 @@ cmaster::cmaster()
   initialized = false;
   allocated   = false;
 
+  // set the mpiid, to ensure that errors can be written if MPI init fails
   mpiid = 0;
 }
 
@@ -62,31 +64,31 @@ int cmaster::readinifile(cinput *inputin)
   return 0;
 }
 
-int cmaster::startup(int argc, char *argv[])
+void cmaster::startup(int argc, char *argv[])
 {
   int n;
 
   // initialize the MPI
   n = MPI_Init(NULL, NULL);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   initialized = true;
 
   // get the rank of the current process
   n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   // get the total number of processors
   n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   // store a temporary copy of COMM_WORLD in commxy
   n = MPI_Comm_dup(MPI_COMM_WORLD, &commxy);
   if(checkerror(n))
-    return 1;
+    throw 1;
 
   printMessage("Starting run on %d processes\n", nprocs);
 
@@ -94,7 +96,7 @@ int cmaster::startup(int argc, char *argv[])
   if(argc <= 1)
   {
     printError("Specify init, run or post mode\n");
-    return 1;
+    throw 1;
   }
   else
   {
@@ -103,7 +105,7 @@ int cmaster::startup(int argc, char *argv[])
     if(mode != "init" && mode != "run" && mode != "post")
     {
       printError("Specify init, run or post mode\n");
-      return 1;
+      throw 1;
     }
     // set the name of the simulation
     if(argc > 2)
@@ -111,8 +113,6 @@ int cmaster::startup(int argc, char *argv[])
     else
       simname = "microhh";
   }
-
-  return 0;
 }
 
 int cmaster::init()
