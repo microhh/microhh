@@ -53,6 +53,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   // create the model components
   advec = cadvec::factory(master, input, this, grid->swspatialorder);
   diff  = cdiff ::factory(master, input, this, grid->swspatialorder);
+  pres  = cpres ::factory(master, input, this, grid->swspatialorder);
 
   // create the instances of the model operations
   timeloop = new ctimeloop(this);
@@ -61,7 +62,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   // set null pointers for classes that will be initialized later
   boundary = 0;
-  pres     = 0;
   thermo   = 0;
 
   // load the postprocessing modules
@@ -88,13 +88,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   }
   // if one or more arguments fails, then crash
   if(nerror > 0)
-    throw 1;
-
-  // check the pressure scheme
-  pres = cpres::factory(master, input, this, grid->swspatialorder);
-  if(pres == 0)
-    throw 1;
-  if(pres->readinifile(input))
     throw 1;
 
   // model operations
