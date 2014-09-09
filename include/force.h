@@ -38,13 +38,12 @@ class cmaster;
 class cforce
 {
   public:
-    cforce(cmodel *);          ///< Constructor of the force class.
-    ~cforce();                 ///< Destructor of the force class.
-    int readinifile(cinput *); ///< Processing data of the input file.
-    int init();                ///< Initialize the arrays that contain the profiles.
-    int create(cinput *);      ///< Read the profiles of the forces from the input.
-    int exec(double);          ///< Add the tendencies belonging to the large-scale processes.
-    int settimedep();          ///< Set the time dependent parameters.
+    cforce(cmodel *, cinput *); ///< Constructor of the force class.
+    ~cforce();                  ///< Destructor of the force class.
+    int init();                 ///< Initialize the arrays that contain the profiles.
+    int create(cinput *);       ///< Read the profiles of the forces from the input.
+    int exec(double);           ///< Add the tendencies belonging to the large-scale processes.
+    int settimedep();           ///< Set the time dependent parameters.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.

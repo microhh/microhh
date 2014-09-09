@@ -56,7 +56,8 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   pres  = cpres ::factory(master, input, this, grid->swspatialorder);
 
   timeloop = new ctimeloop(this, input);
-  force    = new cforce(this);
+  force    = new cforce(this, input);
+
   buffer   = new cbuffer(this);
 
   // set null pointers for classes that will be initialized later
@@ -87,10 +88,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   }
   // if one or more arguments fails, then crash
   if(nerror > 0)
-    throw 1;
-
-  // model operations
-  if(force->readinifile(input))
     throw 1;
 
   // check the thermo scheme
