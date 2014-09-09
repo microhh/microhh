@@ -38,30 +38,26 @@ int main(int argc, char *argv[])
     // read the input data
     cinput input(&master);
 
+    // initialize the model class
     cmodel model(&master, &input);
 
     // initialize the master
     master.init(&input);
 
-    if(model.readinifile())
-      return 1;
-    if(model.init())
-      return 1;
+    // initialize the model components
+    model.init();
 
     if(master.mode == "init")
     {
-      if(model.create())
-        return 1;
-
+      // create the data
+      model.create();
       // save the data
-      if(model.save())
-        return 1;
+      model.save();
     }
     else
     {
       // load the data
-      if(model.load())
-        return 1;
+      model.load();
     }
 
     // check unused input
@@ -71,8 +67,7 @@ int main(int argc, char *argv[])
 
     // run the model
     if(master.mode != "init")
-      if(model.exec())
-        return 1;
+      model.exec();
   }
 
   // catch any exceptions and return 1

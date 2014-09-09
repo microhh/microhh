@@ -66,6 +66,87 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   stats  = new cstats(this);
   cross  = new ccross(this);
   budget = new cbudget(this);
+
+  // input parameters
+  int nerror = 0;
+
+  // grid
+  if(grid->readinifile(input))
+    throw 1;
+
+  // fields
+  if(fields->readinifile(input))
+    throw 1;
+
+  // get the list of masks
+  nerror += input->getList(&masklist, "stats", "masklist", "");
+  for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+  {
+    if(*it != "wplus" &&
+       *it != "wmin"  &&
+       *it != "ql"    &&
+       *it != "qlcore")
+    {
+      master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
+    }
+    else
+      stats->addmask(*it);
+  }
+
+  // if one or more arguments fails, then crash
+  if(nerror > 0)
+    throw 1;
+
+  // check the advection scheme
+  advec = cadvec::factory(master, input, this, grid->swspatialorder);
+  if(advec == 0)
+    throw 1;
+  if(advec->readinifile(input))
+    throw 1;
+
+  // check the diffusion scheme
+  diff = cdiff::factory(master, input, this, grid->swspatialorder);
+  if(diff == 0)
+    throw 1;
+  if(diff->readinifile(input))
+    throw 1;
+
+  // check the pressure scheme
+  pres = cpres::factory(master, input, this, grid->swspatialorder);
+  if(pres == 0)
+    throw 1;
+  if(pres->readinifile(input))
+    throw 1;
+
+  // model operations
+  if(force->readinifile(input))
+    throw 1;
+  if(timeloop->readinifile(input))
+    throw 1;
+
+  // check the thermo scheme
+  thermo = cthermo::factory(master, input, this);
+  if(thermo == 0)
+    throw 1;
+  if(thermo->readinifile(input))
+    throw 1;
+
+  // read the boundary and buffer in the end because they need to know the requested fields
+  boundary = cboundary::factory(master, input, this);
+  if(boundary == 0)
+    throw 1;
+  if(boundary->readinifile(input))
+    throw 1;
+
+  if(buffer->readinifile(input))
+    throw 1;
+
+  if(stats->readinifile(input))
+    throw 1;
+  if(cross->readinifile(input))
+    throw 1;
+  if(budget->readinifile(input))
+    throw 1;
 }
 
 cmodel::~cmodel()
@@ -87,186 +168,93 @@ cmodel::~cmodel()
   delete grid;
 }
 
-int cmodel::readinifile()
-{
-  // input parameters
-  int nerror = 0;
-
-  // grid
-  if(grid->readinifile(input))
-    return 1;
-
-  // fields
-  if(fields->readinifile(input))
-    return 1;
-
-  // get the list of masks
-  nerror += input->getList(&masklist, "stats", "masklist", "");
-  for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
-  {
-    if(*it != "wplus" &&
-       *it != "wmin"  &&
-       *it != "ql"    &&
-       *it != "qlcore")
-    {
-      master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
-    }
-    else
-      stats->addmask(*it);
-  }
-
-  // if one or more arguments fails, then crash
-  if(nerror > 0)
-    return 1;
-
-  // check the advection scheme
-  advec = cadvec::factory(master, input, this, grid->swspatialorder);
-  if(advec == 0)
-    return 1;
-  if(advec->readinifile(input))
-    return 1;
-
-  // check the diffusion scheme
-  diff = cdiff::factory(master, input, this, grid->swspatialorder);
-  if(diff == 0)
-    return 1;
-  if(diff->readinifile(input))
-    return 1;
-
-  // check the pressure scheme
-  pres = cpres::factory(master, input, this, grid->swspatialorder);
-  if(pres == 0)
-    return 1;
-  if(pres->readinifile(input))
-    return 1;
-
-  // model operations
-  if(force->readinifile(input))
-    return 1;
-  if(timeloop->readinifile(input))
-    return 1;
-
-  // check the thermo scheme
-  thermo = cthermo::factory(master, input, this);
-  if(thermo == 0)
-    return 1;
-  if(thermo->readinifile(input))
-    return 1;
-
-  // read the boundary and buffer in the end because they need to know the requested fields
-  boundary = cboundary::factory(master, input, this);
-  if(boundary == 0)
-    return 1;
-  if(boundary->readinifile(input))
-    return 1;
-  if(buffer->readinifile(input))
-    return 1;
-
-  if(stats->readinifile(input))
-    return 1;
-  if(cross->readinifile(input))
-    return 1;
-  if(budget->readinifile(input))
-    return 1;
-
-  return 0;
-}
-
-int cmodel::init()
+void cmodel::init()
 {
   if(grid->init())
-    return 1;
+    throw 1;
   if(fields->init())
-    return 1;
+    throw 1;
   if(boundary->init())
-    return 1;
+    throw 1;
   if(thermo->init())
-    return 1;
+    throw 1;
   if(buffer->init())
-    return 1;
+    throw 1;
   if(force->init())
-    return 1;
+    throw 1;
   if(pres->init())
-    return 1;
+    throw 1;
 
   if(stats->init(timeloop->ifactor))
-    return 1;
+    throw 1;
   if(cross->init(timeloop->ifactor))
-    return 1;
+    throw 1;
   if(budget->init())
-    return 1;
-
-  return 0;
+    throw 1;
 }
 
-int cmodel::load()
+void cmodel::load()
 {
   // first load the grid and time to make their information available
   if(grid->load())
-    return 1;
+    throw 1;
   if(timeloop->load(timeloop->iotime))
-    return 1;
+    throw 1;
   // initialize the statistics file to open the possiblity to add profiles
   if(stats->create(timeloop->iotime))
-    return 1;
+    throw 1;
   if(cross->create())
-    return 1;
+    throw 1;
 
   if(fields->load(timeloop->iotime))
-    return 1;
+    throw 1;
 
   // \TODO call boundary load for the data and then timedep, not nice...
   if(boundary->load(timeloop->iotime))
-    return 1;
+    throw 1;
   if(boundary->create(input))
-    return 1;
+    throw 1;
 
   if(buffer->create(input))
-    return 1;
+    throw 1;
   if(force->create(input))
-    return 1;
+    throw 1;
   if(thermo->create())
-    return 1;
+    throw 1;
 
   if(budget->create())
-    return 1;
+    throw 1;
 
   // end with modules that require all fields to be present
   if(boundary->setvalues())
-    return 1;
+    throw 1;
   if(diff->setvalues())
-    return 1;
+    throw 1;
   if(pres->setvalues())
-    return 1;
-
-  return 0;
+    throw 1;
 }
 
-int cmodel::create()
+void cmodel::create()
 {
   if(grid->create(input))
-    return 1;
+    throw 1;
   if(fields->create(input))
-    return 1;
-
-  return 0;
+    throw 1;
 }
 
-int cmodel::save()
+void cmodel::save()
 {
   if(grid->save())
-    return 1;
+    throw 1;
   if(fields->save(timeloop->iotime))
-    return 1;
+    throw 1;
   if(timeloop->save(timeloop->iotime))
-    return 1;
+    throw 1;
   if(boundary->save(timeloop->iotime))
-    return 1;
-
-  return 0;
+    throw 1;
 }
 
-int cmodel::exec()
+void cmodel::exec()
 {
   master->printMessage("Starting time integration\n");
   // update the time dependent values
@@ -281,22 +269,18 @@ int cmodel::exec()
   // get the viscosity to be used in diffusion
   diff->execvisc();
 
-  if(settimestep())
-    return 1;
+  settimestep();
 
   // print the initial information
-  if(outputfile(!timeloop->loop))
-    return 1;
+  printOutputFile(!timeloop->loop);
 
   // start the time loop
   while(true)
   {
     // determine the time step
     if(!timeloop->insubstep())
-    {
-      if(settimestep())
-        return 1;
-    }
+      settimestep();
+
     // advection
     advec->exec();
     // diffusion
@@ -342,11 +326,11 @@ int cmodel::exec()
       if(cross->docross())
       {
         if(fields->execcross())
-          return 1;
+          throw 1;
         if(thermo->execcross())
-          return 1;
+          throw 1;
         if(boundary->execcross())
-          return 1;
+          throw 1;
       }
     }
 
@@ -388,11 +372,11 @@ int cmodel::exec()
 
       // load the data
       if(timeloop->load(timeloop->iotime))
-        return 1;
+        throw 1;
       if(fields->load(timeloop->iotime))
-        return 1;
+        throw 1;
       if(boundary->load(timeloop->iotime))
-        return 1;
+        throw 1;
     }
     // update the time dependent values
     boundary->settimedep();
@@ -405,28 +389,21 @@ int cmodel::exec()
     // get the viscosity to be used in diffusion
     diff->execvisc();
 
-    if(outputfile(!timeloop->loop))
-      return 1;
-
+    printOutputFile(!timeloop->loop);
   }
-
-  return 0;
 }
 
-int cmodel::calcstats(std::string maskname)
+void cmodel::calcstats(std::string maskname)
 {
   fields->execstats(&stats->masks[maskname]);
   thermo->execstats(&stats->masks[maskname]);
   budget->execstats(&stats->masks[maskname]);
   boundary->execstats(&stats->masks[maskname]);
-
-  return 0;
 }
 
-int cmodel::outputfile(bool doclose)
+void cmodel::printOutputFile(bool doclose)
 {
   // initialize the check variables
-  int    nerror=0;
   int    iter;
   double time, dt;
   double mom, tke, mass;
@@ -475,22 +452,17 @@ int cmodel::outputfile(bool doclose)
   {
     // close the output file
     if(master->mpiid == 0)
-    std::fclose(dnsout);
+      std::fclose(dnsout);
   }
-
-  return(nerror>0);
 }
 
-int cmodel::settimestep()
+void cmodel::settimestep()
 {
-  if(timeloop->settimelim())
-    return 1;
+  timeloop->settimelim();
 
   timeloop->idtlim = std::min(timeloop->idtlim, advec->gettimelim(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, diff ->gettimelim(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, stats->gettimelim(timeloop->itime));
   timeloop->idtlim = std::min(timeloop->idtlim, cross->gettimelim(timeloop->itime));
   timeloop->settimestep();
-
-  return 0;
 }

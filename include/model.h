@@ -46,15 +46,15 @@ class cmodel
   public:
     cmodel(cmaster *, cinput *);
     ~cmodel();
-    int readinifile();
-    int init();
-    int create();
-    int load();
-    int save();
-    int exec();
+
+    void init();
+    void create();
+    void load();
+    void save();
+    void exec();
 
     // make the pointers public for use in other classes
-    // CvH maybe it is safer to create get functions
+    // TODO maybe it is safer to create get functions
     cmaster *master;
     cinput  *input;
     cgrid   *grid;
@@ -79,8 +79,8 @@ class cmodel
     // list of masks for statistics
     std::vector<std::string> masklist;
 
-    int outputfile(bool);
-    int calcstats(std::string);
-    int settimestep();
+    void printOutputFile(bool);
+    void calcstats(std::string);
+    void settimestep();
 };
 #endif
