@@ -81,17 +81,9 @@ int main(int argc, char *argv[])
         return 1;
   }
 
-  // return 1 if the model exits with an exception
-  catch (std::exception &e)
-  {
-    master.printError("MicroHH has exited with error: %s\n", e.what());
-    return 1;
-  }
-
-  // catch any unknown exceptions
+  // catch any exceptions and return 1
   catch (...)
   {
-    std::cerr << "MicroHH has exited with an unknown error" << std::endl;
     return 1;
   }
 
