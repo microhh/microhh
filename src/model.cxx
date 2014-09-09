@@ -52,6 +52,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   // create the model components
   advec = cadvec::factory(master, input, this, grid->swspatialorder);
+  diff  = cdiff ::factory(master, input, this, grid->swspatialorder);
 
   // create the instances of the model operations
   timeloop = new ctimeloop(this);
@@ -60,8 +61,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   // set null pointers for classes that will be initialized later
   boundary = 0;
-  advec    = 0;
-  diff     = 0;
   pres     = 0;
   thermo   = 0;
 
@@ -87,16 +86,8 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
     else
       stats->addmask(*it);
   }
-
   // if one or more arguments fails, then crash
   if(nerror > 0)
-    throw 1;
-
-  // check the diffusion scheme
-  diff = cdiff::factory(master, input, this, grid->swspatialorder);
-  if(diff == 0)
-    throw 1;
-  if(diff->readinifile(input))
     throw 1;
 
   // check the pressure scheme

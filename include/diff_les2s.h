@@ -24,16 +24,12 @@
 
 #include "diff.h"
 
-// forward declaration
-class cmodel;
-
 class cdiff_les2s : public cdiff
 {
   public:
-    cdiff_les2s(cmodel *);
+    cdiff_les2s(cmodel *, cinput *);
     ~cdiff_les2s();
 
-    int readinifile(cinput *);
     int exec();
     int execvisc();
 

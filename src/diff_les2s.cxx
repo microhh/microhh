@@ -31,26 +31,23 @@
 #include "thermo.h"
 #include "model.h"
 
-cdiff_les2s::cdiff_les2s(cmodel *modelin) : cdiff(modelin)
+cdiff_les2s::cdiff_les2s(cmodel *modelin, cinput *inputin) : cdiff(modelin, inputin)
 {
   swdiff = "les2s";
-}
 
-cdiff_les2s::~cdiff_les2s()
-{
-}
-
-int cdiff_les2s::readinifile(cinput *inputin)
-{
   int nerror = 0;
-
   nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5  );
   nerror += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23 );
   nerror += inputin->getItem(&tPr  , "diff", "tPr"  , "", 1./3.);
 
   nerror += fields->initdfld("evisc", "Eddy viscosity", "m2 s-1");
 
-  return nerror;
+  if(nerror)
+    throw 1;
+}
+
+cdiff_les2s::~cdiff_les2s()
+{
 }
 
 unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)

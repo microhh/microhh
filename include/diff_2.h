@@ -24,13 +24,10 @@
 
 #include "diff.h"
 
-// forward declaration
-class cmodel;
-
 class cdiff_2 : public cdiff
 {
   public:
-    cdiff_2(cmodel *);
+    cdiff_2(cmodel *, cinput *);
     ~cdiff_2();
 
     int setvalues();
