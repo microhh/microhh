@@ -57,7 +57,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   timeloop = new ctimeloop(this, input);
   force    = new cforce(this, input);
-  buffer   = new cbuffer(this);
 
   thermo = cthermo::factory(master, input, this);
 
@@ -87,10 +86,8 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
     throw 1;
 
   // read the boundary and buffer in the end because they need to know the requested fields
+  buffer   = new cbuffer(this, input);
   boundary = cboundary::factory(master, input, this);
-
-  if(buffer->readinifile(input))
-    throw 1;
 }
 
 cmodel::~cmodel()
