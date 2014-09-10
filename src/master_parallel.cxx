@@ -104,7 +104,6 @@ void cmaster::startup(int argc, char *argv[])
 
 void cmaster::init(cinput *inputin)
 {
-
   int nerror = 0;
   nerror += inputin->getItem(&npx, "mpi", "npx", "", 1);
   nerror += inputin->getItem(&npy, "mpi", "npy", "", 1);
