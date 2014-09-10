@@ -94,7 +94,6 @@ class cfields
     cmaster *master;
     cstats  *stats;
 
-    bool allocated;
     bool calcprofs;
 
     // cross sections

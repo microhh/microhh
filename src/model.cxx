@@ -106,6 +106,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   {
     // In case of a failing constructor, delete the class objects and rethrow.
     deleteObjects();
+    throw;
   }
 }
 

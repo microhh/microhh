@@ -40,8 +40,12 @@ cfields::cfields(cmodel *modelin, cinput *inputin)
   grid   = model->grid;
   master = model->master;
 
-  allocated = false;
   calcprofs = false;
+
+  // Initialize the pointers.
+  rhoref = 0;
+  umodel = 0;
+  vmodel = 0;
 
   // input parameters
   int nerror = 0;
@@ -80,34 +84,31 @@ cfields::cfields(cmodel *modelin, cinput *inputin)
 
 cfields::~cfields()
 {
-  if(allocated)
-  {
-    // DEALLOCATE ALL THE FIELDS
-    // deallocate the prognostic velocity fields
-    for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
-      delete it->second;
+  // DEALLOCATE ALL THE FIELDS
+  // deallocate the prognostic velocity fields
+  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
+    delete it->second;
 
-    // deallocate the velocity tendency fields
-    for(fieldmap::iterator it=mt.begin(); it!=mt.end(); ++it)
-      delete it->second;
+  // deallocate the velocity tendency fields
+  for(fieldmap::iterator it=mt.begin(); it!=mt.end(); ++it)
+    delete it->second;
 
-    // deallocate the prognostic scalar fields
-    for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-      delete it->second;
+  // deallocate the prognostic scalar fields
+  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+    delete it->second;
 
-    // deallocate the scalar tendency fields
-    for(fieldmap::iterator it=st.begin(); it!=st.end(); ++it)
-      delete it->second;
+  // deallocate the scalar tendency fields
+  for(fieldmap::iterator it=st.begin(); it!=st.end(); ++it)
+    delete it->second;
 
-    // deallocate the diagnostic scalars
-    for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
-      delete it->second;
+  // deallocate the diagnostic scalars
+  for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
+    delete it->second;
 
-    // delete the arrays
-    delete[] rhoref;
-    delete[] umodel;
-    delete[] vmodel;
-  }
+  // delete the arrays
+  delete[] rhoref;
+  delete[] umodel;
+  delete[] vmodel;
 }
 
 int cfields::init()
@@ -115,7 +116,7 @@ int cfields::init()
   // set the convenience pointers
   stats = model->stats;
 
-  if(master->mpiid == 0) std::printf("Initializing fields\n");
+  master->printMessage("Initializing fields\n");
 
   int n = 0;
 
@@ -152,8 +153,6 @@ int cfields::init()
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
 
-  allocated = true;
-
   // Check different type of crosses and put them in their respective lists 
   for(fieldmap::iterator it=a.begin(); it!=a.end(); ++it)
   {
@@ -169,7 +168,7 @@ int cfields::init()
   if(crosslist.size() > 0)
   {
     for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
-      if(master->mpiid == 0) std::printf("WARNING field %s in [fields][crosslist] is illegal\n", it->c_str());
+      master->printWarning("field %s in [fields][crosslist] is illegal\n", it->c_str());
   } 
 
   return 0;
@@ -503,9 +502,9 @@ int cfields::setcalcprofs(bool sw)
 
 int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, std::string longname, std::string unit)
 {
-  if (mp.find(fldname)!=mp.end())
+  if(mp.find(fldname)!=mp.end())
   {
-    std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
+    master->printError("\"%s\" already exists\n", fldname.c_str());
     return 1;
   }
 
@@ -535,7 +534,7 @@ int cfields::initpfld(std::string fldname, std::string longname, std::string uni
 {
   if(s.find(fldname)!=s.end())
   {
-    std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
+    master->printError("\"%s\" already exists\n", fldname.c_str());
     return 1;
   }
   
@@ -562,7 +561,7 @@ int cfields::initdfld(std::string fldname,std::string longname, std::string unit
 {
   if(s.find(fldname)!=s.end())
   {
-    std::printf("ERROR \"%s\" already exists\n", fldname.c_str());
+    master->printError("\"%s\" already exists\n", fldname.c_str());
     return 1;
   }
 
@@ -575,7 +574,7 @@ int cfields::initdfld(std::string fldname,std::string longname, std::string unit
 
 int cfields::create(cinput *inputin)
 {
-  if(master->mpiid == 0) std::printf("Creating fields\n");
+  master->printMessage("Creating fields\n");
   
   int n = 0;
   
@@ -642,7 +641,7 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
 
   if(kendrnd > grid->kend)
   {
-    printf("ERROR: randomnizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
+    master->printError("randomnizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
     return 1;
   }
   
@@ -735,15 +734,15 @@ int cfields::load(int n)
     // the offset is kept at zero, otherwise bitwise identical restarts is not possible
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-    if(master->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+    master->printMessage("Loading \"%s\" ... ", filename);
     if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
     {
-      if(master->mpiid == 0) std::printf("FAILED\n");
+      master->printMessage("FAILED\n");
       ++nerror;
     }
     else
     {
-      if(master->mpiid == 0) std::printf("OK\n");
+      master->printMessage("OK\n");
     }  
   }
 
@@ -810,17 +809,17 @@ int cfields::save(int n)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-    if(master->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
+    master->printMessage("Saving \"%s\" ... ", filename);
 
     // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
     if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
     {
-      if(master->mpiid == 0) std::printf("FAILED\n");
+      master->printMessage("FAILED\n");
       ++nerror;
     }  
     else
     {
-      if(master->mpiid == 0) std::printf("OK\n");
+      master->printMessage("OK\n");
     }
   }
 
