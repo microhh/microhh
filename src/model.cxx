@@ -115,7 +115,7 @@ void cmodel::init()
     throw 1;
   if(fields->init())
     throw 1;
-  if(boundary->init())
+  if(boundary->init(input))
     throw 1;
   if(thermo->init())
     throw 1;

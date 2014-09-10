@@ -32,6 +32,8 @@ class cboundary_user : public cboundary
   public:
     cboundary_user(cmodel *, cinput *);
 
+    int init(cinput *);
+
     int setvalues();
 
   private:

@@ -37,6 +37,10 @@
 
 cboundary_user::cboundary_user(cmodel *modelin, cinput *inputin) : cboundary(modelin, inputin)
 {
+}
+
+int cboundary_user::init(cinput *inputin)
+{
   int nerror = 0;
 
   processbcs(inputin);
@@ -51,6 +55,8 @@ cboundary_user::cboundary_user(cmodel *modelin, cinput *inputin) : cboundary(mod
  
   if(nerror)
     throw 1;
+
+  return 0;
 }
 
 int cboundary_user::setvalues()

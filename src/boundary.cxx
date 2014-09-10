@@ -50,18 +50,6 @@ cboundary::cboundary(cmodel *modelin, cinput *inputin)
   fields = model->fields;
   master = model->master;
 
-  int nerror = 0;
-  nerror += processbcs(inputin);
-
-  // there is no option (yet) for prescribing ustar without surface model
-  if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
-  {
-    if(master->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
-    ++nerror;
-  }
-
-  if(nerror)
-    throw 1;
 }
 
 cboundary::~cboundary()
@@ -155,8 +143,21 @@ int cboundary::processbcs(cinput *inputin)
   return nerror;
 }
 
-int cboundary::init()
+int cboundary::init(cinput *inputin)
 {
+  int nerror = 0;
+  nerror += processbcs(inputin);
+
+  // there is no option (yet) for prescribing ustar without surface model
+  if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
+  {
+    if(master->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
+    ++nerror;
+  }
+
+  if(nerror)
+    throw 1;
+
   return 0;
 }
 
