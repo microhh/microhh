@@ -30,7 +30,7 @@ class cmodel;
 class cpres_4 : public cpres
 {
   public:
-    cpres_4(cmodel *);
+    cpres_4(cmodel *, cinput *);
     ~cpres_4();
 
     int init();

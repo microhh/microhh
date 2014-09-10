@@ -39,9 +39,9 @@ class cstats;
 class cthermo_dry : public cthermo
 {
   public:
-    cthermo_dry(cmodel *);     ///< Constructor of the dry thermodynamics class.
-    ~cthermo_dry();            ///< Destructor of the dry thermodynamics class.
-    int readinifile(cinput *); ///< Processing data of the input file.
+    cthermo_dry(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
+    ~cthermo_dry();                  ///< Destructor of the dry thermodynamics class.
+
     int init();
     int create(cinput *);
     int exec();                ///< Add the tendencies belonging to the buoyancy.

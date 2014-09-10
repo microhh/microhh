@@ -34,7 +34,7 @@
 #include "diff_4.h"
 #include "diff_les2s.h"
 
-cdiff::cdiff(cmodel *modelin)
+cdiff::cdiff(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -42,19 +42,16 @@ cdiff::cdiff(cmodel *modelin)
   master = model->master;
 
   swdiff = "0";
+
+  int nerror = 0;
+  nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.4);
+ 
+  if(nerror)
+    throw 1;
 }
 
 cdiff::~cdiff()
 {
-}
-
-int cdiff::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-
-  nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.4);
-
-  return nerror;
 }
 
 unsigned long cdiff::gettimelim(unsigned long idtlim, double dt)
@@ -106,11 +103,11 @@ cdiff* cdiff::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
     return 0;
 
   if(swdiff == "0")
-    return new cdiff(modelin);
+    return new cdiff(modelin, inputin);
   else if(swdiff == "2")
-    return new cdiff_2(modelin);
+    return new cdiff_2(modelin, inputin);
   else if(swdiff == "4")
-    return new cdiff_4(modelin);
+    return new cdiff_4(modelin, inputin);
   else if(swdiff == "les2s")
   {
     // the subgrid model requires a surface model because of the MO matching at first level
@@ -119,7 +116,7 @@ cdiff* cdiff::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
       masterin->printError("swdiff == \"les2s\" requires swboundary == \"surface\"\n");
       return 0;
     }
-    return new cdiff_les2s(modelin);
+    return new cdiff_les2s(modelin, inputin);
   }
   else
   {

@@ -24,6 +24,7 @@
 
 // forward declarations to speed up build time
 class cmaster;
+class cinput;
 class cmodel;
 class cgrid;
 class cfields;
@@ -36,12 +37,12 @@ class cfields;
 class cadvec
 {
   public:
-    cadvec(cmodel *);  ///< Constructor of the advection class.
-    virtual ~cadvec(); ///< Destructor of the advection class.
+    cadvec(cmodel *, cinput *); ///< Constructor of the advection class.
+    virtual ~cadvec();          ///< Destructor of the advection class.
+
     static cadvec* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for advection class generation.
 
-    virtual int readinifile(cinput *); ///< Processes the data from the input file.
-    virtual int exec();                ///< Execute the advection scheme.
+    virtual int exec(); ///< Execute the advection scheme.
 
     virtual double getcfl(double); ///< Retrieve the CFL number.
 

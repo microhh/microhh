@@ -33,8 +33,8 @@ class cmodel;
 class cadvec_2 : public cadvec
 {
   public:
-    cadvec_2(cmodel *); ///< Constructor of the advection class.
-    ~cadvec_2();        ///< Destructor of the advection class.
+    cadvec_2(cmodel *, cinput *); ///< Constructor of the advection class.
+    ~cadvec_2();                  ///< Destructor of the advection class.
 
     unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
     double getcfl(double);                               ///< Get the CFL number.

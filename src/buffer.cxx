@@ -29,7 +29,7 @@
 #include "defines.h"
 #include "model.h"
 
-cbuffer::cbuffer(cmodel *modelin)
+cbuffer::cbuffer(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -37,20 +37,8 @@ cbuffer::cbuffer(cmodel *modelin)
   master = model->master;
 
   allocated = false;
-}
 
-cbuffer::~cbuffer()
-{
-  if(allocated)
-    for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
-      delete[] it->second;
-}
-
-int cbuffer::readinifile(cinput *inputin)
-{
   int nerror = 0;
-
-  // optional parameters
   nerror += inputin->getItem(&swbuffer, "buffer", "swbuffer", "", "0");
 
   if(swbuffer == "1")
@@ -60,7 +48,15 @@ int cbuffer::readinifile(cinput *inputin)
     nerror += inputin->getItem(&beta  , "buffer", "beta"  , "", 2.);
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
+}
+
+cbuffer::~cbuffer()
+{
+  if(allocated)
+    for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
+      delete[] it->second;
 }
 
 int cbuffer::init()

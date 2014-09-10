@@ -20,7 +20,7 @@
  */
 
 #include <cstdio>
-#include <algorithm>    // std::count
+#include <algorithm>
 #include <cmath>
 #include "grid.h"
 #include "fields.h"
@@ -38,13 +38,9 @@
 
 #define NO_OFFSET 0.
 
-cthermo_dry::cthermo_dry(cmodel *modelin) : cthermo(modelin)
+cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
   swthermo = "dry";
-}
-
-cthermo_dry::~cthermo_dry()
-{
   if(allocated)
   {
     delete[] threfh;
@@ -54,10 +50,7 @@ cthermo_dry::~cthermo_dry()
     delete[] prefh;
     delete[] exnerh;
   }
-}
 
-int cthermo_dry::readinifile(cinput *inputin)
-{
   int nerror = 0;
   nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
@@ -71,7 +64,12 @@ int cthermo_dry::readinifile(cinput *inputin)
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
 
-  return nerror;
+  if(nerror)
+    throw 1;
+}
+
+cthermo_dry::~cthermo_dry()
+{
 }
 
 int cthermo_dry::init()

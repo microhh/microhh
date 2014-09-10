@@ -25,23 +25,20 @@
 #include "thermo_buoy.h"
 #include "defines.h"
 
-cthermo_buoy::cthermo_buoy(cmodel *modelin) : cthermo(modelin)
+cthermo_buoy::cthermo_buoy(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
   swthermo = "buoy";
+
+  int nerror = 0;
+  nerror += fields->initpfld("b", "Buoyancy", "m s-2");
+  nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
+
+  if(nerror)
+    throw 1;
 }
 
 cthermo_buoy::~cthermo_buoy()
 {
-}
-
-int cthermo_buoy::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-
-  nerror += fields->initpfld("b", "Buoyancy", "m s-2");
-  nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
-
-  return nerror;
 }
 
 int cthermo_buoy::exec()

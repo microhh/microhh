@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <fftw3.h>
 #include "master.h"
+#include "input.h"
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
@@ -33,7 +34,7 @@
 #include "pres_2.h"
 #include "pres_4.h"
 
-cpres::cpres(cmodel *modelin)
+cpres::cpres(cmodel *modelin, cinput *input)
 {
   model  = modelin;
   grid   = model->grid;
@@ -43,11 +44,6 @@ cpres::cpres(cmodel *modelin)
 
 cpres::~cpres()
 {
-}
-
-int cpres::readinifile(cinput *inputin)
-{
-  return 0;
 }
 
 int cpres::init()
@@ -78,14 +74,14 @@ cpres* cpres::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
     return 0;
 
   if(swpres == "0")
-    return new cpres(modelin);
+    return new cpres(modelin, inputin);
   else if(swpres == "2")
-    return new cpres_2(modelin);
+    return new cpres_2(modelin, inputin);
   else if(swpres == "4")
-    return new cpres_4(modelin);
+    return new cpres_4(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());
-    return 0;
+    throw 1;
   }
 }

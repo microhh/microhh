@@ -29,7 +29,7 @@
 #include "defines.h"
 #include "model.h"
 
-cdiff_2::cdiff_2(cmodel *modelin) : cdiff(modelin)
+cdiff_2::cdiff_2(cmodel *modelin, cinput *inputin) : cdiff(modelin, inputin)
 {
   swdiff = "2";
 }

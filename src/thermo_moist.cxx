@@ -68,10 +68,33 @@
 
 #define NO_OFFSET 0.
 
-cthermo_moist::cthermo_moist(cmodel *modelin) : cthermo(modelin)
+cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
   swthermo = "moist";
   allocated = false;
+
+  int nerror = 0;
+  nerror += inputin->getItem(&pbot    , "thermo", "pbot"    , "");
+
+  nerror += fields->initpfld("s", "Liquid water potential temperature", "K");
+  nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
+  nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
+  nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
+
+  // Only in case of Boussinesq, read in reference potential temperature
+  if(model->swbasestate == "boussinesq") 
+    nerror += inputin->getItem(&thvref0, "thermo", "thvref0", "");
+
+  // Read list of cross sections
+  nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
+  
+  // BvS test for updating hydrostatic prssure during run
+  // swupdate..=0 -> initial base state pressure used in saturation calc
+  // swupdate..=1 -> base state pressure updated before saturation calc
+  nerror += inputin->getItem(&swupdatebasestate,"thermo","swupdatebasestate",""); 
+
+  if(nerror)
+    throw 1;
 }
 
 cthermo_moist::~cthermo_moist()
@@ -87,31 +110,6 @@ cthermo_moist::~cthermo_moist()
     delete[] pref;
     delete[] prefh;
   }
-}
-
-int cthermo_moist::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-  nerror += inputin->getItem(&pbot    , "thermo", "pbot"    , "");
-
-  nerror += fields->initpfld("s", "Liquid water potential temperature", "K");
-  nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
-  nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
-  nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
-
-  // Only in case of Boussinesq, read in reference potential temperature
-  if(model->swbasestate == "boussinesq") 
-    nerror += inputin->getItem(&thvref0, "thermo", "thvref0", "");
-
-  // Read list of cross sections
-  nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
-
-  // BvS test for updating hydrostatic prssure during run
-  // swupdate..=0 -> initial base state pressure used in saturation calc
-  // swupdate..=1 -> base state pressure updated before saturation calc
-  nerror += inputin->getItem(&swupdatebasestate,"thermo","swupdatebasestate","");
-
-  return (nerror > 0);
 }
 
 int cthermo_moist::init()

@@ -30,7 +30,7 @@
 #include "defines.h"
 #include "model.h"
 
-cpres_2::cpres_2(cmodel *modelin) : cpres(modelin)
+cpres_2::cpres_2(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 {
   allocated = false;
 }
@@ -309,7 +309,7 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
 }
 
 int cpres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                       double * restrict p , double * restrict dzhi)
+                      double * restrict p , double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;

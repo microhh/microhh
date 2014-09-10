@@ -35,16 +35,31 @@
 #define NO_OFFSET 0.
 #define NTHRES 16
 
-cstats::cstats(cmodel *modelin)
+cstats::cstats(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
 
-  // set the pointers to NULL
-  umodel = NULL;
-  vmodel = NULL;
+  // set the pointers to zero
+  umodel = 0;
+  vmodel = 0;
 
-  nmask  = NULL;
-  nmaskh = NULL;
+  nmask  = 0;
+  nmaskh = 0;
+
+  int nerror = 0;
+  nerror += inputin->getItem(&swstats, "stats", "swstats", "", "0");
+
+  if(swstats == "1")
+    nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
+
+  if(!(swstats == "0" || swstats == "1" ))
+  {
+    ++nerror;
+    master->printError("\"%s\" is an illegal value for swstats\n", swstats.c_str());
+  }
+
+  if(nerror)
+    throw 1;
 }
 
 cstats::~cstats()
@@ -61,23 +76,6 @@ cstats::~cstats()
     for(profmap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
       delete[] it2->second.data;
   }
-}
-
-int cstats::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-  nerror += inputin->getItem(&swstats, "stats", "swstats", "", "0");
-
-  if(swstats == "1")
-    nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
-
-  if(!(swstats == "0" || swstats == "1" ))
-  {
-    ++nerror;
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
-  }
-
-  return nerror;
 }
 
 int cstats::init(double ifactor)

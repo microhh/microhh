@@ -36,10 +36,9 @@ struct mask;
 class cbudget
 {
   public:
-    cbudget(cmodel *);
+    cbudget(cmodel *, cinput *);
     ~cbudget();
 
-    int readinifile(cinput *);
     int init();
     int create();
     int execstats(mask *);

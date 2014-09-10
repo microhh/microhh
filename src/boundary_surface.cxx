@@ -45,7 +45,7 @@
 // a sign function
 inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
 
-cboundary_surface::cboundary_surface(cmodel *modelin) : cboundary(modelin)
+cboundary_surface::cboundary_surface(cmodel *modelin, cinput *inputin) : cboundary(modelin, inputin)
 {
   allocated = false;
 }
@@ -59,10 +59,26 @@ cboundary_surface::~cboundary_surface()
   }
 }
 
-int cboundary_surface::readinifile(cinput *inputin)
+int cboundary_surface::create(cinput *inputin)
 {
-  int nerror = 0;
 
+  int nerror = 0;
+  nerror += processtimedep(inputin);
+
+  // add variables to the statistics
+  if(stats->getsw() == "1")
+  {
+    stats->addtseries("ustar", "Surface friction velocity", "m s-1");
+    stats->addtseries("obuk", "Obukhov length", "m");
+  }
+
+  return nerror;
+}
+
+int cboundary_surface::init(cinput *inputin)
+{
+  // 1. Process the boundary conditions now all fields are registered
+  int nerror = 0;
   nerror += processbcs(inputin);
 
   nerror += inputin->getItem(&z0m, "boundary", "z0m", "");
@@ -126,27 +142,10 @@ int cboundary_surface::readinifile(cinput *inputin)
     ++it;
   }
 
-  return nerror;
-}
+  if(nerror)
+    throw 1;
 
-int cboundary_surface::create(cinput *inputin)
-{
-
-  int nerror = 0;
-  nerror += processtimedep(inputin);
-
-  // add variables to the statistics
-  if(stats->getsw() == "1")
-  {
-    stats->addtseries("ustar", "Surface friction velocity", "m s-1");
-    stats->addtseries("obuk", "Obukhov length", "m");
-  }
-
-  return nerror;
-}
-
-int cboundary_surface::init()
-{
+  // 2. Allocate the fields
   obuk  = new double[grid->icells*grid->jcells];
   ustar = new double[grid->icells*grid->jcells];
 
@@ -171,16 +170,16 @@ int cboundary_surface::init()
   allowedcrossvars.push_back("obuk");
 
   // Check input list of cross variables (crosslist)
-  std::vector<std::string>::iterator it=crosslist.begin();
-  while(it != crosslist.end())
+  std::vector<std::string>::iterator it2 = crosslist.begin();
+  while(it2 != crosslist.end())
   {
-    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
     {
-      if(master->mpiid == 0) std::printf("WARNING field %s in [boundary][crosslist] is illegal\n", it->c_str());
-      it = crosslist.erase(it);  // erase() returns iterator of next element..
+      if(master->mpiid == 0) std::printf("WARNING field %s in [boundary][crosslist] is illegal\n", it2->c_str());
+      it2 = crosslist.erase(it2);  // erase() returns iterator of next element..
     }
     else
-      ++it;
+      ++it2;
   }
 
   return 0;

@@ -31,11 +31,9 @@ class cmaster;
 class cpres
 {
   public:
-    cpres(cmodel *);
+    cpres(cmodel *, cinput *);
     virtual ~cpres();
     static cpres* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for pres class generation.
-
-    virtual int readinifile(cinput *);
 
     virtual int init();
     virtual int setvalues();

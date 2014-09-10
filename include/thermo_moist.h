@@ -34,9 +34,9 @@ struct mask;
 class cthermo_moist : public cthermo
 {
   public:
-    cthermo_moist(cmodel *);
+    cthermo_moist(cmodel *, cinput *);
     ~cthermo_moist();
-    int readinifile(cinput *);
+
     int init();
     int create(cinput *);
     int exec();

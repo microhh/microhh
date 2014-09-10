@@ -43,12 +43,13 @@
 #define BC_FLUX 2
 #define BC_USTAR 3
 
-cboundary::cboundary(cmodel *modelin)
+cboundary::cboundary(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
+
 }
 
 cboundary::~cboundary()
@@ -62,22 +63,6 @@ cboundary::~cboundary()
   // clean up time dependent data
   for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
-}
-
-int cboundary::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-
-  nerror += processbcs(inputin);
-
-  // there is no option for prescribing ustar without surface model
-  if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
-  {
-    if(master->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
-    ++nerror;
-  }
-
-  return nerror;
 }
 
 int cboundary::processbcs(cinput *inputin)
@@ -158,8 +143,21 @@ int cboundary::processbcs(cinput *inputin)
   return nerror;
 }
 
-int cboundary::init()
+int cboundary::init(cinput *inputin)
 {
+  int nerror = 0;
+  nerror += processbcs(inputin);
+
+  // there is no option (yet) for prescribing ustar without surface model
+  if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
+  {
+    if(master->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
+    ++nerror;
+  }
+
+  if(nerror)
+    throw 1;
+
   return 0;
 }
 
@@ -356,11 +354,11 @@ cboundary* cboundary::factory(cmaster *masterin, cinput *inputin, cmodel *modeli
     return 0;
 
   if(swboundary == "surface")
-    return new cboundary_surface(modelin);
+    return new cboundary_surface(modelin, inputin);
   else if(swboundary == "user")
-    return new cboundary_user(modelin);
+    return new cboundary_user(modelin, inputin);
   else if(swboundary == "default")
-    return new cboundary(modelin);
+    return new cboundary(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());

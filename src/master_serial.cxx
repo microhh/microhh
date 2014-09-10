@@ -36,20 +36,7 @@ cmaster::~cmaster()
   printMessage("Finished run on %d processes\n", nprocs);
 }
 
-int cmaster::readinifile(cinput *inputin)
-{
-  int n = 0;
-
-  n += inputin->getItem(&npx, "mpi", "npx", "", 1);
-  n += inputin->getItem(&npy, "mpi", "npy", "", 1);
-
-  if(n > 0)
-    return 1;
-  
-  return 0;
-}
-
-int cmaster::startup(int argc, char *argv[])
+void cmaster::startup(int argc, char *argv[])
 {
   initialized = true;
 
@@ -64,7 +51,7 @@ int cmaster::startup(int argc, char *argv[])
   if(argc <= 1)
   {
     printError("Specify init, run or post mode\n");
-    return 1;
+    throw 1;
   }
   else
   {
@@ -73,7 +60,7 @@ int cmaster::startup(int argc, char *argv[])
     if(mode != "init" && mode != "run" && mode != "post")
     {
       printError("Specify init, run or post mode\n");
-      return 1;
+      throw 1;
     }
     // set the name of the simulation
     if(argc > 2)
@@ -81,16 +68,20 @@ int cmaster::startup(int argc, char *argv[])
     else
       simname = "microhh";
   }
-
-  return 0;
 }
 
-int cmaster::init()
+void cmaster::init(cinput *inputin)
 {
+  int nerror = 0;
+  nerror += inputin->getItem(&npx, "mpi", "npx", "", 1);
+  nerror += inputin->getItem(&npy, "mpi", "npy", "", 1);
+  if(nerror)
+    throw 1;
+
   if(nprocs != npx*npy)
   {
     printError("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
-    return 1;
+    throw 1;
   }
 
   // set the coordinates to 0
@@ -98,8 +89,6 @@ int cmaster::init()
   mpicoordy = 0;
 
   allocated = true;
-
-  return 0;
 }
 
 double cmaster::gettime()

@@ -30,7 +30,7 @@
 #include "defines.h"
 #include "model.h"
 
-cpres_4::cpres_4(cmodel *modelin) : cpres(modelin)
+cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 {
   allocated = false;
 }

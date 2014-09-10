@@ -29,7 +29,7 @@
 #include "model.h"
 #include "timeloop.h"
 
-cforce::cforce(cmodel *modelin)
+cforce::cforce(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -37,6 +37,47 @@ cforce::cforce(cmodel *modelin)
   master = model->master;
 
   allocated = false;
+
+  int nerror = 0;
+  nerror += inputin->getItem(&swlspres, "force", "swlspres", "", "0");
+  nerror += inputin->getItem(&swls    , "force", "swls"    , "", "0");
+  nerror += inputin->getItem(&swwls   , "force", "swwls"   , "", "0");
+ 
+  if(swlspres != "0")
+  {
+    if(swlspres == "uflux")
+      nerror += inputin->getItem(&uflux, "force", "uflux", "");
+    else if(swlspres == "geo")
+      nerror += inputin->getItem(&fc, "force", "fc", "");
+    else
+    {
+      ++nerror;
+      master->printError("\"%s\" is an illegal option for swlspres\n", swlspres.c_str());
+    }
+  }
+
+  if(swls == "1")
+    nerror += inputin->getList(&lslist, "force", "lslist", "");
+  else if(swls != "0")
+  {
+    ++nerror;
+    master->printError("\"%s\" is an illegal option for swls\n", swls.c_str());
+  }
+
+  if(swwls == "1")
+    fields->setcalcprofs(true);
+  else if(swwls != "0")
+  {
+    ++nerror;
+    master->printError("\"%s\" is an illegal option for swwls\n", swwls.c_str());
+  }
+
+  // get the list of time varying variables
+  nerror += inputin->getItem(&swtimedep  , "force", "swtimedep"  , "", "0");
+  nerror += inputin->getList(&timedeplist, "force", "timedeplist", "");
+
+  if(nerror)
+    throw 1;
 }
 
 cforce::~cforce()
@@ -63,50 +104,6 @@ cforce::~cforce()
   for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
 
-}
-
-int cforce::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-
-  nerror += inputin->getItem(&swlspres, "force", "swlspres", "", "0");
-  nerror += inputin->getItem(&swls    , "force", "swls"    , "", "0");
-  nerror += inputin->getItem(&swwls   , "force", "swwls"   , "", "0");
- 
-  if(swlspres != "0")
-  {
-    if(swlspres == "uflux")
-      nerror += inputin->getItem(&uflux, "force", "uflux", "");
-    else if(swlspres == "geo")
-      nerror += inputin->getItem(&fc, "force", "fc", "");
-    else
-    {
-      ++nerror;
-      if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swlspres\n", swlspres.c_str());
-    }
-  }
-
-  if(swls == "1")
-    nerror += inputin->getList(&lslist, "force", "lslist", "");
-  else if(swls != "0")
-  {
-    ++nerror;
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swls\n", swls.c_str());
-  }
-
-  if(swwls == "1")
-    fields->setcalcprofs(true);
-  else if(swwls != "0")
-  {
-    ++nerror;
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swwls\n", swwls.c_str());
-  }
-
-  // get the list of time varying variables
-  nerror += inputin->getItem(&swtimedep  , "force", "swtimedep"  , "", "0");
-  nerror += inputin->getList(&timedeplist, "force", "timedeplist", "");
-
-  return nerror;
 }
 
 int cforce::init()
