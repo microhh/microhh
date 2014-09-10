@@ -64,10 +64,9 @@ typedef std::map<std::string, mask> maskmap;
 class cstats
 {
   public:
-    cstats(cmodel *);
+    cstats(cmodel *, cinput *);
     ~cstats();
 
-    int readinifile(cinput *);
     int init(double);
     int create(int);
     unsigned long gettimelim(unsigned long);

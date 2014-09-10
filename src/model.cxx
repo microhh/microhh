@@ -62,7 +62,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   thermo = cthermo::factory(master, input, this);
 
   // load the postprocessing modules
-  stats  = new cstats(this);
+  stats  = new cstats(this, input);
   cross  = new ccross(this, input);
   budget = new cbudget(this);
 
@@ -95,8 +95,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   if(buffer->readinifile(input))
     throw 1;
 
-  if(stats->readinifile(input))
-    throw 1;
   if(budget->readinifile(input))
     throw 1;
 }
