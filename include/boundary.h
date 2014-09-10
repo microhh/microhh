@@ -48,11 +48,10 @@ struct field3dbc
 class cboundary
 {
   public:
-    cboundary(cmodel *);  ///< Constuctor of the boundary class.
-    virtual ~cboundary(); ///< Destructor of the boundary class.
+    cboundary(cmodel *, cinput *); ///< Constuctor of the boundary class.
+    virtual ~cboundary();          ///< Destructor of the boundary class.
     static cboundary* factory(cmaster *, cinput *, cmodel *); ///< Factory function for boundary class generation.
 
-    virtual int readinifile(cinput *); ///< Process the data from the input file.
     virtual int init();                ///< Initialize the fields.
     virtual int create(cinput *);      ///< Initialize the fields.
     virtual int settimedep();          ///< Initialize the fields.

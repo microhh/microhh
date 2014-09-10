@@ -33,10 +33,9 @@ struct mask;
 class cboundary_surface : public cboundary
 {
   public:
-    cboundary_surface(cmodel *);
+    cboundary_surface(cmodel *, cinput *);
     ~cboundary_surface();
 
-    int readinifile(cinput *);
     int init();
     int create(cinput *);
     int setvalues();

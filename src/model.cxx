@@ -67,6 +67,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   budget = new cbudget(this, input);
 
   // get the list of masks
+  // TODO This is really UGLY: make an interface that takes this out of the main loops
   int nerror = 0;
   nerror += input->getList(&masklist, "stats", "masklist", "");
   for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -87,10 +88,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   // read the boundary and buffer in the end because they need to know the requested fields
   boundary = cboundary::factory(master, input, this);
-  if(boundary == 0)
-    throw 1;
-  if(boundary->readinifile(input))
-    throw 1;
 
   if(buffer->readinifile(input))
     throw 1;

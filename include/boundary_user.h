@@ -30,9 +30,8 @@ class cmodel;
 class cboundary_user : public cboundary
 {
   public:
-    cboundary_user(cmodel *);
+    cboundary_user(cmodel *, cinput *);
 
-    int readinifile(cinput *);
     int setvalues();
 
   private:

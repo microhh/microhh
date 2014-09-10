@@ -45,22 +45,9 @@
 // a sign function
 inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
 
-cboundary_surface::cboundary_surface(cmodel *modelin) : cboundary(modelin)
+cboundary_surface::cboundary_surface(cmodel *modelin, cinput *inputin) : cboundary(modelin, inputin)
 {
   allocated = false;
-}
-
-cboundary_surface::~cboundary_surface()
-{
-  if(allocated)
-  {
-    delete[] ustar;
-    delete[] obuk;
-  }
-}
-
-int cboundary_surface::readinifile(cinput *inputin)
-{
   int nerror = 0;
 
   nerror += processbcs(inputin);
@@ -122,7 +109,17 @@ int cboundary_surface::readinifile(cinput *inputin)
     ++it;
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
+}
+
+cboundary_surface::~cboundary_surface()
+{
+  if(allocated)
+  {
+    delete[] ustar;
+    delete[] obuk;
+  }
 }
 
 int cboundary_surface::create(cinput *inputin)
