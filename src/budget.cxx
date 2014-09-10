@@ -33,26 +33,24 @@
 
 #define NO_OFFSET 0.
 
-cbudget::cbudget(cmodel *modelin)
+cbudget::cbudget(cmodel *modelin, cinput *inputin)
 {
   model = modelin;
 
-  umodel = NULL;
-  vmodel = NULL;
+  umodel = 0;
+  vmodel = 0;
+
+  int nerror = 0;
+  nerror += inputin->getItem(&swbudget, "budget", "swbudget", "", "0");
+
+  if(nerror)
+    throw 1;
 }
 
 cbudget::~cbudget()
 {
   delete[] umodel;
   delete[] vmodel;
-}
-
-int cbudget::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-  nerror += inputin->getItem(&swbudget, "budget", "swbudget", "", "0");
-
-  return nerror;
 }
 
 int cbudget::init()

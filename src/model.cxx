@@ -62,9 +62,9 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   thermo = cthermo::factory(master, input, this);
 
   // load the postprocessing modules
-  stats  = new cstats(this, input);
-  cross  = new ccross(this, input);
-  budget = new cbudget(this);
+  stats  = new cstats (this, input);
+  cross  = new ccross (this, input);
+  budget = new cbudget(this, input);
 
   // get the list of masks
   int nerror = 0;
@@ -93,9 +93,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
     throw 1;
 
   if(buffer->readinifile(input))
-    throw 1;
-
-  if(budget->readinifile(input))
     throw 1;
 }
 
