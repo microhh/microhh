@@ -51,14 +51,15 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   fields = new cfields(this, input);
 
   // create the model components
-  advec = cadvec::factory(master, input, this, grid->swspatialorder);
-  diff  = cdiff ::factory(master, input, this, grid->swspatialorder);
-  pres  = cpres ::factory(master, input, this, grid->swspatialorder);
+  boundary = cboundary::factory(master, input, this);
+  advec    = cadvec   ::factory(master, input, this, grid->swspatialorder);
+  diff     = cdiff    ::factory(master, input, this, grid->swspatialorder);
+  pres     = cpres    ::factory(master, input, this, grid->swspatialorder);
+  thermo   = cthermo  ::factory(master, input, this);
 
   timeloop = new ctimeloop(this, input);
-  force    = new cforce(this, input);
-
-  thermo = cthermo::factory(master, input, this);
+  force    = new cforce   (this, input);
+  buffer   = new cbuffer  (this, input);
 
   // load the postprocessing modules
   stats  = new cstats (this, input);
@@ -84,10 +85,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   // if one or more arguments fails, then crash
   if(nerror > 0)
     throw 1;
-
-  // read the boundary and buffer in the end because they need to know the requested fields
-  buffer   = new cbuffer(this, input);
-  boundary = cboundary::factory(master, input, this);
 }
 
 cmodel::~cmodel()
