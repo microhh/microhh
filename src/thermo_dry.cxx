@@ -57,10 +57,6 @@ cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, in
   nerror += fields->initpfld("th", "Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
 
-  // Only in case of Boussinesq, read in reference potential temperature
-  if(model->swbasestate == "boussinesq") 
-    nerror += inputin->getItem(&thref0, "thermo", "thref0", "");
-
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
 
@@ -92,6 +88,13 @@ int cthermo_dry::init()
 
 int cthermo_dry::create(cinput *inputin)
 {
+  // Only in case of Boussinesq, read in reference potential temperature
+  int nerror = 0;
+  if(model->swbasestate == "boussinesq")
+    nerror += inputin->getItem(&thref0, "thermo", "thref0", "");
+  if(nerror)
+    throw 1;
+
   // Setup base state for anelastic solver
   if(model->swbasestate == "anelastic")
   {
