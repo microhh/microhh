@@ -146,7 +146,6 @@ class cgrid
 
   private:
     cmaster *master; ///< Pointer to master class.
-    bool allocated;  ///< Boolean to check whether grid data is allocated.
     bool mpitypes;   ///< Boolean to check whether MPI datatypes are created.
     bool fftwplan;   ///< Boolean to check whether FFTW3 plans are created.
 

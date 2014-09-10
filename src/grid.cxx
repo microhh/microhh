@@ -37,12 +37,30 @@ cgrid::cgrid(cmodel *modelin, cinput *inputin)
 {
   master = modelin->master;
 
-  allocated = false;
   mpitypes  = false;
   fftwplan  = false;
-  
-  int nerror = 0;
 
+  // Initialize the pointers to zero.
+  x  = 0;
+  xh = 0;
+  y  = 0;
+  yh = 0;
+  z  = 0;
+  zh = 0;
+
+  dz    = 0;
+  dzh   = 0;
+  dzi   = 0;
+  dzhi  = 0;
+  dzi4  = 0;
+  dzhi4 = 0;
+
+  fftini  = 0;
+  fftouti = 0;
+  fftinj  = 0;
+  fftoutj = 0;
+
+  int nerror = 0;
   nerror += inputin->getItem(&xsize, "grid", "xsize", "");
   nerror += inputin->getItem(&ysize, "grid", "ysize", "");
   nerror += inputin->getItem(&zsize, "grid", "zsize", "");
@@ -94,28 +112,25 @@ cgrid::~cgrid()
     fftw_destroy_plan(jplanb);
   }
 
-  if(allocated)
-  { 
-    delete[] x;
-    delete[] xh;
-    delete[] y;
-    delete[] yh;
-    delete[] z;
-    delete[] zh;
-    delete[] dz;
-    delete[] dzh;
-    delete[] dzi;
-    delete[] dzhi;
-    delete[] dzi4;
-    delete[] dzhi4;
+  delete[] x;
+  delete[] xh;
+  delete[] y;
+  delete[] yh;
+  delete[] z;
+  delete[] zh;
+  delete[] dz;
+  delete[] dzh;
+  delete[] dzi;
+  delete[] dzhi;
+  delete[] dzi4;
+  delete[] dzhi4;
 
-    fftw_free(fftini);
-    fftw_free(fftouti);
-    fftw_free(fftinj);
-    fftw_free(fftoutj);
+  fftw_free(fftini);
+  fftw_free(fftouti);
+  fftw_free(fftinj);
+  fftw_free(fftoutj);
 
-    fftw_cleanup();
-  }
+  fftw_cleanup();
 
   exitmpi();
 }
@@ -204,8 +219,6 @@ int cgrid::init()
   fftouti = fftw_alloc_real(itot*jmax);
   fftinj  = fftw_alloc_real(jtot*iblock);
   fftoutj = fftw_alloc_real(jtot*iblock);
-
-  allocated = true;
 
   // initialize the communication functions
   initmpi();
@@ -364,7 +377,7 @@ int cgrid::calculate()
  */
 int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
-  int ijk,ii,jj,kk,iih,jjh,kkh;
+  int ijk,ii,jj,kk,iih,jjh;
 
   ii = 1;
   jj = icells;
@@ -372,7 +385,6 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
 
   iih = (locin[0]-locout[0])*ii;
   jjh = (locin[1]-locout[1])*jj;
-  kkh = (locin[2]-locout[2])*kk;
 
   // interpolate the field
   // \TODO add the vertical component
@@ -439,9 +451,8 @@ int cgrid::interpolate_4th(double * restrict out, double * restrict in, const in
  */
 int cgrid::calcmean(double * restrict prof, const double * restrict data, const int krange)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = icells;
   kk = ijcells;
   
