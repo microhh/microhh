@@ -63,7 +63,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   // load the postprocessing modules
   stats  = new cstats(this);
-  cross  = new ccross(this);
+  cross  = new ccross(this, input);
   budget = new cbudget(this);
 
   // get the list of masks
@@ -96,8 +96,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
     throw 1;
 
   if(stats->readinifile(input))
-    throw 1;
-  if(cross->readinifile(input))
     throw 1;
   if(budget->readinifile(input))
     throw 1;
