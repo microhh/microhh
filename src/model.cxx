@@ -44,50 +44,72 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   master = masterin;
   input  = inputin;
 
-  // create the grid class
-  grid = new cgrid(this, input);
+  // initialize the pointers at zero
+  grid     = 0;
+  fields   = 0;
+  diff     = 0;
+  pres     = 0;
+  thermo   = 0;
+  timeloop = 0;
+  force    = 0;
+  buffer   = 0;
 
-  // create the fields class
-  fields = new cfields(this, input);
+  stats  = 0;
+  cross  = 0;
+  budget = 0;
 
-  // create the model components
-  boundary = cboundary::factory(master, input, this);
-  advec    = cadvec   ::factory(master, input, this, grid->swspatialorder);
-  diff     = cdiff    ::factory(master, input, this, grid->swspatialorder);
-  pres     = cpres    ::factory(master, input, this, grid->swspatialorder);
-  thermo   = cthermo  ::factory(master, input, this);
-
-  timeloop = new ctimeloop(this, input);
-  force    = new cforce   (this, input);
-  buffer   = new cbuffer  (this, input);
-
-  // load the postprocessing modules
-  stats  = new cstats (this, input);
-  cross  = new ccross (this, input);
-  budget = new cbudget(this, input);
-
-  // get the list of masks
-  // TODO This is really UGLY: make an interface that takes this out of the main loops
-  int nerror = 0;
-  nerror += input->getList(&masklist, "stats", "masklist", "");
-  for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+  try
   {
-    if(*it != "wplus" &&
-       *it != "wmin"  &&
-       *it != "ql"    &&
-       *it != "qlcore")
+    // create the grid class
+    grid = new cgrid(this, input);
+
+    // create the fields class
+    fields = new cfields(this, input);
+
+    // create the model components
+    boundary = cboundary::factory(master, input, this);
+    advec    = cadvec   ::factory(master, input, this, grid->swspatialorder);
+    diff     = cdiff    ::factory(master, input, this, grid->swspatialorder);
+    pres     = cpres    ::factory(master, input, this, grid->swspatialorder);
+    thermo   = cthermo  ::factory(master, input, this);
+
+    timeloop = new ctimeloop(this, input);
+    force    = new cforce   (this, input);
+    buffer   = new cbuffer  (this, input);
+
+    // load the postprocessing modules
+    stats  = new cstats (this, input);
+    cross  = new ccross (this, input);
+    budget = new cbudget(this, input);
+
+    // get the list of masks
+    // TODO This is really UGLY: make an interface that takes this out of the main loops
+    int nerror = 0;
+    nerror += input->getList(&masklist, "stats", "masklist", "");
+    for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
     {
-      master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
+      if(*it != "wplus" &&
+         *it != "wmin"  &&
+         *it != "ql"    &&
+         *it != "qlcore")
+      {
+        master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
+      }
+      else
+        stats->addmask(*it);
     }
-    else
-      stats->addmask(*it);
+    // if one or more arguments fails, then crash
+    if(nerror > 0)
+      throw 1;
   }
-  // if one or more arguments fails, then crash
-  if(nerror > 0)
-    throw 1;
+  catch (int &e)
+  {
+    // In case of a failing constructor, delete the class objects and rethrow.
+    deleteObjects();
+  }
 }
 
-cmodel::~cmodel()
+void cmodel::deleteObjects()
 {
   // delete the components in reversed order
   delete budget;
@@ -104,6 +126,11 @@ cmodel::~cmodel()
   delete boundary;
   delete fields;
   delete grid;
+}
+
+cmodel::~cmodel()
+{
+  deleteObjects();
 }
 
 void cmodel::init()

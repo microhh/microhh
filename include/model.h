@@ -79,6 +79,8 @@ class cmodel
     // list of masks for statistics
     std::vector<std::string> masklist;
 
+    void deleteObjects();
+
     void printOutputFile(bool);
     void calcstats(std::string);
     void settimestep();
