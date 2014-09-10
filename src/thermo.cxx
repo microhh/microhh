@@ -33,7 +33,7 @@
 #include "thermo_dry.h"
 #include "thermo_moist.h"
 
-cthermo::cthermo(cmodel *modelin)
+cthermo::cthermo(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -45,11 +45,6 @@ cthermo::cthermo(cmodel *modelin)
 
 cthermo::~cthermo()
 {
-}
-
-int cthermo::readinifile(cinput *inputin)
-{
-  return 0;
 }
 
 int cthermo::init()
@@ -119,15 +114,15 @@ cthermo* cthermo::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
     return 0;
 
   if(swthermo== "moist")
-    return new cthermo_moist(modelin);
+    return new cthermo_moist(modelin, inputin);
   else if(swthermo == "buoy")
-    return new cthermo_buoy(modelin);
+    return new cthermo_buoy(modelin, inputin);
   else if(swthermo == "dry")
-    return new cthermo_dry(modelin);
+    return new cthermo_dry(modelin, inputin);
   else if(swthermo == "buoy_slope")
-    return new cthermo_buoy_slope(modelin);
+    return new cthermo_buoy_slope(modelin, inputin);
   else if(swthermo == "0")
-    return new cthermo(modelin);
+    return new cthermo(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());

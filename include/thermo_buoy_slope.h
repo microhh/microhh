@@ -38,10 +38,9 @@ class cfields;
 class cthermo_buoy_slope : public cthermo
 {
   public:
-    cthermo_buoy_slope(cmodel *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_buoy_slope();        ///< Destructor of the dry thermodynamics class.
+    cthermo_buoy_slope(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
+    ~cthermo_buoy_slope();                  ///< Destructor of the dry thermodynamics class.
 
-    int readinifile(cinput *);               ///< Processing data of the input file.
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
     int execcross();
 

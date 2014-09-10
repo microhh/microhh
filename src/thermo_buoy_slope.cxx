@@ -28,18 +28,11 @@
 #include "model.h"
 #include "master.h"
 
-cthermo_buoy_slope::cthermo_buoy_slope(cmodel *modelin) : cthermo(modelin)
+cthermo_buoy_slope::cthermo_buoy_slope(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
   swthermo = "slope";
   master = modelin->master;
-}
 
-cthermo_buoy_slope::~cthermo_buoy_slope()
-{
-}
-
-int cthermo_buoy_slope::readinifile(cinput *inputin)
-{
   int nerror = 0;
 
   nerror += inputin->getItem(&alpha, "thermo", "alpha", "");
@@ -54,7 +47,12 @@ int cthermo_buoy_slope::readinifile(cinput *inputin)
     ++nerror;
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
+}
+
+cthermo_buoy_slope::~cthermo_buoy_slope()
+{
 }
 
 int cthermo_buoy_slope::exec()

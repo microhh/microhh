@@ -38,12 +38,11 @@ class cfields;
 class cthermo_buoy : public cthermo
 {
   public:
-    cthermo_buoy(cmodel *);     ///< Constructor of the dry thermodynamics class.
-    ~cthermo_buoy();            ///< Destructor of the dry thermodynamics class.
-    int readinifile(cinput *); ///< Processing data of the input file.
+    cthermo_buoy(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
+    ~cthermo_buoy();                  ///< Destructor of the dry thermodynamics class.
+
     int exec();                ///< Add the tendencies belonging to the buoyancy.
     int execcross();
-
 
     int getbuoyancy(cfield3d *, cfield3d *);     ///< Compute the buoyancy for usage in another routine.
     int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.

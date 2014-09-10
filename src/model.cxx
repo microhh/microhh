@@ -57,22 +57,17 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   timeloop = new ctimeloop(this, input);
   force    = new cforce(this, input);
-
   buffer   = new cbuffer(this);
 
-  // set null pointers for classes that will be initialized later
-  boundary = 0;
-  thermo   = 0;
+  thermo = cthermo::factory(master, input, this);
 
   // load the postprocessing modules
   stats  = new cstats(this);
   cross  = new ccross(this);
   budget = new cbudget(this);
 
-  // input parameters
-  int nerror = 0;
-
   // get the list of masks
+  int nerror = 0;
   nerror += input->getList(&masklist, "stats", "masklist", "");
   for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
   {
@@ -88,13 +83,6 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   }
   // if one or more arguments fails, then crash
   if(nerror > 0)
-    throw 1;
-
-  // check the thermo scheme
-  thermo = cthermo::factory(master, input, this);
-  if(thermo == 0)
-    throw 1;
-  if(thermo->readinifile(input))
     throw 1;
 
   // read the boundary and buffer in the end because they need to know the requested fields

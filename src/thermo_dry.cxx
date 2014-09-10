@@ -20,7 +20,7 @@
  */
 
 #include <cstdio>
-#include <algorithm>    // std::count
+#include <algorithm>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_dry.h"
@@ -34,17 +34,10 @@
 #define gravity 9.81
 #define NO_OFFSET 0.
 
-cthermo_dry::cthermo_dry(cmodel *modelin) : cthermo(modelin)
+cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
   swthermo = "dry";
-}
 
-cthermo_dry::~cthermo_dry()
-{
-}
-
-int cthermo_dry::readinifile(cinput *inputin)
-{
   int nerror = 0;
   nerror += inputin->getItem(&thref, "thermo", "thref", "");
 
@@ -54,7 +47,12 @@ int cthermo_dry::readinifile(cinput *inputin)
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
 
-  return nerror;
+  if(nerror)
+    throw 1;
+}
+
+cthermo_dry::~cthermo_dry()
+{
 }
 
 int cthermo_dry::init()

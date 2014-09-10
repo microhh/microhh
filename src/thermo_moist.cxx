@@ -68,24 +68,12 @@
 
 #define NO_OFFSET 0.
 
-cthermo_moist::cthermo_moist(cmodel *modelin) : cthermo(modelin)
+cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
   swthermo = "moist";
 
   allocated = false;
-}
 
-cthermo_moist::~cthermo_moist()
-{
-  if (allocated)
-  {
-    delete[] pref;
-    delete[] prefh;
-  }
-}
-
-int cthermo_moist::readinifile(cinput *inputin)
-{
   int nerror = 0;
   nerror += inputin->getItem(&ps    , "thermo", "ps"    , "");
   nerror += inputin->getItem(&thvref, "thermo", "thvref", "");
@@ -98,7 +86,17 @@ int cthermo_moist::readinifile(cinput *inputin)
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
 
-  return (nerror > 0);
+  if(nerror)
+    throw 1;
+}
+
+cthermo_moist::~cthermo_moist()
+{
+  if (allocated)
+  {
+    delete[] pref;
+    delete[] prefh;
+  }
 }
 
 int cthermo_moist::init()

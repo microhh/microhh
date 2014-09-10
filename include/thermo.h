@@ -24,6 +24,7 @@
 
 // forward declarations to speed up build time
 class cmaster;
+class cinput;
 class cgrid;
 class cfields;
 struct mask;
@@ -31,11 +32,10 @@ struct mask;
 class cthermo
 {
   public:
-    cthermo(cmodel *);
+    cthermo(cmodel *, cinput *);
     virtual ~cthermo();
     static cthermo* factory(cmaster *, cinput *, cmodel *); ///< Factory function for thermo class generation.
 
-    virtual int readinifile(cinput *);
     virtual int init();
     virtual int create();
     virtual int exec();
