@@ -72,7 +72,7 @@ cthermo_dry::~cthermo_dry()
   delete[] this->exnerh;
 }
 
-int cthermo_dry::init()
+void cthermo_dry::init()
 {
   // copy pointers
   stats = model->stats;
@@ -84,8 +84,6 @@ int cthermo_dry::init()
   prefh  = new double[grid->kcells];
   exner  = new double[grid->kcells];
   exnerh = new double[grid->kcells];
-
-  return 0;
 }
 
 int cthermo_dry::create(cinput *inputin)

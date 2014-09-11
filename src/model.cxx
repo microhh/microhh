@@ -158,8 +158,7 @@ void cmodel::init()
   buffer->init();
   force->init();
   pres->init();
-  if(thermo->init())
-    throw 1;
+  thermo->init();
 
   if(stats->init(timeloop->ifactor))
     throw 1;

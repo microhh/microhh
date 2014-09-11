@@ -37,7 +37,7 @@ class cthermo_moist : public cthermo
     cthermo_moist(cmodel *, cinput *);
     ~cthermo_moist();
 
-    int init();
+    void init();
     int create(cinput *);
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
@@ -59,7 +59,6 @@ class cthermo_moist : public cthermo
     std::vector<std::string> crosslist;        // List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
-    bool allocated;
     cstats *stats;
 
     // masks

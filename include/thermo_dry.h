@@ -42,7 +42,7 @@ class cthermo_dry : public cthermo
     cthermo_dry(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
     ~cthermo_dry();                  ///< Destructor of the dry thermodynamics class.
 
-    int init();
+    void init();
     int create(cinput *);
     int exec();                ///< Add the tendencies belonging to the buoyancy.
     int execstats(mask *);
@@ -59,8 +59,8 @@ class cthermo_dry : public cthermo
     int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
     
     // cross sections
-    std::vector<std::string> crosslist;           ///< List with all crosses from ini file
-    std::vector<std::string> allowedcrossvars;    ///< List with allowed cross variables
+    std::vector<std::string> crosslist;        ///< List with all crosses from ini file
+    std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
 
     int calcbuoyancybot(double *, double *,
                         double *, double *,

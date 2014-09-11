@@ -47,9 +47,8 @@ cthermo::~cthermo()
 {
 }
 
-int cthermo::init()
+void cthermo::init()
 {
-  return 0;
 }
 
 int cthermo::create(cinput *inputin)

@@ -36,7 +36,7 @@ class cthermo
     virtual ~cthermo();
     static cthermo* factory(cmaster *, cinput *, cmodel *); ///< Factory function for thermo class generation.
 
-    virtual int init();
+    virtual void init();
     virtual int create(cinput *);
     virtual int exec();
     virtual int execstats(mask *);

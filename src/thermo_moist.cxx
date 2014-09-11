@@ -71,7 +71,16 @@
 cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
   swthermo = "moist";
-  allocated = false;
+
+  thl0 = 0;
+  qt0  = 0;
+
+  thvref  = 0;
+  thvrefh = 0;
+  exnref  = 0;
+  exnrefh = 0;
+  pref    = 0;
+  prefh   = 0;
 
   int nerror = 0;
   nerror += inputin->getItem(&pbot    , "thermo", "pbot"    , "");
@@ -99,20 +108,17 @@ cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin
 
 cthermo_moist::~cthermo_moist()
 {
-  if(allocated)
-  {
-    delete[] thl0;
-    delete[] qt0;
-    delete[] thvref;
-    delete[] thvrefh;
-    delete[] exnref;
-    delete[] exnrefh;
-    delete[] pref;
-    delete[] prefh;
-  }
+  delete[] thl0;
+  delete[] qt0;
+  delete[] thvref;
+  delete[] thvrefh;
+  delete[] exnref;
+  delete[] exnrefh;
+  delete[] pref;
+  delete[] prefh;
 }
 
-int cthermo_moist::init()
+void cthermo_moist::init()
 {
   stats = model->stats;
 
@@ -124,9 +130,6 @@ int cthermo_moist::init()
   exnrefh = new double[grid->kcells];
   pref    = new double[grid->kcells];
   prefh   = new double[grid->kcells];
-  allocated = true;
-
-  return 0;
 }
 
 int cthermo_moist::create(cinput *inputin)
