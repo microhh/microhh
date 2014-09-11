@@ -113,42 +113,42 @@ cfields::~cfields()
   delete[] vmodel;
 }
 
-int cfields::init()
+void cfields::init()
 {
   // set the convenience pointers
   stats = model->stats;
 
   master->printMessage("Initializing fields\n");
 
-  int n = 0;
+  int nerror = 0;
 
   // ALLOCATE ALL THE FIELDS
   // allocate the prognostic velocity fields
   for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
-    n += it->second->init();
+    nerror += it->second->init();
 
   // allocate the velocity tendency fields
   for(fieldmap::iterator it=mt.begin(); it!=mt.end(); ++it)
-    n += it->second->init();
+    nerror += it->second->init();
 
   // allocate the prognostic scalar fields
   for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    n += it->second->init();
+    nerror += it->second->init();
 
   // allocate the scalar tendency fields
   for(fieldmap::iterator it=st.begin(); it!=st.end(); ++it)
-    n += it->second->init();
+    nerror += it->second->init();
 
   // allocate the diagnostic scalars
   for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
-    n += it->second->init();
+    nerror += it->second->init();
+
+  if(nerror > 0)
+    throw 1;
 
   // allocate the base density profiles
   rhoref  = new double[grid->kcells];
   rhorefh = new double[grid->kcells];
-
-  if(n > 0)
-    return 1;
 
   // \TODO Define a reference density. Needs to be replaced once anelastic is there
   // BvS: Always init rhoref at 1 for situation with e.g. thermo=0? For anelastic, overwrite it.
@@ -163,7 +163,7 @@ int cfields::init()
   vmodel = new double[grid->kcells];
 
   // Check different type of crosses and put them in their respective lists 
-  for(fieldmap::iterator it=a.begin(); it!=a.end(); ++it)
+  for(fieldmap::const_iterator it=a.begin(); it!=a.end(); ++it)
   {
     checkaddcross(it->first, "",        &crosslist, &crosssimple);
     checkaddcross(it->first, "lngrad",  &crosslist, &crosslngrad);
@@ -179,8 +179,6 @@ int cfields::init()
     for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
       master->printWarning("field %s in [fields][crosslist] is illegal\n", it->c_str());
   } 
-
-  return 0;
 }
 
 int cfields::checkaddcross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)

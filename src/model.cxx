@@ -153,8 +153,7 @@ cmodel::~cmodel()
 void cmodel::init()
 {
   grid->init();
-  if(fields->init())
-    throw 1;
+  fields->init();
   if(boundary->init(input))
     throw 1;
   if(buffer->init())

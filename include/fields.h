@@ -40,7 +40,7 @@ class cfields
     cfields(cmodel *, cinput *);
     ~cfields();
 
-    int init();
+    void init();
     int create(cinput *);
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
