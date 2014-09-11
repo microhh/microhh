@@ -78,7 +78,7 @@ cstats::~cstats()
   }
 }
 
-int cstats::init(double ifactor)
+void cstats::init(double ifactor)
 {
   // convenience pointers for short notation in class
   grid   = model->grid;
@@ -98,8 +98,6 @@ int cstats::init(double ifactor)
 
   // set the number of stats to zero
   nstats = 0;
-
-  return 0;
 }
 
 int cstats::create(int n)

@@ -39,7 +39,7 @@ class cbudget
     cbudget(cmodel *, cinput *);
     ~cbudget();
 
-    int init();
+    void init();
     int create();
     int execstats(mask *);
 

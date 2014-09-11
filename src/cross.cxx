@@ -78,14 +78,12 @@ int ccross::checkSave(int error, char * filename)
   }
 }
 
-int ccross::init(int ifactor)
+void ccross::init(int ifactor)
 {
   if(swcross == "0")
-    return 0;
+    return;
 
   isampletime = (unsigned long)(ifactor * sampletime);
-
-  return 0;
 }
 
 int ccross::create()

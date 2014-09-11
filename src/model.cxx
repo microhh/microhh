@@ -152,20 +152,18 @@ cmodel::~cmodel()
 
 void cmodel::init()
 {
-  grid->init();
+  grid  ->init();
   fields->init();
-  boundary->init(input);
-  buffer->init();
-  force->init();
-  pres->init();
-  thermo->init();
 
-  if(stats->init(timeloop->ifactor))
-    throw 1;
-  if(cross->init(timeloop->ifactor))
-    throw 1;
-  if(budget->init())
-    throw 1;
+  boundary->init(input);
+  buffer  ->init();
+  force   ->init();
+  pres    ->init();
+  thermo  ->init();
+
+  stats ->init(timeloop->ifactor)
+  cross ->init(timeloop->ifactor)
+  budget->init();
 }
 
 void cmodel::load()

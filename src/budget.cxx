@@ -53,7 +53,7 @@ cbudget::~cbudget()
   delete[] vmodel;
 }
 
-int cbudget::init()
+void cbudget::init()
 {
   // copy the pointers
   grid   = model->grid;
@@ -67,8 +67,6 @@ int cbudget::init()
 
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
-
-  return 0;
 }
 
 int cbudget::create()
