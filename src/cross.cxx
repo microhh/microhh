@@ -78,7 +78,7 @@ int ccross::checkSave(int error, char * filename)
   }
 }
 
-void ccross::init(int ifactor)
+void ccross::init(double ifactor)
 {
   if(swcross == "0")
     return;

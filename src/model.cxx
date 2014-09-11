@@ -161,8 +161,8 @@ void cmodel::init()
   pres    ->init();
   thermo  ->init();
 
-  stats ->init(timeloop->ifactor)
-  cross ->init(timeloop->ifactor)
+  stats ->init(timeloop->ifactor);
+  cross ->init(timeloop->ifactor);
   budget->init();
 }
 

@@ -36,7 +36,7 @@ class ccross
     ccross(cmodel *, cinput *);
     ~ccross();
 
-    void init(int);
+    void init(double);
     int create();
     unsigned long gettimelim(unsigned long);
     //int exec(double, unsigned long, int);
