@@ -143,7 +143,7 @@ int cboundary::processbcs(cinput *inputin)
   return nerror;
 }
 
-int cboundary::init(cinput *inputin)
+void cboundary::init(cinput *inputin)
 {
   int nerror = 0;
   nerror += processbcs(inputin);
@@ -157,8 +157,6 @@ int cboundary::init(cinput *inputin)
 
   if(nerror)
     throw 1;
-
-  return 0;
 }
 
 int cboundary::create(cinput *inputin)

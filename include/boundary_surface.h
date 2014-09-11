@@ -36,7 +36,7 @@ class cboundary_surface : public cboundary
     cboundary_surface(cmodel *, cinput *);
     ~cboundary_surface();
 
-    int init(cinput *);
+    void init(cinput *);
     int create(cinput *);
     int setvalues();
     int exec();

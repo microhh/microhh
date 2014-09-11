@@ -39,7 +39,7 @@ cboundary_user::cboundary_user(cmodel *modelin, cinput *inputin) : cboundary(mod
 {
 }
 
-int cboundary_user::init(cinput *inputin)
+void cboundary_user::init(cinput *inputin)
 {
   int nerror = 0;
 
@@ -55,8 +55,6 @@ int cboundary_user::init(cinput *inputin)
  
   if(nerror)
     throw 1;
-
-  return 0;
 }
 
 int cboundary_user::setvalues()

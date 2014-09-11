@@ -73,7 +73,7 @@ int cboundary_surface::create(cinput *inputin)
   return nerror;
 }
 
-int cboundary_surface::init(cinput *inputin)
+void cboundary_surface::init(cinput *inputin)
 {
   // 1. Process the boundary conditions now all fields are registered
   int nerror = 0;
@@ -177,8 +177,6 @@ int cboundary_surface::init(cinput *inputin)
     else
       ++it2;
   }
-
-  return 0;
 }
 
 int cboundary_surface::execcross()

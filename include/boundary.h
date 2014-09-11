@@ -52,7 +52,7 @@ class cboundary
     virtual ~cboundary();          ///< Destructor of the boundary class.
     static cboundary* factory(cmaster *, cinput *, cmodel *); ///< Factory function for boundary class generation.
 
-    virtual int init(cinput *);   ///< Initialize the fields.
+    virtual void init(cinput *);   ///< Initialize the fields.
     virtual int create(cinput *); ///< Create the fields.
     virtual int settimedep();
     virtual int setvalues();      ///< Set all 2d fields to the prober BC value.
