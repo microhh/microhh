@@ -92,7 +92,7 @@ int cboundary_surface::init(cinput *inputin)
   // crash in case fixed gradient is prescribed
   if(mbcbot == BC_NEUMANN)
   {
-    if(master->mpiid == 0) std::printf("ERROR neumann bc is not supported in surface model\n");
+    master->printError("neumann bc is not supported in surface model\n");
     ++nerror;
   }
   // read the ustar value only if fixed fluxes are prescribed
@@ -108,14 +108,14 @@ int cboundary_surface::init(cinput *inputin)
     // crash in case fixed gradient is prescribed
     if(it->second->bcbot == BC_NEUMANN)
     {
-      if(master->mpiid == 0) std::printf("ERROR fixed gradient bc is not supported in surface model\n");
+      master->printError("fixed gradient bc is not supported in surface model\n");
       ++nerror;
     }
 
     // crash in case of fixed momentum flux and dirichlet bc for scalar
     if(it->second->bcbot == BC_DIRICHLET && mbcbot == BC_USTAR)
     {
-      if(master->mpiid == 0) std::printf("ERROR fixed ustar bc in combination with dirichlet bc for scalars is not supported\n");
+      master->printError("ERROR fixed ustar bc in combination with dirichlet bc for scalars is not supported\n");
       ++nerror;
     }
   }
@@ -135,7 +135,7 @@ int cboundary_surface::init(cinput *inputin)
     if(sbc[*it]->bcbot != thermobc)
     {
       ++nerror;
-      if(master->mpiid == 0) std::printf("ERROR all thermo variables need to have the same bc type\n");
+      master->printError("ERROR all thermo variables need to have the same bc type\n");
     }
     ++it;
   }
@@ -144,8 +144,8 @@ int cboundary_surface::init(cinput *inputin)
     throw 1;
 
   // 2. Allocate the fields
-  obuk  = new double[grid->icells*grid->jcells];
-  ustar = new double[grid->icells*grid->jcells];
+  obuk  = new double[grid->ijcells];
+  ustar = new double[grid->ijcells];
 
   stats = model->stats;
 
@@ -171,7 +171,7 @@ int cboundary_surface::init(cinput *inputin)
   {
     if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
     {
-      if(master->mpiid == 0) std::printf("WARNING field %s in [boundary][crosslist] is illegal\n", it2->c_str());
+      master->printWarning("WARNING field %s in [boundary][crosslist] is illegal\n", it2->c_str());
       it2 = crosslist.erase(it2);  // erase() returns iterator of next element..
     }
     else
@@ -198,8 +198,8 @@ int cboundary_surface::execcross()
 
 int cboundary_surface::execstats(mask *m)
 {
-  stats->calcmean2d(obuk, &m->tseries["obuk"].data, 0.,fields->s["tmp4"]->databot,&stats->nmaskbot);
-  stats->calcmean2d(ustar,&m->tseries["ustar"].data,0.,fields->s["tmp4"]->databot,&stats->nmaskbot);
+  stats->calcmean2d(obuk, &m->tseries["obuk"].data,  0., fields->s["tmp4"]->databot, &stats->nmaskbot);
+  stats->calcmean2d(ustar,&m->tseries["ustar"].data, 0., fields->s["tmp4"]->databot, &stats->nmaskbot);
 
   return 0; 
 }
@@ -209,14 +209,14 @@ int cboundary_surface::save(int iotime)
   char filename[256];
 
   std::sprintf(filename, "obuk.%07d", iotime);
-  if(master->mpiid == 0) std::printf("Saving \"%s\" ... ", filename);
+  master->printMessage("Saving \"%s\" ... ", filename);
   if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
   {
-    if(master->mpiid == 0) std::printf("FAILED\n");
+    master->printMessage("FAILED\n");
     return 1;
   }
   else
-    if(master->mpiid == 0) std::printf("OK\n");
+    master->printMessage("OK\n");
 
   return 0;
 }
@@ -226,14 +226,14 @@ int cboundary_surface::load(int iotime)
   char filename[256];
 
   std::sprintf(filename, "obuk.%07d", iotime);
-  if(master->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+  master->printMessage("Loading \"%s\" ... ", filename);
   if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
   {
-    if(master->mpiid == 0) std::printf("FAILED\n");
+    master->printMessage("FAILED\n");
     return 1;
   }
   else
-    if(master->mpiid == 0) std::printf("OK\n");
+    master->printMessage("OK\n");
 
   grid->boundary_cyclic2d(obuk);
 
