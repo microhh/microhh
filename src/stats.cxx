@@ -692,7 +692,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
-        ijk  = i + j*jj + k*kk;
+        ijk = i + j*jj + k*kk;
         prof[k] += mask[ijk]*std::pow(data[ijk]-datamean[k], power);
       }
   }

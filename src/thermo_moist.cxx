@@ -130,6 +130,18 @@ void cthermo_moist::init()
   exnrefh = new double[grid->kcells];
   pref    = new double[grid->kcells];
   prefh   = new double[grid->kcells];
+
+  for(int k=0; k<grid->kcells; ++k)
+  {
+    thl0   [k] = 0.;
+    qt0    [k] = 0.;
+    thvref [k] = 0.;
+    thvrefh[k] = 0.;
+    exnref [k] = 0.;
+    exnrefh[k] = 0.;
+    pref   [k] = 0.;
+    prefh  [k] = 0.;
+  }
 }
 
 int cthermo_moist::create(cinput *inputin)
