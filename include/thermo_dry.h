@@ -75,9 +75,10 @@ class cthermo_dry : public cthermo
 
 
     cstats *stats;
-    double pbot; ///< Surface pressure.
 
+    double pbot;   ///< Surface pressure.
     double thref0; ///< Reference potential temperature in case of Boussinesq
+
     double *thref;
     double *threfh;
     double *pref;

@@ -42,8 +42,8 @@ cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, in
 {
   swthermo = "dry";
 
-  threfh = 0;
   thref  = 0;
+  threfh = 0;
   pref   = 0;
   prefh  = 0;
   exner  = 0;
@@ -64,13 +64,12 @@ cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, in
 
 cthermo_dry::~cthermo_dry()
 {
-  master->printMessage("CvH: %p\n", threfh);
-  delete[] threfh;
-  delete[] thref;
-  delete[] pref;
-  delete[] prefh;
-  delete[] exner;
-  delete[] exnerh;
+  delete[] this->thref;
+  delete[] this->threfh;
+  delete[] this->pref;
+  delete[] this->prefh;
+  delete[] this->exner;
+  delete[] this->exnerh;
 }
 
 int cthermo_dry::init()
@@ -79,8 +78,8 @@ int cthermo_dry::init()
   stats = model->stats;
 
   // fields for Boussinesq and anelastic solver
-  threfh = new double[grid->kcells];
   thref  = new double[grid->kcells];
+  threfh = new double[grid->kcells];
   pref   = new double[grid->kcells];
   prefh  = new double[grid->kcells];
   exner  = new double[grid->kcells];
