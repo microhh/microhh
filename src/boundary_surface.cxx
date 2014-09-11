@@ -47,16 +47,14 @@ inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
 
 cboundary_surface::cboundary_surface(cmodel *modelin, cinput *inputin) : cboundary(modelin, inputin)
 {
-  allocated = false;
+  ustar = 0;
+  obuk  = 0;
 }
 
 cboundary_surface::~cboundary_surface()
 {
-  if(allocated)
-  {
-    delete[] ustar;
-    delete[] obuk;
-  }
+  delete[] ustar;
+  delete[] obuk;
 }
 
 int cboundary_surface::create(cinput *inputin)
@@ -148,8 +146,6 @@ int cboundary_surface::init(cinput *inputin)
   // 2. Allocate the fields
   obuk  = new double[grid->icells*grid->jcells];
   ustar = new double[grid->icells*grid->jcells];
-
-  allocated = true;
 
   stats = model->stats;
 

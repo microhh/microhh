@@ -85,7 +85,6 @@ class cboundary_surface : public cboundary
     inline double phih(double);
     double ustarin;
 
-    bool allocated;
     cstats *stats;
 
     typedef std::map<std::string, int> bcbotmap;
