@@ -39,7 +39,7 @@ class cbuffer
     cbuffer(cmodel *, cinput *); ///< Constructor of the buffer class.
     ~cbuffer();                  ///< Destructor of the buffer class.
 
-    int init();           ///< Initialize the arrays that contain the profiles.
+    void init();          ///< Initialize the arrays that contain the profiles.
     int create(cinput *); ///< Read the profiles of the forces from the input.
     int exec();           ///< Add the tendencies created by the damping.
 
@@ -57,8 +57,6 @@ class cbuffer
     int bufferkstarth; ///< Grid point at cell face at which damping starts.
 
     std::map<std::string, double*> bufferprofs; ///< Map containing the buffer profiles.
-
-    bool allocated; ///< Boolean flag to indicate allocation of arrays.
 
     std::string swbuffer; ///< Switch for buffer.
 

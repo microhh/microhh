@@ -36,8 +36,6 @@ cbuffer::cbuffer(cmodel *modelin, cinput *inputin)
   fields = model->fields;
   master = model->master;
 
-  allocated = false;
-
   int nerror = 0;
   nerror += inputin->getItem(&swbuffer, "buffer", "swbuffer", "", "0");
 
@@ -54,12 +52,11 @@ cbuffer::cbuffer(cmodel *modelin, cinput *inputin)
 
 cbuffer::~cbuffer()
 {
-  if(allocated)
-    for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
-      delete[] it->second;
+  for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
+    delete[] it->second;
 }
 
-int cbuffer::init()
+void cbuffer::init()
 {
   if(swbuffer == "1")
   {
@@ -69,11 +66,7 @@ int cbuffer::init()
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       bufferprofs[it->first] = new double[grid->kcells];
-
-    allocated = true;
   }
-
-  return 0;
 }
 
 int cbuffer::create(cinput *inputin)
