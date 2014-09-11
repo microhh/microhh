@@ -36,7 +36,9 @@ cforce::cforce(cmodel *modelin, cinput *inputin)
   fields = model->fields;
   master = model->master;
 
-  allocated = false;
+  ug = 0;
+  vg = 0;
+  wls = 0;
 
   int nerror = 0;
   nerror += inputin->getItem(&swlspres, "force", "swlspres", "", "0");
@@ -82,31 +84,22 @@ cforce::cforce(cmodel *modelin, cinput *inputin)
 
 cforce::~cforce()
 {
-  if(allocated)
+  delete[] ug;
+  delete[] vg;
+  delete[] wls;
+
+  if(swls == "1")
   {
-    if(swlspres == "geo")
-    {
-      delete[] ug;
-      delete[] vg;
-    }
-
-    if(swls == "1")
-    {
-      for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-        delete[] lsprofs[*it];
-    }
-
-    if(swwls == "1")
-      delete[] wls;
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+      delete[] lsprofs[*it];
   }
 
   // clean up time dependent data
   for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
-
 }
 
-int cforce::init()
+void cforce::init()
 {
   if(swlspres == "geo")
   {
@@ -122,10 +115,6 @@ int cforce::init()
 
   if(swwls == "1")
     wls = new double[grid->kcells];
-
-  allocated = true;
-
-  return 0;
 }
 
 int cforce::create(cinput *inputin)

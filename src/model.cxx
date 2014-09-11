@@ -156,8 +156,7 @@ void cmodel::init()
   fields->init();
   boundary->init(input);
   buffer->init();
-  if(force->init())
-    throw 1;
+  force->init();
   if(pres->init())
     throw 1;
   if(thermo->init())
