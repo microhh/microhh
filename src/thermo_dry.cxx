@@ -233,7 +233,7 @@ int cthermo_dry::execstats(mask *m)
   const int sloc[] = {0,0,0};
 
   // calculate the mean
-  stats->calcmean(fields->s["tmp1"]->data, m->profs["b"].data, NO_OFFSET, sloc,
+  stats->calcmean(m->profs["b"].data, fields->s["tmp1"]->data, NO_OFFSET, sloc,
                   fields->s["tmp3"]->data, stats->nmask);
 
   // calculate the moments

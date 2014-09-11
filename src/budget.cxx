@@ -140,8 +140,8 @@ int cbudget::execstats(mask *m)
     return 0;
 
   // calculate the mean of the fields
-  stats->calcmean(fields->u->data, umodel, NO_OFFSET);
-  stats->calcmean(fields->v->data, vmodel, NO_OFFSET);
+  stats->calcmean(umodel, fields->u->data, NO_OFFSET);
+  stats->calcmean(vmodel, fields->v->data, NO_OFFSET);
 
   if(grid->swspatialorder == "4")
   {

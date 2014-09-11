@@ -90,10 +90,15 @@ class cstats
     int addfixedprof(std::string, std::string, std::string, std::string, double *);
     int addtseries(std::string, std::string, std::string);
 
-    int calcarea    (double *, const int[3], int *);
-    int calcmean    (double *, double *, double);
-    int calcmean    (double *, double *, double, const int[3], double *, int *);
-    int calcmean2d  (double *, double *, double, double *, int *);
+    int calcarea   (double *, const int[3], int *);
+    void calcmean  (double * const, const double * const,
+                    const double);
+    void calcmean  (double * const, const double * const,
+                    const double, const int[3],
+                    const double * const, const int * const);
+    void calcmean2d(double * const, const double * const,
+                    const double,
+                    const double * const, const int * const);
     // int calcmoment  (double *, double *, double *, double, int);
     int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
     int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);

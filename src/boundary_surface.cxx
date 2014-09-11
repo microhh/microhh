@@ -196,8 +196,8 @@ int cboundary_surface::execcross()
 
 int cboundary_surface::execstats(mask *m)
 {
-  stats->calcmean2d(obuk, &m->tseries["obuk"].data,  0., fields->s["tmp4"]->databot, &stats->nmaskbot);
-  stats->calcmean2d(ustar,&m->tseries["ustar"].data, 0., fields->s["tmp4"]->databot, &stats->nmaskbot);
+  stats->calcmean2d(&m->tseries["obuk"].data , obuk , 0., fields->s["tmp4"]->databot, &stats->nmaskbot);
+  stats->calcmean2d(&m->tseries["ustar"].data, ustar, 0., fields->s["tmp4"]->databot, &stats->nmaskbot);
 
   return 0; 
 }

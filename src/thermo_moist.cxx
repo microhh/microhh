@@ -435,7 +435,7 @@ int cthermo_moist::execstats(mask *m)
   const int sloc[] = {0,0,0};
 
   // mean
-  stats->calcmean(fields->s["tmp1"]->data, m->profs["b"].data, NO_OFFSET, sloc,
+  stats->calcmean(m->profs["b"].data, fields->s["tmp1"]->data, NO_OFFSET, sloc,
                   fields->s["tmp3"]->data, stats->nmask);
 
   // moments
@@ -486,7 +486,7 @@ int cthermo_moist::execstats(mask *m)
 
   // calculate the liquid water stats
   calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-  stats->calcmean(fields->s["tmp1"]->data, m->profs["ql"].data, NO_OFFSET, sloc, fields->s["tmp3"]->data, stats->nmask);
+  stats->calcmean(m->profs["ql"].data, fields->s["tmp1"]->data, NO_OFFSET, sloc, fields->s["tmp3"]->data, stats->nmask);
   stats->calccount(fields->s["tmp1"]->data, m->profs["cfrac"].data, 0.,
                    fields->s["tmp3"]->data, stats->nmask);
 

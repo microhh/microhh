@@ -362,7 +362,7 @@ int cfields::execstats(mask *m)
   stats->calcarea(m->profs["areah"].data, wloc, stats->nmaskh);
 
   // start with the stats on the w location, to make the wmean known for the flux calculations
-  stats->calcmean(w->data, m->profs["w"].data, NO_OFFSET, wloc, sd["tmp4"]->data, stats->nmaskh);
+  stats->calcmean(m->profs["w"].data, w->data, NO_OFFSET, wloc, sd["tmp4"]->data, stats->nmaskh);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
@@ -375,8 +375,8 @@ int cfields::execstats(mask *m)
   // calculate the stats on the u location
   // interpolate the mask horizontally onto the u coordinate
   grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
-  stats->calcmean(u->data, m->profs["u"].data, grid->utrans, uloc, sd["tmp1"]->data, stats->nmask);
-  stats->calcmean(u->data, umodel            , NO_OFFSET   , uloc, sd["tmp1"]->data, stats->nmask);
+  stats->calcmean(m->profs["u"].data, u->data, grid->utrans, uloc, sd["tmp1"]->data, stats->nmask);
+  stats->calcmean(umodel            , u->data, NO_OFFSET   , uloc, sd["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
@@ -413,8 +413,8 @@ int cfields::execstats(mask *m)
 
   // calculate the stats on the v location
   grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
-  stats->calcmean(v->data, m->profs["v"].data, grid->vtrans, vloc, sd["tmp1"]->data, stats->nmask);
-  stats->calcmean(v->data, vmodel            , NO_OFFSET   , vloc, sd["tmp1"]->data, stats->nmask);
+  stats->calcmean(m->profs["v"].data, v->data, grid->vtrans, vloc, sd["tmp1"]->data, stats->nmask);
+  stats->calcmean(vmodel            , v->data, NO_OFFSET   , vloc, sd["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
@@ -453,7 +453,7 @@ int cfields::execstats(mask *m)
   cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
-    stats->calcmean(it->second->data, m->profs[it->first].data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
+    stats->calcmean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
     for(int n=2; n<5; ++n)
     {
       std::stringstream ss;
@@ -493,10 +493,10 @@ int cfields::execstats(mask *m)
     stats->addfluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
 
   // other statistics
-  stats->calcmean(s["p"]->data, m->profs["p"].data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
+  stats->calcmean(m->profs["p"].data, s["p"]->data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
 
   if(model->diff->getname() == "les2s")
-    stats->calcmean(s["evisc"]->data, m->profs["evisc"].data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
+    stats->calcmean(m->profs["evisc"].data, s["evisc"]->data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
 
   return 0;
 }

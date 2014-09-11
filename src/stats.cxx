@@ -374,12 +374,13 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh, double * r
   return 0;
 }
 
-int cstats::calcmean(double * restrict data, double * restrict prof, double offset)
+void cstats::calcmean(double * const restrict prof, const double * const restrict data,
+                      const double offset)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; ++k)
   {
@@ -399,8 +400,6 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
-
-  return 0;
 }
 
 int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nmask)
@@ -418,8 +417,9 @@ int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nm
   return 0;
 }
 
-int cstats::calcmean(double * restrict data, double * restrict prof, double offset, const int loc[3],
-                     double * restrict mask, int * restrict nmask)
+void cstats::calcmean(double * const restrict prof, const double * const restrict data,
+                      const double offset, const int loc[3],
+                      const double * const restrict mask, const int * const restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -447,12 +447,11 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int cstats::calcmean2d(double * restrict data, double * restrict mean, double offset,
-                       double * restrict mask, int * restrict nmask)
+void cstats::calcmean2d(double * const restrict mean, const double * const restrict data,
+                        const double offset,
+                        const double * const restrict mask, const int * const restrict nmask)
 {
   int ij,jj;
   jj = grid->icells;
@@ -472,8 +471,6 @@ int cstats::calcmean2d(double * restrict data, double * restrict mean, double of
   }
   else
     *mean = NC_FILL_DOUBLE; 
-
-  return 0;
 }
 
 int cstats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
