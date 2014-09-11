@@ -33,14 +33,12 @@ class cpres_2 : public cpres
     cpres_2(cmodel *, cinput *);
     ~cpres_2();
 
-    int init();
+    void init();
     int setvalues();
     int exec(double);
     double check();
 
   private:
-    bool allocated;
-
     double *bmati, *bmatj;
     double *a, *c;
     double *work2d;

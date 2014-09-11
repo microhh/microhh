@@ -32,20 +32,21 @@
 
 cpres_2::cpres_2(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 {
-  allocated = false;
+  a = 0;
+  c = 0;
+  work2d = 0;
+  bmati = 0;
+  bmatj = 0;
 }
 
 cpres_2::~cpres_2()
 {
-  if(allocated)
-  {
-    delete[] a;
-    delete[] c;
-    delete[] work2d;
+  delete[] a;
+  delete[] c;
+  delete[] work2d;
 
-    delete[] bmati;
-    delete[] bmatj;
-  }
+  delete[] bmati;
+  delete[] bmatj;
 }
 
 int cpres_2::exec(double dt)
@@ -79,7 +80,7 @@ double cpres_2::check()
   return divmax;
 }
 
-int cpres_2::init()
+void cpres_2::init()
 {
   int imax, jmax, kmax;
   int itot, jtot;
@@ -92,15 +93,11 @@ int cpres_2::init()
 
   bmati = new double[itot];
   bmatj = new double[jtot];
-  
-  // allocate help variables for the matrix solver
+
   a = new double[kmax];
   c = new double[kmax];
+
   work2d = new double[imax*jmax];
-
-  allocated = true;
-
-  return 0;
 }
 
 int cpres_2::setvalues()

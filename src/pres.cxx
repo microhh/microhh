@@ -46,9 +46,8 @@ cpres::~cpres()
 {
 }
 
-int cpres::init()
+void cpres::init()
 {
-  return 0;
 }
 
 int cpres::setvalues()
