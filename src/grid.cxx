@@ -138,60 +138,59 @@ cgrid::~cgrid()
 /**
  * This function allocates the dynamic arrays in the field class
  * variables and calculates the derived grid indices and dimensions.
- * @return Returns 1 on error, 0 otherwise.
  */
-int cgrid::init()
+void cgrid::init()
 {
-  // check whether the grid fits the processor configuration
+  // Check whether the grid fits the processor configuration.
   if(itot % master->npx != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, master->npx);
-    return 1;
+    master->printError("itot = %d is not a multiple of npx = %d\n", itot, master->npx);
+    throw 1;
   }
   if(itot % master->npy != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, master->npy);
-    return 1;
+    master->printError("itot = %d is not a multiple of npy = %d\n", itot, master->npy);
+    throw 1;
   }
-  // check this one only when npy > 1, since the transpose in that direction only happens then
+  // Check this one only when npy > 1, since the transpose in that direction only happens then.
   if(jtot % master->npx != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, master->npx);
-    return 1;
+    master->printError("jtot = %d is not a multiple of npx = %d\n", jtot, master->npx);
+    throw 1;
   }
   if(jtot % master->npy != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, master->npy);
-    return 1;
+    master->printError("jtot = %d is not a multiple of npy = %d\n", jtot, master->npy);
+    throw 1;
   }
   if(ktot % master->npx != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, master->npx);
-    return 1;
+    master->printError("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, master->npx);
+    throw 1;
   }
 
-  // calculate the total number of grid cells
+  // Calculate the total number of grid cells.
   ntot = itot*jtot*ktot;
 
-  // calculate the grid dimensions per process
+  // Calculate the grid dimensions per process.
   imax = itot / master->npx;
   jmax = jtot / master->npy;
   kmax = ktot;
   nmax = imax*jmax*kmax;
 
-  // calculate the block sizes for the transposes
+  // Calculate the block sizes for the transposes.
   iblock = itot / master->npy;
   jblock = jtot / master->npx;
   kblock = ktot / master->npx;
 
-  // calculate the grid dimensions including ghost cells
+  // Calculate the grid dimensions including ghost cells.
   icells  = (imax+2*igc);
   jcells  = (jmax+2*jgc);
   ijcells = icells*jcells;
   kcells  = (kmax+2*kgc);
   ncells  = (imax+2*igc)*(jmax+2*jgc)*(kmax+2*kgc);
 
-  // calculate the starting and ending points for loops over the grid
+  // Calculate the starting and ending points for loops over the grid.
   istart = igc;
   jstart = jgc;
   kstart = kgc;
@@ -222,8 +221,6 @@ int cgrid::init()
 
   // initialize the communication functions
   initmpi();
-
-  return 0;
 }
 
 /**

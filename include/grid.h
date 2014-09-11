@@ -45,7 +45,7 @@ class cgrid
     cgrid(cmodel *, cinput *); ///< Constructor of the grid class.
     ~cgrid();                  ///< Destructor of the grid class.
 
-    int init();           ///< Initialization of the grid arrays.
+    void init();          ///< Initialization of the grid arrays.
     int create(cinput *); ///< Creation of the grid data.
     int calculate();      ///< Computation of dimensions, faces and ghost cells.
     int save();           ///< Saves grid data to file.
