@@ -91,8 +91,8 @@ class cstats
     int addtseries(std::string, std::string, std::string);
 
     int calcarea   (double *, const int[3], int *);
-    void calcmean  (double * const, const double * const,
-                    const double);
+    //void calcmean  (double * const, const double * const,
+    //                const double);
     void calcmean  (double * const, const double * const,
                     const double, const int[3],
                     const double * const, const int * const);
@@ -121,8 +121,6 @@ class cstats
     // NcFile *dataFile;
     // NcDim  *z_dim, *zh_dim, *t_dim;
     // NcVar  *t_var, *iter_var;
-
-    double *umodel, *vmodel;
 
     int nstats;
 

@@ -40,9 +40,6 @@ cstats::cstats(cmodel *modelin, cinput *inputin)
   model  = modelin;
 
   // set the pointers to zero
-  umodel = 0;
-  vmodel = 0;
-
   nmask  = 0;
   nmaskh = 0;
 
@@ -64,8 +61,6 @@ cstats::cstats(cmodel *modelin, cinput *inputin)
 
 cstats::~cstats()
 {
-  delete[] umodel;
-  delete[] vmodel;
   delete[] nmask;
   delete[] nmaskh;
 
@@ -89,9 +84,6 @@ void cstats::init(double ifactor)
   addmask("default");
 
   isampletime = (unsigned long)(ifactor * sampletime);
-
-  umodel = new double[grid->kcells];
-  vmodel = new double[grid->kcells];
 
   nmask  = new int[grid->kcells];
   nmaskh = new int[grid->kcells];
@@ -374,6 +366,7 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh, double * r
   return 0;
 }
 
+/*
 void cstats::calcmean(double * const restrict prof, const double * const restrict data,
                       const double offset)
 {
@@ -401,6 +394,7 @@ void cstats::calcmean(double * const restrict prof, const double * const restric
 
   grid->getprof(prof, grid->kcells);
 }
+*/
 
 int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nmask)
 {
@@ -787,7 +781,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
     grid->interpolate_2nd(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
-  
+
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
@@ -803,7 +797,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for(int k=1; k<grid->kcells; ++k)
   {
     if(nmask[k] > NTHRES && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
       prof[k] /= (double)(nmask[k]);

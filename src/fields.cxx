@@ -152,7 +152,7 @@ void cfields::init()
 
   // \TODO Define a reference density. Needs to be replaced once anelastic is there
   // BvS: Always init rhoref at 1 for situation with e.g. thermo=0? For anelastic, overwrite it.
-  for (int k = 0; k<grid->kcells; ++k)
+  for(int k=0; k<grid->kcells; ++k)
   {
     rhoref[k] = 1.;
     rhorefh[k] = 1.; 
@@ -161,6 +161,13 @@ void cfields::init()
   // allocate help arrays for statistics;
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
+
+  // Initialize at zero
+  for(int k=0; k<grid->kcells; ++k)
+  {
+    umodel[k] = 0.;
+    vmodel[k] = 0.; 
+  }
 
   // Check different type of crosses and put them in their respective lists 
   for(fieldmap::const_iterator it=a.begin(); it!=a.end(); ++it)

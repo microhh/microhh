@@ -31,7 +31,7 @@
 #include "stats.h"
 #include <netcdfcpp.h>
 
-#define NO_OFFSET 0.
+// #define NO_OFFSET 0.
 
 cbudget::cbudget(cmodel *modelin, cinput *inputin)
 {
@@ -67,6 +67,12 @@ void cbudget::init()
 
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
+
+  for(int k=0; k<grid->kcells; ++k)
+  {
+    umodel[k] = 0.;
+    vmodel[k] = 0.;
+  }
 }
 
 int cbudget::create()
@@ -140,8 +146,8 @@ int cbudget::execstats(mask *m)
     return 0;
 
   // calculate the mean of the fields
-  stats->calcmean(umodel, fields->u->data, NO_OFFSET);
-  stats->calcmean(vmodel, fields->v->data, NO_OFFSET);
+  grid->calcmean(umodel, fields->u->data, grid->kcells);
+  grid->calcmean(vmodel, fields->v->data, grid->kcells);
 
   if(grid->swspatialorder == "4")
   {
