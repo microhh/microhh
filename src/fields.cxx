@@ -43,9 +43,10 @@ cfields::cfields(cmodel *modelin, cinput *inputin)
   calcprofs = false;
 
   // Initialize the pointers.
-  rhoref = 0;
-  umodel = 0;
-  vmodel = 0;
+  rhoref  = 0;
+  rhorefh = 0;
+  umodel  = 0;
+  vmodel  = 0;
 
   // input parameters
   int nerror = 0;
@@ -107,6 +108,7 @@ cfields::~cfields()
 
   // delete the arrays
   delete[] rhoref;
+  delete[] rhorefh;
   delete[] umodel;
   delete[] vmodel;
 }

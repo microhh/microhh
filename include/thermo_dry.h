@@ -62,8 +62,6 @@ class cthermo_dry : public cthermo
     std::vector<std::string> crosslist;           ///< List with all crosses from ini file
     std::vector<std::string> allowedcrossvars;    ///< List with allowed cross variables
 
-    bool allocated;
-
     int calcbuoyancybot(double *, double *,
                         double *, double *,
                         double *, double *);                ///< Calculation of the near-surface and surface buoyancy.
@@ -81,13 +79,10 @@ class cthermo_dry : public cthermo
 
     double thref0; ///< Reference potential temperature in case of Boussinesq
     double *thref;
-    double *pref;
-    double *exner;
-    // double *rhoref;
-
     double *threfh;
+    double *pref;
     double *prefh;
+    double *exner;
     double *exnerh;
-    // double *rhorefh;
 };
 #endif

@@ -41,15 +41,13 @@
 cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
   swthermo = "dry";
-  if(allocated)
-  {
-    delete[] threfh;
-    delete[] thref; 
-    delete[] pref;
-    delete[] exner;
-    delete[] prefh;
-    delete[] exnerh;
-  }
+
+  threfh = 0;
+  thref  = 0;
+  pref   = 0;
+  prefh  = 0;
+  exner  = 0;
+  exnerh = 0;
 
   int nerror = 0;
   nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
@@ -66,6 +64,13 @@ cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, in
 
 cthermo_dry::~cthermo_dry()
 {
+  master->printMessage("CvH: %p\n", threfh);
+  delete[] threfh;
+  delete[] thref;
+  delete[] pref;
+  delete[] prefh;
+  delete[] exner;
+  delete[] exnerh;
 }
 
 int cthermo_dry::init()
@@ -74,14 +79,12 @@ int cthermo_dry::init()
   stats = model->stats;
 
   // fields for Boussinesq and anelastic solver
-  threfh  = new double[grid->kcells];
-  thref   = new double[grid->kcells];
-  pref    = new double[grid->kcells];
-  exner   = new double[grid->kcells];
-  prefh   = new double[grid->kcells];
-  exnerh  = new double[grid->kcells];
-
-  allocated = true; 
+  threfh = new double[grid->kcells];
+  thref  = new double[grid->kcells];
+  pref   = new double[grid->kcells];
+  prefh  = new double[grid->kcells];
+  exner  = new double[grid->kcells];
+  exnerh = new double[grid->kcells];
 
   return 0;
 }
