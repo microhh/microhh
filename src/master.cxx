@@ -1,5 +1,8 @@
 #include <cstdarg>
 #include <cstdio>
+ * Copyright (c) 2011-2014 Chiel van Heerwaarden
+ * Copyright (c) 2011-2014 Thijs Heus
+ * Copyright (c)      2014 Bart van Stratum
 #include "master.h"
 
 void cmaster::printMessage(const char *format, ...)
