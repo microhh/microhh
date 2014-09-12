@@ -22,6 +22,8 @@
 #ifndef ADVEC
 #define ADVEC
 
+#include <string>
+
 // forward declarations to speed up build time
 class cmaster;
 class cinput;
