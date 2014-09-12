@@ -319,7 +319,7 @@ int cgrid::calculate()
     z[kstart-3] = dhuge;
     z[kend+2  ] = dhuge;
 
-    zh[kstart  ] = 0.;
+    zh[kstart] = 0.;
     for(k=kstart+1; k<kend; ++k)
       zh[k] = ci0*z[k-2] + ci1*z[k-1] + ci2*z[k] + ci3*z[k+1];
     zh[kend] = zsize;
