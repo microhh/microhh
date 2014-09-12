@@ -26,10 +26,14 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "boundary.h"
 #include "defines.h"
 #include "model.h"
 #include "timeloop.h"
+
+// boundary schemes
+#include "boundary.h"
+#include "boundary_surface.h"
+#include "boundary_user.h"
 
 #define NO_OFFSET 0.
 #define NO_VELOCITY 0.
@@ -39,12 +43,13 @@
 #define BC_FLUX 2
 #define BC_USTAR 3
 
-cboundary::cboundary(cmodel *modelin)
+cboundary::cboundary(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
+
 }
 
 cboundary::~cboundary()
@@ -58,22 +63,6 @@ cboundary::~cboundary()
   // clean up time dependent data
   for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
-}
-
-int cboundary::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-
-  nerror += processbcs(inputin);
-
-  // there is no option for prescribing ustar without surface model
-  if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
-  {
-    if(master->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
-    ++nerror;
-  }
-
-  return nerror;
 }
 
 int cboundary::processbcs(cinput *inputin)
@@ -154,9 +143,20 @@ int cboundary::processbcs(cinput *inputin)
   return nerror;
 }
 
-int cboundary::init()
+void cboundary::init(cinput *inputin)
 {
-  return 0;
+  int nerror = 0;
+  nerror += processbcs(inputin);
+
+  // there is no option (yet) for prescribing ustar without surface model
+  if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
+  {
+    if(master->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
+    ++nerror;
+  }
+
+  if(nerror)
+    throw 1;
 }
 
 int cboundary::create(cinput *inputin)
@@ -345,6 +345,25 @@ int cboundary::execstats(mask *m)
 int cboundary::bcvalues()
 {
   return 0;
+}
+
+cboundary* cboundary::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
+{
+  std::string swboundary;
+  if(inputin->getItem(&swboundary, "boundary", "swboundary", "", "default"))
+    return 0;
+
+  if(swboundary == "surface")
+    return new cboundary_surface(modelin, inputin);
+  else if(swboundary == "user")
+    return new cboundary_user(modelin, inputin);
+  else if(swboundary == "default")
+    return new cboundary(modelin, inputin);
+  else
+  {
+    masterin->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+    return 0;
+  }
 }
 
 int cboundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset)

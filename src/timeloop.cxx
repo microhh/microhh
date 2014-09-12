@@ -29,10 +29,7 @@
 #include "defines.h"
 #include "model.h"
 
-// forward declaration
-class cmodel;
-
-ctimeloop::ctimeloop(cmodel *modelin)
+ctimeloop::ctimeloop(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -41,14 +38,7 @@ ctimeloop::ctimeloop(cmodel *modelin)
 
   substep = 0;
   ifactor = 1e6;
-}
 
-ctimeloop::~ctimeloop()
-{
-}
-
-int ctimeloop::readinifile(cinput *inputin)
-{
   // input parameters
   int n = 0;
 
@@ -74,13 +64,13 @@ int ctimeloop::readinifile(cinput *inputin)
 
   // if one argument fails, then crash
   if(n > 0)
-    return 1;
+    throw 1;
 
   // 3 and 4 are the only valid values for the rkorder
   if(!(rkorder == 3 || rkorder == 4))
   {
-    if(master->mpiid == 0) std::printf("ERROR \"%d\" is an illegal value for rkorder\n", rkorder);
-    return 1;
+    master->printError("\"%d\" is an illegal value for rkorder\n", rkorder);
+    throw 1;
   }
 
   // initializations
@@ -108,15 +98,17 @@ int ctimeloop::readinifile(cinput *inputin)
   // check whether starttime and savetime are an exact multiple of iotimeprec
   if((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
   {
-    if(master->mpiid == 0) std::printf("ERROR starttime or savetime is not an exact multiple of iotimeprec\n");
-    return 1;
+    master->printError("starttime or savetime is not an exact multiple of iotimeprec\n");
+    throw 1;
   }
 
   iotime = (int)(istarttime / iiotimeprec);
 
   gettimeofday(&start, NULL);
+}
 
-  return 0;
+ctimeloop::~ctimeloop()
+{
 }
 
 int ctimeloop::settimelim()

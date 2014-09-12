@@ -35,11 +35,11 @@
 #define BC_NEUMANN 1
 #define BC_FLUX 2
 
-cboundary_user::cboundary_user(cmodel *modelin) : cboundary(modelin)
+cboundary_user::cboundary_user(cmodel *modelin, cinput *inputin) : cboundary(modelin, inputin)
 {
 }
 
-int cboundary_user::readinifile(cinput *inputin)
+void cboundary_user::init(cinput *inputin)
 {
   int nerror = 0;
 
@@ -52,8 +52,9 @@ int cboundary_user::readinifile(cinput *inputin)
   nerror += inputin->getItem(&patch_xi,   "boundary", "patch_xi"  , "", 0.);
   nerror += inputin->getItem(&patch_facr, "boundary", "patch_facr", "", 1.);
   nerror += inputin->getItem(&patch_facl, "boundary", "patch_facl", "", 0.);
-  
-  return nerror;
+ 
+  if(nerror)
+    throw 1;
 }
 
 int cboundary_user::setvalues()

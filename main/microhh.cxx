@@ -19,64 +19,64 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
+#include <iostream>
 #include "master.h"
 #include "model.h"
 
 int main(int argc, char *argv[])
 {
+  // initialize the master class, it cannot fail
   cmaster master;
-  if(master.startup(argc, argv))
-    return 1;
-
-  // start up the message passing interface
-  if(master.mpiid == 0) std::printf("Microhh git-hash: " GITHASH "\n");
-
-  // create the instances of the objects
-  cinput  input (&master);
-  cmodel  model (&master, &input);
-
-  // read the input data
-  if(input.readinput())
-    return 1;
-
-  if(master.readinifile(&input))
-    return 1;
-  if(model.readinifile())
-    return 1;
-
-  // init the mpi 
-  if(master.init())
-    return 1;
-  if(model.init())
-    return 1;
-
-  if(master.mode == "init")
+  try
   {
-    if(model.create())
-      return 1;
+    // start up the master class
+    master.startup(argc, argv);
 
-    // save the data
-    if(model.save())
-      return 1;
+    // print the current version of the model
+    master.printMessage("Microhh git-hash: " GITHASH "\n");
+
+    // read the input data
+    cinput input(&master);
+
+    // initialize the model class
+    cmodel model(&master, &input);
+
+    // initialize the master
+    master.init(&input);
+
+    // initialize the model components
+    model.init();
+
+    if(master.mode == "init")
+    {
+      // create the data
+      model.create();
+      // save the data
+      model.save();
+    }
+    else
+    {
+      // load the data
+      model.load();
+    }
+
+    // check unused input
+    input.printUnused(); 
+    // free the memory of the input
+    input.clear();
+
+    // run the model
+    if(master.mode != "init")
+      model.exec();
   }
-  else
+
+  // catch any exceptions and return 1
+  catch (...)
   {
-    // load the data
-    if(model.load())
-      return 1;
+    return 1;
   }
 
-  // check unused input
-  input.printUnused(); 
-  // free the memory of the input
-  input.clear();
-
-  // run the model
-  if(master.mode != "init")
-    if(model.exec())
-      return 1;
-
+  // return 0 in case the model exits properly
   return 0;
 }
 

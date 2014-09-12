@@ -28,72 +28,105 @@
 #include "model.h"
 #include "defines.h"
 #include "timeloop.h"
+#include "advec.h"
+#include "diff.h"
+#include "pres.h"
+#include "thermo.h"
+#include "boundary.h"
 #include "buffer.h"
 #include "force.h"
 #include "stats.h"
 #include "cross.h"
 #include "budget.h"
 
-// boundary schemes
-#include "boundary.h"
-#include "boundary_surface.h"
-#include "boundary_user.h"
-
-// advection schemes
-#include "advec.h"
-#include "advec_2.h"
-#include "advec_2int4.h"
-#include "advec_4.h"
-#include "advec_4m.h"
-
-// diffusion schemes
-#include "diff.h"
-#include "diff_2.h"
-#include "diff_4.h"
-#include "diff_les2s.h"
-
-// pressure schemes
-#include "pres.h"
-#include "pres_2.h"
-#include "pres_4.h"
-
-// thermo schemes
-#include "thermo.h"
-#include "thermo_buoy.h"
-#include "thermo_buoy_slope.h"
-#include "thermo_dry.h"
-#include "thermo_moist.h"
-
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
   master = masterin;
   input  = inputin;
 
-  // create the grid class
-  grid = new cgrid(this);
+  // initialize the pointers at zero
+  grid     = 0;
+  fields   = 0;
+  diff     = 0;
+  pres     = 0;
+  thermo   = 0;
+  timeloop = 0;
+  force    = 0;
+  buffer   = 0;
 
-  // create the fields class
-  fields = new cfields(this);
+  stats  = 0;
+  cross  = 0;
+  budget = 0;
 
-  // create the instances of the model operations
-  timeloop = new ctimeloop(this);
-  force    = new cforce(this);
-  buffer   = new cbuffer(this);
+  try
+  {
+    // create the grid class
+    grid = new cgrid(this, input);
 
-  // set null pointers for classes that will be initialized later
-  boundary = NULL;
-  advec    = NULL;
-  diff     = NULL;
-  pres     = NULL;
-  thermo   = NULL;
+    // create the fields class
+    fields = new cfields(this, input);
 
-  // load the postprocessing modules
-  stats  = new cstats(this);
-  cross  = new ccross(this);
-  budget = new cbudget(this);
+    // create the model components
+    boundary = cboundary::factory(master, input, this);
+    advec    = cadvec   ::factory(master, input, this, grid->swspatialorder);
+    diff     = cdiff    ::factory(master, input, this, grid->swspatialorder);
+    pres     = cpres    ::factory(master, input, this, grid->swspatialorder);
+    thermo   = cthermo  ::factory(master, input, this);
+
+    timeloop = new ctimeloop(this, input);
+    force    = new cforce   (this, input);
+    buffer   = new cbuffer  (this, input);
+
+    // load the postprocessing modules
+    stats  = new cstats (this, input);
+    cross  = new ccross (this, input);
+    budget = new cbudget(this, input);
+
+    // get the list of masks
+    // TODO This is really UGLY: make an interface that takes this out of the main loops
+    int nerror = 0;
+    nerror += input->getList(&masklist, "stats", "masklist", "");
+    for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+    {
+      if(*it != "wplus" &&
+         *it != "wmin"  &&
+         *it != "ql"    &&
+         *it != "qlcore")
+      {
+        master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
+      }
+      else
+        stats->addmask(*it);
+    }
+
+    // Get base state option (boussinesq or anelastic)
+    nerror += input->getItem(&swbasestate , "grid"  , "swbasestate" , "", "");  // BvS: where to put switch??
+
+    if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
+    {
+      master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
+      throw 1;
+    }
+    // 2nd order with LES diffusion is only option supporting anelastic (for now) 
+    //if(swdiff != "les2s" and swbasestate != "boussinesq")
+    //{
+    //  std::printf("ERROR swdiff=%s is not allowed with swbasestate=%s \n", swdiff.c_str(),swbasestate.c_str());
+    //  return 1;
+    //}
+
+    // if one or more arguments fails, then crash
+    if(nerror > 0)
+      throw 1;
+  }
+  catch (int &e)
+  {
+    // In case of a failing constructor, delete the class objects and rethrow.
+    deleteObjects();
+    throw;
+  }
 }
 
-cmodel::~cmodel()
+void cmodel::deleteObjects()
 {
   // delete the components in reversed order
   delete budget;
@@ -112,251 +145,89 @@ cmodel::~cmodel()
   delete grid;
 }
 
-int cmodel::readinifile()
+cmodel::~cmodel()
 {
-  // input parameters
-  int nerror = 0;
-
-  // grid
-  if(grid->readinifile(input))
-    return 1;
-
-  // fields
-  if(fields->readinifile(input))
-    return 1;
-
-  // first, get the switches for the schemes
-  nerror += input->getItem(&swadvec   , "advec"   , "swadvec"   , "", grid->swspatialorder);
-  nerror += input->getItem(&swdiff    , "diff"    , "swdiff"    , "", grid->swspatialorder);
-  nerror += input->getItem(&swpres    , "pres"    , "swpres"    , "", grid->swspatialorder);
-  nerror += input->getItem(&swboundary, "boundary", "swboundary", "", "default");
-  nerror += input->getItem(&swthermo  , "thermo"  , "swthermo"  , "", "0");
-
-  // get the list of masks
-  nerror += input->getList(&masklist, "stats", "masklist", "");
-  for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
-  {
-    if(*it != "wplus" &&
-       *it != "wmin"  &&
-       *it != "ql"    &&
-       *it != "qlcore")
-    {
-      master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
-    }
-    else
-      stats->addmask(*it);
-  }
-
-  // if one or more arguments fails, then crash
-  if(nerror > 0)
-    return 1;
-
-  // check the advection scheme
-  if(swadvec == "0")
-    advec = new cadvec(this);
-  else if(swadvec == "2")
-    advec = new cadvec_2(this);
-  else if(swadvec == "2int4")
-    advec = new cadvec_2int4(this);
-  else if(swadvec == "4")
-    advec = new cadvec_4(this);
-  else if(swadvec == "4m")
-    advec = new cadvec_4m(this);
-  else
-  {
-    master->printError("ERROR \"%s\" is an illegal value for swadvec\n", swadvec.c_str());
-    return 1;
-  }
-  if(advec->readinifile(input))
-    return 1;
-
-  // check the diffusion scheme
-  if(swdiff == "0")
-    diff = new cdiff(this);
-  else if(swdiff == "2")
-    diff = new cdiff_2(this);
-  else if(swdiff == "4")
-    diff = new cdiff_4(this);
-  // TODO move to new model file later?
-  else if(swdiff == "les2s")
-  {
-    diff = new cdiff_les2s(this);
-    // the subgrid model requires a surface model because of the MO matching at first level
-    if(swboundary != "surface")
-    {
-      master->printError("swdiff == \"les2s\" requires swboundary == \"surface\"\n");
-      return 1;
-    }
-  }
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
-    return 1;
-  }
-  if(diff->readinifile(input))
-    return 1;
-
-  // check the pressure scheme
-  if(swpres == "0")
-    pres = new cpres(this);
-  else if(swpres == "2")
-    pres = new cpres_2(this);
-  else if(swpres == "4")
-    pres = new cpres_4(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());
-    return 1;
-  }
-  if(pres->readinifile(input))
-    return 1;
-
-  // model operations
-  if(force->readinifile(input))
-    return 1;
-  if(timeloop->readinifile(input))
-    return 1;
-
-  if(swthermo== "moist")
-    thermo = new cthermo_moist(this);
-  else if(swthermo == "buoy")
-    thermo = new cthermo_buoy(this);
-  else if(swthermo == "dry")
-    thermo = new cthermo_dry(this);
-  else if(swthermo == "buoy_slope")
-    thermo = new cthermo_buoy_slope(this);
-  else if(swthermo == "0")
-    thermo = new cthermo(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
-    return 1;
-  }
-  if(thermo->readinifile(input))
-    return 1;
-
-  // read the boundary and buffer in the end because they need to know the requested fields
-  if(swboundary == "surface")
-    boundary = new cboundary_surface(this);
-  else if(swboundary == "user")
-    boundary = new cboundary_user(this);
-  else if(swboundary == "default")
-    boundary = new cboundary(this);
-  else
-  {
-    master->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
-    return 1;
-  }
-  if(boundary->readinifile(input))
-    return 1;
-  if(buffer->readinifile(input))
-    return 1;
-
-  if(stats->readinifile(input))
-    return 1;
-  if(cross->readinifile(input))
-    return 1;
-  if(budget->readinifile(input))
-    return 1;
-
-  return 0;
+  deleteObjects();
 }
 
-int cmodel::init()
+void cmodel::init()
 {
-  if(grid->init())
-    return 1;
-  if(fields->init())
-    return 1;
-  if(boundary->init())
-    return 1;
-  if(thermo->init())
-    return 1;
-  if(buffer->init())
-    return 1;
-  if(force->init())
-    return 1;
-  if(pres->init())
-    return 1;
+  grid  ->init();
+  fields->init();
 
-  if(stats->init(timeloop->ifactor))
-    return 1;
-  if(cross->init(timeloop->ifactor))
-    return 1;
-  if(budget->init())
-    return 1;
+  boundary->init(input);
+  buffer  ->init();
+  force   ->init();
+  pres    ->init();
+  thermo  ->init();
 
-  return 0;
+  stats ->init(timeloop->ifactor);
+  cross ->init(timeloop->ifactor);
+  budget->init();
 }
 
-int cmodel::load()
+void cmodel::load()
 {
   // first load the grid and time to make their information available
   if(grid->load())
-    return 1;
+    throw 1;
   if(timeloop->load(timeloop->iotime))
-    return 1;
+    throw 1;
   // initialize the statistics file to open the possiblity to add profiles
   if(stats->create(timeloop->iotime))
-    return 1;
+    throw 1;
   if(cross->create())
-    return 1;
+    throw 1;
 
   if(fields->load(timeloop->iotime))
-    return 1;
+    throw 1;
 
   // \TODO call boundary load for the data and then timedep, not nice...
   if(boundary->load(timeloop->iotime))
-    return 1;
+    throw 1;
   if(boundary->create(input))
-    return 1;
+    throw 1;
 
   if(buffer->create(input))
-    return 1;
+    throw 1;
   if(force->create(input))
-    return 1;
-  if(thermo->create())
-    return 1;
+    throw 1;
+  if(thermo->create(input))
+    throw 1;
 
   if(budget->create())
-    return 1;
+    throw 1;
 
   // end with modules that require all fields to be present
   if(boundary->setvalues())
-    return 1;
+    throw 1;
   if(diff->setvalues())
-    return 1;
+    throw 1;
   if(pres->setvalues())
-    return 1;
-
-  return 0;
+    throw 1;
 }
 
-int cmodel::create()
+void cmodel::create()
 {
   if(grid->create(input))
-    return 1;
+    throw 1;
   if(fields->create(input))
-    return 1;
-
-  return 0;
+    throw 1;
 }
 
-int cmodel::save()
+void cmodel::save()
 {
   if(grid->save())
-    return 1;
+    throw 1;
   if(fields->save(timeloop->iotime))
-    return 1;
+    throw 1;
   if(timeloop->save(timeloop->iotime))
-    return 1;
+    throw 1;
   if(boundary->save(timeloop->iotime))
-    return 1;
-
-  return 0;
+    throw 1;
 }
 
-int cmodel::exec()
+void cmodel::exec()
 {
 #ifdef USECUDA
   master->printMessage("Preparing the GPU\n");
@@ -379,22 +250,18 @@ int cmodel::exec()
   // get the viscosity to be used in diffusion
   diff->execvisc();
 
-  if(settimestep())
-    return 1;
+  settimestep();
 
   // print the initial information
-  if(outputfile(!timeloop->loop))
-    return 1;
+  printOutputFile(!timeloop->loop);
 
   // start the time loop
   while(true)
   {
     // determine the time step
     if(!timeloop->insubstep())
-    {
-      if(settimestep())
-        return 1;
-    }
+      settimestep();
+
     // advection
     advec->exec();
     // diffusion
@@ -448,11 +315,11 @@ int cmodel::exec()
 #endif
 
         if(fields->execcross())
-          return 1;
+          throw 1;
         if(thermo->execcross())
-          return 1;
+          throw 1;
         if(boundary->execcross())
-          return 1;
+          throw 1;
       }
     }
 
@@ -498,11 +365,11 @@ int cmodel::exec()
 
       // load the data
       if(timeloop->load(timeloop->iotime))
-        return 1;
+        throw 1;
       if(fields->load(timeloop->iotime))
-        return 1;
+        throw 1;
       if(boundary->load(timeloop->iotime))
-        return 1;
+        throw 1;
     }
     // update the time dependent values
     boundary->settimedep();
@@ -515,9 +382,7 @@ int cmodel::exec()
     // get the viscosity to be used in diffusion
     diff->execvisc();
 
-    if(outputfile(!timeloop->loop))
-      return 1;
-
+    printOutputFile(!timeloop->loop);
   } // end time loop
 
 #ifdef USECUDA
@@ -525,24 +390,19 @@ int cmodel::exec()
   fields->clearGPU();
   grid->clearGPU();
 #endif
-
-  return 0;
 }
 
-int cmodel::calcstats(std::string maskname)
+void cmodel::calcstats(std::string maskname)
 {
   fields->execstats(&stats->masks[maskname]);
   thermo->execstats(&stats->masks[maskname]);
   budget->execstats(&stats->masks[maskname]);
   boundary->execstats(&stats->masks[maskname]);
-
-  return 0;
 }
 
-int cmodel::outputfile(bool doclose)
+void cmodel::printOutputFile(bool doclose)
 {
   // initialize the check variables
-  int    nerror=0;
   int    iter;
   double time, dt;
   double mom, tke, mass;
@@ -591,22 +451,17 @@ int cmodel::outputfile(bool doclose)
   {
     // close the output file
     if(master->mpiid == 0)
-    std::fclose(dnsout);
+      std::fclose(dnsout);
   }
-
-  return(nerror>0);
 }
 
-int cmodel::settimestep()
+void cmodel::settimestep()
 {
-  if(timeloop->settimelim())
-    return 1;
+  timeloop->settimelim();
 
   timeloop->idtlim = std::min(timeloop->idtlim, advec->gettimelim(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, diff ->gettimelim(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, stats->gettimelim(timeloop->itime));
   timeloop->idtlim = std::min(timeloop->idtlim, cross->gettimelim(timeloop->itime));
   timeloop->settimestep();
-
-  return 0;
 }

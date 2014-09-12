@@ -33,11 +33,10 @@ struct mask;
 class cboundary_surface : public cboundary
 {
   public:
-    cboundary_surface(cmodel *);
+    cboundary_surface(cmodel *, cinput *);
     ~cboundary_surface();
 
-    int readinifile(cinput *);
-    int init();
+    void init(cinput *);
     int create(cinput *);
     int setvalues();
     int exec();
@@ -86,7 +85,6 @@ class cboundary_surface : public cboundary
     inline double phih(double);
     double ustarin;
 
-    bool allocated;
     cstats *stats;
 
     typedef std::map<std::string, int> bcbotmap;

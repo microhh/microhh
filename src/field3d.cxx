@@ -34,28 +34,35 @@ cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein, std::st
   longname = longnamein;
   unit     = unitin;
   master   = masterin;
+
+  // initialize the pointer at 0
+  data = 0;
+  databot = 0;
+  datatop = 0;
+  datamean = 0;
+  datagradbot = 0;
+  datagradtop = 0;
+  datafluxbot = 0;
+  datafluxtop = 0;
 }
 
 cfield3d::~cfield3d()
 {
-  if(allocated)
-  {
-    delete[] data;
-    delete[] databot;
-    delete[] datatop;
-    delete[] datamean;
-    delete[] datagradbot;
-    delete[] datagradtop;
-    delete[] datafluxbot;
-    delete[] datafluxtop;
-  }
+  delete[] data;
+  delete[] databot;
+  delete[] datatop;
+  delete[] datamean;
+  delete[] datagradbot;
+  delete[] datagradtop;
+  delete[] datafluxbot;
+  delete[] datafluxtop;
 }
 
 int cfield3d::init()
 {
   // allocate the memory
-  if(master->mpiid == 0) std::printf("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
-  data    = new double[grid->ncells];
+  master->printMessage("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
+  data = new double[grid->ncells];
 
   // allocate the boundary cells
   databot = new double[grid->icells*grid->jcells];
@@ -65,8 +72,6 @@ int cfield3d::init()
   datagradtop = new double[grid->icells*grid->jcells];
   datafluxbot = new double[grid->icells*grid->jcells];
   datafluxtop = new double[grid->icells*grid->jcells];
-
-  allocated = true;
 
   // set all values to zero
   for(int n=0; n<grid->ncells; n++)
@@ -88,6 +93,7 @@ int cfield3d::init()
   return 0;
 }
 
+/*
 int cfield3d::checkfornan()
 {
   int    ijk,ii,jj,kk;
@@ -118,3 +124,4 @@ int cfield3d::checkfornan()
 
   return nerror;
 }
+*/

@@ -418,7 +418,8 @@ int cpres_2::exec(double dt)
 #endif
 
 #ifdef USECUDA
-double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, 
+                               double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   //fields->forwardGPU();
 

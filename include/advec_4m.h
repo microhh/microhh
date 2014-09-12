@@ -24,9 +24,6 @@
 
 #include "advec.h"
 
-// forward declaration
-class cmodel;
-
 /**
  * Derived class for fully conservative 4th order advection scheme.
  * Fully mass, momentum and energy conserving advection scheme based on the paper
@@ -35,8 +32,8 @@ class cmodel;
 class cadvec_4m : public cadvec
 {
   public:
-    cadvec_4m(cmodel *); ///< Constructor of the advection class.
-    ~cadvec_4m();        ///< Destructor of the advection class.
+    cadvec_4m(cmodel *, cinput *); ///< Constructor of the advection class.
+    ~cadvec_4m();                  ///< Destructor of the advection class.
 
     unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
     double getcfl(double);                               ///< Get the CFL number.

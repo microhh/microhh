@@ -30,17 +30,15 @@ class cmodel;
 class cpres_4 : public cpres
 {
   public:
-    cpres_4(cmodel *);
+    cpres_4(cmodel *, cinput *);
     ~cpres_4();
 
-    int init();
+    void init();
     int setvalues();
     int exec(double);
     double check();
 
   private:
-    bool allocated;
-
     double *bmati, *bmatj;
     double *m0,*m1,*m2,*m3,*m4,*m5,*m6,*m7,*m8;
     double *work2d;

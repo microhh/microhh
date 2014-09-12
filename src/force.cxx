@@ -29,46 +29,18 @@
 #include "model.h"
 #include "timeloop.h"
 
-cforce::cforce(cmodel *modelin)
+cforce::cforce(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
 
-  allocated = false;
-}
+  ug = 0;
+  vg = 0;
+  wls = 0;
 
-cforce::~cforce()
-{
-  if(allocated)
-  {
-    if(swlspres == "geo")
-    {
-      delete[] ug;
-      delete[] vg;
-    }
-
-    if(swls == "1")
-    {
-      for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-        delete[] lsprofs[*it];
-    }
-
-    if(swwls == "1")
-      delete[] wls;
-  }
-
-  // clean up time dependent data
-  for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
-    delete[] it->second;
-
-}
-
-int cforce::readinifile(cinput *inputin)
-{
   int nerror = 0;
-
   nerror += inputin->getItem(&swlspres, "force", "swlspres", "", "0");
   nerror += inputin->getItem(&swls    , "force", "swls"    , "", "0");
   nerror += inputin->getItem(&swwls   , "force", "swwls"   , "", "0");
@@ -82,7 +54,7 @@ int cforce::readinifile(cinput *inputin)
     else
     {
       ++nerror;
-      if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swlspres\n", swlspres.c_str());
+      master->printError("\"%s\" is an illegal option for swlspres\n", swlspres.c_str());
     }
   }
 
@@ -91,7 +63,7 @@ int cforce::readinifile(cinput *inputin)
   else if(swls != "0")
   {
     ++nerror;
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swls\n", swls.c_str());
+    master->printError("\"%s\" is an illegal option for swls\n", swls.c_str());
   }
 
   if(swwls == "1")
@@ -99,17 +71,35 @@ int cforce::readinifile(cinput *inputin)
   else if(swwls != "0")
   {
     ++nerror;
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal option for swwls\n", swwls.c_str());
+    master->printError("\"%s\" is an illegal option for swwls\n", swwls.c_str());
   }
 
   // get the list of time varying variables
   nerror += inputin->getItem(&swtimedep  , "force", "swtimedep"  , "", "0");
   nerror += inputin->getList(&timedeplist, "force", "timedeplist", "");
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int cforce::init()
+cforce::~cforce()
+{
+  delete[] ug;
+  delete[] vg;
+  delete[] wls;
+
+  if(swls == "1")
+  {
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+      delete[] lsprofs[*it];
+  }
+
+  // clean up time dependent data
+  for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
+    delete[] it->second;
+}
+
+void cforce::init()
 {
   if(swlspres == "geo")
   {
@@ -125,10 +115,6 @@ int cforce::init()
 
   if(swwls == "1")
     wls = new double[grid->kcells];
-
-  allocated = true;
-
-  return 0;
 }
 
 int cforce::create(cinput *inputin)

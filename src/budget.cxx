@@ -31,14 +31,20 @@
 #include "stats.h"
 #include <netcdfcpp.h>
 
-#define NO_OFFSET 0.
+// #define NO_OFFSET 0.
 
-cbudget::cbudget(cmodel *modelin)
+cbudget::cbudget(cmodel *modelin, cinput *inputin)
 {
   model = modelin;
 
-  umodel = NULL;
-  vmodel = NULL;
+  umodel = 0;
+  vmodel = 0;
+
+  int nerror = 0;
+  nerror += inputin->getItem(&swbudget, "budget", "swbudget", "", "0");
+
+  if(nerror)
+    throw 1;
 }
 
 cbudget::~cbudget()
@@ -47,15 +53,7 @@ cbudget::~cbudget()
   delete[] vmodel;
 }
 
-int cbudget::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-  nerror += inputin->getItem(&swbudget, "budget", "swbudget", "", "0");
-
-  return nerror;
-}
-
-int cbudget::init()
+void cbudget::init()
 {
   // copy the pointers
   grid   = model->grid;
@@ -70,7 +68,11 @@ int cbudget::init()
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
 
-  return 0;
+  for(int k=0; k<grid->kcells; ++k)
+  {
+    umodel[k] = 0.;
+    vmodel[k] = 0.;
+  }
 }
 
 int cbudget::create()
@@ -144,8 +146,8 @@ int cbudget::execstats(mask *m)
     return 0;
 
   // calculate the mean of the fields
-  stats->calcmean(fields->u->data, umodel, NO_OFFSET);
-  stats->calcmean(fields->v->data, vmodel, NO_OFFSET);
+  grid->calcmean(umodel, fields->u->data, grid->kcells);
+  grid->calcmean(vmodel, fields->v->data, grid->kcells);
 
   if(grid->swspatialorder == "4")
   {

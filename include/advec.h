@@ -22,8 +22,11 @@
 #ifndef ADVEC
 #define ADVEC
 
+#include <string>
+
 // forward declarations to speed up build time
 class cmaster;
+class cinput;
 class cmodel;
 class cgrid;
 class cfields;
@@ -37,16 +40,16 @@ class cinput;
 class cadvec
 {
   public:
-    cadvec(cmodel *);  ///< Constructor of the advection class.
-    virtual ~cadvec(); ///< Destructor of the advection class.
+    cadvec(cmodel *, cinput *); ///< Constructor of the advection class.
+    virtual ~cadvec();          ///< Destructor of the advection class.
 
-    virtual int readinifile(cinput *); ///< Processes the data from the input file.
-    virtual int exec();                ///< Execute the advection scheme.
+    static cadvec* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for advection class generation.
+
+    virtual int exec(); ///< Execute the advection scheme.
 
     virtual double getcfl(double); ///< Retrieve the CFL number.
 
     virtual unsigned long gettimelim(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-
 
   protected:
     cmaster *master; ///< Pointer to master class.

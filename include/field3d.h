@@ -36,7 +36,7 @@ class cfield3d
     ~cfield3d();
 
     int init();
-    int checkfornan();
+    // int checkfornan();
 
     // variables at CPU
     double *data;
@@ -64,7 +64,6 @@ class cfield3d
   private:
     cgrid   *grid;
     cmaster *master;
-    bool allocated;
 };
 #endif
 

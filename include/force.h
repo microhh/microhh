@@ -38,13 +38,12 @@ class cmaster;
 class cforce
 {
   public:
-    cforce(cmodel *);          ///< Constructor of the force class.
-    ~cforce();                 ///< Destructor of the force class.
-    int readinifile(cinput *); ///< Processing data of the input file.
-    int init();                ///< Initialize the arrays that contain the profiles.
-    int create(cinput *);      ///< Read the profiles of the forces from the input.
-    int exec(double);          ///< Add the tendencies belonging to the large-scale processes.
-    int settimedep();          ///< Set the time dependent parameters.
+    cforce(cmodel *, cinput *); ///< Constructor of the force class.
+    ~cforce();                  ///< Destructor of the force class.
+    void init();                ///< Initialize the arrays that contain the profiles.
+    int create(cinput *);       ///< Read the profiles of the forces from the input.
+    int exec(double);           ///< Add the tendencies belonging to the large-scale processes.
+    int settimedep();           ///< Set the time dependent parameters.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
@@ -55,8 +54,6 @@ class cforce
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
 
-    bool allocated; ///< Boolean flag to indicate allocation of arrays.
-
     std::string swlspres; ///< Switch for the large scale pressure force.
     std::string swls;     ///< Switch for large scale scalar tendencies.
     std::string swwls;    ///< Switch for large-scale vertical transport of scalars.
@@ -64,9 +61,8 @@ class cforce
     double uflux; ///< Mean velocity used to enforce constant flux.
     double fc;    ///< Coriolis parameter.
 
-    double *ug; ///< Pointer to array u-component geostrophic wind.
-    double *vg; ///< Pointer to array v-component geostrophic wind.
-
+    double *ug;  ///< Pointer to array u-component geostrophic wind.
+    double *vg;  ///< Pointer to array v-component geostrophic wind.
     double *wls; ///< Pointer to array large-scale vertical velocity.
 
     // time dependent variables
@@ -93,4 +89,3 @@ class cforce
     inline double interp2(const double, const double); ///< 2nd order interpolation function.
 };
 #endif
-

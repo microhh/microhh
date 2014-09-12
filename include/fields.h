@@ -39,10 +39,10 @@ class cfields
 {
   public:
     // functions
-    cfields(cmodel *);
+    cfields(cmodel *, cinput *);
     ~cfields();
-    int readinifile(cinput *);
-    int init();
+
+    void init();
     int create(cinput *);
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
@@ -90,10 +90,12 @@ class cfields
     fieldmap sp;
     fieldmap st;
 
+    // reference density
+    double *rhoref;
+    double *rhorefh;
+
     // TODO remove these to and bring them to diffusion model
     double visc;
-
-    double *rhoref;
 
   private:
     // variables
@@ -102,7 +104,6 @@ class cfields
     cmaster *master;
     cstats  *stats;
 
-    bool allocated;
     bool calcprofs;
 
     // cross sections

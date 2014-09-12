@@ -37,7 +37,9 @@ class cinput
     cinput(cmaster *);
     ~cinput();
 
-    int readinput();
+    void clear();
+
+    // Item retrieval functions
     int getItem(int *        , std::string, std::string, std::string);
     int getItem(int *        , std::string, std::string, std::string, int);
     int getItem(double *     , std::string, std::string, std::string);
@@ -47,7 +49,7 @@ class cinput
     int getItem(std::string *, std::string, std::string, std::string);
     int getItem(std::string *, std::string, std::string, std::string, std::string);
 
-    // list retrieval
+    // List retrieval functions
     int getList(std::vector<int> *        , std::string, std::string, std::string);
     int getList(std::vector<double> *     , std::string, std::string, std::string);
     int getList(std::vector<std::string> *, std::string, std::string, std::string);
@@ -55,7 +57,6 @@ class cinput
     int getProf(double *, std::string, int size);
     int getTime(double **, std::vector<double> *, std::string);
     int getTimeProf(double **, std::vector<double> *, std::string, int);
-    int clear();
     int printUnused();
 
   private:

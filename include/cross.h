@@ -33,11 +33,10 @@ class cfields;
 class ccross
 {
   public:
-    ccross(cmodel *);
+    ccross(cmodel *, cinput *);
     ~ccross();
 
-    int readinifile(cinput *);
-    int init(int);
+    void init(double);
     int create();
     unsigned long gettimelim(unsigned long);
     //int exec(double, unsigned long, int);
