@@ -45,7 +45,7 @@ tke_viscMoser  = Mosertke[:,7]
 tke_dissMoser  = Mosertke[:,2]
 tke_presMoser  = Mosertke[:,5]
 
-stats = netCDF4.Dataset("moser180.default.0007200.nc","r")
+stats = netCDF4.Dataset("moser180.default.0000000.nc","r")
 t  = stats.variables["t"] [start:end]
 z  = stats.variables["z"] [:]
 zh = stats.variables["zh"][:]
