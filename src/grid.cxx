@@ -315,6 +315,10 @@ int cgrid::calculate()
     z[kend  ] = (8./3.)*zsize - 2.*z[kend-1] + (1./3.)*z[kend-2];
     z[kend+1] =      8.*zsize - 9.*z[kend-1] +      2.*z[kend-2];
 
+    // Initialize the non-used values at a large value
+    z[kstart-3] = dhuge;
+    z[kend+2  ] = dhuge;
+
     zh[kstart  ] = 0.;
     for(k=kstart+1; k<kend; ++k)
       zh[k] = ci0*z[k-2] + ci1*z[k-1] + ci2*z[k] + ci3*z[k+1];
@@ -358,6 +362,12 @@ int cgrid::calculate()
 
     dzi4 [kend  ] = 1./(tg0*zh[kend-2] + tg1*zh[kend-1] + tg2*zh[kend] + tg3*zh[kend+1]);
     dzhi4[kend+1] = 1./(tg0*z [kend-2] + tg1*z [kend-1] + tg2*z [kend] + tg3*z [kend+1]);
+
+    // Initialize the unused values at a huge value to allow for easier error tracing.
+    dzi4[kstart-2] = dhuge;
+    dzi4[kstart-3] = dhuge;
+    dzi4[kend+1  ] = dhuge;
+    dzi4[kend+2  ] = dhuge;
   }
 
   return 0;
