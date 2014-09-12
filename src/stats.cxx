@@ -35,22 +35,32 @@
 #define NO_OFFSET 0.
 #define NTHRES 16
 
-cstats::cstats(cmodel *modelin)
+cstats::cstats(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
 
-  // set the pointers to NULL
-  umodel = NULL;
-  vmodel = NULL;
+  // set the pointers to zero
+  nmask  = 0;
+  nmaskh = 0;
 
-  nmask  = NULL;
-  nmaskh = NULL;
+  int nerror = 0;
+  nerror += inputin->getItem(&swstats, "stats", "swstats", "", "0");
+
+  if(swstats == "1")
+    nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
+
+  if(!(swstats == "0" || swstats == "1" ))
+  {
+    ++nerror;
+    master->printError("\"%s\" is an illegal value for swstats\n", swstats.c_str());
+  }
+
+  if(nerror)
+    throw 1;
 }
 
 cstats::~cstats()
 {
-  delete[] umodel;
-  delete[] vmodel;
   delete[] nmask;
   delete[] nmaskh;
 
@@ -63,24 +73,7 @@ cstats::~cstats()
   }
 }
 
-int cstats::readinifile(cinput *inputin)
-{
-  int nerror = 0;
-  nerror += inputin->getItem(&swstats, "stats", "swstats", "", "0");
-
-  if(swstats == "1")
-    nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
-
-  if(!(swstats == "0" || swstats == "1" ))
-  {
-    ++nerror;
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swstats\n", swstats.c_str());
-  }
-
-  return nerror;
-}
-
-int cstats::init(double ifactor)
+void cstats::init(double ifactor)
 {
   // convenience pointers for short notation in class
   grid   = model->grid;
@@ -92,16 +85,11 @@ int cstats::init(double ifactor)
 
   isampletime = (unsigned long)(ifactor * sampletime);
 
-  umodel = new double[grid->kcells];
-  vmodel = new double[grid->kcells];
-
   nmask  = new int[grid->kcells];
   nmaskh = new int[grid->kcells];
 
   // set the number of stats to zero
   nstats = 0;
-
-  return 0;
 }
 
 int cstats::create(int n)
@@ -378,12 +366,14 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh, double * r
   return 0;
 }
 
-int cstats::calcmean(double * restrict data, double * restrict prof, double offset)
+/*
+void cstats::calcmean(double * const restrict prof, const double * const restrict data,
+                      const double offset)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; ++k)
   {
@@ -403,9 +393,8 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
     prof[k] /= n;
 
   grid->getprof(prof, grid->kcells);
-
-  return 0;
 }
+*/
 
 int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nmask)
 {
@@ -422,8 +411,9 @@ int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nm
   return 0;
 }
 
-int cstats::calcmean(double * restrict data, double * restrict prof, double offset, const int loc[3],
-                     double * restrict mask, int * restrict nmask)
+void cstats::calcmean(double * const restrict prof, const double * const restrict data,
+                      const double offset, const int loc[3],
+                      const double * const restrict mask, const int * const restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -451,12 +441,11 @@ int cstats::calcmean(double * restrict data, double * restrict prof, double offs
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int cstats::calcmean2d(double * restrict data, double * restrict mean, double offset,
-                       double * restrict mask, int * restrict nmask)
+void cstats::calcmean2d(double * const restrict mean, const double * const restrict data,
+                        const double offset,
+                        const double * const restrict mask, const int * const restrict nmask)
 {
   int ij,jj;
   jj = grid->icells;
@@ -476,8 +465,6 @@ int cstats::calcmean2d(double * restrict data, double * restrict mean, double of
   }
   else
     *mean = NC_FILL_DOUBLE; 
-
-  return 0;
 }
 
 int cstats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
@@ -705,7 +692,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
-        ijk  = i + j*jj + k*kk;
+        ijk = i + j*jj + k*kk;
         prof[k] += mask[ijk]*std::pow(data[ijk]-datamean[k], power);
       }
   }
@@ -794,7 +781,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
     grid->interpolate_2nd(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
-  
+
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
@@ -810,7 +797,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for(int k=1; k<grid->kcells; ++k)
   {
     if(nmask[k] > NTHRES && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
       prof[k] /= (double)(nmask[k]);

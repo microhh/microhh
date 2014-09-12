@@ -24,16 +24,12 @@
 
 #include "diff.h"
 
-// forward declaration
-class cmodel;
-
 class cdiff_les2s : public cdiff
 {
   public:
-    cdiff_les2s(cmodel *);
+    cdiff_les2s(cmodel *, cinput *);
     ~cdiff_les2s();
 
-    int readinifile(cinput *);
     int exec();
     int execvisc();
 
@@ -60,10 +56,10 @@ class cdiff_les2s : public cdiff
                       double *, double *,
                       double *, double *,
                       double);
-    int diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int diffw(double *, double *, double *, double *, double *, double *, double *);
-    int diffc(double *, double *, double *, double *, double *, double *, double *, double);
+    int diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int diffw(double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int diffc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
 
     double calcdnmul(double *, double *, double);
 

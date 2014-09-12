@@ -28,15 +28,16 @@
 #include <string>
 #include "input.h"
 
+class cinput;
+
 class cmaster
 {
   public:
     cmaster();
     ~cmaster();
 
-    int startup(int, char**);
-    int readinifile(cinput *);
-    int init();
+    void startup(int, char**);
+    void init(cinput *);
 
     double gettime();
     int waitall();

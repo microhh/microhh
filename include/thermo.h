@@ -24,6 +24,7 @@
 
 // forward declarations to speed up build time
 class cmaster;
+class cinput;
 class cgrid;
 class cfields;
 struct mask;
@@ -31,11 +32,12 @@ struct mask;
 class cthermo
 {
   public:
-    cthermo(cmodel *);
+    cthermo(cmodel *, cinput *);
     virtual ~cthermo();
-    virtual int readinifile(cinput *);
-    virtual int init();
-    virtual int create();
+    static cthermo* factory(cmaster *, cinput *, cmodel *); ///< Factory function for thermo class generation.
+
+    virtual void init();
+    virtual int create(cinput *);
     virtual int exec();
     virtual int execstats(mask *);
     virtual int execcross();
@@ -46,9 +48,9 @@ class cthermo
     virtual int getthermofield(cfield3d *, cfield3d *, std::string name);
     virtual int getbuoyancysurf(cfield3d *);
     virtual int getbuoyancyfluxbot(cfield3d *);
+    virtual int getprogvars(std::vector<std::string> *);
 
     std::string getsw();
-    virtual int getprogvars(std::vector<std::string> *);
 
   protected:
     cgrid   *grid;

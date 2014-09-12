@@ -33,23 +33,15 @@
 #include "timeloop.h"
 #include <netcdfcpp.h>
 
-ccross::ccross(cmodel *modelin)
+ccross::ccross(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
-}
-
-ccross::~ccross()
-{
-}
-
-int ccross::readinifile(cinput *inputin)
-{
-  int nerror = 0;
 
   // optional, by default switch cross off
+  int nerror = 0;
   nerror += inputin->getItem(&swcross, "cross", "swcross", "", "0");
 
   if(swcross == "1")
@@ -62,7 +54,12 @@ int ccross::readinifile(cinput *inputin)
     nerror += inputin->getList(&xy, "cross", "xy", "");
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
+}
+
+ccross::~ccross()
+{
 }
 
 // check whether saving the slice was successful and print appropriate message
@@ -81,14 +78,12 @@ int ccross::checkSave(int error, char * filename)
   }
 }
 
-int ccross::init(int ifactor)
+void ccross::init(double ifactor)
 {
   if(swcross == "0")
-    return 0;
+    return;
 
   isampletime = (unsigned long)(ifactor * sampletime);
-
-  return 0;
 }
 
 int ccross::create()

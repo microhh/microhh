@@ -29,28 +29,14 @@
 #include "defines.h"
 #include "model.h"
 
-cbuffer::cbuffer(cmodel *modelin)
+cbuffer::cbuffer(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
 
-  allocated = false;
-}
-
-cbuffer::~cbuffer()
-{
-  if(allocated)
-    for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
-      delete[] it->second;
-}
-
-int cbuffer::readinifile(cinput *inputin)
-{
   int nerror = 0;
-
-  // optional parameters
   nerror += inputin->getItem(&swbuffer, "buffer", "swbuffer", "", "0");
 
   if(swbuffer == "1")
@@ -60,10 +46,17 @@ int cbuffer::readinifile(cinput *inputin)
     nerror += inputin->getItem(&beta  , "buffer", "beta"  , "", 2.);
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int cbuffer::init()
+cbuffer::~cbuffer()
+{
+  for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
+    delete[] it->second;
+}
+
+void cbuffer::init()
 {
   if(swbuffer == "1")
   {
@@ -73,11 +66,7 @@ int cbuffer::init()
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       bufferprofs[it->first] = new double[grid->kcells];
-
-    allocated = true;
   }
-
-  return 0;
 }
 
 int cbuffer::create(cinput *inputin)

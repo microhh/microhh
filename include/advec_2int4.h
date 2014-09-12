@@ -24,17 +24,14 @@
 
 #include "advec.h"
 
-// forward declaration
-class cmodel;
-
 /**
  * Derived class for 2nd order advection scheme with 4th order interpolation.
  */
 class cadvec_2int4 : public cadvec
 {
   public:
-    cadvec_2int4(cmodel *); ///< Constructor of the advection class.
-    ~cadvec_2int4();        ///< Destructor of the advection class.
+    cadvec_2int4(cmodel *, cinput *); ///< Constructor of the advection class.
+    ~cadvec_2int4();                  ///< Destructor of the advection class.
 
     unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
     double getcfl(double);                               ///< Get the CFL number.

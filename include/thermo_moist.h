@@ -34,35 +34,31 @@ struct mask;
 class cthermo_moist : public cthermo
 {
   public:
-    cthermo_moist(cmodel *);
+    cthermo_moist(cmodel *, cinput *);
     ~cthermo_moist();
-    int readinifile(cinput *);
-    int init();
-    int create();
+
+    void init();
+    int create(cinput *);
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
     int execstats(mask *);
     int execcross();
 
     // functions to retrieve buoyancy properties, to be called from other classes
-    int getbuoyancysurf(cfield3d *);
-    int getbuoyancyfluxbot(cfield3d *);
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);
+    int getbuoyancysurf(cfield3d *);
+    int getbuoyancyfluxbot(cfield3d *);
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
-    double ps;
-    double thvref;
-    double rhos;
-    double *pref;
-    double *prefh;
+
+    int swupdatebasestate;
 
     // cross sections
     std::vector<std::string> crosslist;        // List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
-    bool allocated;
     cstats *stats;
 
     // masks
@@ -72,28 +68,40 @@ class cthermo_moist : public cthermo
     int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
     int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
 
-    int calcbuoyancy(double *, double *, double *, double *, double *);
-
-    int calchydropres(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    //int calchydropres_2nd(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    //int calchydropres_4th(double *, double *, double *, double *, double *);
+    int calcbuoyancy(double *, double *, double *, double *, double *, double *);
+    int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
+    int calcbasestate(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
     int calcqlfield(double *, double *, double *, double *);
     int calcbuoyancybot(double *, double *,
                         double *, double *,
+                        double *, double *,
                         double *, double *);
-    int calcbuoyancyfluxbot(double *, double *, double *, double *, double *);
+    int calcbuoyancyfluxbot(double *, double *, double *, double *, double *, double *);
 
     inline double calcql(const double, const double, const double ,const double);
     inline double bu(const double, const double, const double, const double, const double);
     inline double bunoql(const double, const double, const double);
     inline double bufluxnoql(const double, const double, const double, const double, const double);
-    inline double exner(const double);
-    inline double exner2(const double);
+    inline double exn(const double);
+    inline double exn2(const double);
     inline double rslf(const double, const double);
     inline double esl(const double);
 
     inline double interp2(const double, const double);
     inline double interp4(const double, const double, const double, const double);
+
+    double pbot;
+    double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
+
+    // REFERENCE PROFILES
+    double *thl0;    // Initial thl profile 
+    double *qt0;     // Initial qt profile
+    double *thvref; 
+    double *thvrefh;
+    double *exnref;
+    double *exnrefh;
+    double *pref;
+    double *prefh;
 };
 #endif

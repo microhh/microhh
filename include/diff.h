@@ -31,10 +31,10 @@ class cmaster;
 class cdiff
 {
   public:
-    cdiff(cmodel *);
+    cdiff(cmodel *, cinput *);
     virtual ~cdiff();
+    static cdiff* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for diff class generation.
 
-    virtual int readinifile(cinput *);
     virtual int setvalues();
     virtual int execvisc();
     virtual int exec();

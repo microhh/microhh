@@ -30,42 +30,54 @@
 #include "defines.h"
 #include "model.h"
 
-cpres_4::cpres_4(cmodel *modelin) : cpres(modelin)
+cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 {
-  allocated = false;
+  m0 = m0temp = 0;
+  m1 = m1temp = 0;
+  m2 = m2temp = 0;
+  m3 = m3temp = 0;
+  m4 = m4temp = 0;
+  m5 = m5temp = 0;
+  m6 = m6temp = 0;
+  m7 = m7temp = 0;
+  m8 = m8temp = 0;
+
+  work2d = 0;
+
+  bmati = 0;
+  bmatj = 0;
+
+  ptemp = 0;
 }
 
 cpres_4::~cpres_4()
 {
-  if(allocated)
-  {
-    delete[] m0;
-    delete[] m1;
-    delete[] m2;
-    delete[] m3;
-    delete[] m4;
-    delete[] m5;
-    delete[] m6;
-    delete[] m7;
-    delete[] m8;
+  delete[] m0;
+  delete[] m1;
+  delete[] m2;
+  delete[] m3;
+  delete[] m4;
+  delete[] m5;
+  delete[] m6;
+  delete[] m7;
+  delete[] m8;
 
-    delete[] work2d;
+  delete[] work2d;
 
-    delete[] bmati;
-    delete[] bmatj;
+  delete[] bmati;
+  delete[] bmatj;
 
-    // CvH temporary, remove later...
-    delete[] m0temp;
-    delete[] m1temp;
-    delete[] m2temp;
-    delete[] m3temp;
-    delete[] m4temp;
-    delete[] m5temp;
-    delete[] m6temp;
-    delete[] m7temp;
-    delete[] m8temp;
-    delete[] ptemp;
-  }
+  // CvH temporary, remove later...
+  delete[] m0temp;
+  delete[] m1temp;
+  delete[] m2temp;
+  delete[] m3temp;
+  delete[] m4temp;
+  delete[] m5temp;
+  delete[] m6temp;
+  delete[] m7temp;
+  delete[] m8temp;
+  delete[] ptemp;
 }
 
 int cpres_4::exec(double dt)
@@ -96,7 +108,7 @@ double cpres_4::check()
   return divmax;
 }
 
-int cpres_4::init()
+void cpres_4::init()
 {
   int imax, jmax, kmax;
   int itot, jtot, kstart;
@@ -135,10 +147,6 @@ int cpres_4::init()
   ptemp  = new double[kmax+4];
 
   work2d = new double[imax*jmax];
-  
-  allocated = true;
-
-  return 0;
 }
 
 int cpres_4::setvalues()

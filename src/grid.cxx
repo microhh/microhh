@@ -31,65 +31,36 @@
 /**
  * This function constructs the grid class.
  * @param modelin Pointer to the model class.
+ * @param inputin Pointer to the input class.
  */
-cgrid::cgrid(cmodel *modelin)
+cgrid::cgrid(cmodel *modelin, cinput *inputin)
 {
   master = modelin->master;
 
-  allocated = false;
   mpitypes  = false;
   fftwplan  = false;
-}
 
-/**
- * This function destructs the grid class.
- */
-cgrid::~cgrid()
-{
-  if(fftwplan)
-  {
-    fftw_destroy_plan(iplanf);
-    fftw_destroy_plan(iplanb);
-    fftw_destroy_plan(jplanf);
-    fftw_destroy_plan(jplanb);
-  }
+  // Initialize the pointers to zero.
+  x  = 0;
+  xh = 0;
+  y  = 0;
+  yh = 0;
+  z  = 0;
+  zh = 0;
 
-  if(allocated)
-  { 
-    delete[] x;
-    delete[] xh;
-    delete[] y;
-    delete[] yh;
-    delete[] z;
-    delete[] zh;
-    delete[] dz;
-    delete[] dzh;
-    delete[] dzi;
-    delete[] dzhi;
-    delete[] dzi4;
-    delete[] dzhi4;
+  dz    = 0;
+  dzh   = 0;
+  dzi   = 0;
+  dzhi  = 0;
+  dzi4  = 0;
+  dzhi4 = 0;
 
-    fftw_free(fftini);
-    fftw_free(fftouti);
-    fftw_free(fftinj);
-    fftw_free(fftoutj);
+  fftini  = 0;
+  fftouti = 0;
+  fftinj  = 0;
+  fftoutj = 0;
 
-    fftw_cleanup();
-  }
-
-  exitmpi();
-}
-
-/**
- * This function processes the input data and stores them in the class
- * variables.
- * @param inputin Pointer to the input class.
- * @return Returns 1 on error, 0 otherwise.
- */
-int cgrid::readinifile(cinput *inputin)
-{
   int nerror = 0;
-
   nerror += inputin->getItem(&xsize, "grid", "xsize", "");
   nerror += inputin->getItem(&ysize, "grid", "ysize", "");
   nerror += inputin->getItem(&zsize, "grid", "zsize", "");
@@ -98,19 +69,18 @@ int cgrid::readinifile(cinput *inputin)
   nerror += inputin->getItem(&jtot, "grid", "jtot", "");
   nerror += inputin->getItem(&ktot, "grid", "ktot", "");
 
-  // velocity of the grid for gaelian transformation
   nerror += inputin->getItem(&utrans, "grid", "utrans", "", 0.);
   nerror += inputin->getItem(&vtrans, "grid", "vtrans", "", 0.);
 
   nerror += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
 
-  if(nerror > 0)
-    return nerror;
+  if(nerror)
+    throw 1;
 
   if(!(swspatialorder == "2" || swspatialorder == "4"))
   {
     if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
-    return 1;
+    throw 1;
   }
  
   // 2nd order scheme requires only 1 ghost cell
@@ -127,67 +97,100 @@ int cgrid::readinifile(cinput *inputin)
     jgc = 3;
     kgc = 3;
   }
+}
 
-  return 0;
+/**
+ * This function destructs the grid class.
+ */
+cgrid::~cgrid()
+{
+  if(fftwplan)
+  {
+    fftw_destroy_plan(iplanf);
+    fftw_destroy_plan(iplanb);
+    fftw_destroy_plan(jplanf);
+    fftw_destroy_plan(jplanb);
+  }
+
+  delete[] x;
+  delete[] xh;
+  delete[] y;
+  delete[] yh;
+  delete[] z;
+  delete[] zh;
+  delete[] dz;
+  delete[] dzh;
+  delete[] dzi;
+  delete[] dzhi;
+  delete[] dzi4;
+  delete[] dzhi4;
+
+  fftw_free(fftini);
+  fftw_free(fftouti);
+  fftw_free(fftinj);
+  fftw_free(fftoutj);
+
+  fftw_cleanup();
+
+  exitmpi();
 }
 
 /**
  * This function allocates the dynamic arrays in the field class
  * variables and calculates the derived grid indices and dimensions.
- * @return Returns 1 on error, 0 otherwise.
  */
-int cgrid::init()
+void cgrid::init()
 {
-  // check whether the grid fits the processor configuration
+  // Check whether the grid fits the processor configuration.
   if(itot % master->npx != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npx = %d\n", itot, master->npx);
-    return 1;
+    master->printError("itot = %d is not a multiple of npx = %d\n", itot, master->npx);
+    throw 1;
   }
   if(itot % master->npy != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR itot = %d is not a multiple of npy = %d\n", itot, master->npy);
-    return 1;
+    master->printError("itot = %d is not a multiple of npy = %d\n", itot, master->npy);
+    throw 1;
   }
-  // check this one only when npy > 1, since the transpose in that direction only happens then
+  // Check this one only when npy > 1, since the transpose in that direction only happens then.
   if(jtot % master->npx != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npx = %d\n", jtot, master->npx);
-    return 1;
+    master->printError("jtot = %d is not a multiple of npx = %d\n", jtot, master->npx);
+    throw 1;
   }
   if(jtot % master->npy != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR jtot = %d is not a multiple of npy = %d\n", jtot, master->npy);
-    return 1;
+    master->printError("jtot = %d is not a multiple of npy = %d\n", jtot, master->npy);
+    throw 1;
   }
   if(ktot % master->npx != 0)
   {
-    if(master->mpiid == 0) std::printf("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, master->npx);
-    return 1;
+    master->printError("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, master->npx);
+    throw 1;
   }
 
-  // calculate the total number of grid cells
+  // Calculate the total number of grid cells.
   ntot = itot*jtot*ktot;
 
-  // calculate the grid dimensions per process
+  // Calculate the grid dimensions per process.
   imax = itot / master->npx;
   jmax = jtot / master->npy;
   kmax = ktot;
   nmax = imax*jmax*kmax;
 
-  // calculate the block sizes for the transposes
+  // Calculate the block sizes for the transposes.
   iblock = itot / master->npy;
   jblock = jtot / master->npx;
   kblock = ktot / master->npx;
 
-  // calculate the grid dimensions including ghost cells
+  // Calculate the grid dimensions including ghost cells.
   icells  = (imax+2*igc);
   jcells  = (jmax+2*jgc);
   ijcells = icells*jcells;
   kcells  = (kmax+2*kgc);
   ncells  = (imax+2*igc)*(jmax+2*jgc)*(kmax+2*kgc);
 
-  // calculate the starting and ending points for loops over the grid
+  // Calculate the starting and ending points for loops over the grid.
   istart = igc;
   jstart = jgc;
   kstart = kgc;
@@ -216,12 +219,8 @@ int cgrid::init()
   fftinj  = fftw_alloc_real(jtot*iblock);
   fftoutj = fftw_alloc_real(jtot*iblock);
 
-  allocated = true;
-
   // initialize the communication functions
   initmpi();
-
-  return 0;
 }
 
 /**
@@ -375,7 +374,7 @@ int cgrid::calculate()
  */
 int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
-  int ijk,ii,jj,kk,iih,jjh,kkh;
+  int ijk,ii,jj,kk,iih,jjh;
 
   ii = 1;
   jj = icells;
@@ -383,7 +382,6 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
 
   iih = (locin[0]-locout[0])*ii;
   jjh = (locin[1]-locout[1])*jj;
-  kkh = (locin[2]-locout[2])*kk;
 
   // interpolate the field
   // \TODO add the vertical component
@@ -450,9 +448,8 @@ int cgrid::interpolate_4th(double * restrict out, double * restrict in, const in
  */
 int cgrid::calcmean(double * restrict prof, const double * restrict data, const int krange)
 {
-  int ijk,ii,jj,kk;
+  int ijk,jj,kk;
 
-  ii = 1;
   jj = icells;
   kk = ijcells;
   

@@ -30,17 +30,15 @@ class cmodel;
 class cpres_2 : public cpres
 {
   public:
-    cpres_2(cmodel *);
+    cpres_2(cmodel *, cinput *);
     ~cpres_2();
 
-    int init();
+    void init();
     int setvalues();
     int exec(double);
     double check();
 
   private:
-    bool allocated;
-
     double *bmati, *bmatj;
     double *a, *c;
     double *work2d;
@@ -48,13 +46,14 @@ class cpres_2 : public cpres
     int pres_in(double *, 
                 double *, double *, double *,
                 double *, double *, double *,
-                double *, double);
-    int pres_solve(double *, double *, double *, double *,
-                   double *, double *, 
-                   double *, double *);
+                double *, double *, double *,
+                double);
+    int pres_solve(double *, double *, double *,
+                   double *, double *,
+                   double *, double *, double *, double *);
     int pres_out(double *, double *, double *,
                  double *, double *);
-    double calcdivergence(double *, double *, double *, double *);
+    double calcdivergence(double *, double *, double *, double *, double *, double *);
 
     // functions
     int tdma(double *, double *, double *, double *, 
