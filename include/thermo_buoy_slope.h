@@ -1,7 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2013 Chiel van Heerwaarden
- * Copyright (c) 2011-2013 Thijs Heus
+ * Copyright (c) 2011-2014 Chiel van Heerwaarden
+ * Copyright (c) 2011-2014 Thijs Heus
+ * Copyright (c)      2014 Bart van Stratum
  *
  * This file is part of MicroHH
  *
