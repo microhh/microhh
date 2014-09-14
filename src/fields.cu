@@ -27,6 +27,7 @@
 int cfields::prepareGPU()
 {
   const int nmemsize   = grid->ncellsp*sizeof(double);
+  const int nmemsize1d = grid->kcells*sizeof(double);
   const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
@@ -34,6 +35,7 @@ int cfields::prepareGPU()
     cudaMalloc(&it->second->data_g,        nmemsize);
     cudaMalloc(&it->second->databot_g,     nmemsize2d);
     cudaMalloc(&it->second->datatop_g,     nmemsize2d);
+    cudaMalloc(&it->second->datamean_g,    nmemsize1d);
     cudaMalloc(&it->second->datagradbot_g, nmemsize2d);
     cudaMalloc(&it->second->datagradtop_g, nmemsize2d);
     cudaMalloc(&it->second->datafluxbot_g, nmemsize2d);
@@ -48,7 +50,7 @@ int cfields::prepareGPU()
   cudaMalloc(&a["p"]->data_g, nmemsize);
   cudaMalloc(&a["tmp1"]->data_g, nmemsize);
   cudaMalloc(&a["tmp2"]->data_g, nmemsize);
-  cudaMalloc(&a["tmp3"]->data_g, nmemsize);
+  //cudaMalloc(&a["tmp3"]->data_g, nmemsize);
 
   // copy all the data to the GPU
   forwardGPU();
@@ -80,7 +82,7 @@ int cfields::forwardGPU()
   cudaMemcpy2D(&a["p"]->data_g[grid->memoffset],              imemsizep, a["p"]->data,            imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
   cudaMemcpy2D(&a["tmp1"]->data_g[grid->memoffset],           imemsizep, a["tmp1"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
   cudaMemcpy2D(&a["tmp2"]->data_g[grid->memoffset],           imemsizep, a["tmp2"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
-  cudaMemcpy2D(&a["tmp3"]->data_g[grid->memoffset],           imemsizep, a["tmp3"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
+  //cudaMemcpy2D(&a["tmp3"]->data_g[grid->memoffset],           imemsizep, a["tmp3"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
 
   printf("--> forwardGPU\n");
 
@@ -111,7 +113,7 @@ int cfields::backwardGPU()
   cudaMemcpy2D(a["p"]->data,              imemsize, &a["p"]->data_g[grid->memoffset],            imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
   cudaMemcpy2D(a["tmp1"]->data,           imemsize, &a["tmp1"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
   cudaMemcpy2D(a["tmp2"]->data,           imemsize, &a["tmp2"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
-  cudaMemcpy2D(a["tmp3"]->data,           imemsize, &a["tmp3"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
+  //cudaMemcpy2D(a["tmp3"]->data,           imemsize, &a["tmp3"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
 
   printf("--> backwardGPU\n");
 
@@ -125,6 +127,7 @@ int cfields::clearGPU()
     cudaFree(&it->second->data_g);
     cudaFree(&it->second->databot_g);
     cudaFree(&it->second->datatop_g);
+    cudaFree(&it->second->datamean_g);
     cudaFree(&it->second->datagradbot_g);
     cudaFree(&it->second->datagradtop_g);
     cudaFree(&it->second->datafluxbot_g);
@@ -139,6 +142,7 @@ int cfields::clearGPU()
   cudaFree(&a["p"]->data_g);
   cudaFree(&a["tmp1"]->data_g);
   cudaFree(&a["tmp2"]->data_g);
+  //cudaFree(&a["tmp3"]->data_g);
 
   return 0;
 }

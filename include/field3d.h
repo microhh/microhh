@@ -57,6 +57,7 @@ class cfield3d
     double *data_g;
     double *databot_g;
     double *datatop_g;
+    double *datamean_g;
     double *datagradbot_g;
     double *datagradtop_g;
     double *datafluxbot_g;
