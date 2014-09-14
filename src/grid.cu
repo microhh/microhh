@@ -157,9 +157,9 @@ double cgrid::maxGPU(double *data, double *tmp)
 {
   double maxvalue;
 
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp);
-  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot);
-  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, 1);
+  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, 1);
+  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, 1);
 
   cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
   

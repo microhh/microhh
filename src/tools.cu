@@ -27,7 +27,6 @@
 #define MAXTHREADS 512 // Maximum number of threads used in reduce algoritms
 #define SUM 0
 #define MAX 1
-#define MIN 2
 
 int nextpow2(unsigned int x)
 {
@@ -42,8 +41,6 @@ __device__ double reduction(double v1, double v2)
     rval = v1+v2;
   else if (func == MAX)
     rval = fmax(v1,v2);
-  else if (func == MIN)
-    rval = fmin(v1,v2);
   return rval;
 } 
 
@@ -88,8 +85,6 @@ __global__ void deviceReduceInterior(const double *a, double *a2d,
   double tmpval;
   if (func == MAX)
     tmpval = -DBL_MAX;
-  else if (func == MIN)
-    tmpval = DBL_MAX;
   else if (func == SUM)
     tmpval = 0;
   
@@ -124,8 +119,6 @@ __global__ void deviceReduceAll(const double *a, double *aout, unsigned int ncel
   double tmpval;
   if (func == MAX)
     tmpval = -DBL_MAX;
-  else if (func == MIN)
-    tmpval = DBL_MAX;
   else if (func == SUM)
     tmpval = 0;
   
@@ -153,67 +146,92 @@ void reduceInterior(double *a, double *a2d,
                     int itot, int istart, int iend,
                     int jtot, int jstart, int jend,
                     int ktot, int kstart, int kend,
-                    int icells, int ijcells)
+                    int icells, int ijcells, int mode)
 {
-  int nthreads = min(MAXTHREADS, nextpow2(itot/2));
+  int nthreads = max(16,min(MAXTHREADS, nextpow2(itot/2)));
   dim3 gridGPU (1, jtot, ktot);
   dim3 blockGPU(nthreads, 1, 1);
 
-  // HACK BVS: for now mode hardcoded at MAX for testing......
-  switch (nthreads)
+  if (mode == MAX)
   {
-    case 512:
-      deviceReduceInterior<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 256:
-      deviceReduceInterior<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 128:
-      deviceReduceInterior<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 64:
-      deviceReduceInterior<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 32:
-      deviceReduceInterior<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 16:
-      deviceReduceInterior<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 8:
-      deviceReduceInterior<MAX,   8><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 4:
-      deviceReduceInterior<MAX,   4><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 2:
-      deviceReduceInterior<MAX,   2><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    case 1:
-      deviceReduceInterior<MAX,   1><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+    switch (nthreads)
+    {
+      case 512:
+        deviceReduceInterior<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 256:
+        deviceReduceInterior<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 128:
+        deviceReduceInterior<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 64:
+        deviceReduceInterior<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 32:
+        deviceReduceInterior<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 16:
+        deviceReduceInterior<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+    }
+  }
+  else if (mode == SUM)
+  {
+    switch (nthreads)
+    {
+      case 512:
+        deviceReduceInterior<SUM, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 256:
+        deviceReduceInterior<SUM, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 128:
+        deviceReduceInterior<SUM, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 64:
+        deviceReduceInterior<SUM,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 32:
+        deviceReduceInterior<SUM,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      case 16:
+        deviceReduceInterior<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+    }
+
   }
 }
 
-void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperblock)
+void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperblock, int mode)
 {
-  int nthreads = min(MAXTHREADS, nextpow2(nvaluesperblock/2));
+  int nthreads = max(16,min(MAXTHREADS, nextpow2(nvaluesperblock/2)));
   dim3 gridGPU (nblocks,  1, 1);
   dim3 blockGPU(nthreads, 1, 1);
 
-  // HACK BVS: for now mode hardcoded at MAX for testing......
-  switch (nthreads)
+  if (mode == MAX)
   {
-    case 512:
-      deviceReduceAll<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 256:
-      deviceReduceAll<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 128:
-      deviceReduceAll<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 64:
-      deviceReduceAll<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 32:
-      deviceReduceAll<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 16:
-      deviceReduceAll<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 8:
-      deviceReduceAll<MAX,   8><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 4:
-      deviceReduceAll<MAX,   4><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 2:
-      deviceReduceAll<MAX,   2><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
-    case 1:
-      deviceReduceAll<MAX,   1><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+    switch (nthreads)
+    {
+      case 512:
+        deviceReduceAll<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 256:
+        deviceReduceAll<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 128:
+        deviceReduceAll<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 64:
+        deviceReduceAll<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 32:
+        deviceReduceAll<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 16:
+        deviceReduceAll<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+    }
+  }
+  else if (mode == SUM)
+  {
+    switch (nthreads)
+    {
+      case 512:
+        deviceReduceAll<SUM, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 256:
+        deviceReduceAll<SUM, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 128:
+        deviceReduceAll<SUM, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 64:
+        deviceReduceAll<SUM,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 32:
+        deviceReduceAll<SUM,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+      case 16:
+        deviceReduceAll<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+    }
   }
 }
 
