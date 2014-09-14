@@ -1,8 +1,8 @@
 #ifndef TOOLS
 #define TOOLS
 
-double maximum_gpu(double *, int);
-void max_multipass(int, int, int, double *, double *);
+void reduceInterior(double *, double *, int, int, int, int, int, int, int, int, int, int, int);
+void reduceAll(double *, double *, int, int, int);
 void CudaCheckError();
 
 #endif

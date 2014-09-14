@@ -242,6 +242,25 @@ __global__ void pres_2_complex_double_y(cufftDoubleComplex * __restrict__ cdata,
     data[ij] = data[ij] * in;
 } 
 
+__global__ void pres_2_calcdiv(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
+                               double * __restrict__ div, double * __restrict__ dzi, double dxi, double dyi, 
+                               int jj, int kk, int istart, int jstart, int kstart,
+                               int iend, int jend, int kend)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  int k = blockIdx.z + kstart; 
+  int ii = 1;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    div[ijk] = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
+  }
+}
+
+
+
 int cpres_2::prepareGPU()
 {
   const int kmemsize = grid->kmax*sizeof(double);
@@ -297,23 +316,6 @@ int cpres_2::prepareGPU()
   return 0;
 }
 
-__global__ void pres_2_calcdiv(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                               double * __restrict__ div, double * __restrict__ dzi, double dxi, double dyi, 
-                               int jj, int kk, int istart, int jstart, int kstart,
-                               int iend, int jend, int kend,
-                               int icells, int jcells, int kcells)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  int k = blockIdx.z; 
-  int ii = 1;
-  int ijk = i + j*jj + k*kk;
-
-  if(i >= istart && i < iend && j >= jstart && j < jend && k >= kstart && k < kend)
-    div[ijk] = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
-  else if(i < icells && j < jcells && k < kcells) 
-    div[ijk] = 0.;
-}
 
 #ifdef USECUDA
 int cpres_2::exec(double dt)
@@ -426,8 +428,8 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
 
   const int blocki = 128;
   const int blockj = 2;
-  const int gridi  = grid->icellsp/blocki + (grid->icellsp%blocki > 0);
-  const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
   double divmax = 0;
 
   dim3 gridGPU (gridi, gridj, grid->kcells);
@@ -442,10 +444,9 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
                                         &fields->a["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart,  grid->jstart, grid->kstart,
-                                        grid->iend,    grid->jend,   grid->kend,
-                                        grid->icellsp, grid->jcells, grid->kcells);
+                                        grid->iend,    grid->jend,   grid->kend);
 
-  divmax = maximum_gpu(&fields->a["tmp1"]->data_g[offs], grid->ncellsp-offs);
+  divmax = grid->maxGPU(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
   grid->getmax(&divmax);
 
   //fields->backwardGPU();

@@ -21,6 +21,7 @@
  */
 
 #include "grid.h"
+#include "tools.h"
 
 __global__ void grid_cyclic_x(double * __restrict__ data, 
                               const int icells, const int jcells, const int kcells,
@@ -150,4 +151,17 @@ int cgrid::boundary_cyclic_gpu(double * data)
                                         igc,    jgc);
 
   return 0;
+}
+
+double cgrid::maxGPU(double *data, double *tmp)
+{
+  double maxvalue;
+
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp);
+  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot);
+  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot);
+
+  cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
+  
+  return maxvalue;
 }

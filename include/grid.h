@@ -52,8 +52,6 @@ class cgrid
     int save();           ///< Saves grid data to file.
     int load();           ///< Loads grid data to file.
 
-    int prepareGPU(); ///< Load the arrays onto the GPU
-    int clearGPU();   ///< Deallocate the arrays onto the GPU
 
     int itot; ///< Total number of grid cells in the x-direction.
     int jtot; ///< Total number of grid cells in the y-direction.
@@ -126,7 +124,7 @@ class cgrid
     int boundary_cyclic2d(double *); ///< Fills the ghost cells of one slice in the periodic direction.
     int transposezx(double *, double *); ///< Changes the transpose orientation from z to x.
     int transposexz(double *, double *); ///< Changes the transpose orientation from x to z.
-    int transposexy(double *, double *); ///< Changes the transpose orientation from x to y.
+    int transposexy(double *, double *); ///< changes the transpose orientation from x to y.
     int transposeyx(double *, double *); ///< Changes the transpose orientation from y to x.
     int transposeyz(double *, double *); ///< Changes the transpose orientation from y to z.
     int transposezy(double *, double *); ///< Changes the transpose orientation from z to y.
@@ -156,6 +154,11 @@ class cgrid
     // interpolation functions
     int interpolate_2nd(double *, double *, const int[3], const int[3]); ///< Second order interpolation
     int interpolate_4th(double *, double *, const int[3], const int[3]); ///< Fourth order interpolation
+
+    // GPU functions
+    int prepareGPU();                  ///< Load the arrays onto the GPU
+    int clearGPU();                    ///< Deallocate the arrays onto the GPU
+    double maxGPU(double *, double *); ///< Get maximum value from field at GPU
 
     // Extra variables for aligning global memory on GPU
     int memoffset;

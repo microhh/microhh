@@ -184,25 +184,23 @@ __global__ void advec_2_advecs(double * __restrict__ st, double * __restrict__ s
 }
 
 __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                                double * __restrict__ tmp1, double * __restrict__ dzi, double dxi, double dyi, 
+                                double * __restrict__ cfl, double * __restrict__ dzi, double dxi, double dyi, 
                                 int jj, int kk, int istart, int jstart, int kstart,
-                                int iend, int jend, int kend,
-                                int icells, int jcells, int kcells)
+                                int iend, int jend, int kend)
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  int k = blockIdx.z; 
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  int k = blockIdx.z + kstart; 
   int ii = 1;
-  int ijk = i + j*jj + k*kk;
 
-  if(i >= istart && i < iend && j >= jstart && j < jend && k >= kstart && k < kend)
-    tmp1[ijk] = std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + 
-                std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + 
-                std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k];
-  else if(i < icells && j < jcells && k < kcells) 
-    tmp1[ijk] = 0.;
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    cfl[ijk] = std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + 
+               std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + 
+               std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k];
+  }
 }
-
 
 #ifdef USECUDA
 int cadvec_2::exec()
@@ -269,8 +267,8 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
 
   const int blocki = 128;
   const int blockj = 2;
-  const int gridi  = grid->icellsp/blocki + (grid->icellsp%blocki > 0);
-  const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
   double cfl = 0;
 
   dim3 gridGPU (gridi, gridj, grid->kcells);
@@ -281,17 +279,14 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
 
   const int offs = grid->memoffset;
 
-  /* TODO: write algoritm that reduces only the domain itself, excluding ghost and padding cells
-     With padding, the overhead of the ghost/padding cells can get quite large */
   advec_2_calccfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
                                          &fields->a["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart,  grid->jstart, grid->kstart,
-                                         grid->iend,    grid->jend,   grid->kend,
-                                         grid->icellsp, grid->jcells, grid->kcells);
+                                         grid->iend,    grid->jend,   grid->kend);
 
-  cfl = maximum_gpu(&fields->a["tmp1"]->data_g[offs], grid->ncellsp-offs);
-  grid->getmax(&cfl);
+  cfl = grid->maxGPU(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  grid->getmax(&cfl); 
   cfl = cfl*dt;
 
   return cfl;
