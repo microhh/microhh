@@ -19,7 +19,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
 #
-FILE(GLOB sourcefiles "../src/*.cxx" "../src/*.cu)
+FILE(GLOB sourcefiles "../src/*.cxx" "../src/*.cu")
 include_directories(${INCLUDE_DIRS} "../include")
 
 if(USECUDA)
