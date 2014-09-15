@@ -1,7 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2013 Chiel van Heerwaarden
- * Copyright (c) 2011-2013 Thijs Heus
+ * Copyright (c) 2011-2014 Chiel van Heerwaarden
+ * Copyright (c) 2011-2014 Thijs Heus
+ * Copyright (c)      2014 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -407,6 +408,10 @@ int cfields::execstats(mask *m)
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
                           sd["tmp1"]->data, stats->nmaskh);
+    else
+      stats->calcdiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
+                          sd["tmp1"]->data, stats->nmaskh);
+
   }
   else if(grid->swspatialorder == "4")
   {
@@ -445,6 +450,10 @@ int cfields::execstats(mask *m)
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
                           sd["tmp1"]->data, stats->nmaskh);
+    else
+      stats->calcdiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
+                          sd["tmp1"]->data, stats->nmaskh);
+
   }
   else if(grid->swspatialorder == "4")
   {
@@ -480,6 +489,9 @@ int cfields::execstats(mask *m)
         stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
+                            sd["tmp4"]->data, stats->nmaskh);
+      else
+        stats->calcdiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
                             sd["tmp4"]->data, stats->nmaskh);
     }
     else if(grid->swspatialorder == "4")
