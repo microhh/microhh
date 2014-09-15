@@ -994,6 +994,40 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
   return 0;
 }
 
+int cstats::calcdiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
+                         double * restrict mask, int * restrict nmask)
+{
+  int ijk,jj,kk;
+
+  jj = 1*grid->icells;
+  kk = 1*grid->ijcells;
+ 
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prof[k] = 0.;
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk  = i + j*jj + k*kk;
+        prof[k] -= mask[ijk]*visc*(data[ijk] - data[ijk-kk])*dzhi[k];
+      }
+  }
+
+  master->sum(prof, grid->kcells);
+
+  for(int k=1; k<grid->kcells; k++)
+  {
+    if(nmask[k] > NTHRES)
+      prof[k] /= (double)(nmask[k]);
+    else
+      prof[k] = NC_FILL_DOUBLE;
+  }
+
+  return 0;
+}
+
+
 int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
                          double * restrict prof, double * restrict dzhi,
                          double * restrict fluxbot, double * restrict fluxtop, double tPr, const int loc[3],

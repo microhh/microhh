@@ -50,7 +50,7 @@ int cfields::prepareGPU()
   cudaMalloc(&a["p"]->data_g, nmemsize);
   cudaMalloc(&a["tmp1"]->data_g, nmemsize);
   cudaMalloc(&a["tmp2"]->data_g, nmemsize);
-  //cudaMalloc(&a["tmp3"]->data_g, nmemsize);
+  cudaMalloc(&a["tmp3"]->data_g, nmemsize);
 
   // copy all the data to the GPU
   forwardGPU();
@@ -82,7 +82,7 @@ int cfields::forwardGPU()
   cudaMemcpy2D(&a["p"]->data_g[grid->memoffset],              imemsizep, a["p"]->data,            imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
   cudaMemcpy2D(&a["tmp1"]->data_g[grid->memoffset],           imemsizep, a["tmp1"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
   cudaMemcpy2D(&a["tmp2"]->data_g[grid->memoffset],           imemsizep, a["tmp2"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
-  //cudaMemcpy2D(&a["tmp3"]->data_g[grid->memoffset],           imemsizep, a["tmp3"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
+  cudaMemcpy2D(&a["tmp3"]->data_g[grid->memoffset],           imemsizep, a["tmp3"]->data,         imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);  
 
   printf("--> forwardGPU\n");
 
@@ -113,7 +113,7 @@ int cfields::backwardGPU()
   cudaMemcpy2D(a["p"]->data,              imemsize, &a["p"]->data_g[grid->memoffset],            imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
   cudaMemcpy2D(a["tmp1"]->data,           imemsize, &a["tmp1"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
   cudaMemcpy2D(a["tmp2"]->data,           imemsize, &a["tmp2"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
-  //cudaMemcpy2D(a["tmp3"]->data,           imemsize, &a["tmp3"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
+  cudaMemcpy2D(a["tmp3"]->data,           imemsize, &a["tmp3"]->data_g[grid->memoffset],         imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);  
 
   printf("--> backwardGPU\n");
 
@@ -142,7 +142,7 @@ int cfields::clearGPU()
   cudaFree(&a["p"]->data_g);
   cudaFree(&a["tmp1"]->data_g);
   cudaFree(&a["tmp2"]->data_g);
-  //cudaFree(&a["tmp3"]->data_g);
+  cudaFree(&a["tmp3"]->data_g);
 
   return 0;
 }

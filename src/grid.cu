@@ -155,32 +155,47 @@ int cgrid::boundary_cyclic_g(double * data)
 
 double cgrid::getmax_g(double *data, double *tmp)
 {
+  const unsigned int max = 1;
+  const double scalefac = 1.;
   double maxvalue;
 
   // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, 1);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, max);
   // Reduce jtot*ktot to ktot values
-  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, 1, 1.);
+  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, max, scalefac);
   // Reduce ktot values to a single value
-  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, 1, 1.);
+  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, max, scalefac);
   // Copy back result from GPU
   cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
   
   return maxvalue;
 }
 
+double cgrid::getsum_g(double *data, double *tmp)
+{
+  const unsigned int sum = 0;
+  const double scalefac = 1.
+  double sumvalue;
+
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, sum);
+  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sum, scalefac);
+  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sum, scalefac);
+
+  cudaMemcpy(&sumvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
+  
+  return sumvalue;
+}
+
 int cgrid::calcmean_g(double *prof, double *data, double *tmp)
 {
+  const unsigned int sum = 0;
+  const double scalefac = 1./(itot*jtot);
+
   // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, kcells, 0, icellsp, ijcellsp, 0);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, kcells, 0, icellsp, ijcellsp, sum);
   // Reduce jtot*kcells to kcells values
-  reduceAll     (tmp, prof, jtot*kcells, kcells, jtot, 0, 1./(itot*jtot));
+  reduceAll     (tmp, prof, jtot*kcells, kcells, jtot, sum, scalefac);
 
   return 0;
 } 
-
-
-
-
-
 

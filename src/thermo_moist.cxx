@@ -465,7 +465,7 @@ int cthermo_moist::execstats(mask *m)
   if(grid->swspatialorder == "2")
     stats->calcgrad_2nd(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
-  if(grid->swspatialorder == "4")
+  else if(grid->swspatialorder == "4")
     stats->calcgrad_4th(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
 
@@ -474,22 +474,30 @@ int cthermo_moist::execstats(mask *m)
     stats->calcflux_2nd(fields->s["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
                         m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
-  if(grid->swspatialorder == "4")
+  else if(grid->swspatialorder == "4")
     stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
-  if(model->diff->getname() == "les2s")
+  if(grid->swspatialorder == "2")
   {
-    cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-    stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
-                        m->profs["bdiff"].data, grid->dzhi,
-                        fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    if(model->diff->getname() == "les2s")
+    {
+      cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
+      stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
+                          m->profs["bdiff"].data, grid->dzhi,
+                          fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
+                          fields->s["tmp4"]->data, stats->nmaskh);
+    }
+    else
+    {
+      stats->calcdiff_2nd(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->s["th"]->visc, sloc,
+                          fields->s["tmp4"]->data, stats->nmaskh);
+    }
   }
-  else
+  else if(grid->swspatialorder == "4")
   {
-    // take the diffusivity of temperature for that of moisture
+    // take the diffusivity of temperature for that of buoyancy
     stats->calcdiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   }

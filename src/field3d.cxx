@@ -47,6 +47,7 @@ cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein, std::st
   datafluxtop = 0;
 }
 
+#ifndef USECUDA
 cfield3d::~cfield3d()
 {
   delete[] data;
@@ -93,6 +94,7 @@ int cfield3d::init()
 
   return 0;
 }
+#endif
 
 /*
 int cfield3d::checkfornan()
