@@ -160,7 +160,7 @@ double cgrid::getmax_g(double *data, double *tmp)
   double maxvalue;
 
   // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, max);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, max);
   // Reduce jtot*ktot to ktot values
   reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, max, scalefac);
   // Reduce ktot values to a single value
@@ -174,10 +174,10 @@ double cgrid::getmax_g(double *data, double *tmp)
 double cgrid::getsum_g(double *data, double *tmp)
 {
   const unsigned int sum = 0;
-  const double scalefac = 1.
+  const double scalefac = 1.;
   double sumvalue;
 
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, sum);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, sum);
   reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sum, scalefac);
   reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sum, scalefac);
 

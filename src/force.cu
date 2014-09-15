@@ -60,8 +60,8 @@ int cforce::exec(double dt)
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
 
-    double uavg  = grid->sumGPU(&fields->a["tmp1"]->data_g[offs], fields->a["tmp3"]->data_g); 
-    double utavg = grid->sumGPU(&fields->a["tmp2"]->data_g[offs], fields->a["tmp3"]->data_g); 
+    double uavg  = grid->getsum_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp3"]->data_g); 
+    double utavg = grid->getsum_g(&fields->a["tmp2"]->data_g[offs], fields->a["tmp3"]->data_g); 
 
     uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
     utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
