@@ -155,10 +155,11 @@ class cgrid
     int interpolate_4th(double *, double *, const int[3], const int[3]); ///< Fourth order interpolation
 
     // GPU functions
-    int prepareGPU();                    ///< Load the arrays onto the GPU
-    int clearGPU();                      ///< Deallocate the arrays onto the GPU
-    int boundary_cyclic_g(double *);     ///< Fills the ghost cells in the periodic directions.
-    double getmax_g(double *, double *); ///< Get maximum value from field at GPU
+    int prepareGPU();                             ///< Load the arrays onto the GPU
+    int clearGPU();                               ///< Deallocate the arrays onto the GPU
+    int boundary_cyclic_g(double *);              ///< Fills the ghost cells in the periodic directions.
+    double getmax_g(double *, double *);          ///< Get maximum value from field at GPU
+    int calcmean_g(double *, double *, double *); ///< Get mean profile from field at GPU
 
     // Extra variables for aligning global memory on GPU
     int memoffset;

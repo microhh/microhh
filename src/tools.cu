@@ -108,7 +108,7 @@ __global__ void deviceReduceInterior(const double *a, double *a2d,
 
 // Reduce array, not accounting from ghost cells or padding 
 template <int func, int blockSize> 
-__global__ void deviceReduceAll(const double *a, double *aout, unsigned int ncells, unsigned int nvaluesperblock)  
+__global__ void deviceReduceAll(const double *a, double *aout, unsigned int ncells, unsigned int nvaluesperblock, double scalefac)  
 {
   extern __shared__ double as[];
 
@@ -129,7 +129,7 @@ __global__ void deviceReduceAll(const double *a, double *aout, unsigned int ncel
       tmpval = reduction<func>(tmpval,a[ii+blockDim.x]);
     ii += 2*blockDim.x;
   }
-  as[tid] = tmpval;
+  as[tid] = tmpval * scalefac;
 
   /* Make sure all threads are synchronised before reducing the shared array */
   __syncthreads();
@@ -145,7 +145,7 @@ __global__ void deviceReduceAll(const double *a, double *aout, unsigned int ncel
 void reduceInterior(double *a, double *a2d, 
                     int itot, int istart, int iend,
                     int jtot, int jstart, int jend,
-                    int ktot, int kstart, int kend,
+                    int ktot, int kstart,
                     int icells, int ijcells, int mode)
 {
   int nthreads = max(16,min(MAXTHREADS, nextpow2(itot/2)));
@@ -191,7 +191,7 @@ void reduceInterior(double *a, double *a2d,
   }
 }
 
-void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperblock, int mode)
+void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperblock, int mode, double scalefac)
 {
   int nthreads = max(16,min(MAXTHREADS, nextpow2(nvaluesperblock/2)));
   dim3 gridGPU (nblocks,  1, 1);
@@ -202,17 +202,17 @@ void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperb
     switch (nthreads)
     {
       case 512:
-        deviceReduceAll<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 256:
-        deviceReduceAll<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 128:
-        deviceReduceAll<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 64:
-        deviceReduceAll<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 32:
-        deviceReduceAll<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 16:
-        deviceReduceAll<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
     }
   }
   else if (mode == SUM)
@@ -220,17 +220,17 @@ void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperb
     switch (nthreads)
     {
       case 512:
-        deviceReduceAll<SUM, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<SUM, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 256:
-        deviceReduceAll<SUM, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<SUM, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 128:
-        deviceReduceAll<SUM, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<SUM, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 64:
-        deviceReduceAll<SUM,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<SUM,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 32:
-        deviceReduceAll<SUM,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<SUM,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 16:
-        deviceReduceAll<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock); break;
+        deviceReduceAll<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
     }
   }
 }
