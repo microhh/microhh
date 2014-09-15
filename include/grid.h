@@ -120,7 +120,6 @@ class cgrid
     int initmpi(); ///< Creates the MPI data types used in grid operations.
     int exitmpi(); ///< Destructs the MPI data types used in grid operations.
     int boundary_cyclic  (double *); ///< Fills the ghost cells in the periodic directions.
-    int boundary_cyclic_gpu(double *); ///< Fills the ghost cells in the periodic directions.
     int boundary_cyclic2d(double *); ///< Fills the ghost cells of one slice in the periodic direction.
     int transposezx(double *, double *); ///< Changes the transpose orientation from z to x.
     int transposexz(double *, double *); ///< Changes the transpose orientation from x to z.
@@ -156,9 +155,10 @@ class cgrid
     int interpolate_4th(double *, double *, const int[3], const int[3]); ///< Fourth order interpolation
 
     // GPU functions
-    int prepareGPU();                  ///< Load the arrays onto the GPU
-    int clearGPU();                    ///< Deallocate the arrays onto the GPU
-    double maxGPU(double *, double *); ///< Get maximum value from field at GPU
+    int prepareGPU();                    ///< Load the arrays onto the GPU
+    int clearGPU();                      ///< Deallocate the arrays onto the GPU
+    int boundary_cyclic_g(double *);     ///< Fills the ghost cells in the periodic directions.
+    double getmax_g(double *, double *); ///< Get maximum value from field at GPU
 
     // Extra variables for aligning global memory on GPU
     int memoffset;

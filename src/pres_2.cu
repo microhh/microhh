@@ -337,13 +337,9 @@ int cpres_2::exec(double dt)
   const int offs = grid->memoffset;
 
   // calculate the cyclic BCs first
-  //grid->boundary_cyclic(fields->ut->data_g);
-  //grid->boundary_cyclic(fields->vt->data_g);
-  //grid->boundary_cyclic(fields->wt->data_g);
-
-  grid->boundary_cyclic_gpu(&fields->ut->data_g[offs]);
-  grid->boundary_cyclic_gpu(&fields->vt->data_g[offs]);
-  grid->boundary_cyclic_gpu(&fields->wt->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->ut->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->vt->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->wt->data_g[offs]);
 
   pres_2_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
@@ -405,8 +401,7 @@ int cpres_2::exec(double dt)
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->imax, grid->jmax, grid->kmax);
 
-  //grid->boundary_cyclic(fields->sd["p"]->data_g);
-  grid->boundary_cyclic_gpu(&fields->sd["p"]->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
 
   pres_2_presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                         &fields->sd["p"]->data_g[offs],
@@ -446,7 +441,7 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
                                         grid->istart,  grid->jstart, grid->kstart,
                                         grid->iend,    grid->jend,   grid->kend);
 
-  divmax = grid->maxGPU(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
+  divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
   grid->getmax(&divmax);
 
   //fields->backwardGPU();

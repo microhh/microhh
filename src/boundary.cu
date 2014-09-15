@@ -103,12 +103,12 @@ int cboundary::exec()
 
   const int offs = grid->memoffset;
 
-  grid->boundary_cyclic_gpu(&fields->u->data_g[offs]);
-  grid->boundary_cyclic_gpu(&fields->v->data_g[offs]);
-  grid->boundary_cyclic_gpu(&fields->w->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->u->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->v->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->w->data_g[offs]);
 
   for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
-    grid->boundary_cyclic_gpu(&it->second->data_g[offs]);
+    grid->boundary_cyclic_g(&it->second->data_g[offs]);
 
   // calculate boundary values
   bcvalues();

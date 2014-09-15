@@ -122,7 +122,7 @@ int cgrid::clearGPU()
   return 0;
 }
 
-int cgrid::boundary_cyclic_gpu(double * data)
+int cgrid::boundary_cyclic_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -153,15 +153,21 @@ int cgrid::boundary_cyclic_gpu(double * data)
   return 0;
 }
 
-double cgrid::maxGPU(double *data, double *tmp)
+double cgrid::getmax_g(double *data, double *tmp)
 {
   double maxvalue;
 
+  // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
   reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, 1);
+  // Reduce jtot*ktot to ktot values
   reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, 1);
+  // Reduce ktot values to a single value
   reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, 1);
-
+  // Copy back result from GPU
   cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
   
   return maxvalue;
 }
+
+
+

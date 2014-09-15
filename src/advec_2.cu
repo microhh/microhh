@@ -285,7 +285,7 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
                                          grid->istart,  grid->jstart, grid->kstart,
                                          grid->iend,    grid->jend,   grid->kend);
 
-  cfl = grid->maxGPU(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  cfl = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
   grid->getmax(&cfl); 
   cfl = cfl*dt;
 
