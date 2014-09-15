@@ -139,6 +139,7 @@ int cfields::clearGPU()
   cudaFree(&a["p"]->data_g);
   cudaFree(&a["tmp1"]->data_g);
   cudaFree(&a["tmp2"]->data_g);
+  cudaFree(&a["tmp3"]->data_g);
 
   return 0;
 }

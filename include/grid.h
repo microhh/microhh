@@ -159,6 +159,7 @@ class cgrid
     int prepareGPU();                  ///< Load the arrays onto the GPU
     int clearGPU();                    ///< Deallocate the arrays onto the GPU
     double maxGPU(double *, double *); ///< Get maximum value from field at GPU
+    double sumGPU(double *, double *); ///< Get summed value from field at GPU
 
     // Extra variables for aligning global memory on GPU
     int memoffset;

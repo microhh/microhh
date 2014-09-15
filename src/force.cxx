@@ -177,6 +177,7 @@ int cforce::create(cinput *inputin)
   return nerror;
 }
 
+#ifndef USECUDA
 int cforce::exec(double dt)
 {
   if(swlspres == "uflux")
@@ -204,6 +205,7 @@ int cforce::exec(double dt)
 
   return 0;
 }
+#endif
 
 int cforce::settimedep()
 {

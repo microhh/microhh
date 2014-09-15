@@ -155,13 +155,28 @@ int cgrid::boundary_cyclic_gpu(double * data)
 
 double cgrid::maxGPU(double *data, double *tmp)
 {
+  const unsigned int max = 1;
   double maxvalue;
 
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, 1);
-  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, 1);
-  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, 1);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, max);
+  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, max);
+  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, max);
 
   cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
   
   return maxvalue;
+}
+
+double cgrid::sumGPU(double *data, double *tmp)
+{
+  const unsigned int sum = 0;
+  double sumvalue;
+
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, kend, icellsp, ijcellsp, sum);
+  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sum);
+  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sum);
+
+  cudaMemcpy(&sumvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
+  
+  return sumvalue;
 }

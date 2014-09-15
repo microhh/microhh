@@ -23,11 +23,16 @@
 #ifndef FORCE
 #define FORCE
 
+#include <vector>
+#include <string>
+#include <map>
+
 // forward declaration
 class cmodel;
 class cgrid;
 class cfields;
 class cmaster;
+class cinput;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings
