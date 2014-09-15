@@ -1010,7 +1010,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict prof, double 
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        prof[k] -= mask[ijk]*visc*(data[ijk] - cg2*data[ijk-kk])*dzhi[k];
+        prof[k] -= mask[ijk]*visc*(data[ijk] - data[ijk-kk])*dzhi[k];
       }
   }
 
