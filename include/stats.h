@@ -92,26 +92,27 @@ class cstats
     int addtseries(std::string, std::string, std::string);
 
     int calcarea   (double *, const int[3], int *);
-    //void calcmean  (double * const, const double * const,
-    //                const double);
+
     void calcmean  (double * const, const double * const,
                     const double, const int[3],
                     const double * const, const int * const);
     void calcmean2d(double * const, const double * const,
                     const double,
                     const double * const, const int * const);
-    // int calcmoment  (double *, double *, double *, double, int);
+
     int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
+
+    int calcdiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
     int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
     int calcdiff_4th(double *, double *, double *, double, const int[3], double *, int *);
-    // int calcgrad_2nd(double *, double *, double *);
+
     int calcgrad_2nd(double *, double *, double *, const int[3], double *, int *);
     int calcgrad_4th(double *, double *, double *, const int[3], double *, int *);
-    // int calcflux_2nd(double *, double *, double *, double *, int, int);
+
     int calcflux_2nd(double *, double *, double *, double *, double *, double *, const int[3], double *, int *);
     int calcflux_4th(double *, double *, double *, double *, const int[3], double *, int *);
+
     int addfluxes   (double *, double *, double *);
-    // int calccount   (double *, double *, double);
     int calccount   (double *, double *, double, double *, int *);
     int calcpath    (double *, double *, int *, double *);
     int calccover   (double *, double *, int *, double *, double);
