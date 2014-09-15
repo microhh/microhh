@@ -5,14 +5,14 @@
 #ifdef USECUDA
 cfield3d::~cfield3d()
 {
-  delete[] data;
-  delete[] databot;
-  delete[] datatop;
-  delete[] datamean;
-  delete[] datagradbot;
-  delete[] datagradtop;
-  delete[] datafluxbot;
-  delete[] datafluxtop;
+  cudaFreeHost(data);
+  cudaFreeHost(databot);
+  cudaFreeHost(datatop);
+  cudaFreeHost(datagradbot);
+  cudaFreeHost(datagradtop);
+  cudaFreeHost(datafluxbot);
+  cudaFreeHost(datafluxtop);
+  cudaFreeHost(datamean);
 }
 
 int cfield3d::init()
