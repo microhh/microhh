@@ -203,7 +203,7 @@ int cboundary_surface::execstats(mask *m)
   return 0; 
 }
 
-int cboundary_surface::save(int iotime)
+void cboundary_surface::save(int iotime)
 {
   char filename[256];
 
@@ -212,15 +212,13 @@ int cboundary_surface::save(int iotime)
   if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
   {
     master->printMessage("FAILED\n");
-    return 1;
+    throw 1;
   }
   else
     master->printMessage("OK\n");
-
-  return 0;
 }
 
-int cboundary_surface::load(int iotime)
+void cboundary_surface::load(int iotime)
 {
   char filename[256];
 
@@ -229,14 +227,12 @@ int cboundary_surface::load(int iotime)
   if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
   {
     master->printMessage("FAILED\n");
-    return 1;
+    throw 1;
   }
   else
     master->printMessage("OK\n");
 
   grid->boundary_cyclic2d(obuk);
-
-  return 0;
 }
 
 int cboundary_surface::setvalues()

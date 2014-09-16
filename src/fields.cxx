@@ -751,7 +751,7 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
   return 0;
 }
 
-int cfields::load(int n)
+void cfields::load(int n)
 {
   int nerror = 0;
 
@@ -824,11 +824,12 @@ int cfields::load(int n)
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addprof(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   }
-  
-  return nerror;
+ 
+  if(nerror)
+    throw 1;
 }
 
-int cfields::save(int n)
+void cfields::save(int n)
 {
   int nerror = 0;
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
@@ -849,7 +850,8 @@ int cfields::save(int n)
     }
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 double cfields::checkmom()

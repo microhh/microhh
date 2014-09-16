@@ -44,8 +44,8 @@ class cboundary_surface : public cboundary
     int execcross(); ///< Execute cross sections of surface
     int execstats(mask *); ///< Execute statistics of surface
 
-    int save(int);
-    int load(int);
+    void save(int);
+    void load(int);
 
     // make these variables public for out-of-class usage
     double *obuk;

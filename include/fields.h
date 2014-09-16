@@ -51,8 +51,8 @@ class cfields
     int initpfld(std::string, std::string, std::string);
     int initdfld(std::string, std::string, std::string);
     
-    int save(int);
-    int load(int);
+    void save(int);
+    void load(int);
 
     double checkmom ();
     double checktke ();

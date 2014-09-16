@@ -49,7 +49,7 @@ class cgrid
     void init();          ///< Initialization of the grid arrays.
     int create(cinput *); ///< Creation of the grid data.
     int calculate();      ///< Computation of dimensions, faces and ghost cells.
-    int save();           ///< Saves grid data to file.
+    void save();           ///< Saves grid data to file.
     void load();           ///< Loads grid data to file.
 
     int itot; ///< Total number of grid cells in the x-direction.

@@ -177,14 +177,11 @@ void cmodel::load()
   stats->create(timeloop->iotime);
   cross->create();
 
-  if(fields->load(timeloop->iotime))
-    throw 1;
+  fields->load(timeloop->iotime);
 
   // \TODO call boundary load for the data and then timedep, not nice...
-  if(boundary->load(timeloop->iotime))
-    throw 1;
-  if(boundary->create(input))
-    throw 1;
+  boundary->load(timeloop->iotime);
+  boundary->create(input);
 
   if(buffer->create(input))
     throw 1;
@@ -215,14 +212,11 @@ void cmodel::create()
 
 void cmodel::save()
 {
-  if(grid->save())
-    throw 1;
-  if(fields->save(timeloop->iotime))
-    throw 1;
+  grid->save();
+  fields->save(timeloop->iotime);
   if(timeloop->save(timeloop->iotime))
     throw 1;
-  if(boundary->save(timeloop->iotime))
-    throw 1;
+  boundary->save(timeloop->iotime);
 }
 
 void cmodel::exec()
@@ -343,10 +337,8 @@ void cmodel::exec()
 
       // load the data
       timeloop->load(timeloop->iotime);
-      if(fields->load(timeloop->iotime))
-        throw 1;
-      if(boundary->load(timeloop->iotime))
-        throw 1;
+      fields  ->load(timeloop->iotime);
+      boundary->load(timeloop->iotime);
     }
     // update the time dependent values
     boundary->settimedep();

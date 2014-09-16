@@ -256,14 +256,12 @@ int cboundary::settimedep()
   return 0;
 }
 
-int cboundary::save(int iotime)
+void cboundary::save(int iotime)
 {
-  return 0;
 }
 
-int cboundary::load(int iotime)
+void cboundary::load(int iotime)
 {
-  return 0;
 }
 
 int cboundary::setvalues()

@@ -58,8 +58,8 @@ class cboundary
     virtual int settimedep();
     virtual int setvalues();      ///< Set all 2d fields to the prober BC value.
 
-    virtual int save(int); ///< Save boundary conditions related fields for restarts.
-    virtual int load(int); ///< Load boundary conditions related fields for restarts.
+    virtual void save(int); ///< Save boundary conditions related fields for restarts.
+    virtual void load(int); ///< Load boundary conditions related fields for restarts.
 
     int exec();              ///< Update the boundary conditions.
     virtual int execcross(); ///< Execute cross sections of surface
