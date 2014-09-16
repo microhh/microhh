@@ -62,7 +62,7 @@ class cboundary
     virtual void load(int); ///< Load boundary conditions related fields for restarts.
 
     int exec();              ///< Update the boundary conditions.
-    virtual int execcross(); ///< Execute cross sections of surface
+    virtual void execcross(); ///< Execute cross sections of surface
     virtual int execstats(mask *); ///< Execute statistics of surface
 
   protected:

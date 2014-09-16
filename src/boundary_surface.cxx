@@ -180,11 +180,11 @@ void cboundary_surface::init(cinput *inputin)
   }
 }
 
-int cboundary_surface::execcross()
+void cboundary_surface::execcross()
 {
   int nerror = 0;
 
-  for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
+  for(std::vector<std::string>::const_iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
     if(*it == "ustar")
       nerror += model->cross->crossplane(ustar, fields->s["tmp1"]->data, "ustar");
@@ -192,7 +192,8 @@ int cboundary_surface::execcross()
       nerror += model->cross->crossplane(obuk,  fields->s["tmp1"]->data, "obuk");
   }  
 
-  return nerror; 
+  if(nerror)
+    throw 1;
 }
 
 int cboundary_surface::execstats(mask *m)

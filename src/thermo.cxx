@@ -66,9 +66,8 @@ int cthermo::execstats(mask *f)
   return 0;
 }
 
-int cthermo::execcross()
+void cthermo::execcross()
 {
-  return 0;
 }
 
 int cthermo::checkthermofield(std::string name)

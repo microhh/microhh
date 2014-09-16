@@ -518,7 +518,7 @@ int cthermo_moist::execstats(mask *m)
   return 0;
 }
 
-int cthermo_moist::execcross()
+void cthermo_moist::execcross()
 {
   int nerror = 0;
 
@@ -550,9 +550,10 @@ int cthermo_moist::execcross()
       else if(*it == "bfluxbot")
         nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
     }
-  }  
+  }
 
-  return nerror; 
+  if(nerror)
+    throw 1;
 }
 
 int cthermo_moist::checkthermofield(std::string name)

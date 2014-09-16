@@ -65,11 +65,6 @@ int cthermo_buoy_slope::exec()
   return 0;
 }
 
-int cthermo_buoy_slope::execcross()
-{
-  return 0;
-}
-
 int cthermo_buoy_slope::checkthermofield(std::string name)
 {
   if(name == "b")
