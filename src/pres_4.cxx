@@ -150,7 +150,7 @@ void cpres_4::init()
   work2d = new double[imax*jmax];
 }
 
-int cpres_4::setvalues()
+void cpres_4::setvalues()
 {
   int imax, jmax, kmax;
   int itot, jtot, kstart;
@@ -231,8 +231,6 @@ int cpres_4::setvalues()
   m6[k] = (                                   -  27.*dzhi4[kc+1]                 ) * dzi4[kc];
   m7[k] = 0.;
   m8[k] = 0.;
-  
-  return 0;
 }
 
 int cpres_4::pres_in(double * restrict p, 

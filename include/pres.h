@@ -37,7 +37,8 @@ class cpres
     static cpres* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for pres class generation.
 
     virtual void init();
-    virtual int setvalues();
+    virtual void setvalues();
+
     virtual int exec(double);
     virtual double check();
 

@@ -187,16 +187,12 @@ void cmodel::load()
   force ->create(input);
   thermo->create(input);
 
-  if(budget->create())
-    throw 1;
+  budget->create();
 
   // end with modules that require all fields to be present
-  if(boundary->setvalues())
-    throw 1;
-  if(diff->setvalues())
-    throw 1;
-  if(pres->setvalues())
-    throw 1;
+  boundary->setvalues();
+  diff    ->setvalues();
+  pres    ->setvalues();
 }
 
 void cmodel::create()

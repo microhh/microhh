@@ -76,10 +76,10 @@ void cbudget::init()
   }
 }
 
-int cbudget::create()
+void cbudget::create()
 {
   if(swbudget == "0")
-    return 0;
+    return;
 
   // add the profiles for the kinetic energy to the statistics
   stats->addprof("ke" , "Kinetic energy" , "m2 s-2", "z");
@@ -137,8 +137,6 @@ int cbudget::create()
     stats->addprof("bpe_visc", "Viscous transport term in background potential energy budget", "m2 s-3", "z");
     stats->addprof("bpe_diss", "Dissipation term in background potential energy budget", "m2 s-3", "z");
   }
-
-  return 0;
 }
 
 int cbudget::execstats(mask *m)

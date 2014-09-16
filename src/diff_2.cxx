@@ -39,7 +39,7 @@ cdiff_2::~cdiff_2()
 {
 }
 
-int cdiff_2::setvalues()
+void cdiff_2::setvalues()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
@@ -49,8 +49,6 @@ int cdiff_2::setvalues()
   dnmul = 0;
   for(int k=grid->kstart; k<grid->kend; k++)
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
-
-  return 0;
 }
 
 unsigned long cdiff_2::gettimelim(unsigned long idt, double dt)
