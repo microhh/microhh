@@ -63,12 +63,6 @@ class cfields
     int setcalcprofs(bool);
     int execcross();
 
-    // GPU functions
-    int prepareGPU();
-    int forwardGPU();
-    int backwardGPU();
-    int clearGPU();
-
     // 3d fields for momentum
     cfield3d *u;
     cfield3d *v;
@@ -98,6 +92,16 @@ class cfields
     // TODO remove these to and bring them to diffusion model
     double visc;
 
+    // GPU functions
+    int prepareGPU();
+    int forwardGPU();
+    int backwardGPU();
+    int clearGPU();
+
+    // GPU variables
+    double *rhoref_g;
+    double *rhorefh_g;
+    
   private:
     // variables
     cmodel  *model;
