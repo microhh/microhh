@@ -183,10 +183,8 @@ void cmodel::load()
   boundary->load(timeloop->iotime);
   boundary->create(input);
 
-  if(buffer->create(input))
-    throw 1;
-  if(force->create(input))
-    throw 1;
+  buffer->create(input);
+  force->create(input);
   if(thermo->create(input))
     throw 1;
 
