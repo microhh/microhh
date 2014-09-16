@@ -88,6 +88,8 @@ class cgrid
 
     double dx;     ///< Distance between the center of two grid cell in the x-direction.
     double dy;     ///< Distance between the center of two grid cell in the y-direction.
+    double dxi;    ///< Reciprocal of dx.
+    double dyi;    ///< Reciprocal of dy.
     double *dz;    ///< Distance between the center of two grid cell in the z-direction.
     double *dzh;   ///< Distance between the two grid cell faces in the z-direction.
     double *dzi;   ///< Reciprocal of dz.

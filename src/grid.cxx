@@ -248,8 +248,10 @@ void cgrid::calculate()
   int i,j,k;
 
   // calculate the grid spacing
-  dx = xsize / itot;
-  dy = ysize / jtot;
+  dx  = xsize / itot;
+  dy  = ysize / jtot;
+  dxi = 1./dx;
+  dyi = 1./dy;
 
   // calculate the offset per process to get the true x- and y-coordinate
   double xoff = master->mpicoordx * xsize / master->npx;
