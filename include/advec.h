@@ -45,7 +45,7 @@ class cadvec
 
     static cadvec* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for advection class generation.
 
-    virtual int exec(); ///< Execute the advection scheme.
+    virtual void exec(); ///< Execute the advection scheme.
 
     virtual double getcfl(double); ///< Retrieve the CFL number.
 

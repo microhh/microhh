@@ -203,8 +203,8 @@ void cmodel::create()
 
 void cmodel::save()
 {
-  grid->save();
-  fields->save(timeloop->iotime);
+  grid    ->save();
+  fields  ->save(timeloop->iotime);
   timeloop->save(timeloop->iotime);
   boundary->save(timeloop->iotime);
 }
