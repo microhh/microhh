@@ -170,10 +170,9 @@ void cmodel::init()
 void cmodel::load()
 {
   // first load the grid and time to make their information available
-  if(grid->load())
-    throw 1;
-  if(timeloop->load(timeloop->iotime))
-    throw 1;
+  grid    ->load();
+  timeloop->load(timeloop->iotime);
+
   // initialize the statistics file to open the possiblity to add profiles
   if(stats->create(timeloop->iotime))
     throw 1;

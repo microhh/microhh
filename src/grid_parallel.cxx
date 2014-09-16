@@ -583,7 +583,7 @@ int cgrid::save()
   return 0;
 }
 
-int cgrid::load()
+void cgrid::load()
 {
   int nerror = 0;
 
@@ -614,11 +614,11 @@ int cgrid::load()
   master->broadcast(&nerror, 1);
   if(nerror)
   {
-    if(master->mpiid == 0) std::printf("FAILED\n");
-    return 1;
+    master->printMessage("FAILED\n");
+    throw 1;
   }
   else
-    if(master->mpiid == 0) std::printf("OK\n");
+    master->printMessage("OK\n");
 
   master->broadcast(&z [kstart], kmax);
   master->broadcast(&zh[kstart], kmax);
@@ -629,17 +629,16 @@ int cgrid::load()
   // LOAD THE FFTW PLAN
   std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-  if(master->mpiid == 0)
-    std::printf("Loading \"%s\" ... ", filename);
+  master->printMessage("Loading \"%s\" ... ", filename);
 
   int n = fftw_import_wisdom_from_filename(filename);
   if(n == 0)
   {
-    if(master->mpiid == 0) std::printf("FAILED\n");
-    return 1;
+    master->printMessage("FAILED\n");
+    throw 1;
   }
   else
-    if(master->mpiid == 0) std::printf("OK\n");
+    master->printMessage("OK\n");
 
   // use the FFTW3 many interface in order to reduce function call overhead
   int rank = 1;
@@ -663,8 +662,6 @@ int cgrid::load()
   fftwplan = true;
 
   fftw_forget_wisdom();
-
-  return 0;
 }
 
 int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)

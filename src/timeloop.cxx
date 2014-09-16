@@ -341,7 +341,7 @@ int ctimeloop::save(int starttime)
   return 0;
 }
 
-int ctimeloop::load(int starttime)
+void ctimeloop::load(int starttime)
 {
   int nerror = 0;
 
@@ -350,14 +350,14 @@ int ctimeloop::load(int starttime)
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
 
-    std::printf("Loading \"%s\" ... ", filename);
+    master->printMessage("Loading \"%s\" ... ", filename);
 
     FILE *pFile;
     pFile = fopen(filename, "rb");
 
     if(pFile == NULL)
     {
-      std::printf("ERROR \"%s\" does not exist\n", filename);
+      master->printError("\"%s\" does not exist\n", filename);
       ++nerror;
     }
     else
@@ -368,12 +368,12 @@ int ctimeloop::load(int starttime)
 
       fclose(pFile);
     }
-    std::printf("OK\n");
+    master->printMessage("OK\n");
   }
 
   master->broadcast(&nerror, 1);
   if(nerror)
-    return 1;
+    throw 1;
 
   master->broadcast(&itime    , 1);
   master->broadcast(&idt      , 1);
@@ -382,8 +382,6 @@ int ctimeloop::load(int starttime)
   // calculate the double precision time from the integer time
   time = (double)itime / ifactor;
   dt   = (double)idt   / ifactor;
-
-  return 0;
 }
 
 int ctimeloop::postprocstep()

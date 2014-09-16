@@ -52,7 +52,7 @@ class ctimeloop
     unsigned long settimelim(unsigned long);
 
     int save(int);
-    int load(int);
+    void load(int);
 
     int docheck();
     double check();
