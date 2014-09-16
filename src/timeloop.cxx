@@ -312,22 +312,22 @@ bool ctimeloop::insubstep()
     return false;
 }
 
-int ctimeloop::save(int starttime)
+void ctimeloop::save(int starttime)
 {
   if(master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
 
-    std::printf("Saving \"%s\" ... ", filename);
+    master->printMessage("Saving \"%s\" ... ", filename);
 
     FILE *pFile;
     pFile = fopen(filename, "wb");
 
     if(pFile == NULL)
     {
-      std::printf("ERROR \"%s\" cannot be written", filename);
-      return 1;
+      master->printError("\"%s\" cannot be written", filename);
+      throw 1;
     }
 
     fwrite(&itime    , sizeof(long), 1, pFile);
@@ -335,10 +335,8 @@ int ctimeloop::save(int starttime)
     fwrite(&iteration, sizeof(long), 1, pFile);
 
     fclose(pFile);
-    std::printf("OK\n");
+    master->printMessage("OK\n");
   }
-
-  return 0;
 }
 
 void ctimeloop::load(int starttime)

@@ -205,8 +205,7 @@ void cmodel::save()
 {
   grid->save();
   fields->save(timeloop->iotime);
-  if(timeloop->save(timeloop->iotime))
-    throw 1;
+  timeloop->save(timeloop->iotime);
   boundary->save(timeloop->iotime);
 }
 
