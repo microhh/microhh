@@ -87,7 +87,7 @@ void ccross::init(double ifactor)
   isampletime = (unsigned long)(ifactor * sampletime);
 }
 
-int ccross::create()
+void ccross::create()
 {  
   int nerror = 0;
   int temploc, temploch, hoffset;
@@ -101,7 +101,7 @@ int ccross::create()
     if(*it < 0 || *it > grid->ysize) // Check if cross location is inside domain
     {
       master->printError("ERROR %f in [cross][xz] is outside domain\n", *it);
-      nerror += 1;
+      ++nerror;
     }
     else
     {
@@ -133,7 +133,7 @@ int ccross::create()
     if(*it < 0 || *it > grid->zsize) // Check if cross location is inside domain
     {
       master->printError("ERROR %f in [cross][xy] is outside domain\n", *it);
-      nerror += 1;
+      ++nerror;
     }
     else
     {
@@ -174,7 +174,8 @@ int ccross::create()
     }
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 unsigned long ccross::gettimelim(unsigned long itime)

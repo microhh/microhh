@@ -174,10 +174,8 @@ void cmodel::load()
   timeloop->load(timeloop->iotime);
 
   // initialize the statistics file to open the possiblity to add profiles
-  if(stats->create(timeloop->iotime))
-    throw 1;
-  if(cross->create())
-    throw 1;
+  stats->create(timeloop->iotime);
+  cross->create();
 
   if(fields->load(timeloop->iotime))
     throw 1;
@@ -344,8 +342,7 @@ void cmodel::exec()
         break;
 
       // load the data
-      if(timeloop->load(timeloop->iotime))
-        throw 1;
+      timeloop->load(timeloop->iotime);
       if(fields->load(timeloop->iotime))
         throw 1;
       if(boundary->load(timeloop->iotime))
