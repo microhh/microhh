@@ -51,8 +51,8 @@ class ctimeloop
 
     unsigned long settimelim(unsigned long);
 
-    int save(int);
-    int load(int);
+    void save(int);
+    void load(int);
 
     int docheck();
     double check();

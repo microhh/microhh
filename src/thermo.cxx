@@ -52,9 +52,8 @@ void cthermo::init()
 {
 }
 
-int cthermo::create(cinput *inputin)
+void cthermo::create(cinput *inputin)
 {
-  return 0;
 }
 
 int cthermo::exec()

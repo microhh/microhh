@@ -38,7 +38,8 @@ class ccross
     ~ccross();
 
     void init(double);
-    int create();
+    void create();
+
     unsigned long gettimelim(unsigned long);
     //int exec(double, unsigned long, int);
 

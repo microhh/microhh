@@ -598,40 +598,41 @@ int cfields::initdfld(std::string fldname,std::string longname, std::string unit
   return 0;  
 }
 
-int cfields::create(cinput *inputin)
+void cfields::create(cinput *inputin)
 {
   master->printMessage("Creating fields\n");
   
-  int n = 0;
+  int nerror = 0;
   
   // Randomnize the momentum
   for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
-    n += randomnize(inputin, it->first, it->second->data);
+    nerror += randomnize(inputin, it->first, it->second->data);
   
   // Randomnize the scalars
   for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    n += randomnize(inputin, it->first, it->second->data);
+    nerror += randomnize(inputin, it->first, it->second->data);
   
   // Add Vortices
-  n += addvortexpair(inputin);
+  nerror += addvortexpair(inputin);
   
   // Add the mean profiles to the fields
-  n += addmeanprofile(inputin, "u", mp["u"]->data, grid->utrans);
-  n += addmeanprofile(inputin, "v", mp["v"]->data, grid->vtrans);
+  nerror += addmeanprofile(inputin, "u", mp["u"]->data, grid->utrans);
+  nerror += addmeanprofile(inputin, "v", mp["v"]->data, grid->vtrans);
  
   for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    n += addmeanprofile(inputin, it->first, it->second->data, 0.);
+    nerror += addmeanprofile(inputin, it->first, it->second->data, 0.);
   
   // set w equal to zero at the boundaries, just to be sure
   int lbot = grid->kstart*grid->icells*grid->jcells;
   int ltop = grid->kend  *grid->icells*grid->jcells;
-  for(int l=0; l<grid->icells*grid->jcells; ++l)
+  for(int l=0; l<grid->ijcells; ++l)
   {
     w->data[lbot+l] = 0.;
     w->data[ltop+l] = 0.;
   }
-  
-  return (n>0);
+
+  if(nerror)
+    throw 1;
 }
 
 int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data)
@@ -751,7 +752,7 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
   return 0;
 }
 
-int cfields::load(int n)
+void cfields::load(int n)
 {
   int nerror = 0;
 
@@ -824,11 +825,12 @@ int cfields::load(int n)
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addprof(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   }
-  
-  return nerror;
+ 
+  if(nerror)
+    throw 1;
 }
 
-int cfields::save(int n)
+void cfields::save(int n)
 {
   int nerror = 0;
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
@@ -849,7 +851,8 @@ int cfields::save(int n)
     }
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 double cfields::checkmom()

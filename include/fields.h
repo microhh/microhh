@@ -42,7 +42,8 @@ class cfields
     ~cfields();
 
     void init();
-    int create(cinput *);
+    void create(cinput *);
+
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
     int execstats(mask *);
@@ -51,8 +52,8 @@ class cfields
     int initpfld(std::string, std::string, std::string);
     int initdfld(std::string, std::string, std::string);
     
-    int save(int);
-    int load(int);
+    void save(int);
+    void load(int);
 
     double checkmom ();
     double checktke ();

@@ -101,7 +101,7 @@ void cpres_2::init()
   work2d = new double[imax*jmax];
 }
 
-int cpres_2::setvalues()
+void cpres_2::setvalues()
 {
   int imax, jmax, kmax;
   int itot, jtot, kgc;
@@ -137,8 +137,6 @@ int cpres_2::setvalues()
     a[k] = grid->dz[k+kgc] * fields->rhorefh[k+kgc  ]*grid->dzhi[k+kgc  ];
     c[k] = grid->dz[k+kgc] * fields->rhorefh[k+kgc+1]*grid->dzhi[k+kgc+1];
   }
-
-  return 0;
 }
 
 int cpres_2::pres_in(double * restrict p, 

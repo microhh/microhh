@@ -160,11 +160,12 @@ void cboundary::init(cinput *inputin)
     throw 1;
 }
 
-int cboundary::create(cinput *inputin)
+void cboundary::create(cinput *inputin)
 {
   int nerror = 0;
   nerror += processtimedep(inputin);
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 int cboundary::processtimedep(cinput *inputin)
@@ -256,17 +257,15 @@ int cboundary::settimedep()
   return 0;
 }
 
-int cboundary::save(int iotime)
+void cboundary::save(int iotime)
 {
-  return 0;
 }
 
-int cboundary::load(int iotime)
+void cboundary::load(int iotime)
 {
-  return 0;
 }
 
-int cboundary::setvalues()
+void cboundary::setvalues()
 {
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->utrans);
   setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->vtrans);
@@ -279,8 +278,6 @@ int cboundary::setvalues()
     setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, NO_OFFSET);
     setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
   }
-
-  return 0;
 }
 
 int cboundary::exec()

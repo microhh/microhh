@@ -118,7 +118,7 @@ void cforce::init()
     wls = new double[grid->kcells];
 }
 
-int cforce::create(cinput *inputin)
+void cforce::create(cinput *inputin)
 {
   int nerror = 0;
 
@@ -174,7 +174,8 @@ int cforce::create(cinput *inputin)
       if(master->mpiid == 0) std::printf("WARNING %s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 int cforce::exec(double dt)

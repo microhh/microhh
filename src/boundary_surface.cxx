@@ -58,9 +58,8 @@ cboundary_surface::~cboundary_surface()
   delete[] obuk;
 }
 
-int cboundary_surface::create(cinput *inputin)
+void cboundary_surface::create(cinput *inputin)
 {
-
   int nerror = 0;
   nerror += processtimedep(inputin);
 
@@ -71,7 +70,8 @@ int cboundary_surface::create(cinput *inputin)
     stats->addtseries("obuk", "Obukhov length", "m");
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 void cboundary_surface::init(cinput *inputin)
@@ -203,7 +203,7 @@ int cboundary_surface::execstats(mask *m)
   return 0; 
 }
 
-int cboundary_surface::save(int iotime)
+void cboundary_surface::save(int iotime)
 {
   char filename[256];
 
@@ -212,15 +212,13 @@ int cboundary_surface::save(int iotime)
   if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
   {
     master->printMessage("FAILED\n");
-    return 1;
+    throw 1;
   }
   else
     master->printMessage("OK\n");
-
-  return 0;
 }
 
-int cboundary_surface::load(int iotime)
+void cboundary_surface::load(int iotime)
 {
   char filename[256];
 
@@ -229,17 +227,15 @@ int cboundary_surface::load(int iotime)
   if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
   {
     master->printMessage("FAILED\n");
-    return 1;
+    throw 1;
   }
   else
     master->printMessage("OK\n");
 
   grid->boundary_cyclic2d(obuk);
-
-  return 0;
 }
 
-int cboundary_surface::setvalues()
+void cboundary_surface::setvalues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->utrans);
@@ -272,8 +268,6 @@ int cboundary_surface::setvalues()
           ustar[ij] = std::max(0.0001, ustarin);
         }
    }
-
-  return 0;
 }
 
 // surface model

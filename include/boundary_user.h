@@ -35,7 +35,7 @@ class cboundary_user : public cboundary
 
     void init(cinput *);
 
-    int setvalues();
+    void setvalues();
 
   private:
     int setbc_patch(double *, double *, double *, int, double, double, double,

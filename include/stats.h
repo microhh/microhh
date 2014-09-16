@@ -69,7 +69,8 @@ class cstats
     ~cstats();
 
     void init(double);
-    int create(int);
+    void create(int);
+
     unsigned long gettimelim(unsigned long);
     int getmask(cfield3d *, cfield3d *, mask *);
     int exec(int, double, unsigned long);

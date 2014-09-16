@@ -62,9 +62,8 @@ unsigned long cdiff::gettimelim(unsigned long idtlim, double dt)
   return idtlim;
 }
 
-int cdiff::setvalues()
+void cdiff::setvalues()
 {
-  return 0;
 }
 
 double cdiff::getdn(double dt)

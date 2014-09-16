@@ -40,9 +40,9 @@ class cbuffer
     cbuffer(cmodel *, cinput *); ///< Constructor of the buffer class.
     ~cbuffer();                  ///< Destructor of the buffer class.
 
-    void init();          ///< Initialize the arrays that contain the profiles.
-    int create(cinput *); ///< Read the profiles of the forces from the input.
-    int exec();           ///< Add the tendencies created by the damping.
+    void init();           ///< Initialize the arrays that contain the profiles.
+    void create(cinput *); ///< Read the profiles of the forces from the input.
+    int exec();            ///< Add the tendencies created by the damping.
 
   private:
     cmaster *master; ///< Pointer to master class.
