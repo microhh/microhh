@@ -197,10 +197,8 @@ void cmodel::load()
 
 void cmodel::create()
 {
-  if(grid->create(input))
-    throw 1;
-  if(fields->create(input))
-    throw 1;
+  grid  ->create(input);
+  fields->create(input);
 }
 
 void cmodel::save()

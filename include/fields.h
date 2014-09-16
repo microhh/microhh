@@ -42,7 +42,8 @@ class cfields
     ~cfields();
 
     void init();
-    int create(cinput *);
+    void create(cinput *);
+
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
     int execstats(mask *);
