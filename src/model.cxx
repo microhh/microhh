@@ -184,9 +184,8 @@ void cmodel::load()
   boundary->create(input);
 
   buffer->create(input);
-  force->create(input);
-  if(thermo->create(input))
-    throw 1;
+  force ->create(input);
+  thermo->create(input);
 
   if(budget->create())
     throw 1;

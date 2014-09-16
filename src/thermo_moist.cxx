@@ -145,7 +145,7 @@ void cthermo_moist::init()
   }
 }
 
-int cthermo_moist::create(cinput *inputin)
+void cthermo_moist::create(cinput *inputin)
 {
   int kstart = grid->kstart;
   int kend   = grid->kend;
@@ -159,9 +159,9 @@ int cthermo_moist::create(cinput *inputin)
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles 
     // are updated on every tstep. First take the initial profile as the reference
     if(inputin->getProf(&thl0[grid->kstart], "s", grid->kmax))
-      return 1;
+      throw 1;
     if(inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
-      return 1;
+      throw 1;
 
     // Calculate surface and model top values thl and qt
     double thl0s, qt0s, thl0t, qt0t;
@@ -245,7 +245,8 @@ int cthermo_moist::create(cinput *inputin)
   // Sort crosslist to group ql and b variables
   std::sort(crosslist.begin(),crosslist.end());
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 int cthermo_moist::exec()
