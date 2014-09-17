@@ -378,7 +378,7 @@ __global__ void advec_4_calccfl(double * __restrict__ u, double * __restrict__ v
 }
 
 #ifdef USECUDA
-int cadvec_4::exec()
+void cadvec_4::exec()
 {
   fields->forwardGPU();
 
@@ -424,7 +424,6 @@ int cadvec_4::exec()
     printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
 
   fields->backwardGPU();
-  return 0;
 }
 #endif
 

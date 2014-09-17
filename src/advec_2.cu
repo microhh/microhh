@@ -205,7 +205,7 @@ __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v
 }
 
 #ifdef USECUDA
-int cadvec_2::exec()
+void cadvec_2::exec()
 {
   //fields->forwardGPU();
 
@@ -258,8 +258,6 @@ int cadvec_2::exec()
                                           grid->iend,   grid->jend, grid->kend);
 
   //fields->backwardGPU();
-
-  return 0;
 }
 #endif
 
