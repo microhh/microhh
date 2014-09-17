@@ -27,7 +27,7 @@
 #include "fields.h"
 #include "advec_4.h"
 #include "defines.h"
-#include "constants.h"
+#include "fd.h"
 #include "model.h"
 
 using namespace fd::o4;

@@ -58,9 +58,5 @@ class cthermo_buoy : public cthermo
     int calcbuoyancyfluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
     int calcbuoyancytend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
     int calcbuoyancytend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-
-    inline double interp2(const double, const double); ///< 2nd order interpolation function.
-    inline double interp4(const double, const double, 
-                          const double, const double); ///< 4th order interpolation function.
 };
 #endif

@@ -30,6 +30,7 @@
 #include "thermo_moist.h"
 #include "diff_les2s.h"
 #include "defines.h"
+#include "fd.h"
 #include "model.h"
 #include "stats.h"
 #include "master.h"
@@ -68,6 +69,9 @@
 #define c8 -.3704404e-13
 
 #define NO_OFFSET 0.
+
+using fd::o2::interp2;
+using fd::o4::interp4;
 
 cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
@@ -1027,15 +1031,3 @@ inline double cthermo_moist::esl(const double t)
 
   //return es0*std::exp(at*(t-tmelt)/(t-bt));
 }
-
-inline double cthermo_moist::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
-
-inline double cthermo_moist::interp4(const double a, const double b, const double c, const double d)
-{
-  return (-a + 9.*b + 9.*c - d) / 16.;
-}
-
-

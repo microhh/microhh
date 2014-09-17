@@ -27,7 +27,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
-#include "constants.h"
+#include "fd.h"
 #include "model.h"
 #include "thermo.h"
 #include "stats.h"

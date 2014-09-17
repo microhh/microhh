@@ -26,8 +26,11 @@
 #include "fields.h"
 #include "thermo_buoy_slope.h"
 #include "defines.h"
+#include "fd.h"
 #include "model.h"
 #include "master.h"
+
+using fd::o4::interp4;
 
 cthermo_buoy_slope::cthermo_buoy_slope(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
@@ -226,9 +229,3 @@ int cthermo_buoy_slope::calcbuoyancytendb_4th(double * restrict st, double * res
 
   return 0;
 }
-
-inline double cthermo_buoy_slope::interp4(const double a, const double b, const double c, const double d)
-{
-  return (-a + 9.*b + 9.*c - d) / 16.;
-}
-

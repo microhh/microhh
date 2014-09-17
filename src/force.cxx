@@ -27,7 +27,7 @@
 #include "fields.h"
 #include "force.h"
 #include "defines.h"
-#include "constants.h"
+#include "fd.h"
 #include "model.h"
 #include "timeloop.h"
 
@@ -439,8 +439,3 @@ int cforce::advecwls_2nd(double * const restrict st, const double * const restri
 
   return 0;
 }
-
-//inline double cforce::interp2(const double a, const double b)
-//{
-//  return 0.5*(a + b);
-//}

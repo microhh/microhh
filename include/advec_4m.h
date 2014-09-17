@@ -48,13 +48,8 @@ class cadvec_4m : public cadvec
     void advecw(double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
     void advecs(double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
 
-    inline double interp2(const double, const double);                                           ///< 2nd order interpolation.
-    inline double interp4(const double, const double, const double, const double);               ///< 4th order interpolation.
     inline double grad4  (const double, const double, const double, const double, const double); ///< 4th order gradient.
     inline double grad4x (const double, const double, const double, const double);               ///< 4th order gradient (only numerator).
-
-    inline double interp4biasbot(const double, const double, const double, const double); ///< 4th order interpolation (bottom boundary).
-    inline double interp4biastop(const double, const double, const double, const double); ///< 4th order interpolation (top boundary).
     inline double grad4xbiasbot (const double, const double, const double, const double); ///< 4th order interpolation (bottom boundary, only numerator).
     inline double grad4xbiastop (const double, const double, const double, const double); ///< 4th order interpolation (top boundary, only numerator).
 };

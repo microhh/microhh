@@ -27,7 +27,7 @@
 #include "fields.h"
 #include "thermo_dry.h"
 #include "defines.h"
-#include "constants.h"
+#include "fd.h"
 #include "model.h"
 #include "stats.h"
 #include "diff_les2s.h"
@@ -39,6 +39,9 @@
 #define cp 1005.
 
 #define NO_OFFSET 0.
+
+using fd::o2::interp2;
+using fd::o4::interp4;
 
 cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
@@ -482,14 +485,3 @@ int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th
 
   return 0;
 }
-
-//inline double cthermo_dry::interp2(const double a, const double b)
-//{
-//  return 0.5*(a + b);
-//}
-
-inline double cthermo_dry::interp4(const double a, const double b, const double c, const double d)
-{
-  return (-a + 9.*b + 9.*c - d) / 16.;
-}
-
