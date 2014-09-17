@@ -279,8 +279,8 @@ void cmodel::exec()
 
       if(cross->docross())
       {
-        fields->execcross();
-        thermo->execcross();
+        fields  ->execcross();
+        thermo  ->execcross();
         boundary->execcross();
       }
     }
