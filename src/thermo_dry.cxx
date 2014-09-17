@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "thermo_dry.h"
 #include "defines.h"
+#include "constants.h"
 #include "fd.h"
 #include "model.h"
 #include "stats.h"
@@ -34,14 +35,11 @@
 #include "master.h"
 #include "cross.h"
 
-#define grav 9.81
-#define Rd 287.04
-#define cp 1005.
-
 #define NO_OFFSET 0.
 
 using fd::o2::interp2;
 using fd::o4::interp4;
+using namespace constants;
 
 cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {

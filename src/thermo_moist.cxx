@@ -30,48 +30,18 @@
 #include "thermo_moist.h"
 #include "diff_les2s.h"
 #include "defines.h"
+#include "constants.h"
 #include "fd.h"
 #include "model.h"
 #include "stats.h"
 #include "master.h"
 #include "cross.h"
 
-#define rd 287.04
-#define rv 461.5
-#define ep rd/rv
-#define cp 1005
-#define lv 2.5e6
-#define rhow    1.e3
-#define tmelt   273.15
-#define p0 1.e5
-#define grav 9.81
-
-#define ex1 2.85611940298507510698e-06
-#define ex2 -1.02018879928714644313e-11
-#define ex3 5.82999832046362073082e-17
-#define ex4 -3.95621945728655163954e-22
-#define ex5 2.93898686274077761686e-27
-#define ex6 -2.30925409555411170635e-32
-#define ex7 1.88513914720731231360e-37
-
-#define at 17.27
-#define bt 35.86
-#define es0 610.78
-
-#define c0 0.6105851e+03
-#define c1 0.4440316e+02
-#define c2 0.1430341e+01
-#define c3 0.2641412e-01
-#define c4 0.2995057e-03
-#define c5 0.2031998e-05
-#define c6 0.6936113e-08
-#define c7 0.2564861e-11
-#define c8 -.3704404e-13
-
 #define NO_OFFSET 0.
 
 using fd::o2::interp2;
 using fd::o4::interp4;
+using namespace constants;
 
 cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
@@ -640,7 +610,7 @@ int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict p
 {
   int kstart,kend;
   double ssurf,qtsurf,stop,qttop,ptop,ql,si,qti,qli,thvt;
-  double rdcp = rd/cp;
+  double rdcp = Rd/cp;
 
   kstart = grid->kstart;
   kend = grid->kend;
@@ -663,9 +633,9 @@ int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict p
   // Calculate surface (half=kstart) values
   exh[kstart]   = exn(pbot);
   ql            = calcql(ssurf,qtsurf,pbot,exh[kstart]); 
-  thvh[kstart]  = (ssurf + lv*ql/(cp*exh[kstart])) * (1. - (1. - rv/rd)*qtsurf - rv/rd*ql);
+  thvh[kstart]  = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
   prefh[kstart] = pbot;
-  rhoh[kstart]  = pbot / (rd * exh[kstart] * thvh[kstart]);
+  rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
 
   // First full grid level pressure
   pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thvh[kstart])),(1./rdcp)); 
@@ -675,8 +645,8 @@ int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict p
     // 1. Calculate values at full level below zh[k] 
     ex[k-1]  = exn(pref[k-1]);
     ql       = calcql(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
-    thv[k-1] = (thlmean[k-1] + lv*ql/(cp*ex[k-1])) * (1. - (1. - rv/rd)*qtmean[k-1] - rv/rd*ql); 
-    rho[k-1] = pref[k-1] / (rd * ex[k-1] * thv[k-1]);
+    thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
+    rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
  
     // 2. Calculate half level pressure at zh[k] using values at z[k-1]
     prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dz[k-1] / (cp * thv[k-1])),(1./rdcp));
@@ -695,8 +665,8 @@ int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict p
 
     exh[k]   = exn(prefh[k]);
     qli      = calcql(si,qti,prefh[k],exh[k]);
-    thvh[k]  = (si + lv*qli/(cp*exh[k])) * (1. - (1. - rv/rd)*qti - rv/rd*qli); 
-    rhoh[k]  = prefh[k] / (rd * exh[k] * thvh[k]); 
+    thvh[k]  = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
+    rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]); 
 
     // 4. Calculate full level pressure at z[k]
     pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thvh[k])),(1./rdcp)); 
@@ -978,17 +948,17 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
 // INLINE FUNCTIONS
 inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql, const double thvref)
 {
-  return grav * ((s + lv*ql/(cp*exn(p))) * (1. - (1. - rv/rd)*qt - rv/rd*ql) - thvref) / thvref;
+  return grav * ((s + Lv*ql/(cp*exn(p))) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
 }
 
 inline double cthermo_moist::bunoql(const double s, const double qt, const double thvref)
 {
-  return grav * (s * (1. - (1. - rv/rd)*qt) - thvref) / thvref;
+  return grav * (s * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
 }
 
 inline double cthermo_moist::bufluxnoql(const double s, const double sflux, const double qt, const double qtflux, const double thvref)
 {
-  return grav/thvref * (sflux * (1. - (1.-rv/rd)*qt) - (1.-rv/rd)*s*qtflux);
+  return grav/thvref * (sflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*s*qtflux);
 }
 
 inline double cthermo_moist::calcql(const double s, const double qt, const double p, const double exn)
@@ -1002,7 +972,7 @@ inline double cthermo_moist::calcql(const double s, const double qt, const doubl
     ++niter;
     tnr_old = tnr;
     qs = rslf(p,tnr);
-    tnr = tnr - (tnr+(lv/cp)*qs-tl-(lv/cp)*qt)/(1+(std::pow(lv,2)*qs)/ (rv*cp*std::pow(tnr,2)));
+    tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(std::pow(Lv,2)*qs)/ (Rv*cp*std::pow(tnr,2)));
   }
   ql = std::max(0.,qt - qs);
   return ql;
@@ -1010,7 +980,7 @@ inline double cthermo_moist::calcql(const double s, const double qt, const doubl
 
 inline double cthermo_moist::exn(const double p)
 {
-  return pow((p/p0),(rd/cp));
+  return pow((p/p0),(Rd/cp));
 }
 
 inline double cthermo_moist::exn2(const double p)
@@ -1019,15 +989,13 @@ inline double cthermo_moist::exn2(const double p)
   return (1+(dp*(ex1+dp*(ex2+dp*(ex3+dp*(ex4+dp*(ex5+dp*(ex6+ex7*dp)))))))); 
 }
 
-inline double cthermo_moist::rslf(const double p, const double t)
+inline double cthermo_moist::rslf(const double p, const double T)
 {
-  return ep*esl(t)/(p-(1-ep)*esl(t));
+  return ep*esl(T)/(p-(1-ep)*esl(T));
 }
 
-inline double cthermo_moist::esl(const double t)
+inline double cthermo_moist::esl(const double T)
 {
-  const double x=std::max(-80.,t-tmelt);
+  const double x=std::max(-80.,T-T0);
   return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
-
-  //return es0*std::exp(at*(t-tmelt)/(t-bt));
 }
