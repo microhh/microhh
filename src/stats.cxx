@@ -28,6 +28,7 @@
 #include "stats.h"
 #include "thermo_moist.h"
 #include "defines.h"
+#include "constants.h"
 #include "fd.h"
 #include "model.h"
 #include "diff_les2s.h"
@@ -167,7 +168,7 @@ void cstats::create(int n)
 unsigned long cstats::gettimelim(unsigned long itime)
 {
   if(swstats == "0")
-    return ulhuge;
+    return constants::ulhuge;
 
   unsigned long idtlim = isampletime - itime % isampletime;
   return idtlim;
@@ -477,8 +478,8 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   kstart = grid->kstart;
   kend = grid->kend;
 
-  minval =  dhuge;
-  maxval = -dhuge;
+  minval =  constants::dhuge;
+  maxval = -constants::dhuge;
 
   // first, get min and max
   for(int k=grid->kstart; k<grid->kend; ++k)
@@ -497,7 +498,7 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   master->max(&maxval, 1);
 
   // make sure that the max ends up in the last bin (introduce 1E-9 error)
-  maxval *= (1.+dsmall);
+  maxval *= (1.+constants::dsmall);
 
   range = maxval-minval;
 

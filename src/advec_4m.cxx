@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "advec_4m.h"
 #include "defines.h"
+#include "constants.h"
 #include "fd.h"
 #include "model.h"
 
@@ -48,7 +49,7 @@ unsigned long cadvec_4m::gettimelim(unsigned long idt, double dt)
 
   cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   // avoid zero divisons
-  cfl = std::max(dsmall, cfl);
+  cfl = std::max(constants::dsmall, cfl);
   idtlim = idt * cflmax / cfl;
 
   return idtlim;

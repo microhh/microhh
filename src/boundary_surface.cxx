@@ -30,6 +30,7 @@
 #include "fields.h"
 #include "boundary_surface.h"
 #include "defines.h"
+#include "constants.h"
 #include "thermo.h"
 #include "model.h"
 #include "master.h"
@@ -159,7 +160,7 @@ void cboundary_surface::init(cinput *inputin)
    for(int i=0; i<grid->icells; ++i)
    {
      ij = i + j*jj;
-     obuk[ij] = dsmall;
+     obuk[ij] = constants::dsmall;
    }
 
   // Cross sections
@@ -357,7 +358,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
-        obuk[ij] = -std::pow(ustar[ij], 3.) / (kappa*bfluxbot[ij]);
+        obuk[ij] = -std::pow(ustar[ij], 3.) / (constants::kappa*bfluxbot[ij]);
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
@@ -432,7 +433,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
-        obuk[ij] = -dbig;
+        obuk[ij] = -constants::dbig;
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
@@ -443,7 +444,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
-        obuk [ij] = -dbig;
+        obuk [ij] = -constants::dbig;
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
@@ -455,7 +456,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
-        obuk [ij] = -dbig;
+        obuk [ij] = -constants::dbig;
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
@@ -622,9 +623,9 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
 
   // avoid bfluxbot to be zero
   if(bfluxbot >= 0.)
-    bfluxbot = std::max(dsmall, bfluxbot);
+    bfluxbot = std::max(constants::dsmall, bfluxbot);
   else
-    bfluxbot = std::min(-dsmall, bfluxbot);
+    bfluxbot = std::min(-constants::dsmall, bfluxbot);
 
   // allow for one restart
   while(m <= 1)
@@ -635,15 +636,15 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
     {
       nlim = 200;
       if(bfluxbot >= 0.)
-        L = -dsmall;
+        L = -constants::dsmall;
       else
-        L = dsmall;
+        L = constants::dsmall;
     }
 
     if(bfluxbot >= 0.)
-      L0 = -dhuge;
+      L0 = -constants::dhuge;
     else
-      L0 = dhuge;
+      L0 = constants::dhuge;
 
     int n = 0;
 
@@ -652,11 +653,11 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-      fx     = zsl/L + kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3.);
+      fx     = zsl/L + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3.);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend + kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3.))
-               - (zsl/Lstart + kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3.)) )
+      fxdif  = ( (zsl/Lend + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3.))
+               - (zsl/Lstart + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3.)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
@@ -668,7 +669,7 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
     // convergence has not been reached, procedure restarted once
     else
     {
-      L = dsmall;
+      L = constants::dsmall;
       ++m;
       nlim = 200;
     }
@@ -692,9 +693,9 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
 
   // avoid db to be zero
   if(db >= 0.)
-    db = std::max(dsmall, db);
+    db = std::max(constants::dsmall, db);
   else
-    db = std::min(-dsmall, db);
+    db = std::min(-constants::dsmall, db);
 
   // allow for one restart
   while(m <= 1)
@@ -705,15 +706,15 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
     {
       nlim = 200;
       if(db >= 0.)
-        L = dsmall;
+        L = constants::dsmall;
       else
-        L = -dsmall;
+        L = -constants::dsmall;
     }
 
     if(db >= 0.)
-      L0 = dhuge;
+      L0 = constants::dhuge;
     else
-      L0 = -dhuge;
+      L0 = -constants::dhuge;
 
     int n = 0;
 
@@ -722,11 +723,11 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-      fx     = zsl/L - kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2.);
+      fx     = zsl/L - constants::kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2.);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend - kappa*zsl*db*fh(zsl, z0h, Lend) / std::pow(du * fm(zsl, z0m, Lend), 2.))
-               - (zsl/Lstart - kappa*zsl*db*fh(zsl, z0h, Lstart) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
+      fxdif  = ( (zsl/Lend - constants::kappa*zsl*db*fh(zsl, z0h, Lend) / std::pow(du * fm(zsl, z0m, Lend), 2.))
+               - (zsl/Lstart - constants::kappa*zsl*db*fh(zsl, z0h, Lstart) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
@@ -738,7 +739,7 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
     // convergence has not been reached, procedure restarted once
     else
     {
-      L = dsmall;
+      L = constants::dsmall;
       ++m;
       nlim = 200;
     }
@@ -753,14 +754,14 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
 inline double cboundary_surface::fm(double zsl, double z0m, double L)
 {
   double fm;
-  fm = kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
+  fm = constants::kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
   return fm;
 }
 
 inline double cboundary_surface::fh(double zsl, double z0h, double L)
 {
   double fh;
-  fh = kappa / (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L));
+  fh = constants::kappa / (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L));
   return fh;
 }
 

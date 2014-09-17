@@ -20,7 +20,20 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <climits>
+
 namespace constants
 {
-  const double dummy = 1234;
+  const double kappa = 0.4;
+
+
+
+
+
+  // BvS: Perhaps better off back in defines.h? Separate namespace?
+  const double        dtiny  = 1.e-30;
+  const double        dsmall = 1.e-9;
+  const double        dbig   = 1.e9;
+  const double        dhuge  = 1.e30;
+  const unsigned long ulhuge = ULONG_MAX;
 }
