@@ -26,52 +26,51 @@
 
 int main(int argc, char *argv[])
 {
-  // initialize the master class, it cannot fail
+  // Initialize the master class, it cannot fail.
   cmaster master;
   try
   {
-    // start up the master class
-    master.startup(argc, argv);
+    // Start up the master class and the Message Passing Interface.
+    master.start(argc, argv);
 
-    // print the current version of the model
+    // Print the current version of the model.
     master.printMessage("Microhh git-hash: " GITHASH "\n");
 
-    // read the input data
+    // Initialize the input class and read the input data from disk.
     cinput input(&master);
 
-    // initialize the model class
+    // Initialize the model class.
     cmodel model(&master, &input);
 
-    // initialize the master
+    // Initialize the master class.
     master.init(&input);
 
-    // initialize the model components
+    // Initialize the model components.
     model.init();
 
-    if(master.mode == "init")
+    if (master.mode == "init")
     {
-      // create the data
-      model.create();
-      // save the data
+      // Initialize the allocated fields and save the data.
       model.save();
     }
-    else
+    else if (master.mode == "run" || master.mode == "post")
     {
-      // load the data
+      // Initialize the allocated fields using data from disk.
       model.load();
     }
 
-    // check unused input
-    input.printUnused(); 
-    // free the memory of the input
+    // Print warnings for input variables that are unused.
+    input.printUnused();
+
+    // Free the memory taken by the input fields
     input.clear();
 
-    // run the model
-    if(master.mode != "init")
+    // Run the model
+    if (master.mode != "init")
       model.exec();
   }
 
-  // catch any exceptions and return 1
+  // Catch any exceptions and return 1.
   catch (...)
   {
     return 1;

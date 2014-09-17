@@ -195,14 +195,13 @@ void cmodel::load()
   pres    ->setvalues();
 }
 
-void cmodel::create()
-{
-  grid  ->create(input);
-  fields->create(input);
-}
-
 void cmodel::save()
 {
+  // Initialize the grid and the fields from the input data.
+  grid  ->create(input);
+  fields->create(input);
+
+  // Save the initialized data to disk for the run mode.
   grid    ->save();
   fields  ->save(timeloop->iotime);
   timeloop->save(timeloop->iotime);

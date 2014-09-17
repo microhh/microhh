@@ -52,7 +52,7 @@ cmaster::~cmaster()
     MPI_Finalize();
 }
 
-void cmaster::startup(int argc, char *argv[])
+void cmaster::start(int argc, char *argv[])
 {
   int n;
 
