@@ -22,6 +22,12 @@
 
 namespace fd
 {
+  namespace o2
+  {
+    inline double interp2(const double a, const double b) {
+      return 0.5*(a + b); }
+  }
+
   namespace o4
   {
     // 4th order interpolation

@@ -27,7 +27,10 @@
 #include "fields.h"
 #include "advec_2.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
+
+using namespace fd::o2;
 
 cadvec_2::cadvec_2(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
 {
@@ -227,7 +230,7 @@ void cadvec_2::advecs(double * restrict st, double * restrict s, double * restri
       }
 }
 
-inline double cadvec_2::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
+//inline double cadvec_2::interp2(const double a, const double b)
+//{
+//  return 0.5*(a + b);
+//}

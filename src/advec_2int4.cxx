@@ -400,10 +400,10 @@ void cadvec_2int4::advecs(double * restrict st, double * restrict s, double * re
     }
 }
 
-inline double cadvec_2int4::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
+//inline double cadvec_2int4::interp2(const double a, const double b)
+//{
+//  return 0.5*(a + b);
+//}
 
 inline double cadvec_2int4::interp4(const double a, const double b, const double c, const double d)
 {

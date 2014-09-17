@@ -440,7 +440,7 @@ int cforce::advecwls_2nd(double * const restrict st, const double * const restri
   return 0;
 }
 
-inline double cforce::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
+//inline double cforce::interp2(const double a, const double b)
+//{
+//  return 0.5*(a + b);
+//}

@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "thermo_dry.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
 #include "stats.h"
 #include "diff_les2s.h"
@@ -442,6 +443,8 @@ int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restri
 
 int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
 {
+  using namespace fd::o2;
+
   int ijk,jj,kk;
 
   jj = grid->icells;
@@ -480,10 +483,10 @@ int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th
   return 0;
 }
 
-inline double cthermo_dry::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
+//inline double cthermo_dry::interp2(const double a, const double b)
+//{
+//  return 0.5*(a + b);
+//}
 
 inline double cthermo_dry::interp4(const double a, const double b, const double c, const double d)
 {

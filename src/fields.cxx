@@ -28,6 +28,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
 #include "stats.h"
 #include "cross.h"
@@ -902,6 +903,8 @@ double cfields::calcmass(double * restrict s, double * restrict dz)
 
 double cfields::calcmom_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
+  using namespace fd::o2;
+
   int ijk,ii,jj,kk;
 
   ii = 1;
@@ -929,6 +932,8 @@ double cfields::calcmom_2nd(double * restrict u, double * restrict v, double * r
 
 double cfields::calctke_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
+  using namespace fd::o2;
+
   int ijk,ii,jj,kk;
 
   ii = 1;
@@ -982,8 +987,8 @@ void cfields::execcross()
     throw 1;
 }
 
-inline double cfields::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
+//inline double cfields::interp2(const double a, const double b)
+//{
+//  return 0.5*(a + b);
+//}
 
