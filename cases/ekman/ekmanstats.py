@@ -2,7 +2,7 @@ from pylab import *
 import netCDF4
 
 # load the data
-stats = netCDF4.Dataset("ekman.0000000.nc","r")
+stats = netCDF4.Dataset("ekman.default.0000000.nc","r")
 t = stats.variables["t"][:]
 z = stats.variables["z"][:]
 u = stats.variables["u"][:,:]

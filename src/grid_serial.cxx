@@ -311,22 +311,22 @@ int cgrid::getprof(double *prof, int kcellsin)
 }
 
 // IO functions
-int cgrid::save()
+void cgrid::save()
 {
   // SAVE THE GRID
   FILE *pFile;
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "wb");
-  std::printf("Saving \"%s\" ... ", filename);
+  master->printMessage("Saving \"%s\" ... ", filename);
 
   if(pFile == NULL)
   {
-    std::printf("FAILED\n");
-    return 1;
+    master->printMessage("FAILED\n");
+    throw 1;
   }
   else
-    std::printf("OK\n");
+    master->printMessage("OK\n");
 
   fwrite(&x [istart], sizeof(double), itot, pFile);
   fwrite(&xh[istart], sizeof(double), itot, pFile);
@@ -363,19 +363,17 @@ int cgrid::save()
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-    std::printf("Saving \"%s\" ... ", filename);
+    master->printMessage("Saving \"%s\" ... ", filename);
 
     int n = fftw_export_wisdom_to_filename(filename);
     if(n == 0)
     {
-      std::printf("FAILED\n");
-      return 1;
+      master->printMessage("FAILED\n");
+      throw 1;
     }
     else
-      std::printf("OK\n");
+      master->printMessage("OK\n");
   }
-
-  return 0;
 }
 
 void cgrid::load()
