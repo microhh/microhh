@@ -228,32 +228,30 @@ void cgrid::init()
  * This function initializes the fields containing the grid dimensions based
  * on the profiles in the input file.
  * @param inputin Pointer to the input class.
- * @return Returns 1 on error, 0 otherwise.
  */
-int cgrid::create(cinput *inputin)
+void cgrid::create(cinput *inputin)
 {
   // get the grid coordinates from the input
   if(inputin->getProf(&z[kstart], "z", kmax))
-    return 1;
+    throw 1;
 
   // calculate the grid
   calculate();
-
-  return 0;
 }
 
 /**
  * This function calculates the scalars and arrays that contain the information
  * on the grid spacing.
- * @return Returns 0.
  */
-int cgrid::calculate()
+void cgrid::calculate()
 {
   int i,j,k;
 
   // calculate the grid spacing
-  dx = xsize / itot;
-  dy = ysize / jtot;
+  dx  = xsize / itot;
+  dy  = ysize / jtot;
+  dxi = 1./dx;
+  dyi = 1./dy;
 
   // calculate the offset per process to get the true x- and y-coordinate
   double xoff = master->mpicoordx * xsize / master->npx;
@@ -370,8 +368,6 @@ int cgrid::calculate()
     dzi4[kend+1  ] = dhuge;
     dzi4[kend+2  ] = dhuge;
   }
-
-  return 0;
 }
 
 /**

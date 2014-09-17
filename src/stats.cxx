@@ -93,11 +93,11 @@ void cstats::init(double ifactor)
   nstats = 0;
 }
 
-int cstats::create(int n)
+void cstats::create(int n)
 {
   // do not create file if stats is disabled
   if(swstats == "0")
-    return 0;
+    return;
 
   int nerror = 0;
 
@@ -114,14 +114,14 @@ int cstats::create(int n)
       m->dataFile = new NcFile(filename, NcFile::New);
       if(!m->dataFile->is_valid())
       {
-        std::printf("ERROR cannot write statistics file\n");
+        master->printError("cannot write statistics file\n");
         ++nerror;
       }
     }
     // crash on all processes in case the file could not be written
     master->broadcast(&nerror, 1);
     if(nerror)
-      return 1;
+      throw 1;
 
     // create dimensions
     if(master->mpiid == 0)
@@ -161,8 +161,6 @@ int cstats::create(int n)
   // for each mask add the area as a variable
   addprof("area" , "Fractional area contained in mask", "-", "z");
   addprof("areah", "Fractional area contained in mask", "-", "zh");
-
-  return 0;
 }
 
 unsigned long cstats::gettimelim(unsigned long itime)

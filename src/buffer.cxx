@@ -70,7 +70,7 @@ void cbuffer::init()
   }
 }
 
-int cbuffer::create(cinput *inputin)
+void cbuffer::create(cinput *inputin)
 {
   int nerror = 0;
 
@@ -115,7 +115,9 @@ int cbuffer::create(cinput *inputin)
       if(master->mpiid == 0) std::printf("ERROR buffer is too close to the model top\n");
     }
   }
-  return nerror;
+
+  if(nerror)
+    throw 1;
 }
 
 int cbuffer::exec()

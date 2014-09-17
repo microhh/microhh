@@ -41,7 +41,8 @@ class cbudget
     ~cbudget();
 
     void init();
-    int create();
+    void create();
+
     int execstats(mask *);
 
   private:

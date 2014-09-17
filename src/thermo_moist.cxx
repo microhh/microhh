@@ -91,10 +91,6 @@ cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin
   nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
 
-  // Only in case of Boussinesq, read in reference potential temperature
-  if(model->swbasestate == "boussinesq") 
-    nerror += inputin->getItem(&thvref0, "thermo", "thvref0", "");
-
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
   
@@ -145,11 +141,17 @@ void cthermo_moist::init()
   }
 }
 
-int cthermo_moist::create(cinput *inputin)
+void cthermo_moist::create(cinput *inputin)
 {
+  // Only in case of Boussinesq, read in reference potential temperature
+  if(model->swbasestate == "boussinesq")
+  {
+    if(inputin->getItem(&thvref0, "thermo", "thvref0", ""))
+      throw 1;
+  }
+
   int kstart = grid->kstart;
   int kend   = grid->kend;
-  int nerror = 0;
 
   // Enable automated calculation of horizontally averaged fields
   fields->setcalcprofs(true);
@@ -159,9 +161,9 @@ int cthermo_moist::create(cinput *inputin)
     // Calculate the base state profiles. With swupdatebasestate=1, these profiles 
     // are updated on every tstep. First take the initial profile as the reference
     if(inputin->getProf(&thl0[grid->kstart], "s", grid->kmax))
-      return 1;
+      throw 1;
     if(inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
-      return 1;
+      throw 1;
 
     // Calculate surface and model top values thl and qt
     double thl0s, qt0s, thl0t, qt0t;
@@ -244,8 +246,6 @@ int cthermo_moist::create(cinput *inputin)
 
   // Sort crosslist to group ql and b variables
   std::sort(crosslist.begin(),crosslist.end());
-
-  return nerror;
 }
 
 int cthermo_moist::exec()
@@ -517,7 +517,7 @@ int cthermo_moist::execstats(mask *m)
   return 0;
 }
 
-int cthermo_moist::execcross()
+void cthermo_moist::execcross()
 {
   int nerror = 0;
 
@@ -549,9 +549,10 @@ int cthermo_moist::execcross()
       else if(*it == "bfluxbot")
         nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
     }
-  }  
+  }
 
-  return nerror; 
+  if(nerror)
+    throw 1;
 }
 
 int cthermo_moist::checkthermofield(std::string name)

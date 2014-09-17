@@ -51,9 +51,8 @@ void cpres::init()
 {
 }
 
-int cpres::setvalues()
+void cpres::setvalues()
 {
-  return 0;
 }
 
 int cpres::exec(double dt)

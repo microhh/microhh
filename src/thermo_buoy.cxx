@@ -53,11 +53,6 @@ int cthermo_buoy::exec()
   return 0;
 }
 
-int cthermo_buoy::execcross()
-{
-  return 0;
-}
-
 int cthermo_buoy::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
 {
   calcbuoyancy(bfield->data, fields->s["b"]->data);

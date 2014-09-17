@@ -39,7 +39,8 @@ class cpres_2 : public cpres
     ~cpres_2();
 
     void init();
-    int setvalues();
+    void setvalues();
+
     int exec(double);
     double check();
 

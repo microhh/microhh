@@ -87,21 +87,22 @@ void cthermo_dry::init()
   exnerh = new double[grid->kcells];
 }
 
-int cthermo_dry::create(cinput *inputin)
+void cthermo_dry::create(cinput *inputin)
 {
   // Only in case of Boussinesq, read in reference potential temperature
   int nerror = 0;
   if(model->swbasestate == "boussinesq")
-    nerror += inputin->getItem(&thref0, "thermo", "thref0", "");
-  if(nerror)
-    throw 1;
+  {
+    if(inputin->getItem(&thref0, "thermo", "thref0", ""))
+      throw 1;
+  }
 
   // Setup base state for anelastic solver
   if(model->swbasestate == "anelastic")
   {
     // take the initial profile as the reference
     if(inputin->getProf(&thref[grid->kstart], "th", grid->kmax))
-      return 1;
+      throw 1;
 
     int kstart = grid->kstart;
     int kend   = grid->kend;
@@ -210,8 +211,6 @@ int cthermo_dry::create(cinput *inputin)
 
   // Sort crosslist to group ql and b variables
   std::sort(crosslist.begin(),crosslist.end());
-
-  return 0;
 }
 
 int cthermo_dry::exec()
@@ -290,11 +289,9 @@ int cthermo_dry::execstats(mask *m)
 
   // calculate the sorted buoyancy profile
   stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
-
-  return 0;
 }
 
-int cthermo_dry::execcross()
+void cthermo_dry::execcross()
 {
   int nerror = 0;
 
@@ -320,9 +317,10 @@ int cthermo_dry::execcross()
       else if(*it == "bfluxbot")
         nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
     }
-  }  
+  }
 
-  return nerror; 
+  if(nerror)
+    throw 1;
 }
 
 int cthermo_dry::checkthermofield(std::string name)

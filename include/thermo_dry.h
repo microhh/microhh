@@ -44,10 +44,11 @@ class cthermo_dry : public cthermo
     ~cthermo_dry();                  ///< Destructor of the dry thermodynamics class.
 
     void init();
-    int create(cinput *);
+    void create(cinput *);
     int exec();                ///< Add the tendencies belonging to the buoyancy.
     int execstats(mask *);
-    int execcross();
+
+    void execcross();
 
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);

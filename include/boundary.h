@@ -54,15 +54,15 @@ class cboundary
     static cboundary* factory(cmaster *, cinput *, cmodel *); ///< Factory function for boundary class generation.
 
     virtual void init(cinput *);   ///< Initialize the fields.
-    virtual int create(cinput *); ///< Create the fields.
+    virtual void create(cinput *); ///< Create the fields.
     virtual int settimedep();
-    virtual int setvalues();      ///< Set all 2d fields to the prober BC value.
+    virtual void setvalues();      ///< Set all 2d fields to the prober BC value.
 
-    virtual int save(int); ///< Save boundary conditions related fields for restarts.
-    virtual int load(int); ///< Load boundary conditions related fields for restarts.
+    virtual void save(int); ///< Save boundary conditions related fields for restarts.
+    virtual void load(int); ///< Load boundary conditions related fields for restarts.
 
     int exec();              ///< Update the boundary conditions.
-    virtual int execcross(); ///< Execute cross sections of surface
+    virtual void execcross(); ///< Execute cross sections of surface
     virtual int execstats(mask *); ///< Execute statistics of surface
 
   protected:

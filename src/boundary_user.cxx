@@ -58,7 +58,7 @@ void cboundary_user::init(cinput *inputin)
     throw 1;
 }
 
-int cboundary_user::setvalues()
+void cboundary_user::setvalues()
 {
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->utrans);
   setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->vtrans);
@@ -73,8 +73,6 @@ int cboundary_user::setvalues()
     setbc      (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
                 sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
   }
-
-  return 0;
 }
 
 int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,

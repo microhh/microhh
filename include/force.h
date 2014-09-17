@@ -47,7 +47,7 @@ class cforce
     cforce(cmodel *, cinput *); ///< Constructor of the force class.
     ~cforce();                  ///< Destructor of the force class.
     void init();                ///< Initialize the arrays that contain the profiles.
-    int create(cinput *);       ///< Read the profiles of the forces from the input.
+    void create(cinput *);      ///< Read the profiles of the forces from the input.
     int exec(double);           ///< Add the tendencies belonging to the large-scale processes.
     int settimedep();           ///< Set the time dependent parameters.
 

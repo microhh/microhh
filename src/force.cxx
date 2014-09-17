@@ -118,7 +118,7 @@ void cforce::init()
     wls = new double[grid->kcells];
 }
 
-int cforce::create(cinput *inputin)
+void cforce::create(cinput *inputin)
 {
   int nerror = 0;
 
@@ -134,7 +134,7 @@ int cforce::create(cinput *inputin)
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
       if(!fields->ap.count(*it))
       {
-        if(master->mpiid == 0) std::printf("ERROR field %s in [force][lslist] is illegal\n", it->c_str());
+        master->printError("field %s in [force][lslist] is illegal\n", it->c_str());
         ++nerror;
       }
 
@@ -174,7 +174,8 @@ int cforce::create(cinput *inputin)
       if(master->mpiid == 0) std::printf("WARNING %s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 #ifndef USECUDA
@@ -199,7 +200,7 @@ int cforce::exec(double dt)
 
   if(swwls == "1")
   {
-    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
       advecwls_2nd(it->second->data, fields->s[it->first]->datamean, wls, grid->dzhi);
   }
 
@@ -273,7 +274,7 @@ int cforce::flux(double * const restrict ut, const double * const restrict u,
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   double uavg, utavg, ugrid;
 
@@ -391,7 +392,7 @@ int cforce::lssource(double * const restrict st, const double * const restrict s
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)

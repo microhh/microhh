@@ -54,21 +54,19 @@ double cadvec_4m::getcfl(double dt)
 {
   double cfl;
 
-  cfl = calccfl((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi, dt);
+  cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
 
   return cfl;
 }
 
-int cadvec_4m::exec()
+void cadvec_4m::exec()
 {
-  advecu((*fields->ut).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
-  advecv((*fields->vt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4 );
-  advecw((*fields->wt).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzhi4);
+  advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
+  advecv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
+  advecw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi4);
 
-  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advecs((*it->second).data, (*fields->s[it->first]).data, (*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
-
-  return 0;
+  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+    advecs(it->second->data, fields->s[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
 }
 
 double cadvec_4m::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
@@ -108,7 +106,7 @@ double cadvec_4m::calccfl(double * restrict u, double * restrict v, double * res
   return cfl;
 }
 
-int cadvec_4m::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+void cadvec_4m::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -202,11 +200,9 @@ int cadvec_4m::advecu(double * restrict ut, double * restrict u, double * restri
                      -interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * interp2(u[ijk-kk2], u[ijk+kk1]))
               * dzi4[kend-1];
     }
-
-  return 0;
 }
 
-int cadvec_4m::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+void cadvec_4m::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -299,11 +295,9 @@ int cadvec_4m::advecv(double * restrict vt, double * restrict u, double * restri
                      -interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp2(v[ijk-kk2], v[ijk+kk1]))
               * dzi4[kend-1];
     }
-
-  return 0;
 }
 
-int cadvec_4m::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi4)
+void cadvec_4m::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -400,11 +394,9 @@ int cadvec_4m::advecw(double * restrict wt, double * restrict u, double * restri
               * dzhi4[kend-1];
     }
     */
-
-    return 0;
 }
 
-int cadvec_4m::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+void cadvec_4m::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -497,8 +489,6 @@ int cadvec_4m::advecs(double * restrict st, double * restrict s, double * restri
                      -w[ijk    ] * interp2(s[ijk-kk2], s[ijk+kk1])) 
               * dzi4[kend-1];
     }
-
-  return 0;
 }
 
 inline double cadvec_4m::interp2(const double a, const double b)

@@ -38,10 +38,12 @@ class cthermo
     static cthermo* factory(cmaster *, cinput *, cmodel *); ///< Factory function for thermo class generation.
 
     virtual void init();
-    virtual int create(cinput *);
+    virtual void create(cinput *);
     virtual int exec();
     virtual int execstats(mask *);
-    virtual int execcross();
+
+    virtual void execcross();
+
     virtual int getmask(cfield3d *, cfield3d *, mask *);
 
     // interfacing functions to get buoyancy properties from other classes
