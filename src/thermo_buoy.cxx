@@ -46,6 +46,7 @@ cthermo_buoy::~cthermo_buoy()
 {
 }
 
+#ifndef USECUDA
 int cthermo_buoy::exec()
 {
   // extend later for gravity vector not normal to surface
@@ -56,6 +57,7 @@ int cthermo_buoy::exec()
 
   return 0;
 }
+#endif
 
 int cthermo_buoy::getbuoyancy(cfield3d *bfield, cfield3d *tmp)
 {
