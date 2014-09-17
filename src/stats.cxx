@@ -28,6 +28,7 @@
 #include "stats.h"
 #include "thermo_moist.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
 #include "diff_les2s.h"
 #include "timeloop.h"
@@ -810,6 +811,8 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;
@@ -927,6 +930,8 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;
@@ -961,6 +966,8 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;

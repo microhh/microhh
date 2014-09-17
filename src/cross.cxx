@@ -29,6 +29,7 @@
 #include "fields.h"
 #include "cross.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
 #include "thermo.h"
 #include "timeloop.h"
@@ -256,6 +257,8 @@ int ccross::crossplane(double * restrict data, double * restrict tmp, std::strin
 
 int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
 {
+  using namespace fd::o4;
+
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;
   int nerror = 0;

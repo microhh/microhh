@@ -27,7 +27,10 @@
 #include "fields.h"
 #include "advec_4.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
+
+using namespace fd::o4;
 
 cadvec_4::cadvec_4(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
 {

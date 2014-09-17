@@ -28,7 +28,10 @@
 #include "master.h"
 #include "diff_4.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
+
+using namespace fd::o4;
 
 cdiff_4::cdiff_4(cmodel *modelin, cinput *inputin) : cdiff(modelin, inputin)
 {

@@ -27,6 +27,7 @@
 #include "grid.h"
 #include "input.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
 
 /**
@@ -307,6 +308,8 @@ void cgrid::calculate()
 
   if(swspatialorder == "4")
   {
+    using namespace fd::o4;
+
     // calculate the height of the ghost cell
     z[kstart-1] = -2.*z[kstart] + (1./3.)*z[kstart+1];
     z[kstart-2] = -9.*z[kstart] +      2.*z[kstart+1];
@@ -416,6 +419,8 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
  */
 int cgrid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
+  using namespace fd::o4;
+
   // interpolation function, locx = 1 indicates that the reference is at the half level
   int ijk,ii,jj,kk,iih1,jjh1,iih2,jjh2;
 
