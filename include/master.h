@@ -37,7 +37,7 @@ class cmaster
     cmaster();
     ~cmaster();
 
-    void startup(int, char**);
+    void start(int, char**);
     void init(cinput *);
 
     double gettime();
