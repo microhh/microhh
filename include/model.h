@@ -49,7 +49,6 @@ class cmodel
     ~cmodel();
 
     void init();
-    void create();
     void load();
     void save();
     void exec();

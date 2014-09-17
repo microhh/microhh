@@ -91,10 +91,6 @@ cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin
   nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
 
-  // Only in case of Boussinesq, read in reference potential temperature
-  if(model->swbasestate == "boussinesq") 
-    nerror += inputin->getItem(&thvref0, "thermo", "thvref0", "");
-
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
   
@@ -147,9 +143,15 @@ void cthermo_moist::init()
 
 void cthermo_moist::create(cinput *inputin)
 {
+  // Only in case of Boussinesq, read in reference potential temperature
+  if(model->swbasestate == "boussinesq")
+  {
+    if(inputin->getItem(&thvref0, "thermo", "thvref0", ""))
+      throw 1;
+  }
+
   int kstart = grid->kstart;
   int kend   = grid->kend;
-  int nerror = 0;
 
   // Enable automated calculation of horizontally averaged fields
   fields->setcalcprofs(true);
@@ -244,9 +246,6 @@ void cthermo_moist::create(cinput *inputin)
 
   // Sort crosslist to group ql and b variables
   std::sort(crosslist.begin(),crosslist.end());
-
-  if(nerror)
-    throw 1;
 }
 
 int cthermo_moist::exec()

@@ -37,7 +37,7 @@ cmaster::~cmaster()
   printMessage("Finished run on %d processes\n", nprocs);
 }
 
-void cmaster::startup(int argc, char *argv[])
+void cmaster::start(int argc, char *argv[])
 {
   initialized = true;
 
