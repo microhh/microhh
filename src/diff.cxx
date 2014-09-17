@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "master.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
 
 // diffusion schemes
@@ -57,7 +58,7 @@ cdiff::~cdiff()
 
 unsigned long cdiff::gettimelim(unsigned long idtlim, double dt)
 {
-  idtlim = (unsigned long) dbig;
+  idtlim = (unsigned long) constants::dbig;
 
   return idtlim;
 }
@@ -70,7 +71,7 @@ double cdiff::getdn(double dt)
 {
   double dn;
 
-  dn = dsmall;
+  dn = constants::dsmall;
 
   return dn;
 }

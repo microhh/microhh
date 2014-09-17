@@ -27,6 +27,8 @@
 #include "grid.h"
 #include "input.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
 
 /**
@@ -307,6 +309,8 @@ void cgrid::calculate()
 
   if(swspatialorder == "4")
   {
+    using namespace fd::o4;
+
     // calculate the height of the ghost cell
     z[kstart-1] = -2.*z[kstart] + (1./3.)*z[kstart+1];
     z[kstart-2] = -9.*z[kstart] +      2.*z[kstart+1];
@@ -315,8 +319,8 @@ void cgrid::calculate()
     z[kend+1] =      8.*zsize - 9.*z[kend-1] +      2.*z[kend-2];
 
     // Initialize the non-used values at a large value
-    z[kstart-3] = dhuge;
-    z[kend+2  ] = dhuge;
+    z[kstart-3] = constants::dhuge;
+    z[kend+2  ] = constants::dhuge;
 
     zh[kstart] = 0.;
     for(k=kstart+1; k<kend; ++k)
@@ -363,10 +367,10 @@ void cgrid::calculate()
     dzhi4[kend+1] = 1./(tg0*z [kend-2] + tg1*z [kend-1] + tg2*z [kend] + tg3*z [kend+1]);
 
     // Initialize the unused values at a huge value to allow for easier error tracing.
-    dzi4[kstart-2] = dhuge;
-    dzi4[kstart-3] = dhuge;
-    dzi4[kend+1  ] = dhuge;
-    dzi4[kend+2  ] = dhuge;
+    dzi4[kstart-2] = constants::dhuge;
+    dzi4[kstart-3] = constants::dhuge;
+    dzi4[kend+1  ] = constants::dhuge;
+    dzi4[kend+2  ] = constants::dhuge;
   }
 }
 
@@ -416,6 +420,8 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
  */
 int cgrid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
+  using namespace fd::o4;
+
   // interpolation function, locx = 1 indicates that the reference is at the half level
   int ijk,ii,jj,kk,iih1,jjh1,iih2,jjh2;
 

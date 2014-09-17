@@ -28,6 +28,8 @@
 #include "stats.h"
 #include "thermo_moist.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
 #include "diff_les2s.h"
 #include "timeloop.h"
@@ -166,7 +168,7 @@ void cstats::create(int n)
 unsigned long cstats::gettimelim(unsigned long itime)
 {
   if(swstats == "0")
-    return ulhuge;
+    return constants::ulhuge;
 
   unsigned long idtlim = isampletime - itime % isampletime;
   return idtlim;
@@ -476,8 +478,8 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   kstart = grid->kstart;
   kend = grid->kend;
 
-  minval =  dhuge;
-  maxval = -dhuge;
+  minval =  constants::dhuge;
+  maxval = -constants::dhuge;
 
   // first, get min and max
   for(int k=grid->kstart; k<grid->kend; ++k)
@@ -496,7 +498,7 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   master->max(&maxval, 1);
 
   // make sure that the max ends up in the last bin (introduce 1E-9 error)
-  maxval *= (1.+dsmall);
+  maxval *= (1.+constants::dsmall);
 
   range = maxval-minval;
 
@@ -810,6 +812,8 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;
@@ -927,6 +931,8 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;
@@ -961,6 +967,8 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;

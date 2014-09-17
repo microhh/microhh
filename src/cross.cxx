@@ -29,6 +29,8 @@
 #include "fields.h"
 #include "cross.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
 #include "thermo.h"
 #include "timeloop.h"
@@ -181,7 +183,7 @@ void ccross::create()
 unsigned long ccross::gettimelim(unsigned long itime)
 {
   if(swcross == "0")
-    return ulhuge;
+    return constants::ulhuge;
 
   unsigned long idtlim = isampletime - itime % isampletime;
 
@@ -256,6 +258,8 @@ int ccross::crossplane(double * restrict data, double * restrict tmp, std::strin
 
 int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
 {
+  using namespace fd::o4;
+
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;
   int nerror = 0;
@@ -286,7 +290,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk  = i + j*jj1 + kstart*kk1;
-      lngrad[ijk] = std::log( dtiny +
+      lngrad[ijk] = std::log( constants::dtiny +
                       std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
                                 + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
                                 + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])
@@ -310,7 +314,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj1 + k*kk1;
-        lngrad[ijk] = std::log( dtiny +
+        lngrad[ijk] = std::log( constants::dtiny +
                         std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
                                   + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
                                   + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])
@@ -333,7 +337,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk  = i + j*jj1 + (kend-1)*kk1;
-      lngrad[ijk] = std::log(dtiny +
+      lngrad[ijk] = std::log(constants::dtiny +
                       std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
                                 + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
                                 + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])

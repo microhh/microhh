@@ -90,9 +90,6 @@ class cthermo_moist : public cthermo
     inline double rslf(const double, const double);
     inline double esl(const double);
 
-    inline double interp2(const double, const double);
-    inline double interp4(const double, const double, const double, const double);
-
     double pbot;
     double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
 

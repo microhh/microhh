@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "force.h"
 #include "defines.h"
+#include "fd.h"
 #include "model.h"
 #include "timeloop.h"
 
@@ -346,6 +347,8 @@ int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
                          const double * const restrict u , const double * const restrict v ,
                          const double * const restrict ug, const double * const restrict vg)
 {
+  using namespace fd::o4;
+
   int ijk,ii1,ii2,jj1,jj2,kk1;
   double ugrid, vgrid;
 
@@ -437,9 +440,4 @@ int cforce::advecwls_2nd(double * const restrict st, const double * const restri
   }
 
   return 0;
-}
-
-inline double cforce::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
 }

@@ -29,7 +29,10 @@
 #include "fields.h"
 #include "pres_4.h"
 #include "defines.h"
+#include "fd.h"
 #include "model.h"
+
+using namespace fd::o4;
 
 cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 {

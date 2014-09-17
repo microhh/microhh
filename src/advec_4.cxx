@@ -27,7 +27,11 @@
 #include "fields.h"
 #include "advec_4.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
+
+using namespace fd::o4;
 
 cadvec_4::cadvec_4(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
 {
@@ -44,7 +48,7 @@ unsigned long cadvec_4::gettimelim(unsigned long idt, double dt)
 
   cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   // avoid zero divisons
-  cfl = std::max(dsmall, cfl);
+  cfl = std::max(constants::dsmall, cfl);
   idtlim = idt * cflmax / cfl;
 
   return idtlim;

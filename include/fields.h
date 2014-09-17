@@ -143,7 +143,6 @@ class cfields
     int randomnize(cinput *, std::string, double *);
     int addvortexpair(cinput* inputin);
     double calcmass(double *, double *);
-    inline double interp2(const double, const double);
 
     // statistics
     double *umodel;

@@ -27,7 +27,11 @@
 #include "fields.h"
 #include "advec_2.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
+
+using namespace fd::o2;
 
 cadvec_2::cadvec_2(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
 {
@@ -53,7 +57,7 @@ unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
 
   cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   // avoid zero divisons
-  cfl = std::max(dsmall, cfl);
+  cfl = std::max(constants::dsmall, cfl);
 
   idtlim = idt * cflmax / cfl;
 
@@ -230,9 +234,4 @@ void cadvec_2::advecs(double * restrict st, double * restrict s, double * restri
               - (  rhorefh[k+1] * w[ijk+kk] * interp2(s[ijk   ], s[ijk+kk])
                  - rhorefh[k  ] * w[ijk   ] * interp2(s[ijk-kk], s[ijk   ]) ) / rhoref[k] * dzi[k];
       }
-}
-
-inline double cadvec_2::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
 }

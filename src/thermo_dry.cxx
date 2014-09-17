@@ -27,17 +27,19 @@
 #include "fields.h"
 #include "thermo_dry.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
 #include "stats.h"
 #include "diff_les2s.h"
 #include "master.h"
 #include "cross.h"
 
-#define grav 9.81
-#define Rd 287.04
-#define cp 1005.
-
 #define NO_OFFSET 0.
+
+using fd::o2::interp2;
+using fd::o4::interp4;
+using namespace constants;
 
 cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
@@ -442,6 +444,8 @@ int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restri
 
 int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
 {
+  using namespace fd::o2;
+
   int ijk,jj,kk;
 
   jj = grid->icells;
@@ -479,14 +483,3 @@ int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th
 
   return 0;
 }
-
-inline double cthermo_dry::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
-
-inline double cthermo_dry::interp4(const double a, const double b, const double c, const double d)
-{
-  return (-a + 9.*b + 9.*c - d) / 16.;
-}
-

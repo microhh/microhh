@@ -91,7 +91,5 @@ class cforce
 
     int advecwls_2nd(double * const, const double * const,
                      const double * const, const double * const); ///< Calculates the large-scale vertical transport.
-
-    inline double interp2(const double, const double); ///< 2nd order interpolation function.
 };
 #endif

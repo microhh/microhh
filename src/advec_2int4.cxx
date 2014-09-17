@@ -27,7 +27,11 @@
 #include "fields.h"
 #include "advec_2int4.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
+
+using namespace fd::o4;
 
 cadvec_2int4::cadvec_2int4(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
 {
@@ -44,7 +48,7 @@ unsigned long cadvec_2int4::gettimelim(unsigned long idt, double dt)
 
   cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   // avoid zero divisons
-  cfl = std::max(dsmall, cfl);
+  cfl = std::max(constants::dsmall, cfl);
   idtlim = idt * cflmax / cfl;
 
   return idtlim;
@@ -399,24 +403,3 @@ void cadvec_2int4::advecs(double * restrict st, double * restrict s, double * re
             - (- w[ijk    ] * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzi[kend-1];
     }
 }
-
-inline double cadvec_2int4::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
-
-inline double cadvec_2int4::interp4(const double a, const double b, const double c, const double d)
-{
-  return (-a + 9.*b + 9.*c - d) / 16.;
-}
-
-inline double cadvec_2int4::interp4bot(const double a, const double b, const double c, const double d)
-{
-  return (5.*a + 15.*b - 5.*c + d) / 16.;
-}
-
-inline double cadvec_2int4::interp4top(const double a, const double b, const double c, const double d)
-{
-  return (a - 5.*b + 15.*c + 5.*d) / 16.;
-}
-
