@@ -291,7 +291,7 @@ int cthermo_dry::execstats(mask *m)
   stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 }
 
-int cthermo_dry::execcross()
+void cthermo_dry::execcross()
 {
   int nerror = 0;
 
@@ -317,9 +317,10 @@ int cthermo_dry::execcross()
       else if(*it == "bfluxbot")
         nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
     }
-  }  
+  }
 
-  return nerror; 
+  if(nerror)
+    throw 1;
 }
 
 int cthermo_dry::checkthermofield(std::string name)

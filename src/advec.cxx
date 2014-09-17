@@ -69,9 +69,8 @@ double cadvec::getcfl(double dt)
   return cfl;
 }
 
-int cadvec::exec()
+void cadvec::exec()
 {
-  return 0;
 }
 
 cadvec* cadvec::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)

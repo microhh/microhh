@@ -43,7 +43,6 @@ class cthermo_buoy_slope : public cthermo
     ~cthermo_buoy_slope();                  ///< Destructor of the dry thermodynamics class.
 
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
-    int execcross();
 
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);

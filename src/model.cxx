@@ -203,8 +203,8 @@ void cmodel::create()
 
 void cmodel::save()
 {
-  grid->save();
-  fields->save(timeloop->iotime);
+  grid    ->save();
+  fields  ->save(timeloop->iotime);
   timeloop->save(timeloop->iotime);
   boundary->save(timeloop->iotime);
 }
@@ -280,12 +280,9 @@ void cmodel::exec()
 
       if(cross->docross())
       {
-        if(fields->execcross())
-          throw 1;
-        if(thermo->execcross())
-          throw 1;
-        if(boundary->execcross())
-          throw 1;
+        fields->execcross();
+        thermo->execcross();
+        boundary->execcross();
       }
     }
 
@@ -347,9 +344,9 @@ void cmodel::exec()
 
 void cmodel::calcstats(std::string maskname)
 {
-  fields->execstats(&stats->masks[maskname]);
-  thermo->execstats(&stats->masks[maskname]);
-  budget->execstats(&stats->masks[maskname]);
+  fields  ->execstats(&stats->masks[maskname]);
+  thermo  ->execstats(&stats->masks[maskname]);
+  budget  ->execstats(&stats->masks[maskname]);
   boundary->execstats(&stats->masks[maskname]);
 }
 

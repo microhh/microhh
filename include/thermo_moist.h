@@ -43,7 +43,8 @@ class cthermo_moist : public cthermo
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
     int execstats(mask *);
-    int execcross();
+
+    void execcross();
 
     // functions to retrieve buoyancy properties, to be called from other classes
     int checkthermofield(std::string name);

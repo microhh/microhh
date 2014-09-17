@@ -42,7 +42,8 @@ class cboundary_surface : public cboundary
     void setvalues();
 
     int exec();
-    int execcross(); ///< Execute cross sections of surface
+
+    void execcross(); ///< Execute cross sections of surface
     int execstats(mask *); ///< Execute statistics of surface
 
     void save(int);

@@ -47,7 +47,8 @@ class cthermo_dry : public cthermo
     void create(cinput *);
     int exec();                ///< Add the tendencies belonging to the buoyancy.
     int execstats(mask *);
-    int execcross();
+
+    void execcross();
 
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);

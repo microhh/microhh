@@ -60,7 +60,8 @@ class cfields
     double checkmass();
 
     int setcalcprofs(bool);
-    int execcross();
+
+    void execcross();
 
     // 3d fields for momentum
     cfield3d *u;
