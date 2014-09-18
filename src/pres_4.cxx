@@ -215,9 +215,9 @@ void cpres_4::setvalues()
 }
 
 int cpres_4::pres_in(double * restrict p, 
-                      double * restrict u , double * restrict v , double * restrict w , 
-                      double * restrict ut, double * restrict vt, double * restrict wt, 
-                      double * restrict dzi4, double dt)
+                     double * restrict u , double * restrict v , double * restrict w ,
+                     double * restrict ut, double * restrict vt, double * restrict wt,
+                     double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
@@ -398,6 +398,17 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
     }
 
     // One hdma call per level of j
+    /*
+    for(k=0; k<kmax+4; ++k)
+      for(i=0; i<iblock; ++i)
+      {
+        ik = i + k*kki1;
+        if(i==0 || i==iblock-1)
+          std::printf("%d, %E, %E, %E, %E, %E, %E, %E, %E, %d\n", k-2,
+            m1temp[ik], m2temp[ik], m3temp[ik], m4temp[ik], m5temp[ik], m6temp[ik], m7temp[ik], ptemp[ik],j);
+      }
+      */
+
     hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
 
     // put back the solution
@@ -563,8 +574,15 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
       m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
       m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
       m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
-      m7[ik] = 1.;
     }
+
+  k = kmax+1;
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m7[ik] = 1.;
+  }
 
   k = kmax+2;
 #pragma ivdep
@@ -624,7 +642,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
     p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
   }
 
-  for(k=kmax; k>=0; k--)
+  for(k=kmax; k>=0; --k)
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
