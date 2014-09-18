@@ -92,7 +92,7 @@ int cfields::forwardGPU()
   cudaMemcpy(rhoref_g,  rhoref,  nmemsize1d, cudaMemcpyHostToDevice);
   cudaMemcpy(rhorefh_g, rhorefh, nmemsize1d, cudaMemcpyHostToDevice);
 
-  printf("--> forwardGPU\n");
+  master->printMessage("Synchronized GPU with CPU (forward)\n");
 
   return 0;
 }
@@ -128,7 +128,7 @@ int cfields::backwardGPU()
   cudaMemcpy(rhoref,  rhoref_g,  nmemsize1d, cudaMemcpyDeviceToHost);
   cudaMemcpy(rhorefh, rhorefh_g, nmemsize1d, cudaMemcpyDeviceToHost);
 
-  printf("--> backwardGPU\n");
+  master->printMessage("Synchronized CPU with GPU (backward)\n");
 
   return 0;
 }
