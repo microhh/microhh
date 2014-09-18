@@ -603,9 +603,9 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
   for(int i=0; i<iblock; ++i)
   {
     ik = i + k*kk1;
-    m1[ik] = ( m1[ik]                                                            ) / m4[k-kk3];
-    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[k-kk2];
-    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[k-kk1];
+    m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
     m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
     m5[ik] = 1.;
     m6[ik] = 1.;
