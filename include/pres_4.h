@@ -52,7 +52,10 @@ class cpres_4 : public cpres
                 double *, double *, double *,
                 double *, double);
     int pres_solve(double *, double *, double *, double *,
-                   double *, double *, 
+                   double *, double *, double *, double *,
+                   double *, double *, double *,
+                   double *, double *, double *, double *,
+                   double *, double *, double *, double *,
                    double *, double *);
     int pres_out(double *, double *, double *,
                  double *, double *);
@@ -60,6 +63,6 @@ class cpres_4 : public cpres
 
     // functions
     void hdma(double *, double *, double *, double *,
-             double *, double *, double *, double *);
+              double *, double *, double *, double *);
 };
 #endif

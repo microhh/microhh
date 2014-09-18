@@ -84,7 +84,11 @@ int cpres_4::exec(double dt)
 
   // solve the system
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
-             grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+             m1, m2, m3, m4,
+             m5, m6, m7,
+             m1temp, m2temp, m3temp, m4temp,
+             m5temp, m6temp, m7temp, ptemp,
+             bmati, bmatj);
 
   // get the pressure tendencies from the pressure field
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
@@ -280,9 +284,11 @@ int cpres_4::pres_in(double * restrict p,
 }
 
 int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict m5calc, double * restrict dz,
-                        double * restrict fftini, double * restrict fftouti, 
-                        double * restrict fftinj, double * restrict fftoutj)
-
+                        double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                        double * restrict m5, double * restrict m6, double * restrict m7,
+                        double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
+                        double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
+                        double * restrict bmati, double * restrict bmatj)
 {
   int i,j,k,jj,kk,ijk;
   int imax,jmax,kmax;
@@ -303,7 +309,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
   jgc    = grid->jgc;
   kgc    = grid->kgc;
 
-  grid->fftforward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+  grid->fftforward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   jj = iblock;
   kk = iblock*jblock;
@@ -313,9 +319,12 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
   kki2 = 2*iblock;
   kki3 = 3*iblock;
 
+  int mpicoordx = master->mpicoordx;
+  int mpicoordy = master->mpicoordy;
+
   for(j=0; j<jblock; ++j)
   {
-    jindex = master->mpicoordx * jblock + j;
+    jindex = mpicoordx * jblock + j;
  
 #pragma ivdep
     for(i=0; i<iblock; ++i)
@@ -330,7 +339,12 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       m6temp[ik] =  0.;
       m7temp[ik] = -1.;
       ptemp [ik] =  0.;
+    }
 
+#pragma ivdep
+    for(i=0; i<iblock; ++i)
+    {
+      ik = i;
       m1temp[ik+kki1] =  0.;
       m2temp[ik+kki1] =  0.;
       m3temp[ik+kki1] =  0.;
@@ -347,7 +361,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       for(i=0; i<iblock; ++i)
       {
         // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-        iindex = master->mpicoordy * iblock + i;
+        iindex = mpicoordy * iblock + i;
 
         ijk = i + j*jj + k*kk;
         ik  = i + k*kki1;
@@ -422,7 +436,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       }
   }
 
-  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+  grid->fftbackward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   // put the pressure back onto the original grid including ghost cells
   jj = imax;
