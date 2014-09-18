@@ -1,10 +1,1 @@
-# output files
-*.00*
-*.out
-*.prof
-*.pyc
-
-# build generated files
-TODO
-microhh
-
+# Files to be kept under a git clean -f
