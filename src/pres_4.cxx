@@ -302,6 +302,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   for(j=0; j<jblock; ++j)
   {
+    // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
     jindex = mpicoordx * jblock + j;
  
 #pragma ivdep
@@ -357,6 +358,9 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
 #pragma ivdep
     for(i=0; i<iblock; ++i)
     {
+      // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
+      iindex = mpicoordy * iblock + i;
+
       // Set the top boundary.
       ik = i + kmax*kki1;
       if(iindex == 0 && jindex == 0)
