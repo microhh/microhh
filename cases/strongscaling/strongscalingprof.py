@@ -1,5 +1,5 @@
 import numpy
-from pylab import *
+#from pylab import *
 
 # set the height
 kmax = 1024
@@ -42,18 +42,18 @@ b0    = 1.
 delta = 4.407731e-3
 N2    = 3.
 
-s = numpy.zeros(numpy.size(z))
-
+b = numpy.zeros(numpy.size(z))
 for k in range(kmax):
-  s[k] = N2*z[k]
+  b[k] = N2*z[k]
 
 # write the data to a file
 proffile = open('strongscaling.prof','w')
-proffile.write('{0:^20s} {1:^20s}\n'.format('z','s'))
+proffile.write('{0:^20s} {1:^20s}\n'.format('z','b'))
 for k in range(kmax):
-  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], s[k]))
+  proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], b[k]))
 proffile.close()
 
+"""
 #plot the grid
 figure()
 subplot(131)
@@ -62,3 +62,4 @@ subplot(132)
 plot(n,dz)
 subplot(133)
 plot(n,stretch)
+"""
