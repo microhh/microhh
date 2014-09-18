@@ -322,7 +322,7 @@ int cpres_2::prepareGPU()
 
 
 #ifdef USECUDA
-int cpres_2::exec(double dt)
+void cpres_2::exec(double dt)
 {
   //fields->forwardGPU();
 
@@ -415,8 +415,6 @@ int cpres_2::exec(double dt)
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
   //fields->backwardGPU();
-
-  return 0;
 }
 #endif
 
