@@ -127,14 +127,14 @@ void cpres_4::init()
   m7 = new double[kmax];
 
   // CvH temporary, remove later...
-  m1temp = new double[kmax+4];
-  m2temp = new double[kmax+4];
-  m3temp = new double[kmax+4];
-  m4temp = new double[kmax+4];
-  m5temp = new double[kmax+4];
-  m6temp = new double[kmax+4];
-  m7temp = new double[kmax+4];
-  ptemp  = new double[kmax+4];
+  m1temp = new double[grid->iblock*(grid->kmax+4)];
+  m2temp = new double[grid->iblock*(grid->kmax+4)];
+  m3temp = new double[grid->iblock*(grid->kmax+4)];
+  m4temp = new double[grid->iblock*(grid->kmax+4)];
+  m5temp = new double[grid->iblock*(grid->kmax+4)];
+  m6temp = new double[grid->iblock*(grid->kmax+4)];
+  m7temp = new double[grid->iblock*(grid->kmax+4)];
+  ptemp  = new double[grid->iblock*(grid->kmax+4)];
 }
 
 void cpres_4::setvalues()
@@ -308,141 +308,107 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
   jj = iblock;
   kk = iblock*jblock;
 
-  // solve the nonadiagonal system
+  int ik,kki1,kki2,kki3;
+  kki1 = 1*iblock;
+  kki2 = 2*iblock;
+  kki3 = 3*iblock;
 
-  // CvH reenable later
-  /*
-  // create vectors that go into the solver
-  //
-  for(k=1; k<kmax+1; k++)
-    for(j=0; j<jblock; j++)
+  for(j=0; j<jblock; ++j)
+  {
 #pragma ivdep
-      for(i=0; i<iblock; i++)
-      {
-        // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-        iindex = master->mpicoordy * iblock + i;
-        jindex = master->mpicoordx * jblock + j;
-
-        ijk  = i + j*jj + k*kk;
-        m5calc[ijk] = bmati[iindex] + bmatj[jindex] + m5[k];
-      }
-      */
-
-  for(j=0; j<jblock; j++)
-#pragma ivdep
-    for(i=0; i<iblock; i++)
+    for(i=0; i<iblock; ++i)
     {
       // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
       iindex = master->mpicoordy * iblock + i;
       jindex = master->mpicoordx * jblock + j;
 
-      /*
-      // set the BC's
-      ijk = i + j*jj;
-      m4[0] =       1.;
-      m5[0] = -21./23.;
-      m6[0] =  -3./23.;
-      m7[0] =   1./23.;
-
-      // for wave number 0, which contains average, set pressure at top to zero
-      ijk  = i + j*jj + (kmax-1)*kk;
-      if(iindex == 0 && jindex == 0)
-      {
-        m1[kmax+1] =  1./5.; 
-        m2[kmax+1] = -5./5.;
-        m3[kmax+1] = 15./5.;
-        m4[kmax+1] =     1.;
-      }
-      // set dp/dz at top to zero
-      else
-      {
-        m1[kmax+1] =   1./23.;
-        m2[kmax+1] =  -3./23.;
-        m3[kmax+1] = -21./23.;
-        m4[kmax+1] =       1.;
-      }
-      */
-
       // set a zero gradient bc at the bottom
-      m1temp[0] =  0.;
-      m2temp[0] =  0.;
-      m3temp[0] =  0.;
-      m4temp[0] =  1.;
-      m5temp[0] =  0.;
-      m6temp[0] =  0.;
-      m7temp[0] = -1.;
-      ptemp [0] =  0.;
+      ik = i;
+      m1temp[ik] =  0.;
+      m2temp[ik] =  0.;
+      m3temp[ik] =  0.;
+      m4temp[ik] =  1.;
+      m5temp[ik] =  0.;
+      m6temp[ik] =  0.;
+      m7temp[ik] = -1.;
+      ptemp [ik] =  0.;
 
-      m1temp[1] =  0.;
-      m2temp[1] =  0.;
-      m3temp[1] =  0.;
-      m4temp[1] =  1.;
-      m5temp[1] = -1.;
-      m6temp[1] =  0.;
-      m7temp[1] =  0.;
-      ptemp [1] =  0.;
+      ik = i + kki1;
+      m1temp[ik] =  0.;
+      m2temp[ik] =  0.;
+      m3temp[ik] =  0.;
+      m4temp[ik] =  1.;
+      m5temp[ik] = -1.;
+      m6temp[ik] =  0.;
+      m7temp[ik] =  0.;
+      ptemp [ik] =  0.;
 
       // fill the matrix
-      for(k=0; k<kmax; k++)
+      for(k=0; k<kmax; ++k)
       {
-        ijk  = i + j*jj + k*kk;
-        m1temp[k+2] = m1[k];
-        m2temp[k+2] = m2[k];
-        m3temp[k+2] = m3[k];
-        m4temp[k+2] = m4[k] + bmati[iindex] + bmatj[jindex];
-        m5temp[k+2] = m5[k];
-        m6temp[k+2] = m6[k];
-        m7temp[k+2] = m7[k];
-        ptemp [k+2] = p[ijk];
+        ijk = i + j*jj + k*kk;
+        ik  = i + k*kki1;
+        m1temp[ik+kki2] = m1[k];
+        m2temp[ik+kki2] = m2[k];
+        m3temp[ik+kki2] = m3[k];
+        m4temp[ik+kki2] = m4[k] + bmati[iindex] + bmatj[jindex];
+        m5temp[ik+kki2] = m5[k];
+        m6temp[ik+kki2] = m6[k];
+        m7temp[ik+kki2] = m7[k];
+        ptemp [ik+kki2] = p[ijk];
       }
 
       // set the top boundary
+      ik = i + kmax*kki1;
       if(iindex == 0 && jindex == 0)
       {
-        m1temp[kmax+2] =     0.;
-        m2temp[kmax+2] =  -1/3.;
-        m3temp[kmax+2] =     2.;
-        m4temp[kmax+2] =     1.;
+        m1temp[ik+kki2] =    0.;
+        m2temp[ik+kki2] = -1/3.;
+        m3temp[ik+kki2] =    2.;
+        m4temp[ik+kki2] =    1.;
 
-        m1temp[kmax+3] =    -2.;
-        m2temp[kmax+3] =     9.;
-        m3temp[kmax+3] =     0.;
-        m4temp[kmax+3] =     1.;
+        m1temp[ik+kki3] =   -2.;
+        m2temp[ik+kki3] =    9.;
+        m3temp[ik+kki3] =    0.;
+        m4temp[ik+kki3] =    1.;
       }
       // set dp/dz at top to zero
       else
       {
-        m1temp[kmax+2] =  0.;
-        m2temp[kmax+2] =  0.;
-        m3temp[kmax+2] = -1.;
-        m4temp[kmax+2] =  1.;
+        m1temp[ik+kki2] =  0.;
+        m2temp[ik+kki2] =  0.;
+        m3temp[ik+kki2] = -1.;
+        m4temp[ik+kki2] =  1.;
 
-        m1temp[kmax+3] = -1.;
-        m2temp[kmax+3] =  0.;
-        m3temp[kmax+3] =  0.;
-        m4temp[kmax+3] =  1.;
+        m1temp[ik+kki3] = -1.;
+        m2temp[ik+kki3] =  0.;
+        m3temp[ik+kki3] =  0.;
+        m4temp[ik+kki3] =  1.;
       }
 
-      m5temp[kmax+2] = 0.;
-      m6temp[kmax+2] = 0.;
-      m7temp[kmax+2] = 0.;
-      ptemp [kmax+2] = 0.;
+      m5temp[ik+kki2] = 0.;
+      m6temp[ik+kki2] = 0.;
+      m7temp[ik+kki2] = 0.;
+      ptemp [ik+kki2] = 0.;
 
-      m5temp[kmax+3] = 0.;
-      m6temp[kmax+3] = 0.;
-      m7temp[kmax+3] = 0.;
-      ptemp [kmax+3] = 0.;
+      m5temp[ik+kki3] = 0.;
+      m6temp[ik+kki3] = 0.;
+      m7temp[ik+kki3] = 0.;
+      ptemp [ik+kki3] = 0.;
+    }
 
       // for now, call the solver here
-      hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
+    hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
 
-      // put back the solution
-      for(k=0; k<kmax; k++)
+    // put back the solution
+    for(k=0; k<kmax; ++k)
+      for(int i=0; i<iblock; ++i)
       {
-        ijk  = i + j*jj + k*kk;
-        p[ijk] = ptemp[k+2];
+        ik  = i + k*kki1;
+        ijk = i + j*jj + k*kk;
+        p[ijk] = ptemp[ik+kki2];
       }
-    }
+  }
 
   grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
@@ -534,125 +500,143 @@ int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restr
   return 0;
 }
 
-int cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p)
+void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                   double * restrict m5, double * restrict m6, double * restrict m7,
+                   double * restrict p)
 {
-  int kmax;
-  int k;
-
-  kmax = grid->kmax;
+  int k,ik;
+  int kmax   = grid->kmax;
+  int iblock = grid->iblock;
+  int kk1 = 1*grid->iblock;
+  int kk2 = 2*grid->iblock;
+  int kk3 = 3*grid->iblock;
 
   // LU factorization
   k = 0;
-  m1[k] = 1.;
-  m2[k] = 1.;
-  m3[k] = 1.          / m4[k]; // padding, and used in nonadss to normalize 1st eqn.
-  m4[k] = 1.;
-  m5[k] = m5[k]*m3[k];
-  m6[k] = m6[k]*m3[k];
-  m7[k] = m7[k]*m3[k];
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i;
+    m1[ik] = 1.;
+    m2[ik] = 1.;
+    m3[ik] = 1.            / m4[ik];
+    m4[ik] = 1.;
+    m5[ik] = m5[ik]*m3[ik];
+    m6[ik] = m6[ik]*m3[ik];
+    m7[ik] = m7[ik]*m3[ik];
+  }
 
   k = 1;
-  m1[k] = 1.; // padding
-  m2[k] = 1.; // padding
-  m3[k] = m3[k]                 / m4[k-1];
-  m4[k] = m4[k] - m3[k]*m5[k-1];
-  m5[k] = m5[k] - m3[k]*m6[k-1];
-  m6[k] = m6[k] - m3[k]*m7[k-1];
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m1[ik] = 1.;
+    m2[ik] = 1.;
+    m3[ik] = m3[ik]                     / m4[ik-kk1];
+    m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
+    m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
+    m6[ik] = m6[ik] - m3[ik]*m7[ik-kk1];
+  }
 
   k = 2;
-  m1[k] = 1.; // padding
-  m2[k] =   m2[k]                                   / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] ) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2];
-  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
-  m6[k] =   m6[k] - m3[k]*m7[k-1];
-
-  for(k=3; k<kmax+2; k++)
-  {
-    m1[k] = ( m1[k]                                                ) / m4[k-3];
-    m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
-    m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
-    m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
-    m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
-    m6[k] =   m6[k] - m3[k]*m7[k-1];
-  }
-  m7[k-1] = 1.; // padding
-
-  k = kmax+2;
-  m1[k] = ( m1[k]                                                ) / m4[k-3];
-  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
-  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
-  m6[k] = 1.; // padding
-  m7[k] = 1.; // padding
-
-  k = kmax+3;
-  m1[k] = ( m1[k]                                                ) / m4[k-3];
-  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
-  m5[k] = 1.; // padding
-  m6[k] = 1.; // padding
-  m7[k] = 1.; // padding
-
-  // Backward substitution 
-  int i,j,jj,ijk,ij;
-  int kk1,kk2,kk3,kk4;
-  int iblock,jblock;
-
-  iblock = 1; // grid->iblock; CvH vectorize later
-  jblock = 1; // grid->jblock;
-
-  jj  = iblock;
-  kk1 = 1*iblock*jblock;
-  kk2 = 2*iblock*jblock;
-  kk3 = 3*iblock*jblock;
-  kk4 = 4*iblock*jblock;
-
-  // Solve Ly=p, forward
-  for(j=0;j<jblock;j++)
 #pragma ivdep
-    for(i=0;i<iblock;i++)
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m1[ik] = 1.;
+    m2[ik] =   m2[ik]                                           / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
+    m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+    m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+  }
+
+  for(k=3; k<kmax+2; ++k)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
     {
-      ij = i + j*jj;
-      p[ij    ] =             p[ij    ]*m3[0]; // Normalize first eqn. See NONADFS
-      p[ij+kk1] = p[ij+kk1] - p[ij    ]*m3[1];
-      p[ij+kk2] = p[ij+kk2] - p[ij+kk1]*m3[2] - p[ij    ]*m2[2];
+      ik = i + k*kk1;
+      m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+      m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+      m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+      m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+      m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+      m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
     }
 
-  for(k=3; k<kmax+4; k++)
-    for(j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ijk = i + j*jj + k*kk1;
-        p[ijk] = p[ijk] - p[ijk-kk1]*m3[k] - p[ijk-kk2]*m2[k] - p[ijk-kk3]*m1[k];
-      }
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m7[ik-kk1] = 1.;
+  }
+
+  k = kmax+2;
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+    m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+    m6[ik] = 1.;
+    m7[ik] = 1.;
+  }
+
+  k = kmax+3;
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m1[ik] = ( m1[ik]                                                            ) / m4[k-kk3];
+    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[k-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[k-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+    m5[ik] = 1.;
+    m6[ik] = 1.;
+    m7[ik] = 1.;
+  }
+
+  // Backward substitution 
+  // Solve Ly=p, forward
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i;
+    p[ik    ] =             p[ik    ]*m3[ik    ];
+    p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
+    p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
+  }
+
+  for(k=3; k<kmax+4; ++k)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + k*kk1;
+      p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
+    }
 
   // Solve Ux=y, backward
   k = kmax+3;
-  for(j=0;j<jblock;j++)
 #pragma ivdep
-    for(i=0;i<iblock;i++)
-    {
-      ijk = i + j*jj + k*kk1;
-      p[ijk    ] =   p[ijk    ]                                         / m4[k  ];
-      p[ijk-kk1] = ( p[ijk-kk1] - p[ijk    ]*m5[k-1] )                  / m4[k-1];
-      p[ijk-kk2] = ( p[ijk-kk2] - p[ijk-kk1]*m5[k-2] - p[ijk]*m6[k-2] ) / m4[k-2];
-    }
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    p[ik    ] =   p[ik    ]                                             / m4[ik    ];
+    p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
+    p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
+  }
 
   for(k=kmax; k>=0; k--)
-    for(j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ijk = i + j*jj + k*kk1;
-        p[ijk] = ( p[ijk] - p[ijk+kk1]*m5[k] - p[ijk+kk2]*m6[k] - p[ijk+kk3]*m7[k] ) / m4[k];
-      }
-
-  return 0;
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + k*kk1;
+      p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
+    }
 }
 
 double cpres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)

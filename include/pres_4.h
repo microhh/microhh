@@ -59,7 +59,7 @@ class cpres_4 : public cpres
     double calcdivergence(double *, double *, double *, double *);
 
     // functions
-    int hdma(double *, double *, double *, double *,
+    void hdma(double *, double *, double *, double *,
              double *, double *, double *, double *);
 };
 #endif
