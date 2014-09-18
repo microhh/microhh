@@ -62,10 +62,10 @@ int main(int argc, char *argv[])
     // Print warnings for input variables that are unused.
     input.printUnused();
 
-    // Free the memory taken by the input fields
+    // Free the memory taken by the input fields.
     input.clear();
 
-    // Run the model
+    // Run the model.
     if (master.mode != "init")
       model.exec();
   }
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  // return 0 in case the model exits properly
+  // Return 0 in case of normal exit.
   return 0;
 }
 
