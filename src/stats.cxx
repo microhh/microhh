@@ -35,12 +35,11 @@
 #include "timeloop.h"
 #include <netcdfcpp.h>
 
-#define NO_OFFSET 0.
-#define NTHRES 16
+#define NTHRES 0
 
 cstats::cstats(cmodel *modelin, cinput *inputin)
 {
-  model  = modelin;
+  model = modelin;
 
   // set the pointers to zero
   nmask  = 0;
@@ -231,12 +230,10 @@ std::string cstats::getsw()
   return swstats;
 }
 
-int cstats::addmask(std::string maskname)
+void cstats::addmask(const std::string maskname)
 {
   masks[maskname].name = maskname;
-  masks[maskname].dataFile = NULL;
-
-  return 0;
+  masks[maskname].dataFile = 0;
 }
 
 int cstats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
@@ -337,7 +334,7 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
 int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
   calcmask(mfield->data, mfieldh->data, mfieldh->databot,
-             nmask, nmaskh, &nmaskbot);
+           nmask, nmaskh, &nmaskbot);
   return 0;
 }
 
@@ -1052,7 +1049,6 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  // CvH add horizontal interpolation for u and v and interpolate the eddy viscosity properly
   // bottom boundary
   prof[kstart] = 0.;
   for(int j=grid->jstart; j<grid->jend; ++j)

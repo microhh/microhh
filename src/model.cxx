@@ -296,8 +296,8 @@ void cmodel::exec()
         fields->backwardGPU();
 #endif      
       
-        fields->execcross();
-        thermo->execcross();
+        fields  ->execcross();
+        thermo  ->execcross();
         boundary->execcross();
 
       }

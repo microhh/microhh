@@ -36,27 +36,20 @@ using namespace fd::o4;
 
 cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 {
-  m0 = m0temp = 0;
-  m1 = m1temp = 0;
-  m2 = m2temp = 0;
-  m3 = m3temp = 0;
-  m4 = m4temp = 0;
-  m5 = m5temp = 0;
-  m6 = m6temp = 0;
-  m7 = m7temp = 0;
-  m8 = m8temp = 0;
-
-  work2d = 0;
+  m1 = 0;
+  m2 = 0;
+  m3 = 0;
+  m4 = 0;
+  m5 = 0;
+  m6 = 0;
+  m7 = 0;
 
   bmati = 0;
   bmatj = 0;
-
-  ptemp = 0;
 }
 
 cpres_4::~cpres_4()
 {
-  delete[] m0;
   delete[] m1;
   delete[] m2;
   delete[] m3;
@@ -64,50 +57,42 @@ cpres_4::~cpres_4()
   delete[] m5;
   delete[] m6;
   delete[] m7;
-  delete[] m8;
-
-  delete[] work2d;
 
   delete[] bmati;
   delete[] bmatj;
-
-  // CvH temporary, remove later...
-  delete[] m0temp;
-  delete[] m1temp;
-  delete[] m2temp;
-  delete[] m3temp;
-  delete[] m4temp;
-  delete[] m5temp;
-  delete[] m6temp;
-  delete[] m7temp;
-  delete[] m8temp;
-  delete[] ptemp;
 }
 
-int cpres_4::exec(double dt)
+void cpres_4::exec(double dt)
 {
-  // create the input for the pressure solver
+  // 1. Create the input for the pressure solver.
   pres_in(fields->sd["p"]->data,
           fields->u ->data, fields->v ->data, fields->w ->data,
           fields->ut->data, fields->vt->data, fields->wt->data, 
           grid->dzi4, dt);
 
-  // solve the system
-  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
-             grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
+  // Take slices out of a temporary field to save memory. The temp arrays
+  // are always big enough, this cannot fail.
+  double *tmp2 = fields->sd["tmp2"]->data;
+  double *tmp3 = fields->sd["tmp3"]->data;
+  const int ns = grid->iblock*(grid->kmax+4);
+  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
+             m1, m2, m3, m4,
+             m5, m6, m7,
+             &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
+             &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
+             bmati, bmatj);
 
-  // get the pressure tendencies from the pressure field
+  // 3. Get the pressure tendencies from the pressure field.
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
            fields->sd["p"]->data, grid->dzhi4);
-
-  return 0;
 }
 
 double cpres_4::check()
 {
   double divmax = 0.;
 
-  divmax = calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
+  divmax = calcdivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
 
   return divmax;
 }
@@ -127,8 +112,6 @@ void cpres_4::init()
   bmati = new double[itot];
   bmatj = new double[jtot];
 
-  // allocate help variables for the matrix solver
-  m0 = new double[kmax];
   m1 = new double[kmax];
   m2 = new double[kmax];
   m3 = new double[kmax];
@@ -136,21 +119,6 @@ void cpres_4::init()
   m5 = new double[kmax];
   m6 = new double[kmax];
   m7 = new double[kmax];
-  m8 = new double[kmax];
-
-  // CvH temporary, remove later...
-  m0temp = new double[kmax+4];
-  m1temp = new double[kmax+4];
-  m2temp = new double[kmax+4];
-  m3temp = new double[kmax+4];
-  m4temp = new double[kmax+4];
-  m5temp = new double[kmax+4];
-  m6temp = new double[kmax+4];
-  m7temp = new double[kmax+4];
-  m8temp = new double[kmax+4];
-  ptemp  = new double[kmax+4];
-
-  work2d = new double[imax*jmax];
 }
 
 void cpres_4::setvalues()
@@ -198,7 +166,6 @@ void cpres_4::setvalues()
   // bottom boundary, taking into account that w is mirrored over the wall to conserve global momentum
   k  = 0;
   kc = kstart+k;
-  m0[k] = 0.;
   m1[k] = 0.;
   m2[k] = (                 -  27.*dzhi4[kc]                                      ) * dzi4[kc];
   m3[k] = ( -1.*dzhi4[kc+1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
@@ -206,12 +173,10 @@ void cpres_4::setvalues()
   m5[k] = (-27.*dzhi4[kc+1] +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
   m6[k] = (  1.*dzhi4[kc+1]                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
   m7[k] = (                                                     +  1.*dzhi4[kc+2] ) * dzi4[kc];
-  m8[k] = 0.;
   
   for(int k=1; k<kmax-1; k++)
   {
     kc = kstart+k;
-    m0[k] = 0.;
     m1[k] = (   1.*dzhi4[kc-1]                                                       ) * dzi4[kc];
     m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                                      ) * dzi4[kc];
     m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
@@ -219,13 +184,11 @@ void cpres_4::setvalues()
     m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
     m6[k] = (                                   -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
     m7[k] = (                                                      +  1.*dzhi4[kc+2] ) * dzi4[kc];
-    m8[k] = 0.;
   }                                                                                                                                       
 
   // top boundary, taking into account that w is mirrored over the wall to conserve global momentum
   k  = kmax-1;
   kc = kstart+k;
-  m0[k] = 0.;
   m1[k] = (   1.*dzhi4[kc-1]                                                     ) * dzi4[kc];
   m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                    +  1.*dzhi4[kc] ) * dzi4[kc];
   m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1] - 27.*dzhi4[kc] ) * dzi4[kc];
@@ -233,12 +196,11 @@ void cpres_4::setvalues()
   m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] -  1.*dzhi4[kc] ) * dzi4[kc];
   m6[k] = (                                   -  27.*dzhi4[kc+1]                 ) * dzi4[kc];
   m7[k] = 0.;
-  m8[k] = 0.;
 }
 
-int cpres_4::pres_in(double * restrict p, 
-                      double * restrict u , double * restrict v , double * restrict w , 
-                      double * restrict ut, double * restrict vt, double * restrict wt, 
+void cpres_4::pres_in(double * restrict p, 
+                      double * restrict u , double * restrict v , double * restrict w ,
+                      double * restrict ut, double * restrict vt, double * restrict wt,
                       double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
@@ -250,8 +212,8 @@ int cpres_4::pres_in(double * restrict p,
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   jjp = grid->imax;
   kkp = grid->imax*grid->jmax;
@@ -265,12 +227,12 @@ int cpres_4::pres_in(double * restrict p,
 
   kmax = grid->kmax;
 
-  // set the cyclic boundary conditions for the tendencies
+  // Set the cyclic boundary conditions for the tendencies.
   grid->boundary_cyclic(ut);
   grid->boundary_cyclic(vt);
   grid->boundary_cyclic(wt);
 
-  // set the bc 
+  // Set the bc. 
   for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
     for(int i=0; i<grid->imax; i++)
@@ -297,14 +259,14 @@ int cpres_4::pres_in(double * restrict p,
         p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
         p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
       }
-
-  return 0;
 }
 
-int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict m5calc, double * restrict dz,
-                         double * restrict fftini, double * restrict fftouti, 
-                         double * restrict fftinj, double * restrict fftoutj)
-
+void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
+                         double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                         double * restrict m5, double * restrict m6, double * restrict m7,
+                         double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
+                         double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
+                         double * restrict bmati, double * restrict bmatj)
 {
   int i,j,k,jj,kk,ijk;
   int imax,jmax,kmax;
@@ -325,163 +287,140 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
   jgc    = grid->jgc;
   kgc    = grid->kgc;
 
-  grid->fftforward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+  grid->fftforward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   jj = iblock;
   kk = iblock*jblock;
 
-  // solve the nonadiagonal system
+  int ik,kki1,kki2,kki3;
+  kki1 = 1*iblock;
+  kki2 = 2*iblock;
+  kki3 = 3*iblock;
 
-  // CvH reenable later
-  /*
-  // create vectors that go into the solver
-  //
-  for(k=1; k<kmax+1; k++)
-    for(j=0; j<jblock; j++)
+  int mpicoordx = master->mpicoordx;
+  int mpicoordy = master->mpicoordy;
+
+  for(j=0; j<jblock; ++j)
+  {
+    // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
+    jindex = mpicoordx * jblock + j;
+ 
 #pragma ivdep
-      for(i=0; i<iblock; i++)
-      {
-        // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-        iindex = master->mpicoordy * iblock + i;
-        jindex = master->mpicoordx * jblock + j;
-
-        ijk  = i + j*jj + k*kk;
-        m5calc[ijk] = bmati[iindex] + bmatj[jindex] + m5[k];
-      }
-      */
-
-  for(j=0; j<jblock; j++)
-#pragma ivdep
-    for(i=0; i<iblock; i++)
+    for(i=0; i<iblock; ++i)
     {
-      // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-      iindex = master->mpicoordy * iblock + i;
-      jindex = master->mpicoordx * jblock + j;
+      // Set a zero gradient bc at the bottom.
+      ik = i;
+      m1temp[ik] =  0.;
+      m2temp[ik] =  0.;
+      m3temp[ik] =  0.;
+      m4temp[ik] =  1.;
+      m5temp[ik] =  0.;
+      m6temp[ik] =  0.;
+      m7temp[ik] = -1.;
+      ptemp [ik] =  0.;
+    }
 
-      /*
-      // set the BC's
-      ijk = i + j*jj;
-      m4[0] =       1.;
-      m5[0] = -21./23.;
-      m6[0] =  -3./23.;
-      m7[0] =   1./23.;
+#pragma ivdep
+    for(i=0; i<iblock; ++i)
+    {
+      ik = i;
+      m1temp[ik+kki1] =  0.;
+      m2temp[ik+kki1] =  0.;
+      m3temp[ik+kki1] =  0.;
+      m4temp[ik+kki1] =  1.;
+      m5temp[ik+kki1] = -1.;
+      m6temp[ik+kki1] =  0.;
+      m7temp[ik+kki1] =  0.;
+      ptemp [ik+kki1] =  0.;
+    }
 
-      // for wave number 0, which contains average, set pressure at top to zero
-      ijk  = i + j*jj + (kmax-1)*kk;
+    for(k=0; k<kmax; ++k)
+    {
+#pragma ivdep
+      for(i=0; i<iblock; ++i)
+      {
+        // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
+        iindex = mpicoordy * iblock + i;
+
+        ijk = i + j*jj + k*kk;
+        ik  = i + k*kki1;
+        m1temp[ik+kki2] = m1[k];
+        m2temp[ik+kki2] = m2[k];
+        m3temp[ik+kki2] = m3[k];
+        m4temp[ik+kki2] = m4[k] + bmati[iindex] + bmatj[jindex];
+        m5temp[ik+kki2] = m5[k];
+        m6temp[ik+kki2] = m6[k];
+        m7temp[ik+kki2] = m7[k];
+        ptemp [ik+kki2] = p[ijk];
+      }
+    }
+        
+#pragma ivdep
+    for(i=0; i<iblock; ++i)
+    {
+      // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
+      iindex = mpicoordy * iblock + i;
+
+      // Set the top boundary.
+      ik = i + kmax*kki1;
       if(iindex == 0 && jindex == 0)
       {
-        m1[kmax+1] =  1./5.; 
-        m2[kmax+1] = -5./5.;
-        m3[kmax+1] = 15./5.;
-        m4[kmax+1] =     1.;
+        m1temp[ik+kki2] =    0.;
+        m2temp[ik+kki2] = -1/3.;
+        m3temp[ik+kki2] =    2.;
+        m4temp[ik+kki2] =    1.;
+
+        m1temp[ik+kki3] =   -2.;
+        m2temp[ik+kki3] =    9.;
+        m3temp[ik+kki3] =    0.;
+        m4temp[ik+kki3] =    1.;
       }
-      // set dp/dz at top to zero
+      // Set dp/dz at top to zero.
       else
       {
-        m1[kmax+1] =   1./23.;
-        m2[kmax+1] =  -3./23.;
-        m3[kmax+1] = -21./23.;
-        m4[kmax+1] =       1.;
-      }
-      */
+        m1temp[ik+kki2] =  0.;
+        m2temp[ik+kki2] =  0.;
+        m3temp[ik+kki2] = -1.;
+        m4temp[ik+kki2] =  1.;
 
-      // set a zero gradient bc at the bottom
-      m0temp[0] =  0.;
-      m1temp[0] =  0.;
-      m2temp[0] =  0.;
-      m3temp[0] =  0.;
-      m4temp[0] =  1.;
-      m5temp[0] =  0.;
-      m6temp[0] =  0.;
-      m7temp[0] = -1.;
-      m8temp[0] =  0.;
-      ptemp [0] =  0.;
-
-      m0temp[1] =  0.;
-      m1temp[1] =  0.;
-      m2temp[1] =  0.;
-      m3temp[1] =  0.;
-      m4temp[1] =  1.;
-      m5temp[1] = -1.;
-      m6temp[1] =  0.;
-      m7temp[1] =  0.;
-      m8temp[1] =  0.;
-      ptemp [1] =  0.;
-
-      // fill the matrix
-      for(k=0; k<kmax; k++)
-      {
-        ijk  = i + j*jj + k*kk;
-        m0temp[k+2] = m0[k];
-        m1temp[k+2] = m1[k];
-        m2temp[k+2] = m2[k];
-        m3temp[k+2] = m3[k];
-        m4temp[k+2] = m4[k] + bmati[iindex] + bmatj[jindex];
-        m5temp[k+2] = m5[k];
-        m6temp[k+2] = m6[k];
-        m7temp[k+2] = m7[k];
-        m8temp[k+2] = m8[k];
-        ptemp [k+2] = p[ijk];
-      }
-
-      // set the top boundary
-      m0temp[kmax+2] = 0.;
-      m0temp[kmax+3] = 0.;
-      if(iindex == 0 && jindex == 0)
-      {
-        m1temp[kmax+2] =     0.;
-        m2temp[kmax+2] =  -1/3.;
-        m3temp[kmax+2] =     2.;
-        m4temp[kmax+2] =     1.;
-
-        m1temp[kmax+3] =    -2.;
-        m2temp[kmax+3] =     9.;
-        m3temp[kmax+3] =     0.;
-        m4temp[kmax+3] =     1.;
-      }
-      // set dp/dz at top to zero
-      else
-      {
-        m1temp[kmax+2] =  0.;
-        m2temp[kmax+2] =  0.;
-        m3temp[kmax+2] = -1.;
-        m4temp[kmax+2] =  1.;
-
-        m1temp[kmax+3] = -1.;
-        m2temp[kmax+3] =  0.;
-        m3temp[kmax+3] =  0.;
-        m4temp[kmax+3] =  1.;
-      }
-
-      m5temp[kmax+2] = 0.;
-      m6temp[kmax+2] = 0.;
-      m7temp[kmax+2] = 0.;
-      m8temp[kmax+2] = 0.;
-      ptemp [kmax+2] = 0.;
-
-      m5temp[kmax+3] = 0.;
-      m6temp[kmax+3] = 0.;
-      m7temp[kmax+3] = 0.;
-      m8temp[kmax+3] = 0.;
-      ptemp [kmax+3] = 0.;
-
-      // for now, call the solver here
-      hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
-
-      // put back the solution
-      for(k=0; k<kmax; k++)
-      {
-        ijk  = i + j*jj + k*kk;
-        p[ijk] = ptemp[k+2];
+        m1temp[ik+kki3] = -1.;
+        m2temp[ik+kki3] =  0.;
+        m3temp[ik+kki3] =  0.;
+        m4temp[ik+kki3] =  1.;
       }
     }
 
-  // call ndma solver
-  // ndma(m0, m1, m2, m3, m4, m5, m6, m7, m8, p);
-  
-  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+#pragma ivdep
+    for(i=0; i<iblock; ++i)
+    {
+      // Set the top boundary.
+      ik = i + kmax*kki1;
+      m5temp[ik+kki2] = 0.;
+      m6temp[ik+kki2] = 0.;
+      m7temp[ik+kki2] = 0.;
+      ptemp [ik+kki2] = 0.;
 
-  // put the pressure back onto the original grid including ghost cells
+      m5temp[ik+kki3] = 0.;
+      m6temp[ik+kki3] = 0.;
+      m7temp[ik+kki3] = 0.;
+      ptemp [ik+kki3] = 0.;
+    }
+
+    hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
+
+    // Put back the solution.
+    for(k=0; k<kmax; ++k)
+      for(int i=0; i<iblock; ++i)
+      {
+        ik  = i + k*kki1;
+        ijk = i + j*jj + k*kk;
+        p[ijk] = ptemp[ik+kki2];
+      }
+  }
+
+  grid->fftbackward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+
+  // Put the pressure back onto the original grid including ghost cells.
   jj = imax;
   kk = imax*jmax;
 
@@ -500,8 +439,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
         p[ijkp] = work3d[ijk];
       }
 
-  // set the boundary conditions
-  // set a zero gradient boundary at the bottom
+  // Set a zero gradient boundary at the bottom.
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -511,7 +449,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       p[ijk-kkp2] = p[ijk+kkp1];
     }
 
-  // set a zero gradient boundary at the top
+  // Set a zero gradient boundary at the top.
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -521,14 +459,12 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       p[ijk+kkp2] = p[ijk-kkp1];
     }
 
-  // set the cyclic boundary conditions
+  // Set the cyclic boundary conditions.
   grid->boundary_cyclic(p);
-
-  return 0;
 }
 
-int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                      double * restrict p , double * restrict dzhi4)
+void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+                       double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart;
@@ -538,8 +474,8 @@ int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restr
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -565,204 +501,147 @@ int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restr
         vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
         wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
       }
-
-  return 0;
 }
 
-int cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p)
+void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                   double * restrict m5, double * restrict m6, double * restrict m7,
+                   double * restrict p)
 {
-  int kmax;
-  int k;
+  int k,ik;
+  int kmax   = grid->kmax;
+  int iblock = grid->iblock;
+  int kk1 = 1*grid->iblock;
+  int kk2 = 2*grid->iblock;
+  int kk3 = 3*grid->iblock;
 
-  kmax = grid->kmax;
-
-  // LU factorization
+  // Use LU factorization.
   k = 0;
-  m1[k] = 1.;
-  m2[k] = 1.;
-  m3[k] = 1.          / m4[k]; // padding, and used in nonadss to normalize 1st eqn.
-  m4[k] = 1.;
-  m5[k] = m5[k]*m3[k];
-  m6[k] = m6[k]*m3[k];
-  m7[k] = m7[k]*m3[k];
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i;
+    m1[ik] = 1.;
+    m2[ik] = 1.;
+    m3[ik] = 1.            / m4[ik];
+    m4[ik] = 1.;
+    m5[ik] = m5[ik]*m3[ik];
+    m6[ik] = m6[ik]*m3[ik];
+    m7[ik] = m7[ik]*m3[ik];
+  }
 
   k = 1;
-  m1[k] = 1.; // padding
-  m2[k] = 1.; // padding
-  m3[k] = m3[k]                 / m4[k-1];
-  m4[k] = m4[k] - m3[k]*m5[k-1];
-  m5[k] = m5[k] - m3[k]*m6[k-1];
-  m6[k] = m6[k] - m3[k]*m7[k-1];
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m1[ik] = 1.;
+    m2[ik] = 1.;
+    m3[ik] = m3[ik]                     / m4[ik-kk1];
+    m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
+    m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
+    m6[ik] = m6[ik] - m3[ik]*m7[ik-kk1];
+  }
 
   k = 2;
-  m1[k] = 1.; // padding
-  m2[k] =   m2[k]                                   / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] ) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2];
-  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
-  m6[k] =   m6[k] - m3[k]*m7[k-1];
-
-  for(k=3; k<kmax+2; k++)
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
   {
-    m1[k] = ( m1[k]                                                ) / m4[k-3];
-    m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
-    m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
-    m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
-    m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
-    m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
+    ik = i + k*kk1;
+    m1[ik] = 1.;
+    m2[ik] =   m2[ik]                                           / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
+    m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+    m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
   }
-  m7[k-1] = 1.; // padding
+
+  for(k=3; k<kmax+2; ++k)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + k*kk1;
+      m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+      m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+      m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+      m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+      m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+      m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+    }
+
+  k = kmax+1;
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m7[ik] = 1.;
+  }
 
   k = kmax+2;
-  m1[k] = ( m1[k]                                                ) / m4[k-3];
-  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
-  m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
-  m6[k] = 1.; // padding
-  m7[k] = 1.; // padding
-
-  k = kmax+3;
-  m1[k] = ( m1[k]                                                ) / m4[k-3];
-  m2[k] = ( m2[k]                                 - m1[k]*m5[k-3]) / m4[k-2];
-  m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
-  m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
-  m5[k] = 1.; // padding
-  m6[k] = 1.; // padding
-  m7[k] = 1.; // padding
-
-  // Backward substitution 
-  int i,j,jj,ijk,ij;
-  int kk1,kk2,kk3,kk4;
-  int iblock,jblock;
-
-  iblock = 1; // grid->iblock; CvH vectorize later
-  jblock = 1; // grid->jblock;
-
-  jj  = iblock;
-  kk1 = 1*iblock*jblock;
-  kk2 = 2*iblock*jblock;
-  kk3 = 3*iblock*jblock;
-  kk4 = 4*iblock*jblock;
-
-  // Solve Ly=p, forward
-  for(j=0;j<jblock;j++)
 #pragma ivdep
-    for(i=0;i<iblock;i++)
-    {
-      ij = i + j*jj;
-      p[ij    ] =             p[ij    ]*m3[0]; // Normalize first eqn. See NONADFS
-      p[ij+kk1] = p[ij+kk1] - p[ij    ]*m3[1];
-      p[ij+kk2] = p[ij+kk2] - p[ij+kk1]*m3[2] - p[ij    ]*m2[2];
-    }
-
-  for(k=3; k<kmax+4; k++)
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ijk = i + j*jj + k*kk1;
-        p[ijk] = p[ijk] - p[ijk-kk1]*m3[k] - p[ijk-kk2]*m2[k] - p[ijk-kk3]*m1[k];
-      }
-
-  // Solve Ux=y, backward
-  k = kmax+3;
-  for(j=0;j<jblock;j++)
-#pragma ivdep
-    for(i=0;i<iblock;i++)
-    {
-      ijk = i + j*jj + k*kk1;
-      p[ijk    ] =   p[ijk    ]                                         / m4[k  ];
-      p[ijk-kk1] = ( p[ijk-kk1] - p[ijk    ]*m5[k-1] )                  / m4[k-1];
-      p[ijk-kk2] = ( p[ijk-kk2] - p[ijk-kk1]*m5[k-2] - p[ijk]*m6[k-2] ) / m4[k-2];
-    }
-
-  for(k=kmax; k>=0; k--)
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ijk = i + j*jj + k*kk1;
-        p[ijk] = ( p[ijk] - p[ijk+kk1]*m5[k] - p[ijk+kk2]*m6[k] - p[ijk+kk3]*m7[k] ) / m4[k];
-      }
-
-  return 0;
-}
-
-/*
-// tridiagonal matrix solver, taken from Numerical Recipes, Press
-int cpres_4::tdma(double * restrict a, double * restrict b, double * restrict c, 
-                double * restrict p, double * restrict work2d, double * restrict work3d)
-                
-{
-  int i,j,k,jj,kk,ijk,ij;
-  int iblock,jblock,kmax;
-
-  iblock = grid->iblock;
-  jblock = grid->jblock;
-  kmax = grid->kmax;
-
-  jj = iblock;
-  kk = iblock*jblock;
-
-  for(j=0;j<jblock;j++)
-#pragma ivdep
-    for(i=0;i<iblock;i++)
-    {
-      ij = i + j*jj;
-      work2d[ij] = b[ij];
-    }
-
-  for(j=0;j<jblock;j++)
-#pragma ivdep
-    for(i=0;i<iblock;i++)
-    {
-      ij = i + j*jj;
-      p[ij] /= work2d[ij];
-    }
-
-  for(k=1; k<kmax; k++)
+  for(int i=0; i<iblock; ++i)
   {
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ij  = i + j*jj;
-        ijk = i + j*jj + k*kk;
-        work3d[ijk] = c[k-1] / work2d[ij];
-      }
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ij  = i + j*jj;
-        ijk = i + j*jj + k*kk;
-        work2d[ij] = b[ijk] - a[k]*work3d[ijk];
-      }
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ij  = i + j*jj;
-        ijk = i + j*jj + k*kk;
-        p[ijk] -= a[k]*p[ijk-kk];
-        p[ijk] /= work2d[ij];
-      }
+    ik = i + k*kk1;
+    m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+    m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+    m6[ik] = 1.;
+    m7[ik] = 1.;
   }
 
-  for(k=kmax-2; k>=0; k--)
-    for(j=0;j<jblock;j++)
+  k = kmax+3;
 #pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ijk = i + j*jj + k*kk;
-        p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
-      }
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+    m5[ik] = 1.;
+    m6[ik] = 1.;
+    m7[ik] = 1.;
+  }
 
-  return 0;
+  // Do the backward substitution.
+  // First, solve Ly = p, forward.
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i;
+    p[ik    ] =             p[ik    ]*m3[ik    ];
+    p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
+    p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
+  }
+
+  for(k=3; k<kmax+4; ++k)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + k*kk1;
+      p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
+    }
+
+  // Second, solve Ux=y, backward.
+  k = kmax+3;
+#pragma ivdep
+  for(int i=0; i<iblock; ++i)
+  {
+    ik = i + k*kk1;
+    p[ik    ] =   p[ik    ]                                             / m4[ik    ];
+    p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
+    p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
+  }
+
+  for(k=kmax; k>=0; --k)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + k*kk1;
+      p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
+    }
 }
-*/
 
 double cpres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
@@ -774,8 +653,8 @@ double cpres_4::calcdivergence(double * restrict u, double * restrict v, double 
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kstart = grid->kstart;
   kend   = grid->kend;

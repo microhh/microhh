@@ -41,7 +41,7 @@ class cpres_2 : public cpres
     void init();
     void setvalues();
 
-    int exec(double);
+    void exec(double);
     double check();
 
 #ifdef USECUDA
@@ -64,20 +64,19 @@ class cpres_2 : public cpres
     cufftHandle iplanb, jplanb; 
 #endif
 
-    int pres_in(double *, 
-                double *, double *, double *,
-                double *, double *, double *,
-                double *, double *, double *,
-                double);
-    int pres_solve(double *, double *, double *,
-                   double *, double *,
-                   double *, double *, double *, double *);
-    int pres_out(double *, double *, double *,
-                 double *, double *);
+    void pres_in(double *, 
+                 double *, double *, double *,
+                 double *, double *, double *,
+                 double *, double *, double *,
+                 double);
+    void pres_solve(double *, double *, double *,
+                    double *, double *,
+                    double *, double *, double *, double *);
+    void pres_out(double *, double *, double *,
+                  double *, double *);
     double calcdivergence(double *, double *, double *, double *, double *, double *);
 
-    // functions
-    int tdma(double *, double *, double *, double *, 
-             double *, double *);
+    void tdma(double *, double *, double *, double *, 
+              double *, double *);
 };
 #endif
