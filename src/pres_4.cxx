@@ -36,18 +36,16 @@ using namespace fd::o4;
 
 cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 {
-  m1 = m1temp = 0;
-  m2 = m2temp = 0;
-  m3 = m3temp = 0;
-  m4 = m4temp = 0;
-  m5 = m5temp = 0;
-  m6 = m6temp = 0;
-  m7 = m7temp = 0;
+  m1 = 0;
+  m2 = 0;
+  m3 = 0;
+  m4 = 0;
+  m5 = 0;
+  m6 = 0;
+  m7 = 0;
 
   bmati = 0;
   bmatj = 0;
-
-  ptemp = 0;
 }
 
 cpres_4::~cpres_4()
@@ -62,46 +60,39 @@ cpres_4::~cpres_4()
 
   delete[] bmati;
   delete[] bmatj;
-
-  // CvH temporary, remove later...
-  delete[] m1temp;
-  delete[] m2temp;
-  delete[] m3temp;
-  delete[] m4temp;
-  delete[] m5temp;
-  delete[] m6temp;
-  delete[] m7temp;
-  delete[] ptemp;
 }
 
-int cpres_4::exec(double dt)
+void cpres_4::exec(double dt)
 {
-  // create the input for the pressure solver
+  // 1. Create the input for the pressure solver.
   pres_in(fields->sd["p"]->data,
           fields->u ->data, fields->v ->data, fields->w ->data,
           fields->ut->data, fields->vt->data, fields->wt->data, 
           grid->dzi4, dt);
 
-  // solve the system
+  // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
+  // Take slices out of a temporary field to save memory. The temp arrays
+  // are always big enough, this cannot fail.
+  double *tmp2 = fields->sd["tmp2"]->data;
+  double *tmp3 = fields->sd["tmp3"]->data;
+  const int ns = grid->iblock*(grid->kmax+4);
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
              m1, m2, m3, m4,
              m5, m6, m7,
-             m1temp, m2temp, m3temp, m4temp,
-             m5temp, m6temp, m7temp, ptemp,
+             &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
+             &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
              bmati, bmatj);
 
-  // get the pressure tendencies from the pressure field
+  // 3. Get the pressure tendencies from the pressure field.
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
            fields->sd["p"]->data, grid->dzhi4);
-
-  return 0;
 }
 
 double cpres_4::check()
 {
   double divmax = 0.;
 
-  divmax = calcdivergence((*fields->u).data, (*fields->v).data, (*fields->w).data, grid->dzi4);
+  divmax = calcdivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
 
   return divmax;
 }
@@ -121,7 +112,6 @@ void cpres_4::init()
   bmati = new double[itot];
   bmatj = new double[jtot];
 
-  // allocate help variables for the matrix solver
   m1 = new double[kmax];
   m2 = new double[kmax];
   m3 = new double[kmax];
@@ -129,16 +119,6 @@ void cpres_4::init()
   m5 = new double[kmax];
   m6 = new double[kmax];
   m7 = new double[kmax];
-
-  // CvH temporary, remove later...
-  m1temp = new double[grid->iblock*(grid->kmax+4)];
-  m2temp = new double[grid->iblock*(grid->kmax+4)];
-  m3temp = new double[grid->iblock*(grid->kmax+4)];
-  m4temp = new double[grid->iblock*(grid->kmax+4)];
-  m5temp = new double[grid->iblock*(grid->kmax+4)];
-  m6temp = new double[grid->iblock*(grid->kmax+4)];
-  m7temp = new double[grid->iblock*(grid->kmax+4)];
-  ptemp  = new double[grid->iblock*(grid->kmax+4)];
 }
 
 void cpres_4::setvalues()
@@ -218,10 +198,10 @@ void cpres_4::setvalues()
   m7[k] = 0.;
 }
 
-int cpres_4::pres_in(double * restrict p, 
-                     double * restrict u , double * restrict v , double * restrict w ,
-                     double * restrict ut, double * restrict vt, double * restrict wt,
-                     double * restrict dzi4, double dt)
+void cpres_4::pres_in(double * restrict p, 
+                      double * restrict u , double * restrict v , double * restrict w ,
+                      double * restrict ut, double * restrict vt, double * restrict wt,
+                      double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
@@ -247,12 +227,12 @@ int cpres_4::pres_in(double * restrict p,
 
   kmax = grid->kmax;
 
-  // set the cyclic boundary conditions for the tendencies
+  // Set the cyclic boundary conditions for the tendencies.
   grid->boundary_cyclic(ut);
   grid->boundary_cyclic(vt);
   grid->boundary_cyclic(wt);
 
-  // set the bc 
+  // Set the bc. 
   for(int j=0; j<grid->jmax; j++)
 #pragma ivdep
     for(int i=0; i<grid->imax; i++)
@@ -279,16 +259,14 @@ int cpres_4::pres_in(double * restrict p,
         p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
         p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
       }
-
-  return 0;
 }
 
-int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
-                        double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                        double * restrict m5, double * restrict m6, double * restrict m7,
-                        double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
-                        double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
-                        double * restrict bmati, double * restrict bmatj)
+void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
+                         double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                         double * restrict m5, double * restrict m6, double * restrict m7,
+                         double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
+                         double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
+                         double * restrict bmati, double * restrict bmatj)
 {
   int i,j,k,jj,kk,ijk;
   int imax,jmax,kmax;
@@ -329,7 +307,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 #pragma ivdep
     for(i=0; i<iblock; ++i)
     {
-      // set a zero gradient bc at the bottom
+      // Set a zero gradient bc at the bottom.
       ik = i;
       m1temp[ik] =  0.;
       m2temp[ik] =  0.;
@@ -360,7 +338,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 #pragma ivdep
       for(i=0; i<iblock; ++i)
       {
-        // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
+        // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
         iindex = mpicoordy * iblock + i;
 
         ijk = i + j*jj + k*kk;
@@ -379,7 +357,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 #pragma ivdep
     for(i=0; i<iblock; ++i)
     {
-      // set the top boundary
+      // Set the top boundary.
       ik = i + kmax*kki1;
       if(iindex == 0 && jindex == 0)
       {
@@ -393,7 +371,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
         m3temp[ik+kki3] =    0.;
         m4temp[ik+kki3] =    1.;
       }
-      // set dp/dz at top to zero
+      // Set dp/dz at top to zero.
       else
       {
         m1temp[ik+kki2] =  0.;
@@ -411,7 +389,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 #pragma ivdep
     for(i=0; i<iblock; ++i)
     {
-      // set the top boundary
+      // Set the top boundary.
       ik = i + kmax*kki1;
       m5temp[ik+kki2] = 0.;
       m6temp[ik+kki2] = 0.;
@@ -426,7 +404,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 
     hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
 
-    // put back the solution
+    // Put back the solution.
     for(k=0; k<kmax; ++k)
       for(int i=0; i<iblock; ++i)
       {
@@ -438,7 +416,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 
   grid->fftbackward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
-  // put the pressure back onto the original grid including ghost cells
+  // Put the pressure back onto the original grid including ghost cells.
   jj = imax;
   kk = imax*jmax;
 
@@ -457,8 +435,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
         p[ijkp] = work3d[ijk];
       }
 
-  // set the boundary conditions
-  // set a zero gradient boundary at the bottom
+  // Set a zero gradient boundary at the bottom.
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -468,7 +445,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       p[ijk-kkp2] = p[ijk+kkp1];
     }
 
-  // set a zero gradient boundary at the top
+  // Set a zero gradient boundary at the top.
   for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
@@ -478,14 +455,12 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       p[ijk+kkp2] = p[ijk-kkp1];
     }
 
-  // set the cyclic boundary conditions
+  // Set the cyclic boundary conditions.
   grid->boundary_cyclic(p);
-
-  return 0;
 }
 
-int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                      double * restrict p , double * restrict dzhi4)
+void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+                       double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart;
@@ -522,8 +497,6 @@ int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restr
         vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
         wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
       }
-
-  return 0;
 }
 
 void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
@@ -537,7 +510,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
   int kk2 = 2*grid->iblock;
   int kk3 = 3*grid->iblock;
 
-  // LU factorization
+  // Use LU factorization.
   k = 0;
 #pragma ivdep
   for(int i=0; i<iblock; ++i)
@@ -627,8 +600,8 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
     m7[ik] = 1.;
   }
 
-  // Backward substitution 
-  // Solve Ly=p, forward
+  // Do the backward substitution.
+  // First, solve Ly = p, forward.
 #pragma ivdep
   for(int i=0; i<iblock; ++i)
   {
@@ -646,7 +619,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
       p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
     }
 
-  // Solve Ux=y, backward
+  // Second, solve Ux=y, backward.
   k = kmax+3;
 #pragma ivdep
   for(int i=0; i<iblock; ++i)

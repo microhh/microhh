@@ -39,7 +39,7 @@ class cpres
     virtual void init();
     virtual void setvalues();
 
-    virtual int exec(double);
+    virtual void exec(double);
     virtual double check();
 
   protected:
