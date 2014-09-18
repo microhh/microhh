@@ -69,6 +69,7 @@ int cbuffer::prepareGPU()
   return 0;
 }
 
+/*
 #ifdef USECUDA
 int cbuffer::exec()
 {
@@ -119,5 +120,5 @@ int cbuffer::exec()
   return 0;
 }
 #endif
-
+*/
 

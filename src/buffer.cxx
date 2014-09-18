@@ -121,7 +121,7 @@ void cbuffer::create(cinput *inputin)
     throw 1;
 }
 
-#ifndef USECUDA
+//#ifndef USECUDA
 int cbuffer::exec()
 {
   if(swbuffer == "1")
@@ -137,7 +137,7 @@ int cbuffer::exec()
 
   return 0;
 }
-#endif
+//#endif
 
 int cbuffer::buffer(double * const restrict at, const double * const restrict a, 
                     const double * const restrict abuf, const double * const restrict z)

@@ -38,6 +38,7 @@ __global__ void force_flux_step2(double * const __restrict__ ut,
   }
 }
 
+/*
 #ifdef USECUDA
 int cforce::exec(double dt)
 {
@@ -75,28 +76,28 @@ int cforce::exec(double dt)
                                             grid->iend,    grid->jend,   grid->kend);
   }
 
-  /*
-  else if(swlspres == "geo")
-  {
-    if(grid->swspatialorder == "2")
-      coriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
-    else if(grid->swspatialorder == "4")
-      coriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
-  }
+  
+  //else if(swlspres == "geo")
+  //{
+  //  if(grid->swspatialorder == "2")
+  //    coriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
+  //  else if(grid->swspatialorder == "4")
+  //    coriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
+  //}
 
-  if(swls == "1")
-  {
-    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-      lssource(fields->st[*it]->data, lsprofs[*it]);
-  }
+  //if(swls == "1")
+  //{
+  //  for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+  //    lssource(fields->st[*it]->data, lsprofs[*it]);
+  //}
 
-  if(swwls == "1")
-  {
-    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      advecwls_2nd(it->second->data, fields->s[it->first]->datamean, wls, grid->dzhi);
-  }
-  */
+  //if(swwls == "1")
+  //{
+  //  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+  //    advecwls_2nd(it->second->data, fields->s[it->first]->datamean, wls, grid->dzhi);
+  //}
 
   return 0;
 }
 #endif
+*/

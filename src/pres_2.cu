@@ -320,7 +320,7 @@ int cpres_2::prepareGPU()
   return 0;
 }
 
-
+/*
 #ifdef USECUDA
 void cpres_2::exec(double dt)
 {
@@ -453,3 +453,4 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
   return divmax;
 }
 #endif
+*/

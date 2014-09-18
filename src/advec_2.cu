@@ -204,6 +204,7 @@ __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v
   }
 }
 
+/*
 #ifdef USECUDA
 void cadvec_2::exec()
 {
@@ -261,7 +262,6 @@ void cadvec_2::exec()
 }
 #endif
 
-
 #ifdef USECUDA
 double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, double dt)
 {
@@ -294,5 +294,5 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
   return cfl;
 }
 #endif
-
+*/
 

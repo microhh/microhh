@@ -76,7 +76,7 @@ __global__ void diff_2_diffw(double * __restrict__ const at, const double * __re
              - (a[ijk   ] - a[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
   }
 }
-
+/*
 #ifdef USECUDA
 int cdiff_2::exec()
 {
@@ -130,3 +130,4 @@ int cdiff_2::exec()
   return 0;
 }
 #endif
+*/

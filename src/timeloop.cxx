@@ -173,32 +173,32 @@ int ctimeloop::settimestep()
   return 0;
 }
 
-#ifdef USECUDA
-int ctimeloop::exec()
-{
-  //fields->forwardGPU();
-
-  if(rkorder == 3)
-  {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
-      rk3_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
-
-    substep = (substep+1) % 3;
-  }
-
-  if(rkorder == 4)
-  {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
-      rk4_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
-
-    substep = (substep+1) % 5;
-  }
-
-  //fields->backwardGPU();
-
-  return substep;
-}
-#else
+//#ifdef USECUDA
+//int ctimeloop::exec()
+//{
+//  //fields->forwardGPU();
+//
+//  if(rkorder == 3)
+//  {
+//    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+//      rk3_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
+//
+//    substep = (substep+1) % 3;
+//  }
+//
+//  if(rkorder == 4)
+//  {
+//    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+//      rk4_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
+//
+//    substep = (substep+1) % 5;
+//  }
+//
+//  //fields->backwardGPU();
+//
+//  return substep;
+//}
+//#else
 int ctimeloop::exec()
 {
   if(rkorder == 3)
@@ -219,7 +219,7 @@ int ctimeloop::exec()
 
   return substep;
 }
-#endif
+//#endif
 
 double ctimeloop::getsubdt()
 {
