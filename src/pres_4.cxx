@@ -397,7 +397,7 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       ptemp [ik+kki3] = 0.;
     }
 
-      // for now, call the solver here
+    // One hdma call per level of j
     hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
 
     // put back the solution
@@ -563,14 +563,8 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
       m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
       m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
       m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+      m7[ik] = 1.;
     }
-
-#pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i + k*kk1;
-    m7[ik-kk1] = 1.;
-  }
 
   k = kmax+2;
 #pragma ivdep
