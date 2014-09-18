@@ -91,10 +91,6 @@ cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin
   nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
 
-<<<<<<< HEAD
-
-=======
->>>>>>> upstream/master
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
   
