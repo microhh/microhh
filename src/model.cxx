@@ -212,9 +212,10 @@ void cmodel::exec()
 {
 #ifdef USECUDA
   master->printMessage("Preparing the GPU\n");
-  grid->prepareGPU();
+  grid  ->prepareGPU();
   fields->prepareGPU();
-  pres->prepareGPU();
+  pres  ->prepareGPU();
+  buffer->prepareGPU();
 #endif
 
   master->printMessage("Starting time integration\n");

@@ -93,6 +93,8 @@ int cgrid::prepareGPU()
 
   const int kmemsize = kcells*sizeof(double);
 
+  cudaMalloc((void**)&z_g    , kmemsize);
+  cudaMalloc((void**)&zh_g   , kmemsize);
   cudaMalloc((void**)&dz_g   , kmemsize);
   cudaMalloc((void**)&dzh_g  , kmemsize);
   cudaMalloc((void**)&dzi_g  , kmemsize);
@@ -100,6 +102,8 @@ int cgrid::prepareGPU()
   cudaMalloc((void**)&dzi4_g , kmemsize);
   cudaMalloc((void**)&dzhi4_g, kmemsize);
 
+  cudaMemcpy(z_g    , z    , kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(zh_g   , zh   , kmemsize, cudaMemcpyHostToDevice);
   cudaMemcpy(dz_g   , dz   , kmemsize, cudaMemcpyHostToDevice);
   cudaMemcpy(dzh_g  , dzh  , kmemsize, cudaMemcpyHostToDevice);
   cudaMemcpy(dzi_g  , dzi  , kmemsize, cudaMemcpyHostToDevice);
@@ -112,6 +116,8 @@ int cgrid::prepareGPU()
 
 int cgrid::clearGPU()
 {
+  cudaFree(z_g    );
+  cudaFree(zh_g   );
   cudaFree(dz_g   );
   cudaFree(dzh_g  );
   cudaFree(dzi_g  );

@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <stdlib.h>
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -120,6 +121,7 @@ void cbuffer::create(cinput *inputin)
     throw 1;
 }
 
+#ifndef USECUDA
 int cbuffer::exec()
 {
   if(swbuffer == "1")
@@ -135,6 +137,7 @@ int cbuffer::exec()
 
   return 0;
 }
+#endif
 
 int cbuffer::buffer(double * const restrict at, const double * const restrict a, 
                     const double * const restrict abuf, const double * const restrict z)

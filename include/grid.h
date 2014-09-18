@@ -98,13 +98,6 @@ class cgrid
     double *dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
     double *dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
 
-    double *dz_g;
-    double *dzh_g;
-    double *dzi_g;
-    double *dzhi_g;
-    double *dzi4_g;
-    double *dzhi4_g;
-    
     double *x;  ///< Grid coordinate of cell center in x-direction.
     double *y;  ///< Grid coordinate of cell center in y-direction.
     double *z;  ///< Grid coordinate of cell center in z-direction.
@@ -155,7 +148,16 @@ class cgrid
     int interpolate_2nd(double *, double *, const int[3], const int[3]); ///< Second order interpolation
     int interpolate_4th(double *, double *, const int[3], const int[3]); ///< Fourth order interpolation
 
-    // GPU functions
+    // GPU functions and variables
+    double *z_g;
+    double *zh_g;
+    double *dz_g;
+    double *dzh_g;
+    double *dzi_g;
+    double *dzhi_g;
+    double *dzi4_g;
+    double *dzhi4_g;
+
     int prepareGPU();                             ///< Load the arrays onto the GPU
     int clearGPU();                               ///< Deallocate the arrays onto the GPU
     int boundary_cyclic_g(double *);              ///< Fills the ghost cells in the periodic directions.
