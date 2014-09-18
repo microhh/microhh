@@ -51,7 +51,7 @@ class cpres_4 : public cpres
                 double *, double *, double *,
                 double *, double *, double *,
                 double *, double);
-    int pres_solve(double *, double *, double *, double *,
+    int pres_solve(double *, double *, double *,
                    double *, double *, double *, double *,
                    double *, double *, double *,
                    double *, double *, double *, double *,

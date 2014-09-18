@@ -83,7 +83,7 @@ int cpres_4::exec(double dt)
           grid->dzi4, dt);
 
   // solve the system
-  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, grid->dz,
+  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
              m1, m2, m3, m4,
              m5, m6, m7,
              m1temp, m2temp, m3temp, m4temp,
@@ -283,7 +283,7 @@ int cpres_4::pres_in(double * restrict p,
   return 0;
 }
 
-int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict m5calc, double * restrict dz,
+int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
                         double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
                         double * restrict m5, double * restrict m6, double * restrict m7,
                         double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
