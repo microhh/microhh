@@ -280,8 +280,8 @@ int cpres_4::pres_in(double * restrict p,
 }
 
 int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict m5calc, double * restrict dz,
-                         double * restrict fftini, double * restrict fftouti, 
-                         double * restrict fftinj, double * restrict fftoutj)
+                        double * restrict fftini, double * restrict fftouti, 
+                        double * restrict fftinj, double * restrict fftoutj)
 
 {
   int i,j,k,jj,kk,ijk;
@@ -315,13 +315,11 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
 
   for(j=0; j<jblock; ++j)
   {
+    jindex = master->mpicoordx * jblock + j;
+ 
 #pragma ivdep
     for(i=0; i<iblock; ++i)
     {
-      // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
-      iindex = master->mpicoordy * iblock + i;
-      jindex = master->mpicoordx * jblock + j;
-
       // set a zero gradient bc at the bottom
       ik = i;
       m1temp[ik] =  0.;
@@ -333,19 +331,24 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       m7temp[ik] = -1.;
       ptemp [ik] =  0.;
 
-      ik = i + kki1;
-      m1temp[ik] =  0.;
-      m2temp[ik] =  0.;
-      m3temp[ik] =  0.;
-      m4temp[ik] =  1.;
-      m5temp[ik] = -1.;
-      m6temp[ik] =  0.;
-      m7temp[ik] =  0.;
-      ptemp [ik] =  0.;
+      m1temp[ik+kki1] =  0.;
+      m2temp[ik+kki1] =  0.;
+      m3temp[ik+kki1] =  0.;
+      m4temp[ik+kki1] =  1.;
+      m5temp[ik+kki1] = -1.;
+      m6temp[ik+kki1] =  0.;
+      m7temp[ik+kki1] =  0.;
+      ptemp [ik+kki1] =  0.;
+    }
 
-      // fill the matrix
-      for(k=0; k<kmax; ++k)
+    for(k=0; k<kmax; ++k)
+    {
+#pragma ivdep
+      for(i=0; i<iblock; ++i)
       {
+        // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
+        iindex = master->mpicoordy * iblock + i;
+
         ijk = i + j*jj + k*kk;
         ik  = i + k*kki1;
         m1temp[ik+kki2] = m1[k];
@@ -357,7 +360,11 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
         m7temp[ik+kki2] = m7[k];
         ptemp [ik+kki2] = p[ijk];
       }
-
+    }
+        
+#pragma ivdep
+    for(i=0; i<iblock; ++i)
+    {
       // set the top boundary
       ik = i + kmax*kki1;
       if(iindex == 0 && jindex == 0)
@@ -385,7 +392,13 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
         m3temp[ik+kki3] =  0.;
         m4temp[ik+kki3] =  1.;
       }
+    }
 
+#pragma ivdep
+    for(i=0; i<iblock; ++i)
+    {
+      // set the top boundary
+      ik = i + kmax*kki1;
       m5temp[ik+kki2] = 0.;
       m6temp[ik+kki2] = 0.;
       m7temp[ik+kki2] = 0.;
@@ -396,18 +409,6 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       m7temp[ik+kki3] = 0.;
       ptemp [ik+kki3] = 0.;
     }
-
-    // One hdma call per level of j
-    /*
-    for(k=0; k<kmax+4; ++k)
-      for(i=0; i<iblock; ++i)
-      {
-        ik = i + k*kki1;
-        if(i==0 || i==iblock-1)
-          std::printf("%d, %E, %E, %E, %E, %E, %E, %E, %E, %d\n", k-2,
-            m1temp[ik], m2temp[ik], m3temp[ik], m4temp[ik], m5temp[ik], m6temp[ik], m7temp[ik], ptemp[ik],j);
-      }
-      */
 
     hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
 
