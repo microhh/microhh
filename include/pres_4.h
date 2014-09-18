@@ -42,8 +42,7 @@ class cpres_4 : public cpres
 
   private:
     double *bmati, *bmatj;
-    double *m0,*m1,*m2,*m3,*m4,*m5,*m6,*m7,*m8;
-    double *work2d;
+    double *m1,*m2,*m3,*m4,*m5,*m6,*m7;
 
     // CvH remove later
     double *m0temp,*m1temp,*m2temp,*m3temp,*m4temp,*m5temp,*m6temp,*m7temp,*m8temp,*ptemp;

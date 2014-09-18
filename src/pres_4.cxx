@@ -36,7 +36,6 @@ using namespace fd::o4;
 
 cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 {
-  m0 = m0temp = 0;
   m1 = m1temp = 0;
   m2 = m2temp = 0;
   m3 = m3temp = 0;
@@ -44,9 +43,6 @@ cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
   m5 = m5temp = 0;
   m6 = m6temp = 0;
   m7 = m7temp = 0;
-  m8 = m8temp = 0;
-
-  work2d = 0;
 
   bmati = 0;
   bmatj = 0;
@@ -56,7 +52,6 @@ cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
 
 cpres_4::~cpres_4()
 {
-  delete[] m0;
   delete[] m1;
   delete[] m2;
   delete[] m3;
@@ -64,15 +59,11 @@ cpres_4::~cpres_4()
   delete[] m5;
   delete[] m6;
   delete[] m7;
-  delete[] m8;
-
-  delete[] work2d;
 
   delete[] bmati;
   delete[] bmatj;
 
   // CvH temporary, remove later...
-  delete[] m0temp;
   delete[] m1temp;
   delete[] m2temp;
   delete[] m3temp;
@@ -80,7 +71,6 @@ cpres_4::~cpres_4()
   delete[] m5temp;
   delete[] m6temp;
   delete[] m7temp;
-  delete[] m8temp;
   delete[] ptemp;
 }
 
@@ -128,7 +118,6 @@ void cpres_4::init()
   bmatj = new double[jtot];
 
   // allocate help variables for the matrix solver
-  m0 = new double[kmax];
   m1 = new double[kmax];
   m2 = new double[kmax];
   m3 = new double[kmax];
@@ -136,10 +125,8 @@ void cpres_4::init()
   m5 = new double[kmax];
   m6 = new double[kmax];
   m7 = new double[kmax];
-  m8 = new double[kmax];
 
   // CvH temporary, remove later...
-  m0temp = new double[kmax+4];
   m1temp = new double[kmax+4];
   m2temp = new double[kmax+4];
   m3temp = new double[kmax+4];
@@ -147,10 +134,7 @@ void cpres_4::init()
   m5temp = new double[kmax+4];
   m6temp = new double[kmax+4];
   m7temp = new double[kmax+4];
-  m8temp = new double[kmax+4];
   ptemp  = new double[kmax+4];
-
-  work2d = new double[imax*jmax];
 }
 
 void cpres_4::setvalues()
@@ -198,7 +182,6 @@ void cpres_4::setvalues()
   // bottom boundary, taking into account that w is mirrored over the wall to conserve global momentum
   k  = 0;
   kc = kstart+k;
-  m0[k] = 0.;
   m1[k] = 0.;
   m2[k] = (                 -  27.*dzhi4[kc]                                      ) * dzi4[kc];
   m3[k] = ( -1.*dzhi4[kc+1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
@@ -206,12 +189,10 @@ void cpres_4::setvalues()
   m5[k] = (-27.*dzhi4[kc+1] +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
   m6[k] = (  1.*dzhi4[kc+1]                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
   m7[k] = (                                                     +  1.*dzhi4[kc+2] ) * dzi4[kc];
-  m8[k] = 0.;
   
   for(int k=1; k<kmax-1; k++)
   {
     kc = kstart+k;
-    m0[k] = 0.;
     m1[k] = (   1.*dzhi4[kc-1]                                                       ) * dzi4[kc];
     m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                                      ) * dzi4[kc];
     m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1]                   ) * dzi4[kc];
@@ -219,13 +200,11 @@ void cpres_4::setvalues()
     m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] + 27.*dzhi4[kc+2] ) * dzi4[kc];
     m6[k] = (                                   -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
     m7[k] = (                                                      +  1.*dzhi4[kc+2] ) * dzi4[kc];
-    m8[k] = 0.;
   }                                                                                                                                       
 
   // top boundary, taking into account that w is mirrored over the wall to conserve global momentum
   k  = kmax-1;
   kc = kstart+k;
-  m0[k] = 0.;
   m1[k] = (   1.*dzhi4[kc-1]                                                     ) * dzi4[kc];
   m2[k] = ( -27.*dzhi4[kc-1] -  27.*dzhi4[kc]                    +  1.*dzhi4[kc] ) * dzi4[kc];
   m3[k] = (  27.*dzhi4[kc-1] + 729.*dzhi4[kc] +  27.*dzhi4[kc+1] - 27.*dzhi4[kc] ) * dzi4[kc];
@@ -233,7 +212,6 @@ void cpres_4::setvalues()
   m5[k] = (                  +  27.*dzhi4[kc] + 729.*dzhi4[kc+1] -  1.*dzhi4[kc] ) * dzi4[kc];
   m6[k] = (                                   -  27.*dzhi4[kc+1]                 ) * dzi4[kc];
   m7[k] = 0.;
-  m8[k] = 0.;
 }
 
 int cpres_4::pres_in(double * restrict p, 
@@ -250,8 +228,8 @@ int cpres_4::pres_in(double * restrict p,
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   jjp = grid->imax;
   kkp = grid->imax*grid->jmax;
@@ -386,7 +364,6 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       */
 
       // set a zero gradient bc at the bottom
-      m0temp[0] =  0.;
       m1temp[0] =  0.;
       m2temp[0] =  0.;
       m3temp[0] =  0.;
@@ -394,10 +371,8 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       m5temp[0] =  0.;
       m6temp[0] =  0.;
       m7temp[0] = -1.;
-      m8temp[0] =  0.;
       ptemp [0] =  0.;
 
-      m0temp[1] =  0.;
       m1temp[1] =  0.;
       m2temp[1] =  0.;
       m3temp[1] =  0.;
@@ -405,14 +380,12 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       m5temp[1] = -1.;
       m6temp[1] =  0.;
       m7temp[1] =  0.;
-      m8temp[1] =  0.;
       ptemp [1] =  0.;
 
       // fill the matrix
       for(k=0; k<kmax; k++)
       {
         ijk  = i + j*jj + k*kk;
-        m0temp[k+2] = m0[k];
         m1temp[k+2] = m1[k];
         m2temp[k+2] = m2[k];
         m3temp[k+2] = m3[k];
@@ -420,13 +393,10 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
         m5temp[k+2] = m5[k];
         m6temp[k+2] = m6[k];
         m7temp[k+2] = m7[k];
-        m8temp[k+2] = m8[k];
         ptemp [k+2] = p[ijk];
       }
 
       // set the top boundary
-      m0temp[kmax+2] = 0.;
-      m0temp[kmax+3] = 0.;
       if(iindex == 0 && jindex == 0)
       {
         m1temp[kmax+2] =     0.;
@@ -456,13 +426,11 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       m5temp[kmax+2] = 0.;
       m6temp[kmax+2] = 0.;
       m7temp[kmax+2] = 0.;
-      m8temp[kmax+2] = 0.;
       ptemp [kmax+2] = 0.;
 
       m5temp[kmax+3] = 0.;
       m6temp[kmax+3] = 0.;
       m7temp[kmax+3] = 0.;
-      m8temp[kmax+3] = 0.;
       ptemp [kmax+3] = 0.;
 
       // for now, call the solver here
@@ -476,9 +444,6 @@ int cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
       }
     }
 
-  // call ndma solver
-  // ndma(m0, m1, m2, m3, m4, m5, m6, m7, m8, p);
-  
   grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
   // put the pressure back onto the original grid including ghost cells
@@ -538,8 +503,8 @@ int cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restr
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -610,7 +575,7 @@ int cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict 
     m3[k] = ( m3[k]                 - m2[k]*m5[k-2] - m1[k]*m6[k-3]) / m4[k-1];
     m4[k] =   m4[k] - m3[k]*m5[k-1] - m2[k]*m6[k-2] - m1[k]*m7[k-3];
     m5[k] =   m5[k] - m3[k]*m6[k-1] - m2[k]*m7[k-2];
-    m6[k] =   m6[k] - m3[k]*m7[k-1] - m2[k]*m8[k-2];
+    m6[k] =   m6[k] - m3[k]*m7[k-1];
   }
   m7[k-1] = 1.; // padding
 
@@ -690,80 +655,6 @@ int cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict 
   return 0;
 }
 
-/*
-// tridiagonal matrix solver, taken from Numerical Recipes, Press
-int cpres_4::tdma(double * restrict a, double * restrict b, double * restrict c, 
-                double * restrict p, double * restrict work2d, double * restrict work3d)
-                
-{
-  int i,j,k,jj,kk,ijk,ij;
-  int iblock,jblock,kmax;
-
-  iblock = grid->iblock;
-  jblock = grid->jblock;
-  kmax = grid->kmax;
-
-  jj = iblock;
-  kk = iblock*jblock;
-
-  for(j=0;j<jblock;j++)
-#pragma ivdep
-    for(i=0;i<iblock;i++)
-    {
-      ij = i + j*jj;
-      work2d[ij] = b[ij];
-    }
-
-  for(j=0;j<jblock;j++)
-#pragma ivdep
-    for(i=0;i<iblock;i++)
-    {
-      ij = i + j*jj;
-      p[ij] /= work2d[ij];
-    }
-
-  for(k=1; k<kmax; k++)
-  {
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ij  = i + j*jj;
-        ijk = i + j*jj + k*kk;
-        work3d[ijk] = c[k-1] / work2d[ij];
-      }
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ij  = i + j*jj;
-        ijk = i + j*jj + k*kk;
-        work2d[ij] = b[ijk] - a[k]*work3d[ijk];
-      }
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ij  = i + j*jj;
-        ijk = i + j*jj + k*kk;
-        p[ijk] -= a[k]*p[ijk-kk];
-        p[ijk] /= work2d[ij];
-      }
-  }
-
-  for(k=kmax-2; k>=0; k--)
-    for(j=0;j<jblock;j++)
-#pragma ivdep
-      for(i=0;i<iblock;i++)
-      {
-        ijk = i + j*jj + k*kk;
-        p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
-      }
-
-  return 0;
-}
-*/
-
 double cpres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
@@ -774,8 +665,8 @@ double cpres_4::calcdivergence(double * restrict u, double * restrict v, double 
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kstart = grid->kstart;
   kend   = grid->kend;
