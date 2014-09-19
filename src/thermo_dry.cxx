@@ -215,6 +215,7 @@ void cthermo_dry::create(cinput *inputin)
   std::sort(crosslist.begin(),crosslist.end());
 }
 
+#ifndef USECUDA
 int cthermo_dry::exec()
 {
   if(grid->swspatialorder== "2")
@@ -224,6 +225,7 @@ int cthermo_dry::exec()
 
   return 0;
 }
+#endif
 
 int cthermo_dry::execstats(mask *m)
 {

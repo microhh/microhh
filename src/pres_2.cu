@@ -265,7 +265,7 @@ __global__ void pres_2_calcdivergence(double * __restrict__ u, double * __restri
   }
 }
 
-int cpres_2::prepareGPU()
+int cpres_2::prepareDevice()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);

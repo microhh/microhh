@@ -111,7 +111,7 @@ int cboundary::exec()
     grid->boundary_cyclic_g(&it->second->data_g[offs]);
 
   // calculate boundary values
-  bcvalues();
+  //bcvalues();
 
   if(grid->swspatialorder == "2")
   {
@@ -164,7 +164,6 @@ int cboundary::exec()
 }
 #endif
 */
-
 
 
 

@@ -47,6 +47,11 @@ __global__ void thermo_buoy_calcbuoyancytend_2nd(double * __restrict__ wt, doubl
   }
 }
 
+int cthermo_buoy::prepareDevice()
+{
+  return 0;
+}
+
 #ifdef USECUDA
 int cthermo_buoy::exec()
 {

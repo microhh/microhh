@@ -45,7 +45,7 @@ class cbuffer
     int exec();            ///< Add the tendencies created by the damping.
 
     // GPU functions and variables
-    int prepareGPU(); ///< Allocate and copy buffer profiles at/to GPU                             
+    int prepareDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
 
 
   private:

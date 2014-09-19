@@ -81,7 +81,7 @@ __global__ void grid_cyclic_y(double * __restrict__ data,
   }
 }
 
-int cgrid::prepareGPU()
+int cgrid::prepareDevice()
 {
   /* Align the interior of the grid (i.e. excluding ghost cells) with 
      the 128 byte memory blocks of the GPU's global memory */
@@ -114,7 +114,7 @@ int cgrid::prepareGPU()
   return 0;
 }
 
-int cgrid::clearGPU()
+int cgrid::clearDevice()
 {
   cudaFree(z_g    );
   cudaFree(zh_g   );

@@ -212,10 +212,11 @@ void cmodel::exec()
 {
 #ifdef USECUDA
   master->printMessage("Preparing the GPU\n");
-  grid  ->prepareGPU();
-  fields->prepareGPU();
-  pres  ->prepareGPU();
-  buffer->prepareGPU();
+  grid  ->prepareDevice();
+  fields->prepareDevice();
+  pres  ->prepareDevice();
+  buffer->prepareDevice();
+  thermo->prepareDevice();
 #endif
 
   master->printMessage("Starting time integration\n");
@@ -363,9 +364,9 @@ void cmodel::exec()
   } // end time loop
 
 #ifdef USECUDA
-  fields->backwardGPU();
-  fields->clearGPU();
-  grid->clearGPU();
+  fields->backwardDevice();
+  fields->clearDevice();
+  grid  ->clearDevice();
 #endif
 }
 

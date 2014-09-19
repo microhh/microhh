@@ -48,7 +48,7 @@ __global__ void buffer_buffer(double * __restrict__ at,   double * __restrict__ 
 }
 
 // TODO: (also for pressure), deallocate fields on GPU...
-int cbuffer::prepareGPU()
+int cbuffer::prepareDevice()
 {
   if(swbuffer == "1")
   {

@@ -24,7 +24,7 @@
 #include "grid.h"
 #include "master.h"
 
-int cfields::prepareGPU()
+int cfields::prepareDevice()
 {
   const int nmemsize   = grid->ncellsp*sizeof(double);
   const int nmemsize1d = grid->kcells*sizeof(double);
@@ -56,12 +56,12 @@ int cfields::prepareGPU()
   cudaMalloc(&rhorefh_g, nmemsize1d);
 
   // copy all the data to the GPU
-  forwardGPU();
+  forwardDevice();
 
   return 0;
 }
 
-int cfields::forwardGPU()
+int cfields::forwardDevice()
 {
   const int jcells     = grid->jcells;
   const int jkcells    = grid->jcells * grid->kcells;
@@ -92,12 +92,12 @@ int cfields::forwardGPU()
   cudaMemcpy(rhoref_g,  rhoref,  nmemsize1d, cudaMemcpyHostToDevice);
   cudaMemcpy(rhorefh_g, rhorefh, nmemsize1d, cudaMemcpyHostToDevice);
 
-  master->printMessage("Synchronized GPU with CPU (forward)\n");
+  //master->printMessage("Synchronized GPU with CPU (forward)\n");
 
   return 0;
 }
 
-int cfields::backwardGPU()
+int cfields::backwardDevice()
 {
   const int jcells     = grid->jcells;
   const int jkcells    = grid->jcells * grid->kcells;
@@ -128,12 +128,12 @@ int cfields::backwardGPU()
   cudaMemcpy(rhoref,  rhoref_g,  nmemsize1d, cudaMemcpyDeviceToHost);
   cudaMemcpy(rhorefh, rhorefh_g, nmemsize1d, cudaMemcpyDeviceToHost);
 
-  master->printMessage("Synchronized CPU with GPU (backward)\n");
+  //master->printMessage("Synchronized CPU with GPU (backward)\n");
 
   return 0;
 }
 
-int cfields::clearGPU()
+int cfields::clearDevice()
 {
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {

@@ -383,7 +383,7 @@ __global__ void advec_4_calccfl(double * __restrict__ u, double * __restrict__ v
 #ifdef USECUDA
 void cadvec_4::exec()
 {
-  fields->forwardGPU();
+  fields->forwardDevice();
 
   const int blocki = 128;
   const int blockj = 2;
@@ -426,7 +426,7 @@ void cadvec_4::exec()
   if(error != cudaSuccess)
     printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
 
-  fields->backwardGPU();
+  fields->backwardDevice();
 }
 #endif
 
@@ -445,7 +445,7 @@ double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, doubl
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
-  fields->forwardGPU();
+  fields->forwardDevice();
 
   advec_4_calccfl<<<gridGPU, blockGPU>>>(fields->u->data_g, fields->v->data_g, fields->w->data_g, 
                                          (*fields->a["tmp1"]).data_g, grid->dzi_g, dxi, dyi,
@@ -454,7 +454,7 @@ double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, doubl
                                          grid->iend,   grid->jend, grid->kend,
                                          grid->icells, grid->jcells, grid->kcells);
 
-  fields->backwardGPU();
+  fields->backwardDevice();
 
   thrust::device_ptr<double> cfl_g = thrust::device_pointer_cast(fields->a["tmp1"]->data_g);
   cfl = thrust::reduce(cfl_g, cfl_g + grid->ncells, -1.0, thrust::maximum<double>()); 

@@ -84,7 +84,7 @@ cpres* cpres::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
   }
 }
 
-int cpres::prepareGPU()
+int cpres::prepareDevice()
 {
   return 0;
 }
