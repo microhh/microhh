@@ -65,7 +65,6 @@ int cthermo_buoy::exec()
   
   const int offs = grid->memoffset;
 
-
   if(grid->swspatialorder== "2")
     thermo_buoy_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["b"]->data_g[offs], 
                                                             grid->istart, grid->jstart, grid->kstart+1,

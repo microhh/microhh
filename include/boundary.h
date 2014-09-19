@@ -65,6 +65,9 @@ class cboundary
     virtual void execcross(); ///< Execute cross sections of surface
     virtual int execstats(mask *); ///< Execute statistics of surface
 
+    // GPU functions and variables
+    virtual int prepareDevice(); 
+
   protected:
     cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.

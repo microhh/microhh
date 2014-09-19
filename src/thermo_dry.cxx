@@ -354,13 +354,16 @@ int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
   return 0;
 }
 
+#ifndef USECUDA
 int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
                   fields->s["th"]->data, fields->s["th"]->databot, thref, threfh);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot, threfh);
+
   return 0;
 }
+#endif
 
 int cthermo_dry::getprogvars(std::vector<std::string> *list)
 {
@@ -419,6 +422,7 @@ int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
+
       bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
       b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
     }

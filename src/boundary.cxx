@@ -50,7 +50,6 @@ cboundary::cboundary(cmodel *modelin, cinput *inputin)
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
-
 }
 
 cboundary::~cboundary()
@@ -593,6 +592,11 @@ int cboundary::setgctopw_4th(double * restrict w)
       w[ijk+kk2] = -w[ijk-kk2];
     }
 
+  return 0;
+}
+
+int cboundary::prepareDevice()
+{
   return 0;
 }
 

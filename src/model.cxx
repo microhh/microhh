@@ -211,12 +211,13 @@ void cmodel::save()
 void cmodel::exec()
 {
 #ifdef USECUDA
-  master->printMessage("Preparing the GPU\n");
-  grid  ->prepareDevice();
-  fields->prepareDevice();
-  pres  ->prepareDevice();
-  buffer->prepareDevice();
-  thermo->prepareDevice();
+  master  ->printMessage("Preparing the GPU\n");
+  grid    ->prepareDevice();
+  fields  ->prepareDevice();
+  pres    ->prepareDevice();
+  buffer  ->prepareDevice();
+  thermo  ->prepareDevice();
+  boundary->prepareDevice();
 #endif
 
   master->printMessage("Starting time integration\n");

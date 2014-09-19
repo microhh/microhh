@@ -56,6 +56,14 @@ class cboundary_surface : public cboundary
     double z0m;
     double z0h;
 
+    // GPU functions and variables
+    int prepareDevice();
+    int forwardDevice();  // TMP BVS
+    int backwardDevice(); // TMP BVS 
+
+    double *obuk_g;
+    double *ustar_g;
+
   private:
     // cross sections
     std::vector<std::string> crosslist;        // List with all crosses from ini file

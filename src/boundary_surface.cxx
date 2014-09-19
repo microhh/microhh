@@ -272,8 +272,7 @@ void cboundary_surface::setvalues()
    }
 }
 
-// surface model
-//#ifndef USECUDA
+#ifndef USECUDA
 int cboundary_surface::bcvalues()
 {
   // start with retrieving the stability information
@@ -289,7 +288,7 @@ int cboundary_surface::bcvalues()
     // store the buoyancy in tmp1
     model->thermo->getbuoyancysurf(fields->sd["tmp1"]);
     stability(ustar, obuk, fields->sd["tmp1"]->datafluxbot,
-              fields->u->data, fields->v->data, fields->sd["tmp1"]->data,
+              fields->u->data,    fields->v->data,    fields->sd["tmp1"]->data,
               fields->u->databot, fields->v->databot, fields->sd["tmp1"]->databot,
               fields->sd["tmp2"]->data, grid->z);
   }
@@ -309,7 +308,7 @@ int cboundary_surface::bcvalues()
 
   return 0;
 }
-//#endif
+#endif
 
 int cboundary_surface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
                                  double * restrict u    , double * restrict v   , double * restrict b       ,
