@@ -119,6 +119,148 @@ __device__ double boundary_surface_fh(double zsl, double z0h, double L)
   return constants::kappa / (log(zsl/z0h) - boundary_surface_psih(zsl/L) + boundary_surface_psih(z0h/L)); 
 }
 
+__device__ double boundary_surface_calcobuk_noslip_flux(double L, double du, double bfluxbot, double zsl, double z0m)
+{
+  double L0;
+  double Lstart, Lend;
+  double fx, fxdif;
+
+  int m = 0;
+  int nlim = 10;
+
+  const double Lmax = 1.e20;
+
+  // avoid bfluxbot to be zero
+  if(bfluxbot >= 0.)
+    bfluxbot = fmax(constants::dsmall, bfluxbot);
+  else
+    bfluxbot = fmin(-constants::dsmall, bfluxbot);
+
+  // allow for one restart
+  while(m <= 1)
+  {
+    // if L and bfluxbot are of the same sign, or the last calculation did not converge,
+    // the stability has changed and the procedure needs to be reset
+    if(L*bfluxbot >= 0.)
+    {
+      nlim = 200;
+      if(bfluxbot >= 0.)
+        L = -constants::dsmall;
+      else
+        L = constants::dsmall;
+    }
+
+    if(bfluxbot >= 0.)
+      L0 = -constants::dhuge;
+    else
+      L0 = constants::dhuge;
+
+    int n = 0;
+
+    // exit on convergence or on iteration count
+    while(fabs((L - L0)/L0) > 0.001 && n < nlim && fabs(L) < Lmax)
+    {
+      L0     = L;
+      // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
+      fx     = zsl/L + constants::kappa*zsl*bfluxbot / pow(du * boundary_surface_fm(zsl, z0m, L), 3);
+      Lstart = L - 0.001*L;
+      Lend   = L + 0.001*L;
+      fxdif  = ( (zsl/Lend   + constants::kappa*zsl*bfluxbot / pow(du * boundary_surface_fm(zsl, z0m, Lend),   3))
+               - (zsl/Lstart + constants::kappa*zsl*bfluxbot / pow(du * boundary_surface_fm(zsl, z0m, Lstart), 3)) )
+             / (Lend - Lstart);
+      L      = L - fx/fxdif;
+      ++n;
+    }
+
+    // convergence has been reached
+    if(n < nlim && fabs(L) < Lmax)
+      break;
+    // convergence has not been reached, procedure restarted once
+    else
+    {
+      L = constants::dsmall;
+      ++m;
+      nlim = 200;
+    }
+  }
+
+  if(m > 1)
+    printf("ERROR convergence has not been reached in Obukhov length calculation\n");
+
+  return L;
+}
+
+__device__ double boundary_surface_calcobuk_noslip_dirichlet(double L, double du, double db, double zsl, double z0m, double z0h)
+{
+  double L0;
+  double Lstart, Lend;
+  double fx, fxdif;
+
+  int m = 0;
+  int nlim = 10;
+
+  const double Lmax = 1.e20;
+
+  // avoid db to be zero
+  if(db >= 0.)
+    db = fmax(constants::dsmall, db);
+  else
+    db = fmin(-constants::dsmall, db);
+
+  // allow for one restart
+  while(m <= 1)
+  {
+    // if L and db are of different sign, or the last calculation did not converge,
+    // the stability has changed and the procedure needs to be reset
+    if(L*db <= 0.)
+    {
+      nlim = 200;
+      if(db >= 0.)
+        L = constants::dsmall;
+      else
+        L = -constants::dsmall;
+    }
+
+    if(db >= 0.)
+      L0 = constants::dhuge;
+    else
+      L0 = -constants::dhuge;
+
+    int n = 0;
+
+    // exit on convergence or on iteration count
+    while(fabs((L - L0)/L0) > 0.001 && n < nlim && fabs(L) < Lmax)
+    {
+      L0     = L;
+      // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
+      fx     = zsl/L - constants::kappa*zsl*db*boundary_surface_fh(zsl, z0h, L) / pow(du * boundary_surface_fm(zsl, z0m, L), 2);
+      Lstart = L - 0.001*L;
+      Lend   = L + 0.001*L;
+      fxdif  = ( (zsl/Lend   - constants::kappa*zsl*db*boundary_surface_fh(zsl, z0h, Lend)   / pow(du * boundary_surface_fm(zsl, z0m, Lend),   2))
+               - (zsl/Lstart - constants::kappa*zsl*db*boundary_surface_fh(zsl, z0h, Lstart) / pow(du * boundary_surface_fm(zsl, z0m, Lstart), 2)) )
+             / (Lend - Lstart);
+      L      = L - fx/fxdif;
+      ++n;
+    }
+
+    // convergence has been reached
+    if(n < nlim && fabs(L) < Lmax)
+      break;
+    // convergence has not been reached, procedure restarted once
+    else
+    {
+      L = constants::dsmall;
+      ++m;
+      nlim = 200;
+    }
+  }
+
+  if(m > 1)
+    printf("ERROR convergence has not been reached in Obukhov length calculation\n");
+
+  return L;
+}
+
 /* Calculate absolute wind speed */
 __global__ void boundary_surface_dutot(double * __restrict__ dutot, 
                                        double * __restrict__ u,    double * __restrict__ v,
@@ -145,7 +287,7 @@ __global__ void boundary_surface_dutot(double * __restrict__ dutot,
 //template <int mbcbot, int thermobc>  // BvS for now normal parameter. Make template again...
 __global__ void boundary_surface_stability(double * __restrict__ ustar, double * __restrict__ obuk,
                                            double * __restrict__ b, double * __restrict__ bbot, double * __restrict__ bfluxbot,
-                                           double * __restrict__ dutot, double * __restrict__ z, double z0m, double kappa,
+                                           double * __restrict__ dutot, double z0m, double z0h, double zsl,
                                            int icells, int jcells, int kstart, int jj, int kk, int mbcbot, int thermobc)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x; 
@@ -154,29 +296,34 @@ __global__ void boundary_surface_stability(double * __restrict__ ustar, double *
   if(i < icells && j < jcells)
   {
     int ij  = i + j*jj;
-    //int ijk = i + j*jj + kstart*kk;
+    int ijk = i + j*jj + kstart*kk;
 
     // case 1: fixed buoyancy flux and fixed ustar
     if(mbcbot == BC_USTAR && thermobc == BC_FLUX)
     {
       obuk[ij] = -pow(ustar[ij], 3.) / (constants::kappa*bfluxbot[ij]);
     }
-    //// case 2: fixed buoyancy surface value and free ustar
-    //else if(mbcbot == BC_DIRICHLET && thermobc == BC_FLUX)
-    //{
-
-    //}
-    //else if(mbcbot == BC_DIRICHLET && thermobc == BC_DIRICHLET)
-    //{
-
-    //}
+    // case 2: fixed buoyancy flux and free ustar
+    else if(mbcbot == BC_DIRICHLET && thermobc == BC_FLUX)
+    {
+      obuk [ij] = boundary_surface_calcobuk_noslip_flux(obuk[ij], dutot[ij], bfluxbot[ij], zsl, z0m);
+      ustar[ij] = dutot[ij] * boundary_surface_fm(zsl, z0m, obuk[ij]);
+    }
+    // case 3: fixed buoyancy surface value and free ustar
+    else if(mbcbot == BC_DIRICHLET && thermobc == BC_DIRICHLET)
+    {
+      double db = b[ijk] - bbot[ij];
+      obuk [ij] = boundary_surface_calcobuk_noslip_dirichlet(obuk[ij], dutot[ij], db, zsl, z0m, z0h);
+      ustar[ij] = dutot[ij] * boundary_surface_fm(zsl, z0m, obuk[ij]);
+    }
   }
 }
 
 __global__ void boundary_surface_surfm_flux(double * __restrict__ ufluxbot, double * __restrict__ vfluxbot,
                                             double * __restrict__ u,        double * __restrict__ v,
                                             double * __restrict__ ubot,     double * __restrict__ vbot, 
-                                            double * __restrict__ ustar,
+                                            double * __restrict__ ustar,    double * __restrict__ obuk, 
+                                            double zsl, double z0m,
                                             int istart, int jstart, int kstart,
                                             int iend,   int jend, int jj, int kk, int bcbot)
 {
@@ -192,8 +339,8 @@ __global__ void boundary_surface_surfm_flux(double * __restrict__ ufluxbot, doub
     if(bcbot == BC_DIRICHLET)
     {
       // interpolate the whole stability function rather than ustar or obuk
-      //ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
-      //vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
+      ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*boundary_surface_fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*boundary_surface_fm(zsl, z0m, obuk[ij]));
+      vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*boundary_surface_fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*boundary_surface_fm(zsl, z0m, obuk[ij]));
     }
     else if(bcbot == BC_USTAR)
     {
@@ -252,8 +399,8 @@ __global__ void boundary_surface_surfs(double * __restrict__ varfluxbot, double 
 
     if(bcbot == BC_DIRICHLET)
     {
-      //varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
-      //vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
+      varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*boundary_surface_fh(zsl, z0h, obuk[ij]);
+      vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
     }
     else if(bcbot == BC_FLUX)
     {
@@ -352,13 +499,14 @@ int cboundary_surface::bcvalues()
     // Calculate ustar and Obukhov length, including ghost cells
     boundary_surface_stability<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
                                                   &fields->sd["tmp1"]->data_g[offs], &fields->sd["tmp1"]->databot_g[offs], &fields->sd["tmp1"]->datafluxbot_g[offs],
-                                                  &fields->sd["tmp2"]->data_g[offs], grid->z_g, z0m, constants::kappa,
+                                                  &fields->sd["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
                                                   grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
 
     // Calculate surface momentum fluxes, excluding ghost cells
     boundary_surface_surfm_flux<<<gridGPU, blockGPU>>>(&fields->u->datafluxbot_g[offs], &fields->v->datafluxbot_g[offs],
                                                        &fields->u->data_g[offs],        &fields->v->data_g[offs],
-                                                       &fields->u->databot_g[offs],     &fields->v->databot_g[offs], &ustar_g[offs],
+                                                       &fields->u->databot_g[offs],     &fields->v->databot_g[offs], 
+                                                       &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0m,
                                                        grid->istart, grid->jstart, grid->kstart,
                                                        grid->iend,   grid->jend,   grid->icellsp, grid->ijcellsp, mbcbot);
 
@@ -390,29 +538,3 @@ int cboundary_surface::bcvalues()
   return 0;
 }
 #endif
-
-      //fields->backwardDevice();
-      //backwardDevice();
-
-      //int ij;
-      //for(int j=0; j<grid->jcells; ++j)
-      //{
-      //  for(int i=0; i<grid->icells; ++i)
-      //  {
-      //    ij = i + j*grid->icells;
-      //    printf("% 9.4e ",fields->u->datafluxbot[ij]);
-      //  }
-      //  printf("\n");
-      //}
-      //printf("\n");
-      //for(int j=0; j<grid->jcells; ++j)
-      //{
-      //  for(int i=0; i<grid->icells; ++i)
-      //  {
-      //    ij = i + j*grid->icells;
-      //    printf("% 9.4e ",fields->v->datafluxbot[ij]);
-      //  }
-      //  printf("\n");
-      //}
-      //printf("\n");
-      //exit(1);
