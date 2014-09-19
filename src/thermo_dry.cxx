@@ -53,7 +53,6 @@ cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, in
   exnerh = 0;
 
   int nerror = 0;
-  nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
   nerror += fields->initpfld("th", "Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
@@ -96,6 +95,13 @@ void cthermo_dry::create(cinput *inputin)
   if(model->swbasestate == "boussinesq")
   {
     if(inputin->getItem(&thref0, "thermo", "thref0", ""))
+      throw 1;
+  }
+
+  // For dry thermo, only anelastic needs surface pressure
+  if(model->swbasestate == "anelastic")
+  {
+    if(inputin->getItem(&pbot, "thermo", "pbot", ""))
       throw 1;
   }
 

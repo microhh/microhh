@@ -9,7 +9,7 @@ dthetadz = 0.003
 
 # set the height
 z = numpy.linspace(0.5*dz, zsize-0.5*dz, kmax)
-s = numpy.zeros(numpy.size(z))
+th = numpy.zeros(numpy.size(z))
 
 for k in range(kmax):
   th[k] = dthetadz*z[k]
