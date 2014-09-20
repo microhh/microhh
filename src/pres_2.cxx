@@ -51,7 +51,7 @@ cpres_2::~cpres_2()
 }
 
 #ifndef USECUDA
-int cpres_2::exec(double dt)
+void cpres_2::exec(double dt)
 {
   // create the input for the pressure solver
   pres_in(fields->sd["p"]->data,
@@ -68,8 +68,6 @@ int cpres_2::exec(double dt)
   // get the pressure tendencies from the pressure field
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
            fields->sd["p"]->data, grid->dzhi);
-
-  return 0;
 }
 #endif
 
@@ -103,7 +101,7 @@ void cpres_2::init()
   work2d = new double[imax*jmax];
 }
 
-int cpres_2::setvalues()
+void cpres_2::setvalues()
 {
   int imax, jmax, kmax;
   int itot, jtot, kgc;
@@ -139,11 +137,9 @@ int cpres_2::setvalues()
     a[k] = grid->dz[k+kgc] * fields->rhorefh[k+kgc  ]*grid->dzhi[k+kgc  ];
     c[k] = grid->dz[k+kgc] * fields->rhorefh[k+kgc+1]*grid->dzhi[k+kgc+1];
   }
-
-  return 0;
 }
 
-int cpres_2::pres_in(double * restrict p, 
+void cpres_2::pres_in(double * restrict p, 
                      double * restrict u , double * restrict v , double * restrict w ,
                      double * restrict ut, double * restrict vt, double * restrict wt,
                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
@@ -172,21 +168,6 @@ int cpres_2::pres_in(double * restrict p,
   grid->boundary_cyclic(vt);
   grid->boundary_cyclic(wt);
 
-  /*
-  // write pressure as a 3d array without ghost cells
-  for(int k=0; k<grid->kmax; k++)
-    for(int j=0; j<grid->jmax; j++)
-#pragma ivdep
-      for(int i=0; i<grid->imax; i++)
-      {
-        ijkp = i + j*jjp + k*kkp;
-        ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-
-        p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
-                + ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
-                + ( (wt[ijk+kk] + w[ijk+kk] / dt) - (wt[ijk] + w[ijk] / dt) ) * dzi[k+kgc];
-      }
-      */
 
   // write pressure as a 3d array without ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -201,14 +182,12 @@ int cpres_2::pres_in(double * restrict p,
                 + ( rhorefh[k+kgc+1] * (wt[ijk+kk] + w[ijk+kk] / dt) 
                   - rhorefh[k+kgc  ] * (wt[ijk   ] + w[ijk   ] / dt) ) * dzi[k+kgc];
       }
-  return 0;
 }
 
-int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b,
-                        double * restrict dz, double * restrict rhoref,
-                        double * restrict fftini, double * restrict fftouti, 
-                        double * restrict fftinj, double * restrict fftoutj)
-
+void cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b,
+                         double * restrict dz, double * restrict rhoref,
+                         double * restrict fftini, double * restrict fftouti, 
+                         double * restrict fftinj, double * restrict fftoutj)
 {
   int i,j,k,jj,kk,ijk;
   int imax,jmax,kmax;
@@ -309,12 +288,10 @@ int cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
 
   // set the cyclic boundary conditions
   grid->boundary_cyclic(p);
-
-  return 0;
 }
 
-int cpres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                      double * restrict p , double * restrict dzhi)
+void cpres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+                       double * restrict p , double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -336,13 +313,11 @@ int cpres_2::pres_out(double * restrict ut, double * restrict vt, double * restr
         vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
         wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
       }
-
-  return 0;
 }
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
-int cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c, 
-                double * restrict p, double * restrict work2d, double * restrict work3d)
+void cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c, 
+                   double * restrict p, double * restrict work2d, double * restrict work3d)
                 
 {
   int i,j,k,jj,kk,ijk,ij;
@@ -408,8 +383,6 @@ int cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c,
         ijk = i + j*jj + k*kk;
         p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
       }
-
-  return 0;
 }
 
 #ifndef USECUDA

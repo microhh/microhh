@@ -43,7 +43,6 @@ class cthermo_buoy_slope : public cthermo
     ~cthermo_buoy_slope();                  ///< Destructor of the dry thermodynamics class.
 
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
-    int execcross();
 
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);
@@ -59,9 +58,6 @@ class cthermo_buoy_slope : public cthermo
     int calcbuoyancytendu_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
     int calcbuoyancytendw_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
     int calcbuoyancytendb_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-
-    inline double interp4(const double, const double, 
-                          const double, const double); ///< 4th order interpolation function.
 
     double alpha; ///< Slope angle in radians.
     double n2;    ///< Background stratification.

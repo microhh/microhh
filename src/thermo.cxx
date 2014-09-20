@@ -52,9 +52,8 @@ void cthermo::init()
 {
 }
 
-int cthermo::create(cinput *inputin)
+void cthermo::create(cinput *inputin)
 {
-  return 0;
 }
 
 int cthermo::exec()
@@ -67,9 +66,8 @@ int cthermo::execstats(mask *f)
   return 0;
 }
 
-int cthermo::execcross()
+void cthermo::execcross()
 {
-  return 0;
 }
 
 int cthermo::checkthermofield(std::string name)

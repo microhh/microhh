@@ -27,17 +27,19 @@
 #include "fields.h"
 #include "thermo_dry.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
 #include "stats.h"
 #include "diff_les2s.h"
 #include "master.h"
 #include "cross.h"
 
-#define grav 9.81
-#define Rd 287.04
-#define cp 1005.
-
 #define NO_OFFSET 0.
+
+using fd::o2::interp2;
+using fd::o4::interp4;
+using namespace constants;
 
 cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
 {
@@ -51,7 +53,6 @@ cthermo_dry::cthermo_dry(cmodel *modelin, cinput *inputin) : cthermo(modelin, in
   exnerh = 0;
 
   int nerror = 0;
-  nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
   nerror += fields->initpfld("th", "Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
@@ -87,21 +88,29 @@ void cthermo_dry::init()
   exnerh = new double[grid->kcells];
 }
 
-int cthermo_dry::create(cinput *inputin)
+void cthermo_dry::create(cinput *inputin)
 {
   // Only in case of Boussinesq, read in reference potential temperature
   int nerror = 0;
   if(model->swbasestate == "boussinesq")
-    nerror += inputin->getItem(&thref0, "thermo", "thref0", "");
-  if(nerror)
-    throw 1;
+  {
+    if(inputin->getItem(&thref0, "thermo", "thref0", ""))
+      throw 1;
+  }
+
+  // For dry thermo, only anelastic needs surface pressure
+  if(model->swbasestate == "anelastic")
+  {
+    if(inputin->getItem(&pbot, "thermo", "pbot", ""))
+      throw 1;
+  }
 
   // Setup base state for anelastic solver
   if(model->swbasestate == "anelastic")
   {
     // take the initial profile as the reference
     if(inputin->getProf(&thref[grid->kstart], "th", grid->kmax))
-      return 1;
+      throw 1;
 
     int kstart = grid->kstart;
     int kend   = grid->kend;
@@ -210,8 +219,6 @@ int cthermo_dry::create(cinput *inputin)
 
   // Sort crosslist to group ql and b variables
   std::sort(crosslist.begin(),crosslist.end());
-
-  return 0;
 }
 
 int cthermo_dry::exec()
@@ -290,11 +297,9 @@ int cthermo_dry::execstats(mask *m)
 
   // calculate the sorted buoyancy profile
   stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
-
-  return 0;
 }
 
-int cthermo_dry::execcross()
+void cthermo_dry::execcross()
 {
   int nerror = 0;
 
@@ -320,9 +325,10 @@ int cthermo_dry::execcross()
       else if(*it == "bfluxbot")
         nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
     }
-  }  
+  }
 
-  return nerror; 
+  if(nerror)
+    throw 1;
 }
 
 int cthermo_dry::checkthermofield(std::string name)
@@ -444,6 +450,8 @@ int cthermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restri
 
 int cthermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
 {
+  using namespace fd::o2;
+
   int ijk,jj,kk;
 
   jj = grid->icells;
@@ -481,14 +489,3 @@ int cthermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th
 
   return 0;
 }
-
-inline double cthermo_dry::interp2(const double a, const double b)
-{
-  return 0.5*(a + b);
-}
-
-inline double cthermo_dry::interp4(const double a, const double b, const double c, const double d)
-{
-  return (-a + 9.*b + 9.*c - d) / 16.;
-}
-

@@ -28,6 +28,7 @@
 #include "fields.h"
 #include "timeloop.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
 
 ctimeloop::ctimeloop(cmodel *modelin, cinput *inputin)
@@ -53,12 +54,12 @@ ctimeloop::ctimeloop(cmodel *modelin, cinput *inputin)
   n += inputin->getItem(&savetime, "time", "savetime", "");
 
   // optional parameters
-  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", "", true );
-  n += inputin->getItem(&dtmax       , "time", "dtmax"       , "", dbig );
-  n += inputin->getItem(&dt          , "time", "dt"          , "", dtmax);
-  n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 3    );
-  n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 20   );
-  n += inputin->getItem(&iotimeprec  , "time", "iotimeprec"  , "", 0    );
+  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", "", true            );
+  n += inputin->getItem(&dtmax       , "time", "dtmax"       , "", constants::dbig );
+  n += inputin->getItem(&dt          , "time", "dt"          , "", dtmax           );
+  n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 3               );
+  n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 20              );
+  n += inputin->getItem(&iotimeprec  , "time", "iotimeprec"  , "", 0               );
 
   if(master->mode == "post")
     n += inputin->getItem(&postproctime, "time", "postproctime", "");
@@ -338,22 +339,22 @@ bool ctimeloop::insubstep()
     return false;
 }
 
-int ctimeloop::save(int starttime)
+void ctimeloop::save(int starttime)
 {
   if(master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
 
-    std::printf("Saving \"%s\" ... ", filename);
+    master->printMessage("Saving \"%s\" ... ", filename);
 
     FILE *pFile;
     pFile = fopen(filename, "wb");
 
     if(pFile == NULL)
     {
-      std::printf("ERROR \"%s\" cannot be written", filename);
-      return 1;
+      master->printError("\"%s\" cannot be written", filename);
+      throw 1;
     }
 
     fwrite(&itime    , sizeof(long), 1, pFile);
@@ -361,13 +362,11 @@ int ctimeloop::save(int starttime)
     fwrite(&iteration, sizeof(long), 1, pFile);
 
     fclose(pFile);
-    std::printf("OK\n");
+    master->printMessage("OK\n");
   }
-
-  return 0;
 }
 
-int ctimeloop::load(int starttime)
+void ctimeloop::load(int starttime)
 {
   int nerror = 0;
 
@@ -376,14 +375,14 @@ int ctimeloop::load(int starttime)
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
 
-    std::printf("Loading \"%s\" ... ", filename);
+    master->printMessage("Loading \"%s\" ... ", filename);
 
     FILE *pFile;
     pFile = fopen(filename, "rb");
 
     if(pFile == NULL)
     {
-      std::printf("ERROR \"%s\" does not exist\n", filename);
+      master->printError("\"%s\" does not exist\n", filename);
       ++nerror;
     }
     else
@@ -394,12 +393,12 @@ int ctimeloop::load(int starttime)
 
       fclose(pFile);
     }
-    std::printf("OK\n");
+    master->printMessage("OK\n");
   }
 
   master->broadcast(&nerror, 1);
   if(nerror)
-    return 1;
+    throw 1;
 
   master->broadcast(&itime    , 1);
   master->broadcast(&idt      , 1);
@@ -408,8 +407,6 @@ int ctimeloop::load(int starttime)
   // calculate the double precision time from the integer time
   time = (double)itime / ifactor;
   dt   = (double)idt   / ifactor;
-
-  return 0;
 }
 
 int ctimeloop::postprocstep()

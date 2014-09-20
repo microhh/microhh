@@ -35,31 +35,31 @@ class cpres_4 : public cpres
     ~cpres_4();
 
     void init();
-    int setvalues();
-    int exec(double);
+    void setvalues();
+
+    void exec(double);
     double check();
 
   private:
     double *bmati, *bmatj;
-    double *m0,*m1,*m2,*m3,*m4,*m5,*m6,*m7,*m8;
-    double *work2d;
+    double *m1,*m2,*m3,*m4,*m5,*m6,*m7;
 
-    // CvH remove later
-    double *m0temp,*m1temp,*m2temp,*m3temp,*m4temp,*m5temp,*m6temp,*m7temp,*m8temp,*ptemp;
-
-    int pres_in(double *, 
-                double *, double *, double *,
-                double *, double *, double *,
-                double *, double);
-    int pres_solve(double *, double *, double *, double *,
-                   double *, double *, 
-                   double *, double *);
-    int pres_out(double *, double *, double *,
-                 double *, double *);
+    void pres_in(double *, 
+                 double *, double *, double *,
+                 double *, double *, double *,
+                 double *, double);
+    void pres_solve(double *, double *, double *,
+                    double *, double *, double *, double *,
+                    double *, double *, double *,
+                    double *, double *, double *, double *,
+                    double *, double *, double *, double *,
+                    double *, double *);
+    void pres_out(double *, double *, double *,
+                  double *, double *);
     double calcdivergence(double *, double *, double *, double *);
 
     // functions
-    int hdma(double *, double *, double *, double *,
-             double *, double *, double *, double *);
+    void hdma(double *, double *, double *, double *,
+              double *, double *, double *, double *);
 };
 #endif

@@ -31,7 +31,7 @@ class cdiff_2 : public cdiff
     cdiff_2(cmodel *, cinput *);
     ~cdiff_2();
 
-    int setvalues();
+    void setvalues();
     int exec();
 
     unsigned long gettimelim(unsigned long, double);

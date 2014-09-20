@@ -24,6 +24,9 @@
 #include "fields.h"
 #include "diff_4.h"
 #include "defines.h"
+#include "fd.h"
+
+using namespace fd::o4;
 
 __global__ void diff_4_diffc(double * __restrict__ const at, const double * __restrict__ const a,
                              const double * __restrict__ const dzi4, const double * __restrict__ const dzhi4,

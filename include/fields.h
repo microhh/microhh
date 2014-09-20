@@ -44,7 +44,8 @@ class cfields
     ~cfields();
 
     void init();
-    int create(cinput *);
+    void create(cinput *);
+
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
     int execstats(mask *);
@@ -53,21 +54,16 @@ class cfields
     int initpfld(std::string, std::string, std::string);
     int initdfld(std::string, std::string, std::string);
     
-    int save(int);
-    int load(int);
+    void save(int);
+    void load(int);
 
     double checkmom ();
     double checktke ();
     double checkmass();
 
     int setcalcprofs(bool);
-    int execcross();
 
-    // GPU functions
-    int prepareGPU();
-    int forwardGPU();
-    int backwardGPU();
-    int clearGPU();
+    void execcross();
 
     // 3d fields for momentum
     cfield3d *u;
@@ -98,6 +94,16 @@ class cfields
     // TODO remove these to and bring them to diffusion model
     double visc;
 
+    // GPU functions
+    int prepareGPU();
+    int forwardGPU();
+    int backwardGPU();
+    int clearGPU();
+
+    // GPU variables
+    double *rhoref_g;
+    double *rhorefh_g;
+    
   private:
     // variables
     cmodel  *model;
@@ -137,7 +143,6 @@ class cfields
     int randomnize(cinput *, std::string, double *);
     int addvortexpair(cinput* inputin);
     double calcmass(double *, double *);
-    inline double interp2(const double, const double);
 
     // statistics
     double *umodel;

@@ -44,10 +44,11 @@ class cthermo_dry : public cthermo
     ~cthermo_dry();                  ///< Destructor of the dry thermodynamics class.
 
     void init();
-    int create(cinput *);
+    void create(cinput *);
     int exec();                ///< Add the tendencies belonging to the buoyancy.
     int execstats(mask *);
-    int execcross();
+
+    void execcross();
 
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);
@@ -69,11 +70,6 @@ class cthermo_dry : public cthermo
     int calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
     int calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
     int calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-
-    inline double interp2(const double, const double); ///< 2nd order interpolation function.
-    inline double interp4(const double, const double, 
-                          const double, const double); ///< 4th order interpolation function.
-
 
     cstats *stats;
 

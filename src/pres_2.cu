@@ -34,9 +34,10 @@
 #include "tools.h"
 
 __global__ void pres_2_presin(double * __restrict__ p,
-                              double * __restrict__ u ,  double * __restrict__ v , double * __restrict__ w ,
-                              double * __restrict__ ut,  double * __restrict__ vt, double * __restrict__ wt,
-                              double * __restrict__ dzi, double dxi, double dyi, double dti,
+                              double * __restrict__ u ,  double * __restrict__ v ,     double * __restrict__ w ,
+                              double * __restrict__ ut,  double * __restrict__ vt,     double * __restrict__ wt,
+                              double * __restrict__ dzi, double * __restrict__ rhoref, double * __restrict__ rhorefh,
+                              double dxi, double dyi, double dti,
                               const int jj, const int kk,
                               const int jjp, const int kkp,
                               const int imax, const int jmax, const int kmax,
@@ -52,9 +53,10 @@ __global__ void pres_2_presin(double * __restrict__ p,
     const int ijkp = i + j*jjp + k*kkp;
     const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
 
-    p[ijkp] = ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
-            + ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
-            + ( (wt[ijk+kk] + w[ijk+kk] * dti) - (wt[ijk] + w[ijk] * dti) ) * dzi[k+kgc];
+    p[ijkp] = rhoref [k+kgc]   * ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
+            + rhoref [k+kgc]   * ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
+          + ( rhorefh[k+kgc+1] * (  wt[ijk+kk] + w[ijk+kk] * dti) 
+            - rhorefh[k+kgc  ] * (  wt[ijk   ] + w[ijk   ] * dti) ) * dzi[k+kgc];
   }
 }
 
@@ -105,7 +107,8 @@ __global__ void pres_2_solveout(double * __restrict__ p, double * __restrict__ w
 __global__ void pres_2_solvein(double * __restrict__ p,
                                double * __restrict__ work3d, double * __restrict__ b,
                                double * __restrict__ a, double * __restrict__ c,
-                               double * __restrict__ dz, double * __restrict__ bmati, double * __restrict__ bmatj,
+                               double * __restrict__ dz, double * __restrict__ rhoref, 
+                               double * __restrict__ bmati, double * __restrict__ bmatj,
                                const int jj, const int kk, 
                                const int imax, const int jmax, const int kmax,
                                const int kstart)
@@ -124,7 +127,7 @@ __global__ void pres_2_solvein(double * __restrict__ p,
     // b[ijk] = dz[k+kgc]*dz[k+kgc] * (bmati[iindex]+bmatj[jindex]) - (a[k]+c[k]);
     //  if(iindex == 0 && jindex == 0)
 
-    b[ijk] = dz[k+kstart]*dz[k+kstart] * (bmati[i]+bmatj[j]) - (a[k]+c[k]);
+    b[ijk] = dz[k+kstart]*dz[k+kstart] * rhoref[k+kstart]*(bmati[i]+bmatj[j]) - (a[k]+c[k]);
     p[ijk] = dz[k+kstart]*dz[k+kstart] * p[ijk];
 
     if(k == 0)
@@ -242,10 +245,12 @@ __global__ void pres_2_complex_double_y(cufftDoubleComplex * __restrict__ cdata,
     data[ij] = data[ij] * in;
 } 
 
-__global__ void pres_2_calcdiv(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                               double * __restrict__ div, double * __restrict__ dzi, double dxi, double dyi, 
-                               int jj, int kk, int istart, int jstart, int kstart,
-                               int iend, int jend, int kend)
+__global__ void pres_2_calcdivergence(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
+                                      double * __restrict__ div, double * __restrict__ dzi, 
+                                      double * __restrict__ rhoref, double * __restrict__ rhorefh,
+                                      double dxi, double dyi, 
+                                      int jj, int kk, int istart, int jstart, int kstart,
+                                      int iend, int jend, int kend)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
   int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -255,11 +260,10 @@ __global__ void pres_2_calcdiv(double * __restrict__ u, double * __restrict__ v,
   if(i < iend && j < jend && k < kend)
   {
     int ijk = i + j*jj + k*kk;
-    div[ijk] = (u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi + (w[ijk+kk]-w[ijk])*dzi[k];
+    div[ijk] = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi) 
+            + (rhorefh[k+1]*w[ijk+kk]-rhorefh[k]*w[ijk])*dzi[k];
   }
 }
-
-
 
 int cpres_2::prepareGPU()
 {
@@ -318,7 +322,7 @@ int cpres_2::prepareGPU()
 
 
 #ifdef USECUDA
-int cpres_2::exec(double dt)
+void cpres_2::exec(double dt)
 {
   //fields->forwardGPU();
 
@@ -343,7 +347,8 @@ int cpres_2::exec(double dt)
   pres_2_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
                                        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
-                                       grid->dzi_g, 1./grid->dx, 1./grid->dy, 1./dt,
+                                       grid->dzi_g, fields->rhoref_g, fields->rhorefh_g, 
+                                       1./grid->dx, 1./grid->dy, 1./dt,
                                        grid->icellsp, grid->ijcellsp, grid->imax, grid->imax*grid->jmax, 
                                        grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
@@ -367,7 +372,7 @@ int cpres_2::exec(double dt)
   pres_2_solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                         fields->sd["tmp1"]->data_g, fields->sd["tmp2"]->data_g,
                                         a_g, c_g,
-                                        grid->dz_g, bmati_g, bmatj_g,
+                                        grid->dz_g, fields->rhoref_g, bmati_g, bmatj_g,
                                         grid->imax, grid->imax*grid->jmax,
                                         grid->imax, grid->jmax, grid->kmax,
                                         grid->kstart);
@@ -409,8 +414,6 @@ int cpres_2::exec(double dt)
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
   //fields->backwardGPU();
-
-  return 0;
 }
 #endif
 
@@ -434,11 +437,12 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
 
   const int offs = grid->memoffset;
 
-  pres_2_calcdiv<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-                                        &fields->a["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
-                                        grid->icellsp, grid->ijcellsp,
-                                        grid->istart,  grid->jstart, grid->kstart,
-                                        grid->iend,    grid->jend,   grid->kend);
+  pres_2_calcdivergence<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
+                                               &fields->a["tmp1"]->data_g[offs], grid->dzi_g, 
+                                               fields->rhoref_g, fields->rhorefh_g, dxi, dyi,
+                                               grid->icellsp, grid->ijcellsp,
+                                               grid->istart,  grid->jstart, grid->kstart,
+                                               grid->iend,    grid->jend,   grid->kend);
 
   divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
   grid->getmax(&divmax);

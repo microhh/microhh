@@ -39,11 +39,12 @@ class cthermo_moist : public cthermo
     ~cthermo_moist();
 
     void init();
-    int create(cinput *);
+    void create(cinput *);
     int exec();
     int getmask(cfield3d *, cfield3d *, mask *);
     int execstats(mask *);
-    int execcross();
+
+    void execcross();
 
     // functions to retrieve buoyancy properties, to be called from other classes
     int checkthermofield(std::string name);
@@ -88,9 +89,6 @@ class cthermo_moist : public cthermo
     inline double exn2(const double);
     inline double rslf(const double, const double);
     inline double esl(const double);
-
-    inline double interp2(const double, const double);
-    inline double interp4(const double, const double, const double, const double);
 
     double pbot;
     double thvref0; ///< Reference virtual potential temperature in case of Boussinesq

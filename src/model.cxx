@@ -170,71 +170,52 @@ void cmodel::init()
 void cmodel::load()
 {
   // first load the grid and time to make their information available
-  if(grid->load())
-    throw 1;
-  if(timeloop->load(timeloop->iotime))
-    throw 1;
-  // initialize the statistics file to open the possiblity to add profiles
-  if(stats->create(timeloop->iotime))
-    throw 1;
-  if(cross->create())
-    throw 1;
+  grid    ->load();
+  timeloop->load(timeloop->iotime);
 
-  if(fields->load(timeloop->iotime))
-    throw 1;
+  // initialize the statistics file to open the possiblity to add profiles
+  stats->create(timeloop->iotime);
+  cross->create();
+
+  fields->load(timeloop->iotime);
 
   // \TODO call boundary load for the data and then timedep, not nice...
-  if(boundary->load(timeloop->iotime))
-    throw 1;
-  if(boundary->create(input))
-    throw 1;
+  boundary->load(timeloop->iotime);
+  boundary->create(input);
 
-  if(buffer->create(input))
-    throw 1;
-  if(force->create(input))
-    throw 1;
-  if(thermo->create(input))
-    throw 1;
+  buffer->create(input);
+  force ->create(input);
+  thermo->create(input);
 
-  if(budget->create())
-    throw 1;
+  budget->create();
 
   // end with modules that require all fields to be present
-  if(boundary->setvalues())
-    throw 1;
-  if(diff->setvalues())
-    throw 1;
-  if(pres->setvalues())
-    throw 1;
-}
-
-void cmodel::create()
-{
-  if(grid->create(input))
-    throw 1;
-  if(fields->create(input))
-    throw 1;
+  boundary->setvalues();
+  diff    ->setvalues();
+  pres    ->setvalues();
 }
 
 void cmodel::save()
 {
-  if(grid->save())
-    throw 1;
-  if(fields->save(timeloop->iotime))
-    throw 1;
-  if(timeloop->save(timeloop->iotime))
-    throw 1;
-  if(boundary->save(timeloop->iotime))
-    throw 1;
+  // Initialize the grid and the fields from the input data.
+  grid  ->create(input);
+  fields->create(input);
+
+  // Save the initialized data to disk for the run mode.
+  grid    ->save();
+  fields  ->save(timeloop->iotime);
+  timeloop->save(timeloop->iotime);
+  boundary->save(timeloop->iotime);
 }
 
 void cmodel::exec()
 {
 #ifdef USECUDA
   master->printMessage("Preparing the GPU\n");
-  grid->prepareGPU();
+  grid  ->prepareGPU();
   fields->prepareGPU();
-  pres->prepareGPU();
+  pres  ->prepareGPU();
+  buffer->prepareGPU();
 #endif
 
   master->printMessage("Starting time integration\n");
@@ -313,14 +294,12 @@ void cmodel::exec()
       {
 #ifdef USECUDA
         fields->backwardGPU();
-#endif
+#endif      
+      
+        fields  ->execcross();
+        thermo  ->execcross();
+        boundary->execcross();
 
-        if(fields->execcross())
-          throw 1;
-        if(thermo->execcross())
-          throw 1;
-        if(boundary->execcross())
-          throw 1;
       }
     }
 
@@ -365,12 +344,9 @@ void cmodel::exec()
         break;
 
       // load the data
-      if(timeloop->load(timeloop->iotime))
-        throw 1;
-      if(fields->load(timeloop->iotime))
-        throw 1;
-      if(boundary->load(timeloop->iotime))
-        throw 1;
+      timeloop->load(timeloop->iotime);
+      fields  ->load(timeloop->iotime);
+      boundary->load(timeloop->iotime);
     }
     // update the time dependent values
     boundary->settimedep();
@@ -395,9 +371,9 @@ void cmodel::exec()
 
 void cmodel::calcstats(std::string maskname)
 {
-  fields->execstats(&stats->masks[maskname]);
-  thermo->execstats(&stats->masks[maskname]);
-  budget->execstats(&stats->masks[maskname]);
+  fields  ->execstats(&stats->masks[maskname]);
+  thermo  ->execstats(&stats->masks[maskname]);
+  budget  ->execstats(&stats->masks[maskname]);
   boundary->execstats(&stats->masks[maskname]);
 }
 

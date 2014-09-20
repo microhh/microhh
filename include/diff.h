@@ -36,7 +36,7 @@ class cdiff
     virtual ~cdiff();
     static cdiff* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for diff class generation.
 
-    virtual int setvalues();
+    virtual void setvalues();
     virtual int execvisc();
     virtual int exec();
 

@@ -51,14 +51,12 @@ void cpres::init()
 {
 }
 
-int cpres::setvalues()
+void cpres::setvalues()
 {
-  return 0;
 }
 
-int cpres::exec(double dt)
+void cpres::exec(double dt)
 {
-  return 0;
 }
 
 double cpres::check()

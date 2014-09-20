@@ -38,14 +38,16 @@ class cboundary_surface : public cboundary
     ~cboundary_surface();
 
     void init(cinput *);
-    int create(cinput *);
-    int setvalues();
+    void create(cinput *);
+    void setvalues();
+
     int exec();
-    int execcross(); ///< Execute cross sections of surface
+
+    void execcross(); ///< Execute cross sections of surface
     int execstats(mask *); ///< Execute statistics of surface
 
-    int save(int);
-    int load(int);
+    void save(int);
+    void load(int);
 
     // make these variables public for out-of-class usage
     double *obuk;

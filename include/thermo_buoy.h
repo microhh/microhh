@@ -43,7 +43,6 @@ class cthermo_buoy : public cthermo
     ~cthermo_buoy();                  ///< Destructor of the dry thermodynamics class.
 
     int exec();                ///< Add the tendencies belonging to the buoyancy.
-    int execcross();
 
     int getbuoyancy(cfield3d *, cfield3d *);     ///< Compute the buoyancy for usage in another routine.
     int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
@@ -59,9 +58,5 @@ class cthermo_buoy : public cthermo
     int calcbuoyancyfluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
     int calcbuoyancytend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
     int calcbuoyancytend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-
-    inline double interp2(const double, const double); ///< 2nd order interpolation function.
-    inline double interp4(const double, const double, 
-                          const double, const double); ///< 4th order interpolation function.
 };
 #endif

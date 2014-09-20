@@ -28,17 +28,18 @@
 #include "stats.h"
 #include "thermo_moist.h"
 #include "defines.h"
+#include "constants.h"
+#include "fd.h"
 #include "model.h"
 #include "diff_les2s.h"
 #include "timeloop.h"
 #include <netcdfcpp.h>
 
-#define NO_OFFSET 0.
-#define NTHRES 16
+#define NTHRES 0
 
 cstats::cstats(cmodel *modelin, cinput *inputin)
 {
-  model  = modelin;
+  model = modelin;
 
   // set the pointers to zero
   nmask  = 0;
@@ -93,11 +94,11 @@ void cstats::init(double ifactor)
   nstats = 0;
 }
 
-int cstats::create(int n)
+void cstats::create(int n)
 {
   // do not create file if stats is disabled
   if(swstats == "0")
-    return 0;
+    return;
 
   int nerror = 0;
 
@@ -114,14 +115,14 @@ int cstats::create(int n)
       m->dataFile = new NcFile(filename, NcFile::New);
       if(!m->dataFile->is_valid())
       {
-        std::printf("ERROR cannot write statistics file\n");
+        master->printError("cannot write statistics file\n");
         ++nerror;
       }
     }
     // crash on all processes in case the file could not be written
     master->broadcast(&nerror, 1);
     if(nerror)
-      return 1;
+      throw 1;
 
     // create dimensions
     if(master->mpiid == 0)
@@ -161,14 +162,12 @@ int cstats::create(int n)
   // for each mask add the area as a variable
   addprof("area" , "Fractional area contained in mask", "-", "z");
   addprof("areah", "Fractional area contained in mask", "-", "zh");
-
-  return 0;
 }
 
 unsigned long cstats::gettimelim(unsigned long itime)
 {
   if(swstats == "0")
-    return ulhuge;
+    return constants::ulhuge;
 
   unsigned long idtlim = isampletime - itime % isampletime;
   return idtlim;
@@ -231,12 +230,10 @@ std::string cstats::getsw()
   return swstats;
 }
 
-int cstats::addmask(std::string maskname)
+void cstats::addmask(const std::string maskname)
 {
   masks[maskname].name = maskname;
-  masks[maskname].dataFile = NULL;
-
-  return 0;
+  masks[maskname].dataFile = 0;
 }
 
 int cstats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
@@ -337,7 +334,7 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
 int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
   calcmask(mfield->data, mfieldh->data, mfieldh->databot,
-             nmask, nmaskh, &nmaskbot);
+           nmask, nmaskh, &nmaskbot);
   return 0;
 }
 
@@ -478,8 +475,8 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   kstart = grid->kstart;
   kend = grid->kend;
 
-  minval =  dhuge;
-  maxval = -dhuge;
+  minval =  constants::dhuge;
+  maxval = -constants::dhuge;
 
   // first, get min and max
   for(int k=grid->kstart; k<grid->kend; ++k)
@@ -498,7 +495,7 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
   master->max(&maxval, 1);
 
   // make sure that the max ends up in the last bin (introduce 1E-9 error)
-  maxval *= (1.+dsmall);
+  maxval *= (1.+constants::dsmall);
 
   range = maxval-minval;
 
@@ -812,6 +809,8 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;
@@ -929,6 +928,8 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;
@@ -963,6 +964,8 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
+  using namespace fd::o4;
+
   int ijk,jj,kk1,kk2;
 
   jj  = 1*grid->icells;
@@ -1046,7 +1049,6 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  // CvH add horizontal interpolation for u and v and interpolate the eddy viscosity properly
   // bottom boundary
   prof[kstart] = 0.;
   for(int j=grid->jstart; j<grid->jend; ++j)

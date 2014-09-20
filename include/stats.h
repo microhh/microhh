@@ -69,7 +69,8 @@ class cstats
     ~cstats();
 
     void init(double);
-    int create(int);
+    void create(int);
+
     unsigned long gettimelim(unsigned long);
     int getmask(cfield3d *, cfield3d *, mask *);
     int exec(int, double, unsigned long);
@@ -86,7 +87,7 @@ class cstats
     // profmap profs;
     // tseriesmap tseries;
 
-    int addmask(std::string);
+    void addmask(const std::string);
     int addprof(std::string, std::string, std::string, std::string);
     int addfixedprof(std::string, std::string, std::string, std::string, double *);
     int addtseries(std::string, std::string, std::string);

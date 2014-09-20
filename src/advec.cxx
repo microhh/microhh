@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "advec.h"
 #include "defines.h"
+#include "constants.h"
 #include "master.h"
 #include "model.h"
 
@@ -55,7 +56,7 @@ cadvec::~cadvec()
 
 unsigned long cadvec::gettimelim(unsigned long idt, double dt)
 {
-  unsigned long idtlim = (unsigned long) dbig;
+  unsigned long idtlim = (unsigned long) constants::dbig;
 
   return idtlim;
 }
@@ -64,14 +65,13 @@ double cadvec::getcfl(double dt)
 {
   double cfl;
 
-  cfl = dsmall;
+  cfl = constants::dsmall;
 
   return cfl;
 }
 
-int cadvec::exec()
+void cadvec::exec()
 {
-  return 0;
 }
 
 cadvec* cadvec::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)

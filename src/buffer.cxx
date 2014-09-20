@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <stdlib.h>
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -70,7 +71,7 @@ void cbuffer::init()
   }
 }
 
-int cbuffer::create(cinput *inputin)
+void cbuffer::create(cinput *inputin)
 {
   int nerror = 0;
 
@@ -115,9 +116,12 @@ int cbuffer::create(cinput *inputin)
       if(master->mpiid == 0) std::printf("ERROR buffer is too close to the model top\n");
     }
   }
-  return nerror;
+
+  if(nerror)
+    throw 1;
 }
 
+#ifndef USECUDA
 int cbuffer::exec()
 {
   if(swbuffer == "1")
@@ -133,6 +137,7 @@ int cbuffer::exec()
 
   return 0;
 }
+#endif
 
 int cbuffer::buffer(double * const restrict at, const double * const restrict a, 
                     const double * const restrict abuf, const double * const restrict z)

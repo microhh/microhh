@@ -47,7 +47,7 @@ class cforce
     cforce(cmodel *, cinput *); ///< Constructor of the force class.
     ~cforce();                  ///< Destructor of the force class.
     void init();                ///< Initialize the arrays that contain the profiles.
-    int create(cinput *);       ///< Read the profiles of the forces from the input.
+    void create(cinput *);      ///< Read the profiles of the forces from the input.
     int exec(double);           ///< Add the tendencies belonging to the large-scale processes.
     int settimedep();           ///< Set the time dependent parameters.
 
@@ -91,7 +91,5 @@ class cforce
 
     int advecwls_2nd(double * const, const double * const,
                      const double * const, const double * const); ///< Calculates the large-scale vertical transport.
-
-    inline double interp2(const double, const double); ///< 2nd order interpolation function.
 };
 #endif
