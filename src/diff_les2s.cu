@@ -86,11 +86,11 @@ __global__ void diff_les2s_strain2(double * __restrict__ strain2,
     {
       strain2[ijk] = 2.*(
         // du/dx + du/dx
-        + pow((u[ijk+ii]-u[ijk])*dxi, 2.)
+        + pow((u[ijk+ii]-u[ijk])*dxi, 2)
         // dv/dy + dv/dy
-        + pow((v[ijk+jj]-v[ijk])*dyi, 2.)
+        + pow((v[ijk+jj]-v[ijk])*dyi, 2)
         // dw/dz + dw/dz
-        + pow((w[ijk+kk]-w[ijk])*dzi[k], 2.)
+        + pow((w[ijk+kk]-w[ijk])*dzi[k], 2)
         // du/dy + dv/dx
         + 0.125*pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2)
         + 0.125*pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2)
