@@ -34,14 +34,21 @@ __global__ void buffer_buffer(double * __restrict__ at,   double * __restrict__ 
                               int iend,   int jend,   int kend,
                               int jj, int kk)
 {
+  __shared__ double sigmaz;
+
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
   int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
   int k = blockIdx.z + bufferkstart; 
 
+  /* sigmaz only depends on height. Let one thread calculate it to shared memory,
+     other threads re-use value */
+  if(threadIdx.x == 0 && threadIdx.y == 0)
+    sigmaz = sigma * pow((z[k]-zstart)*zsizebufi, beta);
+  __syncthreads();
+
   if(i < iend && j < jend && k < kend)
   {
     int ijk = i + j*jj + k*kk;
-    double sigmaz = sigma * pow((z[k]-zstart)*zsizebufi, beta);
 
     at[ijk] -= sigmaz*(a[ijk]-abuf[k]);
   }
