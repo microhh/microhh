@@ -85,8 +85,6 @@ __global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restri
 #ifdef USECUDA
 int cboundary::exec()
 {
-  //fields->forwardGPU();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
@@ -150,9 +148,6 @@ int cboundary::exec()
   //    setgctop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
   //  }
   //}
-
-
-  //fields->backwardGPU();
 
   return 0;
 }

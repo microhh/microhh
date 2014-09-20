@@ -265,9 +265,10 @@ void cmodel::exec()
     {
       if(stats->dostats())
       {
-//#ifdef USECUDA
-//        fields->backwardGPU();
-//#endif
+#ifdef USECUDA
+        fields->backwardDevice();
+        boundary->backwardDevice();
+#endif
 
         // always process the default mask
         stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks["default"]);
@@ -294,9 +295,10 @@ void cmodel::exec()
 
       if(cross->docross())
       {
-//#ifdef USECUDA
-//        fields->backwardGPU();
-//#endif      
+#ifdef USECUDA
+        fields->backwardDevice();
+        boundary->backwardDevice();
+#endif      
       
         fields  ->execcross();
         thermo  ->execcross();
@@ -321,9 +323,10 @@ void cmodel::exec()
       // save the data for a restart
       if(timeloop->dosave() && !timeloop->insubstep())
       {
-//#ifdef USECUDA
-//        fields->backwardGPU();
-//#endif
+#ifdef USECUDA
+        fields->backwardDevice();
+        boundary->backwardDevice();
+#endif
 
         // save the time data
         timeloop->save(timeloop->iotime);
@@ -365,6 +368,7 @@ void cmodel::exec()
 
 #ifdef USECUDA
   fields->backwardDevice();
+  boundary->backwardDevice();
   fields->clearDevice();
   grid  ->clearDevice();
 #endif

@@ -139,12 +139,9 @@ int cthermo_dry::prepareDevice()
   return 0;
 }
 
-/*
 #ifdef USECUDA
 int cthermo_dry::exec()
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -164,18 +161,13 @@ int cthermo_dry::exec()
   //else if(grid->swspatialorder == "4")
   //  calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
 
-  fields->backwardDevice();
-
   return 0;
 }
 #endif
-*/
 
 #ifdef USECUDA
 int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -197,8 +189,6 @@ int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
   else
     return 1;
 
-  fields->backwardDevice();
-
   return 0;
 }
 #endif
@@ -206,8 +196,6 @@ int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 #ifdef USECUDA
 int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
@@ -222,18 +210,13 @@ int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
                                                         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                         grid->icellsp, grid->ijcellsp);
 
-  fields->backwardDevice();
-
   return 0;
 }
 #endif
 
-/*
 #ifdef USECUDA
 int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
@@ -253,9 +236,6 @@ int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
                                                         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                         grid->icellsp, grid->ijcellsp);
 
-  fields->backwardDevice();
-
   return 0;
 }
 #endif
-*/

@@ -50,7 +50,7 @@ cpres_2::~cpres_2()
   delete[] bmatj;
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 void cpres_2::exec(double dt)
 {
   // create the input for the pressure solver
@@ -69,7 +69,7 @@ void cpres_2::exec(double dt)
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
            fields->sd["p"]->data, grid->dzhi);
 }
-//#endif
+#endif
 
 double cpres_2::check()
 {
@@ -385,7 +385,7 @@ void cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c
       }
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
                                double * restrict rhoref, double * restrict rhorefh)
 {
@@ -419,4 +419,4 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
 
   return divmax;
 }
-//#endif
+#endif

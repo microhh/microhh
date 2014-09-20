@@ -427,15 +427,11 @@ __global__ void diff_les2s_calcdnmul(double * __restrict__ dnmul, double * __res
   }
 }
 
-/*
 #ifdef USECUDA
 int cdiff_les2s::execvisc()
 {
   // do a cast because the base boundary class does not have the MOST related variables
   cboundary_surface *boundaryptr = static_cast<cboundary_surface *>(model->boundary);
-
-  fields->forwardDevice();
-  boundaryptr->forwardDevice();
 
   const int blocki = 128;
   const int blockj = 2;
@@ -456,8 +452,6 @@ int cdiff_les2s::execvisc()
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
 
-  fields->backwardDevice();
-
   // start with retrieving the stability information
   if(model->thermo->getsw() == "0")
   {
@@ -475,8 +469,6 @@ int cdiff_les2s::execvisc()
     // store the Brunt-vaisala frequency in data of tmp1 
     model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "N2");
 
-    fields->forwardDevice();
-
     // Calculate eddy viscosity
     diff_les2s_evisc<<<gridGPU, blockGPU>>>(&fields->s["evisc"]->data_g[offs], &fields->s["tmp1"]->data_g[offs], 
                                             &fields->sd["tmp1"]->datafluxbot_g[offs], &boundaryptr->ustar_g[offs], &boundaryptr->obuk_g[offs],
@@ -487,18 +479,13 @@ int cdiff_les2s::execvisc()
 
   }
 
-  fields->backwardDevice();
-
   return 0;
 }
 #endif
-*/
 
 #ifdef USECUDA
 int cdiff_les2s::exec()
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -542,8 +529,6 @@ int cdiff_les2s::exec()
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
 
-  fields->backwardDevice();
-
   return 0;
 }
 #endif
@@ -551,8 +536,6 @@ int cdiff_les2s::exec()
 #ifdef USECUDA
 unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -586,8 +569,6 @@ unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 #ifdef USECUDA
 double cdiff_les2s::getdn(double dt)
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);

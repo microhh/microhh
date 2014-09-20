@@ -64,7 +64,7 @@ unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 void cadvec_2::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
@@ -78,9 +78,9 @@ void cadvec_2::exec()
     advecs(it->second->data, fields->s[it->first]->data, fields->u->data, fields->v->data, fields->w->data,
            grid->dzi, fields->rhoref, fields->rhorefh);
 }
-//#endif
+#endif
 
-//#ifndef USECUDA
+#ifndef USECUDA
 double cadvec_2::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii,jj,kk;
@@ -110,7 +110,7 @@ double cadvec_2::calccfl(double * restrict u, double * restrict v, double * rest
 
   return cfl;
 }
-//#endif
+#endif
 
 void cadvec_2::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)

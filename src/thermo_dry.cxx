@@ -221,7 +221,7 @@ void cthermo_dry::create(cinput *inputin)
   std::sort(crosslist.begin(),crosslist.end());
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 int cthermo_dry::exec()
 {
   if(grid->swspatialorder== "2")
@@ -231,7 +231,7 @@ int cthermo_dry::exec()
 
   return 0;
 }
-//#endif
+#endif
 
 int cthermo_dry::execstats(mask *m)
 {
@@ -372,7 +372,7 @@ int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
 }
 #endif
 
-//#ifndef USECUDA
+#ifndef USECUDA
 int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
@@ -381,7 +381,7 @@ int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
 
   return 0;
 }
-//#endif
+#endif
 
 int cthermo_dry::getprogvars(std::vector<std::string> *list)
 {

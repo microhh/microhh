@@ -67,6 +67,8 @@ class cboundary
 
     // GPU functions and variables
     virtual int prepareDevice(); 
+    virtual int forwardDevice(); 
+    virtual int backwardDevice(); 
 
   protected:
     cmaster *master; ///< Pointer to master class.

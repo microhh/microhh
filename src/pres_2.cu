@@ -320,12 +320,9 @@ int cpres_2::prepareDevice()
   return 0;
 }
 
-/*
 #ifdef USECUDA
 void cpres_2::exec(double dt)
 {
-  //fields->forwardGPU();
-
   int kk;
   const int blocki  = 128;
   const int blockj  = 2;
@@ -414,7 +411,6 @@ void cpres_2::exec(double dt)
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
-  //fields->backwardGPU();
 }
 #endif
 
@@ -422,8 +418,6 @@ void cpres_2::exec(double dt)
 double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, 
                                double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
-  //fields->forwardGPU();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -448,9 +442,6 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
   divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
   grid->getmax(&divmax);
 
-  //fields->backwardGPU();
-
   return divmax;
 }
 #endif
-*/

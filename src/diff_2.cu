@@ -76,7 +76,7 @@ __global__ void diff_2_diffw(double * __restrict__ const at, const double * __re
              - (a[ijk   ] - a[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
   }
 }
-/*
+
 #ifdef USECUDA
 int cdiff_2::exec()
 {
@@ -92,8 +92,6 @@ int cdiff_2::exec()
   const double dyidyi = 1./(grid->dy*grid->dy);
 
   const int offs = grid->memoffset;
-
-  //fields->forwardGPU();
 
   diff_2_diffc<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs],
                                       grid->dzi_g, grid->dzhi_g,
@@ -125,9 +123,6 @@ int cdiff_2::exec()
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
 
-  //fields->backwardGPU();
-
   return 0;
 }
 #endif
-*/

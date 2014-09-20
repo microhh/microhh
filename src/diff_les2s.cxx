@@ -79,7 +79,7 @@ double cdiff_les2s::getdn(double dt)
 }
 #endif
 
-//#ifndef USECUDA
+#ifndef USECUDA
 int cdiff_les2s::execvisc()
 {
   // do a cast because the base boundary class does not have the MOST related variables
@@ -118,7 +118,7 @@ int cdiff_les2s::execvisc()
 
   return 0;
 }
-//#endif
+#endif
 
 #ifndef USECUDA
 int cdiff_les2s::exec()

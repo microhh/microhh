@@ -279,7 +279,7 @@ void cboundary::setvalues()
   }
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 int cboundary::exec()
 {
   // cyclic boundary conditions, do this before the bottom BC's
@@ -327,7 +327,7 @@ int cboundary::exec()
 
   return 0;
 }
-//#endif
+#endif
 
 void cboundary::execcross()
 {
@@ -599,6 +599,17 @@ int cboundary::prepareDevice()
 {
   return 0;
 }
+
+int cboundary::forwardDevice()
+{
+  return 0;
+}
+
+int cboundary::backwardDevice()
+{
+  return 0;
+}
+
 
 inline double cboundary::grad4x(const double a, const double b, const double c, const double d)
 {

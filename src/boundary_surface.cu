@@ -449,11 +449,10 @@ int cboundary_surface::backwardDevice()
   return 0;
 }
 
-/*
 #ifdef USECUDA
 int cboundary_surface::bcvalues()
 {
-  fields->forwardDevice();
+  //fields->forwardDevice();
 
   int gridi, gridj;
   const int blocki = 128;
@@ -533,10 +532,9 @@ int cboundary_surface::bcvalues()
   }
 
   
-  fields->backwardDevice();
-  backwardDevice();
+  //fields->backwardDevice();
+  //backwardDevice();
 
   return 0;
 }
 #endif
-*/
