@@ -56,8 +56,10 @@ class cthermo_dry : public cthermo
     int getbuoyancyfluxbot(cfield3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
+#ifdef USECUDA
     // GPU functions and variables
     int prepareDevice();
+#endif
 
   private:
     int calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.

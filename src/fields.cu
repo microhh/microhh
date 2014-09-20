@@ -166,6 +166,32 @@ int cfields::backwardDevice()
   return 0;
 }
 
+// TMP BvS
+void cfields::D2H(double * hdata, double * ddata)
+{
+  const int jkcells    = grid->jcells * grid->kcells;
+  const int imemsizep  = grid->icellsp * sizeof(double);
+  const int imemsize   = grid->icells  * sizeof(double);
+
+  cudaMemcpy2D(hdata, imemsize, &ddata[grid->memoffset], imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);
+}
+
+// TMP BvS
+void cfields::printSlice(double * data, int k)
+{
+  int ijk;
+  for (int j=0; j<grid->jcells; ++j)
+  {
+    for (int i=0; i<grid->icells; ++i)
+    {
+      ijk = i + j*grid->icells + k*grid->ijcells;
+      printf("% 9.4e ",data[ijk]);
+    }  
+    printf("\n");
+  }
+  printf("\n");
+}
+
 int cfields::clearDevice()
 {
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)

@@ -46,6 +46,24 @@ __global__ void thermo_dry_calcbuoyancytend_2nd(double * __restrict__ wt, double
   }
 }
 
+
+__global__ void thermo_dry_calcbuoyancy(double * __restrict__ b, double * __restrict__ th,
+                                        double * __restrict__ thref, 
+                                        int istart, int jstart,
+                                        int iend,   int jend,   int kcells,
+                                        int jj, int kk)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  int k = blockIdx.z; 
+
+  if(i < iend && j < jend && k < kcells)
+  {
+    int ijk = i + j*jj + k*kk;
+    b[ijk] = constants::grav/thref[k] * (th[ijk] - thref[k]);
+  }
+}
+
 __global__ void thermo_dry_calcbuoyancybot(double * __restrict__ b,     double * __restrict__ bbot,
                                            double * __restrict__ th,    double * __restrict__ thbot, 
                                            double * __restrict__ thref, double * __restrict__ threfh,
@@ -80,6 +98,23 @@ __global__ void thermo_dry_calcbuoyancyfluxbot(double * __restrict__ bfluxbot, d
   }
 }
 
+__global__ void thermo_dry_calcN2(double * __restrict__ N2, double * __restrict__ th,
+                                  double * __restrict__ thref, double * __restrict__ dzi, 
+                                  int istart, int jstart,
+                                  int iend,   int jend,   int kcells,
+                                  int jj, int kk)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  int k = blockIdx.z; 
+
+  if(i < iend && j < jend && k < kcells)
+  {
+    int ijk = i + j*jj + k*kk;
+    N2[ijk] = constants::grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+  }
+}
+
 int cthermo_dry::prepareDevice()
 {
   const int nmemsize = grid->kcells*sizeof(double);
@@ -104,6 +139,7 @@ int cthermo_dry::prepareDevice()
   return 0;
 }
 
+/*
 #ifdef USECUDA
 int cthermo_dry::exec()
 {
@@ -133,7 +169,66 @@ int cthermo_dry::exec()
   return 0;
 }
 #endif
+*/
 
+#ifdef USECUDA
+int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
+{
+  fields->forwardDevice();
+
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kcells);
+  dim3 blockGPU(blocki, blockj, 1);
+  
+  const int offs = grid->memoffset;
+
+  if(name == "b")
+    thermo_dry_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->s["th"]->data_g[offs], 
+                                                   thref_g, grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
+                                                   grid->icellsp, grid->ijcellsp);
+  else if(name == "N2")
+    thermo_dry_calcN2<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->s["th"]->data_g[offs], 
+                                             thref_g, grid->dzi_g, grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
+                                             grid->icellsp, grid->ijcellsp);
+  else
+    return 1;
+
+  fields->backwardDevice();
+
+  return 0;
+}
+#endif
+
+#ifdef USECUDA
+int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
+{
+  fields->forwardDevice();
+
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
+  const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, 1);
+  dim3 blockGPU(blocki, blockj, 1);
+  
+  const int offs = grid->memoffset;
+
+  thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->s["th"]->datafluxbot_g[offs], 
+                                                        threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
+                                                        grid->icellsp, grid->ijcellsp);
+
+  fields->backwardDevice();
+
+  return 0;
+}
+#endif
+
+/*
 #ifdef USECUDA
 int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
 {
@@ -163,4 +258,4 @@ int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
   return 0;
 }
 #endif
-
+*/

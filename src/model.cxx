@@ -301,7 +301,6 @@ void cmodel::exec()
         fields  ->execcross();
         thermo  ->execcross();
         boundary->execcross();
-
       }
     }
 

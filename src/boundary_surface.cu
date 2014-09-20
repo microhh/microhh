@@ -449,6 +449,7 @@ int cboundary_surface::backwardDevice()
   return 0;
 }
 
+/*
 #ifdef USECUDA
 int cboundary_surface::bcvalues()
 {
@@ -538,3 +539,4 @@ int cboundary_surface::bcvalues()
   return 0;
 }
 #endif
+*/

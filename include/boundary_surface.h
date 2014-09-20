@@ -56,6 +56,7 @@ class cboundary_surface : public cboundary
     double z0m;
     double z0h;
 
+#ifdef USECUDA
     // GPU functions and variables
     int prepareDevice();
     int forwardDevice();  // TMP BVS
@@ -63,6 +64,7 @@ class cboundary_surface : public cboundary
 
     double *obuk_g;
     double *ustar_g;
+#endif
 
   private:
     // cross sections
