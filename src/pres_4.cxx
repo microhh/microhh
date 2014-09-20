@@ -62,6 +62,7 @@ cpres_4::~cpres_4()
   delete[] bmatj;
 }
 
+#ifndef USECUDA
 void cpres_4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
@@ -87,6 +88,7 @@ void cpres_4::exec(double dt)
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
            fields->sd["p"]->data, grid->dzhi4);
 }
+#endif
 
 double cpres_4::check()
 {
