@@ -4,6 +4,9 @@
  * Copyright (c) 2011-2014 Thijs Heus
  * Copyright (c)      2014 Bart van Stratum
  *
+ * The heptadiagonal matrix solver is
+ * Copyright (c) 2014 Juan Pedro Mellado
+ *
  * This file is part of MicroHH
  *
  * MicroHH is free software: you can redistribute it and/or modify
