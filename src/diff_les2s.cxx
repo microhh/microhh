@@ -151,10 +151,10 @@ int cdiff_les2s::strain2(double * restrict strain2,
       ijk = i + j*jj + kstart*kk;
       strain2[ijk] = 2.*(
         // du/dz
-        + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(constants::kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.)
+        + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(constants::kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2)
 
         // dv/dz
-        + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(constants::kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2.) );
+        + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(constants::kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2) );
       // add a small number to avoid zero divisions
       strain2[ijk] += constants::dsmall;
     }
@@ -167,31 +167,31 @@ int cdiff_les2s::strain2(double * restrict strain2,
         ijk = i + j*jj + k*kk;
         strain2[ijk] = 2.*(
           // du/dx + du/dx
-          + std::pow((u[ijk+ii]-u[ijk])*dxi, 2.)
+          + std::pow((u[ijk+ii]-u[ijk])*dxi, 2)
 
           // dv/dy + dv/dy
-          + std::pow((v[ijk+jj]-v[ijk])*dyi, 2.)
+          + std::pow((v[ijk+jj]-v[ijk])*dyi, 2)
 
           // dw/dz + dw/dz
-          + std::pow((w[ijk+kk]-w[ijk])*dzi[k], 2.)
+          + std::pow((w[ijk+kk]-w[ijk])*dzi[k], 2)
 
           // du/dy + dv/dx
-          + 0.125*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2.)
-          + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2.)
-          + 0.125*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2.)
-          + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2.)
+          + 0.125*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2)
+          + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2)
+          + 0.125*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2)
+          + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2)
 
           // du/dz + dw/dx
-          + 0.125*std::pow((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi, 2.)
-          + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi, 2.)
-          + 0.125*std::pow((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi, 2.)
-          + 0.125*std::pow((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2.)
+          + 0.125*std::pow((u[ijk      ]-u[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-ii   ])*dxi, 2)
+          + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-kk])*dzhi[k  ] + (w[ijk+ii   ]-w[ijk      ])*dxi, 2)
+          + 0.125*std::pow((u[ijk   +kk]-u[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-ii+kk])*dxi, 2)
+          + 0.125*std::pow((u[ijk+ii+kk]-u[ijk+ii   ])*dzhi[k+1] + (w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2)
 
           // dv/dz + dw/dy
-          + 0.125*std::pow((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi, 2.)
-          + 0.125*std::pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, 2.)
-          + 0.125*std::pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2.)
-          + 0.125*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2.) );
+          + 0.125*std::pow((v[ijk      ]-v[ijk   -kk])*dzhi[k  ] + (w[ijk      ]-w[ijk-jj   ])*dyi, 2)
+          + 0.125*std::pow((v[ijk+jj   ]-v[ijk+jj-kk])*dzhi[k  ] + (w[ijk+jj   ]-w[ijk      ])*dyi, 2)
+          + 0.125*std::pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2)
+          + 0.125*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2) );
 
         // add a small number to avoid zero divisions
         strain2[ijk] += constants::dsmall;
@@ -227,7 +227,7 @@ int cdiff_les2s::evisc(double * restrict evisc,
   // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
   mlen0 = this->cs*std::pow(dx*dy*dz[kstart], 1./3.);
   mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[kstart]+z0m), n))), 1./n);
-  fac   = std::pow(mlen, 2.);
+  fac   = std::pow(mlen, 2);
 
   // local copies to aid vectorization
   double tPr = this->tPr;
@@ -251,7 +251,7 @@ int cdiff_les2s::evisc(double * restrict evisc,
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
     mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[k]+z0m), n))), 1./n);
-    fac   = std::pow(mlen, 2.);
+    fac   = std::pow(mlen, 2);
 
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -300,7 +300,7 @@ int cdiff_les2s::evisc_neutral(double * restrict evisc,
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
     mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[k]+z0m), n))), 1./n);
-    fac   = std::pow(mlen, 2.);
+    fac   = std::pow(mlen, 2);
 
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
