@@ -65,7 +65,7 @@ unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-#ifndef USECUDA
+//#ifndef USECUDA
 int cdiff_les2s::execvisc()
 {
   // do a cast because the base boundary class does not have the MOST related variables
@@ -104,7 +104,7 @@ int cdiff_les2s::execvisc()
 
   return 0;
 }
-#endif
+//#endif
 
 double cdiff_les2s::getdn(double dt)
 {
@@ -116,6 +116,7 @@ double cdiff_les2s::getdn(double dt)
   return dnmul*dt;
 }
 
+#ifndef USECUDA
 int cdiff_les2s::exec()
 {
   diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
@@ -127,6 +128,7 @@ int cdiff_les2s::exec()
 
   return 0;
 }
+#endif
 
 int cdiff_les2s::strain2(double * restrict strain2,
                           double * restrict u, double * restrict v, double * restrict w,

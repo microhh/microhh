@@ -155,6 +155,265 @@ __global__ void diff_les2s_evisc(double * __restrict__ evisc, double * __restric
   }
 }
 
+__global__ void diff_les2s_diffu(double * __restrict__ ut, double * __restrict__ evisc,
+                                 double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
+                                 double * __restrict__ fluxbot, double * __restrict__ fluxtop, 
+                                 double * __restrict__ dzi, double * __restrict__ dzhi, double dxi, double dyi,
+                                 double * __restrict__ rhoref, double * __restrict__ rhorefh, 
+                                 int istart, int jstart, int kstart, int iend, int jend, int kend, 
+                                 int jj, int kk)
+
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
+  double eviscn, eviscs, eviscb, evisct;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    const int ii  = 1;
+    const int ij  = i + j*jj;
+    const int ijk = i + j*jj + k*kk;
+
+    if(k == kstart)
+    {
+      eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+      eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+      eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      ut[ijk] +=
+            // du/dx + du/dx
+            + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+               - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+            // du/dy + dv/dx
+            + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+               - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+            // du/dz + dw/dx
+            + (  rhorefh[kstart+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+               + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
+    }
+    else if(k == kend-1)
+    {
+      eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+      eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+      eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      ut[ijk] +=
+            // du/dx + du/dx
+            + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+               - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+            // du/dy + dv/dx
+            + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+               - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+            // du/dz + dw/dx
+            + (- rhorefh[kend  ] * fluxtop[ij]
+               - rhorefh[kend-1] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[kend-1] * dzi[kend-1];
+    }
+    else
+    {
+      eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+      eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+      eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+      ut[ijk] +=
+            // du/dx + du/dx
+            + (  evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+               - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+            // du/dy + dv/dx
+            + (  eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+               - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+            // du/dz + dw/dx
+            + (  rhorefh[k+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[k+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+               - rhorefh[k  ] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[k] * dzi[k];
+    }
+  }
+}
+
+__global__ void diff_les2s_diffv(double * __restrict__ vt, double * __restrict__ evisc,
+                                 double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
+                                 double * __restrict__ fluxbot, double * __restrict__ fluxtop, 
+                                 double * __restrict__ dzi, double * __restrict__ dzhi, double dxi, double dyi,
+                                 double * __restrict__ rhoref, double * __restrict__ rhorefh, 
+                                 int istart, int jstart, int kstart, int iend, int jend, int kend, 
+                                 int jj, int kk)
+
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
+  double evisce,eviscw,eviscb,evisct;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    const int ii  = 1;
+    const int ij  = i + j*jj;
+    const int ijk = i + j*jj + k*kk;
+
+    if(k == kstart)
+    {
+      evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+      eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+      evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+      eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+      vt[ijk] +=
+            // dv/dx + du/dy
+            + (  evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+               - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+            // dv/dy + dv/dy
+            + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+            // dv/dz + dw/dy
+            + (  rhorefh[k+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+               + rhorefh[k  ] * fluxbot[ij] ) / rhoref[k] * dzi[k];
+    }
+    else if(k == kend-1)
+    {
+      evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+      eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+      evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+      eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+      vt[ijk] +=
+            // dv/dx + du/dy
+            + (  evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+               - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+            // dv/dy + dv/dy
+            + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+            // dv/dz + dw/dy
+            + (- rhorefh[k  ] * fluxtop[ij]
+               - rhorefh[k-1] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k-1] * dzi[k-1];
+    }
+    else
+    {
+      evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+      eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+      evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+      eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+      vt[ijk] +=
+            // dv/dx + du/dy
+            + (  evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+               - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+            // dv/dy + dv/dy
+            + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+               - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+            // dv/dz + dw/dy
+            + (  rhorefh[k+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+               - rhorefh[k  ] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];
+    }
+  }
+}
+
+__global__ void diff_les2s_diffw(double * __restrict__ wt, double * __restrict__ evisc,
+                                 double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
+                                 double * __restrict__ dzi, double * __restrict__ dzhi, double dxi, double dyi,
+                                 double * __restrict__ rhoref, double * __restrict__ rhorefh, 
+                                 int istart, int jstart, int kstart, int iend, int jend, int kend, 
+                                 int jj, int kk)
+
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart+1;
+  double evisce, eviscw, eviscn, eviscs;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    const int ii  = 1;
+    const int ijk = i + j*jj + k*kk;
+
+    evisce = 0.25*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+ii-kk] + evisc[ijk+ii]);
+    eviscw = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-ii] + evisc[ijk   -kk] + evisc[ijk   ]);
+    eviscn = 0.25*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+jj-kk] + evisc[ijk+jj]);
+    eviscs = 0.25*(evisc[ijk-jj-kk] + evisc[ijk-jj] + evisc[ijk   -kk] + evisc[ijk   ]);
+    wt[ijk] +=
+          // dw/dx + du/dz
+          + (  evisce*((w[ijk+ii]-w[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-kk])*dzhi[k])
+             - eviscw*((w[ijk   ]-w[ijk-ii])*dxi + (u[ijk   ]-u[ijk+  -kk])*dzhi[k]) ) * dxi
+          // dw/dy + dv/dz
+          + (  eviscn*((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
+             - eviscs*((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
+          // dw/dz + dw/dz
+          + (  rhoref[k  ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
+             - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * 2.* dzhi[k];
+  }
+}
+
+__global__ void diff_les2s_diffc(double * __restrict__ at, double * __restrict__ a, double * __restrict__ evisc,
+                                 double * __restrict__ fluxbot, double * __restrict__ fluxtop, 
+                                 double * __restrict__ dzi, double * __restrict__ dzhi, double dxidxi, double dyidyi,
+                                 double * __restrict__ rhoref, double * __restrict__ rhorefh, double tPr, 
+                                 int istart, int jstart, int kstart, int iend, int jend, int kend, 
+                                 int jj, int kk)
+
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
+  double evisce,eviscw,eviscn,eviscs,evisct,eviscb;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    const int ii  = 1;
+    const int ij  = i + j*jj;
+    const int ijk = i + j*jj + k*kk;
+
+    if(k == kstart)
+    {
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+
+      at[ijk] +=
+            + (  evisce*(a[ijk+ii]-a[ijk   ]) 
+               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+            + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+            + (  rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
+               + rhorefh[k  ] * fluxbot[ij] ) / rhoref[k] * dzi[k];
+    }
+    else if(k == kend-1)
+    {
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+
+      at[ijk] +=
+            + (  evisce*(a[ijk+ii]-a[ijk   ]) 
+               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+            + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+            + (- rhorefh[k  ] * fluxtop[ij]
+               - rhorefh[k-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k-1] ) / rhoref[k-1] * dzi[k-1];
+    }
+    else
+    {
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+
+      at[ijk] +=
+            + (  evisce*(a[ijk+ii]-a[ijk   ]) 
+               - eviscw*(a[ijk   ]-a[ijk-ii]) ) * dxidxi 
+            + (  eviscn*(a[ijk+jj]-a[ijk   ]) 
+               - eviscs*(a[ijk   ]-a[ijk-jj]) ) * dyidyi
+            + (  rhorefh[k+1] * evisct*(a[ijk+kk]-a[ijk   ])*dzhi[k+1]
+               - rhorefh[k  ] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[k]  ) / rhoref[k] * dzi[k];
+    }
+  }
+}
+
+
+
+/*
 #ifdef USECUDA
 int cdiff_les2s::execvisc()
 {
@@ -219,3 +478,59 @@ int cdiff_les2s::execvisc()
   return 0;
 }
 #endif
+*/
+
+#ifdef USECUDA
+int cdiff_les2s::exec()
+{
+  fields->forwardDevice();
+
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kmax);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  const int offs = grid->memoffset;
+  const double dxidxi = 1./(grid->dx * grid->dx);
+  const double dyidyi = 1./(grid->dy * grid->dy);
+
+  diff_les2s_diffu<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->s["evisc"]->data_g[offs], 
+                                          &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
+                                          &fields->u->datafluxbot_g[offs], &fields->u->datafluxtop_g[offs],
+                                          grid->dzi_g, grid->dzhi_g, grid->dxi, grid->dyi,
+                                          fields->rhoref_g, fields->rhorefh_g,
+                                          grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
+                                          grid->icellsp, grid->ijcellsp);  
+
+  diff_les2s_diffv<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->s["evisc"]->data_g[offs], 
+                                          &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
+                                          &fields->v->datafluxbot_g[offs], &fields->v->datafluxtop_g[offs],
+                                          grid->dzi_g, grid->dzhi_g, grid->dxi, grid->dyi,
+                                          fields->rhoref_g, fields->rhorefh_g,
+                                          grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
+                                          grid->icellsp, grid->ijcellsp);  
+
+  diff_les2s_diffw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["evisc"]->data_g[offs], 
+                                          &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
+                                          grid->dzi_g, grid->dzhi_g, grid->dxi, grid->dyi,
+                                          fields->rhoref_g, fields->rhorefh_g,
+                                          grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
+                                          grid->icellsp, grid->ijcellsp);  
+
+  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+    diff_les2s_diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], &fields->s["evisc"]->data_g[offs], 
+                                            &fields->s[it->first]->datafluxbot_g[offs], &fields->s[it->first]->datafluxtop_g[offs],
+                                            grid->dzi_g, grid->dzhi_g, dxidxi, dyidyi,
+                                            fields->rhoref_g, fields->rhorefh_g, tPr,
+                                            grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
+                                            grid->icellsp, grid->ijcellsp);  
+
+  fields->backwardDevice();
+
+  return 0;
+}
+#endif
+
