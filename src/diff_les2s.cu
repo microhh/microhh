@@ -120,6 +120,8 @@ __global__ void diff_les2s_evisc(double * __restrict__ evisc, double * __restric
                                  int jj, int kk)
 
 {
+  __shared__ double fac;
+  
   const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
   const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
   const int k = blockIdx.z + kstart;
@@ -130,14 +132,17 @@ __global__ void diff_les2s_evisc(double * __restrict__ evisc, double * __restric
     const int ijk = i + j*jj + k*kk;
     double n = 2;
 
-    /* BvS: TODO: pre-calculate fac offline. Now every thread within one vertical slice 
-       has to calculate it.... */
+    if(threadIdx.x == 0 && threadIdx.y == 0)
+    {
+      double mlen0      = cs * pow(dx*dy*dz[k], 1./3.);
+      double mlen       = pow(1./(1./pow(mlen0, n) + 1./(pow(constants::kappa*(z[k]+z0m), n))), 1./n);
+      fac               = pow(mlen, 2);
+    }
+    __syncthreads();
+
     if(k == kstart)
     {
       // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-      double mlen0      = cs * pow(dx*dy*dz[k], 1./3.);
-      double mlen       = pow(1./(1./pow(mlen0, n) + 1./(pow(constants::kappa*(z[k]+z0m), n))), 1./n);
-      double fac        = pow(mlen, 2);
       double RitPrratio = -bfluxbot[ij]/(constants::kappa*z[k]*ustar[ij])*diff_les2s_phih(z[k]/obuk[ij]) / evisc[ijk] / tPr;
       RitPrratio        = fmin(RitPrratio, 1.-constants::dsmall);
       evisc[ijk]        = fac * sqrt(evisc[ijk]) * sqrt(1.-RitPrratio);
@@ -145,9 +150,6 @@ __global__ void diff_les2s_evisc(double * __restrict__ evisc, double * __restric
     else
     {
       // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-      double mlen0      = cs * pow(dx*dy*dz[k], 1./3.);
-      double mlen       = pow(1./(1./pow(mlen0, n) + 1./(pow(constants::kappa*(z[k]+z0m), n))), 1./n);
-      double fac        = std::pow(mlen, 2.);
       double RitPrratio = N2[ijk] / evisc[ijk] / tPr;
       RitPrratio        = fmin(RitPrratio, 1.-constants::dsmall);
       evisc[ijk]        = fac * sqrt(evisc[ijk]) * sqrt(1.-RitPrratio);
