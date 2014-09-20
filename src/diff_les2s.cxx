@@ -52,6 +52,7 @@ cdiff_les2s::~cdiff_les2s()
 {
 }
 
+#ifndef USECUDA
 unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
@@ -64,6 +65,19 @@ unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 
   return idtlim;
 }
+#endif
+
+#ifndef USECUDA
+double cdiff_les2s::getdn(double dt)
+{
+  double dnmul;
+
+  // calculate eddy viscosity
+  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, this->tPr);
+
+  return dnmul*dt;
+}
+#endif
 
 //#ifndef USECUDA
 int cdiff_les2s::execvisc()
@@ -105,16 +119,6 @@ int cdiff_les2s::execvisc()
   return 0;
 }
 //#endif
-
-double cdiff_les2s::getdn(double dt)
-{
-  double dnmul;
-
-  // calculate eddy viscosity
-  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, this->tPr);
-
-  return dnmul*dt;
-}
 
 #ifndef USECUDA
 int cdiff_les2s::exec()

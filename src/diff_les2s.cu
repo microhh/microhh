@@ -411,7 +411,21 @@ __global__ void diff_les2s_diffc(double * __restrict__ at, double * __restrict__
   }
 }
 
+__global__ void diff_les2s_calcdnmul(double * __restrict__ dnmul, double * __restrict__ evisc, 
+                                     double * __restrict__ dzi, double tPrfac, double dxidxi, double dyidyi,
+                                     int istart, int jstart, int kstart, int iend, int jend, int kend, int jj, int kk)
 
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    const int ijk = i + j*jj + k*kk;
+    dnmul[ijk] = fabs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k]));
+  }
+}
 
 /*
 #ifdef USECUDA
@@ -531,6 +545,73 @@ int cdiff_les2s::exec()
   fields->backwardDevice();
 
   return 0;
+}
+#endif
+
+#ifdef USECUDA
+unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
+{
+  fields->forwardDevice();
+
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kmax);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  double dnmul;
+  unsigned long idtlim;
+  const int offs = grid->memoffset;
+  const double dxidxi = 1./(grid->dx * grid->dx);
+  const double dyidyi = 1./(grid->dy * grid->dy);
+  const double tPrfac = std::min(1., tPr);
+
+  // Calculate dnmul in tmp1 field
+  diff_les2s_calcdnmul<<<gridGPU, blockGPU>>>(&fields->s["tmp1"]->data_g[offs], &fields->s["evisc"]->data_g[offs],
+                                              grid->dzi_g, tPrfac, dxidxi, dyidyi,  
+                                              grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
+                                              grid->icellsp, grid->ijcellsp);  
+
+  // Get maximum from tmp1 field
+  dnmul = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  dnmul = std::max(constants::dsmall, dnmul);
+  idtlim = idt * dnmax/(dnmul*dt);
+
+  return idtlim;
+}
+#endif
+
+#ifdef USECUDA
+double cdiff_les2s::getdn(double dt)
+{
+  fields->forwardDevice();
+
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kmax);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  double dnmul;
+  const int offs = grid->memoffset;
+  const double dxidxi = 1./(grid->dx * grid->dx);
+  const double dyidyi = 1./(grid->dy * grid->dy);
+  const double tPrfac = std::min(1., tPr);
+
+  // Calculate dnmul in tmp1 field
+  diff_les2s_calcdnmul<<<gridGPU, blockGPU>>>(&fields->s["tmp1"]->data_g[offs], &fields->s["evisc"]->data_g[offs],
+                                              grid->dzi_g, tPrfac, dxidxi, dyidyi,  
+                                              grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
+                                              grid->icellsp, grid->ijcellsp);  
+
+  // Get maximum from tmp1 field
+  dnmul = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+
+  return dnmul*dt;
 }
 #endif
 
