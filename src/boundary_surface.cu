@@ -301,7 +301,7 @@ __global__ void boundary_surface_stability(double * __restrict__ ustar, double *
     // case 1: fixed buoyancy flux and fixed ustar
     if(mbcbot == BC_USTAR && thermobc == BC_FLUX)
     {
-      obuk[ij] = -pow(ustar[ij], 3.) / (constants::kappa*bfluxbot[ij]);
+      obuk[ij] = -pow(ustar[ij], 3) / (constants::kappa*bfluxbot[ij]);
     }
     // case 2: fixed buoyancy flux and free ustar
     else if(mbcbot == BC_DIRICHLET && thermobc == BC_FLUX)

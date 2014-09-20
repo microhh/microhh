@@ -114,13 +114,13 @@ __global__ void diff_les2s_strain2(double * __restrict__ strain2,
 
 __global__ void diff_les2s_evisc(double * __restrict__ evisc, double * __restrict__ N2,
                                  double * __restrict__ bfluxbot, double * __restrict__ ustar, double * __restrict__ obuk,
-                                 double * __restrict__ z, double * __restrict__ dz, double dx, double dy,
-                                 double cs, double tPr, double z0m,
+                                 double * __restrict__ mlen,
+                                 double tPri, double z0m, double zsl,
                                  int istart, int jstart, int kstart, int iend, int jend, int kend, 
                                  int jj, int kk)
 
 {
-  __shared__ double fac;
+  //__shared__ double fac;
   
   const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
   const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -130,29 +130,20 @@ __global__ void diff_les2s_evisc(double * __restrict__ evisc, double * __restric
   {
     const int ij  = i + j*jj;
     const int ijk = i + j*jj + k*kk;
-    double n = 2;
-
-    if(threadIdx.x == 0 && threadIdx.y == 0)
-    {
-      double mlen0      = cs * pow(dx*dy*dz[k], 1./3.);
-      double mlen       = pow(1./(1./pow(mlen0, n) + 1./(pow(constants::kappa*(z[k]+z0m), n))), 1./n);
-      fac               = pow(mlen, 2);
-    }
-    __syncthreads();
 
     if(k == kstart)
     {
       // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-      double RitPrratio = -bfluxbot[ij]/(constants::kappa*z[k]*ustar[ij])*diff_les2s_phih(z[k]/obuk[ij]) / evisc[ijk] / tPr;
+      double RitPrratio = -bfluxbot[ij]/(constants::kappa*zsl*ustar[ij])*diff_les2s_phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
       RitPrratio        = fmin(RitPrratio, 1.-constants::dsmall);
-      evisc[ijk]        = fac * sqrt(evisc[ijk]) * sqrt(1.-RitPrratio);
+      evisc[ijk]        = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
     }
     else
     {
       // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-      double RitPrratio = N2[ijk] / evisc[ijk] / tPr;
+      double RitPrratio = N2[ijk] / evisc[ijk] * tPri;
       RitPrratio        = fmin(RitPrratio, 1.-constants::dsmall);
-      evisc[ijk]        = fac * sqrt(evisc[ijk]) * sqrt(1.-RitPrratio);
+      evisc[ijk]        = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
     }
   }
 }
@@ -429,6 +420,29 @@ __global__ void diff_les2s_calcdnmul(double * __restrict__ dnmul, double * __res
   }
 }
 
+/* Calculate the mixing length (mlen) offline, and put on GPU */
+int cdiff_les2s::prepareDevice()
+{
+  cboundary_surface *boundaryptr = static_cast<cboundary_surface *>(model->boundary);
+
+  const double n=2.;
+  double mlen0;
+  double *mlen = new double[grid->kcells];
+  for(int k=0; k<grid->kcells; ++k) 
+  {
+    mlen0   = cs * pow(grid->dx*grid->dy*grid->dz[k], 1./3.);
+    mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(constants::kappa*(grid->z[k]+boundaryptr->z0m), n))), 1./n), 2);
+  }
+
+  const int nmemsize = grid->kcells*sizeof(double);
+  cudaMalloc(&mlen_g, nmemsize);
+  cudaMemcpy(mlen_g, mlen, nmemsize, cudaMemcpyHostToDevice);
+
+  delete[] mlen;
+
+  return 0;
+}
+
 #ifdef USECUDA
 int cdiff_les2s::execvisc()
 {
@@ -472,9 +486,10 @@ int cdiff_les2s::execvisc()
     model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "N2");
 
     // Calculate eddy viscosity
+    double tPri = 1./tPr;
     diff_les2s_evisc<<<gridGPU, blockGPU>>>(&fields->s["evisc"]->data_g[offs], &fields->s["tmp1"]->data_g[offs], 
                                             &fields->sd["tmp1"]->datafluxbot_g[offs], &boundaryptr->ustar_g[offs], &boundaryptr->obuk_g[offs],
-                                            grid->z_g, grid->dz_g, grid->dx, grid->dy, cs, tPr, boundaryptr->z0m,
+                                            mlen_g, tPri, boundaryptr->z0m, grid->z[grid->kstart],
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
     grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);

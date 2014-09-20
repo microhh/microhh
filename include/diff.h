@@ -46,6 +46,9 @@ class cdiff
 
     double dnmax;
 
+    // GPU functions and variables
+    virtual int prepareDevice(); 
+
   protected:
     cmodel  *model;
     cgrid   *grid;
