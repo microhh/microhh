@@ -682,3 +682,10 @@ inline double cdiff_les2s::phih(double zeta)
 
   return phih;
 }
+
+#ifndef USECUDA
+int cdiff_les2s::prepareDevice()
+{
+  return 0;
+}
+#endif
