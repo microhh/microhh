@@ -113,6 +113,10 @@ cfields::~cfields()
   delete[] rhorefh;
   delete[] umodel;
   delete[] vmodel;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cfields::init()

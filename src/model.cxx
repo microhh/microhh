@@ -377,8 +377,6 @@ void cmodel::exec()
 #ifdef USECUDA
   fields->backwardDevice();
   boundary->backwardDevice();
-  fields->clearDevice();
-  grid  ->clearDevice();
 #endif
 }
 

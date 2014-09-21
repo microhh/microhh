@@ -135,6 +135,10 @@ cgrid::~cgrid()
 
   fftw_cleanup();
 
+#ifdef USECUDA
+  clearDevice();
+#endif
+
   exitmpi();
 }
 
