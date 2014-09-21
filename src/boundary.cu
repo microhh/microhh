@@ -195,6 +195,8 @@ __global__ void boundary_setgctopw_4th(double * __restrict__ w,
 #ifdef USECUDA
 int cboundary::exec()
 {
+  fields->forwardGPU();
+
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
@@ -215,6 +217,8 @@ int cboundary::exec()
 
   // Calculate the boundary values
   bcvalues();
+
+  fields->backwardGPU();
 
   if(grid->swspatialorder == "2")
   {
@@ -250,8 +254,21 @@ int cboundary::exec()
   }
   else if(grid->swspatialorder == "4")
   {
-    fields->forwardGPU();
+    setgcbot_4th(fields->u->data, grid->z, mbcbot, fields->u->databot, fields->u->datagradbot);
+    setgctop_4th(fields->u->data, grid->z, mbctop, fields->u->datatop, fields->u->datagradtop);
 
+    setgcbot_4th(fields->v->data, grid->z, mbcbot, fields->v->databot, fields->v->datagradbot);
+    setgctop_4th(fields->v->data, grid->z, mbctop, fields->v->datatop, fields->v->datagradtop);
+
+    setgcbotw_4th(fields->w->data);
+    setgctopw_4th(fields->w->data);
+
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    {
+      setgcbot_4th(it->second->data, grid->z, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
+      setgctop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
+    }
+    /*
     boundary_setgcbot_4th<<<grid2dGPU, block2dGPU>>>(&fields->u->data_g[offs], mbcbot, 
                                                      &fields->u->databot_g[offs], &fields->u->datagradbot_g[offs],
                                                      grid->z_g,
@@ -293,8 +310,7 @@ int cboundary::exec()
                                                        grid->z_g,
                                                        grid->icells, grid->icellsp,
                                                        grid->jcells, grid->kend);
-    }
-    fields->backwardGPU();
+    }*/
   }
 
   return 0;
