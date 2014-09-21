@@ -183,7 +183,7 @@ __global__ void boundary_setgctopw_4th(double * __restrict__ w,
   const int kk1 = 1*icellsp*jcells;
   const int kk2 = 2*icellsp*jcells;
 
-  const int ijk = i + j*icellsp + (kend-1)*kk1;
+  const int ijk = i + j*icellsp + kend*kk1;
 
   if(i < icells && j < jcells)
   {
@@ -207,7 +207,7 @@ int cboundary::exec()
 
   const int offs = grid->memoffset;
 
-  // Cyclic boundary conditions, do this before the bottom BC's
+  // Cyclic boundary conditions, do this before the bottom BC's.
   grid->boundary_cyclic_g(&fields->u->data_g[offs]);
   grid->boundary_cyclic_g(&fields->v->data_g[offs]);
   grid->boundary_cyclic_g(&fields->w->data_g[offs]);
@@ -215,7 +215,7 @@ int cboundary::exec()
   for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
     grid->boundary_cyclic_g(&it->second->data_g[offs]);
 
-  // Calculate the boundary values
+  // Calculate the boundary values.
   bcvalues();
 
   if(grid->swspatialorder == "2")
@@ -274,14 +274,12 @@ int cboundary::exec()
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kend);
 
-    /*
     boundary_setgcbotw_4th<<<grid2dGPU, block2dGPU>>>(&fields->w->data_g[offs],
                                                       grid->icells, grid->icellsp,
                                                       grid->jcells, grid->kstart);
     boundary_setgctopw_4th<<<grid2dGPU, block2dGPU>>>(&fields->w->data_g[offs],
                                                       grid->icells, grid->icellsp,
                                                       grid->jcells, grid->kend);
-                                                      */
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
@@ -296,11 +294,9 @@ int cboundary::exec()
                                                        grid->icells, grid->icellsp,
                                                        grid->jcells, grid->kend);
     }
-    fields->backwardGPU();
-
-    setgcbotw_4th(fields->w->data);
-    setgctopw_4th(fields->w->data);
   }
+
+  fields->backwardGPU();
 
   return 0;
 }
