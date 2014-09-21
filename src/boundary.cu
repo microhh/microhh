@@ -192,7 +192,6 @@ __global__ void boundary_setgctopw_4th(double * __restrict__ w,
   }
 }
 
-/*
 #ifdef USECUDA
 int cboundary::exec()
 {
@@ -204,13 +203,9 @@ int cboundary::exec()
   dim3 grid2dGPU (gridi, gridj);
   dim3 block2dGPU(blocki, blockj);
 
-  // cyclic boundary conditions, do this before the bottom BC's
-  //grid->boundary_cyclic(fields->u->data_g);
-  //grid->boundary_cyclic(fields->v->data_g);
-  //grid->boundary_cyclic(fields->w->data_g);
-
   const int offs = grid->memoffset;
 
+  // Cyclic boundary conditions, do this before the bottom BC's
   grid->boundary_cyclic_g(&fields->u->data_g[offs]);
   grid->boundary_cyclic_g(&fields->v->data_g[offs]);
   grid->boundary_cyclic_g(&fields->w->data_g[offs]);
@@ -218,7 +213,7 @@ int cboundary::exec()
   for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
     grid->boundary_cyclic_g(&it->second->data_g[offs]);
 
-  // calculate boundary values
+  // Calculate the boundary values
   bcvalues();
 
   if(grid->swspatialorder == "2")
@@ -305,4 +300,3 @@ int cboundary::exec()
   return 0;
 }
 #endif
-*/
