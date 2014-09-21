@@ -342,12 +342,39 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
                                    int jj, int kk)
 
 {
+  __shared__ double s[12]; // Contains rhoref, rhorefh, dzi, dzhi at k-1, k, k+1
+  double * rhorefs  = &s[0];
+  double * rhorefhs = &s[3];
+  double * dzis     = &s[6];
+  double * dzhis    = &s[9];
+
   const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
   const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
   const int k = blockIdx.z + kstart;
   double eviscnu, eviscsu, eviscbu, evisctu;
   double eviscev, eviscwv, eviscbv, evisctv;
   double eviscew, eviscww, eviscnw, eviscsw;
+
+  const int kms = 0;
+  const int ks  = 1;
+  const int kps = 2;  
+
+  if(threadIdx.x == 0 and threadIdx.y == 0)
+  {
+    rhorefs[kms]  = rhoref[k-1];
+    rhorefs[ks]   = rhoref[k];
+    rhorefs[kps]  = rhoref[k+1];
+    rhorefhs[kms] = rhorefh[k-1];
+    rhorefhs[ks]  = rhorefh[k];
+    rhorefhs[kps] = rhorefh[k+1];
+    dzis[kms]     = dzi[k-1];
+    dzis[ks]      = dzi[k];
+    dzis[kps]     = dzi[k+1];
+    dzhis[kms]    = dzhi[k-1];
+    dzhis[ks]     = dzhi[k];
+    dzhis[kps]    = dzhi[k+1];
+  }
+  __syncthreads();
 
   if(i < iend && j < jend && k < kend)
   {
@@ -384,8 +411,8 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
             + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
             // du/dz + dw/dx
-            + (  rhorefh[kstart+1] * evisctu*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
-               + rhorefh[kstart  ] * fluxbotu[ij] ) / rhoref[kstart] * dzi[kstart];
+            + (  rhorefhs[kps] * evisctu*((u[ijk+kk]-u[ijk   ])* dzhis[kps] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+               + rhorefhs[ks ] * fluxbotu[ij] ) / rhorefs[ks] * dzis[ks];
 
       vt[ijk] +=
             // dv/dx + du/dy
@@ -395,8 +422,8 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
                - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
             // dv/dz + dw/dy
-            + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
-               + rhorefh[k  ] * fluxbotv[ij] ) / rhoref[k] * dzi[k];
+            + (  rhorefhs[kps] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhis[kps] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+               + rhorefhs[ks ] * fluxbotv[ij] ) / rhorefs[ks] * dzis[ks];
     }
     else if(k == kend-1)
     {
@@ -408,8 +435,8 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
             + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
             // du/dz + dw/dx
-            + (- rhorefh[kend  ] * fluxtopu[ij]
-               - rhorefh[kend-1] * eviscbu*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[kend-1] * dzi[kend-1];
+            + (- rhorefhs[kps] * fluxtopu[ij]
+               - rhorefhs[ks ] * eviscbu*((u[ijk   ]-u[ijk-kk])* dzhis[ks] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhorefs[ks] * dzis[ks];
 
       vt[ijk] +=
             // dv/dx + du/dy
@@ -419,8 +446,8 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
                - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
             // dv/dz + dw/dy
-            + (- rhorefh[k  ] * fluxtopv[ij]
-               - rhorefh[k-1] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhi[k-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k-1] * dzi[k-1];
+            + (- rhorefhs[kps] * fluxtopv[ij]
+               - rhorefhs[ks] * eviscbv*((v[ijk   ]-v[ijk-kk])* dzhis[ks] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhorefs[ks] * dzis[ks];
 
       wt[ijk] +=
             // dw/dx + du/dz
@@ -430,8 +457,8 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
             + (  eviscnw*((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
                - eviscsw*((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
             // dw/dz + dw/dz
-            + (  rhoref[k  ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
-               - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * 2.* dzhi[k];
+            + (  rhorefs[ks ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzis[ks ]
+               - rhorefs[kms] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzis[kms] ) / rhorefhs[ks] * 2.* dzhis[ks];
     }
     else
     {
@@ -443,8 +470,8 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
             + (  eviscnu*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
                - eviscsu*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
             // du/dz + dw/dx
-            + (  rhorefh[k+1] * evisctu*((u[ijk+kk]-u[ijk   ])* dzhi[k+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
-               - rhorefh[k  ] * eviscbu*((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[k] * dzi[k];
+            + (  rhorefhs[kps] * evisctu*((u[ijk+kk]-u[ijk   ])* dzhis[kps] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+               - rhorefhs[ks ] * eviscbu*((u[ijk   ]-u[ijk-kk])* dzhis[ks ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhorefs[ks] * dzis[ks];
 
       vt[ijk] +=
             // dv/dx + du/dy
@@ -454,8 +481,8 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
             + (  evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
                - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
             // dv/dz + dw/dy
-            + (  rhorefh[k+1] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
-               - rhorefh[k  ] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];
+            + (  rhorefhs[kps] * evisctv*((v[ijk+kk]-v[ijk   ])*dzhis[kps] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+               - rhorefhs[ks ] * eviscbv*((v[ijk   ]-v[ijk-kk])*dzhis[ks ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhorefs[ks] * dzis[ks];
 
       wt[ijk] +=
             // dw/dx + du/dz
@@ -465,8 +492,8 @@ __global__ void diff_les2s_diffuvw(double * __restrict__ ut, double * __restrict
             + (  eviscnw*((w[ijk+jj]-w[ijk   ])*dyi + (v[ijk+jj]-v[ijk+jj-kk])*dzhi[k])
                - eviscsw*((w[ijk   ]-w[ijk-jj])*dyi + (v[ijk   ]-v[ijk+  -kk])*dzhi[k]) ) * dyi
             // dw/dz + dw/dz
-            + (  rhoref[k  ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
-               - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * 2.* dzhi[k];
+            + (  rhorefs[ks ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzis[ks ]
+               - rhorefs[kms] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzis[kms] ) / rhorefhs[ks] * 2.* dzhis[ks];
     }
   }
 }
