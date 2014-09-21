@@ -23,6 +23,7 @@
 #include "timeloop.h"
 #include "grid.h"
 #include "master.h"
+#include "fields.h"
 
 #define cA0 0.
 #define cA1 -5./9.
@@ -122,6 +123,7 @@ __global__ void rk4_kernel(double * __restrict__ a, double * __restrict__ at, do
 
 int ctimeloop::rk3_GPU(double *a, double *at, double dt)
 {
+  fields->forwardGPU();
   const int blocki = 128;
   const int blockj = 2;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -152,6 +154,7 @@ int ctimeloop::rk3_GPU(double *a, double *at, double dt)
   //                                  substep, grid->icells, grid->ijcells,
   //                                  grid->istart, grid->jstart, grid->kstart,
   //                                  grid->iend, grid->jend, grid->kend);
+  fields->backwardGPU();
 
   return 0;
 }

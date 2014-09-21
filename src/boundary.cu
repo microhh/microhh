@@ -192,6 +192,7 @@ __global__ void boundary_setgctopw_4th(double * __restrict__ w,
   }
 }
 
+/*
 #ifdef USECUDA
 int cboundary::exec()
 {
@@ -304,3 +305,4 @@ int cboundary::exec()
   return 0;
 }
 #endif
+*/
