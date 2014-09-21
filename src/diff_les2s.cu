@@ -334,7 +334,7 @@ __global__ void diff_les2s_diffw(double * __restrict__ wt, double * __restrict__
 __global__ void diff_les2s_diffc(double * __restrict__ at, double * __restrict__ a, double * __restrict__ evisc,
                                  double * __restrict__ fluxbot, double * __restrict__ fluxtop, 
                                  double * __restrict__ dzi, double * __restrict__ dzhi, double dxidxi, double dyidyi,
-                                 double * __restrict__ rhoref, double * __restrict__ rhorefh, double tPr, 
+                                 double * __restrict__ rhoref, double * __restrict__ rhorefh, double tPri, 
                                  int istart, int jstart, int kstart, int iend, int jend, int kend, 
                                  int jj, int kk)
 
@@ -352,12 +352,12 @@ __global__ void diff_les2s_diffc(double * __restrict__ at, double * __restrict__
 
     if(k == kstart)
     {
-      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
-      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
-      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
-      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
-      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
-      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])*tPri;
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])*tPri;
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])*tPri;
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])*tPri;
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])*tPri;
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])*tPri;
 
       at[ijk] +=
             + (  evisce*(a[ijk+ii]-a[ijk   ]) 
@@ -369,12 +369,12 @@ __global__ void diff_les2s_diffc(double * __restrict__ at, double * __restrict__
     }
     else if(k == kend-1)
     {
-      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
-      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
-      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
-      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
-      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
-      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])*tPri;
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])*tPri;
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])*tPri;
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])*tPri;
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])*tPri;
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])*tPri;
 
       at[ijk] +=
             + (  evisce*(a[ijk+ii]-a[ijk   ]) 
@@ -386,12 +386,12 @@ __global__ void diff_les2s_diffc(double * __restrict__ at, double * __restrict__
     }
     else
     {
-      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
-      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])/tPr;
-      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])/tPr;
-      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])/tPr;
-      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])/tPr;
-      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])/tPr;
+      evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])*tPri;
+      eviscw = 0.5*(evisc[ijk-ii]+evisc[ijk   ])*tPri;
+      eviscn = 0.5*(evisc[ijk   ]+evisc[ijk+jj])*tPri;
+      eviscs = 0.5*(evisc[ijk-jj]+evisc[ijk   ])*tPri;
+      evisct = 0.5*(evisc[ijk   ]+evisc[ijk+kk])*tPri;
+      eviscb = 0.5*(evisc[ijk-kk]+evisc[ijk   ])*tPri;
 
       at[ijk] +=
             + (  evisce*(a[ijk+ii]-a[ijk   ]) 
@@ -514,6 +514,7 @@ int cdiff_les2s::exec()
   const int offs = grid->memoffset;
   const double dxidxi = 1./(grid->dx * grid->dx);
   const double dyidyi = 1./(grid->dy * grid->dy);
+  const double tPri = 1./tPr;
 
   diff_les2s_diffu<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->s["evisc"]->data_g[offs], 
                                           &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
@@ -542,7 +543,7 @@ int cdiff_les2s::exec()
     diff_les2s_diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], &fields->s["evisc"]->data_g[offs], 
                                             &fields->s[it->first]->datafluxbot_g[offs], &fields->s[it->first]->datafluxtop_g[offs],
                                             grid->dzi_g, grid->dzhi_g, dxidxi, dyidyi,
-                                            fields->rhoref_g, fields->rhorefh_g, tPr,
+                                            fields->rhoref_g, fields->rhorefh_g, tPri,
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
 
