@@ -218,8 +218,6 @@ int cboundary::exec()
   // Calculate the boundary values
   bcvalues();
 
-  fields->backwardGPU();
-
   if(grid->swspatialorder == "2")
   {
     boundary_setgcbot_2nd<<<grid2dGPU, block2dGPU>>>(&fields->u->data_g[offs], grid->dzh_g, mbcbot, 
@@ -254,21 +252,6 @@ int cboundary::exec()
   }
   else if(grid->swspatialorder == "4")
   {
-    setgcbot_4th(fields->u->data, grid->z, mbcbot, fields->u->databot, fields->u->datagradbot);
-    setgctop_4th(fields->u->data, grid->z, mbctop, fields->u->datatop, fields->u->datagradtop);
-
-    setgcbot_4th(fields->v->data, grid->z, mbcbot, fields->v->databot, fields->v->datagradbot);
-    setgctop_4th(fields->v->data, grid->z, mbctop, fields->v->datatop, fields->v->datagradtop);
-
-    setgcbotw_4th(fields->w->data);
-    setgctopw_4th(fields->w->data);
-
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    {
-      setgcbot_4th(it->second->data, grid->z, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
-      setgctop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
-    }
-    /*
     boundary_setgcbot_4th<<<grid2dGPU, block2dGPU>>>(&fields->u->data_g[offs], mbcbot, 
                                                      &fields->u->databot_g[offs], &fields->u->datagradbot_g[offs],
                                                      grid->z_g,
@@ -291,12 +274,14 @@ int cboundary::exec()
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kend);
 
+    /*
     boundary_setgcbotw_4th<<<grid2dGPU, block2dGPU>>>(&fields->w->data_g[offs],
                                                       grid->icells, grid->icellsp,
                                                       grid->jcells, grid->kstart);
     boundary_setgctopw_4th<<<grid2dGPU, block2dGPU>>>(&fields->w->data_g[offs],
                                                       grid->icells, grid->icellsp,
                                                       grid->jcells, grid->kend);
+                                                      */
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
@@ -310,7 +295,11 @@ int cboundary::exec()
                                                        grid->z_g,
                                                        grid->icells, grid->icellsp,
                                                        grid->jcells, grid->kend);
-    }*/
+    }
+    fields->backwardGPU();
+
+    setgcbotw_4th(fields->w->data);
+    setgctopw_4th(fields->w->data);
   }
 
   return 0;
