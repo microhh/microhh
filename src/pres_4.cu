@@ -81,8 +81,7 @@ void cpres_4::exec(double dt)
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
            fields->sd["p"]->data, grid->dzhi4);
 }
-#endif
-/*
+
 double cpres_4::check()
 {
   fields->forwardGPU();
@@ -112,4 +111,4 @@ double cpres_4::check()
 
   return divmax;
 }
-*/
+#endif
