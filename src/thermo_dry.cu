@@ -139,6 +139,18 @@ int cthermo_dry::prepareDevice()
   return 0;
 }
 
+int cthermo_dry::clearDevice()
+{
+  cudaFree(thref_g);
+  cudaFree(threfh_g);
+  cudaFree(pref_g);
+  cudaFree(prefh_g);
+  cudaFree(exner_g);
+  cudaFree(exnerh_g);
+
+  return 0;
+}
+
 #ifdef USECUDA
 int cthermo_dry::exec()
 {

@@ -59,6 +59,7 @@ class cthermo_dry : public cthermo
 #ifdef USECUDA
     // GPU functions and variables
     int prepareDevice();
+    int clearDevice();
 #endif
 
   private:

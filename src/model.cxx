@@ -40,6 +40,10 @@
 #include "cross.h"
 #include "budget.h"
 
+#ifdef USECUDA
+#include <cuda_runtime_api.h> // Needed for cudaDeviceReset(), to check mem leaks 
+#endif
+
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
   master = masterin;
@@ -149,6 +153,9 @@ void cmodel::deleteObjects()
 cmodel::~cmodel()
 {
   deleteObjects();
+#ifdef USECUDA
+  cudaDeviceReset();
+#endif
 }
 
 void cmodel::init()

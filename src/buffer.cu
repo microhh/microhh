@@ -54,7 +54,6 @@ __global__ void buffer_buffer(double * __restrict__ at,   double * __restrict__ 
   }
 }
 
-// TODO: (also for pressure), deallocate fields on GPU...
 int cbuffer::prepareDevice()
 {
   if(swbuffer == "1")
@@ -72,6 +71,18 @@ int cbuffer::prepareDevice()
       cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice);
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice);
+  }
+  return 0;
+}
+
+int cbuffer::clearDevice()
+{
+  if(swbuffer == "1")
+  {
+    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+      cudaFree(bufferprofs_g[it->first]);
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      cudaFree(bufferprofs_g[it->first]);
   }
   return 0;
 }

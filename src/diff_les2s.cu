@@ -585,6 +585,12 @@ int cdiff_les2s::prepareDevice()
 }
 #endif
 
+int cdiff_les2s::clearDevice()
+{
+  cudaFree(mlen_g); 
+  return 0;
+}
+
 #ifdef USECUDA
 int cdiff_les2s::execvisc()
 {

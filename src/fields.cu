@@ -196,31 +196,31 @@ int cfields::clearDevice()
 {
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    cudaFree(&it->second->data_g);
-    cudaFree(&it->second->databot_g);
-    cudaFree(&it->second->datatop_g);
-    cudaFree(&it->second->datagradbot_g);
-    cudaFree(&it->second->datagradtop_g);
-    cudaFree(&it->second->datafluxbot_g);
-    cudaFree(&it->second->datafluxtop_g);
-    cudaFree(&it->second->datamean_g);
+    cudaFree(it->second->data_g);
+    cudaFree(it->second->databot_g);
+    cudaFree(it->second->datatop_g);
+    cudaFree(it->second->datagradbot_g);
+    cudaFree(it->second->datagradtop_g);
+    cudaFree(it->second->datafluxbot_g);
+    cudaFree(it->second->datafluxtop_g);
+    cudaFree(it->second->datamean_g);
   }
 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    cudaFree(&it->second->data_g);
-    cudaFree(&it->second->databot_g);
-    cudaFree(&it->second->datatop_g);
-    cudaFree(&it->second->datagradbot_g);
-    cudaFree(&it->second->datagradtop_g);
-    cudaFree(&it->second->datafluxbot_g);
-    cudaFree(&it->second->datafluxtop_g);
-    cudaFree(&it->second->datamean_g);
+    cudaFree(it->second->data_g);
+    cudaFree(it->second->databot_g);
+    cudaFree(it->second->datatop_g);
+    cudaFree(it->second->datagradbot_g);
+    cudaFree(it->second->datagradtop_g);
+    cudaFree(it->second->datafluxbot_g);
+    cudaFree(it->second->datafluxtop_g);
+    cudaFree(it->second->datamean_g);
   }
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
   {
-    cudaFree(&it->second->data_g);
+    cudaFree(it->second->data_g);
   }
 
   //cudaFree(&a["p"]->data_g);
@@ -228,8 +228,8 @@ int cfields::clearDevice()
   //cudaFree(&a["tmp2"]->data_g);
   //cudaFree(&a["tmp3"]->data_g);
 
-  cudaFree(&rhoref_g);
-  cudaFree(&rhorefh_g);
+  cudaFree(rhoref_g);
+  cudaFree(rhorefh_g);
 
   return 0;
 }

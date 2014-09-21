@@ -46,6 +46,7 @@ class cbuffer
 
     // GPU functions and variables
     int prepareDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
+    int clearDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
 
 
   private:

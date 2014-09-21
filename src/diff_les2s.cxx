@@ -50,6 +50,9 @@ cdiff_les2s::cdiff_les2s(cmodel *modelin, cinput *inputin) : cdiff(modelin, inpu
 
 cdiff_les2s::~cdiff_les2s()
 {
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 #ifndef USECUDA

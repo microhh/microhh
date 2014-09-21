@@ -320,6 +320,24 @@ int cpres_2::prepareDevice()
   return 0;
 }
 
+int cpres_2::clearDevice()
+{
+  cudaFree(bmati_g);
+  cudaFree(bmatj_g);
+  cudaFree(a_g);
+  cudaFree(c_g);
+  cudaFree(work2d_g);
+  cudaFree(ffti_complex_g);
+  cudaFree(fftj_complex_g);
+
+  cufftDestroy(iplanf);
+  cufftDestroy(jplanf);
+  cufftDestroy(iplanb);
+  cufftDestroy(jplanb);
+ 
+  return 0; 
+}
+
 #ifdef USECUDA
 void cpres_2::exec(double dt)
 {

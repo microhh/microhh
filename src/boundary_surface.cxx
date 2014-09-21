@@ -57,6 +57,10 @@ cboundary_surface::~cboundary_surface()
 {
   delete[] ustar;
   delete[] obuk;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cboundary_surface::create(cinput *inputin)

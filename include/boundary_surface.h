@@ -59,6 +59,7 @@ class cboundary_surface : public cboundary
 #ifdef USECUDA
     // GPU functions and variables
     int prepareDevice();
+    int clearDevice();
     int forwardDevice();  // TMP BVS
     int backwardDevice(); // TMP BVS 
 

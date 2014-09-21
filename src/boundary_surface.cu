@@ -449,6 +449,14 @@ int cboundary_surface::backwardDevice()
   return 0;
 }
 
+int cboundary_surface::clearDevice()
+{
+  cudaFree(obuk_g);
+  cudaFree(ustar_g);
+
+  return 0;
+}
+
 #ifdef USECUDA
 int cboundary_surface::bcvalues()
 {

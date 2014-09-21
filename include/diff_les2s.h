@@ -41,6 +41,7 @@ class cdiff_les2s : public cdiff
 
     // GPU functions and variables
     int prepareDevice();
+    int clearDevice();
     double *mlen_g; 
 
   private:

@@ -72,6 +72,10 @@ cthermo_dry::~cthermo_dry()
   delete[] this->prefh;
   delete[] this->exner;
   delete[] this->exnerh;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cthermo_dry::init()
