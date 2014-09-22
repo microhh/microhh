@@ -29,25 +29,26 @@ using namespace fd::o4;
 
 __global__ void pres_4_gcwt(double * const __restrict__ wt,
                             const int jj, const int kk,
-                            const int imax, const int jmax,
+                            const int iend, const int jend,
+                            const int igc, const int jgc,
                             const int kstart, const int kend)
 {
-  const int i = blockIdx.x*blockDim.x + threadIdx.x;
-  const int j = blockIdx.y*blockDim.y + threadIdx.y;
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + igc;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jgc;
 
-  if(i < imax && j < jmax)
+  if(i < iend && j < jend)
   {
     int ijk = i + j*jj + kstart*kk;
     wt[ijk-kk] = -wt[ijk+kk];
 
-    int ijk = i + j*jj + kend*kk;
-    wt[ijk-kk] = -wt[ijk+kk];
+    ijk = i + j*jj + kend*kk;
+    wt[ijk+kk] = -wt[ijk-kk];
   }
 }
 
 __global__ void pres_4_presin(double * __restrict__ p,
-                              double * __restrict__ u ,  double * __restrict__ v ,     double * __restrict__ w ,
-                              double * __restrict__ ut,  double * __restrict__ vt,     double * __restrict__ wt,
+                              double * __restrict__ u , double * __restrict__ v , double * __restrict__ w ,
+                              double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt,
                               double * __restrict__ dzi4,
                               double dxi, double dyi, double dti,
                               const int jj, const int kk,
@@ -55,19 +56,25 @@ __global__ void pres_4_presin(double * __restrict__ p,
                               const int imax, const int jmax, const int kmax,
                               const int igc, const int jgc, const int kgc)
 {
-  const int ii = 1;
   const int i = blockIdx.x*blockDim.x + threadIdx.x;
   const int j = blockIdx.y*blockDim.y + threadIdx.y;
   const int k = blockIdx.z;
+
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int jj1 = 1*jj;
+  const int jj2 = 2*jj;
+  const int kk1 = 1*kk;
+  const int kk2 = 2*kk;
 
   if(i < imax && j < jmax && k < kmax)
   {
     const int ijkp = i + j*jjp + k*kkp;
     const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
 
-    p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]/dt) + cg1*(ut[ijk] + u[ijk]/dt) + cg2*(ut[ijk+ii1] + u[ijk+ii1]/dt) + cg3*(ut[ijk+ii2] + u[ijk+ii2]/dt)) * cgi*dxi;
-    p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
-    p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
+    p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1*(ut[ijk] + u[ijk]*dti) + cg2*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * cgi*dxi
+             + (cg0*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1*(vt[ijk] + v[ijk]*dti) + cg2*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * cgi*dyi
+             + (cg0*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1*(wt[ijk] + w[ijk]*dti) + cg2*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
   }
 }
 
@@ -103,12 +110,6 @@ __global__ void pres_4_calcdivergence(double * __restrict__ div,
 void cpres_4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
-  /*
-  pres_in(fields->sd["p"]->data,
-          fields->u ->data, fields->v ->data, fields->w ->data,
-          fields->ut->data, fields->vt->data, fields->wt->data, 
-          grid->dzi4, dt);*/
-
   fields->forwardGPU();
   const int blocki = 128;
   const int blockj = 2;
@@ -128,20 +129,28 @@ void cpres_4::exec(double dt)
   grid->boundary_cyclic_g(&fields->vt->data_g[offs]);
   grid->boundary_cyclic_g(&fields->wt->data_g[offs]);
 
-  pres_4_gcwt<<<grid2dGPU, block2dGPU>>>(fields->wt->data_g[offs],
-                                         grid->icells, grid->ijcells,
-                                         grid->imax, grid->jmax,
+  pres_4_gcwt<<<grid2dGPU, block2dGPU>>>(&fields->wt->data_g[offs],
+                                         grid->icellsp, grid->ijcellsp,
+                                         grid->iend, grid->jend,
+                                         grid->igc, grid->jgc,
                                          grid->kstart, grid->kend);
 
+  /*
   pres_4_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        &fields->u ->data_g[offs], &fields->v ->data_g[offs], &fields->w ->data_g[offs],
                                        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
-                                       grid->dzi4_g, 1./grid->dx, 1./grid->dy, 1./dt,
+                                       grid->dzi4_g,
+                                       1./grid->dx, 1./grid->dy, 1./dt,
                                        grid->icellsp, grid->ijcellsp,
                                        grid->imax, grid->imax*grid->jmax,
                                        grid->imax, grid->jmax, grid->kmax,
-                                       grid->igc, grid->jgc, grid->kgc);
+                                       grid->igc, grid->jgc, grid->kgc);*/
   fields->backwardGPU();
+
+  pres_in(fields->sd["p"]->data,
+          fields->u ->data, fields->v ->data, fields->w ->data,
+          fields->ut->data, fields->vt->data, fields->wt->data, 
+          grid->dzi4, dt);
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
   // Take slices out of a temporary field to save memory. The temp arrays
