@@ -29,12 +29,11 @@ using namespace fd::o4;
 
 __global__ void pres_4_gcwt(double * const __restrict__ wt,
                             const int jj, const int kk,
-                            const int iend, const int jend,
-                            const int igc, const int jgc,
-                            const int kstart, const int kend)
+                            const int istart, const int jstart, const int kstart,
+                            const int iend, const int jend, const int kend)
 {
-  const int i = blockIdx.x*blockDim.x + threadIdx.x + igc;
-  const int j = blockIdx.y*blockDim.y + threadIdx.y + jgc;
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
 
   if(i < iend && j < jend)
   {
@@ -46,11 +45,11 @@ __global__ void pres_4_gcwt(double * const __restrict__ wt,
   }
 }
 
-__global__ void pres_4_presin(double * __restrict__ p,
-                              double * __restrict__ u , double * __restrict__ v , double * __restrict__ w ,
-                              double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt,
-                              double * __restrict__ dzi4,
-                              double dxi, double dyi, double dti,
+__global__ void pres_4_presin(double * const __restrict__ p,
+                              const double * const __restrict__ u , const double * const __restrict__ v , const double * const __restrict__ w ,
+                              const double * const __restrict__ ut, const double * const __restrict__ vt, const double * const __restrict__ wt,
+                              const double * const __restrict__ dzi4,
+                              const double dxi, const double dyi, const double dti,
                               const int jj, const int kk,
                               const int jjp, const int kkp,
                               const int imax, const int jmax, const int kmax,
@@ -72,9 +71,9 @@ __global__ void pres_4_presin(double * __restrict__ p,
     const int ijkp = i + j*jjp + k*kkp;
     const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
 
-    p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1*(ut[ijk] + u[ijk]*dti) + cg2*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * cgi*dxi
-             + (cg0*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1*(vt[ijk] + v[ijk]*dti) + cg2*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * cgi*dyi
-             + (cg0*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1*(wt[ijk] + w[ijk]*dti) + cg2*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
+    p[ijkp] = (cg0*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1*(ut[ijk] + u[ijk]*dti) + cg2*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * cgi*dxi
+            + (cg0*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1*(vt[ijk] + v[ijk]*dti) + cg2*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * cgi*dyi
+            + (cg0*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1*(wt[ijk] + w[ijk]*dti) + cg2*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
   }
 }
 
@@ -131,11 +130,9 @@ void cpres_4::exec(double dt)
 
   pres_4_gcwt<<<grid2dGPU, block2dGPU>>>(&fields->wt->data_g[offs],
                                          grid->icellsp, grid->ijcellsp,
-                                         grid->iend, grid->jend,
-                                         grid->igc, grid->jgc,
-                                         grid->kstart, grid->kend);
+                                         grid->istart, grid->jstart, grid->kstart,
+                                         grid->iend, grid->jend, grid->kend);
 
-  /*
   pres_4_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        &fields->u ->data_g[offs], &fields->v ->data_g[offs], &fields->w ->data_g[offs],
                                        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
@@ -144,13 +141,10 @@ void cpres_4::exec(double dt)
                                        grid->icellsp, grid->ijcellsp,
                                        grid->imax, grid->imax*grid->jmax,
                                        grid->imax, grid->jmax, grid->kmax,
-                                       grid->igc, grid->jgc, grid->kgc);*/
-  fields->backwardGPU();
+                                       grid->igc, grid->jgc, grid->kgc);
 
-  pres_in(fields->sd["p"]->data,
-          fields->u ->data, fields->v ->data, fields->w ->data,
-          fields->ut->data, fields->vt->data, fields->wt->data, 
-          grid->dzi4, dt);
+  // Forward FFT -> how to get rid of the loop at the host side....
+  fields->backwardGPU();
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
   // Take slices out of a temporary field to save memory. The temp arrays
