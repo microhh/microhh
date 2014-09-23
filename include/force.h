@@ -54,6 +54,10 @@ class cforce
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
 
+    // GPU functions and variables
+    int prepareDevice();
+    int clearDevice();
+
   private:
     cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.
@@ -91,5 +95,11 @@ class cforce
 
     int advecwls_2nd(double * const, const double * const,
                      const double * const, const double * const); ///< Calculates the large-scale vertical transport.
+
+    // GPU functions and variables
+    double *ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
+    double *vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
+    double *wls_g; ///< Pointer to GPU array large-scale vertical velocity.
+
 };
 #endif

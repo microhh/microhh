@@ -99,6 +99,10 @@ cforce::~cforce()
   // clean up time dependent data
   for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cforce::init()
@@ -179,7 +183,7 @@ void cforce::create(cinput *inputin)
     throw 1;
 }
 
-//#ifndef USECUDA
+#ifndef USECUDA
 int cforce::exec(double dt)
 {
   if(swlspres == "uflux")
@@ -207,7 +211,7 @@ int cforce::exec(double dt)
 
   return 0;
 }
-//#endif
+#endif
 
 int cforce::settimedep()
 {

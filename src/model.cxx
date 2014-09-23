@@ -226,6 +226,7 @@ void cmodel::exec()
   thermo  ->prepareDevice();
   boundary->prepareDevice();
   diff    ->prepareDevice();
+  force   ->prepareDevice();
 #endif
 
   master->printMessage("Starting time integration\n");
