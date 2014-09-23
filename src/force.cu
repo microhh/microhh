@@ -24,6 +24,7 @@
 #include "force.h"
 #include "grid.h"
 #include "fields.h"
+#include "fd.h"
 
 __global__ void force_flux_step1(double * const __restrict__ usum, double * const __restrict__ utsum,
                                  const double * const __restrict__ u, const double * const __restrict__ ut,
@@ -69,10 +70,11 @@ __global__ void force_coriolis_2nd(double * const __restrict__ ut, double * cons
                                    const int istart, const int jstart, const int kstart,
                                    const int iend,   const int jend,   const int kend)
 {
-  int ii = 1;
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
   int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
   int k = blockIdx.z + kstart;
+
+  int ii = 1;
 
   if(i < iend && j < jend && k < kend)
   {
@@ -90,16 +92,30 @@ __global__ void force_coriolis_4th(double * const __restrict__ ut, double * cons
                                    const int istart, const int jstart, const int kstart,
                                    const int iend,   const int jend,   const int kend)
 {
-  int ii = 1;
+  using namespace fd::o4;
+
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
   int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
   int k = blockIdx.z + kstart;
 
+  int ii  = 1;
+  int ii2 = 2;
+  int jj2 = 2*jj;
+
   if(i < iend && j < jend && k < kend)
   {
     int ijk = i + j*jj + k*kk;
-    ut[ijk] += fc * (0.25*(v[ijk-ii] + v[ijk] + v[ijk-ii+jj] + v[ijk+jj]) + vgrid - vg[k]);
-    vt[ijk] -= fc * (0.25*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
+    ut[ijk] += fc * ( ( ci0*(ci0*v[ijk-ii2-jj ] + ci1*v[ijk-ii-jj ] + ci2*v[ijk-jj    ] + ci3*v[ijk+ii-jj  ])
+                      + ci1*(ci0*v[ijk-ii2    ] + ci1*v[ijk-ii    ] + ci2*v[ijk       ] + ci3*v[ijk+ii     ])
+                      + ci2*(ci0*v[ijk-ii2+jj ] + ci1*v[ijk-ii+jj ] + ci2*v[ijk+jj    ] + ci3*v[ijk+ii+jj  ])
+                      + ci3*(ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii+jj2] + ci2*v[ijk+jj2   ] + ci3*v[ijk+ii+jj2 ]) )
+                      + vgrid - vg[k] );
+
+    vt[ijk] -= fc * ( ( ci0*(ci0*u[ijk-ii-jj2 ] + ci1*u[ijk-jj2   ] + ci2*u[ijk+ii-jj2] + ci3*u[ijk+ii2-jj2])
+                      + ci1*(ci0*u[ijk-ii-jj  ] + ci1*u[ijk-jj    ] + ci2*u[ijk+ii-jj ] + ci3*u[ijk+ii2-jj ])
+                      + ci2*(ci0*u[ijk-ii     ] + ci1*u[ijk       ] + ci2*u[ijk+ii    ] + ci3*u[ijk+ii2    ])
+                      + ci3*(ci0*u[ijk-ii+jj  ] + ci1*u[ijk+jj    ] + ci2*u[ijk+ii+jj ] + ci3*u[ijk+ii2+jj ]) )
+                      + ugrid - ug[k]);
   }
 }
 
@@ -207,7 +223,12 @@ int cforce::exec(double dt)
                                                 grid->istart,  grid->jstart, grid->kstart,
                                                 grid->iend,    grid->jend,   grid->kend);
     else if(grid->swspatialorder == "4")
-      master->printMessage("4th order coriolis not implemented\n");
+      force_coriolis_4th<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs],
+                                                &fields->u->data_g[offs],  &fields->v->data_g[offs],
+                                                ug_g, vg_g, fc, grid->utrans, grid->vtrans, 
+                                                grid->icellsp, grid->ijcellsp,
+                                                grid->istart,  grid->jstart, grid->kstart,
+                                                grid->iend,    grid->jend,   grid->kend);
   }
 
   //if(swls == "1")
