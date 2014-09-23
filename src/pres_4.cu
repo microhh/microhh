@@ -77,6 +77,40 @@ __global__ void pres_4_presin(double * const __restrict__ p,
   }
 }
 
+__global__ void pres_4_presout(double * const __restrict__ ut, double * const __restrict__ vt, double * const __restrict__ wt,
+                               const double * const __restrict__ p,
+                               const double * const __restrict__ dzhi4,
+                               const double dxi, const double dyi,
+                               const int jj, const int kk,
+                               const int istart, const int jstart, const int kstart,
+                               const int iend, const int jend, const int kend)
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
+
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int jj1 = 1*jj;
+  const int jj2 = 2*jj;
+  const int kk1 = 1*kk;
+  const int kk2 = 2*kk;
+
+  if(i < iend && j < jend && k == kstart)
+  {
+    const int ijk = i + j*jj + k*kk;
+    ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
+    vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+  }
+  else if(i < iend && j < jend && k < kend)
+  {
+    const int ijk = i + j*jj1 + k*kk1;
+    ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
+    vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+    wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
+  }
+}
+
 __global__ void pres_4_calcdivergence(double * __restrict__ div,
                                       double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
                                       double * __restrict__ dzi4,
@@ -145,6 +179,8 @@ void cpres_4::exec(double dt)
 
   // Forward FFT -> how to get rid of the loop at the host side....
   fields->backwardGPU();
+  int nsize = sizeof(double)*grid->ncells;
+  cudaMemcpy(fields->a["p"]->data, fields->a["p"]->data_g, nsize, cudaMemcpyDeviceToHost);
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
   // Take slices out of a temporary field to save memory. The temp arrays
@@ -160,8 +196,15 @@ void cpres_4::exec(double dt)
              bmati, bmatj);
 
   // 3. Get the pressure tendencies from the pressure field.
-  pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
-           fields->sd["p"]->data, grid->dzhi4);
+  fields->forwardGPU();
+  pres_4_presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
+                                        &fields->sd["p"]->data_g[offs],
+                                        grid->dzhi4_g,
+                                        1./grid->dx, 1./grid->dy,
+                                        grid->icellsp, grid->ijcellsp,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend, grid->jend, grid->kend);
+  fields->backwardGPU();
 }
 
 double cpres_4::check()
