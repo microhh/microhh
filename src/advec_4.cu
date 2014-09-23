@@ -461,17 +461,13 @@ double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, doubl
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->iend,   grid->jend,   grid->kend);
 
-  cudaError_t error = cudaGetLastError();
-  if(error != cudaSuccess)
-    printf("CUDA ERROR CFL0: %s\n", cudaGetErrorString(error));
-
   cfl = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
   grid->getmax(&cfl); 
   cfl = cfl*dt;
 
-  error = cudaGetLastError();
+  cudaError error = cudaGetLastError();
   if(error != cudaSuccess)
-    printf("CUDA ERROR CFL1: %s\n", cudaGetErrorString(error));
+    printf("CUDA ERROR CFL: %s\n", cudaGetErrorString(error));
 
   fields->backwardGPU();
 

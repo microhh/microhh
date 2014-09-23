@@ -245,6 +245,16 @@ int cpres_4::prepareGPU()
 
   cudaMalloc((void**)&bmati_g, imemsize);
   cudaMalloc((void**)&bmatj_g, jmemsize);
+  cudaMalloc((void**)&m1_g, kmemsize);
+  cudaMalloc((void**)&m2_g, kmemsize);
+  cudaMalloc((void**)&m3_g, kmemsize);
+  cudaMalloc((void**)&m4_g, kmemsize);
+  cudaMalloc((void**)&m5_g, kmemsize);
+  cudaMalloc((void**)&m6_g, kmemsize);
+  cudaMalloc((void**)&m7_g, kmemsize);
+
+  cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice);
 
   cudaMemcpy(m1_g, m1, kmemsize, cudaMemcpyHostToDevice);
   cudaMemcpy(m2_g, m2, kmemsize, cudaMemcpyHostToDevice);
