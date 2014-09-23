@@ -236,4 +236,56 @@ double cpres_4::check()
 
   return divmax;
 }
+
+int cpres_4::prepareGPU()
+{
+  const int kmemsize = grid->kmax*sizeof(double);
+  const int imemsize = grid->itot*sizeof(double);
+  const int jmemsize = grid->jtot*sizeof(double);
+
+  cudaMalloc((void**)&bmati_g, imemsize);
+  cudaMalloc((void**)&bmatj_g, jmemsize);
+
+  cudaMemcpy(m1_g, m1, kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(m2_g, m2, kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(m3_g, m3, kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(m4_g, m4, kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(m5_g, m5, kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(m6_g, m6, kmemsize, cudaMemcpyHostToDevice);
+  cudaMemcpy(m7_g, m7, kmemsize, cudaMemcpyHostToDevice);
+
+  // cuFFT
+  cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1))); // sizeof(complex) = 16
+  cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1)));
+
+  // Make cuFFT plan
+  int rank      = 1;
+
+  // Double input
+  int i_ni[]    = {grid->itot}; 
+  int i_nj[]    = {grid->jtot};  
+  int i_istride = 1;
+  int i_jstride = grid->itot;
+  int i_idist   = grid->itot;
+  int i_jdist   = 1;
+
+  // Double-complex output
+  int o_ni[]    = {grid->itot/2+1};
+  int o_nj[]    = {grid->jtot/2+1};
+  int o_istride = 1;
+  int o_jstride = grid->itot;
+  int o_idist   = grid->itot/2+1;
+  int o_jdist   = 1;
+
+  // Forward FFTs
+  cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist, o_ni, o_istride, o_idist, CUFFT_D2Z, grid->jtot);
+  cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist, o_nj, o_jstride, o_jdist, CUFFT_D2Z, grid->itot);
+
+  // Backward FFTs
+  // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1 
+  cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot);
+  cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist, i_nj, i_jstride, i_jdist, CUFFT_Z2D, grid->itot);
+
+  return 0;
+}
 #endif
