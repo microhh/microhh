@@ -148,6 +148,22 @@ __global__ void diff_les2s_evisc(double * __restrict__ evisc, double * __restric
   }
 }
 
+__global__ void diff_les2s_evisc_neutral(double * __restrict__ evisc, double * __restrict__ mlen,
+                                         int istart, int jstart, int kstart, int iend, int jend, int kend, 
+                                         int jj, int kk)
+
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  const int k = blockIdx.z + kstart;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    const int ijk = i + j*jj + k*kk;
+    evisc[ijk]    = mlen[k] * sqrt(evisc[ijk]);
+  }
+}
+
 __global__ void diff_les2s_diffu(double * __restrict__ ut, double * __restrict__ evisc,
                                  double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
                                  double * __restrict__ fluxbot, double * __restrict__ fluxtop, 
@@ -619,11 +635,11 @@ int cdiff_les2s::execvisc()
   // start with retrieving the stability information
   if(model->thermo->getsw() == "0")
   {
-    master->printMessage("diff_les2s without thermo not yet supported on GPU\n");
-    //evisc_neutral(fields->s["evisc"]->data,
-    //              fields->u->data, fields->v->data, fields->w->data,
-    //              fields->u->datafluxbot, fields->v->datafluxbot,
-    //              grid->z, grid->dz, boundaryptr->z0m);
+    diff_les2s_evisc_neutral<<<gridGPU, blockGPU>>>(&fields->s["evisc"]->data_g[offs], mlen_g,
+                                                    grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
+                                                    grid->icellsp, grid->ijcellsp);  
+
+    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
   // assume buoyancy calculation is needed
   else
@@ -640,8 +656,8 @@ int cdiff_les2s::execvisc()
                                             mlen_g, tPri, boundaryptr->z0m, grid->z[grid->kstart],
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
-    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
 
+    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
 
   return 0;

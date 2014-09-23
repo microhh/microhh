@@ -319,6 +319,38 @@ __global__ void boundary_surface_stability(double * __restrict__ ustar, double *
   }
 }
 
+//template <int mbcbot, int thermobc>  // BvS for now normal parameter. Make template again...
+__global__ void boundary_surface_stability_neutral(double * __restrict__ ustar, double * __restrict__ obuk,
+                                                   double * __restrict__ dutot, double z0m, double z0h, double zsl,
+                                                   int icells, int jcells, int kstart, int jj, int kk, int mbcbot, int thermobc)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y; 
+
+  if(i < icells && j < jcells)
+  {
+    int ij  = i + j*jj;
+
+    // case 1: fixed buoyancy flux and fixed ustar
+    if(mbcbot == BC_USTAR && thermobc == BC_FLUX)
+    {
+      obuk[ij] = -constants::dbig;
+    }
+    // case 2: fixed buoyancy flux and free ustar
+    else if(mbcbot == BC_DIRICHLET && thermobc == BC_FLUX)
+    {
+      obuk [ij] = -constants::dbig;
+      ustar[ij] = dutot[ij] * boundary_surface_fm(zsl, z0m, obuk[ij]);
+    }
+    // case 3: fixed buoyancy surface value and free ustar
+    else if(mbcbot == BC_DIRICHLET && thermobc == BC_DIRICHLET)
+    {
+      obuk [ij] = -constants::dbig;
+      ustar[ij] = dutot[ij] * boundary_surface_fm(zsl, z0m, obuk[ij]);
+    }
+  }
+}
+
 __global__ void boundary_surface_surfm_flux(double * __restrict__ ufluxbot, double * __restrict__ vfluxbot,
                                             double * __restrict__ u,        double * __restrict__ v,
                                             double * __restrict__ ubot,     double * __restrict__ vbot, 
@@ -480,68 +512,62 @@ int cboundary_surface::bcvalues()
  
   const int offs = grid->memoffset;
 
+  // Calculate dutot in tmp2
+  boundary_surface_dutot<<<gridGPU, blockGPU>>>(&fields->sd["tmp2"]->data_g[offs], 
+                                                &fields->u->data_g[offs],    &fields->v->data_g[offs],
+                                                &fields->u->databot_g[offs], &fields->v->databot_g[offs],
+                                                grid->istart, grid->jstart, grid->kstart,
+                                                grid->iend,   grid->jend,   grid->icellsp, grid->ijcellsp);
+  // 2D cyclic boundaries on dutot  
+  grid->boundary_cyclic2d_g(&fields->sd["tmp2"]->data_g[offs]);
+
   // start with retrieving the stability information
   if(model->thermo->getsw() == "0")
   {
-    master->printMessage("Neutral boundary_surface not yet implemented on GPU\n");
-    //stability_neutral(ustar, obuk,
-    //                  fields->u->data, fields->v->data,
-    //                  fields->u->databot, fields->v->databot,
-    //                  fields->sd["tmp1"]->data, grid->z);
+    // Calculate ustar and Obukhov length, including ghost cells
+    boundary_surface_stability_neutral<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
+                                                  &fields->sd["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
+                                                  grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
   }
   else
   {
     // store the buoyancy in tmp1
     model->thermo->getbuoyancysurf(fields->sd["tmp1"]);
 
-    // Calculate dutot in tmp2
-    boundary_surface_dutot<<<gridGPU, blockGPU>>>(&fields->sd["tmp2"]->data_g[offs], 
-                                                  &fields->u->data_g[offs],    &fields->v->data_g[offs],
-                                                  &fields->u->databot_g[offs], &fields->v->databot_g[offs],
-                                                  grid->istart, grid->jstart, grid->kstart,
-                                                  grid->iend,   grid->jend,   grid->icellsp, grid->ijcellsp);
-
-    // 2D cyclic boundaries on dutot  
-    grid->boundary_cyclic2d_g(&fields->sd["tmp2"]->data_g[offs]);
-
     // Calculate ustar and Obukhov length, including ghost cells
     boundary_surface_stability<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
                                                   &fields->sd["tmp1"]->data_g[offs], &fields->sd["tmp1"]->databot_g[offs], &fields->sd["tmp1"]->datafluxbot_g[offs],
                                                   &fields->sd["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
                                                   grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
-
-    // Calculate surface momentum fluxes, excluding ghost cells
-    boundary_surface_surfm_flux<<<gridGPU, blockGPU>>>(&fields->u->datafluxbot_g[offs], &fields->v->datafluxbot_g[offs],
-                                                       &fields->u->data_g[offs],        &fields->v->data_g[offs],
-                                                       &fields->u->databot_g[offs],     &fields->v->databot_g[offs], 
-                                                       &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0m,
-                                                       grid->istart, grid->jstart, grid->kstart,
-                                                       grid->iend,   grid->jend,   grid->icellsp, grid->ijcellsp, mbcbot);
-
-    // 2D cyclic boundaries on the surface fluxes  
-    grid->boundary_cyclic2d_g(&fields->u->datafluxbot_g[offs]);
-    grid->boundary_cyclic2d_g(&fields->v->datafluxbot_g[offs]);
-
-    // Calculate surface gradients, including ghost cells
-    boundary_surface_surfm_grad<<<gridGPU2, blockGPU2>>>(&fields->u->datagradbot_g[offs], &fields->v->datagradbot_g[offs],
-                                                         &fields->u->data_g[offs],        &fields->v->data_g[offs],
-                                                         &fields->u->databot_g[offs],     &fields->v->databot_g[offs],
-                                                         grid->z[grid->kstart], grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp);  
-
-    // Calculate scalar fluxes, gradients and/or values, including ghost cells
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-    {
-      boundary_surface_surfs<<<gridGPU2, blockGPU2>>>(&it->second->datafluxbot_g[offs], &it->second->datagradbot_g[offs],
-                                                      &it->second->databot_g[offs],     &it->second->data_g[offs],
-                                                      &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0h,            
-                                                      grid->icells, grid->jcells, grid->kstart,
-                                                      grid->icellsp, grid->ijcellsp, sbc[it->first]->bcbot);
-    }
   }
 
-  
-  //fields->backwardDevice();
-  //backwardDevice();
+  // Calculate surface momentum fluxes, excluding ghost cells
+  boundary_surface_surfm_flux<<<gridGPU, blockGPU>>>(&fields->u->datafluxbot_g[offs], &fields->v->datafluxbot_g[offs],
+                                                     &fields->u->data_g[offs],        &fields->v->data_g[offs],
+                                                     &fields->u->databot_g[offs],     &fields->v->databot_g[offs], 
+                                                     &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0m,
+                                                     grid->istart, grid->jstart, grid->kstart,
+                                                     grid->iend,   grid->jend,   grid->icellsp, grid->ijcellsp, mbcbot);
+
+  // 2D cyclic boundaries on the surface fluxes  
+  grid->boundary_cyclic2d_g(&fields->u->datafluxbot_g[offs]);
+  grid->boundary_cyclic2d_g(&fields->v->datafluxbot_g[offs]);
+
+  // Calculate surface gradients, including ghost cells
+  boundary_surface_surfm_grad<<<gridGPU2, blockGPU2>>>(&fields->u->datagradbot_g[offs], &fields->v->datagradbot_g[offs],
+                                                       &fields->u->data_g[offs],        &fields->v->data_g[offs],
+                                                       &fields->u->databot_g[offs],     &fields->v->databot_g[offs],
+                                                       grid->z[grid->kstart], grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp);  
+
+  // Calculate scalar fluxes, gradients and/or values, including ghost cells
+  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  {
+    boundary_surface_surfs<<<gridGPU2, blockGPU2>>>(&it->second->datafluxbot_g[offs], &it->second->datagradbot_g[offs],
+                                                    &it->second->databot_g[offs],     &it->second->data_g[offs],
+                                                    &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0h,            
+                                                    grid->icells, grid->jcells, grid->kstart,
+                                                    grid->icellsp, grid->ijcellsp, sbc[it->first]->bcbot);
+  }
 
   return 0;
 }
