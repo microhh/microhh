@@ -58,6 +58,8 @@ class cforce
     int prepareDevice();
     int clearDevice();
 
+    std::map<std::string, double *> lsprofs_g; ///< Map of profiles with forcings stored by its name.
+
   private:
     cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.

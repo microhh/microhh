@@ -140,39 +140,21 @@ __global__ void force_advecwls_2nd(double * const __restrict__ st, double * cons
   }
 }
 
+__global__ void force_lssource(double * const __restrict__ st, double * const __restrict__ sls,
+                               const int istart, const int jstart, const int kstart,
+                               const int iend,   const int jend,   const int kend,
+                               const int jj, const int kk)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  int k = blockIdx.z + kstart;
 
-
-//int cforce::advecwls_2nd(double * const restrict st, const double * const restrict s,
-//                         const double * const restrict wls, const double * const dzhi)
-//{
-//  int ijk,jj,kk;
-//
-//  jj = grid->icells;
-//  kk = grid->ijcells;
-//
-//  // use an upwind differentiation
-//  for(int k=grid->kstart; k<grid->kend; ++k)
-//  {
-//    if(wls[k] > 0.)
-//    {
-//      for(int j=grid->jstart; j<grid->jend; ++j)
-//        for(int i=grid->istart; i<grid->iend; ++i)
-//        {
-//          ijk = i + j*jj + k*kk;
-//          st[ijk] -=  wls[k] * (s[k]-s[k-1])*dzhi[k];
-//        }
-//    }
-//    else
-//    {
-//      for(int j=grid->jstart; j<grid->jend; ++j)
-//        for(int i=grid->istart; i<grid->iend; ++i)
-//        {
-//          ijk = i + j*jj + k*kk;
-//          st[ijk] -=  wls[k] * (s[k+1]-s[k])*dzhi[k+1];
-//        }
-//    }
-//  }
-
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    st[ijk] += sls[k];
+  }
+}
 
 int cforce::prepareDevice()
 {
@@ -187,11 +169,14 @@ int cforce::prepareDevice()
     cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice);
   }
 
-  //if(swls == "1")
-  //{
-  //  for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-  //    lsprofs[*it] = new double[grid->kcells];
-  //}
+  if(swls == "1")
+  {
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+    {
+      cudaMalloc(&lsprofs_g[*it], nmemsize);
+      cudaMemcpy(lsprofs_g[*it], lsprofs[*it], nmemsize, cudaMemcpyHostToDevice);
+    }
+  }
 
   if(swwls == "1")
   {
@@ -210,9 +195,11 @@ int cforce::clearDevice()
     cudaFree(vg_g);
   }
 
-  //if(swls == "1")
-  //{
-  //}
+  if(swls == "1")
+  {
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+      cudaFree(lsprofs_g[*it]);
+  }
 
   if(swwls == "1")
     cudaFree(wls_g);
@@ -274,11 +261,14 @@ int cforce::exec(double dt)
                                                 grid->iend,    grid->jend,   grid->kend);
   }
 
-  //if(swls == "1")
-  //{
-  //  for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-  //    lssource(fields->st[*it]->data, lsprofs[*it]);
-  //}
+  if(swls == "1")
+  {
+    for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+      force_lssource<<<gridGPU, blockGPU>>>(&fields->st[*it]->data_g[offs], lsprofs_g[*it],
+                                            grid->istart,  grid->jstart, grid->kstart,
+                                            grid->iend,    grid->jend,   grid->kend,
+                                            grid->icellsp, grid->ijcellsp);
+  }
 
   if(swwls == "1")
   {
