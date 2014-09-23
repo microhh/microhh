@@ -357,25 +357,25 @@ __global__ void advec_4_advecs(double * __restrict__ st, double * __restrict__ s
   }
 }
 
-__global__ void advec_4_calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                                double * __restrict__ tmp1,
-                                double * __restrict__ dzi, double dxi, double dyi,
-                                int jj, int kk,
-                                int istart, int jstart, int kstart,
-                                int iend, int jend, int kend)
+__global__ void advec_4_calccfl(double * const __restrict__ tmp1,
+                                const double * const __restrict__ u, const double * const __restrict__ v, const double * const __restrict__ w, 
+                                const double * const __restrict__ dzi, const double dxi, const double dyi,
+                                const int jj, const int kk,
+                                const int istart, const int jstart, const int kstart,
+                                const int iend, const int jend, const int kend)
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  int k = blockIdx.z; 
+  const int i = blockIdx.x*blockDim.x + threadIdx.x; 
+  const int j = blockIdx.y*blockDim.y + threadIdx.y; 
+  const int k = blockIdx.z; 
 
-  int ii1 = 1;
-  int ii2 = 2;
-  int jj1 = 1*jj;
-  int jj2 = 2*jj;
-  int kk1 = 1*kk;
-  int kk2 = 2*kk;
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int jj1 = 1*jj;
+  const int jj2 = 2*jj;
+  const int kk1 = 1*kk;
+  const int kk2 = 2*kk;
 
-  int ijk = i + j*jj + k*kk;
+  const int ijk = i + j*jj + k*kk;
 
   if(i < iend && j < jend && k < kend)
     tmp1[ijk] = std::abs(ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2])*dxi + 
@@ -454,8 +454,8 @@ double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, doubl
 
   fields->forwardGPU();
 
-  advec_4_calccfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-                                         &fields->a["tmp1"]->data_g[offs],
+  advec_4_calccfl<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs],
+                                         &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
                                          grid->dzi_g, dxi, dyi,
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart, grid->jstart, grid->kstart,
@@ -469,7 +469,7 @@ double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, doubl
   grid->getmax(&cfl); 
   cfl = cfl*dt;
 
-  cudaError_t error = cudaGetLastError();
+  error = cudaGetLastError();
   if(error != cudaSuccess)
     printf("CUDA ERROR CFL1: %s\n", cudaGetErrorString(error));
 

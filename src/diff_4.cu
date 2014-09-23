@@ -173,21 +173,21 @@ int cdiff_4::exec()
   diff_4_diffc<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs],
                                       grid->dzi4_g, grid->dzhi4_g,
                                       grid->dx, grid->dy, fields->visc,
-                                      grid->icells, grid->ijcells,
+                                      grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
   diff_4_diffc<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->v->data_g[offs],
                                       grid->dzi4_g, grid->dzhi4_g,
                                       grid->dx, grid->dy, fields->visc,
-                                      grid->icells, grid->ijcells,
+                                      grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
   diff_4_diffw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->w->data_g[offs],
                                       grid->dzi4_g, grid->dzhi4_g,
                                       grid->dx, grid->dy, fields->visc,
-                                      grid->icells, grid->ijcells,
+                                      grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
 
@@ -195,7 +195,7 @@ int cdiff_4::exec()
     diff_4_diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs],
                                         grid->dzi4_g, grid->dzhi4_g,
                                         grid->dx, grid->dy, fields->sp[it->first]->visc,
-                                        grid->icells, grid->ijcells,
+                                        grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
   fields->backwardGPU();
