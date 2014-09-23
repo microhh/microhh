@@ -92,6 +92,9 @@ class cboundary
     int processtimedep(cinput *); ///< Process the time dependent settings from the ini file.
     int setbc(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
 
+    // GPU functions and variables
+    int setbc_g(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
+
   private:
     virtual int bcvalues(); ///< Update the boundary values.
 

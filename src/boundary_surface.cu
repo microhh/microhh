@@ -492,8 +492,6 @@ int cboundary_surface::clearDevice()
 #ifdef USECUDA
 int cboundary_surface::bcvalues()
 {
-  //fields->forwardDevice();
-
   int gridi, gridj;
   const int blocki = 128;
   const int blockj = 2;

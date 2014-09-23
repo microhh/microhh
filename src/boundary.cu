@@ -82,6 +82,19 @@ __global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restri
   }
 } 
 
+__global__ void boundary_setbc(double * __restrict__ a, double aval, 
+                               const unsigned int icells, const unsigned int icellsp, const unsigned int jcells)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+  if(i < icells && j < jcells)
+  {
+    int ij  = i + j*icellsp;
+    a[ij] = aval;
+  }
+} 
+
 #ifdef USECUDA
 int cboundary::exec()
 {
@@ -153,3 +166,32 @@ int cboundary::exec()
 }
 #endif
 
+int cboundary::setbc_g(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset)
+{
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
+  const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
+
+  dim3 grid2dGPU (gridi, gridj);
+  dim3 block2dGPU(blocki, blockj);
+
+  const int offs = grid->memoffset;
+
+  if(sw == BC_DIRICHLET)
+  {
+    boundary_setbc<<<grid2dGPU, block2dGPU>>>(&a[offs], aval-offset,    grid->icells, grid->icellsp, grid->jcells);
+  }
+  else if(sw == BC_NEUMANN)
+  {
+    boundary_setbc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
+    boundary_setbc<<<grid2dGPU, block2dGPU>>>(&aflux[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
+  }
+  else if(sw == BC_FLUX)
+  {
+    boundary_setbc<<<grid2dGPU, block2dGPU>>>(&aflux[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
+    boundary_setbc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
+  }
+
+  return 0;
+}
