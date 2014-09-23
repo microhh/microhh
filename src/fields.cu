@@ -25,6 +25,20 @@
 #include "master.h"
 #include "boundary.h" // TMP BVS
 
+#ifdef USECUDA
+int cfields::exec()
+{
+  // calculate the means for the prognostic scalars
+  if(calcprofs)
+  {
+    for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+      grid->calcmean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], s["tmp1"]->data_g);
+  }
+
+  return 0;
+}
+#endif
+
 int cfields::prepareDevice()
 {
   const int nmemsize   = grid->ncellsp*sizeof(double);

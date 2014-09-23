@@ -212,6 +212,7 @@ int cfields::checkaddcross(std::string var, std::string type, std::vector<std::s
   return 0;
 }
 
+#ifndef USECUDA
 int cfields::exec()
 {
   // calculate the means for the prognostic scalars
@@ -223,6 +224,7 @@ int cfields::exec()
 
   return 0;
 }
+#endif
 
 int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
