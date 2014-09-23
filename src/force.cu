@@ -119,6 +119,59 @@ __global__ void force_coriolis_4th(double * const __restrict__ ut, double * cons
   }
 }
 
+__global__ void force_advecwls_2nd(double * const __restrict__ st, double * const __restrict__ s,
+                                   const double * const __restrict__ wls, const double * const __restrict__ dzhi,
+                                   const int istart, const int jstart, const int kstart,
+                                   const int iend,   const int jend,   const int kend,
+                                   const int jj, const int kk)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+  int k = blockIdx.z + kstart;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+
+    if(wls[k] > 0.)
+      st[ijk] -=  wls[k] * (s[k]-s[k-1])*dzhi[k];
+    else
+      st[ijk] -=  wls[k] * (s[k+1]-s[k])*dzhi[k+1];
+  }
+}
+
+
+
+//int cforce::advecwls_2nd(double * const restrict st, const double * const restrict s,
+//                         const double * const restrict wls, const double * const dzhi)
+//{
+//  int ijk,jj,kk;
+//
+//  jj = grid->icells;
+//  kk = grid->ijcells;
+//
+//  // use an upwind differentiation
+//  for(int k=grid->kstart; k<grid->kend; ++k)
+//  {
+//    if(wls[k] > 0.)
+//    {
+//      for(int j=grid->jstart; j<grid->jend; ++j)
+//        for(int i=grid->istart; i<grid->iend; ++i)
+//        {
+//          ijk = i + j*jj + k*kk;
+//          st[ijk] -=  wls[k] * (s[k]-s[k-1])*dzhi[k];
+//        }
+//    }
+//    else
+//    {
+//      for(int j=grid->jstart; j<grid->jend; ++j)
+//        for(int i=grid->istart; i<grid->iend; ++i)
+//        {
+//          ijk = i + j*jj + k*kk;
+//          st[ijk] -=  wls[k] * (s[k+1]-s[k])*dzhi[k+1];
+//        }
+//    }
+//  }
 
 
 int cforce::prepareDevice()
@@ -140,8 +193,11 @@ int cforce::prepareDevice()
   //    lsprofs[*it] = new double[grid->kcells];
   //}
 
-  //if(swwls == "1")
-  //  wls = new double[grid->kcells];
+  if(swwls == "1")
+  {
+    cudaMalloc(&wls_g, nmemsize);
+    cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice);
+  }
 
   return 0;
 }
@@ -158,7 +214,8 @@ int cforce::clearDevice()
   //{
   //}
 
-  //if(swwls == "1")
+  if(swwls == "1")
+    cudaFree(wls_g);
 
   return 0; 
 }
@@ -166,20 +223,18 @@ int cforce::clearDevice()
 #ifdef USECUDA
 int cforce::exec(double dt)
 {
+  const int blocki = 128;
+  const int blockj = 2;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
+  dim3 gridGPU (gridi, gridj, grid->kcells);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  const int offs = grid->memoffset;
 
   if(swlspres == "uflux")
   {
-    const int blocki = 128;
-    const int blockj = 2;
-    const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-    const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, grid->kcells);
-    dim3 blockGPU(blocki, blockj, 1);
-
-    const int offs = grid->memoffset;
-
     force_flux_step1<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs], &fields->a["tmp2"]->data_g[offs],
                                             &fields->u->data_g[offs], &fields->ut->data_g[offs],
                                             grid->dz_g,
@@ -201,20 +256,8 @@ int cforce::exec(double dt)
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
   }
- 
- 
   else if(swlspres == "geo")
   {
-    const int blocki = 128;
-    const int blockj = 2;
-    const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-    const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-    dim3 gridGPU (gridi, gridj, grid->kcells);
-    dim3 blockGPU(blocki, blockj, 1);
-
-    const int offs = grid->memoffset;
-
     if(grid->swspatialorder == "2")
       force_coriolis_2nd<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs],
                                                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
@@ -237,11 +280,14 @@ int cforce::exec(double dt)
   //    lssource(fields->st[*it]->data, lsprofs[*it]);
   //}
 
-  //if(swwls == "1")
-  //{
-  //  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-  //    advecwls_2nd(it->second->data, fields->s[it->first]->datamean, wls, grid->dzhi);
-  //}
+  if(swwls == "1")
+  {
+    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+      force_advecwls_2nd<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], fields->s[it->first]->datamean_g, wls_g, grid->dzhi_g,
+                                                grid->istart,  grid->jstart, grid->kstart,
+                                                grid->iend,    grid->jend,   grid->kend,
+                                                grid->icellsp, grid->ijcellsp);
+  }
 
   return 0;
 }
