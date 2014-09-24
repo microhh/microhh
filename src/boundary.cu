@@ -107,7 +107,7 @@ __device__ double fd_grad4x(const double a, const double b, const double c, cons
 
 __global__ void boundary_setgcbot_4th(double * __restrict__ a, const int sw,
                                       double * __restrict__ abot, double * __restrict__ agradbot,
-                                      double * __restrict z,
+                                      double * __restrict__ z,
                                       const int icells, const int icellsp,
                                       const int jcells, const int kstart)
 {
