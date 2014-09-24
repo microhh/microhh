@@ -177,7 +177,8 @@ void cpres_4::exec(double dt)
                                        grid->igc, grid->jgc, grid->kgc);
 
   // Forward FFT -> how to get rid of the loop at the host side....
-  int nsize = sizeof(double)*grid->ncellsp;
+  int nsize = sizeof(double)*grid->ncells;
+  fields->backwardDevice();
   cudaMemcpy(fields->a["p"]->data, fields->a["p"]->data_g, nsize, cudaMemcpyDeviceToHost);
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
