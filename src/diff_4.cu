@@ -197,8 +197,6 @@ int cdiff_4::exec()
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
-  fields->backwardDevice();
-
   return 0;
 }
 #endif
