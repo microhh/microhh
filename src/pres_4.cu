@@ -143,7 +143,6 @@ __global__ void pres_4_calcdivergence(double * __restrict__ div,
 void cpres_4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
-  fields->forwardGPU();
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -178,7 +177,6 @@ void cpres_4::exec(double dt)
                                        grid->igc, grid->jgc, grid->kgc);
 
   // Forward FFT -> how to get rid of the loop at the host side....
-  fields->backwardGPU();
   int nsize = sizeof(double)*grid->ncells;
   cudaMemcpy(fields->a["p"]->data, fields->a["p"]->data_g, nsize, cudaMemcpyDeviceToHost);
 
@@ -196,7 +194,7 @@ void cpres_4::exec(double dt)
              bmati, bmatj);
 
   // 3. Get the pressure tendencies from the pressure field.
-  fields->forwardGPU();
+  cudaMemcpy(fields->a["p"]->data_g, fields->a["p"]->data, nsize, cudaMemcpyHostToDevice);
   pres_4_presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                         &fields->sd["p"]->data_g[offs],
                                         grid->dzhi4_g,
@@ -204,13 +202,10 @@ void cpres_4::exec(double dt)
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
-  fields->backwardGPU();
 }
 
 double cpres_4::check()
 {
-  fields->forwardGPU();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -231,8 +226,6 @@ double cpres_4::check()
 
   double divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
   grid->getmax(&divmax);
-
-  fields->backwardGPU();
 
   return divmax;
 }

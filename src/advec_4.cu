@@ -386,8 +386,6 @@ __global__ void advec_4_calccfl(double * const __restrict__ tmp1,
 #ifdef USECUDA
 void cadvec_4::exec()
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -430,8 +428,6 @@ void cadvec_4::exec()
   cudaError_t error = cudaGetLastError();
   if(error != cudaSuccess)
     printf("CUDA ERROR ADV: %s\n", cudaGetErrorString(error));
-
-  fields->backwardDevice();
 }
 #endif
 
@@ -452,7 +448,6 @@ double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, doubl
 
   const int offs = grid->memoffset;
 
-
   advec_4_calccfl<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs],
                                          &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
                                          grid->dzi_g, dxi, dyi,
@@ -467,8 +462,6 @@ double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, doubl
   cudaError error = cudaGetLastError();
   if(error != cudaSuccess)
     printf("CUDA ERROR CFL: %s\n", cudaGetErrorString(error));
-
-  fields->backwardGPU();
 
   return cfl;
 }
