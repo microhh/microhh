@@ -57,6 +57,7 @@ class cthermo
 
     // GPU functions and variables
     virtual int prepareDevice();
+    virtual int clearDevice();
 
   protected:
     cgrid   *grid;

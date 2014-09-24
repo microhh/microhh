@@ -53,6 +53,12 @@ class cthermo_moist : public cthermo
     int getbuoyancyfluxbot(cfield3d *);
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
+#ifdef USECUDA
+    // GPU functions and variables
+    int prepareDevice();
+    int clearDevice();
+#endif
+
   private:
 
     int swupdatebasestate;
@@ -102,5 +108,14 @@ class cthermo_moist : public cthermo
     double *exnrefh;
     double *pref;
     double *prefh;
+
+    // GPU functions and variables
+    double *thvref_g; 
+    double *thvrefh_g;
+    double *exnref_g;
+    double *exnrefh_g;
+    double *pref_g;
+    double *prefh_g;
+
 };
 #endif

@@ -132,3 +132,8 @@ int cthermo::prepareDevice()
 {
   return 0;
 }
+
+int cthermo::clearDevice()
+{
+  return 0;
+}
