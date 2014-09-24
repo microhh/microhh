@@ -26,9 +26,21 @@
 #include "thermo_moist.h"
 #include "defines.h"
 #include "constants.h"
+#include "fd.h"
 #include "master.h"
 
 using namespace constants;
+using namespace fd::o4;
+
+__device__ double thermo_moist_interp2(double a, double b)
+{
+  return 0.5*(a + b);
+}
+
+__device__ double thermo_moist_interp4(double a, double b, double c, double d) 
+{
+  return ci0*a + ci1*b + ci2*c + ci3*d;
+}
 
 __device__ double thermo_moist_exn(double p)
 {
@@ -201,6 +213,88 @@ __global__ void thermo_moist_calcqlfield(double * __restrict__ ql, double * __re
   }
 }
 
+/* This routine needs to be solved level by level, so one thread does everything */
+template <int swspatialorder>
+__global__ void thermo_moist_calcbasestate(double * __restrict__ pref,     double * __restrict__ prefh,
+                                           double * __restrict__ rho,      double * __restrict__ rhoh,
+                                           double * __restrict__ thv,      double * __restrict__ thvh,
+                                           double * __restrict__ ex,       double * __restrict__ exh,
+                                           double * __restrict__ thlmean,  double * __restrict__ qtmean,
+                                           double * __restrict__ z,        double * __restrict__ dz,
+                                           double * __restrict__ dzh,
+                                           double pbot, int kstart, int kend)
+{
+  double ssurf, qtsurf, ql, si, qti, qli;
+  double rdcp = Rd/cp;
+
+  if(swspatialorder == 2)
+  {
+    ssurf  = thermo_moist_interp2(thlmean[kstart-1], thlmean[kstart]);
+    qtsurf = thermo_moist_interp2(qtmean[kstart-1],  qtmean[kstart]);
+  }
+  else if(swspatialorder == 4)
+  {
+    ssurf  = thermo_moist_interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
+    qtsurf = thermo_moist_interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
+  }
+
+  // Calculate surface (half=kstart) values
+  exh[kstart]   = thermo_moist_exn(pbot);
+  ql            = thermo_moist_calcql(ssurf,qtsurf,pbot,exh[kstart]); 
+  thvh[kstart]  = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
+  prefh[kstart] = pbot;
+  rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
+
+  // First full grid level pressure
+  pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * z[kstart] / (cp * thvh[kstart])),(1./rdcp)); 
+
+  for(int k=kstart+1; k<kend+1; k++)
+  {
+    // 1. Calculate values at full level below zh[k] 
+    ex[k-1]  = thermo_moist_exn(pref[k-1]);
+    ql       = thermo_moist_calcql(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
+    thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
+    rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
+ 
+    // 2. Calculate half level pressure at zh[k] using values at z[k-1]
+    prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * dz[k-1] / (cp * thv[k-1])),(1./rdcp));
+
+    // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
+    if(swspatialorder == 2)
+    {
+      si     = thermo_moist_interp2(thlmean[k-1],thlmean[k]);
+      qti    = thermo_moist_interp2(qtmean[k-1],qtmean[k]);
+    }
+    else if(swspatialorder == 4)
+    {
+      si     = thermo_moist_interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
+      qti    = thermo_moist_interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
+    }
+
+    exh[k]   = thermo_moist_exn(prefh[k]);
+    qli      = thermo_moist_calcql(si,qti,prefh[k],exh[k]);
+    thvh[k]  = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
+    rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]); 
+
+    // 4. Calculate full level pressure at z[k]
+    pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * dzh[k] / (cp * thvh[k])),(1./rdcp)); 
+  }
+
+  // Fill bottom and top full level ghost cells 
+  if(swspatialorder == 2)
+  {
+    pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
+    pref[kend]     = 2.*prefh[kend]   - pref[kend-1];
+  }
+  else if(swspatialorder == 4)
+  {
+    pref[kstart-1] = (8./3.)*prefh[kstart] - 2.*pref[kstart] + (1./3.)*pref[kstart+1];
+    pref[kstart-2] = 8.*prefh[kstart]      - 9.*pref[kstart] + 2.*pref[kstart+1];
+    pref[kend]     = (8./3.)*prefh[kend]   - 2.*pref[kend-1] + (1./3.)*pref[kend-2];
+    pref[kend+1]   = 8.*prefh[kend]        - 9.*pref[kend-1] + 2.*pref[kend-2];
+  }
+}
+
 int cthermo_moist::prepareDevice()
 {
   const int nmemsize = grid->kcells*sizeof(double);
@@ -248,12 +342,21 @@ int cthermo_moist::exec()
   dim3 blockGPU(blocki, blockj, 1);
   
   const int offs = grid->memoffset;
+  int kk = grid->kcells;
 
-  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
-  //double * restrict tmp2 = fields->s["tmp2"]->data;
-  //if(swupdatebasestate)
-  //  calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
-  //                fields->s["s"]->datamean, fields->s["qt"]->datamean);
+  // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state
+  double * restrict tmp2 = fields->s["tmp2"]->data_g;
+  if(swupdatebasestate)
+  {
+    if(grid->swspatialorder == "2")
+      thermo_moist_calcbasestate<2><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+                                              fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+                                              grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    else if(grid->swspatialorder == "4")
+      thermo_moist_calcbasestate<4><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+                                              fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+                                              grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+  }
 
   if(grid->swspatialorder== "2")
     thermo_moist_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["s"]->data_g[offs], 
@@ -261,7 +364,8 @@ int cthermo_moist::exec()
                                                              grid->istart,  grid->jstart, grid->kstart+1,
                                                              grid->iend,    grid->jend,   grid->kend,
                                                              grid->icellsp, grid->ijcellsp);
-  //else if(grid->swspatialorder == "4")
+  else if(grid->swspatialorder == "4")
+    master->printMessage("4th order thermo_moist not (yet) implemented\n");  
   //  calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
 
   return 0;
@@ -283,6 +387,22 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
   dim3 blockGPU2(blocki, blockj, 1);
   
   const int offs = grid->memoffset;
+  int kk = grid->kcells;
+
+  // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
+  // Pass dummy as rhoref,thvref to prevent overwriting base state 
+  double * restrict tmp2 = fields->s["tmp2"]->data_g;
+  if(swupdatebasestate)
+  {
+    if(grid->swspatialorder == "2")
+      thermo_moist_calcbasestate<2><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+                                              fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+                                              grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    else if(grid->swspatialorder == "4")
+      thermo_moist_calcbasestate<4><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+                                              fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+                                              grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+  }
 
   if(name == "b")
     thermo_moist_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->s["s"]->data_g[offs], &fields->s["qt"]->data_g[offs],
