@@ -177,7 +177,7 @@ void cpres_4::exec(double dt)
                                        grid->igc, grid->jgc, grid->kgc);
 
   // Forward FFT -> how to get rid of the loop at the host side....
-  int nsize = sizeof(double)*grid->ncells;
+  int nsize = sizeof(double)*grid->ncellsp;
   cudaMemcpy(fields->a["p"]->data, fields->a["p"]->data_g, nsize, cudaMemcpyDeviceToHost);
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
@@ -194,7 +194,7 @@ void cpres_4::exec(double dt)
              bmati, bmatj);
 
   // 3. Get the pressure tendencies from the pressure field.
-  cudaMemcpy(fields->a["p"]->data_g, fields->a["p"]->data, nsize, cudaMemcpyHostToDevice);
+  fields->forwardDevice();
   pres_4_presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                         &fields->sd["p"]->data_g[offs],
                                         grid->dzhi4_g,
