@@ -72,6 +72,10 @@ cthermo_dry::~cthermo_dry()
   delete[] this->prefh;
   delete[] this->exner;
   delete[] this->exnerh;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cthermo_dry::init()
@@ -221,6 +225,7 @@ void cthermo_dry::create(cinput *inputin)
   std::sort(crosslist.begin(),crosslist.end());
 }
 
+#ifndef USECUDA
 int cthermo_dry::exec()
 {
   if(grid->swspatialorder== "2")
@@ -230,6 +235,7 @@ int cthermo_dry::exec()
 
   return 0;
 }
+#endif
 
 int cthermo_dry::execstats(mask *m)
 {
@@ -296,7 +302,7 @@ int cthermo_dry::execstats(mask *m)
   stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the sorted buoyancy profile
-  stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
+  //stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 }
 
 void cthermo_dry::execcross()
@@ -306,20 +312,28 @@ void cthermo_dry::execcross()
   // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
   for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
+    /* BvS: for now, don't call getthermofield() or getbuoyancysurf(), but directly the function itself. With CUDA enabled, 
+       statistics etc. is done on the host, while getthermofield() is executed on the GPU */ 
+    
     if(*it == "b")
     {
-      getthermofield(fields->s["tmp1"], fields->s["tmp2"], *it);
+      //getthermofield(fields->s["tmp1"], fields->s["tmp2"], *it);
+      calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
       nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
-      getthermofield(fields->s["tmp1"], fields->s["tmp2"], "b");
+      //getthermofield(fields->s["tmp1"], fields->s["tmp2"], "b");
+      calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
       nerror += model->cross->crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
-      getbuoyancysurf(fields->s["tmp1"]);
+      //getbuoyancysurf(fields->s["tmp1"]);
+      calcbuoyancybot(fields->s["tmp1"]->data, fields->s["tmp1"]->databot, fields->s["th"]->data, fields->s["th"]->databot, thref, threfh);
+      calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot, threfh);
+
       if(*it == "bbot")
         nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
@@ -339,6 +353,7 @@ int cthermo_dry::checkthermofield(std::string name)
     return 1;
 }
 
+#ifndef USECUDA
 int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 {
   if(name == "b")
@@ -350,21 +365,27 @@ int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 
   return 0;
 }
+#endif
 
+#ifndef USECUDA
 int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot, threfh);
 
   return 0;
 }
+#endif
 
+#ifndef USECUDA
 int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
                   fields->s["th"]->data, fields->s["th"]->databot, thref, threfh);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot, threfh);
+
   return 0;
 }
+#endif
 
 int cthermo_dry::getprogvars(std::vector<std::string> *list)
 {
@@ -423,6 +444,7 @@ int cthermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
+
       bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
       b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
     }

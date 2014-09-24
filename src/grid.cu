@@ -81,7 +81,7 @@ __global__ void grid_cyclic_y(double * __restrict__ data,
   }
 }
 
-int cgrid::prepareGPU()
+int cgrid::prepareDevice()
 {
   /* Align the interior of the grid (i.e. excluding ghost cells) with 
      the 128 byte memory blocks of the GPU's global memory */
@@ -114,7 +114,7 @@ int cgrid::prepareGPU()
   return 0;
 }
 
-int cgrid::clearGPU()
+int cgrid::clearDevice()
 {
   cudaFree(z_g    );
   cudaFree(zh_g   );
@@ -158,6 +158,38 @@ int cgrid::boundary_cyclic_g(double * data)
 
   return 0;
 }
+
+int cgrid::boundary_cyclic2d_g(double * data)
+{
+  const int blocki_x = igc;
+  const int blockj_x = 256 / igc + (256%igc > 0);
+  const int gridi_x  = 1;
+  const int gridj_x  = jcells/blockj_x + (jcells%blockj_x > 0);
+
+  const int blocki_y = 256 / jgc + (256%jgc > 0);
+  const int blockj_y = jgc;
+  const int gridi_y  = icells/blocki_y + (icells%blocki_y > 0);
+  const int gridj_y  = 1;
+
+  dim3 gridGPUx (gridi_x, gridj_x, 1);
+  dim3 blockGPUx(blocki_x, blockj_x, 1);
+
+  dim3 gridGPUy (gridi_y, gridj_y, 1);
+  dim3 blockGPUy(blocki_y, blockj_y, 1);
+
+  grid_cyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
+                                        istart, jstart,
+                                        iend,   jend,
+                                        igc,    jgc);
+
+  grid_cyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
+                                        istart, jstart,
+                                        iend,   jend,
+                                        igc,    jgc);
+
+  return 0;
+}
+
 
 double cgrid::getmax_g(double *data, double *tmp)
 {

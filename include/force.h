@@ -54,6 +54,12 @@ class cforce
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
 
+    // GPU functions and variables
+    int prepareDevice();
+    int clearDevice();
+
+    std::map<std::string, double *> lsprofs_g; ///< Map of profiles with forcings stored by its name.
+
   private:
     cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.
@@ -77,6 +83,8 @@ class cforce
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
+    int settimedepprofiles(double, double, int, int); ///< Set the time dependent profiles.
+
     int flux(double * const, const double * const,
              const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
 
@@ -91,5 +99,12 @@ class cforce
 
     int advecwls_2nd(double * const, const double * const,
                      const double * const, const double * const); ///< Calculates the large-scale vertical transport.
+
+    // GPU functions and variables
+    double *ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
+    double *vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
+    double *wls_g; ///< Pointer to GPU array large-scale vertical velocity.
+    std::map<std::string, double *> timedepdata_g;
+
 };
 #endif

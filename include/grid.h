@@ -158,9 +158,10 @@ class cgrid
     double *dzi4_g;
     double *dzhi4_g;
 
-    int prepareGPU();                             ///< Load the arrays onto the GPU
-    int clearGPU();                               ///< Deallocate the arrays onto the GPU
+    int prepareDevice();                          ///< Load the arrays onto the GPU
+    int clearDevice();                            ///< Deallocate the arrays onto the GPU
     int boundary_cyclic_g(double *);              ///< Fills the ghost cells in the periodic directions.
+    int boundary_cyclic2d_g(double *);            ///< Fills the ghost cells of one slice in the periodic directions.
     double getmax_g(double *, double *);          ///< Get maximum value from field at GPU
     double getsum_g(double *, double *);          ///< Get summed value from field at GPU
     int calcmean_g(double *, double *, double *); ///< Get mean profile from field at GPU

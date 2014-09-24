@@ -39,6 +39,11 @@ class cdiff_les2s : public cdiff
 
     double tPr;
 
+    // GPU functions and variables
+    int prepareDevice();
+    int clearDevice();
+    double *mlen_g; 
+
   private:
     int strain2(double *,
                 double *, double *, double *,

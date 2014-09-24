@@ -142,4 +142,3 @@ int cdiff_2::diffw(double * restrict wt, double * restrict w, double * restrict 
 
   return 0;
 }
-

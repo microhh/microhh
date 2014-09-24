@@ -56,6 +56,10 @@ cbuffer::~cbuffer()
 {
   for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
     delete[] it->second;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cbuffer::init()

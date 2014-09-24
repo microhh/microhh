@@ -40,6 +40,10 @@
 #include "cross.h"
 #include "budget.h"
 
+#ifdef USECUDA
+#include <cuda_runtime_api.h> // Needed for cudaDeviceReset(), to check mem leaks 
+#endif
+
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
   master = masterin;
@@ -149,6 +153,9 @@ void cmodel::deleteObjects()
 cmodel::~cmodel()
 {
   deleteObjects();
+#ifdef USECUDA
+  cudaDeviceReset();
+#endif
 }
 
 void cmodel::init()
@@ -211,11 +218,15 @@ void cmodel::save()
 void cmodel::exec()
 {
 #ifdef USECUDA
-  master->printMessage("Preparing the GPU\n");
-  grid  ->prepareGPU();
-  fields->prepareGPU();
-  pres  ->prepareGPU();
-  buffer->prepareGPU();
+  master  ->printMessage("Preparing the GPU\n");
+  grid    ->prepareDevice();
+  fields  ->prepareDevice();
+  pres    ->prepareDevice();
+  buffer  ->prepareDevice();
+  thermo  ->prepareDevice();
+  boundary->prepareDevice();
+  diff    ->prepareDevice();
+  force   ->prepareDevice();
 #endif
 
   master->printMessage("Starting time integration\n");
@@ -264,7 +275,8 @@ void cmodel::exec()
       if(stats->dostats())
       {
 #ifdef USECUDA
-        fields->backwardGPU();
+        fields->backwardDevice();
+        boundary->backwardDevice();
 #endif
 
         // always process the default mask
@@ -293,13 +305,13 @@ void cmodel::exec()
       if(cross->docross())
       {
 #ifdef USECUDA
-        fields->backwardGPU();
+        fields->backwardDevice();
+        boundary->backwardDevice();
 #endif      
       
         fields  ->execcross();
         thermo  ->execcross();
         boundary->execcross();
-
       }
     }
 
@@ -321,7 +333,8 @@ void cmodel::exec()
       if(timeloop->dosave() && !timeloop->insubstep())
       {
 #ifdef USECUDA
-        fields->backwardGPU();
+        fields->backwardDevice();
+        boundary->backwardDevice();
 #endif
 
         // save the time data
@@ -363,9 +376,8 @@ void cmodel::exec()
   } // end time loop
 
 #ifdef USECUDA
-  fields->backwardGPU();
-  fields->clearGPU();
-  grid->clearGPU();
+  fields->backwardDevice();
+  boundary->backwardDevice();
 #endif
 }
 

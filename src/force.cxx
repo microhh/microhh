@@ -99,6 +99,10 @@ cforce::~cforce()
   // clean up time dependent data
   for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cforce::init()
@@ -251,6 +255,14 @@ int cforce::settimedep()
     fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
   }
 
+  settimedepprofiles(fac0, fac1, index0, index1);
+
+  return 0;
+}
+
+#ifndef USECUDA
+int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
+{
   // process time dependent bcs for the large scale forcings
   int kk = grid->kmax;
   int kgc = grid->kgc;
@@ -268,6 +280,7 @@ int cforce::settimedep()
 
   return 0;
 }
+#endif
 
 int cforce::flux(double * const restrict ut, const double * const restrict u, 
                  const double * const restrict dz, const double dt)

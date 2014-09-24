@@ -65,6 +65,11 @@ class cboundary
     virtual void execcross(); ///< Execute cross sections of surface
     virtual int execstats(mask *); ///< Execute statistics of surface
 
+    // GPU functions and variables
+    virtual int prepareDevice(); 
+    virtual int forwardDevice(); 
+    virtual int backwardDevice(); 
+
   protected:
     cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.
@@ -86,6 +91,9 @@ class cboundary
     int processbcs(cinput *); ///< Process the boundary condition settings from the ini file.
     int processtimedep(cinput *); ///< Process the time dependent settings from the ini file.
     int setbc(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
+
+    // GPU functions and variables
+    int setbc_g(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
 
   private:
     virtual int bcvalues(); ///< Update the boundary values.

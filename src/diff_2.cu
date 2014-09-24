@@ -93,8 +93,6 @@ int cdiff_2::exec()
 
   const int offs = grid->memoffset;
 
-  //fields->forwardGPU();
-
   diff_2_diffc<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs],
                                       grid->dzi_g, grid->dzhi_g,
                                       dxidxi, dyidyi, fields->visc,
@@ -124,8 +122,6 @@ int cdiff_2::exec()
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
-
-  //fields->backwardGPU();
 
   return 0;
 }

@@ -42,7 +42,7 @@ class cpres
     virtual void exec(double);
     virtual double check();
 
-    virtual int prepareGPU();
+    virtual int prepareDevice();
 
   protected:
     cmaster *master;

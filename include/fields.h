@@ -95,10 +95,12 @@ class cfields
     double visc;
 
     // GPU functions
-    int prepareGPU();
-    int forwardGPU();
-    int backwardGPU();
-    int clearGPU();
+    int prepareDevice();
+    int forwardDevice();
+    int backwardDevice();
+    int clearDevice();
+    void D2H(double *, double *);
+    void printSlice(double *, int);
 
     // GPU variables
     double *rhoref_g;

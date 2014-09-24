@@ -34,21 +34,27 @@ __global__ void buffer_buffer(double * __restrict__ at,   double * __restrict__ 
                               int iend,   int jend,   int kend,
                               int jj, int kk)
 {
+  __shared__ double sigmaz;
+
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
   int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
   int k = blockIdx.z + bufferkstart; 
 
+  /* sigmaz only depends on height. Let one thread calculate it to shared memory,
+     other threads re-use value */
+  if(threadIdx.x == 0 && threadIdx.y == 0)
+    sigmaz = sigma * pow((z[k]-zstart)*zsizebufi, beta);
+  __syncthreads();
+
   if(i < iend && j < jend && k < kend)
   {
     int ijk = i + j*jj + k*kk;
-    double sigmaz = sigma * pow((z[k]-zstart)*zsizebufi, beta);
 
     at[ijk] -= sigmaz*(a[ijk]-abuf[k]);
   }
 }
 
-// TODO: (also for pressure), deallocate fields on GPU...
-int cbuffer::prepareGPU()
+int cbuffer::prepareDevice()
 {
   if(swbuffer == "1")
   {
@@ -65,6 +71,18 @@ int cbuffer::prepareGPU()
       cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice);
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice);
+  }
+  return 0;
+}
+
+int cbuffer::clearDevice()
+{
+  if(swbuffer == "1")
+  {
+    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+      cudaFree(bufferprofs_g[it->first]);
+    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+      cudaFree(bufferprofs_g[it->first]);
   }
   return 0;
 }
@@ -119,5 +137,3 @@ int cbuffer::exec()
   return 0;
 }
 #endif
-
-

@@ -50,8 +50,12 @@ cdiff_les2s::cdiff_les2s(cmodel *modelin, cinput *inputin) : cdiff(modelin, inpu
 
 cdiff_les2s::~cdiff_les2s()
 {
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
+#ifndef USECUDA
 unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
@@ -64,7 +68,21 @@ unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 
   return idtlim;
 }
+#endif
 
+#ifndef USECUDA
+double cdiff_les2s::getdn(double dt)
+{
+  double dnmul;
+
+  // calculate eddy viscosity
+  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, this->tPr);
+
+  return dnmul*dt;
+}
+#endif
+
+#ifndef USECUDA
 int cdiff_les2s::execvisc()
 {
   // do a cast because the base boundary class does not have the MOST related variables
@@ -103,17 +121,9 @@ int cdiff_les2s::execvisc()
 
   return 0;
 }
+#endif
 
-double cdiff_les2s::getdn(double dt)
-{
-  double dnmul;
-
-  // calculate eddy viscosity
-  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, this->tPr);
-
-  return dnmul*dt;
-}
-
+#ifndef USECUDA
 int cdiff_les2s::exec()
 {
   diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
@@ -125,6 +135,7 @@ int cdiff_les2s::exec()
 
   return 0;
 }
+#endif
 
 int cdiff_les2s::strain2(double * restrict strain2,
                           double * restrict u, double * restrict v, double * restrict w,
@@ -674,3 +685,10 @@ inline double cdiff_les2s::phih(double zeta)
 
   return phih;
 }
+
+#ifndef USECUDA
+int cdiff_les2s::prepareDevice()
+{
+  return 0;
+}
+#endif

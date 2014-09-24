@@ -265,7 +265,7 @@ __global__ void pres_2_calcdivergence(double * __restrict__ u, double * __restri
   }
 }
 
-int cpres_2::prepareGPU()
+int cpres_2::prepareDevice()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -320,12 +320,27 @@ int cpres_2::prepareGPU()
   return 0;
 }
 
+int cpres_2::clearDevice()
+{
+  cudaFree(bmati_g);
+  cudaFree(bmatj_g);
+  cudaFree(a_g);
+  cudaFree(c_g);
+  cudaFree(work2d_g);
+  cudaFree(ffti_complex_g);
+  cudaFree(fftj_complex_g);
+
+  cufftDestroy(iplanf);
+  cufftDestroy(jplanf);
+  cufftDestroy(iplanb);
+  cufftDestroy(jplanb);
+ 
+  return 0; 
+}
 
 #ifdef USECUDA
 void cpres_2::exec(double dt)
 {
-  //fields->forwardGPU();
-
   const int blocki  = 128;
   const int blockj  = 2;
   const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -413,7 +428,6 @@ void cpres_2::exec(double dt)
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
-  //fields->backwardGPU();
 }
 #endif
 
@@ -421,8 +435,6 @@ void cpres_2::exec(double dt)
 double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, 
                                double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
-  //fields->forwardGPU();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -446,8 +458,6 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
 
   divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
   grid->getmax(&divmax);
-
-  //fields->backwardGPU();
 
   return divmax;
 }
