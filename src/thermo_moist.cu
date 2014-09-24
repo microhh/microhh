@@ -65,7 +65,7 @@ __device__ double thermo_moist_rslf(double p, double T)
 __device__ double thermo_moist_calcql(double s, double qt, double p, double exn)
 {
   int niter = 0; //, nitermax = 5;
-  double tl, tnr_old = 1.e9, tnr, qs;
+  double ql, tl, tnr_old = 1.e9, tnr, qs;
   tl = s * exn;
   tnr = tl;
   while (fabs(tnr-tnr_old)/tnr_old> 1e-5)// && niter < nitermax)
@@ -75,7 +75,8 @@ __device__ double thermo_moist_calcql(double s, double qt, double p, double exn)
     qs = thermo_moist_rslf(p,tnr);
     tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(pow(Lv,2)*qs)/ (Rv*cp*pow(tnr,2)));
   }
-  return fmax(0.,qt-qs);
+  ql = fmax(0.,qt-qs);
+  return ql;
 }
 
 
@@ -94,17 +95,16 @@ __global__ void thermo_moist_calcbuoyancytend_2nd(double * __restrict__ wt, doub
     int ijk = i + j*jj + k*kk;
 
     // Half level temperature and moisture content
-    double thh = 0.5 * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
+    double thh = 0.5 * (th[ijk-kk] + th[ijk]);        // Half level liq. water pot. temp.
     double qth = 0.5 * (qt[ijk-kk] + qt[ijk]);        // Half level specific hum.
-    //double tl  = thh * exnh[k];                       // Half level liq. water temp.
-
-    //double ql  = qth - cthermo_moist_rslf(ph[k], tl);
+    double tl  = thh * exnh[k];                       // Half level liq. water temp.
+    double ql  = qth - thermo_moist_rslf(ph[k], tl);
 
     // If ql(Tl)>0, saturation adjustment routine needed. 
-    ///if(ql > 0)
-      double ql = thermo_moist_calcql(thh, qth, ph[k], exnh[k]);
-    //else
-    //  ql = 0.;
+    if(ql > 0)
+      ql = thermo_moist_calcql(thh, qth, ph[k], exnh[k]);
+    else
+      ql = 0.;
 
     // Calculate tendency
     wt[ijk] += thermo_moist_bu(ph[k], thh, qth, ql, thvrefh[k]);
@@ -180,7 +180,7 @@ __global__ void thermo_moist_calcN2(double * __restrict__ N2, double * __restric
   if(i < iend && j < jend && k < kend)
   {
     int ijk = i + j*jj + k*kk;
-    N2[ijk] = constants::grav/thvref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+    N2[ijk] = grav/thvref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
   }
 }
 
