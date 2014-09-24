@@ -156,9 +156,21 @@ __global__ void force_lssource(double * const __restrict__ st, double * const __
   }
 }
 
+__global__ void force_updatetimedepprof(double * const __restrict__ sls, double * const __restrict__ slstd,
+                                        const double fac0, const double fac1, const int index0, const int index1, const int kmax, const int kgc)
+{
+  int k = blockIdx.x*blockDim.x + threadIdx.x;
+  int kk = kmax;
+
+  if(k < kmax)
+  {
+    sls[k+kgc] = fac0*slstd[index0*kk+k] + fac1*slstd[index1*kk+k];
+  }
+}
+
 int cforce::prepareDevice()
 {
-  const int nmemsize = grid->kcells*sizeof(double);
+  const int nmemsize  = grid->kcells*sizeof(double);
 
   if(swlspres == "geo")
   {
@@ -184,6 +196,16 @@ int cforce::prepareDevice()
     cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice);
   }
 
+  if(swtimedep == "1")
+  {
+    int nmemsize2 = grid->kmax*timedeptime.size()*sizeof(double);
+    for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
+    {
+      cudaMalloc(&timedepdata_g[it->first], nmemsize2);
+      cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice);
+    }
+  }
+
   return 0;
 }
 
@@ -203,6 +225,12 @@ int cforce::clearDevice()
 
   if(swwls == "1")
     cudaFree(wls_g);
+
+  if(swtimedep == "1")
+  {
+    for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
+      cudaFree(timedepdata_g[it->first]);
+  }
 
   return 0; 
 }
@@ -283,3 +311,22 @@ int cforce::exec(double dt)
 }
 #endif
 
+#ifdef USECUDA
+int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
+{
+  const int blockk = 128;
+  const int gridk  = grid->kmax/blockk + (grid->kmax%blockk > 0);
+
+  for(std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
+  {
+    std::string name = *it1 + "ls";
+    std::map<std::string, double *>::const_iterator it2 = timedepdata_g.find(name);
+
+    // update the profile
+    if(it2 != timedepdata.end())
+      force_updatetimedepprof<<<gridk, blockk>>>(lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
+  }
+
+  return 0;
+}
+#endif

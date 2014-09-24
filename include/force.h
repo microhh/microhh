@@ -83,6 +83,8 @@ class cforce
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
+    int settimedepprofiles(double, double, int, int); ///< Set the time dependent profiles.
+
     int flux(double * const, const double * const,
              const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
 
@@ -102,6 +104,7 @@ class cforce
     double *ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
     double *vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
     double *wls_g; ///< Pointer to GPU array large-scale vertical velocity.
+    std::map<std::string, double *> timedepdata_g;
 
 };
 #endif
