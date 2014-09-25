@@ -434,12 +434,12 @@ void cpres_4::exec(double dt)
   double *tmp2_g = fields->sd["tmp2"]->data_g;
   double *tmp3_g = fields->sd["tmp3"]->data_g;
 
-  const int jj = grid->iblock;
+  // const int jj = grid->iblock;
   for(int j=0; j<grid->jblock; ++j)
   {
-    const int ijk = j*jj;
+    // const int ijk = j*jj;
     // Prepare the fields that go into the matrix solver
-    pres_4_solvein<<<grid1dGPU,block1dGPU>>>(&fields->sd["p"]->data_g[ijk],
+    pres_4_solvein<<<grid1dGPU,block1dGPU>>>(fields->sd["p"]->data_g,
                                              m1_g, m2_g, m3_g, m4_g,
                                              m5_g, m6_g, m7_g,
                                              &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
@@ -458,7 +458,7 @@ void cpres_4::exec(double dt)
     cudaMemcpy(&tmp3_g[3*ns], &tmp3[3*ns], ns, cudaMemcpyHostToDevice);
 
     // Put the solution back into the pressure field
-    pres_4_solveputback<<<grid1dGPU,block1dGPU>>>(&fields->sd["p"]->data_g[ijk],
+    pres_4_solveputback<<<grid1dGPU,block1dGPU>>>(fields->sd["p"]->data_g,
                                                   &tmp3_g[3*ns],
                                                   grid->iblock, grid->jblock,
                                                   grid->kmax,
