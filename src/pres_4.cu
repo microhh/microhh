@@ -292,7 +292,7 @@ void cpres_4::exec(double dt)
   } 
 
   int nsize = sizeof(double)*grid->ncells;
-  fields->backwardDevice();
+  // fields->backwardDevice();
   cudaMemcpy(fields->a["p"]->data, fields->a["p"]->data_g, nsize, cudaMemcpyDeviceToHost);
 
   // Take slices out of a temporary field to save memory. The temp arrays
@@ -307,9 +307,11 @@ void cpres_4::exec(double dt)
              &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
              bmati, bmatj);
 
-  /*
+  // fields->forwardDevice();
+  cudaMemcpy(fields->a["p"]->data_g, fields->a["p"]->data, nsize, cudaMemcpyHostToDevice);
+
   // Backward FFT 
-  for (int k=0; k<grid->ktot; ++k)
+  for(int k=0; k<grid->ktot; ++k)
   {
     int ijk = k*kk;
 
@@ -329,9 +331,8 @@ void cpres_4::exec(double dt)
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->imax, grid->jmax, grid->kmax);
-                                         */
 
-  fields->forwardDevice();
+  grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
 
   // 3. Get the pressure tendencies from the pressure field.
   pres_4_presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
