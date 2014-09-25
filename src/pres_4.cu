@@ -134,12 +134,12 @@ __global__ void pres_4_complex_double_y(cufftDoubleComplex * const __restrict__ 
   }
 }
 
-__global__ void pres_4_solvein(double * const __restrict__ p,
-                               const double * const m1, const double * const m2, const double * const m3, const double * const m4,
-                               const double * const m5, const double * const m6, const double * const m7,
-                               double * const m1temp, double * const m2temp, double * const m3temp, double * const m4temp,
-                               double * const m5temp, double * const m6temp, double * const m7temp, double * const ptemp,
-                               const double * const bmati, const double * const bmatj,
+__global__ void pres_4_solvein(const double * const __restrict__ p,
+                               const double * const __restrict__ m1, const double * const __restrict__ m2, const double * const __restrict__ m3, const double * const __restrict__ m4,
+                               const double * const __restrict__ m5, const double * const __restrict__ m6, const double * const __restrict__ m7,
+                               double * const __restrict__ m1temp, double * const __restrict__ m2temp, double * __restrict__ const m3temp, double * const __restrict__ m4temp,
+                               double * const __restrict__ m5temp, double * const __restrict__ m6temp, double * __restrict__ const m7temp, double * const __restrict__ ptemp,
+                               const double * const __restrict__ bmati, const double * const __restrict__ bmatj,
                                const int mpicoordx, const int mpicoordy,
                                const int iblock, const int jblock,
                                const int kmax,
@@ -157,90 +157,88 @@ __global__ void pres_4_solvein(double * const __restrict__ p,
 
   int k,ik,ijk,iindex,jindex;
 
-  // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
-  jindex = mpicoordx*jblock + j;
-
-  // Set a zero gradient bc at the bottom.
-  ik = i;
-  m1temp[ik] =  0.;
-  m2temp[ik] =  0.;
-  m3temp[ik] =  0.;
-  m4temp[ik] =  1.;
-  m5temp[ik] =  0.;
-  m6temp[ik] =  0.;
-  m7temp[ik] = -1.;
-  ptemp [ik] =  0.;
-
-  ik = i;
-  m1temp[ik+kki1] =  0.;
-  m2temp[ik+kki1] =  0.;
-  m3temp[ik+kki1] =  0.;
-  m4temp[ik+kki1] =  1.;
-  m5temp[ik+kki1] = -1.;
-  m6temp[ik+kki1] =  0.;
-  m7temp[ik+kki1] =  0.;
-  ptemp [ik+kki1] =  0.;
-
-  for(k=0; k<kmax; ++k)
+  if(i < iblock)
   {
     // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
-    iindex = mpicoordy * iblock + i;
+    iindex = mpicoordy*iblock + i;
+    jindex = mpicoordx*jblock + j;
 
-    ijk = i + j*jj + k*kk;
-    ik  = i + k*kki1;
-    m1temp[ik+kki2] = m1[k];
-    m2temp[ik+kki2] = m2[k];
-    m3temp[ik+kki2] = m3[k];
-    m4temp[ik+kki2] = m4[k] + bmati[iindex] + bmatj[jindex];
-    m5temp[ik+kki2] = m5[k];
-    m6temp[ik+kki2] = m6[k];
-    m7temp[ik+kki2] = m7[k];
-    ptemp [ik+kki2] = p[ijk];
+    // Set a zero gradient bc at the bottom.
+    ik = i;
+    m1temp[ik] =  0.;
+    m2temp[ik] =  0.;
+    m3temp[ik] =  0.;
+    m4temp[ik] =  1.;
+    m5temp[ik] =  0.;
+    m6temp[ik] =  0.;
+    m7temp[ik] = -1.;
+    ptemp [ik] =  0.;
+
+    ik = i;
+    m1temp[ik+kki1] =  0.;
+    m2temp[ik+kki1] =  0.;
+    m3temp[ik+kki1] =  0.;
+    m4temp[ik+kki1] =  1.;
+    m5temp[ik+kki1] = -1.;
+    m6temp[ik+kki1] =  0.;
+    m7temp[ik+kki1] =  0.;
+    ptemp [ik+kki1] =  0.;
+
+    for(k=0; k<kmax; ++k)
+    {
+      // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
+      ijk = i + j*jj + k*kk;
+      ik  = i + k*kki1;
+      m1temp[ik+kki2] = m1[k];
+      m2temp[ik+kki2] = m2[k];
+      m3temp[ik+kki2] = m3[k];
+      m4temp[ik+kki2] = m4[k] + bmati[iindex] + bmatj[jindex];
+      m5temp[ik+kki2] = m5[k];
+      m6temp[ik+kki2] = m6[k];
+      m7temp[ik+kki2] = m7[k];
+      ptemp [ik+kki2] = p[ijk];
+    }
+          
+    // Set the top boundary.
+    ik = i + kmax*kki1;
+    if(iindex == 0 && jindex == 0)
+    {
+      m1temp[ik+kki2] =    0.;
+      m2temp[ik+kki2] = -1/3.;
+      m3temp[ik+kki2] =    2.;
+      m4temp[ik+kki2] =    1.;
+
+      m1temp[ik+kki3] =   -2.;
+      m2temp[ik+kki3] =    9.;
+      m3temp[ik+kki3] =    0.;
+      m4temp[ik+kki3] =    1.;
+    }
+
+    // Set dp/dz at top to zero.
+    else
+    {
+      m1temp[ik+kki2] =  0.;
+      m2temp[ik+kki2] =  0.;
+      m3temp[ik+kki2] = -1.;
+      m4temp[ik+kki2] =  1.;
+
+      m1temp[ik+kki3] = -1.;
+      m2temp[ik+kki3] =  0.;
+      m3temp[ik+kki3] =  0.;
+      m4temp[ik+kki3] =  1.;
+    }
+
+    // Set the top boundary.
+    m5temp[ik+kki2] = 0.;
+    m6temp[ik+kki2] = 0.;
+    m7temp[ik+kki2] = 0.;
+    ptemp [ik+kki2] = 0.;
+
+    m5temp[ik+kki3] = 0.;
+    m6temp[ik+kki3] = 0.;
+    m7temp[ik+kki3] = 0.;
+    ptemp [ik+kki3] = 0.;
   }
-        
-  // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
-  iindex = mpicoordy * iblock + i;
-
-  // Set the top boundary.
-  ik = i + kmax*kki1;
-  if(iindex == 0 && jindex == 0)
-  {
-    m1temp[ik+kki2] =    0.;
-    m2temp[ik+kki2] = -1/3.;
-    m3temp[ik+kki2] =    2.;
-    m4temp[ik+kki2] =    1.;
-
-    m1temp[ik+kki3] =   -2.;
-    m2temp[ik+kki3] =    9.;
-    m3temp[ik+kki3] =    0.;
-    m4temp[ik+kki3] =    1.;
-  }
-
-  // Set dp/dz at top to zero.
-  else
-  {
-    m1temp[ik+kki2] =  0.;
-    m2temp[ik+kki2] =  0.;
-    m3temp[ik+kki2] = -1.;
-    m4temp[ik+kki2] =  1.;
-
-    m1temp[ik+kki3] = -1.;
-    m2temp[ik+kki3] =  0.;
-    m3temp[ik+kki3] =  0.;
-    m4temp[ik+kki3] =  1.;
-  }
-
-  // Set the top boundary.
-  ik = i + kmax*kki1;
-  m5temp[ik+kki2] = 0.;
-  m6temp[ik+kki2] = 0.;
-  m7temp[ik+kki2] = 0.;
-  ptemp [ik+kki2] = 0.;
-
-  m5temp[ik+kki3] = 0.;
-  m6temp[ik+kki3] = 0.;
-  m7temp[ik+kki3] = 0.;
-  ptemp [ik+kki3] = 0.;
 }
 
 __global__ void pres_4_solveputback(double * const __restrict__ p,
@@ -257,12 +255,15 @@ __global__ void pres_4_solveputback(double * const __restrict__ p,
   const int kki1 = 1*iblock;
   const int kki2 = 2*iblock;
 
-  // Put back the solution.
-  for(int k=0; k<kmax; ++k)
+  if(i < iblock)
   {
-    const int ik  = i + k*kki1;
-    const int ijk = i + j*jj + k*kk;
-    p[ijk] = ptemp[ik+kki2];
+    // Put back the solution.
+    for(int k=0; k<kmax; ++k)
+    {
+      const int ik  = i + k*kki1;
+      const int ijk = i + j*jj + k*kk;
+      p[ijk] = ptemp[ik+kki2];
+    }
   }
 }
 
@@ -427,21 +428,22 @@ void cpres_4::exec(double dt)
     pres_4_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
   } 
 
-  // Loop over j
   const int ns = grid->iblock*(grid->kmax+4);
-  double *tmp2 = fields->sd["tmp2"]->data_g;
-  double *tmp3 = fields->sd["tmp3"]->data_g;
+  double *tmp2 = fields->sd["tmp2"]->data;
+  double *tmp3 = fields->sd["tmp3"]->data;
+  double *tmp2_g = fields->sd["tmp2"]->data_g;
+  double *tmp3_g = fields->sd["tmp3"]->data_g;
 
   const int jj = grid->iblock;
   for(int j=0; j<grid->jblock; ++j)
   {
     const int ijk = j*jj;
     // Prepare the fields that go into the matrix solver
-    pres_4_solvein<<<grid1dGPU,block1dGPU>>>(&fields->sd["p"]->data[ijk],
+    pres_4_solvein<<<grid1dGPU,block1dGPU>>>(&fields->sd["p"]->data_g[ijk],
                                              m1_g, m2_g, m3_g, m4_g,
                                              m5_g, m6_g, m7_g,
-                                             &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
-                                             &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
+                                             &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
+                                             &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns], 
                                              bmati_g, bmatj_g,
                                              master->mpicoordx, master->mpicoordy,
                                              grid->iblock, grid->jblock,
@@ -449,17 +451,15 @@ void cpres_4::exec(double dt)
                                              j);
 
     // Solve the sevenbanded matrix
-    cudaMemcpy(fields->a["tmp2"]->data, fields->a["tmp2"]->data_g, 4*ns, cudaMemcpyDeviceToHost);
-    cudaMemcpy(fields->a["tmp3"]->data, fields->a["tmp3"]->data_g, 4*ns, cudaMemcpyDeviceToHost);
-    tmp2 = fields->sd["tmp2"]->data;
-    tmp3 = fields->sd["tmp3"]->data;
+    cudaMemcpy(tmp2, tmp2_g, 4*ns, cudaMemcpyDeviceToHost);
+    cudaMemcpy(tmp3, tmp3_g, 4*ns, cudaMemcpyDeviceToHost);
     hdma(&tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
          &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns]);
-    cudaMemcpy(&fields->a["tmp3"]->data_g[3*ns], &fields->a["tmp3"]->data[3*ns], ns, cudaMemcpyHostToDevice);
+    cudaMemcpy(&tmp3_g[3*ns], &tmp3[3*ns], ns, cudaMemcpyHostToDevice);
 
     // Put the solution back into the pressure field
-    pres_4_solveputback<<<grid1dGPU,block1dGPU>>>(&fields->sd["p"]->data[ijk],
-                                                  &tmp3[3*ns],
+    pres_4_solveputback<<<grid1dGPU,block1dGPU>>>(&fields->sd["p"]->data_g[ijk],
+                                                  &tmp3_g[3*ns],
                                                   grid->iblock, grid->jblock,
                                                   grid->kmax,
                                                   j);
