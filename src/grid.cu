@@ -65,15 +65,29 @@ __global__ void grid_cyclic_y(double * const __restrict__ data,
   const int kk = icellsp*jcells;
 
   // North-south
-  if(k < kcells && j < jgc && i < icells)
+  if(jend-jstart == 1)
   {
-    const int ijk0 = i + j           *jj + k*kk;
-    const int ijk1 = i + (jend-jgc+j)*jj + k*kk;
-    const int ijk2 = i + (j+jend  )*jj + k*kk;
-    const int ijk3 = i + (j+jstart)*jj + k*kk;
+    if(k < kcells && j < jgc && i < icells)
+    {
+      const int ijkref   = i + jstart*jj   + k*kk;
+      const int ijknorth = i + j*jj        + k*kk;
+      const int ijksouth = i + (jend+j)*jj + k*kk;
+      data[ijknorth] = data[ijkref];
+      data[ijksouth] = data[ijkref];
+    }
+  }
+  else
+  {
+    if(k < kcells && j < jgc && i < icells)
+    {
+      const int ijk0 = i + j           *jj + k*kk;
+      const int ijk1 = i + (jend-jgc+j)*jj + k*kk;
+      const int ijk2 = i + (j+jend  )*jj + k*kk;
+      const int ijk3 = i + (j+jstart)*jj + k*kk;
 
-    data[ijk0] = data[ijk1];
-    data[ijk2] = data[ijk3];
+      data[ijk0] = data[ijk1];
+      data[ijk2] = data[ijk3];
+    }
   }
 }
 
