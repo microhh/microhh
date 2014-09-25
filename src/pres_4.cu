@@ -77,6 +77,106 @@ __global__ void pres_4_presin(double * const __restrict__ p,
   }
 }
 
+__global__ void pres_4_complex_double_x(cufftDoubleComplex * const __restrict__ cdata, double * const __restrict__ ddata,
+                                        const int itot, const int jtot, bool forward)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+  int ij   = i + j*itot;        // index real part in ddata
+  int ij2  = (itot-i) + j*itot; // index complex part in ddata
+  int imax = itot/2+1;
+  int ijc  = i + j*imax;        // index in cdata
+
+  if((j < jtot) && (i < imax))
+  {
+    if(forward) // complex -> double
+    {
+      ddata[ij]  = cdata[ijc].x;
+      if(i>0 && i<imax-1) 
+        ddata[ij2] = cdata[ijc].y;
+    }
+    else // double -> complex
+    {
+      cdata[ijc].x = ddata[ij];
+      if(i>0 && i<imax-1) 
+        cdata[ijc].y = ddata[ij2];
+    }
+  }
+} 
+
+__global__ void pres_4_complex_double_y(cufftDoubleComplex * const __restrict__ cdata, double * const __restrict__ ddata, 
+                                        const int itot, const int jtot, bool forward)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+  int ij   = i + j * itot;        // index real part in ddata
+  int ij2 = i + (jtot-j)*itot;    // index complex part in ddata
+  int jmax = jtot/2+1; 
+  // ijc equals ij
+
+  if((i < itot) && (j < jmax))
+  {
+    if(forward) // complex -> double
+    {
+      ddata[ij] = cdata[ij].x;
+      if(j>0 && j<jmax-1) 
+        ddata[ij2] = cdata[ij].y;
+    }
+    else // double -> complex
+    {
+      cdata[ij].x = ddata[ij];
+      if(j>0 && j<jmax-1) 
+        cdata[ij].y = ddata[ij2];
+    }
+  }
+}
+
+ __global__ void pres_4_normalize(double * const __restrict__ data, const int itot, const int jtot, const double in)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+  int ij = i + j * itot;
+  if((i < itot) && (j < jtot))
+    data[ij] = data[ij] * in;
+}
+
+__global__ void pres_4_solveout(double * __restrict__ p, double * __restrict__ work3d,
+                                const int jj, const int kk,
+                                const int jjp, const int kkp,
+                                const int istart, const int jstart, const int kstart,
+                                const int imax, const int jmax, const int kmax)
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y;
+  const int k = blockIdx.z;
+
+  const int kkp1 = 1*kkp;
+  const int kkp2 = 2*kkp;
+
+  if(i < imax && j < jmax && k < kmax)
+  {
+    const int ijk  = i + j*jj + k*kk;
+    const int ijkp = i+istart + (j+jstart)*jjp + (k+kstart)*kkp;
+
+    p[ijkp] = work3d[ijk];
+
+    // set the BC
+    if(k == 0)
+    {
+      p[ijkp-kkp1] = p[ijkp     ];
+      p[ijkp-kkp2] = p[ijkp+kkp1];
+    }
+    else if(k == kmax-1)
+    {
+      p[ijkp+kkp1] = p[ijkp     ];
+      p[ijkp+kkp2] = p[ijkp-kkp1];
+    }
+  }
+}
+
 __global__ void pres_4_presout(double * const __restrict__ ut, double * const __restrict__ vt, double * const __restrict__ wt,
                                const double * const __restrict__ p,
                                const double * const __restrict__ dzhi4,
@@ -176,12 +276,25 @@ void cpres_4::exec(double dt)
                                        grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
 
-  // Forward FFT -> how to get rid of the loop at the host side....
+  // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
+  int kk = grid->itot*grid->jtot;
+  for (int k=0; k<grid->ktot; ++k)
+  {
+    int ijk = k*kk;
+
+    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], ffti_complex_g);
+    cudaThreadSynchronize();
+    pres_4_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
+
+    cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], fftj_complex_g);
+    cudaThreadSynchronize();
+    pres_4_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
+  } 
+
   int nsize = sizeof(double)*grid->ncells;
   fields->backwardDevice();
   cudaMemcpy(fields->a["p"]->data, fields->a["p"]->data_g, nsize, cudaMemcpyDeviceToHost);
 
-  // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
   // Take slices out of a temporary field to save memory. The temp arrays
   // are always big enough, this cannot fail.
   double *tmp2 = fields->sd["tmp2"]->data;
@@ -194,8 +307,33 @@ void cpres_4::exec(double dt)
              &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
              bmati, bmatj);
 
-  // 3. Get the pressure tendencies from the pressure field.
+  /*
+  // Backward FFT 
+  for (int k=0; k<grid->ktot; ++k)
+  {
+    int ijk = k*kk;
+
+    pres_4_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false); 
+    cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
+    cudaThreadSynchronize();
+
+    pres_4_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false); 
+    cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
+    cudaThreadSynchronize();
+    pres_4_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
+  } 
+
+  cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice);
+  pres_4_solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->sd["tmp1"]->data_g,
+                                         grid->imax, grid->imax*grid->jmax,
+                                         grid->icellsp, grid->ijcellsp,
+                                         grid->istart, grid->jstart, grid->kstart,
+                                         grid->imax, grid->jmax, grid->kmax);
+                                         */
+
   fields->forwardDevice();
+
+  // 3. Get the pressure tendencies from the pressure field.
   pres_4_presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                         &fields->sd["p"]->data_g[offs],
                                         grid->dzhi4_g,
@@ -231,7 +369,7 @@ double cpres_4::check()
   return divmax;
 }
 
-int cpres_4::prepareGPU()
+int cpres_4::prepareDevice()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);

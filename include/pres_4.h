@@ -45,7 +45,7 @@ class cpres_4 : public cpres
     double check();
 
 #ifdef USECUDA
-    int prepareGPU();
+    int prepareDevice();
 #endif
 
   private:
