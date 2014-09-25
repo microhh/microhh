@@ -74,11 +74,22 @@ __device__ double thermo_moist_rslf(double p, double T)
   return ep*esl/(p-(1-ep)*esl);
 }
 
+/*
+s = liquid water potential temperature [K]
+qt = moisture mixing ratio [kg kg-1]
+p = pressure [pa]
+exn = exner [-]
+*/
 __device__ double thermo_moist_calcql(double s, double qt, double p, double exn)
 {
+  double tl = s * exn;  // Liquid water temperature
+
+  // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
+  if(qt-thermo_moist_rslf(p, tl) <= 0)
+    return 0.;
+
   int niter = 0; //, nitermax = 5;
-  double ql, tl, tnr_old = 1.e9, tnr, qs;
-  tl = s * exn;
+  double ql, tnr_old = 1.e9, tnr, qs;
   tnr = tl;
   while (fabs(tnr-tnr_old)/tnr_old> 1e-5)// && niter < nitermax)
   {
@@ -295,6 +306,81 @@ __global__ void thermo_moist_calcbasestate(double * __restrict__ pref,     doubl
   }
 }
 
+/* This routine needs to be solved level by level, so one thread does everything */
+template <int swspatialorder>
+__global__ void thermo_moist_calchydropres(double * __restrict__ pref,     double * __restrict__ prefh,
+                                           double * __restrict__ ex,       double * __restrict__ exh,
+                                           double * __restrict__ thlmean,  double * __restrict__ qtmean,
+                                           double * __restrict__ z,        double * __restrict__ dz,
+                                           double * __restrict__ dzh,
+                                           double pbot, int kstart, int kend)
+{
+  double ssurf, qtsurf, ql, si, qti, qli, thvh, thv;
+  double rdcp = Rd/cp;
+
+  if(swspatialorder == 2)
+  {
+    ssurf  = thermo_moist_interp2(thlmean[kstart-1], thlmean[kstart]);
+    qtsurf = thermo_moist_interp2(qtmean[kstart-1],  qtmean[kstart]);
+  }
+  else if(swspatialorder == 4)
+  {
+    ssurf  = thermo_moist_interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
+    qtsurf = thermo_moist_interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
+  }
+
+  // Calculate surface (half=kstart) values
+  ql            = thermo_moist_calcql(ssurf,qtsurf,pbot,exh[kstart]); 
+  thvh          = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
+  prefh[kstart] = pbot;
+
+  // First full grid level pressure
+  pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * z[kstart] / (cp * thvh)),(1./rdcp)); 
+  for(int k=kstart+1; k<kend+1; k++)
+  {
+    // 1. Calculate values at full level below zh[k] 
+    ex[k-1]  = thermo_moist_exn(pref[k-1]);
+    ql       = thermo_moist_calcql(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
+    thv      = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
+ 
+    // 2. Calculate half level pressure at zh[k] using values at z[k-1]
+    prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * dz[k-1] / (cp * thv)),(1./rdcp));
+
+    // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
+    if(swspatialorder == 2)
+    {
+      si     = thermo_moist_interp2(thlmean[k-1],thlmean[k]);
+      qti    = thermo_moist_interp2(qtmean[k-1],qtmean[k]);
+    }
+    else if(swspatialorder == 4)
+    {
+      si     = thermo_moist_interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
+      qti    = thermo_moist_interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
+    }
+
+    exh[k]   = thermo_moist_exn(prefh[k]);
+    qli      = thermo_moist_calcql(si,qti,prefh[k],exh[k]);
+    thvh     = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
+
+    // 4. Calculate full level pressure at z[k]
+    pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * dzh[k] / (cp * thvh)),(1./rdcp)); 
+  }
+
+  // Fill bottom and top full level ghost cells 
+  if(swspatialorder == 2)
+  {
+    pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
+    pref[kend]     = 2.*prefh[kend]   - pref[kend-1];
+  }
+  else if(swspatialorder == 4)
+  {
+    pref[kstart-1] = (8./3.)*prefh[kstart] - 2.*pref[kstart] + (1./3.)*pref[kstart+1];
+    pref[kstart-2] = 8.*prefh[kstart]      - 9.*pref[kstart] + 2.*pref[kstart+1];
+    pref[kend]     = (8./3.)*prefh[kend]   - 2.*pref[kend-1] + (1./3.)*pref[kend-2];
+    pref[kend+1]   = 8.*prefh[kend]        - 9.*pref[kend-1] + 2.*pref[kend-2];
+  }
+}
+
 int cthermo_moist::prepareDevice()
 {
   const int nmemsize = grid->kcells*sizeof(double);
@@ -349,13 +435,24 @@ int cthermo_moist::exec()
   if(swupdatebasestate)
   {
     if(grid->swspatialorder == "2")
-      thermo_moist_calcbasestate<2><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+      thermo_moist_calchydropres<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
                                               fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     else if(grid->swspatialorder == "4")
-      thermo_moist_calcbasestate<4><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+      thermo_moist_calchydropres<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
                                               fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+
+    //if(grid->swspatialorder == "2")
+    //  thermo_moist_calcbasestate<2><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+    //                                          fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+    //                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    //else if(grid->swspatialorder == "4")
+    //  thermo_moist_calcbasestate<4><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+    //                                          fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+    //                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+
+
   }
 
   if(grid->swspatialorder== "2")
@@ -392,16 +489,25 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
   // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
   // Pass dummy as rhoref,thvref to prevent overwriting base state 
   double * restrict tmp2 = fields->s["tmp2"]->data_g;
-  if(swupdatebasestate)
+  if(swupdatebasestate && (name == "b" || name == "ql"))
   {
     if(grid->swspatialorder == "2")
-      thermo_moist_calcbasestate<2><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+      thermo_moist_calchydropres<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
                                               fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     else if(grid->swspatialorder == "4")
-      thermo_moist_calcbasestate<4><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+      thermo_moist_calchydropres<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
                                               fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+
+    //if(grid->swspatialorder == "2")
+    //  thermo_moist_calcbasestate<2><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+    //                                          fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+    //                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    //else if(grid->swspatialorder == "4")
+    //  thermo_moist_calcbasestate<4><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
+    //                                          fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+    //                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
   }
 
   if(name == "b")
