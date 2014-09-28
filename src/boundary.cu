@@ -31,6 +31,7 @@
 #include "defines.h"
 #include "model.h"
 #include "timeloop.h"
+#include "constants.h"
 
 #define NO_OFFSET 0.
 #define NO_VELOCITY 0.
@@ -98,8 +99,8 @@ __global__ void boundary_setbc(double * __restrict__ a, double aval,
 #ifdef USECUDA
 int cboundary::exec()
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -168,8 +169,8 @@ int cboundary::exec()
 
 int cboundary::setbc_g(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 

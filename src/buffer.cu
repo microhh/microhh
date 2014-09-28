@@ -26,6 +26,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "buffer.h"
+#include "constants.h"
 
 __global__ void buffer_buffer(double * __restrict__ at,   double * __restrict__ a,
                               double * __restrict__ abuf, double * __restrict__ z,
@@ -92,8 +93,8 @@ int cbuffer::exec()
 {
   if(swbuffer == "1")
   {
-    const int blocki = 128;
-    const int blockj = 2;
+    const int blocki = cuda::blockSizeI;
+    const int blockj = cuda::blockSizeJ;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
     const int gridk  = grid->kmax - bufferkstart + 1;

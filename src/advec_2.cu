@@ -24,6 +24,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "tools.h"
+#include "constants.h"
 
 __device__ double interp2(double a, double b)
 {
@@ -207,8 +208,8 @@ __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v
 #ifdef USECUDA
 void cadvec_2::exec()
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -260,8 +261,8 @@ void cadvec_2::exec()
 #ifdef USECUDA
 double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
   double cfl = 0;

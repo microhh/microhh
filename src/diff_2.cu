@@ -24,6 +24,7 @@
 #include "fields.h"
 #include "diff_2.h"
 #include "defines.h"
+#include "constants.h"
 
 __global__ void diff_2_diffc(double * __restrict__ const at, const double * __restrict__ const a,
                              const double * __restrict__ const dzi, const double * __restrict__ const dzhi,
@@ -80,8 +81,8 @@ __global__ void diff_2_diffw(double * __restrict__ const at, const double * __re
 #ifdef USECUDA
 int cdiff_2::exec()
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

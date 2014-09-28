@@ -32,6 +32,7 @@
 #include "defines.h"
 #include "model.h"
 #include "tools.h"
+#include "constants.h"
 
 __global__ void pres_2_presin(double * __restrict__ p,
                               double * __restrict__ u ,  double * __restrict__ v ,     double * __restrict__ w ,
@@ -342,8 +343,8 @@ int cpres_2::clearDevice()
 void cpres_2::exec(double dt)
 {
   int kk;
-  const int blocki  = 128;
-  const int blockj  = 2;
+  const int blocki  = cuda::blockSizeI;
+  const int blockj  = cuda::blockSizeJ;
   const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj   = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -436,8 +437,8 @@ void cpres_2::exec(double dt)
 double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, 
                                double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
   double divmax = 0;

@@ -613,8 +613,8 @@ int cdiff_les2s::execvisc()
   // do a cast because the base boundary class does not have the MOST related variables
   cboundary_surface *boundaryptr = static_cast<cboundary_surface *>(model->boundary);
 
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -667,8 +667,8 @@ int cdiff_les2s::execvisc()
 #ifdef USECUDA
 int cdiff_les2s::exec()
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -728,8 +728,8 @@ int cdiff_les2s::exec()
 #ifdef USECUDA
 unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -761,8 +761,8 @@ unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 #ifdef USECUDA
 double cdiff_les2s::getdn(double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

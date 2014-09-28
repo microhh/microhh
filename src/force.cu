@@ -25,6 +25,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "fd.h"
+#include "constants.h"
 
 __global__ void force_flux_step1(double * const __restrict__ usum, double * const __restrict__ utsum,
                                  const double * const __restrict__ u, const double * const __restrict__ ut,
@@ -238,8 +239,8 @@ int cforce::clearDevice()
 #ifdef USECUDA
 int cforce::exec(double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

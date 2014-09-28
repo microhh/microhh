@@ -23,6 +23,7 @@
 #include "timeloop.h"
 #include "grid.h"
 #include "master.h"
+#include "constants.h"
 
 #define cA0 0.
 #define cA1 -5./9.
@@ -122,8 +123,8 @@ __global__ void rk4_kernel(double * __restrict__ a, double * __restrict__ at, do
 
 int ctimeloop::rk3_GPU(double *a, double *at, double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -158,8 +159,8 @@ int ctimeloop::rk3_GPU(double *a, double *at, double dt)
 
 int ctimeloop::rk4_GPU(double *a, double *at, double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
