@@ -342,7 +342,6 @@ int cpres_2::clearDevice()
 #ifdef USECUDA
 void cpres_2::exec(double dt)
 {
-  int kk;
   const int blocki  = cuda::blockSizeI;
   const int blockj  = cuda::blockSizeJ;
   const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -372,17 +371,18 @@ void cpres_2::exec(double dt)
 
   // Forward FFT -> how to get rid of the loop at the host side....
   // A massive FFT (e.g. 3D field) would require large host fields for the FFT output
+  int kk = grid->itot*grid->jtot;
   for (int k=0; k<grid->ktot; ++k)
   {
-    kk = k*grid->itot*grid->jtot;
+    int ijk = k*kk;
 
-    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk], ffti_complex_g);
+    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], ffti_complex_g);
     cudaThreadSynchronize();
-    pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, true); 
+    pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
 
-    cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk], fftj_complex_g);
+    cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], fftj_complex_g);
     cudaThreadSynchronize();
-    pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, true); 
+    pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
   } 
 
   pres_2_solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
@@ -401,17 +401,16 @@ void cpres_2::exec(double dt)
   // Backward FFT 
   for (int k=0; k<grid->ktot; ++k)
   {
-    kk = k*grid->itot*grid->jtot;
+    int ijk = k*kk;
 
-    pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, false); 
-    cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk]);
+    pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false); 
+    cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
     cudaThreadSynchronize();
-    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, 1./grid->jtot);
 
-    pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, false); 
-    cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[kk]);
+    pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false); 
+    cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
     cudaThreadSynchronize();
-    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[kk], grid->itot, grid->jtot, 1./grid->itot);
+    pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
   } 
 
   cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice);

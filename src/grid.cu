@@ -23,7 +23,7 @@
 #include "grid.h"
 #include "tools.h"
 
-__global__ void grid_cyclic_x(double * __restrict__ data, 
+__global__ void grid_cyclic_x(double * const __restrict__ data,
                               const int icells, const int jcells, const int kcells,
                               const int icellsp,
                               const int istart, const int jstart,
@@ -37,22 +37,20 @@ __global__ void grid_cyclic_x(double * __restrict__ data,
   const int jj = icellsp;
   const int kk = icellsp*jcells;
 
-  int ijk0, ijk1, ijk2, ijk3;
-
   // East-west
   if(k < kcells && j < jcells && i < igc)
   {
-    ijk0 = i          + j*jj + k*kk;
-    ijk1 = iend-igc+i + j*jj + k*kk;
-    ijk2 = i+iend     + j*jj + k*kk;
-    ijk3 = i+istart   + j*jj + k*kk;
+    const int ijk0 = i          + j*jj + k*kk;
+    const int ijk1 = iend-igc+i + j*jj + k*kk;
+    const int ijk2 = i+iend     + j*jj + k*kk;
+    const int ijk3 = i+istart   + j*jj + k*kk;
 
     data[ijk0] = data[ijk1];
     data[ijk2] = data[ijk3];
   }
 }
 
-__global__ void grid_cyclic_y(double * __restrict__ data, 
+__global__ void grid_cyclic_y(double * const __restrict__ data,
                               const int icells, const int jcells, const int kcells,
                               const int icellsp,
                               const int istart, const int jstart,
@@ -65,8 +63,6 @@ __global__ void grid_cyclic_y(double * __restrict__ data,
 
   const int jj = icellsp;
   const int kk = icellsp*jcells;
-
-  //int ijk0, ijk1, ijk2, ijk3;
 
   // North-south
   if(jend-jstart == 1)

@@ -25,6 +25,10 @@
 
 #include "pres.h"
 
+#ifdef USECUDA
+#include <cufft.h>
+#endif
+
 // forward declaration
 class cmodel;
 
@@ -40,9 +44,22 @@ class cpres_4 : public cpres
     void exec(double);
     double check();
 
+#ifdef USECUDA
+    int prepareDevice();
+#endif
+
   private:
     double *bmati, *bmatj;
     double *m1,*m2,*m3,*m4,*m5,*m6,*m7;
+
+#ifdef USECUDA
+    double *bmati_g, *bmatj_g;
+    double *m1_g,*m2_g,*m3_g,*m4_g,*m5_g,*m6_g,*m7_g;
+
+    cufftDoubleComplex *ffti_complex_g, *fftj_complex_g; 
+    cufftHandle iplanf, jplanf; 
+    cufftHandle iplanb, jplanb; 
+#endif
 
     void pres_in(double *, 
                  double *, double *, double *,

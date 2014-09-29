@@ -187,8 +187,10 @@ __global__ void advec_2_advecs(double * __restrict__ st, double * __restrict__ s
 }
 
 __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                                double * __restrict__ cfl, double * __restrict__ dzi, double dxi, double dyi, 
-                                int jj, int kk, int istart, int jstart, int kstart,
+                                double * __restrict__ cfl,
+                                double * __restrict__ dzi, double dxi, double dyi,
+                                int jj, int kk,
+                                int istart, int jstart, int kstart,
                                 int iend, int jend, int kend)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
@@ -276,7 +278,8 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
   const int offs = grid->memoffset;
 
   advec_2_calccfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-                                         &fields->a["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
+                                         &fields->a["tmp1"]->data_g[offs],
+                                         grid->dzi_g, dxi, dyi,
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart,  grid->jstart, grid->kstart,
                                          grid->iend,    grid->jend,   grid->kend);

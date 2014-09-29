@@ -23,6 +23,7 @@
 #include "timeloop.h"
 #include "grid.h"
 #include "master.h"
+#include "fields.h"
 #include "constants.h"
 
 #define cA0 0.

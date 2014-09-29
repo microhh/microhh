@@ -35,7 +35,8 @@ using namespace fd::o4;
 __global__ void advec_4_advecu(double * __restrict__ ut, double * __restrict__ u, 
                                double * __restrict__ v, double * __restrict__ w,
                                double * __restrict__ dzi4, double dxi, double dyi, 
-                               int jj, int kk, int istart, int jstart, int kstart,
+                               int jj, int kk,
+                               int istart, int jstart, int kstart,
                                int iend,   int jend,   int kend)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -116,7 +117,8 @@ __global__ void advec_4_advecu(double * __restrict__ ut, double * __restrict__ u
 __global__ void advec_4_advecv(double * __restrict__ vt, double * __restrict__ u, 
                                double * __restrict__ v, double * __restrict__ w,
                                double * __restrict__ dzi4, double dxi, double dyi, 
-                               int jj, int kk, int istart, int jstart, int kstart,
+                               int jj, int kk,
+                               int istart, int jstart, int kstart,
                                int iend,   int jend,   int kend)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -196,7 +198,8 @@ __global__ void advec_4_advecv(double * __restrict__ vt, double * __restrict__ u
 __global__ void advec_4_advecw(double * __restrict__ wt, double * __restrict__ u, 
                                double * __restrict__ v, double * __restrict__ w,
                                double * __restrict__ dzhi4, double dxi, double dyi, 
-                               int jj, int kk, int istart, int jstart, int kstart,
+                               int jj, int kk, int istart,
+                               int jstart, int kstart,
                                int iend,   int jend,   int kend)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -276,7 +279,8 @@ __global__ void advec_4_advecw(double * __restrict__ wt, double * __restrict__ u
 __global__ void advec_4_advecs(double * __restrict__ st, double * __restrict__ s, 
                                double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
                                double * __restrict__ dzi4, double dxi, double dyi, 
-                               int jj, int kk, int istart, int jstart, int kstart,
+                               int jj, int kk,
+                               int istart, int jstart, int kstart,
                                int iend,   int jend,   int kend)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -353,38 +357,35 @@ __global__ void advec_4_advecs(double * __restrict__ st, double * __restrict__ s
   }
 }
 
-__global__ void advec_4_calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                                double * __restrict__ tmp1, double * __restrict__ dzi, double dxi, double dyi, 
-                                int jj, int kk, int istart, int jstart, int kstart,
-                                int iend, int jend, int kend,
-                                int icells, int jcells, int kcells)
+__global__ void advec_4_calccfl(double * const __restrict__ tmp1,
+                                const double * const __restrict__ u, const double * const __restrict__ v, const double * const __restrict__ w, 
+                                const double * const __restrict__ dzi, const double dxi, const double dyi,
+                                const int jj, const int kk,
+                                const int istart, const int jstart, const int kstart,
+                                const int iend, const int jend, const int kend)
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  int k = blockIdx.z; 
+  const int i = blockIdx.x*blockDim.x + threadIdx.x; 
+  const int j = blockIdx.y*blockDim.y + threadIdx.y; 
+  const int k = blockIdx.z; 
 
-  int ii1 = 1;
-  int ii2 = 2;
-  int jj1 = 1*jj;
-  int jj2 = 2*jj;
-  int kk1 = 1*kk;
-  int kk2 = 2*kk;
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int jj1 = 1*jj;
+  const int jj2 = 2*jj;
+  const int kk1 = 1*kk;
+  const int kk2 = 2*kk;
 
-  int ijk = i + j*jj + k*kk;
+  const int ijk = i + j*jj + k*kk;
 
-  if(i >= istart && i < iend && j >= jstart && j < jend && k >= kstart && k < kend)
+  if(i < iend && j < jend && k < kend)
     tmp1[ijk] = std::abs(ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2])*dxi + 
                 std::abs(ci0*v[ijk-jj1] + ci1*v[ijk] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2])*dyi + 
                 std::abs(ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*dzi[k];
-  else if(i < icells && j < jcells && k < kcells) 
-    tmp1[ijk] = 0.;
 }
 
 #ifdef USECUDA
 void cadvec_4::exec()
 {
-  fields->forwardDevice();
-
   const int blocki = 128;
   const int blockj = 2;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -396,37 +397,37 @@ void cadvec_4::exec()
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
-  advec_4_advecu<<<gridGPU, blockGPU>>>(fields->ut->data_g, fields->u->data_g, fields->v->data_g, 
-                                        fields->w->data_g, grid->dzi4_g, dxi, dyi,
-                                        grid->icells, grid->ijcells,
+  const int offs = grid->memoffset;
+
+  advec_4_advecu<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend,   grid->jend, grid->kend);
 
-  advec_4_advecv<<<gridGPU, blockGPU>>>(fields->vt->data_g, fields->u->data_g, fields->v->data_g, 
-                                        fields->w->data_g, grid->dzi4_g, dxi, dyi,
-                                        grid->icells, grid->ijcells,
+  advec_4_advecv<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend,   grid->jend, grid->kend);
 
-  advec_4_advecw<<<gridGPU, blockGPU>>>(fields->wt->data_g, fields->u->data_g, fields->v->data_g, 
-                                        fields->w->data_g, grid->dzhi4_g, dxi, dyi,
-                                        grid->icells, grid->ijcells,
+  advec_4_advecw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend,   grid->jend, grid->kend);
 
-  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advec_4_advecs<<<gridGPU, blockGPU>>>((*it->second).data_g, (*fields->s[it->first]).data_g, 
-                                          fields->u->data_g, fields->v->data_g, fields->w->data_g, 
+  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    advec_4_advecs<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], 
+                                          &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
                                           grid->dzi4_g, dxi, dyi,
-                                          grid->icells, grid->ijcells,
+                                          grid->icellsp, grid->ijcellsp,
                                           grid->istart, grid->jstart, grid->kstart,
                                           grid->iend,   grid->jend, grid->kend);
 
   cudaError_t error = cudaGetLastError();
   if(error != cudaSuccess)
-    printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
-
-  fields->backwardDevice();
+    printf("CUDA ERROR ADV: %s\n", cudaGetErrorString(error));
 }
 #endif
 
@@ -445,26 +446,23 @@ double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, doubl
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
-  fields->forwardDevice();
+  const int offs = grid->memoffset;
 
-  advec_4_calccfl<<<gridGPU, blockGPU>>>(fields->u->data_g, fields->v->data_g, fields->w->data_g, 
-                                         (*fields->a["tmp1"]).data_g, grid->dzi_g, dxi, dyi,
-                                         grid->icells, grid->ijcells,
+  advec_4_calccfl<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs],
+                                         &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
+                                         grid->dzi_g, dxi, dyi,
+                                         grid->icellsp, grid->ijcellsp,
                                          grid->istart, grid->jstart, grid->kstart,
-                                         grid->iend,   grid->jend, grid->kend,
-                                         grid->icells, grid->jcells, grid->kcells);
+                                         grid->iend,   grid->jend,   grid->kend);
 
-  fields->backwardDevice();
-
-  thrust::device_ptr<double> cfl_g = thrust::device_pointer_cast(fields->a["tmp1"]->data_g);
-  cfl = thrust::reduce(cfl_g, cfl_g + grid->ncells, -1.0, thrust::maximum<double>()); 
-
-  grid->getmax(&cfl);
-
+  cfl = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  grid->getmax(&cfl); 
   cfl = cfl*dt;
+
+  cudaError error = cudaGetLastError();
+  if(error != cudaSuccess)
+    printf("CUDA ERROR CFL: %s\n", cudaGetErrorString(error));
 
   return cfl;
 }
 #endif
-
-
