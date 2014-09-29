@@ -435,10 +435,30 @@ void cpres_4::exec(double dt)
   double *tmp3_g = fields->sd["tmp3"]->data_g;
 
   // const int jj = grid->iblock;
+
+  cudaMemcpy(fields->sd["p"]->data, fields->sd["p"]->data_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToHost);
   for(int j=0; j<grid->jblock; ++j)
   {
+    pres_solve1(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
+                m1, m2, m3, m4,
+                m5, m6, m7,
+                &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
+                &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
+                bmati, bmatj,j);
+    hdma(&tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
+         &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns]);
+    pres_solve2(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
+                m1, m2, m3, m4,
+                m5, m6, m7,
+                &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
+                &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
+                bmati, bmatj,j);
+  }
+  cudaMemcpy(fields->sd["p"]->data_g, fields->sd["p"]->data, grid->ncells*sizeof(double), cudaMemcpyHostToDevice);
+
     // const int ijk = j*jj;
     // Prepare the fields that go into the matrix solver
+    /*
     pres_4_solvein<<<grid1dGPU,block1dGPU>>>(fields->sd["p"]->data_g,
                                              m1_g, m2_g, m3_g, m4_g,
                                              m5_g, m6_g, m7_g,
@@ -449,6 +469,7 @@ void cpres_4::exec(double dt)
                                              grid->iblock, grid->jblock,
                                              grid->kmax,
                                              j);
+
 
     // Solve the sevenbanded matrix
     cudaMemcpy(tmp2, tmp2_g, 4*ns, cudaMemcpyDeviceToHost);
@@ -464,6 +485,7 @@ void cpres_4::exec(double dt)
                                                   grid->kmax,
                                                   j);
   }
+                                                  */
 
   // Backward FFT 
   for(int k=0; k<grid->ktot; ++k)
