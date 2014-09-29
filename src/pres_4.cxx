@@ -310,6 +310,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // Calculate the step size.
   const int nj = jblock/jslice;
+  const int jslice = this->jslice;
 
   const int kki1 = 1*iblock*jslice;
   const int kki2 = 2*iblock*jslice;
@@ -369,8 +370,8 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
           ptemp [ik+kki2] = p[ijk];
         }
 
-#pragma ivdep
     for(int j=0; j<jslice; ++j)
+#pragma ivdep
       for(int i=0; i<iblock; ++i)
       {
         // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
@@ -428,6 +429,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
     // Put back the solution.
     for(int k=0; k<kmax; ++k)
       for(int j=0; j<jslice; ++j)
+#pragma ivdep
         for(int i=0; i<iblock; ++i)
         {
           ik  = i + j*jj + k*kki1;
@@ -539,8 +541,8 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 
   // Use LU factorization.
   k = 0;
-#pragma ivdep
   for(int j=0; j<jslice; ++j)
+#pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
       ik = i + j*jj;
