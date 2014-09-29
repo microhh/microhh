@@ -79,7 +79,6 @@ void cpres_4::exec(double dt)
   double *tmp2 = fields->sd["tmp2"]->data;
   double *tmp3 = fields->sd["tmp3"]->data;
 
-  const int jslice = grid->jblock/4;
   const int ns = grid->iblock*jslice*(grid->kmax+4);
 
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
@@ -114,6 +113,12 @@ void cpres_4::init()
   jmax   = grid->jmax;
   kmax   = grid->kmax;
   kstart = grid->kstart;
+
+  /* Find the thickness of a vectorizable slice. There is a need for 8 slices for the pressure
+     solver and we use two three dimensional temp fields, so there are 4 slices per field.
+     The thickness is therefore jblock/4. Since there are always three ghost cells, even in a 2D
+     run the fields are large enough. */
+  jslice = std::max(grid->jblock/4, 1);
 
   bmati = new double[itot];
   bmatj = new double[jtot];
@@ -303,8 +308,8 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
   const int mpicoordx = master->mpicoordx;
   const int mpicoordy = master->mpicoordy;
 
-  const int jslice = jblock/4;
-  const int nj     = 4;
+  // Calculate the step size.
+  const int nj = jblock/jslice;
 
   const int kki1 = 1*iblock*jslice;
   const int kki2 = 2*iblock*jslice;
@@ -524,7 +529,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 
   const int jj = grid->iblock;
 
-  const int jslice = grid->jblock/4;
+  const int jslice = this->jslice;
 
   const int kk1 = 1*grid->iblock*jslice;
   const int kk2 = 2*grid->iblock*jslice;

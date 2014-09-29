@@ -41,6 +41,8 @@ class cpres_4 : public cpres
     double check();
 
   private:
+    int jslice;
+
     double *bmati, *bmatj;
     double *m1,*m2,*m3,*m4,*m5,*m6,*m7;
 
