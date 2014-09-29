@@ -299,94 +299,97 @@ __global__ void pres_4_hdma(double * const __restrict__ m1, double * const __res
 
   int k,ik;
 
-  // Use LU factorization.
-  k = 0;
-  ik = i;
-  m1[ik] = 1.;
-  m2[ik] = 1.;
-  m3[ik] = 1.            / m4[ik];
-  m4[ik] = 1.;
-  m5[ik] = m5[ik]*m3[ik];
-  m6[ik] = m6[ik]*m3[ik];
-  m7[ik] = m7[ik]*m3[ik];
-
-  k = 1;
-  ik = i + k*kk1;
-  m1[ik] = 1.;
-  m2[ik] = 1.;
-  m3[ik] = m3[ik]                     / m4[ik-kk1];
-  m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
-  m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
-  m6[ik] = m6[ik] - m3[ik]*m7[ik-kk1];
-
-  k = 2;
-  ik = i + k*kk1;
-  m1[ik] = 1.;
-  m2[ik] =   m2[ik]                                           / m4[ik-kk2];
-  m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
-  m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
-  m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
-  m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
-
-  for(k=3; k<kmax+2; ++k)
+  if(i < iblock)
   {
+    // Use LU factorization.
+    k = 0;
+    ik = i;
+    m1[ik] = 1.;
+    m2[ik] = 1.;
+    m3[ik] = 1.            / m4[ik];
+    m4[ik] = 1.;
+    m5[ik] = m5[ik]*m3[ik];
+    m6[ik] = m6[ik]*m3[ik];
+    m7[ik] = m7[ik]*m3[ik];
+
+    k = 1;
+    ik = i + k*kk1;
+    m1[ik] = 1.;
+    m2[ik] = 1.;
+    m3[ik] = m3[ik]                     / m4[ik-kk1];
+    m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
+    m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
+    m6[ik] = m6[ik] - m3[ik]*m7[ik-kk1];
+
+    k = 2;
+    ik = i + k*kk1;
+    m1[ik] = 1.;
+    m2[ik] =   m2[ik]                                           / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
+    m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+    m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+
+    for(k=3; k<kmax+2; ++k)
+    {
+      ik = i + k*kk1;
+      m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+      m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+      m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+      m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+      m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+      m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+    }
+
+    k = kmax+1;
+    ik = i + k*kk1;
+    m7[ik] = 1.;
+
+    k = kmax+2;
     ik = i + k*kk1;
     m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
     m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
     m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
     m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
     m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
-    m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
-  }
+    m6[ik] = 1.;
+    m7[ik] = 1.;
 
-  k = kmax+1;
-  ik = i + k*kk1;
-  m7[ik] = 1.;
-
-  k = kmax+2;
-  ik = i + k*kk1;
-  m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
-  m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
-  m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
-  m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
-  m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
-  m6[ik] = 1.;
-  m7[ik] = 1.;
-
-  k = kmax+3;
-  ik = i + k*kk1;
-  m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
-  m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
-  m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
-  m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
-  m5[ik] = 1.;
-  m6[ik] = 1.;
-  m7[ik] = 1.;
-
-  // Do the backward substitution.
-  // First, solve Ly = p, forward.
-  ik = i;
-  p[ik    ] =             p[ik    ]*m3[ik    ];
-  p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
-  p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
-
-  for(k=3; k<kmax+4; ++k)
-  {
+    k = kmax+3;
     ik = i + k*kk1;
-    p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
-  }
+    m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+    m5[ik] = 1.;
+    m6[ik] = 1.;
+    m7[ik] = 1.;
 
-  // Second, solve Ux=y, backward.
-  k = kmax+3;
-  ik = i + k*kk1;
-  p[ik    ] =   p[ik    ]                                             / m4[ik    ];
-  p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
-  p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
+    // Do the backward substitution.
+    // First, solve Ly = p, forward.
+    ik = i;
+    p[ik    ] =             p[ik    ]*m3[ik    ];
+    p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
+    p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
 
-  for(k=kmax; k>=0; --k)
-  {
+    for(k=3; k<kmax+4; ++k)
+    {
+      ik = i + k*kk1;
+      p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
+    }
+
+    // Second, solve Ux=y, backward.
+    k = kmax+3;
     ik = i + k*kk1;
-    p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
+    p[ik    ] =   p[ik    ]                                             / m4[ik    ];
+    p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
+    p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
+
+    for(k=kmax; k>=0; --k)
+    {
+      ik = i + k*kk1;
+      p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
+    }
   }
 }
 
