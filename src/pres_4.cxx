@@ -78,7 +78,10 @@ void cpres_4::exec(double dt)
   // are always big enough, this cannot fail.
   double *tmp2 = fields->sd["tmp2"]->data;
   double *tmp3 = fields->sd["tmp3"]->data;
-  const int ns = grid->iblock*(grid->kmax+4);
+
+  const int jslice = grid->jblock/4;
+  const int ns = grid->iblock*jslice*(grid->kmax+4);
+
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
              m1, m2, m3, m4,
              m5, m6, m7,
@@ -300,8 +303,8 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
   const int mpicoordx = master->mpicoordx;
   const int mpicoordy = master->mpicoordy;
 
-  const int jslice = 1;
-  const int nj     = jblock;
+  const int jslice = jblock/4;
+  const int nj     = 4;
 
   const int kki1 = 1*iblock*jslice;
   const int kki2 = 2*iblock*jslice;
@@ -521,8 +524,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 
   const int jj = grid->iblock;
 
-  const int jslice = 1;
-  const int nj     = grid->jblock;
+  const int jslice = grid->jblock/4;
 
   const int kk1 = 1*grid->iblock*jslice;
   const int kk2 = 2*grid->iblock*jslice;
