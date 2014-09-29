@@ -287,6 +287,109 @@ __global__ void pres_4_solveputback(double * const __restrict__ p,
     data[ij] = data[ij] * in;
 }
 
+__global__ void pres_4_hdma(double * const __restrict__ m1, double * const __restrict__ m2, double * const __restrict__ m3, double * const __restrict__ m4,
+                            double * const __restrict__ m5, double * const __restrict__ m6, double * const __restrict__ m7, double * const __restrict__ p,
+                            const int iblock, const int kmax)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x;
+
+  const int kk1 = 1*iblock;
+  const int kk2 = 2*iblock;
+  const int kk3 = 3*iblock;
+
+  int k,ik;
+
+  // Use LU factorization.
+  k = 0;
+  ik = i;
+  m1[ik] = 1.;
+  m2[ik] = 1.;
+  m3[ik] = 1.            / m4[ik];
+  m4[ik] = 1.;
+  m5[ik] = m5[ik]*m3[ik];
+  m6[ik] = m6[ik]*m3[ik];
+  m7[ik] = m7[ik]*m3[ik];
+
+  k = 1;
+  ik = i + k*kk1;
+  m1[ik] = 1.;
+  m2[ik] = 1.;
+  m3[ik] = m3[ik]                     / m4[ik-kk1];
+  m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
+  m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
+  m6[ik] = m6[ik] - m3[ik]*m7[ik-kk1];
+
+  k = 2;
+  ik = i + k*kk1;
+  m1[ik] = 1.;
+  m2[ik] =   m2[ik]                                           / m4[ik-kk2];
+  m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
+  m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
+  m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+  m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+
+  for(k=3; k<kmax+2; ++k)
+  {
+    ik = i + k*kk1;
+    m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+    m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+    m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+  }
+
+  k = kmax+1;
+  ik = i + k*kk1;
+  m7[ik] = 1.;
+
+  k = kmax+2;
+  ik = i + k*kk1;
+  m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+  m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+  m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+  m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+  m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+  m6[ik] = 1.;
+  m7[ik] = 1.;
+
+  k = kmax+3;
+  ik = i + k*kk1;
+  m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+  m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+  m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+  m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+  m5[ik] = 1.;
+  m6[ik] = 1.;
+  m7[ik] = 1.;
+
+  // Do the backward substitution.
+  // First, solve Ly = p, forward.
+  ik = i;
+  p[ik    ] =             p[ik    ]*m3[ik    ];
+  p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
+  p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
+
+  for(k=3; k<kmax+4; ++k)
+  {
+    ik = i + k*kk1;
+    p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
+  }
+
+  // Second, solve Ux=y, backward.
+  k = kmax+3;
+  ik = i + k*kk1;
+  p[ik    ] =   p[ik    ]                                             / m4[ik    ];
+  p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
+  p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
+
+  for(k=kmax; k>=0; --k)
+  {
+    ik = i + k*kk1;
+    p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
+  }
+}
+
 __global__ void pres_4_solveout(double * __restrict__ p, double * __restrict__ work3d,
                                 const int jj, const int kk,
                                 const int jjp, const int kkp,
@@ -459,11 +562,9 @@ void cpres_4::exec(double dt)
                                              j);
 
     // Solve the sevenbanded matrix
-    cudaMemcpy(tmp2, tmp2_g, 4*ns*sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(tmp3, tmp3_g, 4*ns*sizeof(double), cudaMemcpyDeviceToHost);
-    hdma(&tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
-         &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns]);
-    cudaMemcpy(&tmp3_g[3*ns], &tmp3[3*ns], ns*sizeof(double), cudaMemcpyHostToDevice);
+    pres_4_hdma<<<grid1dGPU,block1dGPU>>>(&tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
+                                          &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns],
+                                          grid->iblock, grid->kmax);
 
     // Put the solution back into the pressure field
     pres_4_solveputback<<<grid1dGPU,block1dGPU>>>(fields->sd["p"]->data_g,
