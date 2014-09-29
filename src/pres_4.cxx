@@ -297,15 +297,15 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   int ik;
 
-  const int kki1 = 1*iblock;
-  const int kki2 = 2*iblock;
-  const int kki3 = 3*iblock;
-
   const int mpicoordx = master->mpicoordx;
   const int mpicoordy = master->mpicoordy;
 
   const int jslice = 1;
   const int nj     = jblock;
+
+  const int kki1 = 1*iblock*jslice;
+  const int kki2 = 2*iblock*jslice;
+  const int kki3 = 3*iblock*jslice;
 
   for(int n=0; n<nj; ++n)
   {
@@ -314,7 +314,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
       for(int i=0; i<iblock; ++i)
       {
         // Set a zero gradient bc at the bottom.
-        ik = i;
+        ik = i + j*jj;
         m1temp[ik] =  0.;
         m2temp[ik] =  0.;
         m3temp[ik] =  0.;
@@ -329,7 +329,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
 #pragma ivdep
       for(int i=0; i<iblock; ++i)
       {
-        ik = i;
+        ik = i + j*jj;
         m1temp[ik+kki1] =  0.;
         m2temp[ik+kki1] =  0.;
         m3temp[ik+kki1] =  0.;
@@ -350,7 +350,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
           jindex = mpicoordx*jblock + n*jslice + j;
 
           ijk = i + (j + n*jslice)*jj + k*kk;
-          ik  = i + k*kki1;
+          ik  = i + j*jj + k*kki1;
           m1temp[ik+kki2] = m1[k];
           m2temp[ik+kki2] = m2[k];
           m3temp[ik+kki2] = m3[k];
@@ -370,7 +370,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
         jindex = mpicoordx*jblock + n*jslice + j;
 
         // Set the top boundary.
-        ik = i + kmax*kki1;
+        ik = i + j*jj + kmax*kki1;
         if(iindex == 0 && jindex == 0)
         {
           m1temp[ik+kki2] =    0.;
@@ -403,7 +403,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
       for(int i=0; i<iblock; ++i)
       {
         // Set the top boundary.
-        ik = i + kmax*kki1;
+        ik = i + j*jj + kmax*kki1;
         m5temp[ik+kki2] = 0.;
         m6temp[ik+kki2] = 0.;
         m7temp[ik+kki2] = 0.;
@@ -422,7 +422,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
       for(int j=0; j<jslice; ++j)
         for(int i=0; i<iblock; ++i)
         {
-          ik  = i + k*kki1;
+          ik  = i + j*jj + k*kki1;
           ijk = i + (j + n*jslice)*jj + k*kk;
           p[ijk] = ptemp[ik+kki2];
         }
@@ -519,11 +519,14 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
   const int kmax   = grid->kmax;
   const int iblock = grid->iblock;
 
-  const int kk1 = 1*grid->iblock;
-  const int kk2 = 2*grid->iblock;
-  const int kk3 = 3*grid->iblock;
+  const int jj = grid->iblock;
 
   const int jslice = 1;
+  const int nj     = grid->jblock;
+
+  const int kk1 = 1*grid->iblock*jslice;
+  const int kk2 = 2*grid->iblock*jslice;
+  const int kk3 = 3*grid->iblock*jslice;
 
   int k,ik;
 
@@ -533,7 +536,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
   for(int j=0; j<jslice; ++j)
     for(int i=0; i<iblock; ++i)
     {
-      ik = i;
+      ik = i + j*jj;
       m1[ik] = 1.;
       m2[ik] = 1.;
       m3[ik] = 1.            / m4[ik];
@@ -548,7 +551,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       m1[ik] = 1.;
       m2[ik] = 1.;
       m3[ik] = m3[ik]                     / m4[ik-kk1];
@@ -562,7 +565,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       m1[ik] = 1.;
       m2[ik] =   m2[ik]                                           / m4[ik-kk2];
       m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
@@ -576,7 +579,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
       for(int i=0; i<iblock; ++i)
       {
-        ik = i + k*kk1;
+        ik = i + j*jj + k*kk1;
         m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
         m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
         m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
@@ -590,7 +593,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       m7[ik] = 1.;
     }
 
@@ -599,7 +602,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
       m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
       m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
@@ -614,7 +617,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
       m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
       m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
@@ -630,7 +633,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i;
+      ik = i + j*jj;
       p[ik    ] =             p[ik    ]*m3[ik    ];
       p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
       p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
@@ -641,7 +644,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
       for(int i=0; i<iblock; ++i)
       {
-        ik = i + k*kk1;
+        ik = i + j*jj + k*kk1;
         p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
       }
 
@@ -651,7 +654,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       p[ik    ] =   p[ik    ]                                             / m4[ik    ];
       p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
       p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
@@ -662,7 +665,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
 #pragma ivdep
       for(int i=0; i<iblock; ++i)
       {
-        ik = i + k*kk1;
+        ik = i + j*jj + k*kk1;
         p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
       }
 }
