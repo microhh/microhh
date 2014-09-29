@@ -66,7 +66,7 @@ __global__ void grid_cyclic_y(double * __restrict__ data,
   const int jj = icellsp;
   const int kk = icellsp*jcells;
 
-  int ijk0, ijk1, ijk2, ijk3;
+  //int ijk0, ijk1, ijk2, ijk3;
 
   // North-south
   if(jend-jstart == 1)
