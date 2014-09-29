@@ -146,7 +146,6 @@ __global__ void pres_4_solvein(const double * const __restrict__ p,
                                const int j)
 {
   const int i = blockIdx.x*blockDim.x + threadIdx.x;
-  // const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
   const int jj = iblock;
   const int kk = iblock*jblock;
@@ -155,7 +154,7 @@ __global__ void pres_4_solvein(const double * const __restrict__ p,
   const int kki2 = 2*iblock;
   const int kki3 = 3*iblock;
 
-  int k,ik,ijk,iindex,jindex;
+  int ik,ijk,iindex,jindex;
 
   if(i < iblock)
   {
@@ -174,7 +173,6 @@ __global__ void pres_4_solvein(const double * const __restrict__ p,
     m7temp[ik] = -1.;
     ptemp [ik] =  0.;
 
-    ik = i;
     m1temp[ik+kki1] =  0.;
     m2temp[ik+kki1] =  0.;
     m3temp[ik+kki1] =  0.;
@@ -184,7 +182,7 @@ __global__ void pres_4_solvein(const double * const __restrict__ p,
     m7temp[ik+kki1] =  0.;
     ptemp [ik+kki1] =  0.;
 
-    for(k=0; k<kmax; ++k)
+    for(int k=0; k<kmax; ++k)
     {
       // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
       ijk = i + j*jj + k*kk;
@@ -238,6 +236,18 @@ __global__ void pres_4_solvein(const double * const __restrict__ p,
     m6temp[ik+kki3] = 0.;
     m7temp[ik+kki3] = 0.;
     ptemp [ik+kki3] = 0.;
+  }
+}
+
+__global__ void printm(const double * const m,
+                       const int iblock, const int kmax, const int j)
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x;
+  // const int kk = iblock;
+
+  if(i < iblock)
+  {
+    printf("CvH GPU: %d, %E\n", i, m[i]);
   }
 }
 
@@ -434,31 +444,9 @@ void cpres_4::exec(double dt)
   double *tmp2_g = fields->sd["tmp2"]->data_g;
   double *tmp3_g = fields->sd["tmp3"]->data_g;
 
-  // const int jj = grid->iblock;
-
-  cudaMemcpy(fields->sd["p"]->data, fields->sd["p"]->data_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToHost);
   for(int j=0; j<grid->jblock; ++j)
   {
-    pres_solve1(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
-                m1, m2, m3, m4,
-                m5, m6, m7,
-                &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
-                &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
-                bmati, bmatj,j);
-    hdma(&tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
-         &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns]);
-    pres_solve2(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
-                m1, m2, m3, m4,
-                m5, m6, m7,
-                &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
-                &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
-                bmati, bmatj,j);
-  }
-  cudaMemcpy(fields->sd["p"]->data_g, fields->sd["p"]->data, grid->ncells*sizeof(double), cudaMemcpyHostToDevice);
-
-    // const int ijk = j*jj;
     // Prepare the fields that go into the matrix solver
-    /*
     pres_4_solvein<<<grid1dGPU,block1dGPU>>>(fields->sd["p"]->data_g,
                                              m1_g, m2_g, m3_g, m4_g,
                                              m5_g, m6_g, m7_g,
@@ -470,13 +458,12 @@ void cpres_4::exec(double dt)
                                              grid->kmax,
                                              j);
 
-
     // Solve the sevenbanded matrix
-    cudaMemcpy(tmp2, tmp2_g, 4*ns, cudaMemcpyDeviceToHost);
-    cudaMemcpy(tmp3, tmp3_g, 4*ns, cudaMemcpyDeviceToHost);
+    cudaMemcpy(tmp2, tmp2_g, 4*ns*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(tmp3, tmp3_g, 4*ns*sizeof(double), cudaMemcpyDeviceToHost);
     hdma(&tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
          &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns]);
-    cudaMemcpy(&tmp3_g[3*ns], &tmp3[3*ns], ns, cudaMemcpyHostToDevice);
+    cudaMemcpy(&tmp3_g[3*ns], &tmp3[3*ns], ns*sizeof(double), cudaMemcpyHostToDevice);
 
     // Put the solution back into the pressure field
     pres_4_solveputback<<<grid1dGPU,block1dGPU>>>(fields->sd["p"]->data_g,
@@ -485,7 +472,6 @@ void cpres_4::exec(double dt)
                                                   grid->kmax,
                                                   j);
   }
-                                                  */
 
   // Backward FFT 
   for(int k=0; k<grid->ktot; ++k)
@@ -555,6 +541,7 @@ int cpres_4::prepareDevice()
 
   cudaMalloc((void**)&bmati_g, imemsize);
   cudaMalloc((void**)&bmatj_g, jmemsize);
+
   cudaMalloc((void**)&m1_g, kmemsize);
   cudaMalloc((void**)&m2_g, kmemsize);
   cudaMalloc((void**)&m3_g, kmemsize);
