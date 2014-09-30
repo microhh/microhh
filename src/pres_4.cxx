@@ -118,7 +118,10 @@ void cpres_4::init()
      solver and we use two three dimensional temp fields, so there are 4 slices per field.
      The thickness is therefore jblock/4. Since there are always three ghost cells, even in a 2D
      run the fields are large enough. */
-  jslice = std::max(grid->jblock/4, 1);
+  // jslice = std::max(grid->jblock/4, 1);
+
+  // The CPU version gives the best performance in case jslice = 1, due to cache misses
+  jslice = 1;
 
   bmati = new double[itot];
   bmatj = new double[jtot];
