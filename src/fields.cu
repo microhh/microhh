@@ -25,6 +25,7 @@
 #include "master.h"
 #include "boundary.h" // TMP BVS
 #include "constants.h"
+#include "tools.h"
 
 // TODO use interp2 functions instead of manual interpolation
 __global__ void fields_calcmom_2nd(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
@@ -193,36 +194,36 @@ int cfields::prepareDevice()
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    cudaMalloc(&it->second->data_g,        nmemsize  );
-    cudaMalloc(&it->second->databot_g,     nmemsize2d);
-    cudaMalloc(&it->second->datatop_g,     nmemsize2d);
-    cudaMalloc(&it->second->datagradbot_g, nmemsize2d);
-    cudaMalloc(&it->second->datagradtop_g, nmemsize2d);
-    cudaMalloc(&it->second->datafluxbot_g, nmemsize2d);
-    cudaMalloc(&it->second->datafluxtop_g, nmemsize2d);
-    cudaMalloc(&it->second->datamean_g,    nmemsize1d);
+    cudaSafeCall(cudaMalloc(&it->second->data_g,        nmemsize  ));
+    cudaSafeCall(cudaMalloc(&it->second->databot_g,     nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datatop_g,     nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datagradbot_g, nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datagradtop_g, nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datafluxbot_g, nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datafluxtop_g, nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datamean_g,    nmemsize1d));
   }
 
   // BvS: slightly wasteful, but make sure we have all fields...
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    cudaMalloc(&it->second->data_g,        nmemsize  );
-    cudaMalloc(&it->second->databot_g,     nmemsize2d);
-    cudaMalloc(&it->second->datatop_g,     nmemsize2d);
-    cudaMalloc(&it->second->datagradbot_g, nmemsize2d);
-    cudaMalloc(&it->second->datagradtop_g, nmemsize2d);
-    cudaMalloc(&it->second->datafluxbot_g, nmemsize2d);
-    cudaMalloc(&it->second->datafluxtop_g, nmemsize2d);
-    cudaMalloc(&it->second->datamean_g,    nmemsize1d);
+    cudaSafeCall(cudaMalloc(&it->second->data_g,        nmemsize  ));
+    cudaSafeCall(cudaMalloc(&it->second->databot_g,     nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datatop_g,     nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datagradbot_g, nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datagradtop_g, nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datafluxbot_g, nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datafluxtop_g, nmemsize2d));
+    cudaSafeCall(cudaMalloc(&it->second->datamean_g,    nmemsize1d));
   }
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
   {
-    cudaMalloc(&it->second->data_g, nmemsize);
+    cudaSafeCall(cudaMalloc(&it->second->data_g, nmemsize));
   }
 
-  cudaMalloc(&rhoref_g,  nmemsize1d);
-  cudaMalloc(&rhorefh_g, nmemsize1d);
+  cudaSafeCall(cudaMalloc(&rhoref_g,  nmemsize1d));
+  cudaSafeCall(cudaMalloc(&rhorefh_g, nmemsize1d));
 
   // copy all the data to the GPU
   forwardDevice();
@@ -240,33 +241,33 @@ int cfields::forwardDevice()
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    cudaMemcpy2D(&it->second->data_g[grid->memoffset],        imemsizep,  it->second->data,        imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->databot_g[grid->memoffset],     imemsizep,  it->second->databot,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datatop_g[grid->memoffset],     imemsizep,  it->second->datatop,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datagradbot_g[grid->memoffset], imemsizep,  it->second->datagradbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datagradtop_g[grid->memoffset], imemsizep,  it->second->datagradtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datafluxbot_g[grid->memoffset], imemsizep,  it->second->datafluxbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datafluxtop_g[grid->memoffset], imemsizep,  it->second->datafluxtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy(it->second->datamean_g, it->second->datamean, nmemsize1d, cudaMemcpyHostToDevice);
+    cudaSafeCall(cudaMemcpy2D(&it->second->data_g[grid->memoffset],        imemsizep,  it->second->data,        imemsize, imemsize, jkcells, cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->databot_g[grid->memoffset],     imemsizep,  it->second->databot,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datatop_g[grid->memoffset],     imemsizep,  it->second->datatop,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datagradbot_g[grid->memoffset], imemsizep,  it->second->datagradbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datagradtop_g[grid->memoffset], imemsizep,  it->second->datagradtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datafluxbot_g[grid->memoffset], imemsizep,  it->second->datafluxbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datafluxtop_g[grid->memoffset], imemsizep,  it->second->datafluxtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy(it->second->datamean_g, it->second->datamean, nmemsize1d, cudaMemcpyHostToDevice));
   }
 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    cudaMemcpy2D(&it->second->data_g[grid->memoffset],        imemsizep,  it->second->data,        imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->databot_g[grid->memoffset],     imemsizep,  it->second->databot,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datatop_g[grid->memoffset],     imemsizep,  it->second->datatop,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datagradbot_g[grid->memoffset], imemsizep,  it->second->datagradbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datagradtop_g[grid->memoffset], imemsizep,  it->second->datagradtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datafluxbot_g[grid->memoffset], imemsizep,  it->second->datafluxbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy2D(&it->second->datafluxtop_g[grid->memoffset], imemsizep,  it->second->datafluxtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice);
-    cudaMemcpy(it->second->datamean_g, it->second->datamean, nmemsize1d, cudaMemcpyHostToDevice);
+    cudaSafeCall(cudaMemcpy2D(&it->second->data_g[grid->memoffset],        imemsizep,  it->second->data,        imemsize, imemsize, jkcells, cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->databot_g[grid->memoffset],     imemsizep,  it->second->databot,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datatop_g[grid->memoffset],     imemsizep,  it->second->datatop,     imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datagradbot_g[grid->memoffset], imemsizep,  it->second->datagradbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datagradtop_g[grid->memoffset], imemsizep,  it->second->datagradtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datafluxbot_g[grid->memoffset], imemsizep,  it->second->datafluxbot, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy2D(&it->second->datafluxtop_g[grid->memoffset], imemsizep,  it->second->datafluxtop, imemsize, imemsize, jcells,  cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy(it->second->datamean_g, it->second->datamean, nmemsize1d, cudaMemcpyHostToDevice));
   }
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-    cudaMemcpy2D(&it->second->data_g[grid->memoffset],        imemsizep, it->second->data,        imemsize, imemsize, jkcells, cudaMemcpyHostToDevice);
+    cudaSafeCall(cudaMemcpy2D(&it->second->data_g[grid->memoffset],        imemsizep, it->second->data,        imemsize, imemsize, jkcells, cudaMemcpyHostToDevice));
 
-  cudaMemcpy(rhoref_g,  rhoref,  nmemsize1d, cudaMemcpyHostToDevice);
-  cudaMemcpy(rhorefh_g, rhorefh, nmemsize1d, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(rhoref_g,  rhoref,  nmemsize1d, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(rhorefh_g, rhorefh, nmemsize1d, cudaMemcpyHostToDevice));
 
   //master->printMessage("Synchronized GPU with CPU (forward)\n");
 
@@ -283,33 +284,33 @@ int cfields::backwardDevice()
 
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->databot,     imemsize, &it->second->databot_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datatop,     imemsize, &it->second->datatop_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datagradbot, imemsize, &it->second->datagradbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datagradtop, imemsize, &it->second->datagradtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datafluxbot, imemsize, &it->second->datafluxbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datafluxtop, imemsize, &it->second->datafluxtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy(it->second->datamean, it->second->datamean_g, nmemsize1d, cudaMemcpyDeviceToHost);
+    cudaSafeCall(cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->databot,     imemsize, &it->second->databot_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datatop,     imemsize, &it->second->datatop_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datagradbot, imemsize, &it->second->datagradbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datagradtop, imemsize, &it->second->datagradtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datafluxbot, imemsize, &it->second->datafluxbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datafluxtop, imemsize, &it->second->datafluxtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy(it->second->datamean, it->second->datamean_g, nmemsize1d, cudaMemcpyDeviceToHost));
   }
 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->databot,     imemsize, &it->second->databot_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datatop,     imemsize, &it->second->datatop_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datagradbot, imemsize, &it->second->datagradbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datagradtop, imemsize, &it->second->datagradtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datafluxbot, imemsize, &it->second->datafluxbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(it->second->datafluxtop, imemsize, &it->second->datafluxtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost);
-    cudaMemcpy(it->second->datamean, it->second->datamean_g, nmemsize1d, cudaMemcpyDeviceToHost);
+    cudaSafeCall(cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->databot,     imemsize, &it->second->databot_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datatop,     imemsize, &it->second->datatop_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datagradbot, imemsize, &it->second->datagradbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datagradtop, imemsize, &it->second->datagradtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datafluxbot, imemsize, &it->second->datafluxbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy2D(it->second->datafluxtop, imemsize, &it->second->datafluxtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy(it->second->datamean, it->second->datamean_g, nmemsize1d, cudaMemcpyDeviceToHost));
   }
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-    cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);
+    cudaSafeCall(cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost));
 
-  cudaMemcpy(rhoref,  rhoref_g,  nmemsize1d, cudaMemcpyDeviceToHost);
-  cudaMemcpy(rhorefh, rhorefh_g, nmemsize1d, cudaMemcpyDeviceToHost);
+  cudaSafeCall(cudaMemcpy(rhoref,  rhoref_g,  nmemsize1d, cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy(rhorefh, rhorefh_g, nmemsize1d, cudaMemcpyDeviceToHost));
 
   //master->printMessage("Synchronized CPU with GPU (backward)\n");
 
@@ -320,35 +321,35 @@ int cfields::clearDevice()
 {
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    cudaFree(it->second->data_g);
-    cudaFree(it->second->databot_g);
-    cudaFree(it->second->datatop_g);
-    cudaFree(it->second->datagradbot_g);
-    cudaFree(it->second->datagradtop_g);
-    cudaFree(it->second->datafluxbot_g);
-    cudaFree(it->second->datafluxtop_g);
-    cudaFree(it->second->datamean_g);
+    cudaSafeCall(cudaFree(it->second->data_g));
+    cudaSafeCall(cudaFree(it->second->databot_g));
+    cudaSafeCall(cudaFree(it->second->datatop_g));
+    cudaSafeCall(cudaFree(it->second->datagradbot_g));
+    cudaSafeCall(cudaFree(it->second->datagradtop_g));
+    cudaSafeCall(cudaFree(it->second->datafluxbot_g));
+    cudaSafeCall(cudaFree(it->second->datafluxtop_g));
+    cudaSafeCall(cudaFree(it->second->datamean_g));
   }
 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    cudaFree(it->second->data_g);
-    cudaFree(it->second->databot_g);
-    cudaFree(it->second->datatop_g);
-    cudaFree(it->second->datagradbot_g);
-    cudaFree(it->second->datagradtop_g);
-    cudaFree(it->second->datafluxbot_g);
-    cudaFree(it->second->datafluxtop_g);
-    cudaFree(it->second->datamean_g);
+    cudaSafeCall(cudaFree(it->second->data_g));
+    cudaSafeCall(cudaFree(it->second->databot_g));
+    cudaSafeCall(cudaFree(it->second->datatop_g));
+    cudaSafeCall(cudaFree(it->second->datagradbot_g));
+    cudaSafeCall(cudaFree(it->second->datagradtop_g));
+    cudaSafeCall(cudaFree(it->second->datafluxbot_g));
+    cudaSafeCall(cudaFree(it->second->datafluxtop_g));
+    cudaSafeCall(cudaFree(it->second->datamean_g));
   }
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
   {
-    cudaFree(it->second->data_g);
+    cudaSafeCall(cudaFree(it->second->data_g));
   }
 
-  cudaFree(rhoref_g);
-  cudaFree(rhorefh_g);
+  cudaSafeCall(cudaFree(rhoref_g));
+  cudaSafeCall(cudaFree(rhorefh_g));
 
   return 0;
 }
