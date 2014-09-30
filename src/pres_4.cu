@@ -143,27 +143,28 @@ __global__ void pres_4_solvein(const double * const __restrict__ p,
                                const int mpicoordx, const int mpicoordy,
                                const int iblock, const int jblock,
                                const int kmax,
-                               const int j)
+                               const int n, const int jslice)
 {
   const int i = blockIdx.x*blockDim.x + threadIdx.x;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
   const int jj = iblock;
   const int kk = iblock*jblock;
 
-  const int kki1 = 1*iblock;
-  const int kki2 = 2*iblock;
-  const int kki3 = 3*iblock;
+  const int kki1 = 1*iblock*jslice;
+  const int kki2 = 2*iblock*jslice;
+  const int kki3 = 3*iblock*jslice;
 
   int ik,ijk,iindex,jindex;
 
-  if(i < iblock)
+  if(i < iblock && j < jslice)
   {
     // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
     iindex = mpicoordy*iblock + i;
-    jindex = mpicoordx*jblock + j;
+    jindex = mpicoordx*jblock + n*jslice + j;
 
     // Set a zero gradient bc at the bottom.
-    ik = i;
+    ik = i + j*jj;
     m1temp[ik] =  0.;
     m2temp[ik] =  0.;
     m3temp[ik] =  0.;
@@ -185,8 +186,8 @@ __global__ void pres_4_solvein(const double * const __restrict__ p,
     for(int k=0; k<kmax; ++k)
     {
       // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
-      ijk = i + j*jj + k*kk;
-      ik  = i + k*kki1;
+      ijk = i + (j + n*jslice)*jj + k*kk;
+      ik  = i + j*jj + k*kki1;
       m1temp[ik+kki2] = m1[k];
       m2temp[ik+kki2] = m2[k];
       m3temp[ik+kki2] = m3[k];
@@ -198,7 +199,7 @@ __global__ void pres_4_solvein(const double * const __restrict__ p,
     }
           
     // Set the top boundary.
-    ik = i + kmax*kki1;
+    ik = i + j*jj + kmax*kki1;
     if(iindex == 0 && jindex == 0)
     {
       m1temp[ik+kki2] =    0.;
@@ -255,23 +256,24 @@ __global__ void pres_4_solveputback(double * const __restrict__ p,
                                     const double * const __restrict__ ptemp,
                                     const int iblock, const int jblock,
                                     const int kmax,
-                                    const int j)
+                                    const int n, const int jslice)
 {
   const int i = blockIdx.x*blockDim.x + threadIdx.x;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
   const int jj = iblock;
   const int kk = iblock*jblock;
 
-  const int kki1 = 1*iblock;
-  const int kki2 = 2*iblock;
+  const int kki1 = 1*iblock*jslice;
+  const int kki2 = 2*iblock*jslice;
 
-  if(i < iblock)
+  if(i < iblock && j < jslice)
   {
     // Put back the solution.
     for(int k=0; k<kmax; ++k)
     {
-      const int ik  = i + k*kki1;
-      const int ijk = i + j*jj + k*kk;
+      const int ik  = i + j*jj + k*kki1;
+      const int ijk = i + (j + n*jslice)*jj + k*kk;
       p[ijk] = ptemp[ik+kki2];
     }
   }
@@ -289,21 +291,24 @@ __global__ void pres_4_solveputback(double * const __restrict__ p,
 
 __global__ void pres_4_hdma(double * const __restrict__ m1, double * const __restrict__ m2, double * const __restrict__ m3, double * const __restrict__ m4,
                             double * const __restrict__ m5, double * const __restrict__ m6, double * const __restrict__ m7, double * const __restrict__ p,
-                            const int iblock, const int kmax)
+                            const int iblock, const int kmax, const int jslice)
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x;
+  const int i = blockIdx.x*blockDim.x + threadIdx.x;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y;
 
-  const int kk1 = 1*iblock;
-  const int kk2 = 2*iblock;
-  const int kk3 = 3*iblock;
+  const int jj = iblock;
+
+  const int kk1 = 1*iblock*jslice;
+  const int kk2 = 2*iblock*jslice;
+  const int kk3 = 3*iblock*jslice;
 
   int k,ik;
 
-  if(i < iblock)
+  if(i < iblock && j < jslice)
   {
     // Use LU factorization.
     k = 0;
-    ik = i;
+    ik = i + j*jj;
     m1[ik] = 1.;
     m2[ik] = 1.;
     m3[ik] = 1.            / m4[ik];
@@ -313,7 +318,7 @@ __global__ void pres_4_hdma(double * const __restrict__ m1, double * const __res
     m7[ik] = m7[ik]*m3[ik];
 
     k = 1;
-    ik = i + k*kk1;
+    ik = i + j*jj + k*kk1;
     m1[ik] = 1.;
     m2[ik] = 1.;
     m3[ik] = m3[ik]                     / m4[ik-kk1];
@@ -322,7 +327,7 @@ __global__ void pres_4_hdma(double * const __restrict__ m1, double * const __res
     m6[ik] = m6[ik] - m3[ik]*m7[ik-kk1];
 
     k = 2;
-    ik = i + k*kk1;
+    ik = i + j*jj + k*kk1;
     m1[ik] = 1.;
     m2[ik] =   m2[ik]                                           / m4[ik-kk2];
     m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
@@ -332,7 +337,7 @@ __global__ void pres_4_hdma(double * const __restrict__ m1, double * const __res
 
     for(k=3; k<kmax+2; ++k)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
       m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
       m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
@@ -342,11 +347,11 @@ __global__ void pres_4_hdma(double * const __restrict__ m1, double * const __res
     }
 
     k = kmax+1;
-    ik = i + k*kk1;
+    ik = i + j*jj + k*kk1;
     m7[ik] = 1.;
 
     k = kmax+2;
-    ik = i + k*kk1;
+    ik = i + j*jj + k*kk1;
     m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
     m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
     m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
@@ -356,7 +361,7 @@ __global__ void pres_4_hdma(double * const __restrict__ m1, double * const __res
     m7[ik] = 1.;
 
     k = kmax+3;
-    ik = i + k*kk1;
+    ik = i + j*jj + k*kk1;
     m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
     m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
     m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
@@ -367,27 +372,27 @@ __global__ void pres_4_hdma(double * const __restrict__ m1, double * const __res
 
     // Do the backward substitution.
     // First, solve Ly = p, forward.
-    ik = i;
+    ik = i + j*jj;
     p[ik    ] =             p[ik    ]*m3[ik    ];
     p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
     p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
 
     for(k=3; k<kmax+4; ++k)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
     }
 
     // Second, solve Ux=y, backward.
     k = kmax+3;
-    ik = i + k*kk1;
+    ik = i + j*jj + k*kk1;
     p[ik    ] =   p[ik    ]                                             / m4[ik    ];
     p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
     p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
 
     for(k=kmax; k>=0; --k)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj + k*kk1;
       p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
     }
   }
@@ -567,19 +572,19 @@ void cpres_4::exec(double dt)
                                                master->mpicoordx, master->mpicoordy,
                                                grid->iblock, grid->jblock,
                                                grid->kmax,
-                                               n);
+                                               n, jslice);
 
     // Solve the sevenbanded matrix
     pres_4_hdma<<<grid2dsGPU,block2dsGPU>>>(&tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
                                             &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns],
-                                            grid->iblock, grid->kmax);
+                                            grid->iblock, grid->kmax, jslice);
 
     // Put the solution back into the pressure field
     pres_4_solveputback<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
                                                     &tmp3_g[3*ns],
                                                     grid->iblock, grid->jblock,
                                                     grid->kmax,
-                                                    n);
+                                                    n, jslice);
   }
 
   // Backward FFT 
