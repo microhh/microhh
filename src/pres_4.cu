@@ -554,11 +554,19 @@ void cpres_4::exec(double dt)
   double *tmp2_g = fields->sd["tmp2"]->data_g;
   double *tmp3_g = fields->sd["tmp3"]->data_g;
 
+  // Set jslice to a higher value
+  jslice = std::max(grid->jblock/4, 1);
+
+  const int blockis = 128;
+  const int blockjs = 1;
+  const int gridis  = grid->iblock/blockis + (grid->iblock%blockis > 0);
+  const int gridjs  =       jslice/blockjs + (      jslice%blockjs > 0);
+
+  dim3 grid2dsGPU (gridis , gridjs );
+  dim3 block2dsGPU(blockis, blockjs);
+
   const int ns = grid->iblock*jslice*(grid->kmax+4);
   const int nj = grid->jblock/jslice;
-
-  dim3 grid2dsGPU (grid->iblock, 1);
-  dim3 block2dsGPU(128, 1);
 
   for(int n=0; n<nj; ++n)
   {
