@@ -26,10 +26,6 @@
 #include "defines.h"
 #include "fd.h"
 
-#include <thrust/device_vector.h>
-#include <thrust/extrema.h>
-#include <thrust/device_ptr.h>
-
 using namespace fd::o4;
 
 __global__ void advec_4_advecu(double * __restrict__ ut, double * __restrict__ u, 
