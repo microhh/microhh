@@ -555,7 +555,7 @@ void cpres_4::exec(double dt)
   double *tmp3_g = fields->sd["tmp3"]->data_g;
 
   // Set jslice to a higher value
-  jslice = std::max(grid->jblock/4, 1);
+  const int jslice = std::max(grid->jblock/4, 1);
 
   const int blockis = 128;
   const int blockjs = 1;
