@@ -45,6 +45,16 @@ cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein, std::st
   datagradtop = 0;
   datafluxbot = 0;
   datafluxtop = 0;
+
+  // initialize the GPU pointers at 0
+  data_g = 0;
+  databot_g = 0;
+  datatop_g = 0;
+  datamean_g = 0;
+  datagradbot_g = 0;
+  datagradtop_g = 0;
+  datafluxbot_g = 0;
+  datafluxtop_g = 0;
 }
 
 #ifndef USECUDA

@@ -50,6 +50,10 @@ cfields::cfields(cmodel *modelin, cinput *inputin)
   umodel  = 0;
   vmodel  = 0;
 
+  // Initialize GPU pointers
+  rhoref_g  = 0;
+  rhorefh_g = 0;
+
   // input parameters
   int nerror = 0;
 
