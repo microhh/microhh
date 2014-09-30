@@ -4,6 +4,9 @@
  * Copyright (c) 2011-2014 Thijs Heus
  * Copyright (c)      2014 Bart van Stratum
  *
+ * The cudaSafeCall() and cudaCheckError() are from
+ * http://choorucode.com/2011/03/02/how-to-do-error-checking-in-cuda/
+ *
  * This file is part of MicroHH
  *
  * MicroHH is free software: you can redistribute it and/or modify
@@ -235,16 +238,3 @@ void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperb
   }
 }
 
-// CUDA error checking. 
-void CudaCheckError()
-{
-  cudaError err = cudaGetLastError();
-  if(cudaSuccess != err)
-    printf("CUDA error : %s\n",cudaGetErrorString(err));
-
-  err = cudaDeviceSynchronize();
-  if(cudaSuccess != err)
-    printf("CUDA error with sync : %s\n",cudaGetErrorString(err));
- 
-  return;
-}

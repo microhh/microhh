@@ -84,6 +84,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
   message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_RELEASE})
 else()
   message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
+  # Add debug definition, to do CUDA api and kernel checks
+  add_definitions("-DCUDACHECKS")
 endif()
 
 # load the cuda settings in case cuda is used
