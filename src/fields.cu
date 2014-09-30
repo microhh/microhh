@@ -24,6 +24,62 @@
 #include "grid.h"
 #include "master.h"
 #include "boundary.h" // TMP BVS
+#include "constants.h"
+
+// TODO use interp2 functions instead of manual interpolation
+__global__ void fields_calcmom_2nd(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
+                                   double * __restrict__ mom, double * __restrict__ dz,
+                                   int istart, int jstart, int kstart,
+                                   int iend,   int jend,   int kend,
+                                   int jj, int kk)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  int k = blockIdx.z + kstart; 
+  int ii = 1;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    mom[ijk] = (0.5*(u[ijk]+u[ijk+ii]) + 0.5*(v[ijk]+v[ijk+jj]) + 0.5*(w[ijk]+w[ijk+kk]))*dz[k];
+  }
+}
+
+__global__ void fields_calctke_2nd(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
+                                   double * __restrict__ tke, double * __restrict__ dz,
+                                   int istart, int jstart, int kstart,
+                                   int iend,   int jend,   int kend,
+                                   int jj, int kk)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  int k = blockIdx.z + kstart; 
+  int ii = 1;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    tke[ijk] = ( 0.5*(pow(u[ijk],2)+pow(u[ijk+ii],2)) 
+               + 0.5*(pow(v[ijk],2)+pow(v[ijk+jj],2)) 
+               + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
+  }
+}
+
+__global__ void fields_calcmass_2nd(double * __restrict__ s, double * __restrict__ mass, double * __restrict__ dz,
+                                    int istart, int jstart, int kstart,
+                                    int iend,   int jend,   int kend,
+                                    int jj, int kk)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  int k = blockIdx.z + kstart; 
+
+  if(i < iend && j < jend && k < kend)
+  {
+    int ijk = i + j*jj + k*kk;
+    mass[ijk] = s[ijk]*dz[k];
+  }
+}
 
 #ifdef USECUDA
 int cfields::exec()
@@ -36,6 +92,96 @@ int cfields::exec()
   }
 
   return 0;
+}
+#endif
+
+#ifdef USECUDA
+double cfields::checkmom()
+{
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kcells);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  const int offs = grid->memoffset;
+
+  fields_calcmom_2nd<<<gridGPU, blockGPU>>>(&u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
+                                            &a["tmp1"]->data_g[offs], grid->dz_g,
+                                            grid->istart,  grid->jstart, grid->kstart,
+                                            grid->iend,    grid->jend,   grid->kend,
+                                            grid->icellsp, grid->ijcellsp);
+
+  double mom = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+  grid->getsum(&mom);
+  mom /= (grid->itot*grid->jtot*grid->zsize);
+
+  return mom;
+}
+#endif
+
+#ifdef USECUDA
+double cfields::checktke()
+{
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kcells);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  const int offs = grid->memoffset;
+
+  fields_calctke_2nd<<<gridGPU, blockGPU>>>(&u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
+                                            &a["tmp1"]->data_g[offs], grid->dz_g,
+                                            grid->istart,  grid->jstart, grid->kstart,
+                                            grid->iend,    grid->jend,   grid->kend,
+                                            grid->icellsp, grid->ijcellsp);
+
+  double tke = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+
+  grid->getsum(&tke);
+  tke /= (grid->itot*grid->jtot*grid->zsize);
+  tke *= 0.5;
+
+  return tke;
+}
+#endif
+
+#ifdef USECUDA
+double cfields::checkmass()
+{
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kcells);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  const int offs = grid->memoffset;
+  double mass;
+
+  // CvH for now, do the mass check on the first scalar... Do we want to change this?
+  fieldmap::iterator itProg=sp.begin();
+  if(sp.begin() != sp.end())
+  {
+    fields_calcmass_2nd<<<gridGPU, blockGPU>>>(&itProg->second->data_g[offs], &a["tmp1"]->data_g[offs], grid->dz_g,
+                                               grid->istart,  grid->jstart, grid->kstart,
+                                               grid->iend,    grid->jend,   grid->kend,
+                                               grid->icellsp, grid->ijcellsp);
+
+    mass = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+    grid->getsum(&mass);
+    mass /= (grid->itot*grid->jtot*grid->zsize);
+  }
+  else
+    mass = 0; 
+
+  return mass;
 }
 #endif
 
@@ -178,32 +324,6 @@ int cfields::backwardDevice()
   //master->printMessage("Synchronized CPU with GPU (backward)\n");
 
   return 0;
-}
-
-// TMP BvS
-void cfields::D2H(double * hdata, double * ddata)
-{
-  const int jkcells    = grid->jcells * grid->kcells;
-  const int imemsizep  = grid->icellsp * sizeof(double);
-  const int imemsize   = grid->icells  * sizeof(double);
-
-  cudaMemcpy2D(hdata, imemsize, &ddata[grid->memoffset], imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost);
-}
-
-// TMP BvS
-void cfields::printSlice(double * data, int k)
-{
-  int ijk;
-  for (int j=0; j<grid->jcells; ++j)
-  {
-    for (int i=0; i<grid->icells; ++i)
-    {
-      ijk = i + j*grid->icells + k*grid->ijcells;
-      printf("% 9.4e ",data[ijk]);
-    }  
-    printf("\n");
-  }
-  printf("\n");
 }
 
 int cfields::clearDevice()

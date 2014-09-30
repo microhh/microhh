@@ -862,16 +862,21 @@ void cfields::save(int n)
     throw 1;
 }
 
+#ifndef USECUDA
 double cfields::checkmom()
 {
   return calcmom_2nd(u->data, v->data, w->data, grid->dz);
 }
+#endif
 
+#ifndef USECUDA
 double cfields::checktke()
 {
   return calctke_2nd(u->data, v->data, w->data, grid->dz);
 }
+#endif
 
+#ifndef USECUDA
 double cfields::checkmass()
 {
   // CvH for now, do the mass check on the first scalar... Do we want to change this?
@@ -881,6 +886,7 @@ double cfields::checkmass()
   else
     return 0.;
 }
+#endif
 
 double cfields::calcmass(double * restrict s, double * restrict dz)
 {

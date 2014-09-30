@@ -99,8 +99,6 @@ class cfields
     int forwardDevice();
     int backwardDevice();
     int clearDevice();
-    void D2H(double *, double *);
-    void printSlice(double *, int);
 
     // GPU variables
     double *rhoref_g;
