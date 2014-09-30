@@ -4,6 +4,9 @@
  * Copyright (c) 2011-2014 Thijs Heus
  * Copyright (c)      2014 Bart van Stratum
  *
+ * The heptadiagonal matrix solver is
+ * Copyright (c) 2014 Juan Pedro Mellado
+ *
  * This file is part of MicroHH
  *
  * MicroHH is free software: you can redistribute it and/or modify
@@ -76,7 +79,9 @@ void cpres_4::exec(double dt)
   // are always big enough, this cannot fail.
   double *tmp2 = fields->sd["tmp2"]->data;
   double *tmp3 = fields->sd["tmp3"]->data;
-  const int ns = grid->iblock*(grid->kmax+4);
+
+  const int ns = grid->iblock*jslice*(grid->kmax+4);
+
   pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
              m1, m2, m3, m4,
              m5, m6, m7,
@@ -110,6 +115,15 @@ void cpres_4::init()
   jmax   = grid->jmax;
   kmax   = grid->kmax;
   kstart = grid->kstart;
+
+  /* Find the thickness of a vectorizable slice. There is a need for 8 slices for the pressure
+     solver and we use two three dimensional temp fields, so there are 4 slices per field.
+     The thickness is therefore jblock/4. Since there are always three ghost cells, even in a 2D
+     run the fields are large enough. */
+  // jslice = std::max(grid->jblock/4, 1);
+
+  // The CPU version gives the best performance in case jslice = 1, due to cache misses
+  jslice = 1;
 
   bmati = new double[itot];
   bmatj = new double[jtot];
@@ -270,7 +284,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
                          double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
                          double * restrict bmati, double * restrict bmatj)
 {
-  int i,j,k,jj,kk,ijk;
+  int jj,kk,ijk;
   int imax,jmax,kmax;
   int itot,jtot;
   int iblock,jblock,kblock;
@@ -294,130 +308,143 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
   jj = iblock;
   kk = iblock*jblock;
 
-  int ik,kki1,kki2,kki3;
-  kki1 = 1*iblock;
-  kki2 = 2*iblock;
-  kki3 = 3*iblock;
+  int ik;
 
-  int mpicoordx = master->mpicoordx;
-  int mpicoordy = master->mpicoordy;
+  const int mpicoordx = master->mpicoordx;
+  const int mpicoordy = master->mpicoordy;
 
-  for(j=0; j<jblock; ++j)
+  // Calculate the step size.
+  const int nj = jblock/jslice;
+  const int jslice = this->jslice;
+
+  const int kki1 = 1*iblock*jslice;
+  const int kki2 = 2*iblock*jslice;
+  const int kki3 = 3*iblock*jslice;
+
+  for(int n=0; n<nj; ++n)
   {
-    // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
-    jindex = mpicoordx * jblock + j;
- 
+    for(int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(i=0; i<iblock; ++i)
-    {
-      // Set a zero gradient bc at the bottom.
-      ik = i;
-      m1temp[ik] =  0.;
-      m2temp[ik] =  0.;
-      m3temp[ik] =  0.;
-      m4temp[ik] =  1.;
-      m5temp[ik] =  0.;
-      m6temp[ik] =  0.;
-      m7temp[ik] = -1.;
-      ptemp [ik] =  0.;
-    }
+      for(int i=0; i<iblock; ++i)
+      {
+        // Set a zero gradient bc at the bottom.
+        ik = i + j*jj;
+        m1temp[ik] =  0.;
+        m2temp[ik] =  0.;
+        m3temp[ik] =  0.;
+        m4temp[ik] =  1.;
+        m5temp[ik] =  0.;
+        m6temp[ik] =  0.;
+        m7temp[ik] = -1.;
+        ptemp [ik] =  0.;
+      }
 
+    for(int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(i=0; i<iblock; ++i)
-    {
-      ik = i;
-      m1temp[ik+kki1] =  0.;
-      m2temp[ik+kki1] =  0.;
-      m3temp[ik+kki1] =  0.;
-      m4temp[ik+kki1] =  1.;
-      m5temp[ik+kki1] = -1.;
-      m6temp[ik+kki1] =  0.;
-      m7temp[ik+kki1] =  0.;
-      ptemp [ik+kki1] =  0.;
-    }
+      for(int i=0; i<iblock; ++i)
+      {
+        ik = i + j*jj;
+        m1temp[ik+kki1] =  0.;
+        m2temp[ik+kki1] =  0.;
+        m3temp[ik+kki1] =  0.;
+        m4temp[ik+kki1] =  1.;
+        m5temp[ik+kki1] = -1.;
+        m6temp[ik+kki1] =  0.;
+        m7temp[ik+kki1] =  0.;
+        ptemp [ik+kki1] =  0.;
+      }
 
-    for(k=0; k<kmax; ++k)
-    {
+    for(int k=0; k<kmax; ++k)
+      for(int j=0; j<jslice; ++j)
+      {
+        jindex = mpicoordx*jblock + n*jslice + j;
 #pragma ivdep
-      for(i=0; i<iblock; ++i)
+        for(int i=0; i<iblock; ++i)
+        {
+          // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
+          iindex = mpicoordy*iblock + i;
+
+          ijk = i + (j + n*jslice)*jj + k*kk;
+          ik  = i + j*jj + k*kki1;
+          m1temp[ik+kki2] = m1[k];
+          m2temp[ik+kki2] = m2[k];
+          m3temp[ik+kki2] = m3[k];
+          m4temp[ik+kki2] = m4[k] + bmati[iindex] + bmatj[jindex];
+          m5temp[ik+kki2] = m5[k];
+          m6temp[ik+kki2] = m6[k];
+          m7temp[ik+kki2] = m7[k];
+          ptemp [ik+kki2] = p[ijk];
+        }
+      }
+
+    for(int j=0; j<jslice; ++j)
+    {
+      jindex = mpicoordx*jblock + n*jslice + j;
+#pragma ivdep
+      for(int i=0; i<iblock; ++i)
       {
         // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
-        iindex = mpicoordy * iblock + i;
+        iindex = mpicoordy*iblock + i;
 
-        ijk = i + j*jj + k*kk;
-        ik  = i + k*kki1;
-        m1temp[ik+kki2] = m1[k];
-        m2temp[ik+kki2] = m2[k];
-        m3temp[ik+kki2] = m3[k];
-        m4temp[ik+kki2] = m4[k] + bmati[iindex] + bmatj[jindex];
-        m5temp[ik+kki2] = m5[k];
-        m6temp[ik+kki2] = m6[k];
-        m7temp[ik+kki2] = m7[k];
-        ptemp [ik+kki2] = p[ijk];
+        // Set the top boundary.
+        ik = i + j*jj + kmax*kki1;
+        if(iindex == 0 && jindex == 0)
+        {
+          m1temp[ik+kki2] =    0.;
+          m2temp[ik+kki2] = -1/3.;
+          m3temp[ik+kki2] =    2.;
+          m4temp[ik+kki2] =    1.;
+
+          m1temp[ik+kki3] =   -2.;
+          m2temp[ik+kki3] =    9.;
+          m3temp[ik+kki3] =    0.;
+          m4temp[ik+kki3] =    1.;
+        }
+        // Set dp/dz at top to zero.
+        else
+        {
+          m1temp[ik+kki2] =  0.;
+          m2temp[ik+kki2] =  0.;
+          m3temp[ik+kki2] = -1.;
+          m4temp[ik+kki2] =  1.;
+
+          m1temp[ik+kki3] = -1.;
+          m2temp[ik+kki3] =  0.;
+          m3temp[ik+kki3] =  0.;
+          m4temp[ik+kki3] =  1.;
+        }
       }
     }
-        
+
+    for(int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(i=0; i<iblock; ++i)
-    {
-      // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
-      iindex = mpicoordy * iblock + i;
-
-      // Set the top boundary.
-      ik = i + kmax*kki1;
-      if(iindex == 0 && jindex == 0)
+      for(int i=0; i<iblock; ++i)
       {
-        m1temp[ik+kki2] =    0.;
-        m2temp[ik+kki2] = -1/3.;
-        m3temp[ik+kki2] =    2.;
-        m4temp[ik+kki2] =    1.;
+        // Set the top boundary.
+        ik = i + j*jj + kmax*kki1;
+        m5temp[ik+kki2] = 0.;
+        m6temp[ik+kki2] = 0.;
+        m7temp[ik+kki2] = 0.;
+        ptemp [ik+kki2] = 0.;
 
-        m1temp[ik+kki3] =   -2.;
-        m2temp[ik+kki3] =    9.;
-        m3temp[ik+kki3] =    0.;
-        m4temp[ik+kki3] =    1.;
+        m5temp[ik+kki3] = 0.;
+        m6temp[ik+kki3] = 0.;
+        m7temp[ik+kki3] = 0.;
+        ptemp [ik+kki3] = 0.;
       }
-      // Set dp/dz at top to zero.
-      else
-      {
-        m1temp[ik+kki2] =  0.;
-        m2temp[ik+kki2] =  0.;
-        m3temp[ik+kki2] = -1.;
-        m4temp[ik+kki2] =  1.;
-
-        m1temp[ik+kki3] = -1.;
-        m2temp[ik+kki3] =  0.;
-        m3temp[ik+kki3] =  0.;
-        m4temp[ik+kki3] =  1.;
-      }
-    }
-
-#pragma ivdep
-    for(i=0; i<iblock; ++i)
-    {
-      // Set the top boundary.
-      ik = i + kmax*kki1;
-      m5temp[ik+kki2] = 0.;
-      m6temp[ik+kki2] = 0.;
-      m7temp[ik+kki2] = 0.;
-      ptemp [ik+kki2] = 0.;
-
-      m5temp[ik+kki3] = 0.;
-      m6temp[ik+kki3] = 0.;
-      m7temp[ik+kki3] = 0.;
-      ptemp [ik+kki3] = 0.;
-    }
 
     hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
 
     // Put back the solution.
-    for(k=0; k<kmax; ++k)
-      for(int i=0; i<iblock; ++i)
-      {
-        ik  = i + k*kki1;
-        ijk = i + j*jj + k*kk;
-        p[ijk] = ptemp[ik+kki2];
-      }
+    for(int k=0; k<kmax; ++k)
+      for(int j=0; j<jslice; ++j)
+#pragma ivdep
+        for(int i=0; i<iblock; ++i)
+        {
+          ik  = i + j*jj + k*kki1;
+          ijk = i + (j + n*jslice)*jj + k*kk;
+          p[ijk] = ptemp[ik+kki2];
+        }
   }
 
   grid->fftbackward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
@@ -506,143 +533,159 @@ void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * rest
 }
 
 void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                   double * restrict m5, double * restrict m6, double * restrict m7,
-                   double * restrict p)
+                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p)
 {
+  const int kmax   = grid->kmax;
+  const int iblock = grid->iblock;
+
+  const int jj = grid->iblock;
+
+  const int jslice = this->jslice;
+
+  const int kk1 = 1*grid->iblock*jslice;
+  const int kk2 = 2*grid->iblock*jslice;
+  const int kk3 = 3*grid->iblock*jslice;
+
   int k,ik;
-  int kmax   = grid->kmax;
-  int iblock = grid->iblock;
-  int kk1 = 1*grid->iblock;
-  int kk2 = 2*grid->iblock;
-  int kk3 = 3*grid->iblock;
 
   // Use LU factorization.
   k = 0;
-#pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i;
-    m1[ik] = 1.;
-    m2[ik] = 1.;
-    m3[ik] = 1.            / m4[ik];
-    m4[ik] = 1.;
-    m5[ik] = m5[ik]*m3[ik];
-    m6[ik] = m6[ik]*m3[ik];
-    m7[ik] = m7[ik]*m3[ik];
-  }
-
-  k = 1;
-#pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i + k*kk1;
-    m1[ik] = 1.;
-    m2[ik] = 1.;
-    m3[ik] = m3[ik]                     / m4[ik-kk1];
-    m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
-    m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
-    m6[ik] = m6[ik] - m3[ik]*m7[ik-kk1];
-  }
-
-  k = 2;
-#pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i + k*kk1;
-    m1[ik] = 1.;
-    m2[ik] =   m2[ik]                                           / m4[ik-kk2];
-    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
-    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
-    m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
-    m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
-  }
-
-  for(k=3; k<kmax+2; ++k)
+  for(int j=0; j<jslice; ++j)
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
+      ik = i + j*jj;
+      m1[ik] = 1.;
+      m2[ik] = 1.;
+      m3[ik] = 1.            / m4[ik];
+      m4[ik] = 1.;
+      m5[ik] = m5[ik]*m3[ik];
+      m6[ik] = m6[ik]*m3[ik];
+      m7[ik] = m7[ik]*m3[ik];
+    }
+
+  k = 1;
+  for(int j=0; j<jslice; ++j)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + j*jj + k*kk1;
+      m1[ik] = 1.;
+      m2[ik] = 1.;
+      m3[ik] = m3[ik]                     / m4[ik-kk1];
+      m4[ik] = m4[ik] - m3[ik]*m5[ik-kk1];
+      m5[ik] = m5[ik] - m3[ik]*m6[ik-kk1];
+      m6[ik] = m6[ik] - m3[ik]*m7[ik-kk1];
+    }
+
+  k = 2;
+  for(int j=0; j<jslice; ++j)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + j*jj + k*kk1;
+      m1[ik] = 1.;
+      m2[ik] =   m2[ik]                                           / m4[ik-kk2];
+      m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] ) / m4[ik-kk1];
+      m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2];
+      m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+      m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+    }
+
+  for(k=3; k<kmax+2; ++k)
+    for(int j=0; j<jslice; ++j)
+#pragma ivdep
+      for(int i=0; i<iblock; ++i)
+      {
+        ik = i + j*jj + k*kk1;
+        m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+        m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+        m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+        m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+        m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
+        m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+      }
+
+  k = kmax+1;
+  for(int j=0; j<jslice; ++j)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + j*jj + k*kk1;
+      m7[ik] = 1.;
+    }
+
+  k = kmax+2;
+  for(int j=0; j<jslice; ++j)
+#pragma ivdep
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + j*jj + k*kk1;
       m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
       m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
       m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
       m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
       m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
-      m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
+      m6[ik] = 1.;
+      m7[ik] = 1.;
     }
 
-  k = kmax+1;
-#pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i + k*kk1;
-    m7[ik] = 1.;
-  }
-
-  k = kmax+2;
-#pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i + k*kk1;
-    m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
-    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
-    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
-    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
-    m5[ik] =   m5[ik] - m3[ik]*m6[ik-kk1] - m2[ik]*m7[ik-kk2];
-    m6[ik] = 1.;
-    m7[ik] = 1.;
-  }
-
   k = kmax+3;
+  for(int j=0; j<jslice; ++j)
 #pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i + k*kk1;
-    m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
-    m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
-    m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
-    m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
-    m5[ik] = 1.;
-    m6[ik] = 1.;
-    m7[ik] = 1.;
-  }
+    for(int i=0; i<iblock; ++i)
+    {
+      ik = i + j*jj + k*kk1;
+      m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
+      m2[ik] = ( m2[ik]                                         - m1[ik]*m5[ik-kk3]) / m4[ik-kk2];
+      m3[ik] = ( m3[ik]                     - m2[ik]*m5[ik-kk2] - m1[ik]*m6[ik-kk3]) / m4[ik-kk1];
+      m4[ik] =   m4[ik] - m3[ik]*m5[ik-kk1] - m2[ik]*m6[ik-kk2] - m1[ik]*m7[ik-kk3];
+      m5[ik] = 1.;
+      m6[ik] = 1.;
+      m7[ik] = 1.;
+    }
 
   // Do the backward substitution.
   // First, solve Ly = p, forward.
-#pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i;
-    p[ik    ] =             p[ik    ]*m3[ik    ];
-    p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
-    p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
-  }
-
-  for(k=3; k<kmax+4; ++k)
+  for(int j=0; j<jslice; ++j)
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
-      p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
+      ik = i + j*jj;
+      p[ik    ] =             p[ik    ]*m3[ik    ];
+      p[ik+kk1] = p[ik+kk1] - p[ik    ]*m3[ik+kk1];
+      p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
     }
+
+  for(k=3; k<kmax+4; ++k)
+    for(int j=0; j<jslice; ++j)
+#pragma ivdep
+      for(int i=0; i<iblock; ++i)
+      {
+        ik = i + j*jj + k*kk1;
+        p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
+      }
 
   // Second, solve Ux=y, backward.
   k = kmax+3;
-#pragma ivdep
-  for(int i=0; i<iblock; ++i)
-  {
-    ik = i + k*kk1;
-    p[ik    ] =   p[ik    ]                                             / m4[ik    ];
-    p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
-    p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
-  }
-
-  for(k=kmax; k>=0; --k)
+  for(int j=0; j<jslice; ++j)
 #pragma ivdep
     for(int i=0; i<iblock; ++i)
     {
-      ik = i + k*kk1;
-      p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
+      ik = i + j*jj + k*kk1;
+      p[ik    ] =   p[ik    ]                                             / m4[ik    ];
+      p[ik-kk1] = ( p[ik-kk1] - p[ik    ]*m5[ik-kk1] )                    / m4[ik-kk1];
+      p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
     }
+
+  for(k=kmax; k>=0; --k)
+    for(int j=0; j<jslice; ++j)
+#pragma ivdep
+      for(int i=0; i<iblock; ++i)
+      {
+        ik = i + j*jj + k*kk1;
+        p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
+      }
 }
 
 double cpres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)

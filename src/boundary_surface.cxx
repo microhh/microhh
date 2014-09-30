@@ -338,10 +338,10 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      // ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2.) + std::pow(ubot[ij+ii], 2.))
-      //                    + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
-      // utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
-      //                    + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
+      // ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2) + std::pow(ubot[ij+ii], 2))
+      //                    + 0.5*(std::pow(vbot[ij], 2) + std::pow(vbot[ij+jj], 2)), 0.5);
+      // utot    = std::pow(  0.5*(std::pow(u[ijk], 2) + std::pow(u[ijk+ii], 2))
+      //                    + 0.5*(std::pow(v[ijk], 2) + std::pow(v[ijk+jj], 2)), 0.5);
       du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
           + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
       // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
@@ -363,7 +363,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
-        obuk[ij] = -std::pow(ustar[ij], 3.) / (constants::kappa*bfluxbot[ij]);
+        obuk[ij] = -std::pow(ustar[ij], 3) / (constants::kappa*bfluxbot[ij]);
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
@@ -518,14 +518,14 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         // minimize the wind at 0.01, thus the wind speed squared at 0.0001
-        vonu2 = std::max(minval, 0.25*( std::pow(v[ijk-ii]-vbot[ij-ii], 2.) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2.)
-                                      + std::pow(v[ijk   ]-vbot[ij   ], 2.) + std::pow(v[ijk   +jj]-vbot[ij   +jj], 2.)) );
-        uonv2 = std::max(minval, 0.25*( std::pow(u[ijk-jj]-ubot[ij-jj], 2.) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2.)
-                                      + std::pow(u[ijk   ]-ubot[ij   ], 2.) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], 2.)) );
-        u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], 2.) );
-        v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2.) );
-        ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4.) + std::pow(ustar[ij], 4.));
-        ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4.) + std::pow(ustar[ij], 4.));
+        vonu2 = std::max(minval, 0.25*( std::pow(v[ijk-ii]-vbot[ij-ii], 2) + std::pow(v[ijk-ii+jj]-vbot[ij-ii+jj], 2)
+                                      + std::pow(v[ijk   ]-vbot[ij   ], 2) + std::pow(v[ijk   +jj]-vbot[ij   +jj], 2)) );
+        uonv2 = std::max(minval, 0.25*( std::pow(u[ijk-jj]-ubot[ij-jj], 2) + std::pow(u[ijk+ii-jj]-ubot[ij+ii-jj], 2)
+                                      + std::pow(u[ijk   ]-ubot[ij   ], 2) + std::pow(u[ijk+ii   ]-ubot[ij+ii   ], 2)) );
+        u2 = std::max(minval, std::pow(u[ijk]-ubot[ij], 2) );
+        v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2) );
+        ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4) + std::pow(ustar[ij], 4));
+        ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4) + std::pow(ustar[ij], 4));
         ufluxbot[ij] = -sign(u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
         vfluxbot[ij] = -sign(v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
       }
@@ -661,12 +661,12 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
     while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
     {
       L0     = L;
-      // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-      fx     = zsl/L + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3.);
+      // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2);
+      fx     = zsl/L + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3.))
-               - (zsl/Lstart + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3.)) )
+      fxdif  = ( (zsl/Lend + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3))
+               - (zsl/Lstart + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
@@ -732,11 +732,11 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-      fx     = zsl/L - constants::kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2.);
+      fx     = zsl/L - constants::kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend - constants::kappa*zsl*db*fh(zsl, z0h, Lend) / std::pow(du * fm(zsl, z0m, Lend), 2.))
-               - (zsl/Lstart - constants::kappa*zsl*db*fh(zsl, z0h, Lstart) / std::pow(du * fm(zsl, z0m, Lstart), 2.)) )
+      fxdif  = ( (zsl/Lend - constants::kappa*zsl*db*fh(zsl, z0h, Lend) / std::pow(du * fm(zsl, z0m, Lend), 2))
+               - (zsl/Lstart - constants::kappa*zsl*db*fh(zsl, z0h, Lstart) / std::pow(du * fm(zsl, z0m, Lstart), 2)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
