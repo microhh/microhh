@@ -114,6 +114,7 @@ double cfields::checkmom()
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend,
                                             grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
 
   double mom = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
   grid->getsum(&mom);
@@ -141,6 +142,7 @@ double cfields::checktke()
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend,
                                             grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
 
   double tke = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
 
@@ -174,6 +176,7 @@ double cfields::checkmass()
                                                grid->istart,  grid->jstart, grid->kstart,
                                                grid->iend,    grid->jend,   grid->kend,
                                                grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
 
     mass = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
     grid->getsum(&mass);
