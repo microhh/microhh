@@ -544,37 +544,42 @@ void cpres_4::exec(double dt)
     pres_4_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
   } 
 
-  const int ns = grid->iblock*(grid->kmax+4);
   double *tmp2 = fields->sd["tmp2"]->data;
   double *tmp3 = fields->sd["tmp3"]->data;
   double *tmp2_g = fields->sd["tmp2"]->data_g;
   double *tmp3_g = fields->sd["tmp3"]->data_g;
 
-  for(int j=0; j<grid->jblock; ++j)
+  const int ns = grid->iblock*jslice*(grid->kmax+4);
+  const int nj = grid->jblock/jslice;
+
+  dim3 grid2dsGPU (grid->iblock, 1);
+  dim3 block2dsGPU(128, 1);
+
+  for(int n=0; n<nj; ++n)
   {
     // Prepare the fields that go into the matrix solver
-    pres_4_solvein<<<grid1dGPU,block1dGPU>>>(fields->sd["p"]->data_g,
-                                             m1_g, m2_g, m3_g, m4_g,
-                                             m5_g, m6_g, m7_g,
-                                             &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
-                                             &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns], 
-                                             bmati_g, bmatj_g,
-                                             master->mpicoordx, master->mpicoordy,
-                                             grid->iblock, grid->jblock,
-                                             grid->kmax,
-                                             j);
+    pres_4_solvein<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
+                                               m1_g, m2_g, m3_g, m4_g,
+                                               m5_g, m6_g, m7_g,
+                                               &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
+                                               &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns], 
+                                               bmati_g, bmatj_g,
+                                               master->mpicoordx, master->mpicoordy,
+                                               grid->iblock, grid->jblock,
+                                               grid->kmax,
+                                               n);
 
     // Solve the sevenbanded matrix
-    pres_4_hdma<<<grid1dGPU,block1dGPU>>>(&tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
-                                          &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns],
-                                          grid->iblock, grid->kmax);
+    pres_4_hdma<<<grid2dsGPU,block2dsGPU>>>(&tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
+                                            &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns],
+                                            grid->iblock, grid->kmax);
 
     // Put the solution back into the pressure field
-    pres_4_solveputback<<<grid1dGPU,block1dGPU>>>(fields->sd["p"]->data_g,
-                                                  &tmp3_g[3*ns],
-                                                  grid->iblock, grid->jblock,
-                                                  grid->kmax,
-                                                  j);
+    pres_4_solveputback<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
+                                                    &tmp3_g[3*ns],
+                                                    grid->iblock, grid->jblock,
+                                                    grid->kmax,
+                                                    n);
   }
 
   // Backward FFT 
