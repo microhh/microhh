@@ -74,8 +74,18 @@ void cpres_4::exec(double dt)
           grid->dzi4, dt);
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
-  // Take slices out of a temporary field to save memory. The temp arrays
-  // are always big enough, this cannot fail.
+
+  /* Find the thickness of a vectorizable slice. There is a need for 8 slices for the pressure
+     solver and we use two three dimensional temp fields, so there are 4 slices per field.
+     The thickness is therefore jblock/4. Since there are always three ghost cells, even in a 2D
+     run the fields are large enough. */
+  // const int jslice = std::max(grid->jblock/4, 1);
+
+  /* The CPU version gives the best performance in case jslice = 1, due to cache misses.
+     In case this value will be set to larger than 1, checks need to be build in for out of bounds
+     reads in case jblock does not divide by 4. */
+  const int jslice = 1;
+
   double *tmp2 = fields->sd["tmp2"]->data;
   double *tmp3 = fields->sd["tmp3"]->data;
 
@@ -86,7 +96,8 @@ void cpres_4::exec(double dt)
              m5, m6, m7,
              &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
              &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
-             bmati, bmatj);
+             bmati, bmatj,
+             jslice);
 
   // 3. Get the pressure tendencies from the pressure field.
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
@@ -113,15 +124,6 @@ void cpres_4::init()
   jmax   = grid->jmax;
   kmax   = grid->kmax;
   kstart = grid->kstart;
-
-  /* Find the thickness of a vectorizable slice. There is a need for 8 slices for the pressure
-     solver and we use two three dimensional temp fields, so there are 4 slices per field.
-     The thickness is therefore jblock/4. Since there are always three ghost cells, even in a 2D
-     run the fields are large enough. */
-  // jslice = std::max(grid->jblock/4, 1);
-
-  // The CPU version gives the best performance in case jslice = 1, due to cache misses
-  jslice = 1;
 
   bmati = new double[itot];
   bmatj = new double[jtot];
@@ -280,7 +282,8 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
                          double * restrict m5, double * restrict m6, double * restrict m7,
                          double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
                          double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
-                         double * restrict bmati, double * restrict bmatj)
+                         double * restrict bmati, double * restrict bmatj,
+                         const int jslice)
 {
   int jj,kk,ijk;
   int imax,jmax,kmax;
@@ -313,7 +316,6 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
 
   // Calculate the step size.
   const int nj = jblock/jslice;
-  const int jslice = this->jslice;
 
   const int kki1 = 1*iblock*jslice;
   const int kki2 = 2*iblock*jslice;
@@ -431,7 +433,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
         ptemp [ik+kki3] = 0.;
       }
 
-    hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp);
+    hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp, jslice);
 
     // Put back the solution.
     for(int k=0; k<kmax; ++k)
@@ -531,14 +533,13 @@ void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * rest
 }
 
 void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p)
+                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p,
+                   const int jslice)
 {
   const int kmax   = grid->kmax;
   const int iblock = grid->iblock;
 
   const int jj = grid->iblock;
-
-  const int jslice = this->jslice;
 
   const int kk1 = 1*grid->iblock*jslice;
   const int kk2 = 2*grid->iblock*jslice;

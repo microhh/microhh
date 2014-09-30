@@ -41,8 +41,6 @@ class cpres_4 : public cpres
     double check();
 
   private:
-    int jslice;
-
     double *bmati, *bmatj;
     double *m1,*m2,*m3,*m4,*m5,*m6,*m7;
 
@@ -55,13 +53,14 @@ class cpres_4 : public cpres
                     double *, double *, double *,
                     double *, double *, double *, double *,
                     double *, double *, double *, double *,
-                    double *, double *);
+                    double *, double *,
+                    int);
     void pres_out(double *, double *, double *,
                   double *, double *);
     double calcdivergence(double *, double *, double *, double *);
 
-    // functions
     void hdma(double *, double *, double *, double *,
-              double *, double *, double *, double *);
+              double *, double *, double *, double *,
+              int);
 };
 #endif
