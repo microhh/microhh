@@ -354,12 +354,13 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
 
     for(int k=0; k<kmax; ++k)
       for(int j=0; j<jslice; ++j)
+      {
+        jindex = mpicoordx*jblock + n*jslice + j;
 #pragma ivdep
         for(int i=0; i<iblock; ++i)
         {
           // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
           iindex = mpicoordy*iblock + i;
-          jindex = mpicoordx*jblock + n*jslice + j;
 
           ijk = i + (j + n*jslice)*jj + k*kk;
           ik  = i + j*jj + k*kki1;
@@ -372,14 +373,16 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
           m7temp[ik+kki2] = m7[k];
           ptemp [ik+kki2] = p[ijk];
         }
+      }
 
     for(int j=0; j<jslice; ++j)
+    {
+      jindex = mpicoordx*jblock + n*jslice + j;
 #pragma ivdep
       for(int i=0; i<iblock; ++i)
       {
         // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
         iindex = mpicoordy*iblock + i;
-        jindex = mpicoordx*jblock + n*jslice + j;
 
         // Set the top boundary.
         ik = i + j*jj + kmax*kki1;
@@ -409,6 +412,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
           m4temp[ik+kki3] =  1.;
         }
       }
+    }
 
     for(int j=0; j<jslice; ++j)
 #pragma ivdep
