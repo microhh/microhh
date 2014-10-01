@@ -57,6 +57,12 @@ else()
   message(STATUS "MPI: disabled.")
 endif()
 
+# load the cuda settings in case cuda is used
+if(USECUDA)
+  find_package(CUDA)
+  add_definitions("-DUSECUDA")
+endif()
+
 # only set the compiler flags when the cache is created
 # to enable editing of the flags in the CMakeCache.txt file
 if(NOT HASCACHE)
@@ -72,6 +78,12 @@ if(NOT HASCACHE)
     "Flags used by the CXX-compiler during debug builds." FORCE)
   set(CMAKE_CXX_FLAGS_RELEASE ${USER_CXX_FLAGS_RELEASE} CACHE STRING
     "Flags used by the CXX-compiler during release builds." FORCE)
+  if(USECUDA)
+    set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
+      "Flags used by NVCC." FORCE)
+    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
+  endif()
+
   message(STATUS "Build Type: " ${CMAKE_BUILD_TYPE})
   set(HASCACHE TRUE CACHE BOOL "CMakeCache.txt created." FORCE)
   # make sure that ccmake only contains build type and MPI setting
@@ -86,16 +98,6 @@ else()
   message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
   # Add debug definition, to do CUDA api and kernel checks
   add_definitions("-DCUDACHECKS")
-endif()
-
-# load the cuda settings in case cuda is used
-if(USECUDA)
-  find_package(CUDA)
-  add_definitions("-DUSECUDA")
-
-  set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
-    "Flags used by NVCC." FORCE)
-  message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
 endif()
 
 # set the include dirs
