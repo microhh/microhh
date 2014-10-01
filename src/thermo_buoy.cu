@@ -24,6 +24,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo_buoy.h"
+#include "fd.h"
 
 // BvS: what to do with these double functions? Make generic .cu file with interp2, interp4, etc.?
 __device__ double interp22(double a, double b)
@@ -47,6 +48,26 @@ __global__ void thermo_buoy_calcbuoyancytend_2nd(double * __restrict__ wt, doubl
   }
 }
 
+__global__ void thermo_buoy_calcbuoyancytend_4th(double * __restrict__ wt, double * __restrict__ b, 
+                                                 int istart, int jstart, int kstart,
+                                                 int iend,   int jend,   int kend,
+                                                 int jj, int kk)
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  const int k = blockIdx.z + kstart;
+
+  const int kk1 = 1*kk;
+  const int kk2 = 2*kk;
+
+  if(i < iend && j < jend && k < kend)
+  {
+    const int ijk = i + j*jj + k*kk;
+    wt[ijk] += fd::o4::ci0*b[ijk-kk2] + fd::o4::ci1*b[ijk-kk1] + fd::o4::ci2*b[ijk] + fd::o4::ci3*b[ijk+kk1];
+  }
+}
+
+
 int cthermo_buoy::prepareDevice()
 {
   return 0;
@@ -60,7 +81,7 @@ int cthermo_buoy::exec()
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
-  dim3 gridGPU (gridi, gridj, grid->kmax);
+  dim3 gridGPU (gridi, gridj, grid->kmax-1);
   dim3 blockGPU(blocki, blockj, 1);
   
   const int offs = grid->memoffset;
@@ -70,8 +91,12 @@ int cthermo_buoy::exec()
                                                             grid->istart, grid->jstart, grid->kstart+1,
                                                             grid->iend,   grid->jend, grid->kend,
                                                             grid->icellsp, grid->ijcellsp);
-  //else if(grid->swspatialorder == "4")
-    // not yet implemented....
+
+  else if(grid->swspatialorder== "4")
+    thermo_buoy_calcbuoyancytend_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["b"]->data_g[offs], 
+                                                            grid->istart, grid->jstart, grid->kstart+1,
+                                                            grid->iend,   grid->jend, grid->kend,
+                                                            grid->icellsp, grid->ijcellsp);
 
   return 0;
 }
