@@ -549,10 +549,8 @@ void cpres_4::exec(double dt)
     pres_4_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
   } 
 
-  double *tmp2 = fields->sd["tmp2"]->data;
-  double *tmp3 = fields->sd["tmp3"]->data;
+  double *tmp1_g = fields->sd["tmp1"]->data_g;
   double *tmp2_g = fields->sd["tmp2"]->data_g;
-  double *tmp3_g = fields->sd["tmp3"]->data_g;
 
   // Set jslice to a higher value
   const int jslice = std::max(grid->jblock/4, 1);
@@ -574,8 +572,8 @@ void cpres_4::exec(double dt)
     pres_4_solvein<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
                                                m1_g, m2_g, m3_g, m4_g,
                                                m5_g, m6_g, m7_g,
-                                               &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
-                                               &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns], 
+                                               &tmp1_g[0*ns], &tmp1_g[1*ns], &tmp1_g[2*ns], &tmp1_g[3*ns],
+                                               &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns],
                                                bmati_g, bmatj_g,
                                                master->mpicoordx, master->mpicoordy,
                                                grid->iblock, grid->jblock,
@@ -583,13 +581,13 @@ void cpres_4::exec(double dt)
                                                n, jslice);
 
     // Solve the sevenbanded matrix
-    pres_4_hdma<<<grid2dsGPU,block2dsGPU>>>(&tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns], 
-                                            &tmp3_g[0*ns], &tmp3_g[1*ns], &tmp3_g[2*ns], &tmp3_g[3*ns],
+    pres_4_hdma<<<grid2dsGPU,block2dsGPU>>>(&tmp1_g[0*ns], &tmp1_g[1*ns], &tmp1_g[2*ns], &tmp1_g[3*ns], 
+                                            &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns],
                                             grid->iblock, grid->kmax, jslice);
 
     // Put the solution back into the pressure field
     pres_4_solveputback<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
-                                                    &tmp3_g[3*ns],
+                                                    &tmp2_g[3*ns],
                                                     grid->iblock, grid->jblock,
                                                     grid->kmax,
                                                     n, jslice);
