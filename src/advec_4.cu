@@ -49,12 +49,55 @@ __global__ void advec_4_advecu(double * __restrict__ ut, double * __restrict__ u
   int kk2 = 2*kk;
   int kk3 = 3*kk;
 
-  if(i < iend && j < jend && k < kend)
+  if(i < iend && j < jend && k > kstart && k < kend-1)
   {
     int ijk = i + j*jj + k*kk;
+    ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
+               + cg1*((ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]) * (ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]))
+               + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
+               + cg3*((ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3]) * (ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3])) ) * cgi*dxi;
 
-    if(k == kstart)
+    ut[ijk] -= ( cg0*((ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1]) * (ci0*u[ijk-jj3] + ci1*u[ijk-jj2] + ci2*u[ijk-jj1] + ci3*u[ijk    ]))
+               + cg1*((ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ]) * (ci0*u[ijk-jj2] + ci1*u[ijk-jj1] + ci2*u[ijk    ] + ci3*u[ijk+jj1]))
+               + cg2*((ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1]) * (ci0*u[ijk-jj1] + ci1*u[ijk    ] + ci2*u[ijk+jj1] + ci3*u[ijk+jj2]))
+               + cg3*((ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) * (ci0*u[ijk    ] + ci1*u[ijk+jj1] + ci2*u[ijk+jj2] + ci3*u[ijk+jj3])) ) * cgi*dyi;
+
+    ut[ijk] -= ( cg0*((ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+ii1-kk1]) * (ci0*u[ijk-kk3] + ci1*u[ijk-kk2] + ci2*u[ijk-kk1] + ci3*u[ijk    ]))
+               + cg1*((ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk    ] + ci3*w[ijk+ii1    ]) * (ci0*u[ijk-kk2] + ci1*u[ijk-kk1] + ci2*u[ijk    ] + ci3*u[ijk+kk1]))
+               + cg2*((ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+ii1+kk1]) * (ci0*u[ijk-kk1] + ci1*u[ijk    ] + ci2*u[ijk+kk1] + ci3*u[ijk+kk2]))
+               + cg3*((ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+ii1+kk2]) * (ci0*u[ijk    ] + ci1*u[ijk+kk1] + ci2*u[ijk+kk2] + ci3*u[ijk+kk3])) )
+               * dzi4[k];
+  }
+}
+
+template<int loc>
+__global__ void advec_4_advecu_boundary(double * __restrict__ ut, double * __restrict__ u, 
+                                        double * __restrict__ v, double * __restrict__ w,
+                                        double * __restrict__ dzi4, double dxi, double dyi, 
+                                        int jj, int kk,
+                                        int istart, int jstart, int kstart,
+                                        int iend,   int jend,   int kend)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+  int ii1 = 1;
+  int ii2 = 2;
+  int ii3 = 3;
+  int jj1 = 1*jj;
+  int jj2 = 2*jj;
+  int jj3 = 3*jj;
+  int kk1 = 1*kk;
+  int kk2 = 2*kk;
+  int kk3 = 3*kk;
+
+  if(i < iend && j < jend)
+  {
+
+    if(loc == 0)
     {
+      const int k = kstart;
+      const int ijk = i + j*jj + k*kk;
       ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
                  + cg1*((ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]) * (ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]))
                  + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
@@ -71,8 +114,10 @@ __global__ void advec_4_advecu(double * __restrict__ ut, double * __restrict__ u
                  + cg3*((ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+ii1+kk2]) * (ci0*u[ijk    ] + ci1*u[ijk+kk1] + ci2*u[ijk+kk2] + ci3*u[ijk+kk3])) )
                  * dzi4[k];
     }
-    else if(k == kend-1)
+    else if(loc == 1)
     {
+      const int k = kend-1;
+      const int ijk = i + j*jj + k*kk;
       ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
                  + cg1*((ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]) * (ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]))
                  + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
@@ -89,26 +134,9 @@ __global__ void advec_4_advecu(double * __restrict__ ut, double * __restrict__ u
                  + cg3*((ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+ii1+kk2]) * (ti0*u[ijk-kk1] + ti1*u[ijk    ] + ti2*u[ijk+kk1] + ti3*u[ijk+kk2])) )
                  * dzi4[k];
     }
-    else
-    {
-      ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
-                 + cg1*((ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]) * (ci0*u[ijk-ii2] + ci1*u[ijk-ii1] + ci2*u[ijk    ] + ci3*u[ijk+ii1]))
-                 + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
-                 + cg3*((ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3]) * (ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3])) ) * cgi*dxi;
-
-      ut[ijk] -= ( cg0*((ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1]) * (ci0*u[ijk-jj3] + ci1*u[ijk-jj2] + ci2*u[ijk-jj1] + ci3*u[ijk    ]))
-                 + cg1*((ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ]) * (ci0*u[ijk-jj2] + ci1*u[ijk-jj1] + ci2*u[ijk    ] + ci3*u[ijk+jj1]))
-                 + cg2*((ci0*v[ijk-ii2+jj1] + ci1*v[ijk-ii1+jj1] + ci2*v[ijk+jj1] + ci3*v[ijk+ii1+jj1]) * (ci0*u[ijk-jj1] + ci1*u[ijk    ] + ci2*u[ijk+jj1] + ci3*u[ijk+jj2]))
-                 + cg3*((ci0*v[ijk-ii2+jj2] + ci1*v[ijk-ii1+jj2] + ci2*v[ijk+jj2] + ci3*v[ijk+ii1+jj2]) * (ci0*u[ijk    ] + ci1*u[ijk+jj1] + ci2*u[ijk+jj2] + ci3*u[ijk+jj3])) ) * cgi*dyi;
-
-      ut[ijk] -= ( cg0*((ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+ii1-kk1]) * (ci0*u[ijk-kk3] + ci1*u[ijk-kk2] + ci2*u[ijk-kk1] + ci3*u[ijk    ]))
-                 + cg1*((ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk    ] + ci3*w[ijk+ii1    ]) * (ci0*u[ijk-kk2] + ci1*u[ijk-kk1] + ci2*u[ijk    ] + ci3*u[ijk+kk1]))
-                 + cg2*((ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+ii1+kk1]) * (ci0*u[ijk-kk1] + ci1*u[ijk    ] + ci2*u[ijk+kk1] + ci3*u[ijk+kk2]))
-                 + cg3*((ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+ii1+kk2]) * (ci0*u[ijk    ] + ci1*u[ijk+kk1] + ci2*u[ijk+kk2] + ci3*u[ijk+kk3])) )
-                 * dzi4[k];
-    }
   }
 }
+
 
 __global__ void advec_4_advecv(double * __restrict__ vt, double * __restrict__ u, 
                                double * __restrict__ v, double * __restrict__ w,
@@ -131,11 +159,54 @@ __global__ void advec_4_advecv(double * __restrict__ vt, double * __restrict__ u
   int kk2 = 2*kk;
   int kk3 = 3*kk;
 
-  if(i < iend && j < jend && k < kend)
+  if(i < iend && j < jend && k > kstart && k < kend-1)
   {
     int ijk = i + j*jj + k*kk;
-    if(k == kstart)
+    vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
+               + cg1*((ci0*u[ijk    -jj2] + ci1*u[ijk    -jj1] + ci2*u[ijk    ] + ci3*u[ijk    +jj1]) * (ci0*v[ijk-ii2] + ci1*v[ijk-ii1] + ci2*v[ijk    ] + ci3*v[ijk+ii1]))
+               + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
+               + cg3*((ci0*u[ijk+ii2-jj2] + ci1*u[ijk+ii2-jj1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+jj1]) * (ci0*v[ijk    ] + ci1*v[ijk+ii1] + ci2*v[ijk+ii2] + ci3*v[ijk+ii3])) ) * cgi*dxi;
+
+    vt[ijk] -= ( cg0*((ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]) * (ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]))
+               + cg1*((ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]) * (ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]))
+               + cg2*((ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]) * (ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]))
+               + cg3*((ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3]) * (ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3])) ) * cgi*dyi;
+
+    vt[ijk] -= ( cg0*((ci0*w[ijk-jj2-kk1] + ci1*w[ijk-jj1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+jj1-kk1]) * (ci0*v[ijk-kk3] + ci1*v[ijk-kk2] + ci2*v[ijk-kk1] + ci3*v[ijk    ]))
+               + cg1*((ci0*w[ijk-jj2    ] + ci1*w[ijk-jj1    ] + ci2*w[ijk    ] + ci3*w[ijk+jj1    ]) * (ci0*v[ijk-kk2] + ci1*v[ijk-kk1] + ci2*v[ijk    ] + ci3*v[ijk+kk1]))
+               + cg2*((ci0*w[ijk-jj2+kk1] + ci1*w[ijk-jj1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+jj1+kk1]) * (ci0*v[ijk-kk1] + ci1*v[ijk    ] + ci2*v[ijk+kk1] + ci3*v[ijk+kk2]))
+               + cg3*((ci0*w[ijk-jj2+kk2] + ci1*w[ijk-jj1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+jj1+kk2]) * (ci0*v[ijk    ] + ci1*v[ijk+kk1] + ci2*v[ijk+kk2] + ci3*v[ijk+kk3])) )
+               * dzi4[k];
+  }
+}
+
+template<int loc>
+__global__ void advec_4_advecv_boundary(double * __restrict__ vt, double * __restrict__ u, 
+                                        double * __restrict__ v, double * __restrict__ w,
+                                        double * __restrict__ dzi4, double dxi, double dyi, 
+                                        int jj, int kk,
+                                        int istart, int jstart, int kstart,
+                                        int iend,   int jend,   int kend)
+{
+  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+  int ii1 = 1;
+  int ii2 = 2;
+  int ii3 = 3;
+  int jj1 = 1*jj;
+  int jj2 = 2*jj;
+  int jj3 = 3*jj;
+  int kk1 = 1*kk;
+  int kk2 = 2*kk;
+  int kk3 = 3*kk;
+
+  if(i < iend && j < jend)
+  {
+    if(loc == 0)
     {
+      const int k = kstart;
+      const int ijk = i + j*jj + k*kk;
       vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
                  + cg1*((ci0*u[ijk    -jj2] + ci1*u[ijk    -jj1] + ci2*u[ijk    ] + ci3*u[ijk    +jj1]) * (ci0*v[ijk-ii2] + ci1*v[ijk-ii1] + ci2*v[ijk    ] + ci3*v[ijk+ii1]))
                  + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
@@ -152,8 +223,10 @@ __global__ void advec_4_advecv(double * __restrict__ vt, double * __restrict__ u
                  + cg3*((ci0*w[ijk-jj2+kk2] + ci1*w[ijk-jj1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+jj1+kk2]) * (ci0*v[ijk    ] + ci1*v[ijk+kk1] + ci2*v[ijk+kk2] + ci3*v[ijk+kk3])) )
                  * dzi4[k];
     }
-    else if(k == kend-1)
+    else if(loc == 1)
     {
+      const int k = kend-1;
+      const int ijk = i + j*jj + k*kk;
       vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
                  + cg1*((ci0*u[ijk    -jj2] + ci1*u[ijk    -jj1] + ci2*u[ijk    ] + ci3*u[ijk    +jj1]) * (ci0*v[ijk-ii2] + ci1*v[ijk-ii1] + ci2*v[ijk    ] + ci3*v[ijk+ii1]))
                  + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
@@ -168,24 +241,6 @@ __global__ void advec_4_advecv(double * __restrict__ vt, double * __restrict__ u
                  + cg1*((ci0*w[ijk-jj2    ] + ci1*w[ijk-jj1    ] + ci2*w[ijk    ] + ci3*w[ijk+jj1    ]) * (ci0*v[ijk-kk2] + ci1*v[ijk-kk1] + ci2*v[ijk    ] + ci3*v[ijk+kk1]))
                  + cg2*((ci0*w[ijk-jj2+kk1] + ci1*w[ijk-jj1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+jj1+kk1]) * (ci0*v[ijk-kk1] + ci1*v[ijk    ] + ci2*v[ijk+kk1] + ci3*v[ijk+kk2]))
                  + cg3*((ci0*w[ijk-jj2+kk2] + ci1*w[ijk-jj1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+jj1+kk2]) * (ti0*v[ijk-kk1] + ti1*v[ijk    ] + ti2*v[ijk+kk1] + ti3*v[ijk+kk2])) )
-                 * dzi4[k];
-    }
-    else
-    {
-      vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
-                 + cg1*((ci0*u[ijk    -jj2] + ci1*u[ijk    -jj1] + ci2*u[ijk    ] + ci3*u[ijk    +jj1]) * (ci0*v[ijk-ii2] + ci1*v[ijk-ii1] + ci2*v[ijk    ] + ci3*v[ijk+ii1]))
-                 + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
-                 + cg3*((ci0*u[ijk+ii2-jj2] + ci1*u[ijk+ii2-jj1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+jj1]) * (ci0*v[ijk    ] + ci1*v[ijk+ii1] + ci2*v[ijk+ii2] + ci3*v[ijk+ii3])) ) * cgi*dxi;
-
-      vt[ijk] -= ( cg0*((ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]) * (ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]))
-                 + cg1*((ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]) * (ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]))
-                 + cg2*((ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]) * (ci0*v[ijk-jj1] + ci1*v[ijk    ] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2]))
-                 + cg3*((ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3]) * (ci0*v[ijk    ] + ci1*v[ijk+jj1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj3])) ) * cgi*dyi;
-
-      vt[ijk] -= ( cg0*((ci0*w[ijk-jj2-kk1] + ci1*w[ijk-jj1-kk1] + ci2*w[ijk-kk1] + ci3*w[ijk+jj1-kk1]) * (ci0*v[ijk-kk3] + ci1*v[ijk-kk2] + ci2*v[ijk-kk1] + ci3*v[ijk    ]))
-                 + cg1*((ci0*w[ijk-jj2    ] + ci1*w[ijk-jj1    ] + ci2*w[ijk    ] + ci3*w[ijk+jj1    ]) * (ci0*v[ijk-kk2] + ci1*v[ijk-kk1] + ci2*v[ijk    ] + ci3*v[ijk+kk1]))
-                 + cg2*((ci0*w[ijk-jj2+kk1] + ci1*w[ijk-jj1+kk1] + ci2*w[ijk+kk1] + ci3*w[ijk+jj1+kk1]) * (ci0*v[ijk-kk1] + ci1*v[ijk    ] + ci2*v[ijk+kk1] + ci3*v[ijk+kk2]))
-                 + cg3*((ci0*w[ijk-jj2+kk2] + ci1*w[ijk-jj1+kk2] + ci2*w[ijk+kk2] + ci3*w[ijk+jj1+kk2]) * (ci0*v[ijk    ] + ci1*v[ijk+kk1] + ci2*v[ijk+kk2] + ci3*v[ijk+kk3])) )
                  * dzi4[k];
     }
   }
@@ -212,11 +267,54 @@ __global__ void advec_4_advecw(double * __restrict__ wt, double * __restrict__ u
   int kk2 = 2*kk;
   int kk3 = 3*kk;
 
-  if(i < iend && j < jend && k < kend)
+  if(i < iend && j < jend && k > kstart+1 && k < kend-1)
   {
     int ijk = i + j*jj + k*kk;
-    if(k == kstart+1)
+    wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
+               + cg1*((ci0*u[ijk    -kk2] + ci1*u[ijk    -kk1] + ci2*u[ijk    ] + ci3*u[ijk    +kk1]) * (ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1]))
+               + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
+               + cg3*((ci0*u[ijk+ii2-kk2] + ci1*u[ijk+ii2-kk1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3])) ) * cgi*dxi;
+
+    wt[ijk] -= ( cg0*((ci0*v[ijk-jj1-kk2] + ci1*v[ijk-jj1-kk1] + ci2*v[ijk-jj1] + ci3*v[ijk-jj1+kk1]) * (ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ]))
+               + cg1*((ci0*v[ijk    -kk2] + ci1*v[ijk    -kk1] + ci2*v[ijk    ] + ci3*v[ijk    +kk1]) * (ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1]))
+               + cg2*((ci0*v[ijk+jj1-kk2] + ci1*v[ijk+jj1-kk1] + ci2*v[ijk+jj1] + ci3*v[ijk+jj1+kk1]) * (ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2]))
+               + cg3*((ci0*v[ijk+jj2-kk2] + ci1*v[ijk+jj2-kk1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3])) ) * cgi*dyi;
+
+    wt[ijk] -= ( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ]) * (ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ]))
+               + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]) * (ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]))
+               + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]) * (ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]))
+               + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) * (ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])) )
+               * dzhi4[k];
+  }
+}
+
+template<int loc>
+__global__ void advec_4_advecw_boundary(double * __restrict__ wt, double * __restrict__ u, 
+                                        double * __restrict__ v, double * __restrict__ w,
+                                        double * __restrict__ dzhi4, double dxi, double dyi, 
+                                        int jj, int kk, int istart,
+                                        int jstart, int kstart,
+                                        int iend,   int jend,   int kend)
+{
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int ii3 = 3;
+  const int jj1 = 1*jj;
+  const int jj2 = 2*jj;
+  const int jj3 = 3*jj;
+  const int kk1 = 1*kk;
+  const int kk2 = 2*kk;
+  const int kk3 = 3*kk;
+
+  if(i < iend && j < jend)
+  {
+    if(loc == 0) //== kstart+1
     {
+      const int k = kstart+1;
+      const int ijk = i + j*jj + k*kk;
       wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
                  + cg1*((ci0*u[ijk    -kk2] + ci1*u[ijk    -kk1] + ci2*u[ijk    ] + ci3*u[ijk    +kk1]) * (ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1]))
                  + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
@@ -233,8 +331,10 @@ __global__ void advec_4_advecw(double * __restrict__ wt, double * __restrict__ u
                  + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) * (ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])) )
                  * dzhi4[k];
     }
-    else if(k == kend-1)
+    else if(loc == 1) //==kend-1
     {
+      const int k = kend-1;
+      const int ijk = i + j*jj + k*kk;
       wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
                  + cg1*((ci0*u[ijk    -kk2] + ci1*u[ijk    -kk1] + ci2*u[ijk    ] + ci3*u[ijk    +kk1]) * (ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1]))
                  + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
@@ -249,24 +349,6 @@ __global__ void advec_4_advecw(double * __restrict__ wt, double * __restrict__ u
                  + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]) * (ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]))
                  + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]) * (ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]))
                  + cg3*((ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2]) * (ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2])) )
-                 * dzhi4[k];
-    }
-    else
-    {
-      wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
-                 + cg1*((ci0*u[ijk    -kk2] + ci1*u[ijk    -kk1] + ci2*u[ijk    ] + ci3*u[ijk    +kk1]) * (ci0*w[ijk-ii2] + ci1*w[ijk-ii1] + ci2*w[ijk    ] + ci3*w[ijk+ii1]))
-                 + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
-                 + cg3*((ci0*u[ijk+ii2-kk2] + ci1*u[ijk+ii2-kk1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3])) ) * cgi*dxi;
-
-      wt[ijk] -= ( cg0*((ci0*v[ijk-jj1-kk2] + ci1*v[ijk-jj1-kk1] + ci2*v[ijk-jj1] + ci3*v[ijk-jj1+kk1]) * (ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ]))
-                 + cg1*((ci0*v[ijk    -kk2] + ci1*v[ijk    -kk1] + ci2*v[ijk    ] + ci3*v[ijk    +kk1]) * (ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1]))
-                 + cg2*((ci0*v[ijk+jj1-kk2] + ci1*v[ijk+jj1-kk1] + ci2*v[ijk+jj1] + ci3*v[ijk+jj1+kk1]) * (ci0*w[ijk-jj1] + ci1*w[ijk    ] + ci2*w[ijk+jj1] + ci3*w[ijk+jj2]))
-                 + cg3*((ci0*v[ijk+jj2-kk2] + ci1*v[ijk+jj2-kk1] + ci2*v[ijk+jj2] + ci3*v[ijk+jj2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+jj1] + ci2*w[ijk+jj2] + ci3*w[ijk+jj3])) ) * cgi*dyi;
-
-      wt[ijk] -= ( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ]) * (ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ]))
-                 + cg1*((ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]) * (ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1]))
-                 + cg2*((ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]) * (ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]))
-                 + cg3*((ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3]) * (ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3])) )
                  * dzhi4[k];
     }
   }
@@ -390,23 +472,66 @@ void cadvec_4::exec()
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
+  dim3 gridGPU2D (gridi, gridj, 1);
+  dim3 blockGPU2D(blocki, blockj, 1);
+
   const double dxi = 1./grid->dx;
   const double dyi = 1./grid->dy;
 
   const int offs = grid->memoffset;
 
+  // Top and bottom boundary:
+  advec_4_advecu_boundary<0><<<gridGPU2D, blockGPU2D>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend,   grid->jend, grid->kend);
+  advec_4_advecu_boundary<1><<<gridGPU2D, blockGPU2D>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend,   grid->jend, grid->kend);
+
+  // Interior:
   advec_4_advecu<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
                                         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend,   grid->jend, grid->kend);
 
+  // Top and bottom boundary:
+  advec_4_advecv_boundary<0><<<gridGPU2D, blockGPU2D>>>(&fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend,   grid->jend, grid->kend);
+  advec_4_advecv_boundary<1><<<gridGPU2D, blockGPU2D>>>(&fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend,   grid->jend, grid->kend);
+
+  // Interior
   advec_4_advecv<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
                                         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend,   grid->jend, grid->kend);
 
+  // Top and bottom boundary:
+  advec_4_advecw_boundary<0><<<gridGPU2D, blockGPU2D>>>(&fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend,   grid->jend, grid->kend);
+
+  advec_4_advecw_boundary<1><<<gridGPU2D, blockGPU2D>>>(&fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                        &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
+                                        grid->icellsp, grid->ijcellsp,
+                                        grid->istart, grid->jstart, grid->kstart,
+                                        grid->iend,   grid->jend, grid->kend);
+
+  // Interior:
   advec_4_advecw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
                                         &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
                                         grid->icellsp, grid->ijcellsp,
