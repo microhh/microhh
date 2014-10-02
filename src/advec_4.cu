@@ -443,9 +443,9 @@ __global__ void advec_4_calccfl(double * const __restrict__ tmp1,
                                 const int istart, const int jstart, const int kstart,
                                 const int iend, const int jend, const int kend)
 {
-  const int i = blockIdx.x*blockDim.x + threadIdx.x; 
-  const int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  const int k = blockIdx.z; 
+  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+  const int k = blockIdx.z + kstart; 
 
   const int ii1 = 1;
   const int ii2 = 2;
