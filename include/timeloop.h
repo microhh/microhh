@@ -39,12 +39,18 @@ class ctimeloop
     ctimeloop(cmodel *, cinput *);
     ~ctimeloop();
 
-    int timestep();
+    void stepTime();
     int postprocstep();
-    int settimestep();
+    void setTimeStep();
 
     int exec();
-    bool insubstep();
+
+    // Query functions for main loop
+    bool inSubStep();
+    bool inStatsStep();
+    bool doCheck();
+    bool doSave();
+
     double getsubdt();
 
     int settimelim();
@@ -54,10 +60,8 @@ class ctimeloop
     void save(int);
     void load(int);
 
-    int docheck();
     double check();
 
-    int dosave();
 
     // variables
     int substep;

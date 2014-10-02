@@ -232,8 +232,7 @@ void cmodel::exec()
   while(true)
   {
     // determine the time step
-    if(!timeloop->insubstep())
-      settimestep();
+    settimestep();
 
     // advection
     advec->exec();
@@ -249,8 +248,8 @@ void cmodel::exec()
     // pressure
     pres->exec(timeloop->getsubdt());
 
-    // statistics when not in substep and not directly after restart
-    if(!timeloop->insubstep() && !((timeloop->iteration > 0) && (timeloop->itime == timeloop->istarttime)))
+    // Do only data analysis statistics when not in substep and not directly after restart
+    if(timeloop->inStatsStep())
     {
       if(stats->dostats())
       {
@@ -296,11 +295,10 @@ void cmodel::exec()
       timeloop->exec();
 
       // step the time step
-      if(!timeloop->insubstep())
-        timeloop->timestep();
+      timeloop->stepTime();
 
       // save the data for a restart
-      if(timeloop->dosave() && !timeloop->insubstep())
+      if(timeloop->doSave())
       {
         // save the time data
         timeloop->save(timeloop->iotime);
@@ -372,7 +370,7 @@ void cmodel::printOutputFile(bool doclose)
     start = master->gettime();
   }
 
-  if(timeloop->docheck() && !timeloop->insubstep())
+  if(timeloop->doCheck())
   {
     iter    = timeloop->iteration;
     time    = timeloop->time;
@@ -406,11 +404,15 @@ void cmodel::printOutputFile(bool doclose)
 
 void cmodel::settimestep()
 {
+  // Only set the time step if the model is not in a substep
+  if(timeloop->inSubStep())
+    return;
+
   timeloop->settimelim();
 
   timeloop->idtlim = std::min(timeloop->idtlim, advec->gettimelim(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, diff ->gettimelim(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, stats->gettimelim(timeloop->itime));
   timeloop->idtlim = std::min(timeloop->idtlim, cross->gettimelim(timeloop->itime));
-  timeloop->settimestep();
+  timeloop->setTimeStep();
 }

@@ -121,8 +121,12 @@ int ctimeloop::settimelim()
   return 0;
 }
 
-int ctimeloop::timestep()
+void ctimeloop::stepTime()
 {
+  // Only step forward in time if we are not in a substep
+  if(inSubStep())
+    return;
+
   time  += dt;
   itime += idt;
   iotime = (int)(itime/iiotimeprec);
@@ -131,25 +135,23 @@ int ctimeloop::timestep()
 
   if(itime >= iendtime)
     loop = false;
-  
-  return 0;
 }
 
-int ctimeloop::docheck()
+bool ctimeloop::doCheck()
 {
-  if(iteration % outputiter == 0)
-    return 1;
+  if(iteration % outputiter == 0 && !inSubStep())
+    return true;
 
-  return 0;
+  return false;
 }
 
-int ctimeloop::dosave()
+bool ctimeloop::doSave()
 {
-  // do not save directly after the start of the simulation
-  if(itime % isavetime == 0 && iteration != 0)
-    return 1;
+  // do not save directly after the start of the simulation and not in a substep
+  if(itime % isavetime == 0 && iteration != 0 && !inSubStep())
+    return true;
 
-  return 0;
+  return false;
 }
 
 double ctimeloop::check()
@@ -162,20 +164,21 @@ double ctimeloop::check()
   return timeelapsed;
 }
 
-int ctimeloop::settimestep()
+void ctimeloop::setTimeStep()
 {
+  // Only set the time step if we are not in a substep
+  if(inSubStep())
+    return;
+
   if(adaptivestep)
   {
     idt = idtlim;
     dt  = (double)idt / ifactor;
   }
-
-  return 0;
 }
 
 int ctimeloop::exec()
 {
-
   if(rkorder == 3)
   {
     for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
@@ -305,9 +308,17 @@ int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
   return 0;
 }
 
-bool ctimeloop::insubstep()
+bool ctimeloop::inSubStep()
 {
   if(substep > 0)
+    return true;
+  else
+    return false;
+}
+
+bool ctimeloop::inStatsStep()
+{
+  if(!inSubStep() && !((iteration > 0) && (itime == istarttime)))
     return true;
   else
     return false;
