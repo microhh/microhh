@@ -63,6 +63,10 @@ cpres_4::~cpres_4()
 
   delete[] bmati;
   delete[] bmatj;
+
+  #ifdef USECUDA
+  clearDevice();
+  #endif
 }
 
 #ifndef USECUDA

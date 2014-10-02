@@ -728,4 +728,29 @@ int cpres_4::prepareDevice()
 
   return 0;
 }
+
+int cpres_4::clearDevice()
+{
+  cudaSafeCall(cudaFree(bmati_g));
+  cudaSafeCall(cudaFree(bmatj_g));
+
+  cudaSafeCall(cudaFree(m1_g));
+  cudaSafeCall(cudaFree(m2_g));
+  cudaSafeCall(cudaFree(m3_g));
+  cudaSafeCall(cudaFree(m4_g));
+  cudaSafeCall(cudaFree(m5_g));
+  cudaSafeCall(cudaFree(m6_g));
+  cudaSafeCall(cudaFree(m7_g));
+
+  cudaSafeCall(cudaFree(ffti_complex_g));
+  cudaSafeCall(cudaFree(fftj_complex_g));
+
+  cufftDestroy(iplanf);
+  cufftDestroy(jplanf);
+  cufftDestroy(iplanb);
+  cufftDestroy(jplanb);
+ 
+  return 0; 
+}
+
 #endif
