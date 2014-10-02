@@ -25,6 +25,7 @@
 #include "diff_4.h"
 #include "defines.h"
 #include "fd.h"
+#include "tools.h"
 
 using namespace fd::o4;
 
@@ -175,6 +176,7 @@ int cdiff_4::exec()
                                       grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 
   diff_4_diffc<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->v->data_g[offs],
                                       grid->dzi4_g, grid->dzhi4_g,
@@ -182,6 +184,7 @@ int cdiff_4::exec()
                                       grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 
   diff_4_diffw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->w->data_g[offs],
                                       grid->dzi4_g, grid->dzhi4_g,
@@ -189,6 +192,7 @@ int cdiff_4::exec()
                                       grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diff_4_diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs],
@@ -197,6 +201,8 @@ int cdiff_4::exec()
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
+
   return 0;
 }
 #endif

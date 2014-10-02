@@ -25,6 +25,7 @@
 #include "fields.h"
 #include "thermo_buoy.h"
 #include "fd.h"
+#include "tools.h"
 
 // BvS: what to do with these double functions? Make generic .cu file with interp2, interp4, etc.?
 __device__ double interp22(double a, double b)
@@ -87,16 +88,21 @@ int cthermo_buoy::exec()
   const int offs = grid->memoffset;
 
   if(grid->swspatialorder== "2")
+  {
     thermo_buoy_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["b"]->data_g[offs], 
                                                             grid->istart, grid->jstart, grid->kstart+1,
                                                             grid->iend,   grid->jend, grid->kend,
                                                             grid->icellsp, grid->ijcellsp);
-
+    cudaCheckError();
+  }
   else if(grid->swspatialorder== "4")
+  {
     thermo_buoy_calcbuoyancytend_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["b"]->data_g[offs], 
                                                             grid->istart, grid->jstart, grid->kstart+1,
                                                             grid->iend,   grid->jend, grid->kend,
                                                             grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
+  }
 
   return 0;
 }

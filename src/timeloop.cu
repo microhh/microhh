@@ -25,6 +25,7 @@
 #include "master.h"
 #include "fields.h"
 #include "constants.h"
+#include "tools.h"
 
 /*
 __global__ void rk3_kernel(double * __restrict__ a, double * __restrict__ at, double dt,
@@ -171,6 +172,8 @@ int ctimeloop::rk3_GPU(double *a, double *at, double dt)
                                          grid->istart,  grid->jstart, grid->kstart,
                                          grid->iend,    grid->jend,   grid->kend); }
 
+  cudaCheckError();
+
   /*
   rk3_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
                                     substep, grid->icells, grid->ijcells,
@@ -218,6 +221,8 @@ int ctimeloop::rk4_GPU(double *a, double *at, double dt)
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart,  grid->jstart, grid->kstart,
                                          grid->iend,    grid->jend,   grid->kend); }
+
+  cudaCheckError();
 
   /*
   rk4_kernel<<<gridGPU, blockGPU>>>(a, at, dt,

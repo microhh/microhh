@@ -46,6 +46,7 @@ class cpres_4 : public cpres
 
 #ifdef USECUDA
     int prepareDevice();
+    int clearDevice();
 #endif
 
   private:

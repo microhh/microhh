@@ -87,6 +87,10 @@ cthermo_moist::~cthermo_moist()
   delete[] exnrefh;
   delete[] pref;
   delete[] prefh;
+
+  #ifdef USECUDA
+  clearDevice();
+  #endif
 }
 
 void cthermo_moist::init()

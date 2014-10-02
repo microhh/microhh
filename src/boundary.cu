@@ -33,6 +33,7 @@
 #include "timeloop.h"
 #include "fd.h"
 #include "constants.h"
+#include "tools.h"
 
 #define NO_OFFSET 0.
 #define NO_VELOCITY 0.
@@ -236,19 +237,25 @@ int cboundary::exec()
                                                      &fields->u->databot_g[offs], &fields->u->datagradbot_g[offs],
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kstart);
+    cudaCheckError(); 
+
     boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(&fields->u->data_g[offs], grid->dzh_g, mbctop, 
                                                      &fields->u->datatop_g[offs], &fields->u->datagradtop_g[offs],
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kend);
+    cudaCheckError(); 
 
     boundary_setgcbot_2nd<<<grid2dGPU, block2dGPU>>>(&fields->v->data_g[offs], grid->dzh_g, mbcbot, 
                                                      &fields->v->databot_g[offs], &fields->v->datagradbot_g[offs],
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kstart);
+    cudaCheckError(); 
+
     boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(&fields->v->data_g[offs], grid->dzh_g, mbctop, 
                                                      &fields->v->datatop_g[offs], &fields->v->datagradtop_g[offs],
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kend);
+    cudaCheckError(); 
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
@@ -256,10 +263,13 @@ int cboundary::exec()
                                                        &it->second->databot_g[offs], &it->second->datagradbot_g[offs],
                                                        grid->icells, grid->icellsp,
                                                        grid->jcells, grid->kstart);
+      cudaCheckError(); 
+
       boundary_setgctop_2nd<<<grid2dGPU, block2dGPU>>>(&it->second->data_g[offs], grid->dzh_g, sbc[it->first]->bctop, 
                                                        &it->second->datatop_g[offs], &it->second->datagradtop_g[offs],
                                                        grid->icells, grid->icellsp,
                                                        grid->jcells, grid->kend);
+      cudaCheckError(); 
     }
   }
   else if(grid->swspatialorder == "4")
@@ -269,29 +279,38 @@ int cboundary::exec()
                                                      grid->z_g,
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kstart);
+    cudaCheckError(); 
+
     boundary_setgctop_4th<<<grid2dGPU, block2dGPU>>>(&fields->u->data_g[offs], mbctop, 
                                                      &fields->u->datatop_g[offs], &fields->u->datagradtop_g[offs],
                                                      grid->z_g,
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kend);
+    cudaCheckError(); 
 
     boundary_setgcbot_4th<<<grid2dGPU, block2dGPU>>>(&fields->v->data_g[offs], mbcbot, 
                                                      &fields->v->databot_g[offs], &fields->v->datagradbot_g[offs],
                                                      grid->z_g,
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kstart);
+    cudaCheckError(); 
+
     boundary_setgctop_4th<<<grid2dGPU, block2dGPU>>>(&fields->v->data_g[offs], mbctop, 
                                                      &fields->v->datatop_g[offs], &fields->v->datagradtop_g[offs],
                                                      grid->z_g,
                                                      grid->icells, grid->icellsp,
                                                      grid->jcells, grid->kend);
+    cudaCheckError(); 
 
     boundary_setgcbotw_4th<<<grid2dGPU, block2dGPU>>>(&fields->w->data_g[offs],
                                                       grid->icells, grid->icellsp,
                                                       grid->jcells, grid->kstart);
+    cudaCheckError(); 
+
     boundary_setgctopw_4th<<<grid2dGPU, block2dGPU>>>(&fields->w->data_g[offs],
                                                       grid->icells, grid->icellsp,
                                                       grid->jcells, grid->kend);
+    cudaCheckError(); 
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
@@ -300,11 +319,14 @@ int cboundary::exec()
                                                        grid->z_g,
                                                        grid->icells, grid->icellsp,
                                                        grid->jcells, grid->kstart);
+      cudaCheckError(); 
+
       boundary_setgctop_4th<<<grid2dGPU, block2dGPU>>>(&it->second->data_g[offs], sbc[it->first]->bctop, 
                                                        &it->second->datatop_g[offs], &it->second->datagradtop_g[offs],
                                                        grid->z_g,
                                                        grid->icells, grid->icellsp,
                                                        grid->jcells, grid->kend);
+      cudaCheckError(); 
     }
   }
   return 0;
@@ -323,16 +345,19 @@ int cboundary::setbc_g(double * restrict a, double * restrict agrad, double * re
   if(sw == BC_DIRICHLET)
   {
     boundary_setbc<<<grid2dGPU, block2dGPU>>>(&a[offs], aval-offset,    grid->icells, grid->icellsp, grid->jcells);
+    cudaCheckError(); 
   }
   else if(sw == BC_NEUMANN)
   {
     boundary_setbc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
     boundary_setbc<<<grid2dGPU, block2dGPU>>>(&aflux[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
+    cudaCheckError(); 
   }
   else if(sw == BC_FLUX)
   {
     boundary_setbc<<<grid2dGPU, block2dGPU>>>(&aflux[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
     boundary_setbc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
+    cudaCheckError(); 
   }
   return 0;
 }

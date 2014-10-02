@@ -25,6 +25,7 @@
 #include "fields.h"
 #include "pres_4.h"
 #include "fd.h"
+#include "tools.h"
 
 using namespace fd::o4;
 
@@ -523,6 +524,7 @@ void cpres_4::exec(double dt)
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 
   pres_4_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        &fields->u ->data_g[offs], &fields->v ->data_g[offs], &fields->w ->data_g[offs],
@@ -533,6 +535,7 @@ void cpres_4::exec(double dt)
                                        grid->imax, grid->imax*grid->jmax,
                                        grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
+  cudaCheckError();
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
   int kk = grid->itot*grid->jtot;
@@ -543,10 +546,12 @@ void cpres_4::exec(double dt)
     cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], ffti_complex_g);
     cudaThreadSynchronize();
     pres_4_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
+    cudaCheckError();
 
     cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], fftj_complex_g);
     cudaThreadSynchronize();
     pres_4_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
+    cudaCheckError();
   } 
 
   double *tmp1_g = fields->sd["tmp1"]->data_g;
@@ -579,11 +584,13 @@ void cpres_4::exec(double dt)
                                                grid->iblock, grid->jblock,
                                                grid->kmax,
                                                n, jslice);
+    cudaCheckError();
 
     // Solve the sevenbanded matrix
     pres_4_hdma<<<grid2dsGPU,block2dsGPU>>>(&tmp1_g[0*ns], &tmp1_g[1*ns], &tmp1_g[2*ns], &tmp1_g[3*ns], 
                                             &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns],
                                             grid->iblock, grid->kmax, jslice);
+    cudaCheckError();
 
     // Put the solution back into the pressure field
     pres_4_solveputback<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
@@ -591,6 +598,7 @@ void cpres_4::exec(double dt)
                                                     grid->iblock, grid->jblock,
                                                     grid->kmax,
                                                     n, jslice);
+    cudaCheckError();
   }
 
   // Backward FFT 
@@ -601,19 +609,22 @@ void cpres_4::exec(double dt)
     pres_4_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false); 
     cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
     cudaThreadSynchronize();
+    cudaCheckError();
 
     pres_4_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false); 
     cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
     cudaThreadSynchronize();
     pres_4_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
+    cudaCheckError();
   } 
 
-  cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice);
+  cudaSafeCall(cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
   pres_4_solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->sd["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->imax, grid->jmax, grid->kmax);
+  cudaCheckError();
 
   grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
 
@@ -625,6 +636,7 @@ void cpres_4::exec(double dt)
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 }
 
 double cpres_4::check()
@@ -646,6 +658,7 @@ double cpres_4::check()
                                                grid->icellsp, grid->ijcellsp,
                                                grid->istart,  grid->jstart, grid->kstart,
                                                grid->iend,    grid->jend,   grid->kend);
+  cudaCheckError();
 
   double divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
   grid->getmax(&divmax);
@@ -659,31 +672,31 @@ int cpres_4::prepareDevice()
   const int imemsize = grid->itot*sizeof(double);
   const int jmemsize = grid->jtot*sizeof(double);
 
-  cudaMalloc((void**)&bmati_g, imemsize);
-  cudaMalloc((void**)&bmatj_g, jmemsize);
+  cudaSafeCall(cudaMalloc((void**)&bmati_g, imemsize));
+  cudaSafeCall(cudaMalloc((void**)&bmatj_g, jmemsize));
 
-  cudaMalloc((void**)&m1_g, kmemsize);
-  cudaMalloc((void**)&m2_g, kmemsize);
-  cudaMalloc((void**)&m3_g, kmemsize);
-  cudaMalloc((void**)&m4_g, kmemsize);
-  cudaMalloc((void**)&m5_g, kmemsize);
-  cudaMalloc((void**)&m6_g, kmemsize);
-  cudaMalloc((void**)&m7_g, kmemsize);
+  cudaSafeCall(cudaMalloc((void**)&m1_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m2_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m3_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m4_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m5_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m6_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m7_g, kmemsize));
 
-  cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice));
 
-  cudaMemcpy(m1_g, m1, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m2_g, m2, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m3_g, m3, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m4_g, m4, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m5_g, m5, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m6_g, m6, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m7_g, m7, kmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(m1_g, m1, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m2_g, m2, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m3_g, m3, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m4_g, m4, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m5_g, m5, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m6_g, m6, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m7_g, m7, kmemsize, cudaMemcpyHostToDevice));
 
   // cuFFT
-  cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1))); // sizeof(complex) = 16
-  cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1)));
+  cudaSafeCall(cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)))); // sizeof(complex) = 16
+  cudaSafeCall(cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1))));
 
   // Make cuFFT plan
   int rank      = 1;
@@ -715,4 +728,29 @@ int cpres_4::prepareDevice()
 
   return 0;
 }
+
+int cpres_4::clearDevice()
+{
+  cudaSafeCall(cudaFree(bmati_g));
+  cudaSafeCall(cudaFree(bmatj_g));
+
+  cudaSafeCall(cudaFree(m1_g));
+  cudaSafeCall(cudaFree(m2_g));
+  cudaSafeCall(cudaFree(m3_g));
+  cudaSafeCall(cudaFree(m4_g));
+  cudaSafeCall(cudaFree(m5_g));
+  cudaSafeCall(cudaFree(m6_g));
+  cudaSafeCall(cudaFree(m7_g));
+
+  cudaSafeCall(cudaFree(ffti_complex_g));
+  cudaSafeCall(cudaFree(fftj_complex_g));
+
+  cufftDestroy(iplanf);
+  cufftDestroy(jplanf);
+  cufftDestroy(iplanb);
+  cufftDestroy(jplanb);
+ 
+  return 0; 
+}
+
 #endif

@@ -27,6 +27,7 @@
 #include "defines.h"
 #include "constants.h"
 #include "master.h"
+#include "tools.h"
 
 __global__ void thermo_dry_calcbuoyancytend_2nd(double * __restrict__ wt, double * __restrict__ th,
                                                 double * __restrict__ threfh, double grav, 
@@ -120,33 +121,33 @@ int cthermo_dry::prepareDevice()
   const int nmemsize = grid->kcells*sizeof(double);
 
   // Allocate fields for Boussinesq and anelastic solver
-  cudaMalloc(&thref_g,  nmemsize);
-  cudaMalloc(&threfh_g, nmemsize);
-  cudaMalloc(&pref_g,   nmemsize);
-  cudaMalloc(&prefh_g,  nmemsize);
-  cudaMalloc(&exner_g,  nmemsize);
-  cudaMalloc(&exnerh_g, nmemsize);
+  cudaSafeCall(cudaMalloc(&thref_g,  nmemsize));
+  cudaSafeCall(cudaMalloc(&threfh_g, nmemsize));
+  cudaSafeCall(cudaMalloc(&pref_g,   nmemsize));
+  cudaSafeCall(cudaMalloc(&prefh_g,  nmemsize));
+  cudaSafeCall(cudaMalloc(&exner_g,  nmemsize));
+  cudaSafeCall(cudaMalloc(&exnerh_g, nmemsize));
 
   // Copy fields to device
-  cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(threfh_g, threfh, nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(pref_g,   pref,   nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(prefh_g,  prefh,  nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(exner_g,  exner,  nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(exnerh_g, exnerh, nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(threfh_g, threfh, nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(pref_g,   pref,   nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(prefh_g,  prefh,  nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(exner_g,  exner,  nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(exnerh_g, exnerh, nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
 
   return 0;
 }
 
 int cthermo_dry::clearDevice()
 {
-  cudaFree(thref_g);
-  cudaFree(threfh_g);
-  cudaFree(pref_g);
-  cudaFree(prefh_g);
-  cudaFree(exner_g);
-  cudaFree(exnerh_g);
+  cudaSafeCall(cudaFree(thref_g ));
+  cudaSafeCall(cudaFree(threfh_g));
+  cudaSafeCall(cudaFree(pref_g  ));
+  cudaSafeCall(cudaFree(prefh_g ));
+  cudaSafeCall(cudaFree(exner_g ));
+  cudaSafeCall(cudaFree(exnerh_g));
 
   return 0;
 }
@@ -165,13 +166,20 @@ int cthermo_dry::exec()
   const int offs = grid->memoffset;
 
   if(grid->swspatialorder== "2")
+  {
     thermo_dry_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["th"]->data_g[offs], threfh_g, constants::grav, 
                                                            grid->istart, grid->jstart, grid->kstart+1,
                                                            grid->iend,   grid->jend, grid->kend,
                                                            grid->icellsp, grid->ijcellsp);
-
-  //else if(grid->swspatialorder == "4")
-  //  calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
+    
+    cudaCheckError();
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    master->printMessage("4th order thermo_dry not (yet) implemented\n");  
+    throw 1;
+    //calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
+  }
 
   return 0;
 }
@@ -194,14 +202,20 @@ int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
   const int offs = grid->memoffset;
 
   if(name == "b")
+  {
     thermo_dry_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->s["th"]->data_g[offs], 
                                                    thref_g, grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
                                                    grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
+  }
   else if(name == "N2")
+  {
     thermo_dry_calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->s["th"]->data_g[offs], thref_g, grid->dzi_g, 
                                                grid->istart, grid->jstart, grid->kstart, 
                                                grid->iend,   grid->jend,   grid->kend,
                                                grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
+  }
   else
     return 1;
 
@@ -225,6 +239,7 @@ int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
   thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->s["th"]->datafluxbot_g[offs], 
                                                         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                         grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
 
   return 0;
 }
@@ -247,10 +262,12 @@ int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
                                                     &fields->s["th"]->data_g[offs], &fields->s["th"]->databot_g[offs],
                                                     thref_g, threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                     grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
 
   thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->s["th"]->datafluxbot_g[offs], 
                                                         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                         grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
 
   return 0;
 }
