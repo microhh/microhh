@@ -593,8 +593,8 @@ int cdiff_les2s::prepareDevice()
   }
 
   const int nmemsize = grid->kcells*sizeof(double);
-  cudaMalloc(&mlen_g, nmemsize);
-  cudaMemcpy(mlen_g, mlen, nmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMalloc(&mlen_g, nmemsize));
+  cudaSafeCall(cudaMemcpy(mlen_g, mlen, nmemsize, cudaMemcpyHostToDevice));
 
   delete[] mlen;
 
@@ -604,7 +604,7 @@ int cdiff_les2s::prepareDevice()
 
 int cdiff_les2s::clearDevice()
 {
-  cudaFree(mlen_g); 
+  cudaSafeCall(cudaFree(mlen_g));
   return 0;
 }
 

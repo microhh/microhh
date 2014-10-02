@@ -449,11 +449,11 @@ int cboundary_surface::prepareDevice()
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
-  cudaMalloc(&obuk_g,  nmemsize2d);
-  cudaMalloc(&ustar_g, nmemsize2d);
+  cudaSafeCall(cudaMalloc(&obuk_g,  nmemsize2d));
+  cudaSafeCall(cudaMalloc(&ustar_g, nmemsize2d));
 
-  cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice);
-  cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk, imemsize, imemsize, grid->jcells,   cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
 
   return 0;
 }
@@ -464,8 +464,8 @@ int cboundary_surface::forwardDevice()
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
-  cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk,  imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice);
-  cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk,  imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
 
   return 0;
 }
@@ -476,16 +476,16 @@ int cboundary_surface::backwardDevice()
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
-  cudaMemcpy2D(obuk,  imemsize, &obuk_g[grid->memoffset],  imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost);
-  cudaMemcpy2D(ustar, imemsize, &ustar_g[grid->memoffset], imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost);
+  cudaSafeCall(cudaMemcpy2D(obuk,  imemsize, &obuk_g[grid->memoffset],  imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy2D(ustar, imemsize, &ustar_g[grid->memoffset], imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
 
   return 0;
 }
 
 int cboundary_surface::clearDevice()
 {
-  cudaFree(obuk_g);
-  cudaFree(ustar_g);
+  cudaSafeCall(cudaFree(obuk_g ));
+  cudaSafeCall(cudaFree(ustar_g));
 
   return 0;
 }
