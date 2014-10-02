@@ -55,6 +55,10 @@ class cthermo
 
     std::string getsw();
 
+    // GPU functions and variables
+    virtual int prepareDevice();
+    virtual int clearDevice();
+
   protected:
     cgrid   *grid;
     cfields *fields;

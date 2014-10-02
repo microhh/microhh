@@ -23,10 +23,12 @@
 #ifndef FIELDS
 #define FIELDS
 #include <map>
+#include <vector>
 #include "field3d.h"
 
 // forward declarations to reduce compilation time
 class cmaster;
+class cinput;
 class cmodel;
 class cgrid;
 class cstats;
@@ -92,6 +94,16 @@ class cfields
     // TODO remove these to and bring them to diffusion model
     double visc;
 
+    // GPU functions
+    int prepareDevice();
+    int forwardDevice();
+    int backwardDevice();
+    int clearDevice();
+
+    // GPU variables
+    double *rhoref_g;
+    double *rhorefh_g;
+    
   private:
     // variables
     cmodel  *model;

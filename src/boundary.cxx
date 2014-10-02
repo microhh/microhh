@@ -50,7 +50,6 @@ cboundary::cboundary(cmodel *modelin, cinput *inputin)
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
-
 }
 
 cboundary::~cboundary()
@@ -250,7 +249,13 @@ int cboundary::settimedep()
     if(it2 != timedepdata.end())
     {
       sbc[it1->first]->bot = fac0*it2->second[index0] + fac1*it2->second[index1];
+
+// BvS: for now branched here; seems a bit wasteful to copy the entire settimedep to boundary.cu?
+#ifndef USECUDA
       setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, NO_OFFSET);
+#else
+      setbc_g(it1->second->databot_g, it1->second->datagradbot_g, it1->second->datafluxbot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, NO_OFFSET);
+#endif
     }
   }
 
@@ -280,6 +285,7 @@ void cboundary::setvalues()
   }
 }
 
+#ifndef USECUDA
 int cboundary::exec()
 {
   // cyclic boundary conditions, do this before the bottom BC's
@@ -327,6 +333,7 @@ int cboundary::exec()
 
   return 0;
 }
+#endif
 
 void cboundary::execcross()
 {
@@ -593,6 +600,22 @@ int cboundary::setgctopw_4th(double * restrict w)
 
   return 0;
 }
+
+int cboundary::prepareDevice()
+{
+  return 0;
+}
+
+int cboundary::forwardDevice()
+{
+  return 0;
+}
+
+int cboundary::backwardDevice()
+{
+  return 0;
+}
+
 
 inline double cboundary::grad4x(const double a, const double b, const double c, const double d)
 {

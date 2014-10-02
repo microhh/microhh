@@ -62,3 +62,9 @@ namespace constants
   const double        dhuge  = 1.e30;
   const unsigned long ulhuge = ULONG_MAX;
 }
+
+namespace cuda
+{
+  const int blockSizeI = 128;  ///< Threads per threadblock in x-direction
+  const int blockSizeJ = 1;    ///< Threads per threadblock in y-direction
+}

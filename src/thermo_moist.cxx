@@ -222,6 +222,7 @@ void cthermo_moist::create(cinput *inputin)
   std::sort(crosslist.begin(),crosslist.end());
 }
 
+#ifndef USECUDA
 int cthermo_moist::exec()
 {
   int kk,nerror;
@@ -251,6 +252,7 @@ int cthermo_moist::exec()
 
   return (nerror>0);
 }
+#endif
 
 int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
@@ -498,26 +500,36 @@ void cthermo_moist::execcross()
   // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
   for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
-    if(*it == "b" or *it == "ql")
+    /* BvS: for now, don't call getthermofield() or getbuoyancysurf(), but directly the function itself. With CUDA enabled, 
+       statistics etc. is done on the host, while getthermofield() is executed on the GPU */ 
+
+    if(*it == "b")
     {
-      getthermofield(fields->s["tmp1"], fields->s["tmp2"], *it);
+      calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
+      nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
+    }
+    else if(*it == "ql")
+    {
+      calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
       nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
-      getthermofield(fields->s["tmp1"], fields->s["tmp2"], "b");
+      calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
       nerror += model->cross->crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "qlpath")
     {
-      getthermofield(fields->s["tmp1"], fields->s["tmp2"], "ql");
+      calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
       nerror += model->cross->crosspath(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, "qlpath");
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
-      getbuoyancysurf(fields->s["tmp1"]);
+      calcbuoyancybot(fields->s["tmp1"]->data, fields->s["tmp1"]->databot, fields->s["s" ]->data, fields->s["s"]->databot, fields->s["qt"]->data, fields->s["qt"]->databot, thvref, thvrefh);
+      calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
+
       if(*it == "bbot")
         nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
@@ -537,6 +549,7 @@ int cthermo_moist::checkthermofield(std::string name)
     return 1;
 }
 
+#ifndef USECUDA
 int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 {
   int kk = grid->icells*grid->jcells;
@@ -560,7 +573,9 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
 
   return 0;
 }
+#endif
 
+#ifndef USECUDA
 int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
 {
   calcbuoyancybot(bfield->data         , bfield->databot,
@@ -570,12 +585,15 @@ int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
   return 0;
 }
+#endif
 
+#ifndef USECUDA
 int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
   return 0;
 }
+#endif
 
 int cthermo_moist::getprogvars(std::vector<std::string> *list)
 {
@@ -882,8 +900,6 @@ int cthermo_moist::calcN2(double * restrict N2, double * restrict s, double * re
   int ijk,jj,kk;
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
-
-  // double thvref = thvs;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)

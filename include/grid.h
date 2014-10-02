@@ -52,6 +52,7 @@ class cgrid
     void save();           ///< Saves grid data to file.
     void load();           ///< Loads grid data to file.
 
+
     int itot; ///< Total number of grid cells in the x-direction.
     int jtot; ///< Total number of grid cells in the y-direction.
     int ktot; ///< Total number of grid cells in the z-direction.
@@ -96,7 +97,7 @@ class cgrid
     double *dzhi;  ///< Reciprocal of dzh.
     double *dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
     double *dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
-    
+
     double *x;  ///< Grid coordinate of cell center in x-direction.
     double *y;  ///< Grid coordinate of cell center in y-direction.
     double *z;  ///< Grid coordinate of cell center in z-direction.
@@ -116,7 +117,7 @@ class cgrid
     int boundary_cyclic2d(double *); ///< Fills the ghost cells of one slice in the periodic direction.
     int transposezx(double *, double *); ///< Changes the transpose orientation from z to x.
     int transposexz(double *, double *); ///< Changes the transpose orientation from x to z.
-    int transposexy(double *, double *); ///< Changes the transpose orientation from x to y.
+    int transposexy(double *, double *); ///< changes the transpose orientation from x to y.
     int transposeyx(double *, double *); ///< Changes the transpose orientation from y to x.
     int transposeyz(double *, double *); ///< Changes the transpose orientation from y to z.
     int transposezy(double *, double *); ///< Changes the transpose orientation from z to y.
@@ -146,6 +147,30 @@ class cgrid
     // interpolation functions
     int interpolate_2nd(double *, double *, const int[3], const int[3]); ///< Second order interpolation
     int interpolate_4th(double *, double *, const int[3], const int[3]); ///< Fourth order interpolation
+
+    // GPU functions and variables
+    double *z_g;
+    double *zh_g;
+    double *dz_g;
+    double *dzh_g;
+    double *dzi_g;
+    double *dzhi_g;
+    double *dzi4_g;
+    double *dzhi4_g;
+
+    int prepareDevice();                          ///< Load the arrays onto the GPU
+    int clearDevice();                            ///< Deallocate the arrays onto the GPU
+    int boundary_cyclic_g(double *);              ///< Fills the ghost cells in the periodic directions.
+    int boundary_cyclic2d_g(double *);            ///< Fills the ghost cells of one slice in the periodic directions.
+    double getmax_g(double *, double *);          ///< Get maximum value from field at GPU
+    double getsum_g(double *, double *);          ///< Get summed value from field at GPU
+    int calcmean_g(double *, double *, double *); ///< Get mean profile from field at GPU
+
+    // Extra variables for aligning global memory on GPU
+    int memoffset;
+    int icellsp;
+    int ijcellsp;
+    int ncellsp;
 
   private:
     cmaster *master; ///< Pointer to master class.

@@ -72,17 +72,19 @@ double cdiff_4::getdn(double dt)
   return dn;
 }
 
+#ifndef USECUDA
 int cdiff_4::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
   diffw(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
-  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc((*it->second).data, (*fields->s[it->first]).data, grid->dzi4, grid->dzhi4, fields->s[it->first]->visc);
+  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    diffc(it->second->data, fields->s[it->first]->data, grid->dzi4, grid->dzhi4, fields->s[it->first]->visc);
 
   return 0;
 }
+#endif
 
 int cdiff_4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
 {

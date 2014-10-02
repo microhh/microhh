@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <stdlib.h>
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -55,6 +56,10 @@ cbuffer::~cbuffer()
 {
   for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
     delete[] it->second;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cbuffer::init()
@@ -120,6 +125,7 @@ void cbuffer::create(cinput *inputin)
     throw 1;
 }
 
+#ifndef USECUDA
 int cbuffer::exec()
 {
   if(swbuffer == "1")
@@ -135,6 +141,7 @@ int cbuffer::exec()
 
   return 0;
 }
+#endif
 
 int cbuffer::buffer(double * const restrict at, const double * const restrict a, 
                     const double * const restrict abuf, const double * const restrict z)

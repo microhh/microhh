@@ -57,6 +57,10 @@ cboundary_surface::~cboundary_surface()
 {
   delete[] ustar;
   delete[] obuk;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cboundary_surface::create(cinput *inputin)
@@ -272,7 +276,7 @@ void cboundary_surface::setvalues()
    }
 }
 
-// surface model
+#ifndef USECUDA
 int cboundary_surface::bcvalues()
 {
   // start with retrieving the stability information
@@ -288,7 +292,7 @@ int cboundary_surface::bcvalues()
     // store the buoyancy in tmp1
     model->thermo->getbuoyancysurf(fields->sd["tmp1"]);
     stability(ustar, obuk, fields->sd["tmp1"]->datafluxbot,
-              fields->u->data, fields->v->data, fields->sd["tmp1"]->data,
+              fields->u->data,    fields->v->data,    fields->sd["tmp1"]->data,
               fields->u->databot, fields->v->databot, fields->sd["tmp1"]->databot,
               fields->sd["tmp2"]->data, grid->z);
   }
@@ -308,6 +312,7 @@ int cboundary_surface::bcvalues()
 
   return 0;
 }
+#endif
 
 int cboundary_surface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
                                  double * restrict u    , double * restrict v   , double * restrict b       ,
@@ -404,7 +409,8 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
   kstart = grid->kstart;
 
   // calculate total wind
-  double utot, ubottot;
+  double du2;
+  //double utot, ubottot;
   const double minval = 1.e-1;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
@@ -413,13 +419,16 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2) + std::pow(ubot[ij+ii], 2))
-                         + 0.5*(std::pow(vbot[ij], 2) + std::pow(vbot[ij+jj], 2)), 0.5);
-      utot    = std::pow(  0.5*(std::pow(u[ijk], 2) + std::pow(u[ijk+ii], 2))
-                         + 0.5*(std::pow(v[ijk], 2) + std::pow(v[ijk+jj], 2)), 0.5);
+      //ubottot = std::pow(  0.5*(std::pow(ubot[ij], 2.) + std::pow(ubot[ij+ii], 2.))
+      //                   + 0.5*(std::pow(vbot[ij], 2.) + std::pow(vbot[ij+jj], 2.)), 0.5);
+      //utot    = std::pow(  0.5*(std::pow(u[ijk], 2.) + std::pow(u[ijk+ii], 2.))
+      //                   + 0.5*(std::pow(v[ijk], 2.) + std::pow(v[ijk+jj], 2.)), 0.5);
+      du2 = std::pow(0.5*(u[ijk] + u[ijk+ii]) - 0.5*(ubot[ij] + ubot[ij+ii]), 2)
+          + std::pow(0.5*(v[ijk] + v[ijk+jj]) - 0.5*(vbot[ij] + vbot[ij+jj]), 2);
       // prevent the absolute wind gradient from reaching values less than 0.01 m/s,
       // otherwise evisc at k = kstart blows up
-      dutot[ij] = std::max(std::abs(utot - ubottot), minval);
+      //dutot[ij] = std::max(std::abs(utot - ubottot), minval);
+      dutot[ij] = std::max(std::pow(du2, 0.5), minval);
     }
 
   grid->boundary_cyclic2d(dutot);

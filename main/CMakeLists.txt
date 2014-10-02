@@ -36,5 +36,11 @@ message(STATUS "Git hash " ${GITHASH})
 
 # send a precompiler statement replacing the git hash
 add_definitions(-DGITHASH="${GITHASH}")
-add_executable(microhh microhh.cxx)
-target_link_libraries(microhh microhhc ${LIBS} m)
+
+if(USECUDA)
+  cuda_add_executable(microhh microhh.cxx)
+  target_link_libraries(microhh microhhc ${LIBS} m)
+else()
+  add_executable(microhh microhh.cxx)
+  target_link_libraries(microhh microhhc ${LIBS} m)
+endif()

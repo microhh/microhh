@@ -44,6 +44,11 @@ class cbuffer
     void create(cinput *); ///< Read the profiles of the forces from the input.
     int exec();            ///< Add the tendencies created by the damping.
 
+    // GPU functions and variables
+    int prepareDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
+    int clearDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
+
+
   private:
     cmaster *master; ///< Pointer to master class.
     cmodel  *model;  ///< Pointer to model class.
@@ -57,11 +62,15 @@ class cbuffer
     int bufferkstart;  ///< Grid point at cell center at which damping starts.
     int bufferkstarth; ///< Grid point at cell face at which damping starts.
 
-    std::map<std::string, double*> bufferprofs; ///< Map containing the buffer profiles.
+    std::map<std::string, double*> bufferprofs;   ///< Map containing the buffer profiles.
 
     std::string swbuffer; ///< Switch for buffer.
 
     int buffer(double * const, const double * const, 
                const double * const, const double * const); ///< Calculate the tendency 
+
+    // GPU functions and variables
+    std::map<std::string, double*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.
+
 };
 #endif

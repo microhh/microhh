@@ -48,8 +48,13 @@ cpres_2::~cpres_2()
 
   delete[] bmati;
   delete[] bmatj;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
+#ifndef USECUDA
 void cpres_2::exec(double dt)
 {
   // create the input for the pressure solver
@@ -68,6 +73,7 @@ void cpres_2::exec(double dt)
   pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
            fields->sd["p"]->data, grid->dzhi);
 }
+#endif
 
 double cpres_2::check()
 {
@@ -166,6 +172,7 @@ void cpres_2::pres_in(double * restrict p,
   grid->boundary_cyclic(vt);
   grid->boundary_cyclic(wt);
 
+
   // write pressure as a 3d array without ghost cells
   for(int k=0; k<grid->kmax; k++)
     for(int j=0; j<grid->jmax; j++)
@@ -209,6 +216,10 @@ void cpres_2::pres_solve(double * restrict p, double * restrict work3d, double *
 
   jj = iblock;
   kk = iblock*jblock;
+
+  //for (int i=0; i<itot*jtot; ++i)
+  //  printf("%i %e\n",i,p[i]);
+  //exit(1);
 
   // solve the tridiagonal system
   // create vectors that go into the tridiagonal matrix solver
@@ -378,6 +389,7 @@ void cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c
       }
 }
 
+#ifndef USECUDA
 double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
                                double * restrict rhoref, double * restrict rhorefh)
 {
@@ -411,4 +423,4 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
 
   return divmax;
 }
-
+#endif

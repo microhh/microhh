@@ -127,3 +127,13 @@ cthermo* cthermo::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
     return 0;
   }
 }
+
+int cthermo::prepareDevice()
+{
+  return 0;
+}
+
+int cthermo::clearDevice()
+{
+  return 0;
+}

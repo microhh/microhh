@@ -48,6 +48,5 @@ class cadvec_2 : public cadvec
     void advecv(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
     void advecw(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
     void advecs(double *, double *, double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
-
 };
 #endif

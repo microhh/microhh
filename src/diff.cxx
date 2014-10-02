@@ -125,3 +125,8 @@ cdiff* cdiff::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
     return 0;
   }
 }
+
+int cdiff::prepareDevice()
+{
+  return 0;
+}

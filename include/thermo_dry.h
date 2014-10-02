@@ -56,6 +56,12 @@ class cthermo_dry : public cthermo
     int getbuoyancyfluxbot(cfield3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
+#ifdef USECUDA
+    // GPU functions and variables
+    int prepareDevice();
+    int clearDevice();
+#endif
+
   private:
     int calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
     int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
@@ -82,5 +88,14 @@ class cthermo_dry : public cthermo
     double *prefh;
     double *exner;
     double *exnerh;
+
+    // GPU functions and variables
+    double *thref_g;
+    double *threfh_g;
+    double *pref_g;
+    double *prefh_g;
+    double *exner_g;
+    double *exnerh_g;
+
 };
 #endif

@@ -51,6 +51,11 @@ class cthermo_buoy : public cthermo
     int checkthermofield(std::string name);
     int getthermofield(cfield3d *, cfield3d *, std::string name);
 
+#ifdef USECUDA
+    // GPU functions and variables
+    int prepareDevice();
+#endif
+
   private:
     int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
     int calcbuoyancybot(double *, double *,

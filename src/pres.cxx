@@ -83,3 +83,8 @@ cpres* cpres::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
     throw 1;
   }
 }
+
+int cpres::prepareDevice()
+{
+  return 0;
+}

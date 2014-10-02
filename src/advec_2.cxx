@@ -58,11 +58,13 @@ unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
   cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   // avoid zero divisons
   cfl = std::max(constants::dsmall, cfl);
+
   idtlim = idt * cflmax / cfl;
 
   return idtlim;
 }
 
+#ifndef USECUDA
 void cadvec_2::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
@@ -76,7 +78,9 @@ void cadvec_2::exec()
     advecs(it->second->data, fields->s[it->first]->data, fields->u->data, fields->v->data, fields->w->data,
            grid->dzi, fields->rhoref, fields->rhorefh);
 }
+#endif
 
+#ifndef USECUDA
 double cadvec_2::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii,jj,kk;
@@ -106,6 +110,7 @@ double cadvec_2::calccfl(double * restrict u, double * restrict v, double * rest
 
   return cfl;
 }
+#endif
 
 void cadvec_2::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)

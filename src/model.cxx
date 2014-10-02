@@ -40,6 +40,10 @@
 #include "cross.h"
 #include "budget.h"
 
+#ifdef USECUDA
+#include <cuda_runtime_api.h> // Needed for cudaDeviceReset(), to check mem leaks 
+#endif
+
 cmodel::cmodel(cmaster *masterin, cinput *inputin)
 {
   master = masterin;
@@ -149,6 +153,9 @@ void cmodel::deleteObjects()
 cmodel::~cmodel()
 {
   deleteObjects();
+#ifdef USECUDA
+  cudaDeviceReset();
+#endif
 }
 
 void cmodel::init()
@@ -210,7 +217,20 @@ void cmodel::save()
 
 void cmodel::exec()
 {
+#ifdef USECUDA
+  master  ->printMessage("Preparing the GPU\n");
+  grid    ->prepareDevice();
+  fields  ->prepareDevice();
+  pres    ->prepareDevice();
+  buffer  ->prepareDevice();
+  thermo  ->prepareDevice();
+  boundary->prepareDevice();
+  diff    ->prepareDevice();
+  force   ->prepareDevice();
+#endif
+
   master->printMessage("Starting time integration\n");
+
   // update the time dependent values
   boundary->settimedep();
   force->settimedep();
@@ -253,6 +273,11 @@ void cmodel::exec()
     {
       if(stats->dostats())
       {
+#ifdef USECUDA
+        fields->backwardDevice();
+        boundary->backwardDevice();
+#endif
+
         // always process the default mask
         stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks["default"]);
         calcstats("default");
@@ -278,6 +303,11 @@ void cmodel::exec()
 
       if(cross->docross())
       {
+#ifdef USECUDA
+        fields->backwardDevice();
+        boundary->backwardDevice();
+#endif      
+      
         fields  ->execcross();
         thermo  ->execcross();
         boundary->execcross();
@@ -300,6 +330,11 @@ void cmodel::exec()
       // save the data for a restart
       if(timeloop->doSave())
       {
+#ifdef USECUDA
+        fields->backwardDevice();
+        boundary->backwardDevice();
+#endif
+
         // save the time data
         timeloop->save(timeloop->iotime);
         // save the fields
@@ -336,7 +371,12 @@ void cmodel::exec()
     diff->execvisc();
 
     printOutputFile(!timeloop->loop);
-  }
+  } // end time loop
+
+#ifdef USECUDA
+  fields->backwardDevice();
+  boundary->backwardDevice();
+#endif
 }
 
 void cmodel::calcstats(std::string maskname)

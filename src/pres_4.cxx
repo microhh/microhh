@@ -65,6 +65,7 @@ cpres_4::~cpres_4()
   delete[] bmatj;
 }
 
+#ifndef USECUDA
 void cpres_4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
@@ -112,6 +113,7 @@ double cpres_4::check()
 
   return divmax;
 }
+#endif
 
 void cpres_4::init()
 {

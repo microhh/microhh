@@ -64,6 +64,7 @@ double cadvec_4m::getcfl(double dt)
   return cfl;
 }
 
+#ifndef USECUDA
 void cadvec_4m::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
@@ -73,7 +74,9 @@ void cadvec_4m::exec()
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
     advecs(it->second->data, fields->s[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
 }
+#endif
 
+#ifndef USECUDA
 double cadvec_4m::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk;
@@ -110,6 +113,7 @@ double cadvec_4m::calccfl(double * restrict u, double * restrict v, double * res
 
   return cfl;
 }
+#endif
 
 void cadvec_4m::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
@@ -507,13 +511,13 @@ inline double cadvec_4m::grad4x(const double a, const double b, const double c, 
   return (-(d-a) + 27.*(c-b)); 
 }
 
-inline double cadvec_4m::grad4xbiasbot(const double a, const double b, const double c, const double d)
-{
-  return (-23.*a + 21.*b + 3.*c - d);
-}
-
-inline double cadvec_4m::grad4xbiastop(const double a, const double b, const double c, const double d)
-{
-  return ( 23.*d - 21.*c - 3.*b + a);
-}
+//inline double cadvec_4m::grad4xbiasbot(const double a, const double b, const double c, const double d)
+//{
+//  return (-23.*a + 21.*b + 3.*c - d);
+//}
+//
+//inline double cadvec_4m::grad4xbiastop(const double a, const double b, const double c, const double d)
+//{
+//  return ( 23.*d - 21.*c - 3.*b + a);
+//}
 

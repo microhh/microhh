@@ -50,6 +50,10 @@ cfields::cfields(cmodel *modelin, cinput *inputin)
   umodel  = 0;
   vmodel  = 0;
 
+  // Initialize GPU pointers
+  rhoref_g  = 0;
+  rhorefh_g = 0;
+
   // input parameters
   int nerror = 0;
 
@@ -113,6 +117,10 @@ cfields::~cfields()
   delete[] rhorefh;
   delete[] umodel;
   delete[] vmodel;
+
+#ifdef USECUDA
+  clearDevice();
+#endif
 }
 
 void cfields::init()
@@ -208,6 +216,7 @@ int cfields::checkaddcross(std::string var, std::string type, std::vector<std::s
   return 0;
 }
 
+#ifndef USECUDA
 int cfields::exec()
 {
   // calculate the means for the prognostic scalars
@@ -219,6 +228,7 @@ int cfields::exec()
 
   return 0;
 }
+#endif
 
 int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 {
@@ -856,16 +866,21 @@ void cfields::save(int n)
     throw 1;
 }
 
+#ifndef USECUDA
 double cfields::checkmom()
 {
   return calcmom_2nd(u->data, v->data, w->data, grid->dz);
 }
+#endif
 
+#ifndef USECUDA
 double cfields::checktke()
 {
   return calctke_2nd(u->data, v->data, w->data, grid->dz);
 }
+#endif
 
+#ifndef USECUDA
 double cfields::checkmass()
 {
   // CvH for now, do the mass check on the first scalar... Do we want to change this?
@@ -875,6 +890,7 @@ double cfields::checkmass()
   else
     return 0.;
 }
+#endif
 
 double cfields::calcmass(double * restrict s, double * restrict dz)
 {

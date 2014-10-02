@@ -42,6 +42,8 @@ class cpres
     virtual void exec(double);
     virtual double check();
 
+    virtual int prepareDevice();
+
   protected:
     cmaster *master;
     cmodel  *model;

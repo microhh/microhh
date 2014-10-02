@@ -63,6 +63,7 @@ double cadvec_4::getcfl(double dt)
   return cfl;
 }
 
+#ifndef USECUDA
 void cadvec_4::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
@@ -72,7 +73,9 @@ void cadvec_4::exec()
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     advecs(it->second->data, fields->s[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
 }
+#endif
 
+#ifndef USECUDA
 double cadvec_4::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk;
@@ -108,6 +111,7 @@ double cadvec_4::calccfl(double * restrict u, double * restrict v, double * rest
 
   return cfl;
 }
+#endif
 
 void cadvec_4::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
