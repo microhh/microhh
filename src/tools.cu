@@ -190,8 +190,8 @@ void reduceInterior(double *a, double *a2d,
       case 16:
         deviceReduceInterior<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
     }
-
   }
+  cudaCheckError();
 }
 
 void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperblock, int mode, double scalefac)
@@ -236,5 +236,6 @@ void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperb
         deviceReduceAll<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
     }
   }
+  cudaCheckError();
 }
 

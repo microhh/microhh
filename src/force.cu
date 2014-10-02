@@ -258,6 +258,7 @@ int cforce::exec(double dt)
                                             grid->icellsp, grid->ijcellsp,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
 
     double uavg  = grid->getsum_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp3"]->data_g); 
     double utavg = grid->getsum_g(&fields->a["tmp2"]->data_g[offs], fields->a["tmp3"]->data_g); 
@@ -272,41 +273,54 @@ int cforce::exec(double dt)
                                             grid->icellsp, grid->ijcellsp,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
   }
   else if(swlspres == "geo")
   {
     if(grid->swspatialorder == "2")
+    {
       force_coriolis_2nd<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs],
                                                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
                                                 ug_g, vg_g, fc, grid->utrans, grid->vtrans, 
                                                 grid->icellsp, grid->ijcellsp,
                                                 grid->istart,  grid->jstart, grid->kstart,
                                                 grid->iend,    grid->jend,   grid->kend);
+      cudaCheckError();
+    }
     else if(grid->swspatialorder == "4")
+    {
       force_coriolis_4th<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs],
                                                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
                                                 ug_g, vg_g, fc, grid->utrans, grid->vtrans, 
                                                 grid->icellsp, grid->ijcellsp,
                                                 grid->istart,  grid->jstart, grid->kstart,
                                                 grid->iend,    grid->jend,   grid->kend);
+      cudaCheckError();
+    }
   }
 
   if(swls == "1")
   {
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+    {
       force_lssource<<<gridGPU, blockGPU>>>(&fields->st[*it]->data_g[offs], lsprofs_g[*it],
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend,
                                             grid->icellsp, grid->ijcellsp);
+      cudaCheckError();
+    }
   }
 
   if(swwls == "1")
   {
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    {
       force_advecwls_2nd<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], fields->s[it->first]->datamean_g, wls_g, grid->dzhi_g,
                                                 grid->istart,  grid->jstart, grid->kstart,
                                                 grid->iend,    grid->jend,   grid->kend,
                                                 grid->icellsp, grid->ijcellsp);
+      cudaCheckError();
+    }
   }
 
   return 0;
@@ -326,7 +340,10 @@ int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
 
     // update the profile
     if(it2 != timedepdata.end())
+    {
       force_updatetimedepprof<<<gridk, blockk>>>(lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
+      cudaCheckError();
+    }
   }
 
   return 0;

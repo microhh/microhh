@@ -32,6 +32,7 @@
 #include "constants.h"
 #include "thermo.h"
 #include "model.h"
+#include "tools.h"
 
 __device__ double diff_les2s_phim(double zeta)
 {
@@ -631,6 +632,7 @@ int cdiff_les2s::execvisc()
                                             grid->z_g, grid->dzi_g, grid->dzhi_g, grid->dxi, grid->dyi,
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
+  cudaCheckError();
 
   // start with retrieving the stability information
   if(model->thermo->getsw() == "0")
@@ -638,6 +640,7 @@ int cdiff_les2s::execvisc()
     diff_les2s_evisc_neutral<<<gridGPU, blockGPU>>>(&fields->s["evisc"]->data_g[offs], mlen_g,
                                                     grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                                     grid->icellsp, grid->ijcellsp);  
+    cudaCheckError();
 
     grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
@@ -656,6 +659,7 @@ int cdiff_les2s::execvisc()
                                             mlen_g, tPri, boundaryptr->z0m, grid->z[grid->kstart],
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
+    cudaCheckError();
 
     grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
@@ -712,6 +716,7 @@ int cdiff_les2s::exec()
                                             fields->rhoref_g, fields->rhorefh_g,
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
+  cudaCheckError();
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
     diff_les2s_diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], &fields->s["evisc"]->data_g[offs], 
@@ -720,6 +725,7 @@ int cdiff_les2s::exec()
                                             fields->rhoref_g, fields->rhorefh_g, tPri,
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
+  cudaCheckError();
 
   return 0;
 }
@@ -748,6 +754,7 @@ unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
                                               grid->dzi_g, tPrfac, dxidxi, dyidyi,  
                                               grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                               grid->icellsp, grid->ijcellsp);  
+  cudaCheckError();
 
   // Get maximum from tmp1 field
   dnmul = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
@@ -780,6 +787,7 @@ double cdiff_les2s::getdn(double dt)
                                               grid->dzi_g, tPrfac, dxidxi, dyidyi,  
                                               grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                               grid->icellsp, grid->ijcellsp);  
+  cudaCheckError();
 
   // Get maximum from tmp1 field
   dnmul = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 

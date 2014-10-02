@@ -166,6 +166,8 @@ int cgrid::boundary_cyclic_g(double * data)
                                         iend,   jend,
                                         igc,    jgc);
 
+  cudaCheckError();
+
   return 0;
 }
 
@@ -196,6 +198,8 @@ int cgrid::boundary_cyclic2d_g(double * data)
                                         istart, jstart,
                                         iend,   jend,
                                         igc,    jgc);
+
+  cudaCheckError();
 
   return 0;
 }

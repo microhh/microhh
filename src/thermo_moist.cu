@@ -443,14 +443,18 @@ int cthermo_moist::exec()
       thermo_moist_calchydropres<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
                                               fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    cudaCheckError();
   }
 
   if(grid->swspatialorder== "2")
+  {
     thermo_moist_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["s"]->data_g[offs], 
                                                              &fields->s["qt"]->data_g[offs], thvrefh_g, exnrefh_g, prefh_g,  
                                                              grid->istart,  grid->jstart, grid->kstart+1,
                                                              grid->iend,    grid->jend,   grid->kend,
                                                              grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
+  }
   else if(grid->swspatialorder == "4")
   {
     master->printMessage("4th order thermo_moist not (yet) implemented\n");  
@@ -492,25 +496,36 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
       thermo_moist_calchydropres<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
                                               fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    cudaCheckError();
   }
 
   if(name == "b")
+  {
     thermo_moist_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->s["s"]->data_g[offs], &fields->s["qt"]->data_g[offs],
                                                      thvref_g, pref_g, exnref_g,
                                                      grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
                                                      grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
+  }
   else if(name == "ql")
+  {
     thermo_moist_calcqlfield<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->s["s"]->data_g[offs], &fields->s["qt"]->data_g[offs], exnref_g, pref_g, 
                                                       grid->istart,  grid->jstart,  grid->kstart, 
                                                       grid->iend,    grid->jend,    grid->kend,
                                                       grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
+  }
   else if(name == "N2")
+  {
     thermo_moist_calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->s["s"]->data_g[offs], thvref_g, grid->dzi_g, 
                                                  grid->istart, grid->jstart, grid->kstart, 
                                                  grid->iend,   grid->jend,   grid->kend,
                                                  grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
+  }
   else
     return 1;
+
 
   return 0;
 }
@@ -534,6 +549,8 @@ int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
                                                           &fields->s["qt"]->databot_g[offs], &fields->s["qt"]->datafluxbot_g[offs], 
                                                           thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                           grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
+
   return 0;
 }
 #endif
@@ -556,12 +573,15 @@ int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
                                                       &fields->s["qt"]->data_g[offs], &fields->s["qt"]->databot_g[offs],
                                                       thvref_g, thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                       grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
 
   thermo_moist_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], 
                                                           &fields->s["s"] ->databot_g[offs], &fields->s["s"] ->datafluxbot_g[offs], 
                                                           &fields->s["qt"]->databot_g[offs], &fields->s["qt"]->datafluxbot_g[offs], 
                                                           thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                           grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
+
   return 0;
 }
 #endif

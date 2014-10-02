@@ -368,6 +368,7 @@ void cpres_2::exec(double dt)
                                        grid->icellsp, grid->ijcellsp, grid->imax, grid->imax*grid->jmax, 
                                        grid->imax, grid->jmax, grid->kmax,
                                        grid->igc, grid->jgc, grid->kgc);
+  cudaCheckError();
 
   // Forward FFT -> how to get rid of the loop at the host side....
   // A massive FFT (e.g. 3D field) would require large host fields for the FFT output
@@ -379,10 +380,12 @@ void cpres_2::exec(double dt)
     cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], ffti_complex_g);
     cudaThreadSynchronize();
     pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
+    cudaCheckError();
 
     cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], fftj_complex_g);
     cudaThreadSynchronize();
     pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true); 
+    cudaCheckError();
   } 
 
   pres_2_solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
@@ -392,11 +395,13 @@ void cpres_2::exec(double dt)
                                         grid->imax, grid->imax*grid->jmax,
                                         grid->imax, grid->jmax, grid->kmax,
                                         grid->kstart);
+  cudaCheckError();
 
   pres_2_tdma<<<grid2dGPU, block2dGPU>>>(a_g, fields->sd["tmp2"]->data_g, c_g,
                                          fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->imax, grid->jmax, grid->kmax);
+  cudaCheckError();
 
   // Backward FFT 
   for (int k=0; k<grid->ktot; ++k)
@@ -406,11 +411,13 @@ void cpres_2::exec(double dt)
     pres_2_complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false); 
     cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
     cudaThreadSynchronize();
+    cudaCheckError();
 
     pres_2_complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false); 
     cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
     cudaThreadSynchronize();
     pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
+    cudaCheckError();
   } 
 
   cudaSafeCall(cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
@@ -420,6 +427,7 @@ void cpres_2::exec(double dt)
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart, grid->jstart, grid->kstart,
                                          grid->imax, grid->jmax, grid->kmax);
+  cudaCheckError();
 
   grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
 
@@ -429,6 +437,7 @@ void cpres_2::exec(double dt)
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 }
 #endif
 
@@ -456,6 +465,7 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
                                                grid->icellsp, grid->ijcellsp,
                                                grid->istart,  grid->jstart, grid->kstart,
                                                grid->iend,    grid->jend,   grid->kend);
+  cudaCheckError();
 
   divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
   grid->getmax(&divmax);

@@ -25,6 +25,7 @@
 #include "diff_2.h"
 #include "defines.h"
 #include "constants.h"
+#include "tools.h"
 
 __global__ void diff_2_diffc(double * __restrict__ const at, const double * __restrict__ const a,
                              const double * __restrict__ const dzi, const double * __restrict__ const dzhi,
@@ -100,6 +101,7 @@ int cdiff_2::exec()
                                       grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 
   diff_2_diffc<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->v->data_g[offs],
                                       grid->dzi_g, grid->dzhi_g,
@@ -107,6 +109,7 @@ int cdiff_2::exec()
                                       grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 
   diff_2_diffw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->w->data_g[offs],
                                       grid->dzi_g, grid->dzhi_g,
@@ -114,6 +117,7 @@ int cdiff_2::exec()
                                       grid->icellsp, grid->ijcellsp,
                                       grid->istart, grid->jstart, grid->kstart,
                                       grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
@@ -123,6 +127,7 @@ int cdiff_2::exec()
                                         grid->icellsp, grid->ijcellsp,
                                         grid->istart, grid->jstart, grid->kstart,
                                         grid->iend, grid->jend, grid->kend);
+  cudaCheckError();
 
   return 0;
 }

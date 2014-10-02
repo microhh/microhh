@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "buffer.h"
 #include "constants.h"
+#include "tools.h"
 
 __global__ void buffer_buffer(double * __restrict__ at,   double * __restrict__ a,
                               double * __restrict__ abuf, double * __restrict__ z,
@@ -111,6 +112,7 @@ int cbuffer::exec()
                                          grid->istart, grid->jstart, bufferkstart,
                                          grid->iend,   grid->jend, grid->kend,
                                          grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
     
     buffer_buffer<<<gridGPU, blockGPU>>>(&fields->mt["v"]->data_g[offs], &fields->mp["v"]->data_g[offs],
                                          bufferprofs_g["v"], grid->z_g, 
@@ -118,6 +120,7 @@ int cbuffer::exec()
                                          grid->istart, grid->jstart, bufferkstart,
                                          grid->iend,   grid->jend, grid->kend,
                                          grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
 
     buffer_buffer<<<gridGPU, blockGPU>>>(&fields->mt["w"]->data_g[offs], &fields->mp["w"]->data_g[offs],
                                          bufferprofs_g["w"], grid->zh_g, 
@@ -125,6 +128,7 @@ int cbuffer::exec()
                                          grid->istart, grid->jstart, bufferkstart,
                                          grid->iend,   grid->jend, grid->kend,
                                          grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       buffer_buffer<<<gridGPU, blockGPU>>>(&fields->st[it->first]->data_g[offs], &it->second->data_g[offs],
@@ -133,6 +137,7 @@ int cbuffer::exec()
                                            grid->istart, grid->jstart, bufferkstart,
                                            grid->iend,   grid->jend, grid->kend,
                                            grid->icellsp, grid->ijcellsp);
+    cudaCheckError();
   }
 
   return 0;
