@@ -28,6 +28,7 @@
 #include "constants.h"
 #include "fd.h"
 #include "master.h"
+#include "tools.h"
 
 using namespace constants;
 using namespace fd::o4;
@@ -386,32 +387,32 @@ int cthermo_moist::prepareDevice()
   const int nmemsize = grid->kcells*sizeof(double);
 
   // Allocate fields for Boussinesq and anelastic solver
-  cudaMalloc(&thvref_g,  nmemsize);
-  cudaMalloc(&thvrefh_g, nmemsize);
-  cudaMalloc(&pref_g,    nmemsize);
-  cudaMalloc(&prefh_g,   nmemsize);
-  cudaMalloc(&exnref_g,  nmemsize);
-  cudaMalloc(&exnrefh_g, nmemsize);
+  cudaSafeCall(cudaMalloc(&thvref_g,  nmemsize));
+  cudaSafeCall(cudaMalloc(&thvrefh_g, nmemsize));
+  cudaSafeCall(cudaMalloc(&pref_g,    nmemsize));
+  cudaSafeCall(cudaMalloc(&prefh_g,   nmemsize));
+  cudaSafeCall(cudaMalloc(&exnref_g,  nmemsize));
+  cudaSafeCall(cudaMalloc(&exnrefh_g, nmemsize));
 
   // Copy fields to device
-  cudaMemcpy(thvref_g,  thvref,  nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(thvrefh_g, thvrefh, nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(pref_g,    pref,    nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(prefh_g,   prefh,   nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(exnref_g,  exnref,  nmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(exnrefh_g, exnrefh, nmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(thvref_g,  thvref,  nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(thvrefh_g, thvrefh, nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(pref_g,    pref,    nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(prefh_g,   prefh,   nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(exnref_g,  exnref,  nmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(exnrefh_g, exnrefh, nmemsize, cudaMemcpyHostToDevice));
 
   return 0;
 }
 
 int cthermo_moist::clearDevice()
 {
-  cudaFree(thvref_g);
-  cudaFree(thvrefh_g);
-  cudaFree(pref_g);
-  cudaFree(prefh_g);
-  cudaFree(exnref_g);
-  cudaFree(exnrefh_g);
+  cudaSafeCall(cudaFree(thvref_g ));
+  cudaSafeCall(cudaFree(thvrefh_g));
+  cudaSafeCall(cudaFree(pref_g   ));
+  cudaSafeCall(cudaFree(prefh_g  ));
+  cudaSafeCall(cudaFree(exnref_g ));
+  cudaSafeCall(cudaFree(exnrefh_g));
 
   return 0;
 }
@@ -442,17 +443,6 @@ int cthermo_moist::exec()
       thermo_moist_calchydropres<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
                                               fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-
-    //if(grid->swspatialorder == "2")
-    //  thermo_moist_calcbasestate<2><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
-    //                                          fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
-    //                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-    //else if(grid->swspatialorder == "4")
-    //  thermo_moist_calcbasestate<4><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
-    //                                          fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
-    //                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-
-
   }
 
   if(grid->swspatialorder== "2")
@@ -462,8 +452,11 @@ int cthermo_moist::exec()
                                                              grid->iend,    grid->jend,   grid->kend,
                                                              grid->icellsp, grid->ijcellsp);
   else if(grid->swspatialorder == "4")
+  {
     master->printMessage("4th order thermo_moist not (yet) implemented\n");  
   //  calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
+    throw 1;
+  }
 
   return 0;
 }
@@ -499,15 +492,6 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
       thermo_moist_calchydropres<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
                                               fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-
-    //if(grid->swspatialorder == "2")
-    //  thermo_moist_calcbasestate<2><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
-    //                                          fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
-    //                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-    //else if(grid->swspatialorder == "4")
-    //  thermo_moist_calcbasestate<4><<<1, 1>>>(pref_g, prefh_g, &tmp2[0*kk], &tmp2[1*kk], &tmp2[2*kk], &tmp2[3*kk], exnref_g, exnrefh_g, 
-    //                                          fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
-    //                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
   }
 
   if(name == "b")

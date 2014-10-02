@@ -274,21 +274,21 @@ int cpres_2::prepareDevice()
 
   const int ijmemsize = grid->imax*grid->jmax*sizeof(double);
 
-  cudaMalloc((void**)&bmati_g, imemsize);
-  cudaMalloc((void**)&bmatj_g, jmemsize);
-  cudaMalloc((void**)&a_g, kmemsize);
-  cudaMalloc((void**)&c_g, kmemsize);
-  cudaMalloc((void**)&work2d_g, ijmemsize);
+  cudaSafeCall(cudaMalloc((void**)&bmati_g, imemsize  ));
+  cudaSafeCall(cudaMalloc((void**)&bmatj_g, jmemsize  ));
+  cudaSafeCall(cudaMalloc((void**)&a_g, kmemsize      ));
+  cudaSafeCall(cudaMalloc((void**)&c_g, kmemsize      ));
+  cudaSafeCall(cudaMalloc((void**)&work2d_g, ijmemsize));
 
-  cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(a_g, a, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice   ));
+  cudaSafeCall(cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice   ));
+  cudaSafeCall(cudaMemcpy(a_g, a, kmemsize, cudaMemcpyHostToDevice           ));
+  cudaSafeCall(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
+  cudaSafeCall(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
 
   // cuFFT
-  cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1))); // sizeof(complex) = 16
-  cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1)));
+  cudaSafeCall(cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)))); // sizeof(complex) = 16
+  cudaSafeCall(cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1))));
 
   // Make cuFFT plan
   int rank      = 1;
@@ -323,13 +323,13 @@ int cpres_2::prepareDevice()
 
 int cpres_2::clearDevice()
 {
-  cudaFree(bmati_g);
-  cudaFree(bmatj_g);
-  cudaFree(a_g);
-  cudaFree(c_g);
-  cudaFree(work2d_g);
-  cudaFree(ffti_complex_g);
-  cudaFree(fftj_complex_g);
+  cudaSafeCall(cudaFree(bmati_g       ));
+  cudaSafeCall(cudaFree(bmatj_g       ));
+  cudaSafeCall(cudaFree(a_g           ));
+  cudaSafeCall(cudaFree(c_g           ));
+  cudaSafeCall(cudaFree(work2d_g      ));
+  cudaSafeCall(cudaFree(ffti_complex_g));
+  cudaSafeCall(cudaFree(fftj_complex_g));
 
   cufftDestroy(iplanf);
   cufftDestroy(jplanf);
@@ -413,7 +413,7 @@ void cpres_2::exec(double dt)
     pres_2_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
   } 
 
-  cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice);
+  cudaSafeCall(cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
   pres_2_solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->sd["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,

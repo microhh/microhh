@@ -1,18 +1,19 @@
 #include "field3d.h"
 #include "grid.h"
 #include "master.h"
+#include "tools.h"
 
 #ifdef USECUDA
 cfield3d::~cfield3d()
 {
-  cudaFreeHost(data);
-  cudaFreeHost(databot);
-  cudaFreeHost(datatop);
-  cudaFreeHost(datagradbot);
-  cudaFreeHost(datagradtop);
-  cudaFreeHost(datafluxbot);
-  cudaFreeHost(datafluxtop);
-  cudaFreeHost(datamean);
+  cudaSafeCall(cudaFreeHost(data));
+  cudaSafeCall(cudaFreeHost(databot));
+  cudaSafeCall(cudaFreeHost(datatop));
+  cudaSafeCall(cudaFreeHost(datagradbot));
+  cudaSafeCall(cudaFreeHost(datagradtop));
+  cudaSafeCall(cudaFreeHost(datafluxbot));
+  cudaSafeCall(cudaFreeHost(datafluxtop));
+  cudaSafeCall(cudaFreeHost(datamean));
 }
 
 int cfield3d::init()
@@ -25,16 +26,16 @@ int cfield3d::init()
   const int ksize   = grid->kcells *sizeof(double);
 
   // Allocate the 3d field.
-  cudaMallocHost(&data, ijksize);
+  cudaSafeCall(cudaMallocHost(&data, ijksize));
 
   // Allocate the boundary cells.
-  cudaMallocHost(&databot, ijsize);
-  cudaMallocHost(&datatop, ijsize);
-  cudaMallocHost(&datagradbot, ijsize);
-  cudaMallocHost(&datagradtop, ijsize);
-  cudaMallocHost(&datafluxbot, ijsize);
-  cudaMallocHost(&datafluxtop, ijsize);
-  cudaMallocHost(&datamean, ksize);
+  cudaSafeCall(cudaMallocHost(&databot, ijsize));
+  cudaSafeCall(cudaMallocHost(&datatop, ijsize));
+  cudaSafeCall(cudaMallocHost(&datagradbot, ijsize));
+  cudaSafeCall(cudaMallocHost(&datagradtop, ijsize));
+  cudaSafeCall(cudaMallocHost(&datafluxbot, ijsize));
+  cudaSafeCall(cudaMallocHost(&datafluxtop, ijsize));
+  cudaSafeCall(cudaMallocHost(&datamean, ksize));
 
   // Set all values to zero
   for(int n=0; n<grid->ncells; n++)

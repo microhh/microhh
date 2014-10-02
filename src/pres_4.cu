@@ -25,6 +25,7 @@
 #include "fields.h"
 #include "pres_4.h"
 #include "fd.h"
+#include "tools.h"
 
 using namespace fd::o4;
 
@@ -608,7 +609,7 @@ void cpres_4::exec(double dt)
     pres_4_normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
   } 
 
-  cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice);
+  cudaSafeCall(cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
   pres_4_solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->sd["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->icellsp, grid->ijcellsp,
@@ -659,31 +660,31 @@ int cpres_4::prepareDevice()
   const int imemsize = grid->itot*sizeof(double);
   const int jmemsize = grid->jtot*sizeof(double);
 
-  cudaMalloc((void**)&bmati_g, imemsize);
-  cudaMalloc((void**)&bmatj_g, jmemsize);
+  cudaSafeCall(cudaMalloc((void**)&bmati_g, imemsize));
+  cudaSafeCall(cudaMalloc((void**)&bmatj_g, jmemsize));
 
-  cudaMalloc((void**)&m1_g, kmemsize);
-  cudaMalloc((void**)&m2_g, kmemsize);
-  cudaMalloc((void**)&m3_g, kmemsize);
-  cudaMalloc((void**)&m4_g, kmemsize);
-  cudaMalloc((void**)&m5_g, kmemsize);
-  cudaMalloc((void**)&m6_g, kmemsize);
-  cudaMalloc((void**)&m7_g, kmemsize);
+  cudaSafeCall(cudaMalloc((void**)&m1_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m2_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m3_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m4_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m5_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m6_g, kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&m7_g, kmemsize));
 
-  cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice));
 
-  cudaMemcpy(m1_g, m1, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m2_g, m2, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m3_g, m3, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m4_g, m4, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m5_g, m5, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m6_g, m6, kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(m7_g, m7, kmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(m1_g, m1, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m2_g, m2, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m3_g, m3, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m4_g, m4, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m5_g, m5, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m6_g, m6, kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(m7_g, m7, kmemsize, cudaMemcpyHostToDevice));
 
   // cuFFT
-  cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1))); // sizeof(complex) = 16
-  cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1)));
+  cudaSafeCall(cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)))); // sizeof(complex) = 16
+  cudaSafeCall(cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1))));
 
   // Make cuFFT plan
   int rank      = 1;

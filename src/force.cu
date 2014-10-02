@@ -26,6 +26,7 @@
 #include "fields.h"
 #include "fd.h"
 #include "constants.h"
+#include "tools.h"
 
 __global__ void force_flux_step1(double * const __restrict__ usum, double * const __restrict__ utsum,
                                  const double * const __restrict__ u, const double * const __restrict__ ut,
@@ -175,26 +176,26 @@ int cforce::prepareDevice()
 
   if(swlspres == "geo")
   {
-    cudaMalloc(&ug_g, nmemsize);
-    cudaMalloc(&vg_g, nmemsize);
+    cudaSafeCall(cudaMalloc(&ug_g, nmemsize));
+    cudaSafeCall(cudaMalloc(&vg_g, nmemsize));
 
-    cudaMemcpy(ug_g, ug, nmemsize, cudaMemcpyHostToDevice);
-    cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice);
+    cudaSafeCall(cudaMemcpy(ug_g, ug, nmemsize, cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice));
   }
 
   if(swls == "1")
   {
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
     {
-      cudaMalloc(&lsprofs_g[*it], nmemsize);
-      cudaMemcpy(lsprofs_g[*it], lsprofs[*it], nmemsize, cudaMemcpyHostToDevice);
+      cudaSafeCall(cudaMalloc(&lsprofs_g[*it], nmemsize));
+      cudaSafeCall(cudaMemcpy(lsprofs_g[*it], lsprofs[*it], nmemsize, cudaMemcpyHostToDevice));
     }
   }
 
   if(swwls == "1")
   {
-    cudaMalloc(&wls_g, nmemsize);
-    cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice);
+    cudaSafeCall(cudaMalloc(&wls_g, nmemsize));
+    cudaSafeCall(cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice));
   }
 
   if(swtimedep == "1")
@@ -202,8 +203,8 @@ int cforce::prepareDevice()
     int nmemsize2 = grid->kmax*timedeptime.size()*sizeof(double);
     for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     {
-      cudaMalloc(&timedepdata_g[it->first], nmemsize2);
-      cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice);
+      cudaSafeCall(cudaMalloc(&timedepdata_g[it->first], nmemsize2));
+      cudaSafeCall(cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice));
     }
   }
 
@@ -214,23 +215,23 @@ int cforce::clearDevice()
 {
   if(swlspres == "geo")
   {
-    cudaFree(ug_g);
-    cudaFree(vg_g);
+    cudaSafeCall(cudaFree(ug_g));
+    cudaSafeCall(cudaFree(vg_g));
   }
 
   if(swls == "1")
   {
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-      cudaFree(lsprofs_g[*it]);
+      cudaSafeCall(cudaFree(lsprofs_g[*it]));
   }
 
   if(swwls == "1")
-    cudaFree(wls_g);
+    cudaSafeCall(cudaFree(wls_g));
 
   if(swtimedep == "1")
   {
     for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
-      cudaFree(timedepdata_g[it->first]);
+      cudaSafeCall(cudaFree(timedepdata_g[it->first]));
   }
 
   return 0; 

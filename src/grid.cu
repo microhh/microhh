@@ -103,37 +103,37 @@ int cgrid::prepareDevice()
 
   const int kmemsize = kcells*sizeof(double);
 
-  cudaMalloc((void**)&z_g    , kmemsize);
-  cudaMalloc((void**)&zh_g   , kmemsize);
-  cudaMalloc((void**)&dz_g   , kmemsize);
-  cudaMalloc((void**)&dzh_g  , kmemsize);
-  cudaMalloc((void**)&dzi_g  , kmemsize);
-  cudaMalloc((void**)&dzhi_g , kmemsize);
-  cudaMalloc((void**)&dzi4_g , kmemsize);
-  cudaMalloc((void**)&dzhi4_g, kmemsize);
+  cudaSafeCall(cudaMalloc((void**)&z_g    , kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&zh_g   , kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&dz_g   , kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&dzh_g  , kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&dzi_g  , kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&dzhi_g , kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&dzi4_g , kmemsize));
+  cudaSafeCall(cudaMalloc((void**)&dzhi4_g, kmemsize));
 
-  cudaMemcpy(z_g    , z    , kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(zh_g   , zh   , kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(dz_g   , dz   , kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(dzh_g  , dzh  , kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(dzi_g  , dzi  , kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(dzhi_g , dzhi , kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(dzi4_g , dzi4 , kmemsize, cudaMemcpyHostToDevice);
-  cudaMemcpy(dzhi4_g, dzhi4, kmemsize, cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy(z_g    , z    , kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(zh_g   , zh   , kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(dz_g   , dz   , kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(dzh_g  , dzh  , kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(dzi_g  , dzi  , kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(dzhi_g , dzhi , kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(dzi4_g , dzi4 , kmemsize, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(dzhi4_g, dzhi4, kmemsize, cudaMemcpyHostToDevice));
 
   return 0;
 }
 
 int cgrid::clearDevice()
 {
-  cudaFree(z_g    );
-  cudaFree(zh_g   );
-  cudaFree(dz_g   );
-  cudaFree(dzh_g  );
-  cudaFree(dzi_g  );
-  cudaFree(dzhi_g );
-  cudaFree(dzi4_g );
-  cudaFree(dzhi4_g);
+  cudaSafeCall(cudaFree(z_g    ));
+  cudaSafeCall(cudaFree(zh_g   ));
+  cudaSafeCall(cudaFree(dz_g   ));
+  cudaSafeCall(cudaFree(dzh_g  ));
+  cudaSafeCall(cudaFree(dzi_g  ));
+  cudaSafeCall(cudaFree(dzhi_g ));
+  cudaSafeCall(cudaFree(dzi4_g ));
+  cudaSafeCall(cudaFree(dzhi4_g));
 
   return 0;
 }
@@ -214,7 +214,7 @@ double cgrid::getmax_g(double *data, double *tmp)
   // Reduce ktot values to a single value
   reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, max, scalefac);
   // Copy back result from GPU
-  cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
+  cudaSafeCall(cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost));
   
   return maxvalue;
 }
@@ -229,7 +229,7 @@ double cgrid::getsum_g(double *data, double *tmp)
   reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sum, scalefac);
   reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sum, scalefac);
 
-  cudaMemcpy(&sumvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost);
+  cudaSafeCall(cudaMemcpy(&sumvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost));
   
   return sumvalue;
 }
