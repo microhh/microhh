@@ -36,14 +36,6 @@
 #include "boundary_surface.h"
 #include "boundary_user.h"
 
-#define NO_OFFSET 0.
-#define NO_VELOCITY 0.
-
-#define BC_DIRICHLET 0
-#define BC_NEUMANN 1
-#define BC_FLUX 2
-#define BC_USTAR 3
-
 cboundary::cboundary(cmodel *modelin, cinput *inputin)
 {
   model  = modelin;
@@ -76,27 +68,27 @@ int cboundary::processbcs(cinput *inputin)
 
   // set the bottom bc
   if(swbot == "noslip")
-    mbcbot = BC_DIRICHLET;
+    mbcbot = DirichletType;
   else if(swbot == "freeslip")
-    mbcbot = BC_NEUMANN;
+    mbcbot = NeumannType;
   else if(swbot == "ustar")
-    mbcbot = BC_USTAR;
+    mbcbot = UstarType;
   else
   {
-    if(master->mpiid == 0) std::printf("ERROR %s is illegal value for mbcbot\n", swbot.c_str());
+    master->printError("%s is illegal value for mbcbot\n", swbot.c_str());
     nerror++;
   }
 
   // set the top bc
   if(swtop == "noslip")
-    mbctop = BC_DIRICHLET;
+    mbctop = DirichletType;
   else if(swtop == "freeslip")
-    mbctop = BC_NEUMANN;
+    mbctop = NeumannType;
   else if(swtop == "ustar")
-    mbctop = BC_USTAR;
+    mbctop = UstarType;
   else
   {
-    if(master->mpiid == 0) std::printf("ERROR %s is illegal value for mbctop\n", swtop.c_str());
+    master->printError("%s is illegal value for mbctop\n", swtop.c_str());
     nerror++;
   }
 
@@ -111,27 +103,27 @@ int cboundary::processbcs(cinput *inputin)
 
     // set the bottom bc
     if(swbot == "dirichlet")
-      sbc[it->first]->bcbot = BC_DIRICHLET;
+      sbc[it->first]->bcbot = DirichletType;
     else if(swbot == "neumann")
-      sbc[it->first]->bcbot = BC_NEUMANN;
+      sbc[it->first]->bcbot = NeumannType;
     else if(swbot == "flux")
-      sbc[it->first]->bcbot = BC_FLUX;
+      sbc[it->first]->bcbot = FluxType;
     else
     {
-      if(master->mpiid == 0) std::printf("ERROR %s is illegal value for sbcbot\n", swbot.c_str());
+      master->printError("%s is illegal value for sbcbot\n", swbot.c_str());
       nerror++;
     }
 
     // set the top bc
     if(swtop == "dirichlet")
-      sbc[it->first]->bctop = BC_DIRICHLET;
+      sbc[it->first]->bctop = DirichletType;
     else if(swtop == "neumann")
-      sbc[it->first]->bctop = BC_NEUMANN;
+      sbc[it->first]->bctop = NeumannType;
     else if(swtop == "flux")
-      sbc[it->first]->bctop = BC_FLUX;
+      sbc[it->first]->bctop = FluxType;
     else
     {
-      if(master->mpiid == 0) std::printf("ERROR %s is illegal value for sbctop\n", swtop.c_str());
+      master->printError("%s is illegal value for sbctop\n", swtop.c_str());
       nerror++;
     }
   }
@@ -149,9 +141,9 @@ void cboundary::init(cinput *inputin)
   nerror += processbcs(inputin);
 
   // there is no option (yet) for prescribing ustar without surface model
-  if(mbcbot == BC_USTAR || mbctop == BC_USTAR)
+  if(mbcbot == UstarType || mbctop == UstarType)
   {
-    if(master->mpiid == 0) std::printf("ERROR ustar bc is not supported for default boundary\n");
+    master->printError("ustar bc is not supported for default boundary\n");
     ++nerror;
   }
 
@@ -193,7 +185,7 @@ int cboundary::processtimedep(cinput *inputin)
 
     // display a warning for the non-supported 
     for(std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
-      if(master->mpiid == 0) std::printf("WARNING %s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
+      master->printWarning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
   return nerror;
@@ -250,12 +242,12 @@ int cboundary::settimedep()
     {
       sbc[it1->first]->bot = fac0*it2->second[index0] + fac1*it2->second[index1];
 
-// BvS: for now branched here; seems a bit wasteful to copy the entire settimedep to boundary.cu?
-#ifndef USECUDA
-      setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, NO_OFFSET);
-#else
-      setbc_g(it1->second->databot_g, it1->second->datagradbot_g, it1->second->datafluxbot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, NO_OFFSET);
-#endif
+      // BvS: for now branched here; seems a bit wasteful to copy the entire settimedep to boundary.cu?
+      #ifndef USECUDA
+      setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
+      #else
+      setbc_g(it1->second->databot_g, it1->second->datagradbot_g, it1->second->datafluxbot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
+      #endif
     }
   }
 
@@ -272,16 +264,16 @@ void cboundary::load(int iotime)
 
 void cboundary::setvalues()
 {
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->utrans);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->vtrans);
+  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
+  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->utrans);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->vtrans);
+  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
+  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, NO_OFFSET);
-    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
+    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
+    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
   }
 }
 
@@ -368,12 +360,12 @@ cboundary* cboundary::factory(cmaster *masterin, cinput *inputin, cmodel *modeli
   }
 }
 
-int cboundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset)
+int cboundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
 {
   int ij,jj;
   jj = grid->icells;
 
-  if(sw == BC_DIRICHLET)
+  if(sw == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -383,7 +375,7 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, double * rest
         a[ij] = aval - offset;
       }
   }
-  else if(sw == BC_NEUMANN)
+  else if(sw == NeumannType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -394,7 +386,7 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, double * rest
         aflux[ij] = -aval*visc;
       }
   }
-  else if(sw == BC_FLUX)
+  else if(sw == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -410,7 +402,7 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, double * rest
 }
 
 // BOUNDARY CONDITIONS THAT CONTAIN A 2D PATTERN
-int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, double * restrict abot, double * restrict agradbot)
+int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk,kstart;
 
@@ -419,7 +411,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, 
 
   kstart = grid->kstart;
 
-  if(sw == BC_DIRICHLET)
+  if(sw == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -430,7 +422,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, 
         a[ijk-kk] = 2.*abot[ij] - a[ijk];
       }
   }
-  else if(sw == BC_NEUMANN || sw == BC_FLUX)
+  else if(sw == NeumannType || sw == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -445,7 +437,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, int sw, 
   return 0;
 }
 
-int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, double * restrict atop, double * restrict agradtop)
+int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kk,kend;
 
@@ -454,7 +446,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, 
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  if(sw == BC_DIRICHLET)
+  if(sw == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -465,7 +457,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, 
         a[ijk+kk] = 2.*atop[ij] - a[ijk];
       }
   }
-  else if(sw == BC_NEUMANN || sw == BC_FLUX)
+  else if(sw == NeumannType || sw == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -480,7 +472,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, int sw, 
   return 0;
 }
 
-int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, double * restrict abot, double * restrict agradbot)
+int cboundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk1,kk2,kstart;
 
@@ -490,7 +482,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
 
   kstart = grid->kstart;
 
-  if(sw == BC_DIRICHLET)
+  if(sw == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -502,7 +494,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
         a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
       }
   }
-  else if(sw == BC_NEUMANN || sw == BC_FLUX)
+  else if(sw == NeumannType || sw == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -518,7 +510,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, int sw, do
   return 0;
 }
 
-int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, double * restrict atop, double * restrict agradtop)
+int cboundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kend,kk1,kk2;
 
@@ -528,7 +520,7 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
 
-  if(sw == BC_DIRICHLET)
+  if(sw == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -540,7 +532,7 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, int sw, do
         a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
       }
   }
-  else if(sw == BC_NEUMANN || sw == BC_FLUX)
+  else if(sw == NeumannType || sw == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep

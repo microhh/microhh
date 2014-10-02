@@ -31,17 +31,6 @@ class cfields;
 struct mask;
 
 /**
- * Structure containing the boundary options and values per 3d field.
- */
-struct field3dbc
-{
-  double bot; ///< Value of the bottom boundary.
-  double top; ///< Value of the top boundary.
-  int bcbot;  ///< Switch for the bottom boundary.
-  int bctop;  ///< Switch for the top boundary.
-};
-
-/**
  * Base class for the advection scheme.
  * This class handles the case when advection is turned off. Derived classes are
  * implemented that handle different advection schemes.
@@ -65,6 +54,8 @@ class cboundary
     virtual void execcross(); ///< Execute cross sections of surface
     virtual int execstats(mask *); ///< Execute statistics of surface
 
+    enum BoundaryType {DirichletType, NeumannType, FluxType, UstarType};
+
     // GPU functions and variables
     virtual int prepareDevice(); 
     virtual int forwardDevice(); 
@@ -76,8 +67,19 @@ class cboundary
     cgrid   *grid;   ///< Pointer to grid class.
     cfields *fields; ///< Pointer to fields class.
 
-    int mbcbot;
-    int mbctop;
+    BoundaryType mbcbot;
+    BoundaryType mbctop;
+
+    /**
+     * Structure containing the boundary options and values per 3d field.
+     */
+    struct field3dbc
+    {
+      double bot; ///< Value of the bottom boundary.
+      double top; ///< Value of the top boundary.
+      BoundaryType bcbot; ///< Switch for the bottom boundary.
+      BoundaryType bctop; ///< Switch for the top boundary.
+    };
 
     typedef std::map<std::string, field3dbc *> bcmap;
     bcmap sbc;
@@ -90,22 +92,26 @@ class cboundary
 
     int processbcs(cinput *); ///< Process the boundary condition settings from the ini file.
     int processtimedep(cinput *); ///< Process the time dependent settings from the ini file.
-    int setbc(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
+    int setbc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
     // GPU functions and variables
-    int setbc_g(double *, double *, double *, int, double, double, double); ///< Set the values for the boundary fields.
+    int setbc_g(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
   private:
     virtual int bcvalues(); ///< Update the boundary values.
 
-    int setgcbot_2nd(double *, double *, int, double *, double *); ///< Set the bottom ghost cells with 2nd-order accuracy.
-    int setgctop_2nd(double *, double *, int, double *, double *); ///< Set the top ghost cells with 2nd-order accuracy.
-    int setgcbot_4th(double *, double *, int, double *, double *); ///< Set the bottom ghost cells with 4th-order accuracy.
-    int setgctop_4th(double *, double *, int, double *, double *); ///< Set the top ghost cells with 4th-order accuracy.
+    int setgcbot_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 2nd-order accuracy.
+    int setgctop_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 2nd-order accuracy.
+    int setgcbot_4th(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 4th-order accuracy.
+    int setgctop_4th(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 4th-order accuracy.
 
     int setgcbotw_4th(double *); ///< Set the bottom ghost cells for the vertical velocity with 4th order accuracy.
     int setgctopw_4th(double *); ///< Set the top ghost cells for the vertical velocity with 4th order accuracy.
 
     inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
+
+  protected:
+    static const double noVelocity = 0.;
+    static const double noOffset = 0.;
 };
 #endif

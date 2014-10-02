@@ -29,13 +29,6 @@
 #include "defines.h"
 #include "model.h"
 
-#define NO_VELOCITY 0.
-#define NO_OFFSET 0.
-
-#define BC_DIRICHLET 0
-#define BC_NEUMANN 1
-#define BC_FLUX 2
-
 cboundary_user::cboundary_user(cmodel *modelin, cinput *inputin) : cboundary(modelin, inputin)
 {
 }
@@ -60,18 +53,18 @@ void cboundary_user::init(cinput *inputin)
 
 void cboundary_user::setvalues()
 {
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->utrans);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->vtrans);
+  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
+  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->utrans);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->vtrans);
+  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
+  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     setbc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
-                sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, NO_OFFSET, fields->s["tmp1"]->data, patch_facl, patch_facr);
+                sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset, fields->s["tmp1"]->data, patch_facl, patch_facr);
     setbc      (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
-                sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
+                sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
   }
 }
 
@@ -107,7 +100,7 @@ int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, do
       tmp[ij] = errvalx*errvaly;
     }
 
-  if(sw == BC_DIRICHLET)
+  if(sw == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -117,7 +110,7 @@ int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, do
         a[ij] = avall + (avalr-avall)*tmp[ij] - offset;
       }
   }
-  else if(sw == BC_NEUMANN)
+  else if(sw == NeumannType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -128,7 +121,7 @@ int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, do
         aflux[ij] = -agrad[ij]*visc;
       }
   }
-  else if(sw == BC_FLUX)
+  else if(sw == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep

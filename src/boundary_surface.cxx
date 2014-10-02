@@ -23,7 +23,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
-#include <algorithm>    // std::count
+#include <algorithm>
 #include "master.h"
 #include "input.h"
 #include "grid.h"
@@ -35,14 +35,6 @@
 #include "model.h"
 #include "master.h"
 #include "cross.h"
-
-#define NO_VELOCITY 0.
-#define NO_OFFSET 0.
-
-#define BC_DIRICHLET 0
-#define BC_NEUMANN 1
-#define BC_FLUX 2
-#define BC_USTAR 3
 
 // a sign function
 inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
@@ -93,35 +85,35 @@ void cboundary_surface::init(cinput *inputin)
 
   // copy all the boundary options and set the model ones to flux type
   // surfmbcbot = mbcbot;
-  // mbcbot = BC_FLUX;
+  // mbcbot = FluxType;
 
   // crash in case fixed gradient is prescribed
-  if(mbcbot == BC_NEUMANN)
+  if(mbcbot == NeumannType)
   {
-    master->printError("neumann bc is not supported in surface model\n");
+    master->printError("Neumann bc is not supported in surface model\n");
     ++nerror;
   }
   // read the ustar value only if fixed fluxes are prescribed
-  else if(mbcbot == BC_USTAR)
+  else if(mbcbot == UstarType)
     nerror += inputin->getItem(&ustarin, "boundary", "ustar", "");
 
   // process the scalars
   for(bcmap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
   {
     // surfsbcbot[it->first] = it->second->bcbot;
-    // it->second->bcbot = BC_FLUX;
+    // it->second->bcbot = FluxType;
 
     // crash in case fixed gradient is prescribed
-    if(it->second->bcbot == BC_NEUMANN)
+    if(it->second->bcbot == NeumannType)
     {
       master->printError("fixed gradient bc is not supported in surface model\n");
       ++nerror;
     }
 
     // crash in case of fixed momentum flux and dirichlet bc for scalar
-    if(it->second->bcbot == BC_DIRICHLET && mbcbot == BC_USTAR)
+    if(it->second->bcbot == DirichletType && mbcbot == UstarType)
     {
-      master->printError("ERROR fixed ustar bc in combination with dirichlet bc for scalars is not supported\n");
+      master->printError("fixed Ustar bc in combination with Dirichlet bc for scalars is not supported\n");
       ++nerror;
     }
   }
@@ -141,7 +133,7 @@ void cboundary_surface::init(cinput *inputin)
     if(sbc[*it]->bcbot != thermobc)
     {
       ++nerror;
-      master->printError("ERROR all thermo variables need to have the same bc type\n");
+      master->printError("all thermo variables need to have the same bc type\n");
     }
     ++it;
   }
@@ -177,7 +169,7 @@ void cboundary_surface::init(cinput *inputin)
   {
     if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
     {
-      master->printWarning("WARNING field %s in [boundary][crosslist] is illegal\n", it2->c_str());
+      master->printWarning("field %s in [boundary][crosslist] is illegal\n", it2->c_str());
       it2 = crosslist.erase(it2);  // erase() returns iterator of next element..
     }
     else
@@ -244,26 +236,26 @@ void cboundary_surface::load(int iotime)
 void cboundary_surface::setvalues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->utrans);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, NO_VELOCITY, fields->visc, grid->vtrans);
+  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
+  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->utrans);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, NO_VELOCITY, fields->visc, grid->vtrans);
+  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
+  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, NO_OFFSET);
-    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, NO_OFFSET);
+    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
+    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
   }
 
   // in case the momentum has a fixed ustar, set the value to that of the input
-  if(mbcbot == BC_USTAR)
+  if(mbcbot == UstarType)
   {
     int ij,jj;
     jj = grid->icells;
 
-    setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, 0, NO_VELOCITY, fields->visc, grid->utrans);
-    setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, 0, NO_VELOCITY, fields->visc, grid->vtrans);
+    setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, DirichletType, noVelocity, fields->visc, grid->utrans);
+    setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, DirichletType, noVelocity, fields->visc, grid->vtrans);
 
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -356,7 +348,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
 
   // calculate Obukhov length
   // case 1: fixed buoyancy flux and fixed ustar
-  if(mbcbot == BC_USTAR && thermobc == BC_FLUX)
+  if(mbcbot == UstarType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -367,7 +359,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
-  else if(mbcbot == BC_DIRICHLET && thermobc == BC_FLUX)
+  else if(mbcbot == DirichletType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -378,7 +370,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
-  else if(mbcbot == BC_DIRICHLET && thermobc == BC_DIRICHLET)
+  else if(mbcbot == DirichletType && thermobc == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -435,7 +427,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
 
   // set the Obukhov length to a very large negative number
   // case 1: fixed buoyancy flux and fixed ustar
-  if(mbcbot == BC_USTAR && thermobc == BC_FLUX)
+  if(mbcbot == UstarType && thermobc == FluxType)
   {
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
@@ -446,7 +438,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
       }
   }
   // case 2: fixed buoyancy surface value and free ustar
-  else if(mbcbot == BC_DIRICHLET && thermobc == BC_FLUX)
+  else if(mbcbot == DirichletType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -457,7 +449,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
-  else if(mbcbot == BC_DIRICHLET && thermobc == BC_DIRICHLET)
+  else if(mbcbot == DirichletType && thermobc == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -487,7 +479,7 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
   kstart = grid->kstart;
 
   // the surface value is known, calculate the flux and gradient
-  if(bcbot == BC_DIRICHLET)
+  if(bcbot == DirichletType)
   {
     // first calculate the surface value
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -505,7 +497,7 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
     grid->boundary_cyclic2d(vfluxbot);
   }
   // the flux is known, calculate the surface value and gradient
-  else if(bcbot == BC_USTAR)
+  else if(bcbot == UstarType)
   {
     // first redistribute ustar over the two flux components
     double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
@@ -583,7 +575,7 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
   kstart = grid->kstart;
 
   // the surface value is known, calculate the flux and gradient
-  if(bcbot == BC_DIRICHLET)
+  if(bcbot == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -598,7 +590,7 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
   }
-  else if(bcbot == BC_FLUX)
+  else if(bcbot == FluxType)
   {
     // the flux is known, calculate the surface value and gradient
     for(int j=0; j<grid->jcells; ++j)
