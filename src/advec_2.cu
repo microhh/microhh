@@ -25,6 +25,7 @@
 #include "fields.h"
 #include "tools.h"
 #include "constants.h"
+#include "tools.h"
 
 __device__ double interp2(double a, double b)
 {
@@ -248,6 +249,7 @@ void cadvec_2::exec()
                                           dxi, dyi, grid->icellsp, grid->ijcellsp,
                                           grid->istart, grid->jstart, grid->kstart,
                                           grid->iend,   grid->jend, grid->kend);
+  cudaCheckError(); 
   
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     advec_2_advecs<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], 
@@ -257,6 +259,7 @@ void cadvec_2::exec()
                                           grid->icellsp, grid->ijcellsp,
                                           grid->istart, grid->jstart, grid->kstart,
                                           grid->iend,   grid->jend, grid->kend);
+  cudaCheckError(); 
 }
 #endif
 
@@ -283,6 +286,7 @@ double cadvec_2::calccfl(double * u, double * v, double * w, double * dzi, doubl
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart,  grid->jstart, grid->kstart,
                                          grid->iend,    grid->jend,   grid->kend);
+  cudaCheckError(); 
 
   cfl = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
   grid->getmax(&cfl); 

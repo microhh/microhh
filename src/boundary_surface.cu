@@ -30,6 +30,7 @@
 #include "thermo.h"
 #include "model.h"
 #include "master.h"
+#include "tools.h"
 
 #define NO_VELOCITY 0.
 #define NO_OFFSET 0.
@@ -448,11 +449,11 @@ int cboundary_surface::prepareDevice()
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
-  cudaMalloc(&obuk_g,  nmemsize2d);
-  cudaMalloc(&ustar_g, nmemsize2d);
+  cudaSafeCall(cudaMalloc(&obuk_g,  nmemsize2d));
+  cudaSafeCall(cudaMalloc(&ustar_g, nmemsize2d));
 
-  cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice);
-  cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk, imemsize, imemsize, grid->jcells,   cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
 
   return 0;
 }
@@ -463,8 +464,8 @@ int cboundary_surface::forwardDevice()
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
-  cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk,  imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice);
-  cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice);
+  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk,  imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
 
   return 0;
 }
@@ -475,16 +476,16 @@ int cboundary_surface::backwardDevice()
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
-  cudaMemcpy2D(obuk,  imemsize, &obuk_g[grid->memoffset],  imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost);
-  cudaMemcpy2D(ustar, imemsize, &ustar_g[grid->memoffset], imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost);
+  cudaSafeCall(cudaMemcpy2D(obuk,  imemsize, &obuk_g[grid->memoffset],  imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy2D(ustar, imemsize, &ustar_g[grid->memoffset], imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
 
   return 0;
 }
 
 int cboundary_surface::clearDevice()
 {
-  cudaFree(obuk_g);
-  cudaFree(ustar_g);
+  cudaSafeCall(cudaFree(obuk_g ));
+  cudaSafeCall(cudaFree(ustar_g));
 
   return 0;
 }
@@ -516,6 +517,8 @@ int cboundary_surface::bcvalues()
                                                 &fields->u->databot_g[offs], &fields->v->databot_g[offs],
                                                 grid->istart, grid->jstart, grid->kstart,
                                                 grid->iend,   grid->jend,   grid->icellsp, grid->ijcellsp);
+  cudaCheckError();
+
   // 2D cyclic boundaries on dutot  
   grid->boundary_cyclic2d_g(&fields->sd["tmp2"]->data_g[offs]);
 
@@ -526,6 +529,7 @@ int cboundary_surface::bcvalues()
     boundary_surface_stability_neutral<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
                                                   &fields->sd["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
                                                   grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
+    cudaCheckError();
   }
   else
   {
@@ -537,6 +541,7 @@ int cboundary_surface::bcvalues()
                                                   &fields->sd["tmp1"]->data_g[offs], &fields->sd["tmp1"]->databot_g[offs], &fields->sd["tmp1"]->datafluxbot_g[offs],
                                                   &fields->sd["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
                                                   grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
+    cudaCheckError();
   }
 
   // Calculate surface momentum fluxes, excluding ghost cells
@@ -546,6 +551,7 @@ int cboundary_surface::bcvalues()
                                                      &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0m,
                                                      grid->istart, grid->jstart, grid->kstart,
                                                      grid->iend,   grid->jend,   grid->icellsp, grid->ijcellsp, mbcbot);
+  cudaCheckError();
 
   // 2D cyclic boundaries on the surface fluxes  
   grid->boundary_cyclic2d_g(&fields->u->datafluxbot_g[offs]);
@@ -556,16 +562,16 @@ int cboundary_surface::bcvalues()
                                                        &fields->u->data_g[offs],        &fields->v->data_g[offs],
                                                        &fields->u->databot_g[offs],     &fields->v->databot_g[offs],
                                                        grid->z[grid->kstart], grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp);  
+  cudaCheckError();
 
   // Calculate scalar fluxes, gradients and/or values, including ghost cells
   for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-  {
     boundary_surface_surfs<<<gridGPU2, blockGPU2>>>(&it->second->datafluxbot_g[offs], &it->second->datagradbot_g[offs],
                                                     &it->second->databot_g[offs],     &it->second->data_g[offs],
                                                     &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0h,            
                                                     grid->icells, grid->jcells, grid->kstart,
                                                     grid->icellsp, grid->ijcellsp, sbc[it->first]->bcbot);
-  }
+  cudaCheckError();
 
   return 0;
 }

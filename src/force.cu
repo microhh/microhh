@@ -26,6 +26,7 @@
 #include "fields.h"
 #include "fd.h"
 #include "constants.h"
+#include "tools.h"
 
 __global__ void force_flux_step1(double * const __restrict__ usum, double * const __restrict__ utsum,
                                  const double * const __restrict__ u, const double * const __restrict__ ut,
@@ -175,26 +176,26 @@ int cforce::prepareDevice()
 
   if(swlspres == "geo")
   {
-    cudaMalloc(&ug_g, nmemsize);
-    cudaMalloc(&vg_g, nmemsize);
+    cudaSafeCall(cudaMalloc(&ug_g, nmemsize));
+    cudaSafeCall(cudaMalloc(&vg_g, nmemsize));
 
-    cudaMemcpy(ug_g, ug, nmemsize, cudaMemcpyHostToDevice);
-    cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice);
+    cudaSafeCall(cudaMemcpy(ug_g, ug, nmemsize, cudaMemcpyHostToDevice));
+    cudaSafeCall(cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice));
   }
 
   if(swls == "1")
   {
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
     {
-      cudaMalloc(&lsprofs_g[*it], nmemsize);
-      cudaMemcpy(lsprofs_g[*it], lsprofs[*it], nmemsize, cudaMemcpyHostToDevice);
+      cudaSafeCall(cudaMalloc(&lsprofs_g[*it], nmemsize));
+      cudaSafeCall(cudaMemcpy(lsprofs_g[*it], lsprofs[*it], nmemsize, cudaMemcpyHostToDevice));
     }
   }
 
   if(swwls == "1")
   {
-    cudaMalloc(&wls_g, nmemsize);
-    cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice);
+    cudaSafeCall(cudaMalloc(&wls_g, nmemsize));
+    cudaSafeCall(cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice));
   }
 
   if(swtimedep == "1")
@@ -202,8 +203,8 @@ int cforce::prepareDevice()
     int nmemsize2 = grid->kmax*timedeptime.size()*sizeof(double);
     for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     {
-      cudaMalloc(&timedepdata_g[it->first], nmemsize2);
-      cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice);
+      cudaSafeCall(cudaMalloc(&timedepdata_g[it->first], nmemsize2));
+      cudaSafeCall(cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice));
     }
   }
 
@@ -214,23 +215,23 @@ int cforce::clearDevice()
 {
   if(swlspres == "geo")
   {
-    cudaFree(ug_g);
-    cudaFree(vg_g);
+    cudaSafeCall(cudaFree(ug_g));
+    cudaSafeCall(cudaFree(vg_g));
   }
 
   if(swls == "1")
   {
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-      cudaFree(lsprofs_g[*it]);
+      cudaSafeCall(cudaFree(lsprofs_g[*it]));
   }
 
   if(swwls == "1")
-    cudaFree(wls_g);
+    cudaSafeCall(cudaFree(wls_g));
 
   if(swtimedep == "1")
   {
     for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
-      cudaFree(timedepdata_g[it->first]);
+      cudaSafeCall(cudaFree(timedepdata_g[it->first]));
   }
 
   return 0; 
@@ -257,6 +258,7 @@ int cforce::exec(double dt)
                                             grid->icellsp, grid->ijcellsp,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
 
     double uavg  = grid->getsum_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp3"]->data_g); 
     double utavg = grid->getsum_g(&fields->a["tmp2"]->data_g[offs], fields->a["tmp3"]->data_g); 
@@ -271,41 +273,54 @@ int cforce::exec(double dt)
                                             grid->icellsp, grid->ijcellsp,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
   }
   else if(swlspres == "geo")
   {
     if(grid->swspatialorder == "2")
+    {
       force_coriolis_2nd<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs],
                                                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
                                                 ug_g, vg_g, fc, grid->utrans, grid->vtrans, 
                                                 grid->icellsp, grid->ijcellsp,
                                                 grid->istart,  grid->jstart, grid->kstart,
                                                 grid->iend,    grid->jend,   grid->kend);
+      cudaCheckError();
+    }
     else if(grid->swspatialorder == "4")
+    {
       force_coriolis_4th<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs],
                                                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
                                                 ug_g, vg_g, fc, grid->utrans, grid->vtrans, 
                                                 grid->icellsp, grid->ijcellsp,
                                                 grid->istart,  grid->jstart, grid->kstart,
                                                 grid->iend,    grid->jend,   grid->kend);
+      cudaCheckError();
+    }
   }
 
   if(swls == "1")
   {
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
+    {
       force_lssource<<<gridGPU, blockGPU>>>(&fields->st[*it]->data_g[offs], lsprofs_g[*it],
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend,
                                             grid->icellsp, grid->ijcellsp);
+      cudaCheckError();
+    }
   }
 
   if(swwls == "1")
   {
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    {
       force_advecwls_2nd<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], fields->s[it->first]->datamean_g, wls_g, grid->dzhi_g,
                                                 grid->istart,  grid->jstart, grid->kstart,
                                                 grid->iend,    grid->jend,   grid->kend,
                                                 grid->icellsp, grid->ijcellsp);
+      cudaCheckError();
+    }
   }
 
   return 0;
@@ -325,7 +340,10 @@ int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
 
     // update the profile
     if(it2 != timedepdata.end())
+    {
       force_updatetimedepprof<<<gridk, blockk>>>(lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
+      cudaCheckError();
+    }
   }
 
   return 0;
