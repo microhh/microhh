@@ -112,6 +112,10 @@ Fields::~Fields()
   for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
     delete it->second;
 
+  // deallocate the tmp fields
+  for(fieldmap::iterator it=atmp.begin(); it!=atmp.end(); ++it)
+    delete it->second;
+
   // delete the arrays
   delete[] rhoref;
   delete[] rhorefh;

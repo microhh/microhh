@@ -452,6 +452,24 @@ int Fields::clearDevice()
   cudaSafeCall(cudaFree(rhoref_g));
   cudaSafeCall(cudaFree(rhorefh_g));
 
+  cudaSafeCall(cudaFree(atmp["tmp1"]->data_g));
+  cudaSafeCall(cudaFree(atmp["tmp1"]->databot_g));
+  cudaSafeCall(cudaFree(atmp["tmp1"]->datatop_g));
+  cudaSafeCall(cudaFree(atmp["tmp1"]->datagradbot_g));
+  cudaSafeCall(cudaFree(atmp["tmp1"]->datagradtop_g));
+  cudaSafeCall(cudaFree(atmp["tmp1"]->datafluxbot_g));
+  cudaSafeCall(cudaFree(atmp["tmp1"]->datafluxtop_g));
+  cudaSafeCall(cudaFree(atmp["tmp1"]->datamean_g));
+
+  cudaSafeCall(cudaFree(atmp["tmp2"]->data_g));
+  cudaSafeCall(cudaFree(atmp["tmp2"]->databot_g));
+  cudaSafeCall(cudaFree(atmp["tmp2"]->datatop_g));
+  cudaSafeCall(cudaFree(atmp["tmp2"]->datagradbot_g));
+  cudaSafeCall(cudaFree(atmp["tmp2"]->datagradtop_g));
+  cudaSafeCall(cudaFree(atmp["tmp2"]->datafluxbot_g));
+  cudaSafeCall(cudaFree(atmp["tmp2"]->datafluxtop_g));
+  cudaSafeCall(cudaFree(atmp["tmp2"]->datamean_g));
+
   return 0;
 }
 
