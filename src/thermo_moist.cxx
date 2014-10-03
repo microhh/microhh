@@ -258,7 +258,7 @@ void ThermoMoist::getMask(Field3d *mfield, Field3d *mfieldh, mask *m)
 {
   if(m->name == "ql")
   {
-    calcqlfield(fields->atmp["tmp1"]->data, fields->atmp["s"]->data, fields->sp["qt"]->data, pref);
+    calcqlfield(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref);
     calcmaskql(mfield->data, mfieldh->data, mfieldh->databot,
                stats->nmask, stats->nmaskh, &stats->nmaskbot,
                fields->atmp["tmp1"]->data);
