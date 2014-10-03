@@ -40,8 +40,8 @@ class Master
     void start(int, char**);
     void init(Input *);
 
-    double gettime();
-    int waitall();
+    double getTime();
+    int waitAll();
 
     // overload the broadcast function
     int broadcast(char *, int);
@@ -91,8 +91,8 @@ class Master
     bool initialized;
     bool allocated;
 
-#ifdef PARALLEL
-    int checkerror(int);
-#endif
+    #ifdef PARALLEL
+    int checkError(int);
+    #endif
 };
 #endif
