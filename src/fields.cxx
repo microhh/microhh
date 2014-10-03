@@ -415,12 +415,12 @@ int Fields::execstats(mask *m)
                         m->profs["uw"].data, s["tmp2"]->data, uloc,
                         sd["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calDiff_2nd(u->data, w->data, s["evisc"]->data,
+      stats->calcdiff_2nd(u->data, w->data, s["evisc"]->data,
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
                           sd["tmp1"]->data, stats->nmaskh);
     else
-      stats->calDiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
+      stats->calcdiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
                           sd["tmp1"]->data, stats->nmaskh);
 
   }
@@ -430,7 +430,7 @@ int Fields::execstats(mask *m)
                         sd["tmp1"]->data, stats->nmaskh);
     stats->calcflux_4th(u->data, w->data, m->profs["uw"].data, sd["tmp2"]->data, uloc,
                         sd["tmp1"]->data, stats->nmaskh);
-    stats->calDiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
+    stats->calcdiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
                         sd["tmp1"]->data, stats->nmaskh);
   }
 
@@ -457,12 +457,12 @@ int Fields::execstats(mask *m)
                         m->profs["vw"].data, s["tmp2"]->data, vloc,
                         sd["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calDiff_2nd(v->data, w->data, s["evisc"]->data,
+      stats->calcdiff_2nd(v->data, w->data, s["evisc"]->data,
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
                           sd["tmp1"]->data, stats->nmaskh);
     else
-      stats->calDiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
+      stats->calcdiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
                           sd["tmp1"]->data, stats->nmaskh);
 
   }
@@ -472,7 +472,7 @@ int Fields::execstats(mask *m)
                         sd["tmp1"]->data, stats->nmaskh);
     stats->calcflux_4th(v->data, w->data, m->profs["vw"].data, s["tmp2"]->data, vloc,
                         sd["tmp1"]->data, stats->nmaskh);
-    stats->calDiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+    stats->calcdiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
                         sd["tmp1"]->data, stats->nmaskh);
   }
 
@@ -497,12 +497,12 @@ int Fields::execstats(mask *m)
                           m->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
                           sd["tmp4"]->data, stats->nmaskh);
       if(model->diff->getname() == "les2s")
-        stats->calDiff_2nd(it->second->data, w->data, sd["evisc"]->data,
+        stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
                             sd["tmp4"]->data, stats->nmaskh);
       else
-        stats->calDiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
+        stats->calcdiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
                             sd["tmp4"]->data, stats->nmaskh);
     }
     else if(grid->swspatialorder == "4")
@@ -511,7 +511,7 @@ int Fields::execstats(mask *m)
                           sd["tmp4"]->data, stats->nmaskh);
       stats->calcflux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
                           sd["tmp4"]->data, stats->nmaskh);
-      stats->calDiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+      stats->calcdiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
                           sd["tmp4"]->data, stats->nmaskh);
     }
   }

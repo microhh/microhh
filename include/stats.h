@@ -103,9 +103,9 @@ class Stats
 
     int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
 
-    int calDiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
-    int calDiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
-    int calDiff_4th(double *, double *, double *, double, const int[3], double *, int *);
+    int calcdiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
+    int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
+    int calcdiff_4th(double *, double *, double *, double, const int[3], double *, int *);
 
     int calcgrad_2nd(double *, double *, double *, const int[3], double *, int *);
     int calcgrad_4th(double *, double *, double *, const int[3], double *, int *);

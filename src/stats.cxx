@@ -961,7 +961,7 @@ int Stats::calcgrad_4th(double * restrict data, double * restrict prof, double *
   return 0;
 }
 
-int Stats::calDiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
+int Stats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -997,7 +997,7 @@ int Stats::calDiff_4th(double * restrict data, double * restrict prof, double * 
   return 0;
 }
 
-int Stats::calDiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
+int Stats::calcdiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -1031,7 +1031,7 @@ int Stats::calDiff_2nd(double * restrict data, double * restrict prof, double * 
 }
 
 
-int Stats::calDiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
+int Stats::calcdiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
                          double * restrict prof, double * restrict dzhi,
                          double * restrict fluxbot, double * restrict fluxtop, double tPr, const int loc[3],
                          double * restrict mask, int * restrict nmask)

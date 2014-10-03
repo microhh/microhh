@@ -458,21 +458,21 @@ void ThermoMoist::execStats(mask *m)
     if(model->diff->getname() == "les2s")
     {
       Diff_les2s *diffptr = static_cast<Diff_les2s *>(model->diff);
-      stats->calDiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
+      stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
                           fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
                           fields->s["tmp4"]->data, stats->nmaskh);
     }
     else
     {
-      stats->calDiff_2nd(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->s["th"]->visc, sloc,
+      stats->calcdiff_2nd(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->s["th"]->visc, sloc,
                           fields->s["tmp4"]->data, stats->nmaskh);
     }
   }
   else if(grid->swspatialorder == "4")
   {
     // take the diffusivity of temperature for that of buoyancy
-    stats->calDiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
+    stats->calcdiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
                         fields->s["tmp4"]->data, stats->nmaskh);
   }
 
