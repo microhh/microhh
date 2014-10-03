@@ -467,8 +467,8 @@ double Pres_2::calcdivergence(double * restrict u, double * restrict v, double *
                                                grid->iend,    grid->jend,   grid->kend);
   cudaCheckError();
 
-  divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
-  grid->getmax(&divmax);
+  divmax = grid->getMax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
+  grid->getMax(&divmax);
 
   return divmax;
 }

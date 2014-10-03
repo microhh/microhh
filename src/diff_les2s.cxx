@@ -276,7 +276,7 @@ int Diff_les2s::evisc(double * restrict evisc,
       }
   }
 
-  grid->boundary_cyclic(evisc);
+  grid->boundaryCyclic(evisc);
 
   return 0;
 }
@@ -322,7 +322,7 @@ int Diff_les2s::evisc_neutral(double * restrict evisc,
       }
   }
 
-  grid->boundary_cyclic(evisc);
+  grid->boundaryCyclic(evisc);
 
   return 0;
 }
@@ -647,7 +647,7 @@ double Diff_les2s::calcdnmul(double * restrict evisc, double * restrict dzi, dou
         dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
       }
 
-  grid->getmax(&dnmul);
+  grid->getMax(&dnmul);
 
   return dnmul;
 }

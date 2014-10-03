@@ -105,7 +105,7 @@ double Advec_4::calccfl(double * restrict u, double * restrict v, double * restr
                           + std::abs(ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*dzi[k] );
       }
 
-  grid->getmax(&cfl);
+  grid->getMax(&cfl);
 
   cfl = cfl*dt;
 

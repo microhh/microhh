@@ -207,7 +207,7 @@ void Boundary_surface::save(int iotime)
 
   std::sprintf(filename, "obuk.%07d", iotime);
   master->printMessage("Saving \"%s\" ... ", filename);
-  if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
+  if(grid->savexySlice(obuk, fields->s["tmp1"]->data, filename))
   {
     master->printMessage("FAILED\n");
     throw 1;
@@ -222,7 +222,7 @@ void Boundary_surface::load(int iotime)
 
   std::sprintf(filename, "obuk.%07d", iotime);
   master->printMessage("Loading \"%s\" ... ", filename);
-  if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
+  if(grid->loadxySlice(obuk, fields->s["tmp1"]->data, filename))
   {
     master->printMessage("FAILED\n");
     throw 1;
@@ -230,7 +230,7 @@ void Boundary_surface::load(int iotime)
   else
     master->printMessage("OK\n");
 
-  grid->boundary_cyclic2d(obuk);
+  grid->boundaryCyclic2d(obuk);
 }
 
 void Boundary_surface::setvalues()
@@ -342,7 +342,7 @@ int Boundary_surface::stability(double * restrict ustar, double * restrict obuk,
       dutot[ij] = std::max(std::pow(du2, 0.5), minval);
     }
 
-  grid->boundary_cyclic2d(dutot);
+  grid->boundaryCyclic2d(dutot);
 
   double db;
 
@@ -423,7 +423,7 @@ int Boundary_surface::stability_neutral(double * restrict ustar, double * restri
       dutot[ij] = std::max(std::pow(du2, 0.5), minval);
     }
 
-  grid->boundary_cyclic2d(dutot);
+  grid->boundaryCyclic2d(dutot);
 
   // set the Obukhov length to a very large negative number
   // case 1: fixed buoyancy flux and fixed ustar
@@ -493,8 +493,8 @@ int Boundary_surface::surfm(double * restrict ustar, double * restrict obuk,
         vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
       }
 
-    grid->boundary_cyclic2d(ufluxbot);
-    grid->boundary_cyclic2d(vfluxbot);
+    grid->boundaryCyclic2d(ufluxbot);
+    grid->boundaryCyclic2d(vfluxbot);
   }
   // the flux is known, calculate the surface value and gradient
   else if(bcbot == UstarType)
@@ -522,8 +522,8 @@ int Boundary_surface::surfm(double * restrict ustar, double * restrict obuk,
         vfluxbot[ij] = -sign(v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
       }
 
-    grid->boundary_cyclic2d(ufluxbot);
-    grid->boundary_cyclic2d(vfluxbot);
+    grid->boundaryCyclic2d(ufluxbot);
+    grid->boundaryCyclic2d(vfluxbot);
 
     // CvH: I think that the problem is not closed, since both the fluxes and the surface values
     // of u and v are unknown. You have to assume a no slip in order to get the fluxes and therefore
@@ -542,8 +542,8 @@ int Boundary_surface::surfm(double * restrict ustar, double * restrict obuk,
         vbot[ij] = 0.;// vfluxbot[ij] / (0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]))) + v[ijk];
       }
 
-    grid->boundary_cyclic2d(ubot);
-    grid->boundary_cyclic2d(vbot);
+    grid->boundaryCyclic2d(ubot);
+    grid->boundaryCyclic2d(vbot);
     */
   }
 

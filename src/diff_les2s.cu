@@ -757,7 +757,7 @@ unsigned long Diff_les2s::gettimelim(unsigned long idt, double dt)
   cudaCheckError();
 
   // Get maximum from tmp1 field
-  dnmul = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  dnmul = grid->getMax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
   dnmul = std::max(constants::dsmall, dnmul);
   idtlim = idt * dnmax/(dnmul*dt);
 
@@ -790,7 +790,7 @@ double Diff_les2s::getdn(double dt)
   cudaCheckError();
 
   // Get maximum from tmp1 field
-  dnmul = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  dnmul = grid->getMax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
 
   return dnmul*dt;
 }

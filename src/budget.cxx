@@ -148,8 +148,8 @@ int Budget::execstats(mask *m)
     return 0;
 
   // calculate the mean of the fields
-  grid->calcmean(umodel, fields->u->data, grid->kcells);
-  grid->calcmean(vmodel, fields->v->data, grid->kcells);
+  grid->calcMean(umodel, fields->u->data, grid->kcells);
+  grid->calcMean(vmodel, fields->v->data, grid->kcells);
 
   if(grid->swspatialorder == "4")
   {
@@ -290,8 +290,8 @@ int Budget::calctkebudget(double * restrict u, double * restrict v, double * res
   const int wxloc[3] = {1,0,1};
   const int wyloc[3] = {0,1,1};
 
-  grid->interpolate_4th(wx, w, wloc, wxloc);
-  grid->interpolate_4th(wy, w, wloc, wyloc);
+  grid->interpolate4th(wx, w, wloc, wxloc);
+  grid->interpolate4th(wy, w, wloc, wyloc);
 
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;
@@ -1117,8 +1117,8 @@ int Budget::calctkebudget_buoy(double * restrict w, double * restrict b,
     tke_buoy[k] /= n;
   }
 
-  grid->getprof(w2_buoy , grid->kcells);
-  grid->getprof(tke_buoy, grid->kcells);
+  grid->getProf(w2_buoy , grid->kcells);
+  grid->getProf(tke_buoy, grid->kcells);
 
   return 0;
 }

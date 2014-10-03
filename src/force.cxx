@@ -306,8 +306,8 @@ int Force::flux(double * const restrict ut, const double * const restrict u,
         utavg = utavg + ut[ijk]*dz[k];
       }
 
-  grid->getsum(&uavg);
-  grid->getsum(&utavg);
+  grid->getSum(&uavg);
+  grid->getSum(&utavg);
 
   uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
   utavg = utavg / (grid->itot*grid->jtot*grid->zsize);

@@ -223,7 +223,7 @@ int Fields::exec()
   if(calcprofs)
   {
     for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-      grid->calcmean(it->second->datamean, it->second->data, grid->kcells);
+      grid->calcMean(it->second->datamean, it->second->data, grid->kcells);
   }
 
   return 0;
@@ -292,9 +292,9 @@ int Fields::calcmaskwplus(double * restrict mask, double * restrict maskh, doubl
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundary_cyclic(mask);
-  grid->boundary_cyclic(maskh);
-  grid->boundary_cyclic2d(maskbot);
+  grid->boundaryCyclic(mask);
+  grid->boundaryCyclic(maskh);
+  grid->boundaryCyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
@@ -354,9 +354,9 @@ int Fields::calcmaskwmin(double * restrict mask, double * restrict maskh, double
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundary_cyclic(mask);
-  grid->boundary_cyclic(maskh);
-  grid->boundary_cyclic2d(maskbot);
+  grid->boundaryCyclic(mask);
+  grid->boundaryCyclic(maskh);
+  grid->boundaryCyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
@@ -393,7 +393,7 @@ int Fields::execstats(mask *m)
 
   // calculate the stats on the u location
   // interpolate the mask horizontally onto the u coordinate
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
+  grid->interpolate2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
   stats->calcmean(m->profs["u"].data, u->data, grid->utrans, uloc, sd["tmp1"]->data, stats->nmask);
   stats->calcmean(umodel            , u->data, NO_OFFSET   , uloc, sd["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
@@ -406,7 +406,7 @@ int Fields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, uwloc);
+  grid->interpolate2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, uwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
@@ -435,7 +435,7 @@ int Fields::execstats(mask *m)
   }
 
   // calculate the stats on the v location
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
+  grid->interpolate2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
   stats->calcmean(m->profs["v"].data, v->data, grid->vtrans, vloc, sd["tmp1"]->data, stats->nmask);
   stats->calcmean(vmodel            , v->data, NO_OFFSET   , vloc, sd["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
@@ -448,7 +448,7 @@ int Fields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, vwloc);
+  grid->interpolate2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, vwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
@@ -773,7 +773,7 @@ void Fields::load(int n)
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     master->printMessage("Loading \"%s\" ... ", filename);
-    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
+    if(grid->loadField3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
     {
       master->printMessage("FAILED\n");
       ++nerror;
@@ -851,7 +851,7 @@ void Fields::save(int n)
     master->printMessage("Saving \"%s\" ... ", filename);
 
     // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
-    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
+    if(grid->saveField3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
     {
       master->printMessage("FAILED\n");
       ++nerror;
@@ -910,7 +910,7 @@ double Fields::calcmass(double * restrict s, double * restrict dz)
         mass += s[ijk]*dz[k];
       }
 
-  grid->getsum(&mass);
+  grid->getSum(&mass);
 
   mass /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -939,7 +939,7 @@ double Fields::calcmom_2nd(double * restrict u, double * restrict v, double * re
         momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
       }
 
-  grid->getsum(&momentum);
+  grid->getSum(&momentum);
 
   momentum /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -969,7 +969,7 @@ double Fields::calctke_2nd(double * restrict u, double * restrict v, double * re
                + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
       }
 
-  grid->getsum(&tke);
+  grid->getSum(&tke);
 
   tke /= (grid->itot*grid->jtot*grid->zsize);
   tke *= 0.5;

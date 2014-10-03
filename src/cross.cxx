@@ -212,7 +212,7 @@ int Cross::crosssimple(double * restrict data, double * restrict tmp, std::strin
     for(std::vector<int>::iterator it=jxzh.begin(); it<jxzh.end(); ++it)
     {
       std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->iotime);
-      nerror += checkSave(grid->savexzslice(data, tmp, filename, *it), filename);    
+      nerror += checkSave(grid->savexzSlice(data, tmp, filename, *it), filename);    
     }
   }
   else
@@ -220,7 +220,7 @@ int Cross::crosssimple(double * restrict data, double * restrict tmp, std::strin
     for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
     {
       std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->iotime);
-      nerror += checkSave(grid->savexzslice(data, tmp, filename, *it), filename);    
+      nerror += checkSave(grid->savexzSlice(data, tmp, filename, *it), filename);    
     }
   }
 
@@ -230,7 +230,7 @@ int Cross::crosssimple(double * restrict data, double * restrict tmp, std::strin
     for(std::vector<int>::iterator it=kxyh.begin(); it<kxyh.end(); ++it)
     {
       std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->iotime);
-      nerror += checkSave(grid->savexyslice(data, tmp, filename, *it), filename);
+      nerror += checkSave(grid->savexySlice(data, tmp, filename, *it), filename);
     }
   }
   else
@@ -238,7 +238,7 @@ int Cross::crosssimple(double * restrict data, double * restrict tmp, std::strin
     for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
     {
       std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->iotime);
-      nerror += checkSave(grid->savexyslice(data, tmp, filename, *it), filename);
+      nerror += checkSave(grid->savexySlice(data, tmp, filename, *it), filename);
     }
   }
 
@@ -251,7 +251,7 @@ int Cross::crossplane(double * restrict data, double * restrict tmp, std::string
   char filename[256];
 
   std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", model->timeloop->iotime);
-  nerror += checkSave(grid->savexyslice(data, tmp, filename),filename);
+  nerror += checkSave(grid->savexySlice(data, tmp, filename),filename);
 
   return nerror;
 } 
@@ -359,14 +359,14 @@ int Cross::crosslngrad(double * restrict a, double * restrict lngrad, double * r
   for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->iotime);
-    nerror += checkSave(grid->savexzslice(lngrad, tmp, filename, *it),filename);
+    nerror += checkSave(grid->savexzSlice(lngrad, tmp, filename, *it),filename);
   }
 
   // loop over the index arrays to save all xy cross sections
   for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->iotime);
-    nerror += checkSave(grid->savexyslice(lngrad, tmp, filename, *it),filename);
+    nerror += checkSave(grid->savexySlice(lngrad, tmp, filename, *it),filename);
   }
 
   return nerror;
@@ -402,7 +402,7 @@ int Cross::crosspath(double * restrict data, double * restrict tmp, double * res
       }
 
   std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", model->timeloop->iotime);
-  nerror += checkSave(grid->savexyslice(&tmp[kstart*kk], tmp1, filename),filename);
+  nerror += checkSave(grid->savexySlice(&tmp[kstart*kk], tmp1, filename),filename);
 
   return nerror;
 }

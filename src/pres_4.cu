@@ -660,8 +660,8 @@ double Pres_4::check()
                                                grid->iend,    grid->jend,   grid->kend);
   cudaCheckError();
 
-  double divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
-  grid->getmax(&divmax);
+  double divmax = grid->getMax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
+  grid->getMax(&divmax);
 
   return divmax;
 }
