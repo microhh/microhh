@@ -102,6 +102,9 @@ class cfields
     void forward3DFieldDevice (double *, double *, OffsetType);
     void forward2DFieldDevice (double *, double *, OffsetType);
     void forward1DFieldDevice (double *, double *, int);
+    void backward3DFieldDevice(double *, double *, OffsetType);
+    void backward2DFieldDevice(double *, double *, OffsetType);
+    void backward1DFieldDevice(double *, double *, int);
     int backwardDevice();
     int clearDevice();
 

@@ -271,6 +271,43 @@ int cfields::forwardDevice()
   return 0;
 }
 
+int cfields::backwardDevice()
+{
+  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  {
+    backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
+    backward2DFieldDevice(it->second->databot,     it->second->databot_g,     Offset);
+    backward2DFieldDevice(it->second->datatop,     it->second->datatop_g,     Offset);
+    backward2DFieldDevice(it->second->datagradbot, it->second->datagradbot_g, Offset);
+    backward2DFieldDevice(it->second->datagradtop, it->second->datagradtop_g, Offset);
+    backward2DFieldDevice(it->second->datafluxbot, it->second->datafluxbot_g, Offset);
+    backward2DFieldDevice(it->second->datafluxtop, it->second->datafluxtop_g, Offset);
+    backward1DFieldDevice(it->second->datamean,    it->second->datamean_g, grid->kcells);
+  }
+
+  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+  {
+    backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
+    backward2DFieldDevice(it->second->databot,     it->second->databot_g,     Offset);
+    backward2DFieldDevice(it->second->datatop,     it->second->datatop_g,     Offset);
+    backward2DFieldDevice(it->second->datagradbot, it->second->datagradbot_g, Offset);
+    backward2DFieldDevice(it->second->datagradtop, it->second->datagradtop_g, Offset);
+    backward2DFieldDevice(it->second->datafluxbot, it->second->datafluxbot_g, Offset);
+    backward2DFieldDevice(it->second->datafluxtop, it->second->datafluxtop_g, Offset);
+    backward1DFieldDevice(it->second->datamean,    it->second->datamean_g, grid->kcells);
+  }
+
+  for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
+    backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
+
+  backward1DFieldDevice(rhoref,  rhoref_g,  grid->kcells);
+  backward1DFieldDevice(rhorefh, rhorefh_g, grid->kcells);
+
+  //master->printMessage("Synchronized CPU with GPU (backward)\n");
+
+  return 0;
+}
+
 void cfields::forward3DFieldDevice(double * field_g, double * field, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
@@ -278,7 +315,7 @@ void cfields::forward3DFieldDevice(double * field_g, double * field, OffsetType 
 
   if(sw == Offset)
     cudaSafeCall(cudaMemcpy2D(&field_g[grid->memoffset], imemsizep,  field, imemsize, imemsize, grid->jcells*grid->kcells, cudaMemcpyHostToDevice));
-  else
+  else if(sw == NoOffset)
     cudaSafeCall(cudaMemcpy(field_g, field, grid->ncells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
@@ -289,7 +326,7 @@ void cfields::forward2DFieldDevice(double * field_g, double * field, OffsetType 
  
   if(sw == Offset)
     cudaSafeCall(cudaMemcpy2D(&field_g[grid->memoffset], imemsizep,  field, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
-  else
+  else if(sw == NoOffset)
     cudaSafeCall(cudaMemcpy(field_g, field, grid->ijcells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
@@ -298,47 +335,31 @@ void cfields::forward1DFieldDevice(double * field_g, double * field, int ncells)
   cudaSafeCall(cudaMemcpy(field_g, field, ncells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
-int cfields::backwardDevice()
+void cfields::backward3DFieldDevice(double * field, double * field_g, OffsetType sw)
 {
-  const int jcells     = grid->jcells;
-  const int jkcells    = grid->jcells * grid->kcells;
-  const int nmemsize1d = grid->kcells*sizeof(double);
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-  {
-    cudaSafeCall(cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->databot,     imemsize, &it->second->databot_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datatop,     imemsize, &it->second->datatop_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datagradbot, imemsize, &it->second->datagradbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datagradtop, imemsize, &it->second->datagradtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datafluxbot, imemsize, &it->second->datafluxbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datafluxtop, imemsize, &it->second->datafluxtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy(it->second->datamean, it->second->datamean_g, nmemsize1d, cudaMemcpyDeviceToHost));
-  }
+  if(sw == Offset)
+    cudaSafeCall(cudaMemcpy2D(field, imemsize, &field_g[grid->memoffset], imemsizep, imemsize, grid->jcells*grid->kcells, cudaMemcpyDeviceToHost));
+  else if(sw == NoOffset)
+    cudaSafeCall(cudaMemcpy(field, field_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToHost));
+}
 
-  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
-  {
-    cudaSafeCall(cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->databot,     imemsize, &it->second->databot_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datatop,     imemsize, &it->second->datatop_g[grid->memoffset],     imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datagradbot, imemsize, &it->second->datagradbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datagradtop, imemsize, &it->second->datagradtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datafluxbot, imemsize, &it->second->datafluxbot_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy2D(it->second->datafluxtop, imemsize, &it->second->datafluxtop_g[grid->memoffset], imemsizep, imemsize, jcells,  cudaMemcpyDeviceToHost));
-    cudaSafeCall(cudaMemcpy(it->second->datamean, it->second->datamean_g, nmemsize1d, cudaMemcpyDeviceToHost));
-  }
+void cfields::backward2DFieldDevice(double * field, double * field_g, OffsetType sw)
+{
+  const int imemsizep  = grid->icellsp * sizeof(double);
+  const int imemsize   = grid->icells  * sizeof(double);
+ 
+  if(sw == Offset)
+    cudaSafeCall(cudaMemcpy2D(field, imemsize, &field_g[grid->memoffset], imemsizep, imemsize, grid->jcells, cudaMemcpyDeviceToHost));
+  else if(sw == NoOffset)
+    cudaSafeCall(cudaMemcpy(field, field_g, grid->ijcells*sizeof(double), cudaMemcpyDeviceToHost));
+}
 
-  for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-    cudaSafeCall(cudaMemcpy2D(it->second->data,        imemsize, &it->second->data_g[grid->memoffset],        imemsizep, imemsize, jkcells, cudaMemcpyDeviceToHost));
-
-  cudaSafeCall(cudaMemcpy(rhoref,  rhoref_g,  nmemsize1d, cudaMemcpyDeviceToHost));
-  cudaSafeCall(cudaMemcpy(rhorefh, rhorefh_g, nmemsize1d, cudaMemcpyDeviceToHost));
-
-  //master->printMessage("Synchronized CPU with GPU (backward)\n");
-
-  return 0;
+void cfields::backward1DFieldDevice(double * field, double * field_g, int ncells)
+{
+  cudaSafeCall(cudaMemcpy(field, field_g, ncells*sizeof(double), cudaMemcpyDeviceToHost));
 }
 
 int cfields::clearDevice()
