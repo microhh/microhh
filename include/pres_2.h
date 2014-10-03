@@ -65,19 +65,22 @@ class Pres2 : public Pres
     cufftHandle iplanb, jplanb; 
     #endif
 
-    void pres_in(double *, 
-                 double *, double *, double *,
-                 double *, double *, double *,
-                 double *, double *, double *,
-                 double);
-    void pres_solve(double *, double *, double *,
-                    double *, double *,
-                    double *, double *, double *, double *);
-    void pres_out(double *, double *, double *,
-                  double *, double *);
-    double calcdivergence(double *, double *, double *, double *, double *, double *);
+    void input(double *, 
+               double *, double *, double *,
+               double *, double *, double *,
+               double *, double *, double *,
+               double);
+
+    void solve(double *, double *, double *,
+               double *, double *,
+               double *, double *, double *, double *);
+
+    void output(double *, double *, double *,
+                double *, double *);
 
     void tdma(double *, double *, double *, double *, 
               double *, double *);
+
+    double calcDivergence(double *, double *, double *, double *, double *, double *);
 };
 #endif

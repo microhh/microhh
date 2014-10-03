@@ -73,7 +73,7 @@ Pres4::~Pres4()
 void Pres4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
-  pres_in(fields->sd["p"]->data,
+  input(fields->sd["p"]->data,
           fields->u ->data, fields->v ->data, fields->w ->data,
           fields->ut->data, fields->vt->data, fields->wt->data, 
           grid->dzi4, dt);
@@ -96,24 +96,24 @@ void Pres4::exec(double dt)
 
   const int ns = grid->iblock*jslice*(grid->kmax+4);
 
-  pres_solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, grid->dz,
-             m1, m2, m3, m4,
-             m5, m6, m7,
-             &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
-             &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
-             bmati, bmatj,
-             jslice);
+  solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, grid->dz,
+        m1, m2, m3, m4,
+        m5, m6, m7,
+        &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
+        &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
+        bmati, bmatj,
+        jslice);
 
   // 3. Get the pressure tendencies from the pressure field.
-  pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
-           fields->sd["p"]->data, grid->dzhi4);
+  output(fields->ut->data, fields->vt->data, fields->wt->data, 
+         fields->sd["p"]->data, grid->dzhi4);
 }
 
 double Pres4::check()
 {
   double divmax = 0.;
 
-  divmax = calcdivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
+  divmax = calcDivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
 
   return divmax;
 }
@@ -220,10 +220,10 @@ void Pres4::setValues()
   m7[k] = 0.;
 }
 
-void Pres4::pres_in(double * restrict p, 
-                    double * restrict u , double * restrict v , double * restrict w ,
-                    double * restrict ut, double * restrict vt, double * restrict wt,
-                    double * restrict dzi4, double dt)
+void Pres4::input(double * restrict p, 
+                  double * restrict u , double * restrict v , double * restrict w ,
+                  double * restrict ut, double * restrict vt, double * restrict wt,
+                  double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
@@ -283,13 +283,13 @@ void Pres4::pres_in(double * restrict p,
       }
 }
 
-void Pres4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
-                       double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                       double * restrict m5, double * restrict m6, double * restrict m7,
-                       double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
-                       double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
-                       double * restrict bmati, double * restrict bmatj,
-                       const int jslice)
+void Pres4::solve(double * restrict p, double * restrict work3d, double * restrict dz,
+                  double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                  double * restrict m5, double * restrict m6, double * restrict m7,
+                  double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
+                  double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
+                  double * restrict bmati, double * restrict bmatj,
+                  const int jslice)
 {
   int jj,kk,ijk;
   int imax,jmax,kmax;
@@ -498,8 +498,8 @@ void Pres4::pres_solve(double * restrict p, double * restrict work3d, double * r
   grid->boundaryCyclic(p);
 }
 
-void Pres4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                     double * restrict p , double * restrict dzhi4)
+void Pres4::output(double * restrict ut, double * restrict vt, double * restrict wt, 
+                   double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart;
@@ -693,7 +693,7 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
       }
 }
 
-double Pres4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+double Pres4::calcDivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart,kend;

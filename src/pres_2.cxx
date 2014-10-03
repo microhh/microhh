@@ -58,20 +58,20 @@ Pres2::~Pres2()
 void Pres2::exec(double dt)
 {
   // create the input for the pressure solver
-  pres_in(fields->sd["p"]->data,
-          fields->u ->data, fields->v ->data, fields->w ->data,
-          fields->ut->data, fields->vt->data, fields->wt->data,
-          grid->dzi, fields->rhoref, fields->rhorefh,
-          dt);
+  input(fields->sd["p"]->data,
+        fields->u ->data, fields->v ->data, fields->w ->data,
+        fields->ut->data, fields->vt->data, fields->wt->data,
+        grid->dzi, fields->rhoref, fields->rhorefh,
+        dt);
 
   // solve the system
-  pres_solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data,
-             grid->dz, fields->rhoref,
-             grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data,
+        grid->dz, fields->rhoref,
+        grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   // get the pressure tendencies from the pressure field
-  pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
-           fields->sd["p"]->data, grid->dzhi);
+  output(fields->ut->data, fields->vt->data, fields->wt->data, 
+         fields->sd["p"]->data, grid->dzhi);
 }
 #endif
 
@@ -79,7 +79,7 @@ double Pres2::check()
 {
   double divmax = 0.;
 
-  divmax = calcdivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi,
+  divmax = calcDivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi,
                           fields->rhoref, fields->rhorefh);
 
   return divmax;
@@ -143,11 +143,11 @@ void Pres2::setValues()
   }
 }
 
-void Pres2::pres_in(double * restrict p, 
-                     double * restrict u , double * restrict v , double * restrict w ,
-                     double * restrict ut, double * restrict vt, double * restrict wt,
-                     double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
-                     double dt)
+void Pres2::input(double * restrict p, 
+                  double * restrict u , double * restrict v , double * restrict w ,
+                  double * restrict ut, double * restrict vt, double * restrict wt,
+                  double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
+                  double dt)
 {
   int    ijk,ii,jj,kk,ijkp,jjp,kkp;
   int    igc,jgc,kgc;
@@ -188,10 +188,10 @@ void Pres2::pres_in(double * restrict p,
       }
 }
 
-void Pres2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b,
-                         double * restrict dz, double * restrict rhoref,
-                         double * restrict fftini, double * restrict fftouti, 
-                         double * restrict fftinj, double * restrict fftoutj)
+void Pres2::solve(double * restrict p, double * restrict work3d, double * restrict b,
+                  double * restrict dz, double * restrict rhoref,
+                  double * restrict fftini, double * restrict fftouti, 
+                  double * restrict fftinj, double * restrict fftoutj)
 {
   int i,j,k,jj,kk,ijk;
   int imax,jmax,kmax;
@@ -294,8 +294,8 @@ void Pres2::pres_solve(double * restrict p, double * restrict work3d, double * r
   grid->boundaryCyclic(p);
 }
 
-void Pres2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                       double * restrict p , double * restrict dzhi)
+void Pres2::output(double * restrict ut, double * restrict vt, double * restrict wt, 
+                   double * restrict p , double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -321,7 +321,7 @@ void Pres2::pres_out(double * restrict ut, double * restrict vt, double * restri
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
 void Pres2::tdma(double * restrict a, double * restrict b, double * restrict c, 
-                   double * restrict p, double * restrict work2d, double * restrict work3d)
+                 double * restrict p, double * restrict work2d, double * restrict work3d)
                 
 {
   int i,j,k,jj,kk,ijk,ij;
@@ -390,7 +390,7 @@ void Pres2::tdma(double * restrict a, double * restrict b, double * restrict c,
 }
 
 #ifndef USECUDA
-double Pres2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
+double Pres2::calcDivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
                              double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
