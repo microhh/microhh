@@ -308,7 +308,7 @@ int Fields::backwardDevice()
   return 0;
 }
 
-void cfields::forward3DFieldDevice(double * field_g, double * field, OffsetType sw)
+void Fields::forward3DFieldDevice(double * field_g, double * field, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -319,7 +319,7 @@ void cfields::forward3DFieldDevice(double * field_g, double * field, OffsetType 
     cudaSafeCall(cudaMemcpy(field_g, field, grid->ncells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
-void cfields::forward2DFieldDevice(double * field_g, double * field, OffsetType sw)
+void Fields::forward2DFieldDevice(double * field_g, double * field, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -330,12 +330,12 @@ void cfields::forward2DFieldDevice(double * field_g, double * field, OffsetType 
     cudaSafeCall(cudaMemcpy(field_g, field, grid->ijcells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
-void cfields::forward1DFieldDevice(double * field_g, double * field, int ncells)
+void Fields::forward1DFieldDevice(double * field_g, double * field, int ncells)
 {
   cudaSafeCall(cudaMemcpy(field_g, field, ncells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
-void cfields::backward3DFieldDevice(double * field, double * field_g, OffsetType sw)
+void Fields::backward3DFieldDevice(double * field, double * field_g, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -346,7 +346,7 @@ void cfields::backward3DFieldDevice(double * field, double * field_g, OffsetType
     cudaSafeCall(cudaMemcpy(field, field_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToHost));
 }
 
-void cfields::backward2DFieldDevice(double * field, double * field_g, OffsetType sw)
+void Fields::backward2DFieldDevice(double * field, double * field_g, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -357,7 +357,7 @@ void cfields::backward2DFieldDevice(double * field, double * field_g, OffsetType
     cudaSafeCall(cudaMemcpy(field, field_g, grid->ijcells*sizeof(double), cudaMemcpyDeviceToHost));
 }
 
-void cfields::backward1DFieldDevice(double * field, double * field_g, int ncells)
+void Fields::backward1DFieldDevice(double * field, double * field_g, int ncells)
 {
   cudaSafeCall(cudaMemcpy(field, field_g, ncells*sizeof(double), cudaMemcpyDeviceToHost));
 }
