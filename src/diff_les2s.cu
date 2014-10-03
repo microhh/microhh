@@ -642,7 +642,7 @@ int Diff_les2s::execvisc()
                                                     grid->icellsp, grid->ijcellsp);  
     cudaCheckError();
 
-    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
+    grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
   // assume buoyancy calculation is needed
   else
@@ -661,7 +661,7 @@ int Diff_les2s::execvisc()
                                             grid->icellsp, grid->ijcellsp);  
     cudaCheckError();
 
-    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
+    grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
 
   return 0;

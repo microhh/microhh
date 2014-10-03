@@ -516,9 +516,9 @@ void Pres_4::exec(double dt)
   const int offs = grid->memoffset;
 
   // calculate the cyclic BCs first
-  grid->boundary_cyclic_g(&fields->ut->data_g[offs]);
-  grid->boundary_cyclic_g(&fields->vt->data_g[offs]);
-  grid->boundary_cyclic_g(&fields->wt->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->ut->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->vt->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->wt->data_g[offs]);
 
   pres_4_gcwt<<<grid2dGPU, block2dGPU>>>(&fields->wt->data_g[offs],
                                          grid->icellsp, grid->ijcellsp,
@@ -626,7 +626,7 @@ void Pres_4::exec(double dt)
                                          grid->imax, grid->jmax, grid->kmax);
   cudaCheckError();
 
-  grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->sd["p"]->data_g[offs]);
 
   // 3. Get the pressure tendencies from the pressure field.
   pres_4_presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],

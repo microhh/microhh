@@ -89,7 +89,7 @@ int Fields::exec()
   if(calcprofs)
   {
     for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-      grid->calcmean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], s["tmp1"]->data_g);
+      grid->calcMean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], s["tmp1"]->data_g);
   }
 
   return 0;
@@ -116,8 +116,8 @@ double Fields::checkmom()
                                             grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
-  double mom = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
-  grid->getsum(&mom);
+  double mom = grid->getSum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+  grid->getSum(&mom);
   mom /= (grid->itot*grid->jtot*grid->zsize);
 
   return mom;
@@ -144,9 +144,9 @@ double Fields::checktke()
                                             grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
-  double tke = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+  double tke = grid->getSum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
 
-  grid->getsum(&tke);
+  grid->getSum(&tke);
   tke /= (grid->itot*grid->jtot*grid->zsize);
   tke *= 0.5;
 
@@ -178,8 +178,8 @@ double Fields::checkmass()
                                                grid->icellsp, grid->ijcellsp);
     cudaCheckError();
 
-    mass = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
-    grid->getsum(&mass);
+    mass = grid->getSum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+    grid->getSum(&mass);
     mass /= (grid->itot*grid->jtot*grid->zsize);
   }
   else

@@ -213,12 +213,12 @@ int Boundary::exec()
   const int offs = grid->memoffset;
 
   // Cyclic boundary conditions, do this before the bottom BC's.
-  grid->boundary_cyclic_g(&fields->u->data_g[offs]);
-  grid->boundary_cyclic_g(&fields->v->data_g[offs]);
-  grid->boundary_cyclic_g(&fields->w->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->u->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->v->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->w->data_g[offs]);
 
   for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
-    grid->boundary_cyclic_g(&it->second->data_g[offs]);
+    grid->boundaryCyclic_g(&it->second->data_g[offs]);
 
   // Calculate the boundary values.
   bcvalues();

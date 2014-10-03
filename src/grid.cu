@@ -134,7 +134,7 @@ void Grid::clearDevice()
   cudaSafeCall(cudaFree(dzhi4_g));
 }
 
-void Grid::boundary_cyclic_g(double * data)
+void Grid::boundaryCyclic_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -165,7 +165,7 @@ void Grid::boundary_cyclic_g(double * data)
   cudaCheckError();
 }
 
-void Grid::boundary_cyclic2d_g(double * data)
+void Grid::boundaryCyclic2d_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -197,7 +197,7 @@ void Grid::boundary_cyclic2d_g(double * data)
 }
 
 
-double Grid::getmax_g(double *data, double *tmp)
+double Grid::getMax_g(double *data, double *tmp)
 {
   const unsigned int max = 1;
   const double scalefac = 1.;
@@ -215,7 +215,7 @@ double Grid::getmax_g(double *data, double *tmp)
   return maxvalue;
 }
 
-double Grid::getsum_g(double *data, double *tmp)
+double Grid::getSum_g(double *data, double *tmp)
 {
   const unsigned int sum = 0;
   const double scalefac = 1.;
@@ -230,7 +230,7 @@ double Grid::getsum_g(double *data, double *tmp)
   return sumvalue;
 }
 
-void Grid::calcmean_g(double *prof, double *data, double *tmp)
+void Grid::calcMean_g(double *prof, double *data, double *tmp)
 {
   const unsigned int sum = 0;
   const double scalefac = 1./(itot*jtot);
