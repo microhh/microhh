@@ -199,7 +199,7 @@ void Model::load()
   // end with modules that require all fields to be present
   boundary->setvalues();
   diff    ->setValues();
-  pres    ->setvalues();
+  pres    ->setValues();
 }
 
 void Model::save()

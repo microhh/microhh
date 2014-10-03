@@ -37,7 +37,7 @@ class Pres
     static Pres* factory(Master *, Input *, Model *, const std::string); ///< Factory function for pres class generation.
 
     virtual void init();
-    virtual void setvalues();
+    virtual void setValues();
 
     virtual void exec(double);
     virtual double check();

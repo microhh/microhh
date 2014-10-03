@@ -51,7 +51,7 @@ void Pres::init()
 {
 }
 
-void Pres::setvalues()
+void Pres::setValues()
 {
 }
 
@@ -74,9 +74,9 @@ Pres* Pres::factory(Master *masterin, Input *inputin, Model *modelin, const std:
   if(swpres == "0")
     return new Pres(modelin, inputin);
   else if(swpres == "2")
-    return new Pres_2(modelin, inputin);
+    return new Pres2(modelin, inputin);
   else if(swpres == "4")
-    return new Pres_4(modelin, inputin);
+    return new Pres4(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());

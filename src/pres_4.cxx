@@ -37,7 +37,7 @@
 
 using namespace fd::o4;
 
-Pres_4::Pres_4(Model *modelin, Input *inputin) : Pres(modelin, inputin)
+Pres4::Pres4(Model *modelin, Input *inputin) : Pres(modelin, inputin)
 {
   m1 = 0;
   m2 = 0;
@@ -51,7 +51,7 @@ Pres_4::Pres_4(Model *modelin, Input *inputin) : Pres(modelin, inputin)
   bmatj = 0;
 }
 
-Pres_4::~Pres_4()
+Pres4::~Pres4()
 {
   delete[] m1;
   delete[] m2;
@@ -70,7 +70,7 @@ Pres_4::~Pres_4()
 }
 
 #ifndef USECUDA
-void Pres_4::exec(double dt)
+void Pres4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
   pres_in(fields->sd["p"]->data,
@@ -109,7 +109,7 @@ void Pres_4::exec(double dt)
            fields->sd["p"]->data, grid->dzhi4);
 }
 
-double Pres_4::check()
+double Pres4::check()
 {
   double divmax = 0.;
 
@@ -119,7 +119,7 @@ double Pres_4::check()
 }
 #endif
 
-void Pres_4::init()
+void Pres4::init()
 {
   int imax, jmax, kmax;
   int itot, jtot, kstart;
@@ -143,7 +143,7 @@ void Pres_4::init()
   m7 = new double[kmax];
 }
 
-void Pres_4::setvalues()
+void Pres4::setValues()
 {
   int imax, jmax, kmax;
   int itot, jtot, kstart;
@@ -220,10 +220,10 @@ void Pres_4::setvalues()
   m7[k] = 0.;
 }
 
-void Pres_4::pres_in(double * restrict p, 
-                      double * restrict u , double * restrict v , double * restrict w ,
-                      double * restrict ut, double * restrict vt, double * restrict wt,
-                      double * restrict dzi4, double dt)
+void Pres4::pres_in(double * restrict p, 
+                    double * restrict u , double * restrict v , double * restrict w ,
+                    double * restrict ut, double * restrict vt, double * restrict wt,
+                    double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
@@ -283,13 +283,13 @@ void Pres_4::pres_in(double * restrict p,
       }
 }
 
-void Pres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
-                         double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                         double * restrict m5, double * restrict m6, double * restrict m7,
-                         double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
-                         double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
-                         double * restrict bmati, double * restrict bmatj,
-                         const int jslice)
+void Pres4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
+                       double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                       double * restrict m5, double * restrict m6, double * restrict m7,
+                       double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
+                       double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
+                       double * restrict bmati, double * restrict bmatj,
+                       const int jslice)
 {
   int jj,kk,ijk;
   int imax,jmax,kmax;
@@ -498,8 +498,8 @@ void Pres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
   grid->boundaryCyclic(p);
 }
 
-void Pres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                       double * restrict p , double * restrict dzhi4)
+void Pres4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+                     double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart;
@@ -538,9 +538,9 @@ void Pres_4::pres_out(double * restrict ut, double * restrict vt, double * restr
       }
 }
 
-void Pres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p,
-                   const int jslice)
+void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                 double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p,
+                 const int jslice)
 {
   const int kmax   = grid->kmax;
   const int iblock = grid->iblock;
@@ -693,7 +693,7 @@ void Pres_4::hdma(double * restrict m1, double * restrict m2, double * restrict 
       }
 }
 
-double Pres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+double Pres4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart,kend;

@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PRES_4
-#define PRES_4
+#ifndef PRES4
+#define PRES4
 
 #include "pres.h"
 
@@ -32,35 +32,35 @@
 // forward declaration
 class Model;
 
-class Pres_4 : public Pres
+class Pres4 : public Pres
 {
   public:
-    Pres_4(Model *, Input *);
-    ~Pres_4();
+    Pres4(Model *, Input *);
+    ~Pres4();
 
     void init();
-    void setvalues();
+    void setValues();
 
     void exec(double);
     double check();
 
-#ifdef USECUDA
+    #ifdef USECUDA
     int prepareDevice();
     int clearDevice();
-#endif
+    #endif
 
   private:
     double *bmati, *bmatj;
     double *m1,*m2,*m3,*m4,*m5,*m6,*m7;
 
-#ifdef USECUDA
+    #ifdef USECUDA
     double *bmati_g, *bmatj_g;
     double *m1_g,*m2_g,*m3_g,*m4_g,*m5_g,*m6_g,*m7_g;
 
     cufftDoubleComplex *ffti_complex_g, *fftj_complex_g; 
     cufftHandle iplanf, jplanf; 
     cufftHandle iplanb, jplanb; 
-#endif
+    #endif
 
     void pres_in(double *, 
                  double *, double *, double *,

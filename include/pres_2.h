@@ -32,22 +32,22 @@
 // forward declaration
 class Model;
 
-class Pres_2 : public Pres
+class Pres2 : public Pres
 {
   public:
-    Pres_2(Model *, Input *);
-    ~Pres_2();
+    Pres2(Model *, Input *);
+    ~Pres2();
 
     void init();
-    void setvalues();
+    void setValues();
 
     void exec(double);
     double check();
 
-#ifdef USECUDA
+    #ifdef USECUDA
     int prepareDevice();
     int clearDevice();
-#endif
+    #endif
 
   private:
     double *bmati, *bmatj;
@@ -55,7 +55,7 @@ class Pres_2 : public Pres
     double *work2d;
 
     // GPU
-#ifdef USECUDA
+    #ifdef USECUDA
     double *bmati_g, *bmatj_g;
     double *a_g, *c_g;
     double *work2d_g;
@@ -63,7 +63,7 @@ class Pres_2 : public Pres
     cufftDoubleComplex *ffti_complex_g, *fftj_complex_g; 
     cufftHandle iplanf, jplanf; 
     cufftHandle iplanb, jplanb; 
-#endif
+    #endif
 
     void pres_in(double *, 
                  double *, double *, double *,
