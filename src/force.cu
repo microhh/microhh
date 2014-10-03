@@ -28,8 +28,7 @@
 #include "constants.h"
 #include "tools.h"
 
-__global__ void force_flux_step1(double * const __restrict__ usum, double * const __restrict__ utsum,
-                                 const double * const __restrict__ u, const double * const __restrict__ ut,
+__global__ void force_flux_step1(double * const __restrict__ aSum, const double * const __restrict__ a,
                                  const double * const __restrict__ dz,
                                  const int jj, const int kk, 
                                  const int istart, const int jstart, const int kstart,
@@ -42,8 +41,7 @@ __global__ void force_flux_step1(double * const __restrict__ usum, double * cons
   if(i < iend && j < jend && k < kend)
   {
     int ijk = i + j*jj + k*kk;
-    usum [ijk] = u [ijk]*dz[k];
-    utsum[ijk] = ut[ijk]*dz[k];
+    aSum [ijk] = a[ijk]*dz[k];
   }
 }
 
@@ -252,16 +250,23 @@ int cforce::exec(double dt)
 
   if(swlspres == "uflux")
   {
-    force_flux_step1<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs], &fields->a["tmp2"]->data_g[offs],
-                                            &fields->u->data_g[offs], &fields->ut->data_g[offs],
+    force_flux_step1<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs], &fields->u->data_g[offs],
                                             grid->dz_g,
                                             grid->icellsp, grid->ijcellsp,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
     cudaCheckError();
 
-    double uavg  = grid->getsum_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp3"]->data_g); 
-    double utavg = grid->getsum_g(&fields->a["tmp2"]->data_g[offs], fields->a["tmp3"]->data_g); 
+    double uavg  = grid->getsum_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+
+    force_flux_step1<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs], &fields->ut->data_g[offs],
+                                            grid->dz_g,
+                                            grid->icellsp, grid->ijcellsp,
+                                            grid->istart,  grid->jstart, grid->kstart,
+                                            grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
+
+    double utavg = grid->getsum_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
 
     uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
     utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
