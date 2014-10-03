@@ -135,11 +135,11 @@ Grid::~Grid()
 
   fftw_cleanup();
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 
-  exitmpi();
+  exitMpi();
 }
 
 /**
@@ -227,7 +227,7 @@ void Grid::init()
   fftoutj = fftw_alloc_real(jtot*iblock);
 
   // initialize the communication functions
-  initmpi();
+  initMpi();
 }
 
 /**
@@ -386,7 +386,7 @@ void Grid::calculate()
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   int ijk,ii,jj,kk,iih,jjh;
 
@@ -418,7 +418,7 @@ void Grid::interpolate_2nd(double * restrict out, double * restrict in, const in
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   using namespace fd::o4;
 
@@ -457,7 +457,7 @@ void Grid::interpolate_4th(double * restrict out, double * restrict in, const in
  * @param krange Number of vertical levels over which the profile is to be calculated.
  * @return Returns 0.
  */
-void Grid::calcmean(double * restrict prof, const double * restrict data, const int krange)
+void Grid::calcMean(double * restrict prof, const double * restrict data, const int krange)
 {
   int ijk,jj,kk;
 
@@ -481,7 +481,7 @@ void Grid::calcmean(double * restrict prof, const double * restrict data, const 
   for(int k=0; k<krange; ++k)
     prof[k] /= n;
 
-  getprof(prof, krange);
+  getProf(prof, krange);
 }
 
 /*

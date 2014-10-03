@@ -271,7 +271,7 @@ int Thermo_moist::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
   {
     calcbuoyancy(fields->s["tmp2"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp1"]->data,thvref);
     // calculate the mean buoyancy to determine positive buoyancy
-    grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
+    grid->calcMean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
     calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
     calcmaskqlcore(mfield->data, mfieldh->data, mfieldh->databot,
                    stats->nmask, stats->nmaskh, &stats->nmaskbot,
@@ -335,9 +335,9 @@ int Thermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, do
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundary_cyclic(mask);
-  grid->boundary_cyclic(maskh);
-  grid->boundary_cyclic2d(maskbot);
+  grid->boundaryCyclic(mask);
+  grid->boundaryCyclic(maskh);
+  grid->boundaryCyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
@@ -403,9 +403,9 @@ int Thermo_moist::calcmaskqlcore(double * restrict mask, double * restrict maskh
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundary_cyclic(mask);
-  grid->boundary_cyclic(maskh);
-  grid->boundary_cyclic2d(maskbot);
+  grid->boundaryCyclic(mask);
+  grid->boundaryCyclic(maskh);
+  grid->boundaryCyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);

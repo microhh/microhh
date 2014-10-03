@@ -390,7 +390,7 @@ void Stats::calcmean(double * const restrict prof, const double * const restrict
   for(int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 }
 */
 
@@ -603,7 +603,7 @@ int Stats::calccount(double * restrict data, double * restrict prof, double thre
   for(int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 
   return 0;
 }
@@ -669,7 +669,7 @@ int Stats::calcmoment(double * restrict data, double * restrict datamean, double
   for(int k=grid->kstart; k<grid->kend+a; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 
   return 0;
 }
@@ -746,15 +746,15 @@ int Stats::calcflux_2nd(double * restrict data, double * restrict w, double * re
   for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 
   return 0;
 }
 */
 
 int Stats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
-                         double * restrict prof, double * restrict tmp1, const int loc[3],
-                         double * restrict mask, int * restrict nmask)
+                        double * restrict prof, double * restrict tmp1, const int loc[3],
+                        double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -771,12 +771,12 @@ int Stats::calcflux_2nd(double * restrict data, double * restrict datamean, doub
 
   if(loc[0] == 1)
   {
-    grid->interpolate_2nd(tmp1, w, wloc, uwloc);
+    grid->interpolate2nd(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
   else if(loc[1] == 1)
   {
-    grid->interpolate_2nd(tmp1, w, wloc, vwloc);
+    grid->interpolate2nd(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
 
@@ -827,12 +827,12 @@ int Stats::calcflux_4th(double * restrict data, double * restrict w, double * re
 
   if(loc[0] == 1)
   {
-    grid->interpolate_4th(tmp1, w, wloc, uwloc);
+    grid->interpolate4th(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
   else if(loc[1] == 1)
   {
-    grid->interpolate_4th(tmp1, w, wloc, vwloc);
+    grid->interpolate4th(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
  
@@ -886,7 +886,7 @@ int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double *
   for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 
   return 0;
 }
@@ -1173,7 +1173,7 @@ int Stats::calcpath(double * restrict data, double * restrict maskbot, int * res
           }
       }
     *path /= (double)*nmaskbot;
-    grid->getprof(path,1);
+    grid->getProf(path,1);
   }
   else
     *path = NC_FILL_DOUBLE;
@@ -1212,7 +1212,7 @@ int Stats::calccover(double * restrict data, double * restrict maskbot, int * re
           }
       }
     *cover /= (double)*nmaskbot;
-    grid->getprof(cover,1);
+    grid->getProf(cover,1);
   }
   else
     *cover = NC_FILL_DOUBLE;
