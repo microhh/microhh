@@ -635,22 +635,22 @@ int Diff_les2s::execvisc()
   cudaCheckError();
 
   // start with retrieving the stability information
-  if(model->thermo->getsw() == "0")
+  if(model->thermo->getSwitch() == "0")
   {
     diff_les2s_evisc_neutral<<<gridGPU, blockGPU>>>(&fields->sd["evisc"]->data_g[offs], mlen_g,
                                                     grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                                     grid->icellsp, grid->ijcellsp);  
     cudaCheckError();
 
-    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
+    grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
   // assume buoyancy calculation is needed
   else
   {
     // store the buoyancyflux in datafluxbot of tmp1
-    model->thermo->getbuoyancyfluxbot(fields->atmp["tmp1"]);
+    model->thermo->getBuoyancyFluxbot(fields->atmp["tmp1"]);
     // store the Brunt-vaisala frequency in data of tmp1 
-    model->thermo->getthermofield(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
+    model->thermo->getThermoField(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
 
     // Calculate eddy viscosity
     double tPri = 1./tPr;
@@ -661,7 +661,7 @@ int Diff_les2s::execvisc()
                                             grid->icellsp, grid->ijcellsp);  
     cudaCheckError();
 
-    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
+    grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
 
   return 0;
@@ -757,7 +757,7 @@ unsigned long Diff_les2s::gettimelim(unsigned long idt, double dt)
   cudaCheckError();
 
   // Get maximum from tmp1 field
-  dnmul = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+  dnmul = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
   dnmul = std::max(constants::dsmall, dnmul);
   idtlim = idt * dnmax/(dnmul*dt);
 
@@ -790,7 +790,7 @@ double Diff_les2s::getdn(double dt)
   cudaCheckError();
 
   // Get maximum from tmp1 field
-  dnmul = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+  dnmul = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
   return dnmul*dt;
 }

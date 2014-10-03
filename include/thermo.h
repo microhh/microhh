@@ -39,25 +39,25 @@ class Thermo
 
     virtual void init();
     virtual void create(Input *);
-    virtual int exec();
-    virtual int execstats(mask *);
+    virtual void exec();
+    virtual void execStats(mask *);
 
-    virtual void execcross();
+    virtual void execCross();
 
-    virtual int getmask(Field3d *, Field3d *, mask *);
+    virtual void getMask(Field3d *, Field3d *, mask *);
 
     // interfacing functions to get buoyancy properties from other classes
-    virtual int checkthermofield(std::string name);
-    virtual int getthermofield(Field3d *, Field3d *, std::string name);
-    virtual int getbuoyancysurf(Field3d *);
-    virtual int getbuoyancyfluxbot(Field3d *);
-    virtual int getprogvars(std::vector<std::string> *);
+    virtual bool checkThermoField(std::string name);
+    virtual void getThermoField(Field3d *, Field3d *, std::string name);
+    virtual void getBuoyancySurf(Field3d *);
+    virtual void getBuoyancyFluxbot(Field3d *);
+    virtual void getProgVars(std::vector<std::string> *);
 
-    std::string getsw();
+    std::string getSwitch();
 
     // GPU functions and variables
-    virtual int prepareDevice();
-    virtual int clearDevice();
+    virtual void prepareDevice();
+    virtual void clearDevice();
 
   protected:
     Grid   *grid;

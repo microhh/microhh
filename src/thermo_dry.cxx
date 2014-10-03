@@ -41,7 +41,7 @@ using fd::o2::interp2;
 using fd::o4::interp4;
 using namespace constants;
 
-Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
+ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 {
   swthermo = "dry";
 
@@ -64,7 +64,7 @@ Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin
     throw 1;
 }
 
-Thermo_dry::~Thermo_dry()
+ThermoDry::~ThermoDry()
 {
   delete[] this->thref;
   delete[] this->threfh;
@@ -73,12 +73,12 @@ Thermo_dry::~Thermo_dry()
   delete[] this->exner;
   delete[] this->exnerh;
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
-void Thermo_dry::init()
+void ThermoDry::init()
 {
   // copy pointers
   stats = model->stats;
@@ -92,7 +92,7 @@ void Thermo_dry::init()
   exnerh = new double[grid->kcells];
 }
 
-void Thermo_dry::create(Input *inputin)
+void ThermoDry::create(Input *inputin)
 {
   // Only in case of Boussinesq, read in reference potential temperature
   int nerror = 0;
@@ -174,7 +174,7 @@ void Thermo_dry::create(Input *inputin)
   }
   
   // add variables to the statistics
-  if(stats->getsw() == "1")
+  if(stats->getSwitch() == "1")
   {
     // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
     //stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
@@ -226,18 +226,16 @@ void Thermo_dry::create(Input *inputin)
 }
 
 #ifndef USECUDA
-int Thermo_dry::exec()
+void ThermoDry::exec()
 {
   if(grid->swspatialorder== "2")
     calcbuoyancytend_2nd(fields->wt->data, fields->sp["th"]->data, threfh);
   else if(grid->swspatialorder == "4")
     calcbuoyancytend_4th(fields->wt->data, fields->sp["th"]->data, threfh);
-
-  return 0;
 }
 #endif
 
-int Thermo_dry::execstats(mask *m)
+void ThermoDry::execStats(mask *m)
 {
   // calculate the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
@@ -283,18 +281,18 @@ int Thermo_dry::execstats(mask *m)
     if(model->diff->getname() == "les2s")
     {
       Diff_les2s *diffptr = static_cast<Diff_les2s *>(model->diff);
-      stats->calDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
+      stats->calcdiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
                           fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
-      stats->calDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+      stats->calcdiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+    stats->calcdiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
@@ -305,32 +303,32 @@ int Thermo_dry::execstats(mask *m)
   //stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 }
 
-void Thermo_dry::execcross()
+void ThermoDry::execCross()
 {
   int nerror = 0;
 
   // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
   for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
-    /* BvS: for now, don't call getthermofield() or getbuoyancysurf(), but directly the function itself. With CUDA enabled, 
-       statistics etc. is done on the host, while getthermofield() is executed on the GPU */ 
+    /* BvS: for now, don't call getThermoField() or getBuoyancySurf(), but directly the function itself. With CUDA enabled, 
+       statistics etc. is done on the host, while getThermoField() is executed on the GPU */ 
     
     if(*it == "b")
     {
-      //getthermofield(fields->s["tmp1"], fields->s["tmp2"], *it);
+      //getThermoField(fields->s["tmp1"], fields->s["tmp2"], *it);
       calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
       nerror += model->cross->crosssimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
-      //getthermofield(fields->s["tmp1"], fields->s["tmp2"], "b");
+      //getThermoField(fields->s["tmp1"], fields->s["tmp2"], "b");
       calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
       nerror += model->cross->crosslngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
-      //getbuoyancysurf(fields->s["tmp1"]);
+      //getBuoyancySurf(fields->s["tmp1"]);
       calcbuoyancybot(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->sp["th"]->data, fields->sp["th"]->databot, thref, threfh);
       calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 
@@ -345,55 +343,48 @@ void Thermo_dry::execcross()
     throw 1;
 }
 
-int Thermo_dry::checkthermofield(std::string name)
+bool ThermoDry::checkThermoField(std::string name)
 {
   if(name == "b")
-    return 0;
+    return false;
   else
-    return 1;
+    return true;
 }
 
 #ifndef USECUDA
-int Thermo_dry::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
+void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
   if(name == "b")
     calcbuoyancy(fld->data, fields->sp["th"]->data, thref);
   else if(name == "N2")
     calcN2(fld->data, fields->sp["th"]->data, grid->dzi, thref);
   else
-    return 1;
-
-  return 0;
+    throw 1;
 }
 #endif
 
 #ifndef USECUDA
-int Thermo_dry::getbuoyancyfluxbot(Field3d *bfield)
+void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
-
-  return 0;
 }
 #endif
 
 #ifndef USECUDA
-int Thermo_dry::getbuoyancysurf(Field3d *bfield)
+void ThermoDry::getBuoyancySurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
                   fields->sp["th"]->data, fields->sp["th"]->databot, thref, threfh);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
-
-  return 0;
 }
 #endif
 
-int Thermo_dry::getprogvars(std::vector<std::string> *list)
+void ThermoDry::getProgVars(std::vector<std::string> *list)
 {
   list->push_back("th");
-  return 0;
 }
 
-int Thermo_dry::calcbuoyancy(double * restrict b, double * restrict th, double * restrict thref)
+int ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double * restrict thref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -411,7 +402,7 @@ int Thermo_dry::calcbuoyancy(double * restrict b, double * restrict th, double *
   return 0;
 }
 
-int Thermo_dry::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
+int ThermoDry::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -429,7 +420,7 @@ int Thermo_dry::calcN2(double * restrict N2, double * restrict th, double * rest
   return 0;
 }
 
-int Thermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
+int ThermoDry::calcbuoyancybot(double * restrict b , double * restrict bbot,
                                  double * restrict th, double * restrict thbot,
                                  double * restrict thref, double * restrict threfh)
 {
@@ -452,7 +443,7 @@ int Thermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
   return 0;
 }
 
-int Thermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict thfluxbot, double * restrict threfh)
+int ThermoDry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict thfluxbot, double * restrict threfh)
 {
   int ij,jj;
   jj = grid->icells;
@@ -470,7 +461,7 @@ int Thermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restric
   return 0;
 }
 
-int Thermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
+int ThermoDry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
 {
   using namespace fd::o2;
 
@@ -491,7 +482,7 @@ int Thermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th,
   return 0;
 }
 
-int Thermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th, double * restrict threfh)
+int ThermoDry::calcbuoyancytend_4th(double * restrict wt, double * restrict th, double * restrict threfh)
 {
   int ijk,jj;
   int kk1,kk2;

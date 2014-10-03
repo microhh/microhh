@@ -292,7 +292,7 @@ void Model::exec()
           }
           else if(*it == "ql" || *it == "qlcore")
           {
-            thermo->getmask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            thermo->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
             calStats(*it);
           }
         }
@@ -309,7 +309,7 @@ void Model::exec()
 #endif      
       
         fields  ->execcross();
-        thermo  ->execcross();
+        thermo  ->execCross();
         boundary->execcross();
       }
     }
@@ -382,7 +382,7 @@ void Model::exec()
 void Model::calStats(std::string maskname)
 {
   fields  ->execstats(&stats->masks[maskname]);
-  thermo  ->execstats(&stats->masks[maskname]);
+  thermo  ->execStats(&stats->masks[maskname]);
   budget  ->execstats(&stats->masks[maskname]);
   boundary->execstats(&stats->masks[maskname]);
 }
@@ -407,7 +407,7 @@ void Model::printOutputFile(bool doclose)
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
-    start = master->gettime();
+    start = master->getTime();
   }
 
   if(timeloop->doCheck())
@@ -422,7 +422,7 @@ void Model::printOutputFile(bool doclose)
     cfl     = advec->getcfl(timeloop->dt);
     dn      = diff->getdn(timeloop->dt);
 
-    end     = master->gettime();
+    end     = master->getTime();
     cputime = end - start;
     start   = end;
 

@@ -92,7 +92,7 @@ void Master::init(Input *inputin)
   allocated = true;
 }
 
-double Master::gettime()
+double Master::getTime()
 {
   timeval timestruct;
   gettimeofday(&timestruct, NULL);
@@ -101,50 +101,41 @@ double Master::gettime()
   return time;
 }
 
-int Master::waitall()
+void  Master::waitAll()
 {
-  return 0;
 }
 
 // all broadcasts return directly, because there is nothing to broadcast
-int Master::broadcast(char *data, int datasize)
+void Master::broadcast(char *data, int datasize)
 {
-  return 0;
 }
 
 // overloaded broadcast functions
-int Master::broadcast(int *data, int datasize)
+void Master::broadcast(int *data, int datasize)
 {
-  return 0;
 }
 
-int Master::broadcast(unsigned long *data, int datasize)
+void Master::broadcast(unsigned long *data, int datasize)
 {
-  return 0;
 }
 
-int Master::broadcast(double *data, int datasize)
+void Master::broadcast(double *data, int datasize)
 {
-  return 0;
 }
 
-int Master::sum(int *var, int datasize)
+void Master::sum(int *var, int datasize)
 {
-  return 0;
 }
 
-int Master::sum(double *var, int datasize)
+void Master::sum(double *var, int datasize)
 {
-  return 0;
 }
 
-int Master::max(double *var, int datasize)
+void Master::max(double *var, int datasize)
 {
-  return 0;
 }
 
-int Master::min(double *var, int datasize)
+void Master::min(double *var, int datasize)
 {
-  return 0;
 }
 #endif

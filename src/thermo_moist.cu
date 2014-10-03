@@ -382,7 +382,7 @@ __global__ void thermo_moist_calchydropres(double * __restrict__ pref,     doubl
   }
 }
 
-int Thermo_moist::prepareDevice()
+void ThermoMoist::prepareDevice()
 {
   const int nmemsize = grid->kcells*sizeof(double);
 
@@ -401,11 +401,9 @@ int Thermo_moist::prepareDevice()
   cudaSafeCall(cudaMemcpy(prefh_g,   prefh,   nmemsize, cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(exnref_g,  exnref,  nmemsize, cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(exnrefh_g, exnrefh, nmemsize, cudaMemcpyHostToDevice));
-
-  return 0;
 }
 
-int Thermo_moist::clearDevice()
+void ThermoMoist::clearDevice()
 {
   cudaSafeCall(cudaFree(thvref_g ));
   cudaSafeCall(cudaFree(thvrefh_g));
@@ -413,12 +411,10 @@ int Thermo_moist::clearDevice()
   cudaSafeCall(cudaFree(prefh_g  ));
   cudaSafeCall(cudaFree(exnref_g ));
   cudaSafeCall(cudaFree(exnrefh_g));
-
-  return 0;
 }
 
 #ifdef USECUDA
-int Thermo_moist::exec()
+void ThermoMoist::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -460,13 +456,11 @@ int Thermo_moist::exec()
   //  calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
     throw 1;
   }
-
-  return 0;
 }
 #endif
 
 #ifdef USECUDA
-int Thermo_moist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
+void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -522,15 +516,12 @@ int Thermo_moist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
     cudaCheckError();
   }
   else
-    return 1;
-
-
-  return 0;
+    throw 1;
 }
 #endif
 
 #ifdef USECUDA
-int Thermo_moist::getbuoyancyfluxbot(Field3d *bfield)
+void ThermoMoist::getBuoyancyFluxbot(Field3d *bfield)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -548,13 +539,11 @@ int Thermo_moist::getbuoyancyfluxbot(Field3d *bfield)
                                                           thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                           grid->icellsp, grid->ijcellsp);
   cudaCheckError();
-
-  return 0;
 }
 #endif
 
 #ifdef USECUDA
-int Thermo_moist::getbuoyancysurf(Field3d *bfield)
+void ThermoMoist::getBuoyancySurf(Field3d *bfield)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -579,7 +568,5 @@ int Thermo_moist::getbuoyancysurf(Field3d *bfield)
                                                           thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                           grid->icellsp, grid->ijcellsp);
   cudaCheckError();
-
-  return 0;
 }
 #endif

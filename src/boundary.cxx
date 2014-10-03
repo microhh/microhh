@@ -281,12 +281,12 @@ void Boundary::setvalues()
 int Boundary::exec()
 {
   // cyclic boundary conditions, do this before the bottom BC's
-  grid->boundary_cyclic(fields->u->data);
-  grid->boundary_cyclic(fields->v->data);
-  grid->boundary_cyclic(fields->w->data);
+  grid->boundaryCyclic(fields->u->data);
+  grid->boundaryCyclic(fields->v->data);
+  grid->boundaryCyclic(fields->w->data);
 
   for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
-    grid->boundary_cyclic(it->second->data);
+    grid->boundaryCyclic(it->second->data);
 
   // calculate boundary values
   bcvalues();

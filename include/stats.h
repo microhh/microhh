@@ -75,7 +75,7 @@ class Stats
     int getmask(Field3d *, Field3d *, mask *);
     int exec(int, double, unsigned long);
     int dostats();
-    std::string getsw();
+    std::string getSwitch();
 
     // container for all stats, masks as uppermost in hierarchy
     maskmap masks;
@@ -103,9 +103,9 @@ class Stats
 
     int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
 
-    int calDiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
-    int calDiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
-    int calDiff_4th(double *, double *, double *, double, const int[3], double *, int *);
+    int calcdiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
+    int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
+    int calcdiff_4th(double *, double *, double *, double, const int[3], double *, int *);
 
     int calcgrad_2nd(double *, double *, double *, const int[3], double *, int *);
     int calcgrad_4th(double *, double *, double *, const int[3], double *, int *);

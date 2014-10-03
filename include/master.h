@@ -40,24 +40,24 @@ class Master
     void start(int, char**);
     void init(Input *);
 
-    double gettime();
-    int waitall();
+    double getTime();
+    void waitAll();
 
     // overload the broadcast function
-    int broadcast(char *, int);
-    int broadcast(int *, int);
-    int broadcast(double *, int);
-    int broadcast(unsigned long *, int);
+    void broadcast(char *, int);
+    void broadcast(int *, int);
+    void broadcast(double *, int);
+    void broadcast(unsigned long *, int);
 
     // overload the sum function
-    int sum(int *, int);
-    int sum(double *, int);
+    void sum(int *, int);
+    void sum(double *, int);
 
     // overload the max function
-    int max(double *, int);
+    void max(double *, int);
 
     // overload the min function
-    int min(double *, int);
+    void min(double *, int);
 
     void printMessage(const char *format, ...);
     void printWarning(const char *format, ...);
@@ -73,7 +73,7 @@ class Master
     int mpicoordx;
     int mpicoordy;
 
-#ifdef PARALLEL
+    #ifdef PARALLEL
     int nnorth;
     int nsouth;
     int neast;
@@ -85,14 +85,14 @@ class Master
 
     MPI_Request *reqs;
     int reqsn;
-#endif
+    #endif
 
   private:
     bool initialized;
     bool allocated;
 
-#ifdef PARALLEL
-    int checkerror(int);
-#endif
+    #ifdef PARALLEL
+    int checkError(int);
+    #endif
 };
 #endif

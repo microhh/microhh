@@ -237,7 +237,7 @@ int Fields::exec()
   if(calcprofs)
   {
     for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-      grid->calcmean(it->second->datamean, it->second->data, grid->kcells);
+      grid->calcMean(it->second->datamean, it->second->data, grid->kcells);
   }
 
   return 0;
@@ -306,9 +306,9 @@ int Fields::calcmaskwplus(double * restrict mask, double * restrict maskh, doubl
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundary_cyclic(mask);
-  grid->boundary_cyclic(maskh);
-  grid->boundary_cyclic2d(maskbot);
+  grid->boundaryCyclic(mask);
+  grid->boundaryCyclic(maskh);
+  grid->boundaryCyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
@@ -368,9 +368,9 @@ int Fields::calcmaskwmin(double * restrict mask, double * restrict maskh, double
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundary_cyclic(mask);
-  grid->boundary_cyclic(maskh);
-  grid->boundary_cyclic2d(maskbot);
+  grid->boundaryCyclic(mask);
+  grid->boundaryCyclic(maskh);
+  grid->boundaryCyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
@@ -407,7 +407,7 @@ int Fields::execstats(mask *m)
 
   // calculate the stats on the u location
   // interpolate the mask horizontally onto the u coordinate
-  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
+  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
   stats->calcmean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
   stats->calcmean(umodel            , u->data, NO_OFFSET   , uloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
@@ -420,7 +420,7 @@ int Fields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
+  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
@@ -429,12 +429,12 @@ int Fields::execstats(mask *m)
                         m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calDiff_2nd(u->data, w->data, sd["evisc"]->data,
+      stats->calcdiff_2nd(u->data, w->data, sd["evisc"]->data,
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
                           atmp["tmp1"]->data, stats->nmaskh);
     else
-      stats->calDiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
+      stats->calcdiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
                           atmp["tmp1"]->data, stats->nmaskh);
 
   }
@@ -444,12 +444,12 @@ int Fields::execstats(mask *m)
                         atmp["tmp1"]->data, stats->nmaskh);
     stats->calcflux_4th(u->data, w->data, m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    stats->calDiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
+    stats->calcdiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the v location
-  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
+  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
   stats->calcmean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
   stats->calcmean(vmodel            , v->data, NO_OFFSET   , vloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
@@ -462,7 +462,7 @@ int Fields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
+  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
@@ -471,12 +471,12 @@ int Fields::execstats(mask *m)
                         m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calDiff_2nd(v->data, w->data, sd["evisc"]->data,
+      stats->calcdiff_2nd(v->data, w->data, sd["evisc"]->data,
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
                           atmp["tmp1"]->data, stats->nmaskh);
     else
-      stats->calDiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
+      stats->calcdiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
                           atmp["tmp1"]->data, stats->nmaskh);
 
   }
@@ -486,7 +486,7 @@ int Fields::execstats(mask *m)
                         atmp["tmp1"]->data, stats->nmaskh);
     stats->calcflux_4th(v->data, w->data, m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    stats->calDiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+    stats->calcdiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
   }
 
@@ -511,12 +511,12 @@ int Fields::execstats(mask *m)
                           m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
       if(model->diff->getname() == "les2s")
-        stats->calDiff_2nd(it->second->data, w->data, sd["evisc"]->data,
+        stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
                             atmp["tmp4"]->data, stats->nmaskh);
       else
-        stats->calDiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
+        stats->calcdiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
                             atmp["tmp4"]->data, stats->nmaskh);
     }
     else if(grid->swspatialorder == "4")
@@ -525,7 +525,7 @@ int Fields::execstats(mask *m)
                           atmp["tmp4"]->data, stats->nmaskh);
       stats->calcflux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
-      stats->calDiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+      stats->calcdiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
     }
   }
@@ -798,7 +798,7 @@ void Fields::load(int n)
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     master->printMessage("Loading \"%s\" ... ", filename);
-    if(grid->loadfield3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NO_OFFSET))
+    if(grid->loadField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NO_OFFSET))
     {
       master->printMessage("FAILED\n");
       ++nerror;
@@ -810,7 +810,7 @@ void Fields::load(int n)
   }
 
   // add the profiles to te statistics
-  if(stats->getsw() == "1")
+  if(stats->getSwitch() == "1")
   {
     // add variables to the statistics
     stats->addprof(u->name, u->longname, u->unit, "z" );
@@ -876,7 +876,7 @@ void Fields::save(int n)
     master->printMessage("Saving \"%s\" ... ", filename);
 
     // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
-    if(grid->savefield3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NO_OFFSET))
+    if(grid->saveField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NO_OFFSET))
     {
       master->printMessage("FAILED\n");
       ++nerror;
@@ -935,7 +935,7 @@ double Fields::calcmass(double * restrict s, double * restrict dz)
         mass += s[ijk]*dz[k];
       }
 
-  grid->getsum(&mass);
+  grid->getSum(&mass);
 
   mass /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -964,7 +964,7 @@ double Fields::calcmom_2nd(double * restrict u, double * restrict v, double * re
         momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
       }
 
-  grid->getsum(&momentum);
+  grid->getSum(&momentum);
 
   momentum /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -994,7 +994,7 @@ double Fields::calctke_2nd(double * restrict u, double * restrict v, double * re
                + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
       }
 
-  grid->getsum(&tke);
+  grid->getSum(&tke);
 
   tke /= (grid->itot*grid->jtot*grid->zsize);
   tke *= 0.5;

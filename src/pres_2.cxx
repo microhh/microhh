@@ -168,9 +168,9 @@ void Pres_2::pres_in(double * restrict p,
   kgc = grid->kgc;
 
   // set the cyclic boundary conditions for the tendencies
-  grid->boundary_cyclic(ut);
-  grid->boundary_cyclic(vt);
-  grid->boundary_cyclic(wt);
+  grid->boundaryCyclic(ut);
+  grid->boundaryCyclic(vt);
+  grid->boundaryCyclic(wt);
 
 
   // write pressure as a 3d array without ghost cells
@@ -212,7 +212,7 @@ void Pres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
   jgc    = grid->jgc;
   kgc    = grid->kgc;
 
-  grid->fftforward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+  grid->fftForward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
   jj = iblock;
   kk = iblock*jblock;
@@ -260,7 +260,7 @@ void Pres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);
 
-  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+  grid->fftBackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
         
   jj = imax;
   kk = imax*jmax;
@@ -291,7 +291,7 @@ void Pres_2::pres_solve(double * restrict p, double * restrict work3d, double * 
     }
 
   // set the cyclic boundary conditions
-  grid->boundary_cyclic(p);
+  grid->boundaryCyclic(p);
 }
 
 void Pres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
@@ -419,7 +419,7 @@ double Pres_2::calcdivergence(double * restrict u, double * restrict v, double *
         divmax = std::max(divmax, std::abs(div));
       }
 
-  grid->getmax(&divmax);
+  grid->getMax(&divmax);
 
   return divmax;
 }

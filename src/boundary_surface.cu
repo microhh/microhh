@@ -516,10 +516,10 @@ int Boundary_surface::bcvalues()
   cudaCheckError();
 
   // 2D cyclic boundaries on dutot  
-  grid->boundary_cyclic2d_g(&fields->atmp["tmp2"]->data_g[offs]);
+  grid->boundaryCyclic2d_g(&fields->atmp["tmp2"]->data_g[offs]);
 
   // start with retrieving the stability information
-  if(model->thermo->getsw() == "0")
+  if(model->thermo->getSwitch() == "0")
   {
     // Calculate ustar and Obukhov length, including ghost cells
     boundary_surface_stability_neutral<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
@@ -530,7 +530,7 @@ int Boundary_surface::bcvalues()
   else
   {
     // store the buoyancy in tmp1
-    model->thermo->getbuoyancysurf(fields->atmp["tmp1"]);
+    model->thermo->getBuoyancySurf(fields->atmp["tmp1"]);
 
     // Calculate ustar and Obukhov length, including ghost cells
     boundary_surface_stability<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
@@ -550,8 +550,8 @@ int Boundary_surface::bcvalues()
   cudaCheckError();
 
   // 2D cyclic boundaries on the surface fluxes  
-  grid->boundary_cyclic2d_g(&fields->u->datafluxbot_g[offs]);
-  grid->boundary_cyclic2d_g(&fields->v->datafluxbot_g[offs]);
+  grid->boundaryCyclic2d_g(&fields->u->datafluxbot_g[offs]);
+  grid->boundaryCyclic2d_g(&fields->v->datafluxbot_g[offs]);
 
   // Calculate surface gradients, including ghost cells
   boundary_surface_surfm_grad<<<gridGPU2, blockGPU2>>>(&fields->u->datagradbot_g[offs], &fields->v->datagradbot_g[offs],

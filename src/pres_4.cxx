@@ -250,9 +250,9 @@ void Pres_4::pres_in(double * restrict p,
   kmax = grid->kmax;
 
   // Set the cyclic boundary conditions for the tendencies.
-  grid->boundary_cyclic(ut);
-  grid->boundary_cyclic(vt);
-  grid->boundary_cyclic(wt);
+  grid->boundaryCyclic(ut);
+  grid->boundaryCyclic(vt);
+  grid->boundaryCyclic(wt);
 
   // Set the bc. 
   for(int j=0; j<grid->jmax; j++)
@@ -310,7 +310,7 @@ void Pres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
   jgc    = grid->jgc;
   kgc    = grid->kgc;
 
-  grid->fftforward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  grid->fftForward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   jj = iblock;
   kk = iblock*jblock;
@@ -453,7 +453,7 @@ void Pres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
         }
   }
 
-  grid->fftbackward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  grid->fftBackward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   // Put the pressure back onto the original grid including ghost cells.
   jj = imax;
@@ -495,7 +495,7 @@ void Pres_4::pres_solve(double * restrict p, double * restrict work3d, double * 
     }
 
   // Set the cyclic boundary conditions.
-  grid->boundary_cyclic(p);
+  grid->boundaryCyclic(p);
 }
 
 void Pres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
@@ -728,7 +728,7 @@ double Pres_4::calcdivergence(double * restrict u, double * restrict v, double *
         divmax = std::max(divmax, std::abs(div));
       }
 
-  grid->getmax(&divmax);
+  grid->getMax(&divmax);
 
   return divmax;
 }

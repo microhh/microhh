@@ -58,24 +58,24 @@ void Master::start(int argc, char *argv[])
 
   // initialize the MPI
   n = MPI_Init(NULL, NULL);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   initialized = true;
 
   // get the rank of the current process
   n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   // get the total number of processors
   n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   // store a temporary copy of COMM_WORLD in commxy
   n = MPI_Comm_dup(MPI_COMM_WORLD, &commxy);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   printMessage("Starting run on %d processes\n", nprocs);
@@ -123,28 +123,28 @@ void Master::init(Input *inputin)
 
   // define the dimensions of the 2-D grid layout
   n = MPI_Dims_create(nprocs, 2, dims);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   // create a 2-D grid communicator that is optimized for grid to grid transfer
   // first, free our temporary copy of COMM_WORLD
   n = MPI_Comm_free(&commxy);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   // for now, do not reorder processes, blizzard gives large performance loss
   n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   n = MPI_Comm_rank(commxy, &mpiid);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   // retrieve the x- and y-coordinates in the 2-D grid for each process
   int mpicoords[2];
   n = MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   mpicoordx = mpicoords[1];
@@ -154,20 +154,20 @@ void Master::init(Input *inputin)
   int dimy[2] = {true , false};
 
   n = MPI_Cart_sub(commxy, dimx, &commx);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   n = MPI_Cart_sub(commxy, dimy, &commy);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   // find out who are the neighbors of this process to facilitate the communication routines
   n = MPI_Cart_shift(commxy, 1, 1, &nwest , &neast );
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   n = MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth);
-  if(checkerror(n))
+  if(checkError(n))
     throw 1;
 
   // create the requests arrays for the nonblocking sends
@@ -182,12 +182,12 @@ void Master::init(Input *inputin)
   allocated = true;
 }
 
-double Master::gettime()
+double Master::getTime()
 {
   return MPI_Wtime();
 }
 
-int Master::checkerror(int n)
+int Master::checkError(int n)
 {
   char errbuffer[MPI_MAX_ERROR_STRING];
   int errlen;
@@ -202,62 +202,52 @@ int Master::checkerror(int n)
   return 0;
 }
 
-int Master::waitall()
+void Master::waitAll()
 {
   // wait for MPI processes and reset the number of pending requests
   MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
   reqsn = 0;
-
-  return 0;
 }
 
 // do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
-int Master::broadcast(char *data, int datasize)
+void Master::broadcast(char *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_CHAR, 0, commxy);
-  return 0;
 }
 
 // overloaded broadcast functions
-int Master::broadcast(int *data, int datasize)
+void Master::broadcast(int *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_INT, 0, commxy);
-  return 0;
 }
 
-int Master::broadcast(unsigned long *data, int datasize)
+void Master::broadcast(unsigned long *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, commxy);
-  return 0;
 }
 
-int Master::broadcast(double *data, int datasize)
+void Master::broadcast(double *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_DOUBLE, 0, commxy);
-  return 0;
 }
 
-int Master::sum(int *var, int datasize)
+void Master::sum(int *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_INT, MPI_SUM, commxy);
-  return 0;
 }
 
-int Master::sum(double *var, int datasize)
+void Master::sum(double *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_SUM, commxy);
-  return 0;
 }
 
-int Master::max(double *var, int datasize)
+void Master::max(double *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MAX, commxy);
-  return 0;
 }
 
-int Master::min(double *var, int datasize)
+void Master::min(double *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MIN, commxy);
-  return 0;
 }
 #endif

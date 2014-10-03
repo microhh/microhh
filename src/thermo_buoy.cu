@@ -68,14 +68,8 @@ __global__ void thermo_buoy_calcbuoyancytend_4th(double * __restrict__ wt, doubl
   }
 }
 
-
-int Thermo_buoy::prepareDevice()
-{
-  return 0;
-}
-
 #ifdef USECUDA
-int Thermo_buoy::exec()
+void ThermoBuoy::exec()
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -103,7 +97,5 @@ int Thermo_buoy::exec()
                                                             grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
-
-  return 0;
 }
 #endif

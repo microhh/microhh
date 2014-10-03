@@ -436,8 +436,8 @@ double Advec_4m::calccfl(double * u, double * v, double * w, double * dzi, doubl
                                           grid->iend,   grid->jend,   grid->kend);
   cudaCheckError(); 
 
-  cfl = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
-  grid->getmax(&cfl); 
+  cfl = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+  grid->getMax(&cfl); 
   cfl = cfl*dt;
 
   return cfl;

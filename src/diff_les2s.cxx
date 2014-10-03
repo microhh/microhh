@@ -95,7 +95,7 @@ int Diff_les2s::execvisc()
           grid->z, grid->dzi, grid->dzhi);
 
   // start with retrieving the stability information
-  if(model->thermo->getsw() == "0")
+  if(model->thermo->getSwitch() == "0")
   {
     evisc_neutral(fields->sd["evisc"]->data,
                   fields->u->data, fields->v->data, fields->w->data,
@@ -106,10 +106,10 @@ int Diff_les2s::execvisc()
   else
   {
     // store the buoyancyflux in tmp1
-    model->thermo->getbuoyancyfluxbot(fields->atmp["tmp1"]);
+    model->thermo->getBuoyancyFluxbot(fields->atmp["tmp1"]);
     // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-    model->thermo->getthermofield(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
-    // model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
+    model->thermo->getThermoField(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
+    // model->thermo->getThermoField(fields->sd["tmp1"], fields->sd["tmp2"], "b");
 
     evisc(fields->sd["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data, fields->atmp["tmp1"]->data,
@@ -276,7 +276,7 @@ int Diff_les2s::evisc(double * restrict evisc,
       }
   }
 
-  grid->boundary_cyclic(evisc);
+  grid->boundaryCyclic(evisc);
 
   return 0;
 }
@@ -322,7 +322,7 @@ int Diff_les2s::evisc_neutral(double * restrict evisc,
       }
   }
 
-  grid->boundary_cyclic(evisc);
+  grid->boundaryCyclic(evisc);
 
   return 0;
 }
@@ -647,7 +647,7 @@ double Diff_les2s::calcdnmul(double * restrict evisc, double * restrict dzi, dou
         dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
       }
 
-  grid->getmax(&dnmul);
+  grid->getMax(&dnmul);
 
   return dnmul;
 }

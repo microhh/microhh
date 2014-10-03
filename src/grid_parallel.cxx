@@ -28,7 +28,7 @@
 #include "defines.h"
 
 // MPI functions
-int Grid::initmpi()
+void Grid::initMpi()
 {
   // create the MPI types for the cyclic boundary conditions
   int datacount, datablock, datastride;
@@ -140,11 +140,9 @@ int Grid::initmpi()
   profl = new double[kcells];
 
   mpitypes = true;
-
-  return 0;
 } 
 
-int Grid::exitmpi()
+void Grid::exitMpi()
 {
   if(mpitypes)
   {
@@ -166,11 +164,9 @@ int Grid::exitmpi()
 
     delete[] profl;
   }
-
-  return 0;
 }
 
-int Grid::boundary_cyclic(double * restrict data)
+void Grid::boundaryCyclic(double * restrict data)
 {
   int ncount = 1;
 
@@ -196,7 +192,7 @@ int Grid::boundary_cyclic(double * restrict data)
   MPI_Irecv(&data[eastin], ncount, eastwestedge, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
   master->reqsn++;
   // wait here for the mpi to have correct values in the corners of the cells
-  master->waitall();
+  master->waitAll();
 
   // if the run is 3D, apply the BCs
   if(jtot > 1)
@@ -210,7 +206,7 @@ int Grid::boundary_cyclic(double * restrict data)
     master->reqsn++;
     MPI_Irecv(&data[northin], ncount, northsouthedge, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
     master->reqsn++;
-    master->waitall();
+    master->waitAll();
   }
   // in case of 2D, fill all the ghost cells with the current value
   else
@@ -233,11 +229,9 @@ int Grid::boundary_cyclic(double * restrict data)
           data[ijksouth] = data[ijkref];
         }
   }
-
-  return 0;
 }
 
-int Grid::boundary_cyclic2d(double * restrict data)
+void Grid::boundaryCyclic2d(double * restrict data)
 {
   int ncount = 1;
 
@@ -263,7 +257,7 @@ int Grid::boundary_cyclic2d(double * restrict data)
   MPI_Irecv(&data[eastin], ncount, eastwestedge2d, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
   master->reqsn++;
   // wait here for the mpi to have correct values in the corners of the cells
-  master->waitall();
+  master->waitAll();
 
   // if the run is 3D, apply the BCs
   if(jtot > 1)
@@ -277,7 +271,7 @@ int Grid::boundary_cyclic2d(double * restrict data)
     master->reqsn++;
     MPI_Irecv(&data[northin], ncount, northsouthedge2d, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
     master->reqsn++;
-    master->waitall();
+    master->waitAll();
   }
   // in case of 2D, fill all the ghost cells with the current value
   else
@@ -298,11 +292,9 @@ int Grid::boundary_cyclic2d(double * restrict data)
         data[ijsouth] = data[ijref];
       }
   }
-
-  return 0;
 }
 
-int Grid::transposezx(double * restrict ar, double * restrict as)
+void Grid::transposezx(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -323,12 +315,10 @@ int Grid::transposezx(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master->commx, &master->reqs[master->reqsn]);
     master->reqsn++;
   }
-  master->waitall();
-
-  return 0;
+  master->waitAll();
 }
 
-int Grid::transposexz(double * restrict ar, double * restrict as)
+void Grid::transposexz(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -349,12 +339,10 @@ int Grid::transposexz(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master->commx, &master->reqs[master->reqsn]);
     master->reqsn++;
   }
-  master->waitall();
-
-  return 0;
+  master->waitAll();
 }
 
-int Grid::transposexy(double * restrict ar, double * restrict as)
+void Grid::transposexy(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -375,12 +363,10 @@ int Grid::transposexy(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master->commy, &master->reqs[master->reqsn]);
     master->reqsn++;
   }
-  master->waitall();
-
-  return 0;
+  master->waitAll();
 }
 
-int Grid::transposeyx(double * restrict ar, double * restrict as)
+void Grid::transposeyx(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -401,12 +387,10 @@ int Grid::transposeyx(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master->commy, &master->reqs[master->reqsn]);
     master->reqsn++;
   }
-  master->waitall();
-
-  return 0;
+  master->waitAll();
 }
 
-int Grid::transposeyz(double * restrict ar, double * restrict as)
+void Grid::transposeyz(double * restrict ar, double * restrict as)
 {
   int ijks,ijkr;
   int ncount = 1;
@@ -427,12 +411,10 @@ int Grid::transposeyz(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master->commx, &master->reqs[master->reqsn]);
     master->reqsn++;
   }
-  master->waitall();
- 
-  return 0;
+  master->waitAll();
 }
 
-int Grid::transposezy(double * restrict ar, double * restrict as)
+void Grid::transposezy(double * restrict ar, double * restrict as)
 {
   int ijks,ijkr;
   int ncount = 1;
@@ -453,35 +435,27 @@ int Grid::transposezy(double * restrict ar, double * restrict as)
     MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master->commx, &master->reqs[master->reqsn]);
     master->reqsn++;
   }
-  master->waitall();
-
-  return 0;
+  master->waitAll();
 }
 
-int Grid::getmax(double *var)
+void Grid::getMax(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, master->commxy);
-
-  return 0;
 }
 
-int Grid::getsum(double *var)
+void Grid::getSum(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, master->commxy);
-
-  return 0;
 }
 
-int Grid::getprof(double *prof, int kcellsin)
+void Grid::getProf(double *prof, int kcellsin)
 {
   for(int k=0; k<kcellsin; k++)
     profl[k] = prof[k] / master->nprocs;
 
   MPI_Allreduce(profl, prof, kcellsin, MPI_DOUBLE, MPI_SUM, master->commxy);
-
-  return 0;
 }
 
 // IO functions
@@ -554,13 +528,13 @@ void Grid::save()
   fftw_r2r_kind kindf[] = {FFTW_R2HC};
   fftw_r2r_kind kindb[] = {FFTW_HC2R};
 
-  iplanf = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanf = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanb = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanf = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanb = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
   fftwplan = true;
@@ -650,13 +624,13 @@ void Grid::load()
   int jdist = 1;
   fftw_r2r_kind kindf[] = {FFTW_R2HC};
   fftw_r2r_kind kindb[] = {FFTW_HC2R};
-  iplanf = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanf = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanb = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanf = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanb = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
   fftwplan = true;
@@ -664,7 +638,7 @@ void Grid::load()
   fftw_forget_wisdom();
 }
 
-int Grid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -712,7 +686,7 @@ int Grid::savefield3d(double * restrict data, double * restrict tmp1, double * r
   return 0;
 }
 
-int Grid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -760,16 +734,15 @@ int Grid::loadfield3d(double * restrict data, double * restrict tmp1, double * r
   return 0;
 }
 
-int Grid::fftforward(double * restrict data,   double * restrict tmp1,
+void Grid::fftForward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
-  int ij,ijk,jj,kk;
+  int ij,ijk,kk;
 
   // transpose the pressure field
   transposezx(tmp1,data);
 
-  jj = itot;
   kk = itot*jmax;
 
   // process the fourier transforms slice by slice
@@ -797,7 +770,6 @@ int Grid::fftforward(double * restrict data,   double * restrict tmp1,
   // transpose again
   transposexy(data,tmp1);
 
-  jj = iblock;
   kk = iblock*jtot;
 
   // do the second fourier transform
@@ -825,20 +797,17 @@ int Grid::fftforward(double * restrict data,   double * restrict tmp1,
 
   // transpose back to original orientation
   transposeyz(data,tmp1);
-
-  return 0;
 }
 
-int Grid::fftbackward(double * restrict data,   double * restrict tmp1,
+void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
-  int ij,ijk,jj,kk;
+  int ij,ijk,kk;
 
   // transpose back to y
   transposezy(tmp1, data);
 
-  jj = iblock;
   kk = iblock*jtot;
 
   // transform the second transform back
@@ -866,7 +835,6 @@ int Grid::fftbackward(double * restrict data,   double * restrict tmp1,
   // transpose back to x
   transposeyx(tmp1, data);
 
-  jj = itot;
   kk = itot*jmax;
 
   // transform the first transform back
@@ -894,11 +862,9 @@ int Grid::fftbackward(double * restrict data,   double * restrict tmp1,
 
   // and transpose back...
   transposexz(tmp1, data);
-
-  return 0;
 }
 
-int Grid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
+int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -956,7 +922,7 @@ int Grid::savexzslice(double * restrict data, double * restrict tmp, char *filen
   return nerror;
 }
 
-int Grid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -1007,7 +973,7 @@ int Grid::savexyslice(double * restrict data, double * restrict tmp, char *filen
   return 0;
 }
 
-int Grid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::loadxySlice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;

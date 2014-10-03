@@ -356,9 +356,9 @@ void Pres_2::exec(double dt)
   const int offs = grid->memoffset;
 
   // calculate the cyclic BCs first
-  grid->boundary_cyclic_g(&fields->ut->data_g[offs]);
-  grid->boundary_cyclic_g(&fields->vt->data_g[offs]);
-  grid->boundary_cyclic_g(&fields->wt->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->ut->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->vt->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->wt->data_g[offs]);
 
   pres_2_presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                        &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
@@ -429,7 +429,7 @@ void Pres_2::exec(double dt)
                                          grid->imax, grid->jmax, grid->kmax);
   cudaCheckError();
 
-  grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
+  grid->boundaryCyclic_g(&fields->sd["p"]->data_g[offs]);
 
   pres_2_presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                         &fields->sd["p"]->data_g[offs],
@@ -467,8 +467,8 @@ double Pres_2::calcdivergence(double * restrict u, double * restrict v, double *
                                                grid->iend,    grid->jend,   grid->kend);
   cudaCheckError();
 
-  divmax = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
-  grid->getmax(&divmax);
+  divmax = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
+  grid->getMax(&divmax);
 
   return divmax;
 }
