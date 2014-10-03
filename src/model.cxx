@@ -407,7 +407,7 @@ void Model::printOutputFile(bool doclose)
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
-    start = master->gettime();
+    start = master->getTime();
   }
 
   if(timeloop->doCheck())
@@ -422,7 +422,7 @@ void Model::printOutputFile(bool doclose)
     cfl     = advec->getcfl(timeloop->dt);
     dn      = diff->getdn(timeloop->dt);
 
-    end     = master->gettime();
+    end     = master->getTime();
     cputime = end - start;
     start   = end;
 
