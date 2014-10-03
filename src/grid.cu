@@ -91,7 +91,7 @@ __global__ void grid_cyclic_y(double * const __restrict__ data,
   }
 }
 
-int Grid::prepareDevice()
+void Grid::prepareDevice()
 {
   /* Align the interior of the grid (i.e. excluding ghost cells) with 
      the 128 byte memory blocks of the GPU's global memory */
@@ -120,11 +120,9 @@ int Grid::prepareDevice()
   cudaSafeCall(cudaMemcpy(dzhi_g , dzhi , kmemsize, cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(dzi4_g , dzi4 , kmemsize, cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(dzhi4_g, dzhi4, kmemsize, cudaMemcpyHostToDevice));
-
-  return 0;
 }
 
-int Grid::clearDevice()
+void Grid::clearDevice()
 {
   cudaSafeCall(cudaFree(z_g    ));
   cudaSafeCall(cudaFree(zh_g   ));
@@ -134,11 +132,9 @@ int Grid::clearDevice()
   cudaSafeCall(cudaFree(dzhi_g ));
   cudaSafeCall(cudaFree(dzi4_g ));
   cudaSafeCall(cudaFree(dzhi4_g));
-
-  return 0;
 }
 
-int Grid::boundary_cyclic_g(double * data)
+void Grid::boundary_cyclic_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -167,11 +163,9 @@ int Grid::boundary_cyclic_g(double * data)
                                         igc,    jgc);
 
   cudaCheckError();
-
-  return 0;
 }
 
-int Grid::boundary_cyclic2d_g(double * data)
+void Grid::boundary_cyclic2d_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -200,8 +194,6 @@ int Grid::boundary_cyclic2d_g(double * data)
                                         igc,    jgc);
 
   cudaCheckError();
-
-  return 0;
 }
 
 
@@ -238,7 +230,7 @@ double Grid::getsum_g(double *data, double *tmp)
   return sumvalue;
 }
 
-int Grid::calcmean_g(double *prof, double *data, double *tmp)
+void Grid::calcmean_g(double *prof, double *data, double *tmp)
 {
   const unsigned int sum = 0;
   const double scalefac = 1./(itot*jtot);
@@ -247,7 +239,5 @@ int Grid::calcmean_g(double *prof, double *data, double *tmp)
   reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, kcells, 0, icellsp, ijcellsp, sum);
   // Reduce jtot*kcells to kcells values
   reduceAll     (tmp, prof, jtot*kcells, kcells, jtot, sum, scalefac);
-
-  return 0;
 } 
 
