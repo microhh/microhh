@@ -94,13 +94,20 @@ class Fields
     // TODO remove these to and bring them to diffusion model
     double visc;
 
-    // GPU functions
+    // GPU functions and variables
+    enum OffsetType {Offset, NoOffset};
+
     int prepareDevice();
     int forwardDevice();
+    void forward3DFieldDevice (double *, double *, OffsetType);
+    void forward2DFieldDevice (double *, double *, OffsetType);
+    void forward1DFieldDevice (double *, double *, int);
+    void backward3DFieldDevice(double *, double *, OffsetType);
+    void backward2DFieldDevice(double *, double *, OffsetType);
+    void backward1DFieldDevice(double *, double *, int);
     int backwardDevice();
     int clearDevice();
 
-    // GPU variables
     double *rhoref_g;
     double *rhorefh_g;
     
