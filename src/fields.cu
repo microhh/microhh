@@ -195,6 +195,7 @@ int Fields::prepareDevice()
   const int nmemsize1d = grid->kcells*sizeof(double);
   const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
 
+  // Prognostic fields
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
     cudaSafeCall(cudaMalloc(&it->second->data_g,        nmemsize  ));
@@ -206,8 +207,8 @@ int Fields::prepareDevice()
     cudaSafeCall(cudaMalloc(&it->second->datafluxtop_g, nmemsize2d));
     cudaSafeCall(cudaMalloc(&it->second->datamean_g,    nmemsize1d));
   }
-
-  // BvS: slightly wasteful, but make sure we have all fields...
+ 
+  // Diagnostic fields 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
     cudaSafeCall(cudaMalloc(&it->second->data_g,        nmemsize  ));
@@ -220,11 +221,30 @@ int Fields::prepareDevice()
     cudaSafeCall(cudaMalloc(&it->second->datamean_g,    nmemsize1d));
   }
 
+  // Tendencies
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-  {
     cudaSafeCall(cudaMalloc(&it->second->data_g, nmemsize));
-  }
 
+  // Temporary fields
+  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->data_g,        nmemsize  ));
+  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->databot_g,     nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datatop_g,     nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datagradbot_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datagradtop_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datafluxbot_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datafluxtop_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datamean_g,    nmemsize1d));
+
+  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->data_g,        nmemsize  ));
+  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->databot_g,     nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datatop_g,     nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datagradbot_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datagradtop_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datafluxbot_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datafluxtop_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datamean_g,    nmemsize1d));
+
+  // Reference profiles
   cudaSafeCall(cudaMalloc(&rhoref_g,  nmemsize1d));
   cudaSafeCall(cudaMalloc(&rhorefh_g, nmemsize1d));
 
@@ -263,6 +283,24 @@ int Fields::forwardDevice()
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     forward3DFieldDevice(it->second->data_g, it->second->data, Offset);
 
+  forward3DFieldDevice(atmp["tmp1"]->data_g,        atmp["tmp1"]->data,        Offset);
+  forward2DFieldDevice(atmp["tmp1"]->databot_g,     atmp["tmp1"]->databot,     Offset);
+  forward2DFieldDevice(atmp["tmp1"]->datatop_g,     atmp["tmp1"]->datatop,     Offset);
+  forward2DFieldDevice(atmp["tmp1"]->datagradbot_g, atmp["tmp1"]->datagradbot, Offset);
+  forward2DFieldDevice(atmp["tmp1"]->datagradtop_g, atmp["tmp1"]->datagradtop, Offset);
+  forward2DFieldDevice(atmp["tmp1"]->datafluxbot_g, atmp["tmp1"]->datafluxbot, Offset);
+  forward2DFieldDevice(atmp["tmp1"]->datafluxtop_g, atmp["tmp1"]->datafluxtop, Offset);
+  forward1DFieldDevice(atmp["tmp1"]->datamean_g,    atmp["tmp1"]->datamean, grid->kcells);
+
+  forward3DFieldDevice(atmp["tmp2"]->data_g,        atmp["tmp2"]->data,        Offset);
+  forward2DFieldDevice(atmp["tmp2"]->databot_g,     atmp["tmp2"]->databot,     Offset);
+  forward2DFieldDevice(atmp["tmp2"]->datatop_g,     atmp["tmp2"]->datatop,     Offset);
+  forward2DFieldDevice(atmp["tmp2"]->datagradbot_g, atmp["tmp2"]->datagradbot, Offset);
+  forward2DFieldDevice(atmp["tmp2"]->datagradtop_g, atmp["tmp2"]->datagradtop, Offset);
+  forward2DFieldDevice(atmp["tmp2"]->datafluxbot_g, atmp["tmp2"]->datafluxbot, Offset);
+  forward2DFieldDevice(atmp["tmp2"]->datafluxtop_g, atmp["tmp2"]->datafluxtop, Offset);
+  forward1DFieldDevice(atmp["tmp2"]->datamean_g,    atmp["tmp2"]->datamean, grid->kcells);
+
   forward1DFieldDevice(rhoref_g,  rhoref , grid->kcells);
   forward1DFieldDevice(rhorefh_g, rhorefh, grid->kcells);
 
@@ -299,6 +337,24 @@ int Fields::backwardDevice()
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
+
+  backward3DFieldDevice(atmp["tmp1"]->data,        atmp["tmp1"]->data_g,        Offset);
+  backward2DFieldDevice(atmp["tmp1"]->databot,     atmp["tmp1"]->databot_g,     Offset);
+  backward2DFieldDevice(atmp["tmp1"]->datatop,     atmp["tmp1"]->datatop_g,     Offset);
+  backward2DFieldDevice(atmp["tmp1"]->datagradbot, atmp["tmp1"]->datagradbot_g, Offset);
+  backward2DFieldDevice(atmp["tmp1"]->datagradtop, atmp["tmp1"]->datagradtop_g, Offset);
+  backward2DFieldDevice(atmp["tmp1"]->datafluxbot, atmp["tmp1"]->datafluxbot_g, Offset);
+  backward2DFieldDevice(atmp["tmp1"]->datafluxtop, atmp["tmp1"]->datafluxtop_g, Offset);
+  backward1DFieldDevice(atmp["tmp1"]->datamean,    atmp["tmp1"]->datamean_g, grid->kcells);
+
+  backward3DFieldDevice(atmp["tmp2"]->data,        atmp["tmp2"]->data_g,        Offset);
+  backward2DFieldDevice(atmp["tmp2"]->databot,     atmp["tmp2"]->databot_g,     Offset);
+  backward2DFieldDevice(atmp["tmp2"]->datatop,     atmp["tmp2"]->datatop_g,     Offset);
+  backward2DFieldDevice(atmp["tmp2"]->datagradbot, atmp["tmp2"]->datagradbot_g, Offset);
+  backward2DFieldDevice(atmp["tmp2"]->datagradtop, atmp["tmp2"]->datagradtop_g, Offset);
+  backward2DFieldDevice(atmp["tmp2"]->datafluxbot, atmp["tmp2"]->datafluxbot_g, Offset);
+  backward2DFieldDevice(atmp["tmp2"]->datafluxtop, atmp["tmp2"]->datafluxtop_g, Offset);
+  backward1DFieldDevice(atmp["tmp2"]->datamean,    atmp["tmp2"]->datamean_g, grid->kcells);
 
   backward1DFieldDevice(rhoref,  rhoref_g,  grid->kcells);
   backward1DFieldDevice(rhorefh, rhorefh_g, grid->kcells);
