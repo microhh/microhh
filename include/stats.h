@@ -71,7 +71,7 @@ class Stats
     void init(double);
     void create(int);
 
-    unsigned long gettimelim(unsigned long);
+    unsigned long getTimeLimit(unsigned long);
     int getmask(Field3d *, Field3d *, mask *);
     int exec(int, double, unsigned long);
     int dostats();

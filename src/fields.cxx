@@ -428,7 +428,7 @@ int Fields::execstats(mask *m)
     stats->calcflux_2nd(u->data, umodel, w->data, m->profs["w"].data,
                         m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    if(model->diff->getname() == "les2s")
+    if(model->diff->getName() == "les2s")
       stats->calcdiff_2nd(u->data, w->data, sd["evisc"]->data,
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
@@ -470,7 +470,7 @@ int Fields::execstats(mask *m)
     stats->calcflux_2nd(v->data, vmodel, w->data, m->profs["w"].data,
                         m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    if(model->diff->getname() == "les2s")
+    if(model->diff->getName() == "les2s")
       stats->calcdiff_2nd(v->data, w->data, sd["evisc"]->data,
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
@@ -491,7 +491,7 @@ int Fields::execstats(mask *m)
   }
 
   // calculate stats for the prognostic scalars
-  Diff_les2s *diffptr = static_cast<Diff_les2s *>(model->diff);
+  DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
     stats->calcmean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
@@ -510,7 +510,7 @@ int Fields::execstats(mask *m)
       stats->calcflux_2nd(it->second->data, m->profs[it->first].data, w->data, m->profs["w"].data,
                           m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
-      if(model->diff->getname() == "les2s")
+      if(model->diff->getName() == "les2s")
         stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
@@ -539,7 +539,7 @@ int Fields::execstats(mask *m)
   // other statistics
   stats->calcmean(m->profs["p"].data, sd["p"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
 
-  if(model->diff->getname() == "les2s")
+  if(model->diff->getName() == "les2s")
     stats->calcmean(m->profs["evisc"].data, sd["evisc"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
 
   return 0;
@@ -820,8 +820,9 @@ void Fields::load(int n)
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addprof(it->first,it->second->longname, it->second->unit, "z");
     stats->addprof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
-  
-    if(model->diff->getname() == "les2s")
+ 
+    // CvH, shouldn't this call be in the diffusion class?
+    if(model->diff->getName() == "les2s")
       stats->addprof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
   
     // moments

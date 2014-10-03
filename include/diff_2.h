@@ -20,21 +20,21 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_2
-#define DIFF_2
+#ifndef DIFF2
+#define DIFF2
 
 #include "diff.h"
 
-class Diff_2 : public Diff
+class Diff2 : public Diff
 {
   public:
-    Diff_2(Model *, Input *);
-    ~Diff_2();
+    Diff2(Model *, Input *);
+    ~Diff2();
 
-    void setvalues();
+    void setValues();
     int exec();
 
-    unsigned long gettimelim(unsigned long, double);
+    unsigned long getTimeLimit(unsigned long, double);
     double getdn(double);
 
   private:

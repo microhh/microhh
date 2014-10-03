@@ -180,7 +180,7 @@ void Cross::create()
     throw 1;
 }
 
-unsigned long Cross::gettimelim(unsigned long itime)
+unsigned long Cross::getTimeLimit(unsigned long itime)
 {
   if(swcross == "0")
     return constants::ulhuge;

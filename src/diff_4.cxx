@@ -33,16 +33,16 @@
 
 using namespace fd::o4;
 
-Diff_4::Diff_4(Model *modelin, Input *inputin) : Diff(modelin, inputin)
+Diff4::Diff4(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
   swdiff = "4";
 }
 
-Diff_4::~Diff_4()
+Diff4::~Diff4()
 {
 }
 
-void Diff_4::setvalues()
+void Diff4::setValues()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
@@ -54,7 +54,7 @@ void Diff_4::setvalues()
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
-unsigned long Diff_4::gettimelim(unsigned long idt, double dt)
+unsigned long Diff4::getTimeLimit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
@@ -63,7 +63,7 @@ unsigned long Diff_4::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-double Diff_4::getdn(double dt)
+double Diff4::getdn(double dt)
 {
   double dn;
 
@@ -73,7 +73,7 @@ double Diff_4::getdn(double dt)
 }
 
 #ifndef USECUDA
-int Diff_4::exec()
+int Diff4::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
@@ -86,7 +86,7 @@ int Diff_4::exec()
 }
 #endif
 
-int Diff_4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+int Diff4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -156,7 +156,7 @@ int Diff_4::diffc(double * restrict at, double * restrict a, double * restrict d
   return 0;
 }
 
-int Diff_4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+int Diff4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;

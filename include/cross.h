@@ -40,7 +40,7 @@ class Cross
     void init(double);
     void create();
 
-    unsigned long gettimelim(unsigned long);
+    unsigned long getTimeLimit(unsigned long);
     //int exec(double, unsigned long, int);
 
     std::string swcross;

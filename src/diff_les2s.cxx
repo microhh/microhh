@@ -33,7 +33,7 @@
 #include "thermo.h"
 #include "model.h"
 
-Diff_les2s::Diff_les2s(Model *modelin, Input *inputin) : Diff(modelin, inputin)
+DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
   swdiff = "les2s";
 
@@ -48,15 +48,15 @@ Diff_les2s::Diff_les2s(Model *modelin, Input *inputin) : Diff(modelin, inputin)
     throw 1;
 }
 
-Diff_les2s::~Diff_les2s()
+DiffSmag2::~DiffSmag2()
 {
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
 #ifndef USECUDA
-unsigned long Diff_les2s::gettimelim(unsigned long idt, double dt)
+unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
   double dnmul;
@@ -71,7 +71,7 @@ unsigned long Diff_les2s::gettimelim(unsigned long idt, double dt)
 #endif
 
 #ifndef USECUDA
-double Diff_les2s::getdn(double dt)
+double DiffSmag2::getdn(double dt)
 {
   double dnmul;
 
@@ -83,7 +83,7 @@ double Diff_les2s::getdn(double dt)
 #endif
 
 #ifndef USECUDA
-int Diff_les2s::execvisc()
+int DiffSmag2::execViscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
   Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
@@ -97,10 +97,10 @@ int Diff_les2s::execvisc()
   // start with retrieving the stability information
   if(model->thermo->getSwitch() == "0")
   {
-    evisc_neutral(fields->sd["evisc"]->data,
-                  fields->u->data, fields->v->data, fields->w->data,
-                  fields->u->datafluxbot, fields->v->datafluxbot,
-                  grid->z, grid->dz, boundaryptr->z0m);
+    eviscNeutral(fields->sd["evisc"]->data,
+                 fields->u->data, fields->v->data, fields->w->data,
+                 fields->u->datafluxbot, fields->v->datafluxbot,
+                 grid->z, grid->dz, boundaryptr->z0m);
   }
   // assume buoyancy calculation is needed
   else
@@ -124,7 +124,7 @@ int Diff_les2s::execvisc()
 #endif
 
 #ifndef USECUDA
-int Diff_les2s::exec()
+int DiffSmag2::exec()
 {
   diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
   diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
@@ -137,7 +137,7 @@ int Diff_les2s::exec()
 }
 #endif
 
-int Diff_les2s::strain2(double * restrict strain2,
+int DiffSmag2::strain2(double * restrict strain2,
                           double * restrict u, double * restrict v, double * restrict w,
                           double * restrict ufluxbot, double * restrict vfluxbot,
                           double * restrict ustar, double * restrict obuk,
@@ -211,7 +211,7 @@ int Diff_les2s::strain2(double * restrict strain2,
   return 0;
 }
 
-int Diff_les2s::evisc(double * restrict evisc,
+int DiffSmag2::evisc(double * restrict evisc,
                         double * restrict u, double * restrict v, double * restrict w,  double * restrict N2,
                         double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
                         double * restrict ustar, double * restrict obuk,
@@ -281,10 +281,10 @@ int Diff_les2s::evisc(double * restrict evisc,
   return 0;
 }
 
-int Diff_les2s::evisc_neutral(double * restrict evisc,
-                               double * restrict u, double * restrict v, double * restrict w,
-                               double * restrict ufluxbot, double * restrict vfluxbot,
-                               double * restrict z, double * restrict dz, double z0m)
+int DiffSmag2::eviscNeutral(double * restrict evisc,
+                            double * restrict u, double * restrict v, double * restrict w,
+                            double * restrict ufluxbot, double * restrict vfluxbot,
+                            double * restrict z, double * restrict dz, double z0m)
 {
   int    ij,ijk,jj,kk,kstart;
   double dx,dy;
@@ -327,7 +327,7 @@ int Diff_les2s::evisc_neutral(double * restrict evisc,
   return 0;
 }
 
-int Diff_les2s::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh)
+int DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
@@ -413,7 +413,7 @@ int Diff_les2s::diffu(double * restrict ut, double * restrict u, double * restri
   return 0;
 }
 
-int Diff_les2s::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh)
+int DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
@@ -499,7 +499,7 @@ int Diff_les2s::diffv(double * restrict vt, double * restrict u, double * restri
   return 0;
 }
 
-int Diff_les2s::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict rhoref, double * restrict rhorefh)
+int DiffSmag2::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -537,7 +537,7 @@ int Diff_les2s::diffw(double * restrict wt, double * restrict u, double * restri
   return 0;
 }
 
-int Diff_les2s::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh, double tPr)
+int DiffSmag2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh, double tPr)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxidxi,dyidyi;
@@ -623,7 +623,7 @@ int Diff_les2s::diffc(double * restrict at, double * restrict a, double * restri
   return 0;
 }
 
-double Diff_les2s::calcdnmul(double * restrict evisc, double * restrict dzi, double tPr)
+double DiffSmag2::calcdnmul(double * restrict evisc, double * restrict dzi, double tPr)
 {
   int    ijk,jj,kk;
   double dxidxi,dyidyi;
@@ -652,7 +652,7 @@ double Diff_les2s::calcdnmul(double * restrict evisc, double * restrict dzi, dou
   return dnmul;
 }
 
-inline double Diff_les2s::phim(double zeta)
+inline double DiffSmag2::phim(double zeta)
 {
   double phim;
   if(zeta <= 0.)
@@ -669,7 +669,7 @@ inline double Diff_les2s::phim(double zeta)
   return phim;
 }
 
-inline double Diff_les2s::phih(double zeta)
+inline double DiffSmag2::phih(double zeta)
 {
   double phih;
   if(zeta <= 0.)
@@ -687,7 +687,7 @@ inline double Diff_les2s::phih(double zeta)
 }
 
 #ifndef USECUDA
-int Diff_les2s::prepareDevice()
+int DiffSmag2::prepareDevice()
 {
   return 0;
 }

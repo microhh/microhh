@@ -732,7 +732,7 @@ int Diff_les2s::exec()
 #endif
 
 #ifdef USECUDA
-unsigned long Diff_les2s::gettimelim(unsigned long idt, double dt)
+unsigned long Diff_les2s::getTimeLimit(unsigned long idt, double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;

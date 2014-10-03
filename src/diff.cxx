@@ -56,14 +56,14 @@ Diff::~Diff()
 {
 }
 
-unsigned long Diff::gettimelim(unsigned long idtlim, double dt)
+unsigned long Diff::getTimeLimit(unsigned long idtlim, double dt)
 {
   idtlim = (unsigned long) constants::dbig;
 
   return idtlim;
 }
 
-void Diff::setvalues()
+void Diff::setValues()
 {
 }
 
@@ -76,7 +76,7 @@ double Diff::getdn(double dt)
   return dn;
 }
 
-int Diff::execvisc()
+int Diff::execViscosity()
 {
   return 0;
 }
@@ -86,7 +86,7 @@ int Diff::exec()
   return 0;
 }
 
-std::string Diff::getname()
+std::string Diff::getName()
 {
   return swdiff;
 }
@@ -106,9 +106,9 @@ Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std:
   if(swdiff == "0")
     return new Diff(modelin, inputin);
   else if(swdiff == "2")
-    return new Diff_2(modelin, inputin);
+    return new Diff2(modelin, inputin);
   else if(swdiff == "4")
-    return new Diff_4(modelin, inputin);
+    return new Diff4(modelin, inputin);
   else if(swdiff == "les2s")
   {
     // the subgrid model requires a surface model because of the MO matching at first level
@@ -117,7 +117,7 @@ Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std:
       masterin->printError("swdiff == \"les2s\" requires swboundary == \"surface\"\n");
       return 0;
     }
-    return new Diff_les2s(modelin, inputin);
+    return new DiffSmag2(modelin, inputin);
   }
   else
   {

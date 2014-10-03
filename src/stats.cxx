@@ -164,7 +164,7 @@ void Stats::create(int n)
   addprof("areah", "Fractional area contained in mask", "-", "zh");
 }
 
-unsigned long Stats::gettimelim(unsigned long itime)
+unsigned long Stats::getTimeLimit(unsigned long itime)
 {
   if(swstats == "0")
     return constants::ulhuge;

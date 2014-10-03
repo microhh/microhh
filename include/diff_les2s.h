@@ -20,21 +20,21 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_LES2S
-#define DIFF_LES2S
+#ifndef DIFFSMAG2
+#define DIFFSMAG2
 
 #include "diff.h"
 
-class Diff_les2s : public Diff
+class DiffSmag2 : public Diff
 {
   public:
-    Diff_les2s(Model *, Input *);
-    ~Diff_les2s();
+    DiffSmag2(Model *, Input *);
+    ~DiffSmag2();
 
     int exec();
-    int execvisc();
+    int execViscosity();
 
-    unsigned long gettimelim(unsigned long, double);
+    unsigned long getTimeLimit(unsigned long, double);
     double getdn(double);
 
     double tPr;
@@ -57,11 +57,11 @@ class Diff_les2s : public Diff
               double *, double *,
               double *, double *, double *,
               double);
-    int evisc_neutral(double *,
-                      double *, double *, double *,
-                      double *, double *,
-                      double *, double *,
-                      double);
+    int eviscNeutral(double *,
+                     double *, double *, double *,
+                     double *, double *,
+                     double *, double *,
+                     double);
     int diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
     int diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
     int diffw(double *, double *, double *, double *, double *, double *, double *, double *, double *);

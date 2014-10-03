@@ -195,7 +195,7 @@ void ThermoDry::create(Input *inputin)
 
     stats->addprof("bgrad", "Gradient of the buoyancy", "s-2", "zh");
     stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-    stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+    stats->addprof("bdiff", "usive flux of the buoyancy", "m2 s-3", "zh");
     stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
     stats->addprof("bsort", "Sorted buoyancy", "m s-2", "z");
@@ -278,9 +278,9 @@ void ThermoDry::execStats(mask *m)
   // calculate diffusive fluxes
   if(grid->swspatialorder == "2")
   {
-    if(model->diff->getname() == "les2s")
+    if(model->diff->getName() == "les2s")
     {
-      Diff_les2s *diffptr = static_cast<Diff_les2s *>(model->diff);
+      DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
       stats->calcdiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
                           fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,

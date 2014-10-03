@@ -30,16 +30,16 @@
 #include "defines.h"
 #include "model.h"
 
-Diff_2::Diff_2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
+Diff2::Diff2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
   swdiff = "2";
 }
 
-Diff_2::~Diff_2()
+Diff2::~Diff2()
 {
 }
 
-void Diff_2::setvalues()
+void Diff2::setValues()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
@@ -51,7 +51,7 @@ void Diff_2::setvalues()
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
-unsigned long Diff_2::gettimelim(unsigned long idt, double dt)
+unsigned long Diff2::getTimeLimit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
@@ -60,7 +60,7 @@ unsigned long Diff_2::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-double Diff_2::getdn(double dt)
+double Diff2::getdn(double dt)
 {
   double dn;
 
@@ -70,7 +70,7 @@ double Diff_2::getdn(double dt)
 }
 
 #ifndef USECUDA
-int Diff_2::exec()
+int Diff2::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
@@ -83,7 +83,7 @@ int Diff_2::exec()
 }
 #endif
 
-int Diff_2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
+int Diff2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
@@ -113,7 +113,7 @@ int Diff_2::diffc(double * restrict at, double * restrict a, double * restrict d
   return 0;
 }
 
-int Diff_2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
+int Diff2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
