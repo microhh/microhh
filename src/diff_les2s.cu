@@ -579,9 +579,9 @@ __global__ void diff_les2s_calcdnmul(double * __restrict__ dnmul, double * __res
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
 #ifdef USECUDA
-int cdiff_les2s::prepareDevice()
+int Diff_les2s::prepareDevice()
 {
-  cboundary_surface *boundaryptr = static_cast<cboundary_surface *>(model->boundary);
+  Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
 
   const double n=2.;
   double mlen0;
@@ -602,17 +602,17 @@ int cdiff_les2s::prepareDevice()
 }
 #endif
 
-int cdiff_les2s::clearDevice()
+int Diff_les2s::clearDevice()
 {
   cudaSafeCall(cudaFree(mlen_g));
   return 0;
 }
 
 #ifdef USECUDA
-int cdiff_les2s::execvisc()
+int Diff_les2s::execvisc()
 {
   // do a cast because the base boundary class does not have the MOST related variables
-  cboundary_surface *boundaryptr = static_cast<cboundary_surface *>(model->boundary);
+  Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
 
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -669,7 +669,7 @@ int cdiff_les2s::execvisc()
 #endif
 
 #ifdef USECUDA
-int cdiff_les2s::exec()
+int Diff_les2s::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -732,7 +732,7 @@ int cdiff_les2s::exec()
 #endif
 
 #ifdef USECUDA
-unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
+unsigned long Diff_les2s::gettimelim(unsigned long idt, double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -766,7 +766,7 @@ unsigned long cdiff_les2s::gettimelim(unsigned long idt, double dt)
 #endif
 
 #ifdef USECUDA
-double cdiff_les2s::getdn(double dt)
+double Diff_les2s::getdn(double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;

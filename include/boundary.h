@@ -24,10 +24,10 @@
 #define BOUNDARY
 
 // forward declarations to speed up build time
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
+class Master;
+class Model;
+class Grid;
+class Fields;
 struct mask;
 
 /**
@@ -35,15 +35,15 @@ struct mask;
  * This class handles the case when advection is turned off. Derived classes are
  * implemented that handle different advection schemes.
  */
-class cboundary
+class Boundary
 {
   public:
-    cboundary(cmodel *, cinput *); ///< Constuctor of the boundary class.
-    virtual ~cboundary();          ///< Destructor of the boundary class.
-    static cboundary* factory(cmaster *, cinput *, cmodel *); ///< Factory function for boundary class generation.
+    Boundary(Model *, Input *); ///< Constuctor of the boundary class.
+    virtual ~Boundary();          ///< Destructor of the boundary class.
+    static Boundary* factory(Master *, Input *, Model *); ///< Factory function for boundary class generation.
 
-    virtual void init(cinput *);   ///< Initialize the fields.
-    virtual void create(cinput *); ///< Create the fields.
+    virtual void init(Input *);   ///< Initialize the fields.
+    virtual void create(Input *); ///< Create the fields.
     virtual int settimedep();
     virtual void setvalues();      ///< Set all 2d fields to the prober BC value.
 
@@ -62,10 +62,10 @@ class cboundary
     virtual int backwardDevice(); 
 
   protected:
-    cmaster *master; ///< Pointer to master class.
-    cmodel  *model;  ///< Pointer to model class.
-    cgrid   *grid;   ///< Pointer to grid class.
-    cfields *fields; ///< Pointer to fields class.
+    Master *master; ///< Pointer to master class.
+    Model  *model;  ///< Pointer to model class.
+    Grid   *grid;   ///< Pointer to grid class.
+    Fields *fields; ///< Pointer to fields class.
 
     BoundaryType mbcbot;
     BoundaryType mbctop;
@@ -90,8 +90,8 @@ class cboundary
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
-    int processbcs(cinput *); ///< Process the boundary condition settings from the ini file.
-    int processtimedep(cinput *); ///< Process the time dependent settings from the ini file.
+    int processbcs(Input *); ///< Process the boundary condition settings from the ini file.
+    int processtimedep(Input *); ///< Process the time dependent settings from the ini file.
     int setbc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
     // GPU functions and variables

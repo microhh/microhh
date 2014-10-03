@@ -28,7 +28,7 @@
 #include "defines.h"
 
 // MPI functions
-int cgrid::initmpi()
+int Grid::initmpi()
 {
   // create the MPI types for the cyclic boundary conditions
   int datacount, datablock, datastride;
@@ -144,7 +144,7 @@ int cgrid::initmpi()
   return 0;
 } 
 
-int cgrid::exitmpi()
+int Grid::exitmpi()
 {
   if(mpitypes)
   {
@@ -170,7 +170,7 @@ int cgrid::exitmpi()
   return 0;
 }
 
-int cgrid::boundary_cyclic(double * restrict data)
+int Grid::boundary_cyclic(double * restrict data)
 {
   int ncount = 1;
 
@@ -237,7 +237,7 @@ int cgrid::boundary_cyclic(double * restrict data)
   return 0;
 }
 
-int cgrid::boundary_cyclic2d(double * restrict data)
+int Grid::boundary_cyclic2d(double * restrict data)
 {
   int ncount = 1;
 
@@ -302,7 +302,7 @@ int cgrid::boundary_cyclic2d(double * restrict data)
   return 0;
 }
 
-int cgrid::transposezx(double * restrict ar, double * restrict as)
+int Grid::transposezx(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -328,7 +328,7 @@ int cgrid::transposezx(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposexz(double * restrict ar, double * restrict as)
+int Grid::transposexz(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -354,7 +354,7 @@ int cgrid::transposexz(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposexy(double * restrict ar, double * restrict as)
+int Grid::transposexy(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -380,7 +380,7 @@ int cgrid::transposexy(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposeyx(double * restrict ar, double * restrict as)
+int Grid::transposeyx(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -406,7 +406,7 @@ int cgrid::transposeyx(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposeyz(double * restrict ar, double * restrict as)
+int Grid::transposeyz(double * restrict ar, double * restrict as)
 {
   int ijks,ijkr;
   int ncount = 1;
@@ -432,7 +432,7 @@ int cgrid::transposeyz(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposezy(double * restrict ar, double * restrict as)
+int Grid::transposezy(double * restrict ar, double * restrict as)
 {
   int ijks,ijkr;
   int ncount = 1;
@@ -458,7 +458,7 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::getmax(double *var)
+int Grid::getmax(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, master->commxy);
@@ -466,7 +466,7 @@ int cgrid::getmax(double *var)
   return 0;
 }
 
-int cgrid::getsum(double *var)
+int Grid::getsum(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, master->commxy);
@@ -474,7 +474,7 @@ int cgrid::getsum(double *var)
   return 0;
 }
 
-int cgrid::getprof(double *prof, int kcellsin)
+int Grid::getprof(double *prof, int kcellsin)
 {
   for(int k=0; k<kcellsin; k++)
     profl[k] = prof[k] / master->nprocs;
@@ -485,7 +485,7 @@ int cgrid::getprof(double *prof, int kcellsin)
 }
 
 // IO functions
-void cgrid::save()
+void Grid::save()
 {
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
@@ -583,7 +583,7 @@ void cgrid::save()
   }
 }
 
-void cgrid::load()
+void Grid::load()
 {
   int nerror = 0;
 
@@ -664,7 +664,7 @@ void cgrid::load()
   fftw_forget_wisdom();
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -712,7 +712,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -760,7 +760,7 @@ int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
+int Grid::fftforward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
@@ -829,7 +829,7 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
   return 0;
 }
 
-int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
+int Grid::fftbackward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
@@ -898,7 +898,7 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
   return 0;
 }
 
-int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
+int Grid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -956,7 +956,7 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *file
   return nerror;
 }
 
-int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -1007,7 +1007,7 @@ int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *file
   return 0;
 }
 
-int cgrid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;

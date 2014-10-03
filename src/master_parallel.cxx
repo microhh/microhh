@@ -27,7 +27,7 @@
 #include "defines.h"
 #include "master.h"
 
-cmaster::cmaster()
+Master::Master()
 {
   initialized = false;
   allocated   = false;
@@ -36,7 +36,7 @@ cmaster::cmaster()
   mpiid = 0;
 }
 
-cmaster::~cmaster()
+Master::~Master()
 {
   if(allocated)
   {
@@ -52,7 +52,7 @@ cmaster::~cmaster()
     MPI_Finalize();
 }
 
-void cmaster::start(int argc, char *argv[])
+void Master::start(int argc, char *argv[])
 {
   int n;
 
@@ -103,7 +103,7 @@ void cmaster::start(int argc, char *argv[])
   }
 }
 
-void cmaster::init(cinput *inputin)
+void Master::init(Input *inputin)
 {
   int nerror = 0;
   nerror += inputin->getItem(&npx, "mpi", "npx", "", 1);
@@ -182,12 +182,12 @@ void cmaster::init(cinput *inputin)
   allocated = true;
 }
 
-double cmaster::gettime()
+double Master::gettime()
 {
   return MPI_Wtime();
 }
 
-int cmaster::checkerror(int n)
+int Master::checkerror(int n)
 {
   char errbuffer[MPI_MAX_ERROR_STRING];
   int errlen;
@@ -202,7 +202,7 @@ int cmaster::checkerror(int n)
   return 0;
 }
 
-int cmaster::waitall()
+int Master::waitall()
 {
   // wait for MPI processes and reset the number of pending requests
   MPI_Waitall(reqsn, reqs, MPI_STATUSES_IGNORE);
@@ -212,50 +212,50 @@ int cmaster::waitall()
 }
 
 // do all broadcasts over the MPI_COMM_WORLD, to avoid complications in the input file reading
-int cmaster::broadcast(char *data, int datasize)
+int Master::broadcast(char *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_CHAR, 0, commxy);
   return 0;
 }
 
 // overloaded broadcast functions
-int cmaster::broadcast(int *data, int datasize)
+int Master::broadcast(int *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_INT, 0, commxy);
   return 0;
 }
 
-int cmaster::broadcast(unsigned long *data, int datasize)
+int Master::broadcast(unsigned long *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_UNSIGNED_LONG, 0, commxy);
   return 0;
 }
 
-int cmaster::broadcast(double *data, int datasize)
+int Master::broadcast(double *data, int datasize)
 {
   MPI_Bcast(data, datasize, MPI_DOUBLE, 0, commxy);
   return 0;
 }
 
-int cmaster::sum(int *var, int datasize)
+int Master::sum(int *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_INT, MPI_SUM, commxy);
   return 0;
 }
 
-int cmaster::sum(double *var, int datasize)
+int Master::sum(double *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_SUM, commxy);
   return 0;
 }
 
-int cmaster::max(double *var, int datasize)
+int Master::max(double *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MAX, commxy);
   return 0;
 }
 
-int cmaster::min(double *var, int datasize)
+int Master::min(double *var, int datasize)
 {
   MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MIN, commxy);
   return 0;

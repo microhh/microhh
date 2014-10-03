@@ -35,7 +35,7 @@
 #include "pres_2.h"
 #include "pres_4.h"
 
-cpres::cpres(cmodel *modelin, cinput *input)
+Pres::Pres(Model *modelin, Input *input)
 {
   model  = modelin;
   grid   = model->grid;
@@ -43,40 +43,40 @@ cpres::cpres(cmodel *modelin, cinput *input)
   master = model->master;
 }
 
-cpres::~cpres()
+Pres::~Pres()
 {
 }
 
-void cpres::init()
+void Pres::init()
 {
 }
 
-void cpres::setvalues()
+void Pres::setvalues()
 {
 }
 
-void cpres::exec(double dt)
+void Pres::exec(double dt)
 {
 }
 
-double cpres::check()
+double Pres::check()
 {
   double divmax = 0.;
   return divmax;
 }
 
-cpres* cpres::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)
+Pres* Pres::factory(Master *masterin, Input *inputin, Model *modelin, const std::string swspatialorder)
 {
   std::string swpres;
   if(inputin->getItem(&swpres, "pres", "swpres", "", swspatialorder))
     return 0;
 
   if(swpres == "0")
-    return new cpres(modelin, inputin);
+    return new Pres(modelin, inputin);
   else if(swpres == "2")
-    return new cpres_2(modelin, inputin);
+    return new Pres_2(modelin, inputin);
   else if(swpres == "4")
-    return new cpres_4(modelin, inputin);
+    return new Pres_4(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());
@@ -84,7 +84,7 @@ cpres* cpres::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
   }
 }
 
-int cpres::prepareDevice()
+int Pres::prepareDevice()
 {
   return 0;
 }

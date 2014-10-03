@@ -31,7 +31,7 @@
 #include "defines.h"
 #include "model.h"
 
-cbuffer::cbuffer(cmodel *modelin, cinput *inputin)
+Buffer::Buffer(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -52,7 +52,7 @@ cbuffer::cbuffer(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cbuffer::~cbuffer()
+Buffer::~Buffer()
 {
   for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
     delete[] it->second;
@@ -62,7 +62,7 @@ cbuffer::~cbuffer()
 #endif
 }
 
-void cbuffer::init()
+void Buffer::init()
 {
   if(swbuffer == "1")
   {
@@ -75,7 +75,7 @@ void cbuffer::init()
   }
 }
 
-void cbuffer::create(cinput *inputin)
+void Buffer::create(Input *inputin)
 {
   int nerror = 0;
 
@@ -126,7 +126,7 @@ void cbuffer::create(cinput *inputin)
 }
 
 #ifndef USECUDA
-int cbuffer::exec()
+int Buffer::exec()
 {
   if(swbuffer == "1")
   {
@@ -143,7 +143,7 @@ int cbuffer::exec()
 }
 #endif
 
-int cbuffer::buffer(double * const restrict at, const double * const restrict a, 
+int Buffer::buffer(double * const restrict at, const double * const restrict a, 
                     const double * const restrict abuf, const double * const restrict z)
 { 
   int ijk,jj,kk;

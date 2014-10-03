@@ -36,7 +36,7 @@
 #include "advec_4.h"
 #include "advec_4m.h"
 
-cadvec::cadvec(cmodel *modelin, cinput *inputin)
+Advec::Advec(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -50,18 +50,18 @@ cadvec::cadvec(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cadvec::~cadvec()
+Advec::~Advec()
 {
 }
 
-unsigned long cadvec::gettimelim(unsigned long idt, double dt)
+unsigned long Advec::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim = (unsigned long) constants::dbig;
 
   return idtlim;
 }
 
-double cadvec::getcfl(double dt)
+double Advec::getcfl(double dt)
 {
   double cfl;
 
@@ -70,26 +70,26 @@ double cadvec::getcfl(double dt)
   return cfl;
 }
 
-void cadvec::exec()
+void Advec::exec()
 {
 }
 
-cadvec* cadvec::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)
+Advec* Advec::factory(Master *masterin, Input *inputin, Model *modelin, const std::string swspatialorder)
 {
   std::string swadvec;
   if(inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
     throw 1;
 
   if(swadvec == "0")
-    return new cadvec(modelin, inputin);
+    return new Advec(modelin, inputin);
   else if(swadvec == "2")
-    return new cadvec_2(modelin, inputin);
+    return new Advec_2(modelin, inputin);
   else if(swadvec == "2int4")
-    return new cadvec_2int4(modelin, inputin);
+    return new Advec_2int4(modelin, inputin);
   else if(swadvec == "4")
-    return new cadvec_4(modelin, inputin);
+    return new Advec_4(modelin, inputin);
   else if(swadvec == "4m")
-    return new cadvec_4m(modelin, inputin);
+    return new Advec_4m(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());

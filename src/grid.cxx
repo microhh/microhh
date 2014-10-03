@@ -36,7 +36,7 @@
  * @param modelin Pointer to the model class.
  * @param inputin Pointer to the input class.
  */
-cgrid::cgrid(cmodel *modelin, cinput *inputin)
+Grid::Grid(Model *modelin, Input *inputin)
 {
   master = modelin->master;
 
@@ -105,7 +105,7 @@ cgrid::cgrid(cmodel *modelin, cinput *inputin)
 /**
  * This function destructs the grid class.
  */
-cgrid::~cgrid()
+Grid::~Grid()
 {
   if(fftwplan)
   {
@@ -146,7 +146,7 @@ cgrid::~cgrid()
  * This function allocates the dynamic arrays in the field class
  * variables and calculates the derived grid indices and dimensions.
  */
-void cgrid::init()
+void Grid::init()
 {
   // Check whether the grid fits the processor configuration.
   if(itot % master->npx != 0)
@@ -235,7 +235,7 @@ void cgrid::init()
  * on the profiles in the input file.
  * @param inputin Pointer to the input class.
  */
-void cgrid::create(cinput *inputin)
+void Grid::create(Input *inputin)
 {
   // get the grid coordinates from the input
   if(inputin->getProf(&z[kstart], "z", kmax))
@@ -249,7 +249,7 @@ void cgrid::create(cinput *inputin)
  * This function calculates the scalars and arrays that contain the information
  * on the grid spacing.
  */
-void cgrid::calculate()
+void Grid::calculate()
 {
   int i,j,k;
 
@@ -387,7 +387,7 @@ void cgrid::calculate()
  * where a value of 1 refers to the flux level.
  * @return Returns 0.
  */
-int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+int Grid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   int ijk,ii,jj,kk,iih,jjh;
 
@@ -422,7 +422,7 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
  * where a value of 1 refers to the flux level.
  * @return Returns 0.
  */
-int cgrid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+int Grid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   using namespace fd::o4;
 
@@ -463,7 +463,7 @@ int cgrid::interpolate_4th(double * restrict out, double * restrict in, const in
  * @param krange Number of vertical levels over which the profile is to be calculated.
  * @return Returns 0.
  */
-int cgrid::calcmean(double * restrict prof, const double * restrict data, const int krange)
+int Grid::calcmean(double * restrict prof, const double * restrict data, const int krange)
 {
   int ijk,jj,kk;
 
@@ -493,7 +493,7 @@ int cgrid::calcmean(double * restrict prof, const double * restrict data, const 
 }
 
 /*
-int cgrid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
+int Grid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
 {
   // interpolation function, locz = 1 indicates that the reference is at the half level
   int ijk,ii1,ii2,jj1,jj2,kk1,kk2,khlf;

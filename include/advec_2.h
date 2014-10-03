@@ -26,16 +26,16 @@
 #include "advec.h"
 
 // forward declaration
-class cmodel;
+class Model;
 
 /**
  * Derived class for 2nd order advection scheme.
  */
-class cadvec_2 : public cadvec
+class Advec_2 : public Advec
 {
   public:
-    cadvec_2(cmodel *, cinput *); ///< Constructor of the advection class.
-    ~cadvec_2();                  ///< Destructor of the advection class.
+    Advec_2(Model *, Input *); ///< Constructor of the advection class.
+    ~Advec_2();                  ///< Destructor of the advection class.
 
     unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
     double getcfl(double);                               ///< Get the CFL number.

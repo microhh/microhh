@@ -30,11 +30,11 @@
  * Fully mass, momentum and energy conserving advection scheme based on the paper
  * of Morinishi et al., (1998).
  */
-class cadvec_4m : public cadvec
+class Advec_4m : public Advec
 {
   public:
-    cadvec_4m(cmodel *, cinput *); ///< Constructor of the advection class.
-    ~cadvec_4m();                  ///< Destructor of the advection class.
+    Advec_4m(Model *, Input *); ///< Constructor of the advection class.
+    ~Advec_4m();                  ///< Destructor of the advection class.
 
     unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
     double getcfl(double);                               ///< Get the CFL number.

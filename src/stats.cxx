@@ -37,7 +37,7 @@
 
 #define NTHRES 0
 
-cstats::cstats(cmodel *modelin, cinput *inputin)
+Stats::Stats(Model *modelin, Input *inputin)
 {
   model = modelin;
 
@@ -61,7 +61,7 @@ cstats::cstats(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cstats::~cstats()
+Stats::~Stats()
 {
   delete[] nmask;
   delete[] nmaskh;
@@ -75,7 +75,7 @@ cstats::~cstats()
   }
 }
 
-void cstats::init(double ifactor)
+void Stats::init(double ifactor)
 {
   // convenience pointers for short notation in class
   grid   = model->grid;
@@ -94,7 +94,7 @@ void cstats::init(double ifactor)
   nstats = 0;
 }
 
-void cstats::create(int n)
+void Stats::create(int n)
 {
   // do not create file if stats is disabled
   if(swstats == "0")
@@ -164,7 +164,7 @@ void cstats::create(int n)
   addprof("areah", "Fractional area contained in mask", "-", "zh");
 }
 
-unsigned long cstats::gettimelim(unsigned long itime)
+unsigned long Stats::gettimelim(unsigned long itime)
 {
   if(swstats == "0")
     return constants::ulhuge;
@@ -173,7 +173,7 @@ unsigned long cstats::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int cstats::dostats()
+int Stats::dostats()
 {
   // check if stats are enabled
   if(swstats == "0")
@@ -190,7 +190,7 @@ int cstats::dostats()
   return 1;
 }
 
-int cstats::exec(int iteration, double time, unsigned long itime)
+int Stats::exec(int iteration, double time, unsigned long itime)
 {
   // this function is only called when stats are enabled no need for swstats check
 
@@ -225,18 +225,18 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   return 0;
 }
 
-std::string cstats::getsw()
+std::string Stats::getsw()
 {
   return swstats;
 }
 
-void cstats::addmask(const std::string maskname)
+void Stats::addmask(const std::string maskname)
 {
   masks[maskname].name = maskname;
   masks[maskname].dataFile = 0;
 }
 
-int cstats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
+int Stats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
 {
   int nerror = 0;
 
@@ -273,7 +273,7 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
   return nerror;
 }
 
-int cstats::addfixedprof(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
+int Stats::addfixedprof(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
 {
   int nerror = 0;
 
@@ -305,7 +305,7 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
   return nerror;
 }
 
-int cstats::addtseries(std::string name, std::string longname, std::string unit)
+int Stats::addtseries(std::string name, std::string longname, std::string unit)
 {
   int nerror = 0;
 
@@ -331,7 +331,7 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
   return nerror;
 }
 
-int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
+int Stats::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
 {
   calcmask(mfield->data, mfieldh->data, mfieldh->databot,
            nmask, nmaskh, &nmaskbot);
@@ -339,7 +339,7 @@ int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
 }
 
 // COMPUTATIONAL KERNELS BELOW
-int cstats::calcmask(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+int Stats::calcmask(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                      int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot)
 {
   int ijtot = grid->itot*grid->jtot;
@@ -365,7 +365,7 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh, double * r
 }
 
 /*
-void cstats::calcmean(double * const restrict prof, const double * const restrict data,
+void Stats::calcmean(double * const restrict prof, const double * const restrict data,
                       const double offset)
 {
   int ijk,jj,kk;
@@ -394,7 +394,7 @@ void cstats::calcmean(double * const restrict prof, const double * const restric
 }
 */
 
-int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nmask)
+int Stats::calcarea(double * restrict area, const int loc[3], int * restrict nmask)
 {
   int ijtot = grid->itot*grid->jtot;
 
@@ -409,7 +409,7 @@ int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nm
   return 0;
 }
 
-void cstats::calcmean(double * const restrict prof, const double * const restrict data,
+void Stats::calcmean(double * const restrict prof, const double * const restrict data,
                       const double offset, const int loc[3],
                       const double * const restrict mask, const int * const restrict nmask)
 {
@@ -441,7 +441,7 @@ void cstats::calcmean(double * const restrict prof, const double * const restric
   }
 }
 
-void cstats::calcmean2d(double * const restrict mean, const double * const restrict data,
+void Stats::calcmean2d(double * const restrict mean, const double * const restrict data,
                         const double offset,
                         const double * const restrict mask, const int * const restrict nmask)
 {
@@ -465,7 +465,7 @@ void cstats::calcmean2d(double * const restrict mean, const double * const restr
     *mean = NC_FILL_DOUBLE; 
 }
 
-int cstats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
+int Stats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
 {
   int ijk,jj,kk,index,kstart,kend;
   double minval,maxval,range;
@@ -576,7 +576,7 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
 }
 
 /*
-int cstats::calccount(double * restrict data, double * restrict prof, double threshold)
+int Stats::calccount(double * restrict data, double * restrict prof, double threshold)
 {
   int ijk,jj,kk;
 
@@ -610,7 +610,7 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
 */
 
 // \TODO the count function assumes that the variable to count is at the mask location
-int cstats::calccount(double * restrict data, double * restrict prof, double threshold,
+int Stats::calccount(double * restrict data, double * restrict prof, double threshold,
                       double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -645,7 +645,7 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
 }
 
 /*
-int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
+int Stats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
   int ijk,jj,kk;
 
@@ -675,7 +675,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 }
 */
 
-int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
+int Stats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
                        double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -709,7 +709,7 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 }
 
 /*
-int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
+int Stats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
   int ijk,jj,kk;
 
@@ -752,7 +752,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
 }
 */
 
-int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
+int Stats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
                          double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
@@ -806,7 +806,7 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
   return 0;
 }
 
-int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
+int Stats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -862,7 +862,7 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
 }
 
 /*
-int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
+int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
 {
   int ijk,jj,kk;
 
@@ -892,7 +892,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 }
 */
 
-int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
+int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -925,7 +925,7 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
   return 0;
 }
 
-int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
+int Stats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -961,7 +961,7 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
   return 0;
 }
 
-int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
+int Stats::calDiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -997,7 +997,7 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
   return 0;
 }
 
-int cstats::calcdiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
+int Stats::calDiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -1031,7 +1031,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict prof, double 
 }
 
 
-int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
+int Stats::calDiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
                          double * restrict prof, double * restrict dzhi,
                          double * restrict fluxbot, double * restrict fluxtop, double tPr, const int loc[3],
                          double * restrict mask, int * restrict nmask)
@@ -1133,7 +1133,7 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
   return 0;
 }
 
-int cstats::addfluxes(double * restrict flux, double * restrict turb, double * restrict diff)
+int Stats::addfluxes(double * restrict flux, double * restrict turb, double * restrict diff)
 {
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -1149,7 +1149,7 @@ int cstats::addfluxes(double * restrict flux, double * restrict turb, double * r
 /**
  * This function calculates the total domain integrated path of variable data over maskbot
  */
-int cstats::calcpath(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict path)
+int Stats::calcpath(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict path)
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
@@ -1184,7 +1184,7 @@ int cstats::calcpath(double * restrict data, double * restrict maskbot, int * re
 /**
  * This function calculates the vertical projected cover of variable data over maskbot
  */
-int cstats::calccover(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict cover, double threshold)
+int Stats::calccover(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict cover, double threshold)
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;

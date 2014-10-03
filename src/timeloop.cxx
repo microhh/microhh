@@ -31,7 +31,7 @@
 #include "constants.h"
 #include "model.h"
 
-ctimeloop::ctimeloop(cmodel *modelin, cinput *inputin)
+Timeloop::Timeloop(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -109,11 +109,11 @@ ctimeloop::ctimeloop(cmodel *modelin, cinput *inputin)
   gettimeofday(&start, NULL);
 }
 
-ctimeloop::~ctimeloop()
+Timeloop::~Timeloop()
 {
 }
 
-int ctimeloop::settimelim()
+int Timeloop::settimelim()
 {
   idtlim = idtmax;
   idtlim = std::min(idtlim, isavetime - itime % isavetime);
@@ -121,7 +121,7 @@ int ctimeloop::settimelim()
   return 0;
 }
 
-void ctimeloop::stepTime()
+void Timeloop::stepTime()
 {
   // Only step forward in time if we are not in a substep
   if(inSubStep())
@@ -137,7 +137,7 @@ void ctimeloop::stepTime()
     loop = false;
 }
 
-bool ctimeloop::doCheck()
+bool Timeloop::doCheck()
 {
   if(iteration % outputiter == 0 && !inSubStep())
     return true;
@@ -145,7 +145,7 @@ bool ctimeloop::doCheck()
   return false;
 }
 
-bool ctimeloop::doSave()
+bool Timeloop::doSave()
 {
   // do not save directly after the start of the simulation and not in a substep
   if(itime % isavetime == 0 && iteration != 0 && !inSubStep())
@@ -154,7 +154,7 @@ bool ctimeloop::doSave()
   return false;
 }
 
-double ctimeloop::check()
+double Timeloop::check()
 {
   gettimeofday(&end, NULL);
 
@@ -164,7 +164,7 @@ double ctimeloop::check()
   return timeelapsed;
 }
 
-void ctimeloop::setTimeStep()
+void Timeloop::setTimeStep()
 {
   // Only set the time step if we are not in a substep
   if(inSubStep())
@@ -178,7 +178,7 @@ void ctimeloop::setTimeStep()
 }
 
 #ifdef USECUDA
-int ctimeloop::exec()
+int Timeloop::exec()
 {
   if(rkorder == 3)
   {
@@ -198,7 +198,7 @@ int ctimeloop::exec()
   return substep;
 }
 #else
-int ctimeloop::exec()
+int Timeloop::exec()
 {
   if(rkorder == 3)
   {
@@ -220,7 +220,7 @@ int ctimeloop::exec()
 }
 #endif
 
-double ctimeloop::getsubdt()
+double Timeloop::getsubdt()
 {
   double subdt = 0.;
   if(rkorder == 3)
@@ -231,13 +231,13 @@ double ctimeloop::getsubdt()
   return subdt;
 }
 
-double ctimeloop::rk3subdt(double dt)
+double Timeloop::rk3subdt(double dt)
 {
   const double cB [] = {1./3., 15./16., 8./15.};
   return cB[substep]*dt;
 }
 
-double ctimeloop::rk4subdt(double dt)
+double Timeloop::rk4subdt(double dt)
 {
   const double cB [] = {
     1432997174477./ 9575080441755.,
@@ -249,7 +249,7 @@ double ctimeloop::rk4subdt(double dt)
   return cB[substep]*dt;
 }
 
-int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
+int Timeloop::rk3(double * restrict a, double * restrict at, double dt)
 {
   const double cA [] = {0., -5./9., -153./128.};
   const double cB [] = {1./3., 15./16., 8./15.};
@@ -284,7 +284,7 @@ int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
   return 0;
 }
 
-int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
+int Timeloop::rk4(double * restrict a, double * restrict at, double dt)
 {
   const double cA [] = {
       0.,
@@ -330,7 +330,7 @@ int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
   return 0;
 }
 
-bool ctimeloop::inSubStep()
+bool Timeloop::inSubStep()
 {
   if(substep > 0)
     return true;
@@ -338,7 +338,7 @@ bool ctimeloop::inSubStep()
     return false;
 }
 
-bool ctimeloop::inStatsStep()
+bool Timeloop::inStatsStep()
 {
   if(!inSubStep() && !((iteration > 0) && (itime == istarttime)))
     return true;
@@ -346,7 +346,7 @@ bool ctimeloop::inStatsStep()
     return false;
 }
 
-void ctimeloop::save(int starttime)
+void Timeloop::save(int starttime)
 {
   if(master->mpiid == 0)
   {
@@ -373,7 +373,7 @@ void ctimeloop::save(int starttime)
   }
 }
 
-void ctimeloop::load(int starttime)
+void Timeloop::load(int starttime)
 {
   int nerror = 0;
 
@@ -416,7 +416,7 @@ void ctimeloop::load(int starttime)
   dt   = (double)idt   / ifactor;
 }
 
-int ctimeloop::postprocstep()
+int Timeloop::postprocstep()
 {
   itime += ipostproctime;
   iotime = (int)(itime/iiotimeprec);

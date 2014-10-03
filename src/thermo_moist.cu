@@ -382,7 +382,7 @@ __global__ void thermo_moist_calchydropres(double * __restrict__ pref,     doubl
   }
 }
 
-int cthermo_moist::prepareDevice()
+int Thermo_moist::prepareDevice()
 {
   const int nmemsize = grid->kcells*sizeof(double);
 
@@ -405,7 +405,7 @@ int cthermo_moist::prepareDevice()
   return 0;
 }
 
-int cthermo_moist::clearDevice()
+int Thermo_moist::clearDevice()
 {
   cudaSafeCall(cudaFree(thvref_g ));
   cudaSafeCall(cudaFree(thvrefh_g));
@@ -418,7 +418,7 @@ int cthermo_moist::clearDevice()
 }
 
 #ifdef USECUDA
-int cthermo_moist::exec()
+int Thermo_moist::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -467,7 +467,7 @@ int cthermo_moist::exec()
 #endif
 
 #ifdef USECUDA
-int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
+int Thermo_moist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -532,7 +532,7 @@ int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name
 #endif
 
 #ifdef USECUDA
-int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
+int Thermo_moist::getbuoyancyfluxbot(Field3d *bfield)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -556,7 +556,7 @@ int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
 #endif
 
 #ifdef USECUDA
-int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
+int Thermo_moist::getbuoyancysurf(Field3d *bfield)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;

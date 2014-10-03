@@ -26,10 +26,10 @@
 #include <netcdfcpp.h>
 
 // forward declarations to reduce compilation time
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
+class Master;
+class Model;
+class Grid;
+class Fields;
 
 // struct for profiles
 struct profvar
@@ -62,17 +62,17 @@ struct mask
 
 typedef std::map<std::string, mask> maskmap;
 
-class cstats
+class Stats
 {
   public:
-    cstats(cmodel *, cinput *);
-    ~cstats();
+    Stats(Model *, Input *);
+    ~Stats();
 
     void init(double);
     void create(int);
 
     unsigned long gettimelim(unsigned long);
-    int getmask(cfield3d *, cfield3d *, mask *);
+    int getmask(Field3d *, Field3d *, mask *);
     int exec(int, double, unsigned long);
     int dostats();
     std::string getsw();
@@ -103,9 +103,9 @@ class cstats
 
     int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
 
-    int calcdiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
-    int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
-    int calcdiff_4th(double *, double *, double *, double, const int[3], double *, int *);
+    int calDiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
+    int calDiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
+    int calDiff_4th(double *, double *, double *, double, const int[3], double *, int *);
 
     int calcgrad_2nd(double *, double *, double *, const int[3], double *, int *);
     int calcgrad_4th(double *, double *, double *, const int[3], double *, int *);
@@ -131,10 +131,10 @@ class cstats
     int calcmask(double *, double *, double *, int *, int *, int *);
 
   protected:
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
-    cmaster *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
+    Master *master;
 
     double sampletime;
     unsigned long isampletime;

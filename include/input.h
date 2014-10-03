@@ -28,15 +28,15 @@
 #include <vector>
 
 // forward declaration to avoid circular dependency
-class cmaster;
+class Master;
 
 typedef std::map<std::string, std::vector<double> > datamap;
 
-class cinput
+class Input
 {
   public:
-    cinput(cmaster *);
-    ~cinput();
+    Input(Master *);
+    ~Input();
 
     void clear();
 
@@ -61,7 +61,7 @@ class cinput
     int printUnused();
 
   private:
-    cmaster *master;
+    Master *master;
 
     int readinifile();
     int readdatafile(datamap *, std::string, bool);

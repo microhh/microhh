@@ -27,30 +27,30 @@
 #include "field3d.h"
 
 // forward declarations to reduce compilation time
-class cmaster;
-class cinput;
-class cmodel;
-class cgrid;
-class cstats;
+class Master;
+class Input;
+class Model;
+class Grid;
+class Stats;
 struct mask;
 
-typedef std::map<std::string, cfield3d *> fieldmap;
+typedef std::map<std::string, Field3d *> fieldmap;
 
-class cfields
+class Fields
 {
   public:
     // functions
-    cfields(cmodel *, cinput *);
-    ~cfields();
+    Fields(Model *, Input *);
+    ~Fields();
 
     void init();
-    void create(cinput *);
+    void create(Input *);
 
     int exec();
-    int getmask(cfield3d *, cfield3d *, mask *);
+    int getmask(Field3d *, Field3d *, mask *);
     int execstats(mask *);
 
-    int initmomfld(cfield3d*&, cfield3d*&, std::string, std::string, std::string);
+    int initmomfld(Field3d*&, Field3d*&, std::string, std::string, std::string);
     int initpfld(std::string, std::string, std::string);
     int initdfld(std::string, std::string, std::string);
     
@@ -66,13 +66,13 @@ class cfields
     void execcross();
 
     // 3d fields for momentum
-    cfield3d *u;
-    cfield3d *v;
-    cfield3d *w;
+    Field3d *u;
+    Field3d *v;
+    Field3d *w;
 
-    cfield3d *ut;
-    cfield3d *vt;
-    cfield3d *wt;
+    Field3d *ut;
+    Field3d *vt;
+    Field3d *wt;
 
     // maps of 3d fields
     fieldmap a;
@@ -113,10 +113,10 @@ class cfields
     
   private:
     // variables
-    cmodel  *model;
-    cgrid   *grid;
-    cmaster *master;
-    cstats  *stats;
+    Model  *model;
+    Grid   *grid;
+    Master *master;
+    Stats  *stats;
 
     bool calcprofs;
 
@@ -146,9 +146,9 @@ class cfields
     // functions
     double calcmom_2nd(double *, double *, double *, double *);
     double calctke_2nd(double *, double *, double *, double *);
-    int addmeanprofile(cinput *, std::string, double *, double);
-    int randomnize(cinput *, std::string, double *);
-    int addvortexpair(cinput* inputin);
+    int addmeanprofile(Input *, std::string, double *, double);
+    int randomnize(Input *, std::string, double *);
+    int addvortexpair(Input* inputin);
     double calcmass(double *, double *);
 
     // statistics

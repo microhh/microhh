@@ -26,31 +26,31 @@
 #include "thermo.h"
 
 // forward declarations to speed up build time
-class cmaster;
-class cgrid;
-class cfields;
-class cstats;
+class Master;
+class Grid;
+class Fields;
+class Stats;
 struct mask;
 
-class cthermo_moist : public cthermo
+class Thermo_moist : public Thermo
 {
   public:
-    cthermo_moist(cmodel *, cinput *);
-    ~cthermo_moist();
+    Thermo_moist(Model *, Input *);
+    ~Thermo_moist();
 
     void init();
-    void create(cinput *);
+    void create(Input *);
     int exec();
-    int getmask(cfield3d *, cfield3d *, mask *);
+    int getmask(Field3d *, Field3d *, mask *);
     int execstats(mask *);
 
     void execcross();
 
     // functions to retrieve buoyancy properties, to be called from other classes
     int checkthermofield(std::string name);
-    int getthermofield(cfield3d *, cfield3d *, std::string name);
-    int getbuoyancysurf(cfield3d *);
-    int getbuoyancyfluxbot(cfield3d *);
+    int getthermofield(Field3d *, Field3d *, std::string name);
+    int getbuoyancysurf(Field3d *);
+    int getbuoyancyfluxbot(Field3d *);
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
 #ifdef USECUDA
@@ -67,7 +67,7 @@ class cthermo_moist : public cthermo
     std::vector<std::string> crosslist;        // List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
-    cstats *stats;
+    Stats *stats;
 
     // masks
     int calcmaskql    (double *, double *, double *, int *, int *, int *, double *);

@@ -30,13 +30,13 @@
 #endif
 
 // forward declaration
-class cmodel;
+class Model;
 
-class cpres_4 : public cpres
+class Pres_4 : public Pres
 {
   public:
-    cpres_4(cmodel *, cinput *);
-    ~cpres_4();
+    Pres_4(Model *, Input *);
+    ~Pres_4();
 
     void init();
     void setvalues();

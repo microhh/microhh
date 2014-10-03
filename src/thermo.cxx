@@ -34,7 +34,7 @@
 #include "thermo_dry.h"
 #include "thermo_moist.h"
 
-cthermo::cthermo(cmodel *modelin, cinput *inputin)
+Thermo::Thermo(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -44,83 +44,83 @@ cthermo::cthermo(cmodel *modelin, cinput *inputin)
   swthermo = "0";
 }
 
-cthermo::~cthermo()
+Thermo::~Thermo()
 {
 }
 
-void cthermo::init()
+void Thermo::init()
 {
 }
 
-void cthermo::create(cinput *inputin)
+void Thermo::create(Input *inputin)
 {
 }
 
-int cthermo::exec()
-{
-  return 0;
-}
-
-int cthermo::execstats(mask *f)
+int Thermo::exec()
 {
   return 0;
 }
 
-void cthermo::execcross()
+int Thermo::execstats(mask *f)
+{
+  return 0;
+}
+
+void Thermo::execcross()
 {
 }
 
-int cthermo::checkthermofield(std::string name)
+int Thermo::checkthermofield(std::string name)
 {
   return 1;  // always returns error 
 }
 
-int cthermo::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+int Thermo::getthermofield(Field3d *field, Field3d *tmp, std::string name)
 {
   return 0;
 }
 
-int cthermo::getbuoyancysurf(cfield3d *bfield)
+int Thermo::getbuoyancysurf(Field3d *bfield)
 {
   return 0;
 }
 
-int cthermo::getbuoyancyfluxbot(cfield3d *bfield)
+int Thermo::getbuoyancyfluxbot(Field3d *bfield)
 {
   return 0;
 }
 
-std::string cthermo::getsw()
+std::string Thermo::getsw()
 {
   return swthermo;
 }
 
-int cthermo::getprogvars(std::vector<std::string> *list)
+int Thermo::getprogvars(std::vector<std::string> *list)
 {
   return 0;
 }
 
-int cthermo::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *f)
+int Thermo::getmask(Field3d *mfield, Field3d *mfieldh, mask *f)
 {
   return 0;
 }
 
-cthermo* cthermo::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
+Thermo* Thermo::factory(Master *masterin, Input *inputin, Model *modelin)
 {
   std::string swthermo;
   if(inputin->getItem(&swthermo, "thermo", "swthermo", "", "0"))
     return 0;
 
   if(swthermo== "moist")
-    return new cthermo_moist(modelin, inputin);
+    return new Thermo_moist(modelin, inputin);
   else if(swthermo == "buoy")
-    return new cthermo_buoy(modelin, inputin);
+    return new Thermo_buoy(modelin, inputin);
   else if(swthermo == "dry")
-    return new cthermo_dry(modelin, inputin);
+    return new Thermo_dry(modelin, inputin);
   else if(swthermo == "buoy_slope")
-    return new cthermo_buoy_slope(modelin, inputin);
+    return new Thermo_buoy_slope(modelin, inputin);
   else if(swthermo == "0")
-    return new cthermo(modelin, inputin);
+    return new Thermo(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
@@ -128,12 +128,12 @@ cthermo* cthermo::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
   }
 }
 
-int cthermo::prepareDevice()
+int Thermo::prepareDevice()
 {
   return 0;
 }
 
-int cthermo::clearDevice()
+int Thermo::clearDevice()
 {
   return 0;
 }

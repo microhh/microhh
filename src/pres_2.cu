@@ -266,7 +266,7 @@ __global__ void pres_2_calcdivergence(double * __restrict__ u, double * __restri
   }
 }
 
-int cpres_2::prepareDevice()
+int Pres_2::prepareDevice()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -321,7 +321,7 @@ int cpres_2::prepareDevice()
   return 0;
 }
 
-int cpres_2::clearDevice()
+int Pres_2::clearDevice()
 {
   cudaSafeCall(cudaFree(bmati_g       ));
   cudaSafeCall(cudaFree(bmatj_g       ));
@@ -340,7 +340,7 @@ int cpres_2::clearDevice()
 }
 
 #ifdef USECUDA
-void cpres_2::exec(double dt)
+void Pres_2::exec(double dt)
 {
   const int blocki  = cuda::blockSizeI;
   const int blockj  = cuda::blockSizeJ;
@@ -442,7 +442,7 @@ void cpres_2::exec(double dt)
 #endif
 
 #ifdef USECUDA
-double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, 
+double Pres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, 
                                double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   const int blocki = cuda::blockSizeI;

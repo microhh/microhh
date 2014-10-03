@@ -24,33 +24,33 @@
 #define THERMO
 
 // forward declarations to speed up build time
-class cmaster;
-class cinput;
-class cgrid;
-class cfields;
+class Master;
+class Input;
+class Grid;
+class Fields;
 struct mask;
 
-class cthermo
+class Thermo
 {
   public:
-    cthermo(cmodel *, cinput *);
-    virtual ~cthermo();
-    static cthermo* factory(cmaster *, cinput *, cmodel *); ///< Factory function for thermo class generation.
+    Thermo(Model *, Input *);
+    virtual ~Thermo();
+    static Thermo* factory(Master *, Input *, Model *); ///< Factory function for thermo class generation.
 
     virtual void init();
-    virtual void create(cinput *);
+    virtual void create(Input *);
     virtual int exec();
     virtual int execstats(mask *);
 
     virtual void execcross();
 
-    virtual int getmask(cfield3d *, cfield3d *, mask *);
+    virtual int getmask(Field3d *, Field3d *, mask *);
 
     // interfacing functions to get buoyancy properties from other classes
     virtual int checkthermofield(std::string name);
-    virtual int getthermofield(cfield3d *, cfield3d *, std::string name);
-    virtual int getbuoyancysurf(cfield3d *);
-    virtual int getbuoyancyfluxbot(cfield3d *);
+    virtual int getthermofield(Field3d *, Field3d *, std::string name);
+    virtual int getbuoyancysurf(Field3d *);
+    virtual int getbuoyancyfluxbot(Field3d *);
     virtual int getprogvars(std::vector<std::string> *);
 
     std::string getsw();
@@ -60,10 +60,10 @@ class cthermo
     virtual int clearDevice();
 
   protected:
-    cgrid   *grid;
-    cfields *fields;
-    cmaster *master;
-    cmodel  *model;
+    Grid   *grid;
+    Fields *fields;
+    Master *master;
+    Model  *model;
 
     std::string swthermo;
 };

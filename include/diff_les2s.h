@@ -25,11 +25,11 @@
 
 #include "diff.h"
 
-class cdiff_les2s : public cdiff
+class Diff_les2s : public Diff
 {
   public:
-    cdiff_les2s(cmodel *, cinput *);
-    ~cdiff_les2s();
+    Diff_les2s(Model *, Input *);
+    ~Diff_les2s();
 
     int exec();
     int execvisc();
