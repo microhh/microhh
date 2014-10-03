@@ -597,7 +597,6 @@ int Fields::initpfld(std::string fldname, std::string longname, std::string unit
   // add the prognostic variable and its tendency to the collection
   // of all fields and tendencies
   a [fldname] = sp[fldname];
-  //s [fldname] = sp[fldname];
   ap[fldname] = sp[fldname];
   at[fldname] = st[fldname];
 
@@ -613,7 +612,6 @@ int Fields::initdfld(std::string fldname,std::string longname, std::string unit)
   }
 
   sd[fldname] = new Field3d(grid, master, fldname, longname, unit);
-  //s [fldname] = sd[fldname];
   a [fldname] = sd[fldname];
 
   return 0;  

@@ -83,7 +83,6 @@ class Fields
     fieldmap mp;
     fieldmap mt;
 
-    //fieldmap s;
     fieldmap sd;
     fieldmap sp;
     fieldmap st;
