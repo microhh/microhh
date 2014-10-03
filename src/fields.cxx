@@ -32,7 +32,7 @@
 #include "model.h"
 #include "stats.h"
 #include "cross.h"
-#include "diff_les2s.h"
+#include "diff_smag2.h"
 
 #define NO_OFFSET 0.
 
@@ -428,7 +428,7 @@ int Fields::execstats(mask *m)
     stats->calcflux_2nd(u->data, umodel, w->data, m->profs["w"].data,
                         m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    if(model->diff->getName() == "les2s")
+    if(model->diff->getName() == "smag2")
       stats->calcdiff_2nd(u->data, w->data, sd["evisc"]->data,
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
@@ -470,7 +470,7 @@ int Fields::execstats(mask *m)
     stats->calcflux_2nd(v->data, vmodel, w->data, m->profs["w"].data,
                         m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    if(model->diff->getName() == "les2s")
+    if(model->diff->getName() == "smag2")
       stats->calcdiff_2nd(v->data, w->data, sd["evisc"]->data,
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
@@ -510,7 +510,7 @@ int Fields::execstats(mask *m)
       stats->calcflux_2nd(it->second->data, m->profs[it->first].data, w->data, m->profs["w"].data,
                           m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
-      if(model->diff->getName() == "les2s")
+      if(model->diff->getName() == "smag2")
         stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
@@ -539,7 +539,7 @@ int Fields::execstats(mask *m)
   // other statistics
   stats->calcmean(m->profs["p"].data, sd["p"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
 
-  if(model->diff->getName() == "les2s")
+  if(model->diff->getName() == "smag2")
     stats->calcmean(m->profs["evisc"].data, sd["evisc"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
 
   return 0;
@@ -822,7 +822,7 @@ void Fields::load(int n)
     stats->addprof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
  
     // CvH, shouldn't this call be in the diffusion class?
-    if(model->diff->getName() == "les2s")
+    if(model->diff->getName() == "smag2")
       stats->addprof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
   
     // moments

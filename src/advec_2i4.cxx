@@ -25,7 +25,7 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
-#include "advec_2int4.h"
+#include "advec_2i4.h"
 #include "defines.h"
 #include "constants.h"
 #include "fd.h"

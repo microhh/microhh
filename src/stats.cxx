@@ -31,7 +31,7 @@
 #include "constants.h"
 #include "fd.h"
 #include "model.h"
-#include "diff_les2s.h"
+#include "diff_smag2.h"
 #include "timeloop.h"
 #include <netcdfcpp.h>
 

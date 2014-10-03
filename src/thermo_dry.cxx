@@ -31,7 +31,7 @@
 #include "fd.h"
 #include "model.h"
 #include "stats.h"
-#include "diff_les2s.h"
+#include "diff_smag2.h"
 #include "master.h"
 #include "cross.h"
 
@@ -278,7 +278,7 @@ void ThermoDry::execStats(mask *m)
   // calculate diffusive fluxes
   if(grid->swspatialorder == "2")
   {
-    if(model->diff->getName() == "les2s")
+    if(model->diff->getName() == "smag2")
     {
       DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
       stats->calcdiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,

@@ -14,11 +14,11 @@
 \tabletail{\hline \textit{Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{lccl}
-swadvec       & [grid][spatialorder] & 0     & disable advection \\ 
-              &                      & 2     & 2nd-order advection \\
-              &                      & 2int4 & 2nd-order advection with 4th-order interpolation \\  
-              &                      & 4     & 4th-order advection (high accuracy) \\
-              &                      & 4m    & 4th-order advection (energy conserving) \\
+swadvec       & [grid][spatialorder] & 0   & disable advection \\ 
+              &                      & 2   & 2nd-order advection \\
+              &                      & 2i4 & 2nd-order advection with 4th-order interpolation \\  
+              &                      & 4   & 4th-order advection (high accuracy) \\
+              &                      & 4m  & 4th-order advection (energy conserving) \\
 cflmax        & 1.0   &    \\
 \end{supertabular}
 
@@ -82,7 +82,7 @@ lngrad        & empty &   & list of variables of which the $ln( \|\Delta var)\| 
 swdiff        & [grid][spatialorder] & 0     & disable diffusion \\
               &                      & 2     & 2nd-order diffusion \\
               &                      & 4     & 4th-order diffusion \\
-              &                      & les2s & 2nd-order Smagorinsky eddy diffusion \\
+              &                      & smag2 & 2nd-order Smagorinsky eddy diffusion \\
 dnmax         & 0.4                  &       & maximum diffusion number for numerical scheme \\
 cs            & 0.23                 &       & Smagorinsky constant (only valid for \textit{les2s}) \\
 tPr           & 1./3.                &       & turbulent Prandtl number (only valid for \textit{les2s}) \\

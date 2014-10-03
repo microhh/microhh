@@ -26,7 +26,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
-#include "diff_les2s.h"
+#include "diff_smag2.h"
 #include "boundary_surface.h"
 #include "defines.h"
 #include "constants.h"
@@ -35,7 +35,7 @@
 
 DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
-  swdiff = "les2s";
+  swdiff = "smag2";
 
   int nerror = 0;
   nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5  );

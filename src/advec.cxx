@@ -31,7 +31,7 @@
 #include "model.h"
 
 #include "advec_2.h"
-#include "advec_2int4.h"
+#include "advec_2i4.h"
 #include "advec_4.h"
 #include "advec_4m.h"
 

@@ -34,7 +34,7 @@
 #include "diff.h"
 #include "diff_2.h"
 #include "diff_4.h"
-#include "diff_les2s.h"
+#include "diff_smag2.h"
 
 Diff::Diff(Model *modelin, Input *inputin)
 {
@@ -109,12 +109,12 @@ Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std:
     return new Diff2(modelin, inputin);
   else if(swdiff == "4")
     return new Diff4(modelin, inputin);
-  else if(swdiff == "les2s")
+  else if(swdiff == "smag2")
   {
     // the subgrid model requires a surface model because of the MO matching at first level
     if(swboundary != "surface")
     {
-      masterin->printError("swdiff == \"les2s\" requires swboundary == \"surface\"\n");
+      masterin->printError("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
       return 0;
     }
     return new DiffSmag2(modelin, inputin);
