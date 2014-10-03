@@ -20,23 +20,24 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_4
-#define ADVEC_4
+#ifndef ADVEC4
+#define ADVEC4
 
 #include "advec.h"
 
 /**
  * Derived class for 4th order advection scheme.
  */
-class Advec_4 : public Advec
+class Advec4 : public Advec
 {
   public:
-    Advec_4(Model *, Input *); ///< Constructor of the advection class.
-    ~Advec_4();                  ///< Destructor of the advection class.
+    Advec4(Model *, Input *); ///< Constructor of the advection class.
+    ~Advec4();                  ///< Destructor of the advection class.
 
-    unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-    double getcfl(double);                               ///< Get the CFL number.
-    void exec();                                         ///< Execute the advection scheme.
+    void exec(); ///< Execute the advection scheme.
+
+    unsigned long getTimeLimit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
+    double getcfl(double);                                 ///< Get the CFL number.
 
   private:
     double calccfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.

@@ -25,7 +25,6 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
-#include "advec.h"
 #include "defines.h"
 #include "constants.h"
 #include "master.h"
@@ -54,7 +53,7 @@ Advec::~Advec()
 {
 }
 
-unsigned long Advec::gettimelim(unsigned long idt, double dt)
+unsigned long Advec::getTimeLimit(unsigned long idt, double dt)
 {
   unsigned long idtlim = (unsigned long) constants::dbig;
 
@@ -83,13 +82,13 @@ Advec* Advec::factory(Master *masterin, Input *inputin, Model *modelin, const st
   if(swadvec == "0")
     return new Advec(modelin, inputin);
   else if(swadvec == "2")
-    return new Advec_2(modelin, inputin);
-  else if(swadvec == "2int4")
-    return new Advec_2int4(modelin, inputin);
+    return new Advec2(modelin, inputin);
+  else if(swadvec == "2i4")
+    return new Advec2i4(modelin, inputin);
   else if(swadvec == "4")
-    return new Advec_4(modelin, inputin);
+    return new Advec4(modelin, inputin);
   else if(swadvec == "4m")
-    return new Advec_4m(modelin, inputin);
+    return new Advec4m(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());

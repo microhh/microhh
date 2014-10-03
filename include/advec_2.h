@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC_2
-#define ADVEC_2
+#ifndef ADVEC2
+#define ADVEC2
 
 #include "advec.h"
 
@@ -31,15 +31,16 @@ class Model;
 /**
  * Derived class for 2nd order advection scheme.
  */
-class Advec_2 : public Advec
+class Advec2 : public Advec
 {
   public:
-    Advec_2(Model *, Input *); ///< Constructor of the advection class.
-    ~Advec_2();                  ///< Destructor of the advection class.
+    Advec2(Model *, Input *); ///< Constructor of the advection class.
+    ~Advec2();                ///< Destructor of the advection class.
 
-    unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-    double getcfl(double);                               ///< Get the CFL number.
-    void exec();                                         ///< Execute the advection scheme.
+    void exec(); ///< Execute the advection scheme.
+
+    unsigned long getTimeLimit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
+    double getcfl(double);                                 ///< Get the CFL number.
 
   private:
     double calccfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.

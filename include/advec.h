@@ -42,15 +42,14 @@ class Advec
 {
   public:
     Advec(Model *, Input *); ///< Constructor of the advection class.
-    virtual ~Advec();          ///< Destructor of the advection class.
+    virtual ~Advec();        ///< Destructor of the advection class.
 
     static Advec* factory(Master *, Input *, Model *, const std::string); ///< Factory function for advection class generation.
 
     virtual void exec(); ///< Execute the advection scheme.
 
-    virtual double getcfl(double); ///< Retrieve the CFL number.
-
-    virtual unsigned long gettimelim(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
+    virtual unsigned long getTimeLimit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
+    virtual double getcfl(double);                             ///< Retrieve the CFL number.
 
   protected:
     Master *master; ///< Pointer to master class.

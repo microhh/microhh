@@ -450,7 +450,7 @@ void Model::settimestep()
 
   timeloop->settimelim();
 
-  timeloop->idtlim = std::min(timeloop->idtlim, advec->gettimelim(timeloop->idt, timeloop->dt));
+  timeloop->idtlim = std::min(timeloop->idtlim, advec->getTimeLimit(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, diff ->gettimelim(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, stats->gettimelim(timeloop->itime));
   timeloop->idtlim = std::min(timeloop->idtlim, cross->gettimelim(timeloop->itime));
