@@ -66,7 +66,7 @@ void Budget::init()
   master = model->master;
 
   // if the stats is disabled, also disable the budget stats
-  if(stats->getsw() == "0")
+  if(stats->getSwitch() == "0")
     swbudget = "0";
 
   umodel = new double[grid->kcells];
@@ -115,13 +115,13 @@ void Budget::create()
   stats->addprof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
   stats->addprof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
 
-  if(model->thermo->getsw() != "0")
+  if(model->thermo->getSwitch() != "0")
   {
     stats->addprof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
     stats->addprof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
   }
 
-  if(model->thermo->getsw() != "0")
+  if(model->thermo->getSwitch() != "0")
   {
     // add the profiles for the potential energy budget to the statistics
     stats->addprof("bsort", "Sorted buoyancy", "m s-2", "z");
@@ -171,16 +171,16 @@ int Budget::execstats(mask *m)
                   grid->dzi4, grid->dzhi4, fields->visc);
 
     // calculate the buoyancy term of the TKE budget
-    if(model->thermo->getsw() != "0")
+    if(model->thermo->getSwitch() != "0")
     {
       // store the buoyancy in the tmp1 field
-      model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
+      model->thermo->getThermoField(fields->sd["tmp1"], fields->sd["tmp2"], "b");
       calctkebudget_buoy(fields->w->data, fields->s["tmp1"]->data,
                     m->profs["w2_buoy"].data, m->profs["tke_buoy"].data);
     }
 
     // calculate the potential energy budget
-    if(model->thermo->getsw() != "0")
+    if(model->thermo->getSwitch() != "0")
     {
       // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
       stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);

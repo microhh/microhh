@@ -292,7 +292,7 @@ void Model::exec()
           }
           else if(*it == "ql" || *it == "qlcore")
           {
-            thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
+            thermo->getMask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
             calStats(*it);
           }
         }
@@ -309,7 +309,7 @@ void Model::exec()
 #endif      
       
         fields  ->execcross();
-        thermo  ->execcross();
+        thermo  ->execCross();
         boundary->execcross();
       }
     }
@@ -382,7 +382,7 @@ void Model::exec()
 void Model::calStats(std::string maskname)
 {
   fields  ->execstats(&stats->masks[maskname]);
-  thermo  ->execstats(&stats->masks[maskname]);
+  thermo  ->execStats(&stats->masks[maskname]);
   budget  ->execstats(&stats->masks[maskname]);
   boundary->execstats(&stats->masks[maskname]);
 }

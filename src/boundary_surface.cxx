@@ -61,7 +61,7 @@ void Boundary_surface::create(Input *inputin)
   nerror += processtimedep(inputin);
 
   // add variables to the statistics
-  if(stats->getsw() == "1")
+  if(stats->getSwitch() == "1")
   {
     stats->addtseries("ustar", "Surface friction velocity", "m s-1");
     stats->addtseries("obuk", "Obukhov length", "m");
@@ -120,7 +120,7 @@ void Boundary_surface::init(Input *inputin)
 
   // check whether the prognostic thermo vars are of the same type
   std::vector<std::string> thermolist;
-  model->thermo->getprogvars(&thermolist);
+  model->thermo->getProgVars(&thermolist);
 
   std::vector<std::string>::const_iterator it = thermolist.begin();
 
@@ -272,7 +272,7 @@ void Boundary_surface::setvalues()
 int Boundary_surface::bcvalues()
 {
   // start with retrieving the stability information
-  if(model->thermo->getsw() == "0")
+  if(model->thermo->getSwitch() == "0")
   {
     stability_neutral(ustar, obuk,
                       fields->u->data, fields->v->data,
@@ -282,7 +282,7 @@ int Boundary_surface::bcvalues()
   else
   {
     // store the buoyancy in tmp1
-    model->thermo->getbuoyancysurf(fields->sd["tmp1"]);
+    model->thermo->getBuoyancySurf(fields->sd["tmp1"]);
     stability(ustar, obuk, fields->sd["tmp1"]->datafluxbot,
               fields->u->data,    fields->v->data,    fields->sd["tmp1"]->data,
               fields->u->databot, fields->v->databot, fields->sd["tmp1"]->databot,

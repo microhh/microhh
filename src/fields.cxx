@@ -785,7 +785,7 @@ void Fields::load(int n)
   }
 
   // add the profiles to te statistics
-  if(stats->getsw() == "1")
+  if(stats->getSwitch() == "1")
   {
     // add variables to the statistics
     stats->addprof(u->name, u->longname, u->unit, "z" );

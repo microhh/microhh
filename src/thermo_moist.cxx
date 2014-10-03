@@ -169,7 +169,7 @@ void ThermoMoist::create(Input *inputin)
   }
 
   // add variables to the statistics
-  if(stats->getsw() == "1")
+  if(stats->getSwitch() == "1")
   {
     // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
     stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
@@ -227,15 +227,13 @@ void ThermoMoist::create(Input *inputin)
 }
 
 #ifndef USECUDA
-int ThermoMoist::exec()
+void ThermoMoist::exec()
 {
-  int kk,nerror;
-  kk = grid->icells*grid->jcells;
-  int kcells = grid->kcells;
-  nerror = 0;
+  const int kk = grid->ijcells;
+  const int kcells = grid->kcells;
 
   // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
-  double * restrict tmp2 = fields->s["tmp2"]->data;
+  double *tmp2 = fields->s["tmp2"]->data;
   if(swupdatebasestate)
     calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
                   fields->s["s"]->datamean, fields->s["qt"]->datamean);
@@ -253,12 +251,10 @@ int ThermoMoist::exec()
                          &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk],
                          thvrefh);
   }
-
-  return (nerror>0);
 }
 #endif
 
-int ThermoMoist::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
+void ThermoMoist::getMask(Field3d *mfield, Field3d *mfieldh, mask *m)
 {
   if(m->name == "ql")
   {
@@ -277,13 +273,11 @@ int ThermoMoist::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
                    stats->nmask, stats->nmaskh, &stats->nmaskbot,
                    fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
   }
- 
-  return 0;
 }
 
 int ThermoMoist::calcmaskql(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                              int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
-                              double * restrict ql)
+                            int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                            double * restrict ql)
 {
   int ijk,ij,jj,kk;
   int kstart,kend;
@@ -418,7 +412,7 @@ int ThermoMoist::calcmaskqlcore(double * restrict mask, double * restrict maskh,
   return 0;
 }
 
-int ThermoMoist::execstats(mask *m)
+void ThermoMoist::execStats(mask *m)
 {
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
@@ -493,19 +487,17 @@ int ThermoMoist::execstats(mask *m)
 
   stats->calccover(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
   stats->calcpath(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
-
-  return 0;
 }
 
-void ThermoMoist::execcross()
+void ThermoMoist::execCross()
 {
   int nerror = 0;
 
   // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
   for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
-    /* BvS: for now, don't call getthermofield() or getbuoyancysurf(), but directly the function itself. With CUDA enabled, 
-       statistics etc. is done on the host, while getthermofield() is executed on the GPU */ 
+    /* BvS: for now, don't call getThermoField() or getBuoyancySurf(), but directly the function itself. With CUDA enabled, 
+       statistics etc. is done on the host, while getThermoField() is executed on the GPU */ 
 
     if(*it == "b")
     {
@@ -545,21 +537,21 @@ void ThermoMoist::execcross()
     throw 1;
 }
 
-int ThermoMoist::checkthermofield(std::string name)
+bool ThermoMoist::checkThermoField(std::string name)
 {
   if(name == "b" || name == "ql")
-    return 0;
+    return false;
   else
-    return 1;
+    return true;
 }
 
 #ifndef USECUDA
-int ThermoMoist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
+void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
-  int kk = grid->icells*grid->jcells;
-  int kcells = grid->kcells;
+  const int kk = grid->icells*grid->jcells;
+  const int kcells = grid->kcells;
 
-  // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
+  // BvS: getThermoField() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
   // Pass dummy as rhoref,thvref to prevent overwriting base state 
   double * restrict tmp2 = fields->s["tmp2"]->data;
   if(swupdatebasestate)
@@ -573,38 +565,32 @@ int ThermoMoist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
   else if(name == "N2")
     calcN2(fld->data, fields->s["s"]->data, grid->dzi, thvref);
   else
-    return 1;
-
-  return 0;
+    throw 1;
 }
 #endif
 
 #ifndef USECUDA
-int ThermoMoist::getbuoyancysurf(Field3d *bfield)
+void ThermoMoist::getBuoyancySurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data         , bfield->databot,
                   fields->s["s" ]->data, fields->s["s" ]->databot,
                   fields->s["qt"]->data, fields->s["qt"]->databot,
                   thvref, thvrefh);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
-  return 0;
 }
 #endif
 
 #ifndef USECUDA
-int ThermoMoist::getbuoyancyfluxbot(Field3d *bfield)
+void ThermoMoist::getBuoyancyFluxbot(Field3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
-  return 0;
 }
 #endif
 
-int ThermoMoist::getprogvars(std::vector<std::string> *list)
+void ThermoMoist::getProgVars(std::vector<std::string> *list)
 {
   list->push_back("s");
   list->push_back("qt");
-
-  return 0;
 }
 
 /**
@@ -624,10 +610,10 @@ int ThermoMoist::getprogvars(std::vector<std::string> *list)
  * @return Returns 1 on error, 0 otherwise.
  */
 int ThermoMoist::calcbasestate(double * restrict pref,     double * restrict prefh,
-                                 double * restrict rho,      double * restrict rhoh,
-                                 double * restrict thv,      double * restrict thvh,
-                                 double * restrict ex,       double * restrict exh,
-                                 double * restrict thlmean,  double * restrict qtmean)
+                               double * restrict rho,      double * restrict rhoh,
+                               double * restrict thv,      double * restrict thvh,
+                               double * restrict ex,       double * restrict exh,
+                               double * restrict thlmean,  double * restrict qtmean)
 {
   int kstart,kend;
   double ssurf,qtsurf,stop,qttop,ptop,ql,si,qti,qli,thvt;

@@ -36,28 +36,28 @@ class ThermoMoist : public Thermo
 {
   public:
     ThermoMoist(Model *, Input *);
-    ~ThermoMoist();
+    virtual ~ThermoMoist();
 
-    void init();
-    void create(Input *);
-    int exec();
-    int getmask(Field3d *, Field3d *, mask *);
-    int execstats(mask *);
+    virtual void init();
+    virtual void create(Input *);
+    virtual void exec();
+    virtual void getMask(Field3d *, Field3d *, mask *);
+    virtual void execStats(mask *);
 
-    void execcross();
+    virtual void execCross();
 
     // functions to retrieve buoyancy properties, to be called from other classes
-    int checkthermofield(std::string name);
-    int getthermofield(Field3d *, Field3d *, std::string name);
-    int getbuoyancysurf(Field3d *);
-    int getbuoyancyfluxbot(Field3d *);
-    int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
+    virtual bool checkThermoField(std::string name);
+    virtual void getThermoField(Field3d *, Field3d *, std::string name);
+    virtual void getBuoyancySurf(Field3d *);
+    virtual void getBuoyancyFluxbot(Field3d *);
+    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
-#ifdef USECUDA
+    #ifdef USECUDA
     // GPU functions and variables
     int prepareDevice();
     int clearDevice();
-#endif
+    #endif
 
   private:
 

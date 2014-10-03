@@ -40,15 +40,15 @@ class ThermoBuoySlope : public Thermo
 {
   public:
     ThermoBuoySlope(Model *, Input *); ///< Constructor of the dry thermodynamics class.
-    ~ThermoBuoySlope();                  ///< Destructor of the dry thermodynamics class.
+    virtual ~ThermoBuoySlope();        ///< Destructor of the dry thermodynamics class.
 
-    int exec();                              ///< Add the tendencies belonging to the buoyancy.
+    virtual void exec(); ///< Add the tendencies belonging to the buoyancy.
 
-    int checkthermofield(std::string name);
-    int getthermofield(Field3d *, Field3d *, std::string name);
-    int getbuoyancysurf(Field3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(Field3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
-    int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
+    virtual bool checkThermoField(std::string name);
+    virtual void getThermoField(Field3d *, Field3d *, std::string name);
+    virtual void getBuoyancySurf(Field3d *);              ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    virtual void getBuoyancyFluxbot(Field3d *);           ///< Compute the bottom buoyancy flux for usage in another routine.
+    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
     int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.

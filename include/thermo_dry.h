@@ -41,26 +41,25 @@ class ThermoDry : public Thermo
 {
   public:
     ThermoDry(Model *, Input *); ///< Constructor of the dry thermodynamics class.
-    ~ThermoDry();                  ///< Destructor of the dry thermodynamics class.
+    virtual ~ThermoDry();                  ///< Destructor of the dry thermodynamics class.
 
-    void init();
-    void create(Input *);
-    int exec();                ///< Add the tendencies belonging to the buoyancy.
-    int execstats(mask *);
+    virtual void init();
+    virtual void create(Input *);
+    virtual void exec();                ///< Add the tendencies belonging to the buoyancy.
+    virtual void execStats(mask *);
+    virtual void execCross();
 
-    void execcross();
+    virtual bool checkThermoField(std::string name);
+    virtual void getThermoField(Field3d *, Field3d *, std::string name);
+    virtual void getBuoyancySurf(Field3d *);              ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    virtual void getBuoyancyFluxbot(Field3d *);           ///< Compute the bottom buoyancy flux for usage in another routine.
+    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
-    int checkthermofield(std::string name);
-    int getthermofield(Field3d *, Field3d *, std::string name);
-    int getbuoyancysurf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(Field3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
-    int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
-
-#ifdef USECUDA
+    #ifdef USECUDA
     // GPU functions and variables
-    int prepareDevice();
-    int clearDevice();
-#endif
+    virtual void prepareDevice();
+    virtual void clearDevice();
+    #endif
 
   private:
     int calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.

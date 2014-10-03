@@ -56,53 +56,46 @@ void Thermo::create(Input *inputin)
 {
 }
 
-int Thermo::exec()
-{
-  return 0;
-}
-
-int Thermo::execstats(mask *f)
-{
-  return 0;
-}
-
-void Thermo::execcross()
+void Thermo::exec()
 {
 }
 
-int Thermo::checkthermofield(std::string name)
+void Thermo::execStats(mask *f)
 {
-  return 1;  // always returns error 
 }
 
-int Thermo::getthermofield(Field3d *field, Field3d *tmp, std::string name)
+void Thermo::execCross()
 {
-  return 0;
 }
 
-int Thermo::getbuoyancysurf(Field3d *bfield)
+bool Thermo::checkThermoField(std::string name)
 {
-  return 0;
+  return true;  // always returns error 
 }
 
-int Thermo::getbuoyancyfluxbot(Field3d *bfield)
+void Thermo::getThermoField(Field3d *field, Field3d *tmp, std::string name)
 {
-  return 0;
 }
 
-std::string Thermo::getsw()
+void Thermo::getBuoyancySurf(Field3d *bfield)
+{
+}
+
+void Thermo::getBuoyancyFluxbot(Field3d *bfield)
+{
+}
+
+std::string Thermo::getSwitch()
 {
   return swthermo;
 }
 
-int Thermo::getprogvars(std::vector<std::string> *list)
+void Thermo::getProgVars(std::vector<std::string> *list)
 {
-  return 0;
 }
 
-int Thermo::getmask(Field3d *mfield, Field3d *mfieldh, mask *f)
+void Thermo::getMask(Field3d *mfield, Field3d *mfieldh, mask *f)
 {
-  return 0;
 }
 
 Thermo* Thermo::factory(Master *masterin, Input *inputin, Model *modelin)
@@ -128,12 +121,10 @@ Thermo* Thermo::factory(Master *masterin, Input *inputin, Model *modelin)
   }
 }
 
-int Thermo::prepareDevice()
+void Thermo::prepareDevice()
 {
-  return 0;
 }
 
-int Thermo::clearDevice()
+void Thermo::clearDevice()
 {
-  return 0;
 }

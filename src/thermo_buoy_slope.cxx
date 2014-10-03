@@ -59,47 +59,41 @@ ThermoBuoySlope::~ThermoBuoySlope()
 {
 }
 
-int ThermoBuoySlope::exec()
+void ThermoBuoySlope::exec()
 {
   calcbuoyancytendu_4th(fields->ut->data, fields->s["b"]->data);
   calcbuoyancytendw_4th(fields->wt->data, fields->s["b"]->data);
   calcbuoyancytendb_4th(fields->st["b"]->data, fields->u->data, fields->w->data);
-
-  return 0;
 }
 
-int ThermoBuoySlope::checkthermofield(std::string name)
+bool ThermoBuoySlope::checkThermoField(std::string name)
 {
   if(name == "b")
-    return 0;
+    return false;
   else
-    return 1;
+    return true;
 }
 
-int ThermoBuoySlope::getthermofield(Field3d *field, Field3d *tmp, std::string name)
+void ThermoBuoySlope::getThermoField(Field3d *field, Field3d *tmp, std::string name)
 {
   calcbuoyancy(field->data, fields->s["b"]->data);
-  return 0;
 }
 
-int ThermoBuoySlope::getbuoyancyfluxbot(Field3d *bfield)
+void ThermoBuoySlope::getBuoyancyFluxbot(Field3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
-  return 0;
 }
 
-int ThermoBuoySlope::getbuoyancysurf(Field3d *bfield)
+void ThermoBuoySlope::getBuoyancySurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data        , bfield->databot,
                   fields->s["b"]->data, fields->s["b"]->databot);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
-  return 0;
 }
 
-int ThermoBuoySlope::getprogvars(std::vector<std::string> *list)
+void ThermoBuoySlope::getProgVars(std::vector<std::string> *list)
 {
   list->push_back("b");
-  return 0;
 }
 
 int ThermoBuoySlope::calcbuoyancy(double * restrict b, double * restrict s)

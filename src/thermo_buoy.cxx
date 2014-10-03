@@ -47,56 +47,49 @@ ThermoBuoy::~ThermoBuoy()
 }
 
 #ifndef USECUDA
-int ThermoBuoy::exec()
+void ThermoBuoy::exec()
 {
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder== "2")
     calcbuoyancytend_2nd(fields->wt->data, fields->s["b"]->data);
   else if(grid->swspatialorder == "4")
     calcbuoyancytend_4th(fields->wt->data, fields->s["b"]->data);
-
-  return 0;
 }
 #endif
 
-int ThermoBuoy::getbuoyancy(Field3d *bfield, Field3d *tmp)
+void ThermoBuoy::getBuoyancy(Field3d *bfield, Field3d *tmp)
 {
   calcbuoyancy(bfield->data, fields->s["b"]->data);
-  return 0;
 }
 
-int ThermoBuoy::getbuoyancyfluxbot(Field3d *bfield)
+void ThermoBuoy::getBuoyancyFluxbot(Field3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
-  return 0;
 }
 
-int ThermoBuoy::getbuoyancysurf(Field3d *bfield)
+void ThermoBuoy::getBuoyancySurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
                   fields->s["b"]->data, fields->s["b"]->databot);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
-  return 0;
 }
 
-int ThermoBuoy::checkthermofield(std::string name)
+bool ThermoBuoy::checkThermoField(std::string name)
 {
   if(name == "b")
-    return 0;
+    return false;
   else
-    return 1;
+    return true;
 }
 
-int ThermoBuoy::getthermofield(Field3d *field, Field3d *tmp, std::string name)
+void ThermoBuoy::getThermoField(Field3d *field, Field3d *tmp, std::string name)
 {
   calcbuoyancy(field->data, fields->s["b"]->data);
-  return 0;
 }
 
-int ThermoBuoy::getprogvars(std::vector<std::string> *list)
+void ThermoBuoy::getProgVars(std::vector<std::string> *list)
 {
   list->push_back("b");
-  return 0;
 }
 
 int ThermoBuoy::calcbuoyancy(double * restrict b, double * restrict bin)

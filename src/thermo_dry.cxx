@@ -73,9 +73,9 @@ ThermoDry::~ThermoDry()
   delete[] this->exner;
   delete[] this->exnerh;
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
 void ThermoDry::init()
@@ -174,7 +174,7 @@ void ThermoDry::create(Input *inputin)
   }
   
   // add variables to the statistics
-  if(stats->getsw() == "1")
+  if(stats->getSwitch() == "1")
   {
     // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
     //stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
@@ -226,18 +226,16 @@ void ThermoDry::create(Input *inputin)
 }
 
 #ifndef USECUDA
-int ThermoDry::exec()
+void ThermoDry::exec()
 {
   if(grid->swspatialorder== "2")
     calcbuoyancytend_2nd(fields->wt->data, fields->s["th"]->data, threfh);
   else if(grid->swspatialorder == "4")
     calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
-
-  return 0;
 }
 #endif
 
-int ThermoDry::execstats(mask *m)
+void ThermoDry::execStats(mask *m)
 {
   // calculate the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
@@ -305,32 +303,32 @@ int ThermoDry::execstats(mask *m)
   //stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 }
 
-void ThermoDry::execcross()
+void ThermoDry::execCross()
 {
   int nerror = 0;
 
   // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
   for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
-    /* BvS: for now, don't call getthermofield() or getbuoyancysurf(), but directly the function itself. With CUDA enabled, 
-       statistics etc. is done on the host, while getthermofield() is executed on the GPU */ 
+    /* BvS: for now, don't call getThermoField() or getBuoyancySurf(), but directly the function itself. With CUDA enabled, 
+       statistics etc. is done on the host, while getThermoField() is executed on the GPU */ 
     
     if(*it == "b")
     {
-      //getthermofield(fields->s["tmp1"], fields->s["tmp2"], *it);
+      //getThermoField(fields->s["tmp1"], fields->s["tmp2"], *it);
       calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
       nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
-      //getthermofield(fields->s["tmp1"], fields->s["tmp2"], "b");
+      //getThermoField(fields->s["tmp1"], fields->s["tmp2"], "b");
       calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
       nerror += model->cross->crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
-      //getbuoyancysurf(fields->s["tmp1"]);
+      //getBuoyancySurf(fields->s["tmp1"]);
       calcbuoyancybot(fields->s["tmp1"]->data, fields->s["tmp1"]->databot, fields->s["th"]->data, fields->s["th"]->databot, thref, threfh);
       calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot, threfh);
 
@@ -345,52 +343,45 @@ void ThermoDry::execcross()
     throw 1;
 }
 
-int ThermoDry::checkthermofield(std::string name)
+bool ThermoDry::checkThermoField(std::string name)
 {
   if(name == "b")
-    return 0;
+    return false;
   else
-    return 1;
+    return true;
 }
 
 #ifndef USECUDA
-int ThermoDry::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
+void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
   if(name == "b")
     calcbuoyancy(fld->data, fields->s["th"]->data, thref);
   else if(name == "N2")
     calcN2(fld->data, fields->s["th"]->data, grid->dzi, thref);
   else
-    return 1;
-
-  return 0;
+    throw 1;
 }
 #endif
 
 #ifndef USECUDA
-int ThermoDry::getbuoyancyfluxbot(Field3d *bfield)
+void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot, threfh);
-
-  return 0;
 }
 #endif
 
 #ifndef USECUDA
-int ThermoDry::getbuoyancysurf(Field3d *bfield)
+void ThermoDry::getBuoyancySurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
                   fields->s["th"]->data, fields->s["th"]->databot, thref, threfh);
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot, threfh);
-
-  return 0;
 }
 #endif
 
-int ThermoDry::getprogvars(std::vector<std::string> *list)
+void ThermoDry::getProgVars(std::vector<std::string> *list)
 {
   list->push_back("th");
-  return 0;
 }
 
 int ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double * restrict thref)
