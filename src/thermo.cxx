@@ -112,13 +112,13 @@ Thermo* Thermo::factory(Master *masterin, Input *inputin, Model *modelin)
     return 0;
 
   if(swthermo== "moist")
-    return new Thermo_moist(modelin, inputin);
+    return new ThermoMoist(modelin, inputin);
   else if(swthermo == "buoy")
-    return new Thermo_buoy(modelin, inputin);
+    return new ThermoBuoy(modelin, inputin);
   else if(swthermo == "dry")
-    return new Thermo_dry(modelin, inputin);
+    return new ThermoDry(modelin, inputin);
   else if(swthermo == "buoy_slope")
-    return new Thermo_buoy_slope(modelin, inputin);
+    return new ThermoBuoySlope(modelin, inputin);
   else if(swthermo == "0")
     return new Thermo(modelin, inputin);
   else

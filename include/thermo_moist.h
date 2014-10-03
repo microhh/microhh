@@ -32,11 +32,11 @@ class Fields;
 class Stats;
 struct mask;
 
-class Thermo_moist : public Thermo
+class ThermoMoist : public Thermo
 {
   public:
-    Thermo_moist(Model *, Input *);
-    ~Thermo_moist();
+    ThermoMoist(Model *, Input *);
+    ~ThermoMoist();
 
     void init();
     void create(Input *);
