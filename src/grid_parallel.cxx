@@ -28,7 +28,7 @@
 #include "defines.h"
 
 // MPI functions
-int Grid::initmpi()
+void Grid::initmpi()
 {
   // create the MPI types for the cyclic boundary conditions
   int datacount, datablock, datastride;
@@ -140,11 +140,9 @@ int Grid::initmpi()
   profl = new double[kcells];
 
   mpitypes = true;
-
-  return 0;
 } 
 
-int Grid::exitmpi()
+void Grid::exitmpi()
 {
   if(mpitypes)
   {
@@ -166,11 +164,9 @@ int Grid::exitmpi()
 
     delete[] profl;
   }
-
-  return 0;
 }
 
-int Grid::boundary_cyclic(double * restrict data)
+void Grid::boundary_cyclic(double * restrict data)
 {
   int ncount = 1;
 
@@ -233,11 +229,9 @@ int Grid::boundary_cyclic(double * restrict data)
           data[ijksouth] = data[ijkref];
         }
   }
-
-  return 0;
 }
 
-int Grid::boundary_cyclic2d(double * restrict data)
+void Grid::boundary_cyclic2d(double * restrict data)
 {
   int ncount = 1;
 
@@ -298,11 +292,9 @@ int Grid::boundary_cyclic2d(double * restrict data)
         data[ijsouth] = data[ijref];
       }
   }
-
-  return 0;
 }
 
-int Grid::transposezx(double * restrict ar, double * restrict as)
+void Grid::transposezx(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -324,11 +316,9 @@ int Grid::transposezx(double * restrict ar, double * restrict as)
     master->reqsn++;
   }
   master->waitall();
-
-  return 0;
 }
 
-int Grid::transposexz(double * restrict ar, double * restrict as)
+void Grid::transposexz(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -350,11 +340,9 @@ int Grid::transposexz(double * restrict ar, double * restrict as)
     master->reqsn++;
   }
   master->waitall();
-
-  return 0;
 }
 
-int Grid::transposexy(double * restrict ar, double * restrict as)
+void Grid::transposexy(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -376,11 +364,9 @@ int Grid::transposexy(double * restrict ar, double * restrict as)
     master->reqsn++;
   }
   master->waitall();
-
-  return 0;
 }
 
-int Grid::transposeyx(double * restrict ar, double * restrict as)
+void Grid::transposeyx(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -402,11 +388,9 @@ int Grid::transposeyx(double * restrict ar, double * restrict as)
     master->reqsn++;
   }
   master->waitall();
-
-  return 0;
 }
 
-int Grid::transposeyz(double * restrict ar, double * restrict as)
+void Grid::transposeyz(double * restrict ar, double * restrict as)
 {
   int ijks,ijkr;
   int ncount = 1;
@@ -428,11 +412,9 @@ int Grid::transposeyz(double * restrict ar, double * restrict as)
     master->reqsn++;
   }
   master->waitall();
- 
-  return 0;
 }
 
-int Grid::transposezy(double * restrict ar, double * restrict as)
+void Grid::transposezy(double * restrict ar, double * restrict as)
 {
   int ijks,ijkr;
   int ncount = 1;
@@ -454,34 +436,26 @@ int Grid::transposezy(double * restrict ar, double * restrict as)
     master->reqsn++;
   }
   master->waitall();
-
-  return 0;
 }
 
-int Grid::getmax(double *var)
+void Grid::getmax(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, master->commxy);
-
-  return 0;
 }
 
-int Grid::getsum(double *var)
+void Grid::getsum(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, master->commxy);
-
-  return 0;
 }
 
-int Grid::getprof(double *prof, int kcellsin)
+void Grid::getprof(double *prof, int kcellsin)
 {
   for(int k=0; k<kcellsin; k++)
     profl[k] = prof[k] / master->nprocs;
 
   MPI_Allreduce(profl, prof, kcellsin, MPI_DOUBLE, MPI_SUM, master->commxy);
-
-  return 0;
 }
 
 // IO functions
@@ -760,7 +734,7 @@ int Grid::loadfield3d(double * restrict data, double * restrict tmp1, double * r
   return 0;
 }
 
-int Grid::fftforward(double * restrict data,   double * restrict tmp1,
+void Grid::fftforward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
@@ -825,11 +799,9 @@ int Grid::fftforward(double * restrict data,   double * restrict tmp1,
 
   // transpose back to original orientation
   transposeyz(data,tmp1);
-
-  return 0;
 }
 
-int Grid::fftbackward(double * restrict data,   double * restrict tmp1,
+void Grid::fftbackward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
@@ -894,8 +866,6 @@ int Grid::fftbackward(double * restrict data,   double * restrict tmp1,
 
   // and transpose back...
   transposexz(tmp1, data);
-
-  return 0;
 }
 
 int Grid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)

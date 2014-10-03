@@ -385,9 +385,8 @@ void Grid::calculate()
  * @param in Pointer to the input field.
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
- * @return Returns 0.
  */
-int Grid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   int ijk,ii,jj,kk,iih,jjh;
 
@@ -409,8 +408,6 @@ int Grid::interpolate_2nd(double * restrict out, double * restrict in, const int
         out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
                  + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
       }
-
-  return 0;
 }
 
 /**
@@ -420,9 +417,8 @@ int Grid::interpolate_2nd(double * restrict out, double * restrict in, const int
  * @param in Pointer to the input field.
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
- * @return Returns 0.
  */
-int Grid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   using namespace fd::o4;
 
@@ -451,8 +447,6 @@ int Grid::interpolate_4th(double * restrict out, double * restrict in, const int
                  + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
                  + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
       }
-
-  return 0;
 }
 
 /**
@@ -463,7 +457,7 @@ int Grid::interpolate_4th(double * restrict out, double * restrict in, const int
  * @param krange Number of vertical levels over which the profile is to be calculated.
  * @return Returns 0.
  */
-int Grid::calcmean(double * restrict prof, const double * restrict data, const int krange)
+void Grid::calcmean(double * restrict prof, const double * restrict data, const int krange)
 {
   int ijk,jj,kk;
 
@@ -488,12 +482,10 @@ int Grid::calcmean(double * restrict prof, const double * restrict data, const i
     prof[k] /= n;
 
   getprof(prof, krange);
-
-  return 0;
 }
 
 /*
-int Grid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
+void Grid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
 {
   // interpolation function, locz = 1 indicates that the reference is at the half level
   int ijk,ii1,ii2,jj1,jj2,kk1,kk2,khlf;
@@ -516,8 +508,6 @@ int Grid::interpolatez_4th(double * restrict out, double * restrict in, int locz
         ijk = i + j*jj1 + k*kk1;
         out[ijk] = ci0*in[ijk-kk2+khlf] + ci1*in[ijk-kk1+khlf] + ci2*in[ijk+khlf] + ci3*in[ijk+kk1+khlf];
       }
-
-  return 0;
 }
 */
 // end of interpolation functions
