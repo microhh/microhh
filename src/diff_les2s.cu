@@ -635,7 +635,7 @@ int Diff_les2s::execvisc()
   cudaCheckError();
 
   // start with retrieving the stability information
-  if(model->thermo->getsw() == "0")
+  if(model->thermo->getSwitch() == "0")
   {
     diff_les2s_evisc_neutral<<<gridGPU, blockGPU>>>(&fields->s["evisc"]->data_g[offs], mlen_g,
                                                     grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
@@ -648,9 +648,9 @@ int Diff_les2s::execvisc()
   else
   {
     // store the buoyancyflux in datafluxbot of tmp1
-    model->thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
+    model->thermo->getBuoyancyFluxbot(fields->sd["tmp1"]);
     // store the Brunt-vaisala frequency in data of tmp1 
-    model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "N2");
+    model->thermo->getThermoField(fields->sd["tmp1"], fields->sd["tmp2"], "N2");
 
     // Calculate eddy viscosity
     double tPri = 1./tPr;

@@ -55,8 +55,8 @@ class ThermoMoist : public Thermo
 
     #ifdef USECUDA
     // GPU functions and variables
-    int prepareDevice();
-    int clearDevice();
+    void prepareDevice();
+    void clearDevice();
     #endif
 
   private:

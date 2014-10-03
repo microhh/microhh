@@ -51,11 +51,6 @@ class ThermoBuoy : public Thermo
     virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
     virtual void getThermoField(Field3d *, Field3d *, std::string name);
 
-    #ifdef USECUDA
-    // GPU functions and variables
-    virtual void prepareDevice();
-    #endif
-
   private:
     int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
     int calcbuoyancybot(double *, double *,
