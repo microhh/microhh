@@ -508,7 +508,7 @@ int Boundary_surface::bcvalues()
   const int offs = grid->memoffset;
 
   // Calculate dutot in tmp2
-  boundary_surface_dutot<<<gridGPU, blockGPU>>>(&fields->sd["tmp2"]->data_g[offs], 
+  boundary_surface_dutot<<<gridGPU, blockGPU>>>(&fields->atmp["tmp2"]->data_g[offs], 
                                                 &fields->u->data_g[offs],    &fields->v->data_g[offs],
                                                 &fields->u->databot_g[offs], &fields->v->databot_g[offs],
                                                 grid->istart, grid->jstart, grid->kstart,
@@ -516,26 +516,26 @@ int Boundary_surface::bcvalues()
   cudaCheckError();
 
   // 2D cyclic boundaries on dutot  
-  grid->boundary_cyclic2d_g(&fields->sd["tmp2"]->data_g[offs]);
+  grid->boundary_cyclic2d_g(&fields->atmp["tmp2"]->data_g[offs]);
 
   // start with retrieving the stability information
   if(model->thermo->getsw() == "0")
   {
     // Calculate ustar and Obukhov length, including ghost cells
     boundary_surface_stability_neutral<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
-                                                  &fields->sd["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
+                                                  &fields->atmp["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
                                                   grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
     cudaCheckError();
   }
   else
   {
     // store the buoyancy in tmp1
-    model->thermo->getbuoyancysurf(fields->sd["tmp1"]);
+    model->thermo->getbuoyancysurf(fields->atmp["tmp1"]);
 
     // Calculate ustar and Obukhov length, including ghost cells
     boundary_surface_stability<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
-                                                  &fields->sd["tmp1"]->data_g[offs], &fields->sd["tmp1"]->databot_g[offs], &fields->sd["tmp1"]->datafluxbot_g[offs],
-                                                  &fields->sd["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
+                                                  &fields->atmp["tmp1"]->data_g[offs], &fields->atmp["tmp1"]->databot_g[offs], &fields->atmp["tmp1"]->datafluxbot_g[offs],
+                                                  &fields->atmp["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
                                                   grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
     cudaCheckError();
   }

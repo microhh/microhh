@@ -89,7 +89,7 @@ int Thermo_buoy::exec()
 
   if(grid->swspatialorder== "2")
   {
-    thermo_buoy_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["b"]->data_g[offs], 
+    thermo_buoy_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
                                                             grid->istart, grid->jstart, grid->kstart+1,
                                                             grid->iend,   grid->jend, grid->kend,
                                                             grid->icellsp, grid->ijcellsp);
@@ -97,7 +97,7 @@ int Thermo_buoy::exec()
   }
   else if(grid->swspatialorder== "4")
   {
-    thermo_buoy_calcbuoyancytend_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["b"]->data_g[offs], 
+    thermo_buoy_calcbuoyancytend_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
                                                             grid->istart, grid->jstart, grid->kstart+1,
                                                             grid->iend,   grid->jend, grid->kend,
                                                             grid->icellsp, grid->ijcellsp);

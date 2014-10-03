@@ -554,8 +554,8 @@ void Pres_4::exec(double dt)
     cudaCheckError();
   } 
 
-  double *tmp1_g = fields->sd["tmp1"]->data_g;
-  double *tmp2_g = fields->sd["tmp2"]->data_g;
+  double *tmp1_g = fields->atmp["tmp1"]->data_g;
+  double *tmp2_g = fields->atmp["tmp2"]->data_g;
 
   // Set jslice to a higher value
   const int jslice = std::max(grid->jblock/4, 1);
@@ -618,8 +618,8 @@ void Pres_4::exec(double dt)
     cudaCheckError();
   } 
 
-  cudaSafeCall(cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-  pres_4_solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->sd["tmp1"]->data_g,
+  cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+  pres_4_solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart, grid->jstart, grid->kstart,
@@ -651,7 +651,7 @@ double Pres_4::check()
 
   const int offs = grid->memoffset;
 
-  pres_4_calcdivergence<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs],
+  pres_4_calcdivergence<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs],
                                                &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
                                                grid->dzi4_g,
                                                grid->dxi, grid->dyi,
@@ -660,7 +660,7 @@ double Pres_4::check()
                                                grid->iend,    grid->jend,   grid->kend);
   cudaCheckError();
 
-  double divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
+  double divmax = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
   grid->getmax(&divmax);
 
   return divmax;

@@ -235,22 +235,22 @@ int Thermo_moist::exec()
   nerror = 0;
 
   // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
-  double * restrict tmp2 = fields->s["tmp2"]->data;
+  double * restrict tmp2 = fields->atmp["tmp2"]->data;
   if(swupdatebasestate)
     calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
-                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
+                  fields->sp["s"]->datamean, fields->sp["qt"]->datamean);
   
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder == "2")
   {
-    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, prefh,
-                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk],
+    calcbuoyancytend_2nd(fields->wt->data, fields->sp["s"]->data, fields->sp["qt"]->data, prefh,
+                         &fields->atmp["tmp2"]->data[0*kk], &fields->atmp["tmp2"]->data[1*kk], &fields->atmp["tmp2"]->data[2*kk],
                          thvrefh);
   }
   else if(grid->swspatialorder == "4")
   {
-    calcbuoyancytend_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, prefh,
-                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk],
+    calcbuoyancytend_4th(fields->wt->data, fields->sp["s"]->data, fields->sp["qt"]->data, prefh,
+                         &fields->atmp["tmp2"]->data[0*kk], &fields->atmp["tmp2"]->data[1*kk], &fields->atmp["tmp2"]->data[2*kk],
                          thvrefh);
   }
 
@@ -262,20 +262,20 @@ int Thermo_moist::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
 {
   if(m->name == "ql")
   {
-    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
+    calcqlfield(fields->atmp["tmp1"]->data, fields->atmp["s"]->data, fields->sp["qt"]->data, pref);
     calcmaskql(mfield->data, mfieldh->data, mfieldh->databot,
                stats->nmask, stats->nmaskh, &stats->nmaskbot,
-               fields->s["tmp1"]->data);
+               fields->atmp["tmp1"]->data);
   }
   else if(m->name == "qlcore")
   {
-    calcbuoyancy(fields->s["tmp2"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp1"]->data,thvref);
+    calcbuoyancy(fields->atmp["tmp2"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp1"]->data,thvref);
     // calculate the mean buoyancy to determine positive buoyancy
-    grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
-    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
+    grid->calcmean(fields->atmp["tmp2"]->datamean, fields->atmp["tmp2"]->data, grid->kcells);
+    calcqlfield(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref);
     calcmaskqlcore(mfield->data, mfieldh->data, mfieldh->databot,
                    stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                   fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
+                   fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->datamean);
   }
  
   return 0;
@@ -421,15 +421,15 @@ int Thermo_moist::calcmaskqlcore(double * restrict mask, double * restrict maskh
 int Thermo_moist::execstats(mask *m)
 {
   // calc the buoyancy and its surface flux for the profiles
-  calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
-  calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
+  calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
+  calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["s"]->databot, fields->sp["s"]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 
   // define location
   const int sloc[] = {0,0,0};
 
   // mean
-  stats->calcmean(m->profs["b"].data, fields->s["tmp1"]->data, NO_OFFSET, sloc,
-                  fields->s["tmp3"]->data, stats->nmask);
+  stats->calcmean(m->profs["b"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc,
+                  fields->atmp["tmp3"]->data, stats->nmask);
 
   // moments
   for(int n=2; n<5; ++n)
@@ -437,26 +437,26 @@ int Thermo_moist::execstats(mask *m)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
-                      fields->s["tmp3"]->data, stats->nmask);
+    stats->calcmoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+                      fields->atmp["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcgrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcgrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
-                        m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcflux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+                        m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcflux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
   if(grid->swspatialorder == "2")
@@ -464,35 +464,35 @@ int Thermo_moist::execstats(mask *m)
     if(model->diff->getname() == "les2s")
     {
       Diff_les2s *diffptr = static_cast<Diff_les2s *>(model->diff);
-      stats->calDiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
+      stats->calDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
-                          fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
-                          fields->s["tmp4"]->data, stats->nmaskh);
+                          fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,
+                          fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
     {
-      stats->calDiff_2nd(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->s["th"]->visc, sloc,
-                          fields->s["tmp4"]->data, stats->nmaskh);
+      stats->calDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["s"]->visc, sloc,
+                          fields->atmp["tmp4"]->data, stats->nmaskh);
     }
   }
   else if(grid->swspatialorder == "4")
   {
     // take the diffusivity of temperature for that of buoyancy
-    stats->calDiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["s"]->visc, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
   stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the liquid water stats
-  calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-  stats->calcmean(m->profs["ql"].data, fields->s["tmp1"]->data, NO_OFFSET, sloc, fields->s["tmp3"]->data, stats->nmask);
-  stats->calccount(fields->s["tmp1"]->data, m->profs["cfrac"].data, 0.,
-                   fields->s["tmp3"]->data, stats->nmask);
+  calcqlfield(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref);
+  stats->calcmean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+  stats->calccount(fields->atmp["tmp1"]->data, m->profs["cfrac"].data, 0.,
+                   fields->atmp["tmp3"]->data, stats->nmask);
 
-  stats->calccover(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
-  stats->calcpath(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
+  stats->calccover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
+  stats->calcpath(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
   return 0;
 }
@@ -509,35 +509,35 @@ void Thermo_moist::execcross()
 
     if(*it == "b")
     {
-      calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
-      nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
+      calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
+      nerror += model->cross->crosssimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if(*it == "ql")
     {
-      calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-      nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
+      calcqlfield(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref);
+      nerror += model->cross->crosssimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
-      calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
+      calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += model->cross->crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it);
+      nerror += model->cross->crosslngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "qlpath")
     {
-      calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
+      calcqlfield(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += model->cross->crosspath(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, "qlpath");
+      nerror += model->cross->crosspath(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qlpath");
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
-      calcbuoyancybot(fields->s["tmp1"]->data, fields->s["tmp1"]->databot, fields->s["s" ]->data, fields->s["s"]->databot, fields->s["qt"]->data, fields->s["qt"]->databot, thvref, thvrefh);
-      calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
+      calcbuoyancybot(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->sp["s" ]->data, fields->sp["s"]->databot, fields->sp["qt"]->data, fields->sp["qt"]->databot, thvref, thvrefh);
+      calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["s"]->databot, fields->sp["s"]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 
       if(*it == "bbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "bbot");
+        nerror += model->cross->crossplane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
+        nerror += model->cross->crossplane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
     }
   }
 
@@ -561,17 +561,17 @@ int Thermo_moist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
 
   // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
   // Pass dummy as rhoref,thvref to prevent overwriting base state 
-  double * restrict tmp2 = fields->s["tmp2"]->data;
+  double * restrict tmp2 = fields->atmp["tmp2"]->data;
   if(swupdatebasestate)
     calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
-                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
+                  fields->sp["s"]->datamean, fields->sp["qt"]->datamean);
 
   if(name == "b")
-    calcbuoyancy(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pref, tmp->data, thvref);
+    calcbuoyancy(fld->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref, tmp->data, thvref);
   else if(name == "ql")
-    calcqlfield(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
+    calcqlfield(fld->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref);
   else if(name == "N2")
-    calcN2(fld->data, fields->s["s"]->data, grid->dzi, thvref);
+    calcN2(fld->data, fields->sp["s"]->data, grid->dzi, thvref);
   else
     return 1;
 
@@ -583,10 +583,10 @@ int Thermo_moist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
 int Thermo_moist::getbuoyancysurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data         , bfield->databot,
-                  fields->s["s" ]->data, fields->s["s" ]->databot,
-                  fields->s["qt"]->data, fields->s["qt"]->databot,
+                  fields->sp["s" ]->data, fields->sp["s" ]->databot,
+                  fields->sp["qt"]->data, fields->sp["qt"]->databot,
                   thvref, thvrefh);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["s"]->databot, fields->sp["s"]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
   return 0;
 }
 #endif
@@ -594,7 +594,7 @@ int Thermo_moist::getbuoyancysurf(Field3d *bfield)
 #ifndef USECUDA
 int Thermo_moist::getbuoyancyfluxbot(Field3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["s"]->databot, fields->sp["s"]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
   return 0;
 }
 #endif

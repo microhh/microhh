@@ -250,23 +250,23 @@ int Force::exec(double dt)
 
   if(swlspres == "uflux")
   {
-    force_flux_step1<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs], &fields->u->data_g[offs],
+    force_flux_step1<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs], &fields->u->data_g[offs],
                                             grid->dz_g,
                                             grid->icellsp, grid->ijcellsp,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
     cudaCheckError();
 
-    double uavg  = grid->getsum_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+    double uavg  = grid->getsum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
-    force_flux_step1<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs], &fields->ut->data_g[offs],
+    force_flux_step1<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs], &fields->ut->data_g[offs],
                                             grid->dz_g,
                                             grid->icellsp, grid->ijcellsp,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend);
     cudaCheckError();
 
-    double utavg = grid->getsum_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+    double utavg = grid->getsum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
     uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
     utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
@@ -320,7 +320,7 @@ int Force::exec(double dt)
   {
     for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     {
-      force_advecwls_2nd<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], fields->s[it->first]->datamean_g, wls_g, grid->dzhi_g,
+      force_advecwls_2nd<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], fields->sp[it->first]->datamean_g, wls_g, grid->dzhi_g,
                                                 grid->istart,  grid->jstart, grid->kstart,
                                                 grid->iend,    grid->jend,   grid->kend,
                                                 grid->icellsp, grid->ijcellsp);

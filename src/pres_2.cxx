@@ -65,7 +65,7 @@ void Pres_2::exec(double dt)
           dt);
 
   // solve the system
-  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data,
+  pres_solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data,
              grid->dz, fields->rhoref,
              grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 

@@ -167,7 +167,7 @@ int Thermo_dry::exec()
 
   if(grid->swspatialorder== "2")
   {
-    thermo_dry_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["th"]->data_g[offs], threfh_g, constants::grav, 
+    thermo_dry_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["th"]->data_g[offs], threfh_g, constants::grav, 
                                                            grid->istart, grid->jstart, grid->kstart+1,
                                                            grid->iend,   grid->jend, grid->kend,
                                                            grid->icellsp, grid->ijcellsp);
@@ -203,14 +203,14 @@ int Thermo_dry::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
 
   if(name == "b")
   {
-    thermo_dry_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->s["th"]->data_g[offs], 
+    thermo_dry_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->sp["th"]->data_g[offs], 
                                                    thref_g, grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
                                                    grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
   else if(name == "N2")
   {
-    thermo_dry_calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->s["th"]->data_g[offs], thref_g, grid->dzi_g, 
+    thermo_dry_calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["th"]->data_g[offs], thref_g, grid->dzi_g, 
                                                grid->istart, grid->jstart, grid->kstart, 
                                                grid->iend,   grid->jend,   grid->kend,
                                                grid->icellsp, grid->ijcellsp);
@@ -236,7 +236,7 @@ int Thermo_dry::getbuoyancyfluxbot(Field3d *bfield)
   
   const int offs = grid->memoffset;
 
-  thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->s["th"]->datafluxbot_g[offs], 
+  thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
                                                         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                         grid->icellsp, grid->ijcellsp);
   cudaCheckError();
@@ -259,12 +259,12 @@ int Thermo_dry::getbuoyancysurf(Field3d *bfield)
   const int offs = grid->memoffset;
 
   thermo_dry_calcbuoyancybot<<<gridGPU, blockGPU>>>(&bfield->data_g[offs], &bfield->databot_g[offs], 
-                                                    &fields->s["th"]->data_g[offs], &fields->s["th"]->databot_g[offs],
+                                                    &fields->sp["th"]->data_g[offs], &fields->sp["th"]->databot_g[offs],
                                                     thref_g, threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                     grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
-  thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->s["th"]->datafluxbot_g[offs], 
+  thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
                                                         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                         grid->icellsp, grid->ijcellsp);
   cudaCheckError();

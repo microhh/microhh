@@ -65,7 +65,7 @@ __device__ double interp2(double a, double b)
 //                               int iend,   int jend,   int kend)
 //{
 //  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-//  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+//  int j = blockIdx.y*blockDisdm.y + threadIdx.y + jstart;
 //  int k = blockIdx.z + kstart;
 //  int ii = 1;
 //
@@ -252,7 +252,7 @@ void Advec_2::exec()
   cudaCheckError(); 
   
   for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advec_2_advecs<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], 
+    advec_2_advecs<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
                                           &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
                                           fields->rhoref_g, fields->rhorefh_g, 
                                           grid->dzi_g, dxi, dyi,
@@ -281,14 +281,14 @@ double Advec_2::calccfl(double * u, double * v, double * w, double * dzi, double
   const int offs = grid->memoffset;
 
   advec_2_calccfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-                                         &fields->a["tmp1"]->data_g[offs],
+                                         &fields->atmp["tmp1"]->data_g[offs],
                                          grid->dzi_g, dxi, dyi,
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart,  grid->jstart, grid->kstart,
                                          grid->iend,    grid->jend,   grid->kend);
   cudaCheckError(); 
 
-  cfl = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  cfl = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
   grid->getmax(&cfl); 
   cfl = cfl*dt;
 

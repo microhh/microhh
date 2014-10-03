@@ -625,7 +625,7 @@ int Diff_les2s::execvisc()
   const int offs = grid->memoffset;
 
   // Calculate total strain rate
-  diff_les2s_strain2<<<gridGPU, blockGPU>>>(&fields->s["evisc"]->data_g[offs], 
+  diff_les2s_strain2<<<gridGPU, blockGPU>>>(&fields->sd["evisc"]->data_g[offs], 
                                             &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
                                             &fields->u->datafluxbot_g[offs],  &fields->v->datafluxbot_g[offs],
                                             &boundaryptr->ustar_g[offs], &boundaryptr->obuk_g[offs],
@@ -637,7 +637,7 @@ int Diff_les2s::execvisc()
   // start with retrieving the stability information
   if(model->thermo->getsw() == "0")
   {
-    diff_les2s_evisc_neutral<<<gridGPU, blockGPU>>>(&fields->s["evisc"]->data_g[offs], mlen_g,
+    diff_les2s_evisc_neutral<<<gridGPU, blockGPU>>>(&fields->sd["evisc"]->data_g[offs], mlen_g,
                                                     grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                                     grid->icellsp, grid->ijcellsp);  
     cudaCheckError();
@@ -654,8 +654,8 @@ int Diff_les2s::execvisc()
 
     // Calculate eddy viscosity
     double tPri = 1./tPr;
-    diff_les2s_evisc<<<gridGPU, blockGPU>>>(&fields->s["evisc"]->data_g[offs], &fields->s["tmp1"]->data_g[offs], 
-                                            &fields->sd["tmp1"]->datafluxbot_g[offs], &boundaryptr->ustar_g[offs], &boundaryptr->obuk_g[offs],
+    diff_les2s_evisc<<<gridGPU, blockGPU>>>(&fields->sd["evisc"]->data_g[offs], &fields->atmp["tmp1"]->data_g[offs], 
+                                            &fields->atmp["tmp1"]->datafluxbot_g[offs], &boundaryptr->ustar_g[offs], &boundaryptr->obuk_g[offs],
                                             mlen_g, tPri, boundaryptr->z0m, grid->z[grid->kstart],
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                             grid->icellsp, grid->ijcellsp);  
@@ -708,7 +708,7 @@ int Diff_les2s::exec()
   //                                        grid->icellsp, grid->ijcellsp);  
 
   diff_les2s_diffuvw<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
-                                            &fields->s["evisc"]->data_g[offs], 
+                                            &fields->sd["evisc"]->data_g[offs], 
                                             &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
                                             &fields->u->datafluxbot_g[offs], &fields->u->datafluxtop_g[offs],
                                             &fields->v->datafluxbot_g[offs], &fields->v->datafluxtop_g[offs],
@@ -719,8 +719,8 @@ int Diff_les2s::exec()
   cudaCheckError();
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-    diff_les2s_diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], &fields->s["evisc"]->data_g[offs], 
-                                            &fields->s[it->first]->datafluxbot_g[offs], &fields->s[it->first]->datafluxtop_g[offs],
+    diff_les2s_diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], &fields->sd["evisc"]->data_g[offs], 
+                                            &fields->sp[it->first]->datafluxbot_g[offs], &fields->sp[it->first]->datafluxtop_g[offs],
                                             grid->dzi_g, grid->dzhi_g, dxidxi, dyidyi,
                                             fields->rhoref_g, fields->rhorefh_g, tPri,
                                             grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
@@ -750,14 +750,14 @@ unsigned long Diff_les2s::gettimelim(unsigned long idt, double dt)
   const double tPrfac = std::min(1., tPr);
 
   // Calculate dnmul in tmp1 field
-  diff_les2s_calcdnmul<<<gridGPU, blockGPU>>>(&fields->s["tmp1"]->data_g[offs], &fields->s["evisc"]->data_g[offs],
+  diff_les2s_calcdnmul<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs], &fields->sd["evisc"]->data_g[offs],
                                               grid->dzi_g, tPrfac, dxidxi, dyidyi,  
                                               grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                               grid->icellsp, grid->ijcellsp);  
   cudaCheckError();
 
   // Get maximum from tmp1 field
-  dnmul = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  dnmul = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
   dnmul = std::max(constants::dsmall, dnmul);
   idtlim = idt * dnmax/(dnmul*dt);
 
@@ -783,14 +783,14 @@ double Diff_les2s::getdn(double dt)
   const double tPrfac = std::min(1., tPr);
 
   // Calculate dnmul in tmp1 field
-  diff_les2s_calcdnmul<<<gridGPU, blockGPU>>>(&fields->s["tmp1"]->data_g[offs], &fields->s["evisc"]->data_g[offs],
+  diff_les2s_calcdnmul<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs], &fields->sd["evisc"]->data_g[offs],
                                               grid->dzi_g, tPrfac, dxidxi, dyidyi,  
                                               grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                               grid->icellsp, grid->ijcellsp);  
   cudaCheckError();
 
   // Get maximum from tmp1 field
-  dnmul = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
+  dnmul = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
   return dnmul*dt;
 }

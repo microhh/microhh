@@ -389,7 +389,7 @@ void Pres_2::exec(double dt)
   } 
 
   pres_2_solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
-                                        fields->sd["tmp1"]->data_g, fields->sd["tmp2"]->data_g,
+                                        fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g,
                                         a_g, c_g,
                                         grid->dz_g, fields->rhoref_g, bmati_g, bmatj_g,
                                         grid->imax, grid->imax*grid->jmax,
@@ -397,8 +397,8 @@ void Pres_2::exec(double dt)
                                         grid->kstart);
   cudaCheckError();
 
-  pres_2_tdma<<<grid2dGPU, block2dGPU>>>(a_g, fields->sd["tmp2"]->data_g, c_g,
-                                         fields->sd["p"]->data_g, fields->sd["tmp1"]->data_g,
+  pres_2_tdma<<<grid2dGPU, block2dGPU>>>(a_g, fields->atmp["tmp2"]->data_g, c_g,
+                                         fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->imax, grid->jmax, grid->kmax);
   cudaCheckError();
@@ -420,9 +420,9 @@ void Pres_2::exec(double dt)
     cudaCheckError();
   } 
 
-  cudaSafeCall(cudaMemcpy(fields->sd["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+  cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
-  pres_2_solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->sd["tmp1"]->data_g,
+  pres_2_solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
                                          grid->imax, grid->imax*grid->jmax,
                                          grid->icellsp, grid->ijcellsp,
                                          grid->istart, grid->jstart, grid->kstart,
@@ -460,14 +460,14 @@ double Pres_2::calcdivergence(double * restrict u, double * restrict v, double *
   const int offs = grid->memoffset;
 
   pres_2_calcdivergence<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-                                               &fields->a["tmp1"]->data_g[offs], grid->dzi_g, 
+                                               &fields->atmp["tmp1"]->data_g[offs], grid->dzi_g, 
                                                fields->rhoref_g, fields->rhorefh_g, dxi, dyi,
                                                grid->icellsp, grid->ijcellsp,
                                                grid->istart,  grid->jstart, grid->kstart,
                                                grid->iend,    grid->jend,   grid->kend);
   cudaCheckError();
 
-  divmax = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g);
+  divmax = grid->getmax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
   grid->getmax(&divmax);
 
   return divmax;

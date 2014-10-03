@@ -429,27 +429,26 @@ int Thermo_moist::exec()
   dim3 blockGPU(blocki, blockj, 1);
   
   const int offs = grid->memoffset;
-  int kk = grid->kcells;
 
   // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state
-  double * restrict tmp2 = fields->s["tmp2"]->data_g;
+  double * restrict tmp2 = fields->atmp["tmp2"]->data_g;
   if(swupdatebasestate)
   {
     if(grid->swspatialorder == "2")
       thermo_moist_calchydropres<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                              fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+                                              fields->sp["s"]->datamean_g, fields->sp["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     else if(grid->swspatialorder == "4")
       thermo_moist_calchydropres<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                              fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+                                              fields->sp["s"]->datamean_g, fields->sp["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     cudaCheckError();
   }
 
   if(grid->swspatialorder== "2")
   {
-    thermo_moist_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["s"]->data_g[offs], 
-                                                             &fields->s["qt"]->data_g[offs], thvrefh_g, exnrefh_g, prefh_g,  
+    thermo_moist_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["s"]->data_g[offs], 
+                                                             &fields->sp["qt"]->data_g[offs], thvrefh_g, exnrefh_g, prefh_g,  
                                                              grid->istart,  grid->jstart, grid->kstart+1,
                                                              grid->iend,    grid->jend,   grid->kend,
                                                              grid->icellsp, grid->ijcellsp);
@@ -481,27 +480,26 @@ int Thermo_moist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
   dim3 blockGPU2(blocki, blockj, 1);
   
   const int offs = grid->memoffset;
-  int kk = grid->kcells;
 
   // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
   // Pass dummy as rhoref,thvref to prevent overwriting base state 
-  double * restrict tmp2 = fields->s["tmp2"]->data_g;
+  double * restrict tmp2 = fields->atmp["tmp2"]->data_g;
   if(swupdatebasestate && (name == "b" || name == "ql"))
   {
     if(grid->swspatialorder == "2")
       thermo_moist_calchydropres<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                              fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+                                              fields->sp["s"]->datamean_g, fields->sp["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     else if(grid->swspatialorder == "4")
       thermo_moist_calchydropres<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                              fields->s["s"]->datamean_g, fields->s["qt"]->datamean_g, 
+                                              fields->sp["s"]->datamean_g, fields->sp["qt"]->datamean_g, 
                                               grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     cudaCheckError();
   }
 
   if(name == "b")
   {
-    thermo_moist_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->s["s"]->data_g[offs], &fields->s["qt"]->data_g[offs],
+    thermo_moist_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->sp["s"]->data_g[offs], &fields->sp["qt"]->data_g[offs],
                                                      thvref_g, pref_g, exnref_g,
                                                      grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
                                                      grid->icellsp, grid->ijcellsp);
@@ -509,7 +507,7 @@ int Thermo_moist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
   }
   else if(name == "ql")
   {
-    thermo_moist_calcqlfield<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->s["s"]->data_g[offs], &fields->s["qt"]->data_g[offs], exnref_g, pref_g, 
+    thermo_moist_calcqlfield<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["s"]->data_g[offs], &fields->sp["qt"]->data_g[offs], exnref_g, pref_g, 
                                                       grid->istart,  grid->jstart,  grid->kstart, 
                                                       grid->iend,    grid->jend,    grid->kend,
                                                       grid->icellsp, grid->ijcellsp);
@@ -517,7 +515,7 @@ int Thermo_moist::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
   }
   else if(name == "N2")
   {
-    thermo_moist_calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->s["s"]->data_g[offs], thvref_g, grid->dzi_g, 
+    thermo_moist_calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["s"]->data_g[offs], thvref_g, grid->dzi_g, 
                                                  grid->istart, grid->jstart, grid->kstart, 
                                                  grid->iend,   grid->jend,   grid->kend,
                                                  grid->icellsp, grid->ijcellsp);
@@ -545,8 +543,8 @@ int Thermo_moist::getbuoyancyfluxbot(Field3d *bfield)
   const int offs = grid->memoffset;
 
   thermo_moist_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], 
-                                                          &fields->s["s"] ->databot_g[offs], &fields->s["s"] ->datafluxbot_g[offs], 
-                                                          &fields->s["qt"]->databot_g[offs], &fields->s["qt"]->datafluxbot_g[offs], 
+                                                          &fields->sp["s"] ->databot_g[offs], &fields->sp["s"] ->datafluxbot_g[offs], 
+                                                          &fields->sp["qt"]->databot_g[offs], &fields->sp["qt"]->datafluxbot_g[offs], 
                                                           thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                           grid->icellsp, grid->ijcellsp);
   cudaCheckError();
@@ -569,15 +567,15 @@ int Thermo_moist::getbuoyancysurf(Field3d *bfield)
   const int offs = grid->memoffset;
 
   thermo_moist_calcbuoyancybot<<<gridGPU, blockGPU>>>(&bfield->data_g[offs], &bfield->databot_g[offs], 
-                                                      &fields->s["s"] ->data_g[offs], &fields->s["s"] ->databot_g[offs],
-                                                      &fields->s["qt"]->data_g[offs], &fields->s["qt"]->databot_g[offs],
+                                                      &fields->sp["s"] ->data_g[offs], &fields->sp["s"] ->databot_g[offs],
+                                                      &fields->sp["qt"]->data_g[offs], &fields->sp["qt"]->databot_g[offs],
                                                       thvref_g, thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                       grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
   thermo_moist_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], 
-                                                          &fields->s["s"] ->databot_g[offs], &fields->s["s"] ->datafluxbot_g[offs], 
-                                                          &fields->s["qt"]->databot_g[offs], &fields->s["qt"]->datafluxbot_g[offs], 
+                                                          &fields->sp["s"] ->databot_g[offs], &fields->sp["s"] ->datafluxbot_g[offs], 
+                                                          &fields->sp["qt"]->databot_g[offs], &fields->sp["qt"]->datafluxbot_g[offs], 
                                                           thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                           grid->icellsp, grid->ijcellsp);
   cudaCheckError();

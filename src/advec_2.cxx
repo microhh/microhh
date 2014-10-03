@@ -75,7 +75,7 @@ void Advec_2::exec()
          fields->rhoref, fields->rhorefh);
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advecs(it->second->data, fields->s[it->first]->data, fields->u->data, fields->v->data, fields->w->data,
+    advecs(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data,
            grid->dzi, fields->rhoref, fields->rhorefh);
 }
 #endif

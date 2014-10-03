@@ -89,7 +89,7 @@ int Fields::exec()
   if(calcprofs)
   {
     for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
-      grid->calcmean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], s["tmp1"]->data_g);
+      grid->calcmean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
   }
 
   return 0;
@@ -110,13 +110,13 @@ double Fields::checkmom()
   const int offs = grid->memoffset;
 
   fields_calcmom_2nd<<<gridGPU, blockGPU>>>(&u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
-                                            &a["tmp1"]->data_g[offs], grid->dz_g,
+                                            &atmp["tmp1"]->data_g[offs], grid->dz_g,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend,
                                             grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
-  double mom = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+  double mom = grid->getsum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
   grid->getsum(&mom);
   mom /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -138,13 +138,13 @@ double Fields::checktke()
   const int offs = grid->memoffset;
 
   fields_calctke_2nd<<<gridGPU, blockGPU>>>(&u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
-                                            &a["tmp1"]->data_g[offs], grid->dz_g,
+                                            &atmp["tmp1"]->data_g[offs], grid->dz_g,
                                             grid->istart,  grid->jstart, grid->kstart,
                                             grid->iend,    grid->jend,   grid->kend,
                                             grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
-  double tke = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+  double tke = grid->getsum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
 
   grid->getsum(&tke);
   tke /= (grid->itot*grid->jtot*grid->zsize);
@@ -172,13 +172,13 @@ double Fields::checkmass()
   fieldmap::iterator itProg=sp.begin();
   if(sp.begin() != sp.end())
   {
-    fields_calcmass_2nd<<<gridGPU, blockGPU>>>(&itProg->second->data_g[offs], &a["tmp1"]->data_g[offs], grid->dz_g,
+    fields_calcmass_2nd<<<gridGPU, blockGPU>>>(&itProg->second->data_g[offs], &atmp["tmp1"]->data_g[offs], grid->dz_g,
                                                grid->istart,  grid->jstart, grid->kstart,
                                                grid->iend,    grid->jend,   grid->kend,
                                                grid->icellsp, grid->ijcellsp);
     cudaCheckError();
 
-    mass = grid->getsum_g(&a["tmp1"]->data_g[offs], a["tmp2"]->data_g); 
+    mass = grid->getsum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
     grid->getsum(&mass);
     mass /= (grid->itot*grid->jtot*grid->zsize);
   }

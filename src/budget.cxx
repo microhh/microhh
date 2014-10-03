@@ -159,8 +159,8 @@ int Budget::execstats(mask *m)
            grid->utrans, grid->vtrans,
            m->profs["ke"].data, m->profs["tke"].data);
 
-    calctkebudget(fields->u->data, fields->v->data, fields->w->data, fields->s["p"]->data,
-                  fields->s["tmp1"]->data, fields->s["tmp2"]->data,
+    calctkebudget(fields->u->data, fields->v->data, fields->w->data, fields->sd["p"]->data,
+                  fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data,
                   umodel, vmodel,
                   m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data,
                   m->profs["u2_turb"].data, m->profs["v2_turb"].data, m->profs["w2_turb"].data, m->profs["tke_turb"].data,
@@ -174,8 +174,8 @@ int Budget::execstats(mask *m)
     if(model->thermo->getsw() != "0")
     {
       // store the buoyancy in the tmp1 field
-      model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
-      calctkebudget_buoy(fields->w->data, fields->s["tmp1"]->data,
+      model->thermo->getthermofield(fields->atmp["tmp1"], fields->atmp["tmp2"], "b");
+      calctkebudget_buoy(fields->w->data, fields->atmp["tmp1"]->data,
                     m->profs["w2_buoy"].data, m->profs["tke_buoy"].data);
     }
 
@@ -183,11 +183,11 @@ int Budget::execstats(mask *m)
     if(model->thermo->getsw() != "0")
     {
       // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
-      stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
+      stats->calcsortprof(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, m->profs["bsort"].data);
 
       // calculate the potential energy back, tmp1 contains the buoyancy, tmp2 will contain height that the local buoyancy
       // will reach in the sorted profile
-      calcpe(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->databot, fields->sd["tmp2"]->datatop,
+      calcpe(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->datatop,
              grid->z,
              m->profs["bsort"].data,
              m->profs["pe"].data, m->profs["ape"].data, m->profs["bpe"].data,
@@ -196,7 +196,7 @@ int Budget::execstats(mask *m)
 
       // calculate the budget of background potential energy, start with this one, because tmp2 contains the needed height
       // which will be overwritten inside of the routine
-      calcbpebudget(fields->w->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->databot, fields->sd["tmp2"]->datatop,
+      calcbpebudget(fields->w->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->datatop,
                     m->profs["bpe_turb"].data, m->profs["bpe_visc"].data, m->profs["bpe_diss"].data,
                     // TODO put the correct value for visc here!!!!!
                     m->profs["bsort"].data,
@@ -204,7 +204,7 @@ int Budget::execstats(mask *m)
                     fields->visc);
 
       // calculate the budget of potential energy
-      calcpebudget(fields->w->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, fields->sd["tmp2"]->datatop,
+      calcpebudget(fields->w->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->datatop,
                    m->profs["pe_turb"].data, m->profs["pe_visc"].data, m->profs["pe_bous"].data,
                    // TODO put the correct value for visc here!!!!!
                    grid->z, grid->zh, grid->dzi4, grid->dzhi4,

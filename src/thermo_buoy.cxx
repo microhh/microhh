@@ -51,9 +51,9 @@ int Thermo_buoy::exec()
 {
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder== "2")
-    calcbuoyancytend_2nd(fields->wt->data, fields->s["b"]->data);
+    calcbuoyancytend_2nd(fields->wt->data, fields->sp["b"]->data);
   else if(grid->swspatialorder == "4")
-    calcbuoyancytend_4th(fields->wt->data, fields->s["b"]->data);
+    calcbuoyancytend_4th(fields->wt->data, fields->sp["b"]->data);
 
   return 0;
 }
@@ -61,21 +61,21 @@ int Thermo_buoy::exec()
 
 int Thermo_buoy::getbuoyancy(Field3d *bfield, Field3d *tmp)
 {
-  calcbuoyancy(bfield->data, fields->s["b"]->data);
+  calcbuoyancy(bfield->data, fields->sp["b"]->data);
   return 0;
 }
 
 int Thermo_buoy::getbuoyancyfluxbot(Field3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
   return 0;
 }
 
 int Thermo_buoy::getbuoyancysurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
-                  fields->s["b"]->data, fields->s["b"]->databot);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
+                  fields->sp["b"]->data, fields->sp["b"]->databot);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
   return 0;
 }
 
@@ -89,7 +89,7 @@ int Thermo_buoy::checkthermofield(std::string name)
 
 int Thermo_buoy::getthermofield(Field3d *field, Field3d *tmp, std::string name)
 {
-  calcbuoyancy(field->data, fields->s["b"]->data);
+  calcbuoyancy(field->data, fields->sp["b"]->data);
   return 0;
 }
 
@@ -144,8 +144,6 @@ int Thermo_buoy::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restri
       ij  = i + j*jj;
       bfluxbot[ij] = binfluxbot[ij];
     }
-
-  return 0;
 }
 
 int Thermo_buoy::calcbuoyancytend_2nd(double * restrict wt, double * restrict b)

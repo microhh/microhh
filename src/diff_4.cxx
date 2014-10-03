@@ -80,7 +80,7 @@ int Diff_4::exec()
   diffw(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc(it->second->data, fields->s[it->first]->data, grid->dzi4, grid->dzhi4, fields->s[it->first]->visc);
+    diffc(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
 
   return 0;
 }

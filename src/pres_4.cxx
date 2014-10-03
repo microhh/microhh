@@ -91,12 +91,12 @@ void Pres_4::exec(double dt)
      reads in case jblock does not divide by 4. */
   const int jslice = 1;
 
-  double *tmp2 = fields->sd["tmp2"]->data;
-  double *tmp3 = fields->sd["tmp3"]->data;
+  double *tmp2 = fields->atmp["tmp2"]->data;
+  double *tmp3 = fields->atmp["tmp3"]->data;
 
   const int ns = grid->iblock*jslice*(grid->kmax+4);
 
-  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
+  pres_solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, grid->dz,
              m1, m2, m3, m4,
              m5, m6, m7,
              &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 

@@ -80,10 +80,10 @@ Fields::Fields(Model *modelin, Input *inputin)
   nerror += initmomfld(v, vt, "v", "V velocity", "m s-1");
   nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
   nerror += initdfld("p", "Pressure", "Pa");
-  nerror += initdfld("tmp1", "", "");
-  nerror += initdfld("tmp2", "", "");
-  nerror += initdfld("tmp3", "", "");
-  nerror += initdfld("tmp4", "", "");
+  nerror += inittmpfld("tmp1", "", "");
+  nerror += inittmpfld("tmp2", "", "");
+  nerror += inittmpfld("tmp3", "", "");
+  nerror += inittmpfld("tmp4", "", "");
 
   if(nerror)
     throw 1;
@@ -153,6 +153,10 @@ void Fields::init()
   for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
     nerror += it->second->init();
 
+  // allocate the tmp fields
+  for(fieldmap::iterator it=atmp.begin(); it!=atmp.end(); ++it)
+    nerror += it->second->init();
+
   if(nerror > 0)
     throw 1;
 
@@ -180,7 +184,7 @@ void Fields::init()
   }
 
   // Check different type of crosses and put them in their respective lists 
-  for(fieldmap::const_iterator it=a.begin(); it!=a.end(); ++it)
+  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
     checkaddcross(it->first, "",        &crosslist, &crosssimple);
     checkaddcross(it->first, "lngrad",  &crosslist, &crosslngrad);
@@ -188,6 +192,12 @@ void Fields::init()
     checkaddcross(it->first, "top",     &crosslist, &crosstop);
     checkaddcross(it->first, "fluxbot", &crosslist, &crossfluxbot);
     checkaddcross(it->first, "fluxtop", &crosslist, &crossfluxtop);
+  }
+
+  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+  {
+    checkaddcross(it->first, "",        &crosslist, &crosssimple);
+    checkaddcross(it->first, "lngrad",  &crosslist, &crosslngrad);
   }
 
   // If crosslist not empty, illegal variables or cross types were selected
@@ -381,138 +391,138 @@ int Fields::execstats(mask *m)
   stats->calcarea(m->profs["areah"].data, wloc, stats->nmaskh);
 
   // start with the stats on the w location, to make the wmean known for the flux calculations
-  stats->calcmean(m->profs["w"].data, w->data, NO_OFFSET, wloc, sd["tmp4"]->data, stats->nmaskh);
+  stats->calcmean(m->profs["w"].data, w->data, NO_OFFSET, wloc, atmp["tmp4"]->data, stats->nmaskh);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
     stats->calcmoment(w->data, m->profs["w"].data, m->profs["w"+sn].data, n, wloc,
-                      sd["tmp4"]->data, stats->nmaskh);
+                      atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the u location
   // interpolate the mask horizontally onto the u coordinate
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, uloc);
-  stats->calcmean(m->profs["u"].data, u->data, grid->utrans, uloc, sd["tmp1"]->data, stats->nmask);
-  stats->calcmean(umodel            , u->data, NO_OFFSET   , uloc, sd["tmp1"]->data, stats->nmask);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
+  stats->calcmean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
+  stats->calcmean(umodel            , u->data, NO_OFFSET   , uloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
     stats->calcmoment(u->data, umodel, m->profs["u"+sn].data, n, uloc,
-                      sd["tmp1"]->data, stats->nmask);
+                      atmp["tmp1"]->data, stats->nmask);
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, uwloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
-                        sd["tmp1"]->data, stats->nmaskh);
+                        atmp["tmp1"]->data, stats->nmaskh);
     stats->calcflux_2nd(u->data, umodel, w->data, m->profs["w"].data,
-                        m->profs["uw"].data, s["tmp2"]->data, uloc,
-                        sd["tmp1"]->data, stats->nmaskh);
+                        m->profs["uw"].data, atmp["tmp2"]->data, uloc,
+                        atmp["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calDiff_2nd(u->data, w->data, s["evisc"]->data,
+      stats->calDiff_2nd(u->data, w->data, sd["evisc"]->data,
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
-                          sd["tmp1"]->data, stats->nmaskh);
+                          atmp["tmp1"]->data, stats->nmaskh);
     else
       stats->calDiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
-                          sd["tmp1"]->data, stats->nmaskh);
+                          atmp["tmp1"]->data, stats->nmaskh);
 
   }
   else if(grid->swspatialorder == "4")
   {
     stats->calcgrad_4th(u->data, m->profs["ugrad"].data, grid->dzhi4, uloc,
-                        sd["tmp1"]->data, stats->nmaskh);
-    stats->calcflux_4th(u->data, w->data, m->profs["uw"].data, sd["tmp2"]->data, uloc,
-                        sd["tmp1"]->data, stats->nmaskh);
+                        atmp["tmp1"]->data, stats->nmaskh);
+    stats->calcflux_4th(u->data, w->data, m->profs["uw"].data, atmp["tmp2"]->data, uloc,
+                        atmp["tmp1"]->data, stats->nmaskh);
     stats->calDiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
-                        sd["tmp1"]->data, stats->nmaskh);
+                        atmp["tmp1"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the v location
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp3"]->data, sloc, vloc);
-  stats->calcmean(m->profs["v"].data, v->data, grid->vtrans, vloc, sd["tmp1"]->data, stats->nmask);
-  stats->calcmean(vmodel            , v->data, NO_OFFSET   , vloc, sd["tmp1"]->data, stats->nmask);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
+  stats->calcmean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
+  stats->calcmean(vmodel            , v->data, NO_OFFSET   , vloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
     stats->calcmoment(v->data, vmodel, m->profs["v"+sn].data, n, vloc,
-                      sd["tmp1"]->data, stats->nmask);
+                      atmp["tmp1"]->data, stats->nmask);
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate_2nd(sd["tmp1"]->data, sd["tmp4"]->data, wloc, vwloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
-                        sd["tmp1"]->data, stats->nmaskh);
+                        atmp["tmp1"]->data, stats->nmaskh);
     stats->calcflux_2nd(v->data, vmodel, w->data, m->profs["w"].data,
-                        m->profs["vw"].data, s["tmp2"]->data, vloc,
-                        sd["tmp1"]->data, stats->nmaskh);
+                        m->profs["vw"].data, atmp["tmp2"]->data, vloc,
+                        atmp["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calDiff_2nd(v->data, w->data, s["evisc"]->data,
+      stats->calDiff_2nd(v->data, w->data, sd["evisc"]->data,
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
-                          sd["tmp1"]->data, stats->nmaskh);
+                          atmp["tmp1"]->data, stats->nmaskh);
     else
       stats->calDiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
-                          sd["tmp1"]->data, stats->nmaskh);
+                          atmp["tmp1"]->data, stats->nmaskh);
 
   }
   else if(grid->swspatialorder == "4")
   {
     stats->calcgrad_4th(v->data, m->profs["vgrad"].data, grid->dzhi4, vloc,
-                        sd["tmp1"]->data, stats->nmaskh);
-    stats->calcflux_4th(v->data, w->data, m->profs["vw"].data, s["tmp2"]->data, vloc,
-                        sd["tmp1"]->data, stats->nmaskh);
+                        atmp["tmp1"]->data, stats->nmaskh);
+    stats->calcflux_4th(v->data, w->data, m->profs["vw"].data, atmp["tmp2"]->data, vloc,
+                        atmp["tmp1"]->data, stats->nmaskh);
     stats->calDiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
-                        sd["tmp1"]->data, stats->nmaskh);
+                        atmp["tmp1"]->data, stats->nmaskh);
   }
 
   // calculate stats for the prognostic scalars
   Diff_les2s *diffptr = static_cast<Diff_les2s *>(model->diff);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
-    stats->calcmean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
+    stats->calcmean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
     for(int n=2; n<5; ++n)
     {
       std::stringstream ss;
       ss << n;
       std::string sn = ss.str();
       stats->calcmoment(it->second->data, m->profs[it->first].data, m->profs[it->first+sn].data, n, sloc,
-                        sd["tmp3"]->data, stats->nmask);
+                        atmp["tmp3"]->data, stats->nmask);
     }
     if(grid->swspatialorder == "2")
     {
       stats->calcgrad_2nd(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi, sloc,
-                          sd["tmp4"]->data, stats->nmaskh);
+                          atmp["tmp4"]->data, stats->nmaskh);
       stats->calcflux_2nd(it->second->data, m->profs[it->first].data, w->data, m->profs["w"].data,
-                          m->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
-                          sd["tmp4"]->data, stats->nmaskh);
+                          m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
+                          atmp["tmp4"]->data, stats->nmaskh);
       if(model->diff->getname() == "les2s")
         stats->calDiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
-                            sd["tmp4"]->data, stats->nmaskh);
+                            atmp["tmp4"]->data, stats->nmaskh);
       else
         stats->calDiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
-                            sd["tmp4"]->data, stats->nmaskh);
+                            atmp["tmp4"]->data, stats->nmaskh);
     }
     else if(grid->swspatialorder == "4")
     {
       stats->calcgrad_4th(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi4, sloc,
-                          sd["tmp4"]->data, stats->nmaskh);
-      stats->calcflux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
-                          sd["tmp4"]->data, stats->nmaskh);
+                          atmp["tmp4"]->data, stats->nmaskh);
+      stats->calcflux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
+                          atmp["tmp4"]->data, stats->nmaskh);
       stats->calDiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
-                          sd["tmp4"]->data, stats->nmaskh);
+                          atmp["tmp4"]->data, stats->nmaskh);
     }
   }
 
@@ -523,10 +533,10 @@ int Fields::execstats(mask *m)
     stats->addfluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
 
   // other statistics
-  stats->calcmean(m->profs["p"].data, s["p"]->data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
+  stats->calcmean(m->profs["p"].data, sd["p"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
 
   if(model->diff->getname() == "les2s")
-    stats->calcmean(m->profs["evisc"].data, s["evisc"]->data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
+    stats->calcmean(m->profs["evisc"].data, sd["evisc"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
 
   return 0;
 }
@@ -569,7 +579,7 @@ int Fields::initmomfld(Field3d *&fld, Field3d *&fldt, std::string fldname, std::
 
 int Fields::initpfld(std::string fldname, std::string longname, std::string unit)
 {
-  if(s.find(fldname)!=s.end())
+  if(sp.find(fldname)!=sp.end())
   {
     master->printError("\"%s\" already exists\n", fldname.c_str());
     return 1;
@@ -587,7 +597,7 @@ int Fields::initpfld(std::string fldname, std::string longname, std::string unit
   // add the prognostic variable and its tendency to the collection
   // of all fields and tendencies
   a [fldname] = sp[fldname];
-  s [fldname] = sp[fldname];
+  //s [fldname] = sp[fldname];
   ap[fldname] = sp[fldname];
   at[fldname] = st[fldname];
 
@@ -596,15 +606,28 @@ int Fields::initpfld(std::string fldname, std::string longname, std::string unit
 
 int Fields::initdfld(std::string fldname,std::string longname, std::string unit)
 {
-  if(s.find(fldname)!=s.end())
+  if(sd.find(fldname)!=sd.end())
   {
     master->printError("\"%s\" already exists\n", fldname.c_str());
     return 1;
   }
 
   sd[fldname] = new Field3d(grid, master, fldname, longname, unit);
-  s [fldname] = sd[fldname];
+  //s [fldname] = sd[fldname];
   a [fldname] = sd[fldname];
+
+  return 0;  
+}
+
+int Fields::inittmpfld(std::string fldname,std::string longname, std::string unit)
+{
+  if(atmp.find(fldname)!=atmp.end())
+  {
+    master->printError("\"%s\" already exists\n", fldname.c_str());
+    return 1;
+  }
+
+  atmp[fldname] = new Field3d(grid, master, fldname, longname, unit);
 
   return 0;  
 }
@@ -773,7 +796,7 @@ void Fields::load(int n)
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     master->printMessage("Loading \"%s\" ... ", filename);
-    if(grid->loadfield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
+    if(grid->loadfield3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NO_OFFSET))
     {
       master->printMessage("FAILED\n");
       ++nerror;
@@ -851,7 +874,7 @@ void Fields::save(int n)
     master->printMessage("Saving \"%s\" ... ", filename);
 
     // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
-    if(grid->savefield3d(it->second->data, sd["tmp1"]->data, sd["tmp2"]->data, filename, NO_OFFSET))
+    if(grid->savefield3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NO_OFFSET))
     {
       master->printMessage("FAILED\n");
       ++nerror;
@@ -982,22 +1005,27 @@ void Fields::execcross()
   int nerror = 0;
 
   for(std::vector<std::string>::const_iterator it=crosssimple.begin(); it<crosssimple.end(); ++it)
-    nerror += model->cross->crosssimple(a[*it]->data, s["tmp1"]->data, a[*it]->name);
+    nerror += model->cross->crosssimple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
 
   for(std::vector<std::string>::const_iterator it=crosslngrad.begin(); it<crosslngrad.end(); ++it)
-    nerror += model->cross->crosslngrad(a[*it]->data, s["tmp1"]->data, s["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
+    nerror += model->cross->crosslngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
 
   for(std::vector<std::string>::const_iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datafluxbot, s["tmp1"]->data, a[*it]->name + "fluxbot");
+    nerror += model->cross->crossplane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
 
   for(std::vector<std::string>::const_iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datafluxtop, s["tmp1"]->data, a[*it]->name + "fluxtop");
+    nerror += model->cross->crossplane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
 
   for(std::vector<std::string>::const_iterator it=crossbot.begin(); it<crossbot.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->databot, s["tmp1"]->data, a[*it]->name + "bot");
+    nerror += model->cross->crossplane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
 
   for(std::vector<std::string>::const_iterator it=crosstop.begin(); it<crosstop.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datatop, s["tmp1"]->data, a[*it]->name + "top");
+    nerror += model->cross->crossplane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
+
+
+
+
+
 
   if(nerror)
     throw 1;

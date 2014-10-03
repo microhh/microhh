@@ -53,6 +53,7 @@ class Fields
     int initmomfld(Field3d*&, Field3d*&, std::string, std::string, std::string);
     int initpfld(std::string, std::string, std::string);
     int initdfld(std::string, std::string, std::string);
+    int inittmpfld(std::string, std::string, std::string);
     
     void save(int);
     void load(int);
@@ -82,10 +83,12 @@ class Fields
     fieldmap mp;
     fieldmap mt;
 
-    fieldmap s;
+    //fieldmap s;
     fieldmap sd;
     fieldmap sp;
     fieldmap st;
+
+    fieldmap atmp;
 
     // reference density
     double *rhoref;

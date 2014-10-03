@@ -184,9 +184,9 @@ void Boundary_surface::execcross()
   for(std::vector<std::string>::const_iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
     if(*it == "ustar")
-      nerror += model->cross->crossplane(ustar, fields->s["tmp1"]->data, "ustar");
+      nerror += model->cross->crossplane(ustar, fields->atmp["tmp1"]->data, "ustar");
     else if(*it == "obuk")
-      nerror += model->cross->crossplane(obuk,  fields->s["tmp1"]->data, "obuk");
+      nerror += model->cross->crossplane(obuk,  fields->atmp["tmp1"]->data, "obuk");
   }  
 
   if(nerror)
@@ -195,8 +195,8 @@ void Boundary_surface::execcross()
 
 int Boundary_surface::execstats(mask *m)
 {
-  stats->calcmean2d(&m->tseries["obuk"].data , obuk , 0., fields->s["tmp4"]->databot, &stats->nmaskbot);
-  stats->calcmean2d(&m->tseries["ustar"].data, ustar, 0., fields->s["tmp4"]->databot, &stats->nmaskbot);
+  stats->calcmean2d(&m->tseries["obuk"].data , obuk , 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
+  stats->calcmean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
 
   return 0; 
 }
@@ -207,7 +207,7 @@ void Boundary_surface::save(int iotime)
 
   std::sprintf(filename, "obuk.%07d", iotime);
   master->printMessage("Saving \"%s\" ... ", filename);
-  if(grid->savexyslice(obuk, fields->s["tmp1"]->data, filename))
+  if(grid->savexyslice(obuk, fields->atmp["tmp1"]->data, filename))
   {
     master->printMessage("FAILED\n");
     throw 1;
@@ -222,7 +222,7 @@ void Boundary_surface::load(int iotime)
 
   std::sprintf(filename, "obuk.%07d", iotime);
   master->printMessage("Loading \"%s\" ... ", filename);
-  if(grid->loadxyslice(obuk, fields->s["tmp1"]->data, filename))
+  if(grid->loadxyslice(obuk, fields->atmp["tmp1"]->data, filename))
   {
     master->printMessage("FAILED\n");
     throw 1;
@@ -277,16 +277,16 @@ int Boundary_surface::bcvalues()
     stability_neutral(ustar, obuk,
                       fields->u->data, fields->v->data,
                       fields->u->databot, fields->v->databot,
-                      fields->sd["tmp1"]->data, grid->z);
+                      fields->atmp["tmp1"]->data, grid->z);
   }
   else
   {
     // store the buoyancy in tmp1
-    model->thermo->getbuoyancysurf(fields->sd["tmp1"]);
-    stability(ustar, obuk, fields->sd["tmp1"]->datafluxbot,
-              fields->u->data,    fields->v->data,    fields->sd["tmp1"]->data,
-              fields->u->databot, fields->v->databot, fields->sd["tmp1"]->databot,
-              fields->sd["tmp2"]->data, grid->z);
+    model->thermo->getbuoyancysurf(fields->atmp["tmp1"]);
+    stability(ustar, obuk, fields->atmp["tmp1"]->datafluxbot,
+              fields->u->data,    fields->v->data,    fields->atmp["tmp1"]->data,
+              fields->u->databot, fields->v->databot, fields->atmp["tmp1"]->databot,
+              fields->atmp["tmp2"]->data, grid->z);
   }
 
   // calculate the surface value, gradient and flux depending on the chosen boundary condition

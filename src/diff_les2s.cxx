@@ -61,7 +61,7 @@ unsigned long Diff_les2s::gettimelim(unsigned long idt, double dt)
   unsigned long idtlim;
   double dnmul;
 
-  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, this->tPr);
+  dnmul = calcdnmul(fields->sd["evisc"]->data, grid->dzi, this->tPr);
   // avoid zero division
   dnmul = std::max(constants::dsmall, dnmul);
   idtlim = idt * dnmax/(dnmul*dt);
@@ -76,7 +76,7 @@ double Diff_les2s::getdn(double dt)
   double dnmul;
 
   // calculate eddy viscosity
-  dnmul = calcdnmul(fields->s["evisc"]->data, grid->dzi, this->tPr);
+  dnmul = calcdnmul(fields->sd["evisc"]->data, grid->dzi, this->tPr);
 
   return dnmul*dt;
 }
@@ -88,7 +88,7 @@ int Diff_les2s::execvisc()
   // do a cast because the base boundary class does not have the MOST related variables
   Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
 
-  strain2(fields->s["evisc"]->data,
+  strain2(fields->sd["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data,
           fields->u->datafluxbot, fields->v->datafluxbot,
           boundaryptr->ustar, boundaryptr->obuk,
@@ -97,7 +97,7 @@ int Diff_les2s::execvisc()
   // start with retrieving the stability information
   if(model->thermo->getsw() == "0")
   {
-    evisc_neutral(fields->s["evisc"]->data,
+    evisc_neutral(fields->sd["evisc"]->data,
                   fields->u->data, fields->v->data, fields->w->data,
                   fields->u->datafluxbot, fields->v->datafluxbot,
                   grid->z, grid->dz, boundaryptr->z0m);
@@ -106,14 +106,14 @@ int Diff_les2s::execvisc()
   else
   {
     // store the buoyancyflux in tmp1
-    model->thermo->getbuoyancyfluxbot(fields->sd["tmp1"]);
+    model->thermo->getbuoyancyfluxbot(fields->atmp["tmp1"]);
     // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-    model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "N2");
+    model->thermo->getthermofield(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
     // model->thermo->getthermofield(fields->sd["tmp1"], fields->sd["tmp2"], "b");
 
-    evisc(fields->s["evisc"]->data,
-          fields->u->data, fields->v->data, fields->w->data, fields->s["tmp1"]->data,
-          fields->u->datafluxbot, fields->v->datafluxbot, fields->sd["tmp1"]->datafluxbot,
+    evisc(fields->sd["evisc"]->data,
+          fields->u->data, fields->v->data, fields->w->data, fields->atmp["tmp1"]->data,
+          fields->u->datafluxbot, fields->v->datafluxbot, fields->atmp["tmp1"]->datafluxbot,
           boundaryptr->ustar, boundaryptr->obuk,
           grid->z, grid->dz, grid->dzi,
           boundaryptr->z0m);
@@ -126,12 +126,12 @@ int Diff_les2s::execvisc()
 #ifndef USECUDA
 int Diff_les2s::exec()
 {
-  diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
-  diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
-  diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->rhoref, fields->rhorefh);
+  diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
+  diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
+  diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->rhoref, fields->rhorefh);
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-    diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s["evisc"]->data, fields->s[it->first]->datafluxbot, fields->s[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
+    diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
 
   return 0;
 }

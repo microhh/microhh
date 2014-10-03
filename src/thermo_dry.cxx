@@ -229,9 +229,9 @@ void Thermo_dry::create(Input *inputin)
 int Thermo_dry::exec()
 {
   if(grid->swspatialorder== "2")
-    calcbuoyancytend_2nd(fields->wt->data, fields->s["th"]->data, threfh);
+    calcbuoyancytend_2nd(fields->wt->data, fields->sp["th"]->data, threfh);
   else if(grid->swspatialorder == "4")
-    calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
+    calcbuoyancytend_4th(fields->wt->data, fields->sp["th"]->data, threfh);
 
   return 0;
 }
@@ -240,15 +240,15 @@ int Thermo_dry::exec()
 int Thermo_dry::execstats(mask *m)
 {
   // calculate the buoyancy and its surface flux for the profiles
-  calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
-  calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot, threfh);
+  calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
+  calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 
   // define the location
   const int sloc[] = {0,0,0};
 
   // calculate the mean
-  stats->calcmean(m->profs["b"].data, fields->s["tmp1"]->data, NO_OFFSET, sloc,
-                  fields->s["tmp3"]->data, stats->nmask);
+  stats->calcmean(m->profs["b"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc,
+                  fields->atmp["tmp3"]->data, stats->nmask);
 
   // calculate the moments
   for(int n=2; n<5; ++n)
@@ -256,26 +256,26 @@ int Thermo_dry::execstats(mask *m)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
-                      fields->s["tmp3"]->data, stats->nmask);
+    stats->calcmoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+                      fields->atmp["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcgrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcgrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
-                        m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcflux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+                        m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcflux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
   if(grid->swspatialorder == "2")
@@ -283,19 +283,19 @@ int Thermo_dry::execstats(mask *m)
     if(model->diff->getname() == "les2s")
     {
       Diff_les2s *diffptr = static_cast<Diff_les2s *>(model->diff);
-      stats->calDiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
+      stats->calDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
-                          fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
-                          fields->s["tmp4"]->data, stats->nmaskh);
+                          fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,
+                          fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
-      stats->calDiff_2nd(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->s["th"]->visc, sloc,
-                          fields->s["tmp4"]->data, stats->nmaskh);
+      stats->calDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+                          fields->atmp["tmp4"]->data, stats->nmaskh);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calDiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
@@ -318,26 +318,26 @@ void Thermo_dry::execcross()
     if(*it == "b")
     {
       //getthermofield(fields->s["tmp1"], fields->s["tmp2"], *it);
-      calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
-      nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
+      calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
+      nerror += model->cross->crosssimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
       //getthermofield(fields->s["tmp1"], fields->s["tmp2"], "b");
-      calcbuoyancy(fields->s["tmp1"]->data, fields->s["th"]->data, thref);
+      calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += model->cross->crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it);
+      nerror += model->cross->crosslngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
       //getbuoyancysurf(fields->s["tmp1"]);
-      calcbuoyancybot(fields->s["tmp1"]->data, fields->s["tmp1"]->databot, fields->s["th"]->data, fields->s["th"]->databot, thref, threfh);
-      calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["th"]->datafluxbot, threfh);
+      calcbuoyancybot(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->sp["th"]->data, fields->sp["th"]->databot, thref, threfh);
+      calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 
       if(*it == "bbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "bbot");
+        nerror += model->cross->crossplane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
+        nerror += model->cross->crossplane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
     }
   }
 
@@ -357,9 +357,9 @@ int Thermo_dry::checkthermofield(std::string name)
 int Thermo_dry::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
 {
   if(name == "b")
-    calcbuoyancy(fld->data, fields->s["th"]->data, thref);
+    calcbuoyancy(fld->data, fields->sp["th"]->data, thref);
   else if(name == "N2")
-    calcN2(fld->data, fields->s["th"]->data, grid->dzi, thref);
+    calcN2(fld->data, fields->sp["th"]->data, grid->dzi, thref);
   else
     return 1;
 
@@ -370,7 +370,7 @@ int Thermo_dry::getthermofield(Field3d *fld, Field3d *tmp, std::string name)
 #ifndef USECUDA
 int Thermo_dry::getbuoyancyfluxbot(Field3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot, threfh);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 
   return 0;
 }
@@ -380,8 +380,8 @@ int Thermo_dry::getbuoyancyfluxbot(Field3d *bfield)
 int Thermo_dry::getbuoyancysurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
-                  fields->s["th"]->data, fields->s["th"]->databot, thref, threfh);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["th"]->datafluxbot, threfh);
+                  fields->sp["th"]->data, fields->sp["th"]->databot, thref, threfh);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 
   return 0;
 }

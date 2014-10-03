@@ -72,7 +72,7 @@ void Advec_4m::exec()
   advecw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi4);
 
   for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-    advecs(it->second->data, fields->s[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
+    advecs(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
 }
 #endif
 
