@@ -26,27 +26,27 @@
 #include <string>
 
 // forward declaration to prevent very long building times
-class cmaster;
-class cinput;
-class cgrid;
-class cfields;
-class cboundary;
-class ctimeloop;
-class cadvec;
-class cdiff;
-class cpres;
-class cforce;
-class cthermo;
-class cbuffer;
-class cstats;
-class ccross;
-class cbudget;
+class Master;
+class Input;
+class Grid;
+class Fields;
+class Boundary;
+class Timeloop;
+class Advec;
+class Diff;
+class Pres;
+class Force;
+class Thermo;
+class Buffer;
+class Stats;
+class Cross;
+class Budget;
 
-class cmodel
+class Model
 {
   public:
-    cmodel(cmaster *, cinput *);
-    ~cmodel();
+    Model(Master *, Input *);
+    ~Model();
 
     void init();
     void load();
@@ -55,25 +55,25 @@ class cmodel
 
     // make the pointers public for use in other classes
     // TODO maybe it is safer to create get functions
-    cmaster *master;
-    cinput  *input;
-    cgrid   *grid;
-    cfields *fields;
+    Master *master;
+    Input  *input;
+    Grid   *grid;
+    Fields *fields;
 
     // model operators
-    cboundary *boundary;
-    ctimeloop *timeloop;
-    cadvec    *advec;
-    cdiff     *diff;
-    cpres     *pres;  
-    cforce    *force;   
-    cthermo   *thermo;
-    cbuffer   *buffer;
+    Boundary *boundary;
+    Timeloop *timeloop;
+    Advec    *advec;
+    Diff     *diff;
+    Pres     *pres;  
+    Force    *force;   
+    Thermo   *thermo;
+    Buffer   *buffer;
 
     // postprocessing modules
-    cstats  *stats;
-    ccross  *cross;
-    cbudget *budget;
+    Stats  *stats;
+    Cross  *cross;
+    Budget *budget;
 
     // BvS where to best put this..?
     std::string swbasestate;
@@ -86,7 +86,7 @@ class cmodel
     void deleteObjects();
 
     void printOutputFile(bool);
-    void calcstats(std::string);
+    void calStats(std::string);
     void settimestep();
 };
 #endif

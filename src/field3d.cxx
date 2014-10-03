@@ -28,7 +28,7 @@
 #include "field3d.h"
 #include "defines.h"
 
-cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein, std::string longnamein, std::string unitin)
+Field3d::Field3d(Grid *gridin, Master *masterin, std::string namein, std::string longnamein, std::string unitin)
 {
   grid     = gridin;
   name     = namein;
@@ -58,7 +58,7 @@ cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein, std::st
 }
 
 #ifndef USECUDA
-cfield3d::~cfield3d()
+Field3d::~Field3d()
 {
   delete[] data;
   delete[] databot;
@@ -70,7 +70,7 @@ cfield3d::~cfield3d()
   delete[] datafluxtop;
 }
 
-int cfield3d::init()
+int Field3d::init()
 {
   // allocate the memory
   master->printMessage("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
@@ -107,7 +107,7 @@ int cfield3d::init()
 #endif
 
 /*
-int cfield3d::checkfornan()
+int Field3d::checkfornan()
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;

@@ -26,9 +26,9 @@
 #include "thermo.h"
 
 // forward declarations to speed up build time
-class cmaster;
-class cgrid;
-class cfields;
+class Master;
+class Grid;
+class Fields;
 
 /**
  * Class for the dry thermodynamics.
@@ -36,20 +36,20 @@ class cfields;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-class cthermo_buoy : public cthermo
+class Thermo_buoy : public Thermo
 {
   public:
-    cthermo_buoy(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_buoy();                  ///< Destructor of the dry thermodynamics class.
+    Thermo_buoy(Model *, Input *); ///< Constructor of the dry thermodynamics class.
+    ~Thermo_buoy();                  ///< Destructor of the dry thermodynamics class.
 
     int exec();                ///< Add the tendencies belonging to the buoyancy.
 
-    int getbuoyancy(cfield3d *, cfield3d *);     ///< Compute the buoyancy for usage in another routine.
-    int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(cfield3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
+    int getbuoyancy(Field3d *, Field3d *);     ///< Compute the buoyancy for usage in another routine.
+    int getbuoyancysurf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    int getbuoyancyfluxbot(Field3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
     int checkthermofield(std::string name);
-    int getthermofield(cfield3d *, cfield3d *, std::string name);
+    int getthermofield(Field3d *, Field3d *, std::string name);
 
 #ifdef USECUDA
     // GPU functions and variables

@@ -28,11 +28,11 @@
 #include <map>
 
 // forward declaration
-class cmodel;
-class cgrid;
-class cfields;
-class cmaster;
-class cinput;
+class Model;
+class Grid;
+class Fields;
+class Master;
+class Input;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings
@@ -41,13 +41,13 @@ class cinput;
  * be imposed that advects the scalars through the domain. Profiles of sources/sinks can be
  * assigned to all scalars.
  */
-class cforce
+class Force
 {
   public:
-    cforce(cmodel *, cinput *); ///< Constructor of the force class.
-    ~cforce();                  ///< Destructor of the force class.
+    Force(Model *, Input *); ///< Constructor of the force class.
+    ~Force();                  ///< Destructor of the force class.
     void init();                ///< Initialize the arrays that contain the profiles.
-    void create(cinput *);      ///< Read the profiles of the forces from the input.
+    void create(Input *);      ///< Read the profiles of the forces from the input.
     int exec(double);           ///< Add the tendencies belonging to the large-scale processes.
     int settimedep();           ///< Set the time dependent parameters.
 
@@ -61,10 +61,10 @@ class cforce
     std::map<std::string, double *> lsprofs_g; ///< Map of profiles with forcings stored by its name.
 
   private:
-    cmaster *master; ///< Pointer to master class.
-    cmodel  *model;  ///< Pointer to model class.
-    cgrid   *grid;   ///< Pointer to grid class.
-    cfields *fields; ///< Pointer to fields class.
+    Master *master; ///< Pointer to master class.
+    Model  *model;  ///< Pointer to model class.
+    Grid   *grid;   ///< Pointer to grid class.
+    Fields *fields; ///< Pointer to fields class.
 
     std::string swlspres; ///< Switch for the large scale pressure force.
     std::string swls;     ///< Switch for large scale scalar tendencies.

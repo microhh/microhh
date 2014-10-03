@@ -24,24 +24,24 @@
 #define BUFFER
 
 // forward declarations to reduce compilation time
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
+class Master;
+class Model;
+class Grid;
+class Fields;
 
 /**
  * Class for the buffer layer in the top of the domain.
  * This class performs the gravity wave damping in the top of the domain to
  * prevent reflection at the top boundary.
  */
-class cbuffer
+class Buffer
 {
   public:
-    cbuffer(cmodel *, cinput *); ///< Constructor of the buffer class.
-    ~cbuffer();                  ///< Destructor of the buffer class.
+    Buffer(Model *, Input *); ///< Constructor of the buffer class.
+    ~Buffer();                  ///< Destructor of the buffer class.
 
     void init();           ///< Initialize the arrays that contain the profiles.
-    void create(cinput *); ///< Read the profiles of the forces from the input.
+    void create(Input *); ///< Read the profiles of the forces from the input.
     int exec();            ///< Add the tendencies created by the damping.
 
     // GPU functions and variables
@@ -50,10 +50,10 @@ class cbuffer
 
 
   private:
-    cmaster *master; ///< Pointer to master class.
-    cmodel  *model;  ///< Pointer to model class.
-    cgrid   *grid;   ///< Pointer to grid class.
-    cfields *fields; ///< Pointer to fields class.
+    Master *master; ///< Pointer to master class.
+    Model  *model;  ///< Pointer to model class.
+    Grid   *grid;   ///< Pointer to grid class.
+    Fields *fields; ///< Pointer to fields class.
 
     double zstart; ///< Height above which the buffer layer is starting.
     double sigma;  ///< Damping frequency.

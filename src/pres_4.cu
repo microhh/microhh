@@ -496,7 +496,7 @@ __global__ void pres_4_calcdivergence(double * __restrict__ div,
 }
 
 #ifdef USECUDA
-void cpres_4::exec(double dt)
+void Pres_4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
   const int blocki = 128;
@@ -639,7 +639,7 @@ void cpres_4::exec(double dt)
   cudaCheckError();
 }
 
-double cpres_4::check()
+double Pres_4::check()
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -666,7 +666,7 @@ double cpres_4::check()
   return divmax;
 }
 
-int cpres_4::prepareDevice()
+int Pres_4::prepareDevice()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -729,7 +729,7 @@ int cpres_4::prepareDevice()
   return 0;
 }
 
-int cpres_4::clearDevice()
+int Pres_4::clearDevice()
 {
   cudaSafeCall(cudaFree(bmati_g));
   cudaSafeCall(cudaFree(bmatj_g));

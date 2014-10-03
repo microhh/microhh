@@ -26,10 +26,10 @@
 #include "thermo.h"
 
 // forward declarations to speed up build time
-class cmaster;
-class cgrid;
-class cfields;
-class cstats;
+class Master;
+class Grid;
+class Fields;
+class Stats;
 
 /**
  * Class for the dry thermodynamics.
@@ -37,23 +37,23 @@ class cstats;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-class cthermo_dry : public cthermo
+class Thermo_dry : public Thermo
 {
   public:
-    cthermo_dry(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_dry();                  ///< Destructor of the dry thermodynamics class.
+    Thermo_dry(Model *, Input *); ///< Constructor of the dry thermodynamics class.
+    ~Thermo_dry();                  ///< Destructor of the dry thermodynamics class.
 
     void init();
-    void create(cinput *);
+    void create(Input *);
     int exec();                ///< Add the tendencies belonging to the buoyancy.
     int execstats(mask *);
 
     void execcross();
 
     int checkthermofield(std::string name);
-    int getthermofield(cfield3d *, cfield3d *, std::string name);
-    int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(cfield3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
+    int getthermofield(Field3d *, Field3d *, std::string name);
+    int getbuoyancysurf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    int getbuoyancyfluxbot(Field3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
 #ifdef USECUDA
@@ -77,7 +77,7 @@ class cthermo_dry : public cthermo
     int calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
     int calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
-    cstats *stats;
+    Stats *stats;
 
     double pbot;   ///< Surface pressure.
     double thref0; ///< Reference potential temperature in case of Boussinesq

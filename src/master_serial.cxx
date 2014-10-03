@@ -26,18 +26,18 @@
 #include "defines.h"
 #include "master.h"
 
-cmaster::cmaster()
+Master::Master()
 {
   initialized = false;
   allocated   = false;
 }
 
-cmaster::~cmaster()
+Master::~Master()
 {
   printMessage("Finished run on %d processes\n", nprocs);
 }
 
-void cmaster::start(int argc, char *argv[])
+void Master::start(int argc, char *argv[])
 {
   initialized = true;
 
@@ -71,7 +71,7 @@ void cmaster::start(int argc, char *argv[])
   }
 }
 
-void cmaster::init(cinput *inputin)
+void Master::init(Input *inputin)
 {
   int nerror = 0;
   nerror += inputin->getItem(&npx, "mpi", "npx", "", 1);
@@ -92,7 +92,7 @@ void cmaster::init(cinput *inputin)
   allocated = true;
 }
 
-double cmaster::gettime()
+double Master::gettime()
 {
   timeval timestruct;
   gettimeofday(&timestruct, NULL);
@@ -101,49 +101,49 @@ double cmaster::gettime()
   return time;
 }
 
-int cmaster::waitall()
+int Master::waitall()
 {
   return 0;
 }
 
 // all broadcasts return directly, because there is nothing to broadcast
-int cmaster::broadcast(char *data, int datasize)
+int Master::broadcast(char *data, int datasize)
 {
   return 0;
 }
 
 // overloaded broadcast functions
-int cmaster::broadcast(int *data, int datasize)
+int Master::broadcast(int *data, int datasize)
 {
   return 0;
 }
 
-int cmaster::broadcast(unsigned long *data, int datasize)
+int Master::broadcast(unsigned long *data, int datasize)
 {
   return 0;
 }
 
-int cmaster::broadcast(double *data, int datasize)
+int Master::broadcast(double *data, int datasize)
 {
   return 0;
 }
 
-int cmaster::sum(int *var, int datasize)
+int Master::sum(int *var, int datasize)
 {
   return 0;
 }
 
-int cmaster::sum(double *var, int datasize)
+int Master::sum(double *var, int datasize)
 {
   return 0;
 }
 
-int cmaster::max(double *var, int datasize)
+int Master::max(double *var, int datasize)
 {
   return 0;
 }
 
-int cmaster::min(double *var, int datasize)
+int Master::min(double *var, int datasize)
 {
   return 0;
 }

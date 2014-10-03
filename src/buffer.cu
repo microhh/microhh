@@ -56,7 +56,7 @@ __global__ void buffer_buffer(double * __restrict__ at,   double * __restrict__ 
   }
 }
 
-int cbuffer::prepareDevice()
+int Buffer::prepareDevice()
 {
   if(swbuffer == "1")
   {
@@ -77,7 +77,7 @@ int cbuffer::prepareDevice()
   return 0;
 }
 
-int cbuffer::clearDevice()
+int Buffer::clearDevice()
 {
   if(swbuffer == "1")
   {
@@ -90,7 +90,7 @@ int cbuffer::clearDevice()
 }
 
 #ifdef USECUDA
-int cbuffer::exec()
+int Buffer::exec()
 {
   if(swbuffer == "1")
   {

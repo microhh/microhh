@@ -36,7 +36,7 @@
 #include "diff_4.h"
 #include "diff_les2s.h"
 
-cdiff::cdiff(cmodel *modelin, cinput *inputin)
+Diff::Diff(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -52,22 +52,22 @@ cdiff::cdiff(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cdiff::~cdiff()
+Diff::~Diff()
 {
 }
 
-unsigned long cdiff::gettimelim(unsigned long idtlim, double dt)
+unsigned long Diff::gettimelim(unsigned long idtlim, double dt)
 {
   idtlim = (unsigned long) constants::dbig;
 
   return idtlim;
 }
 
-void cdiff::setvalues()
+void Diff::setvalues()
 {
 }
 
-double cdiff::getdn(double dt)
+double Diff::getdn(double dt)
 {
   double dn;
 
@@ -76,22 +76,22 @@ double cdiff::getdn(double dt)
   return dn;
 }
 
-int cdiff::execvisc()
+int Diff::execvisc()
 {
   return 0;
 }
 
-int cdiff::exec()
+int Diff::exec()
 {
   return 0;
 }
 
-std::string cdiff::getname()
+std::string Diff::getname()
 {
   return swdiff;
 }
 
-cdiff* cdiff::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)
+Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std::string swspatialorder)
 {
   std::string swdiff;
   std::string swboundary;
@@ -104,11 +104,11 @@ cdiff* cdiff::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
     return 0;
 
   if(swdiff == "0")
-    return new cdiff(modelin, inputin);
+    return new Diff(modelin, inputin);
   else if(swdiff == "2")
-    return new cdiff_2(modelin, inputin);
+    return new Diff_2(modelin, inputin);
   else if(swdiff == "4")
-    return new cdiff_4(modelin, inputin);
+    return new Diff_4(modelin, inputin);
   else if(swdiff == "les2s")
   {
     // the subgrid model requires a surface model because of the MO matching at first level
@@ -117,7 +117,7 @@ cdiff* cdiff::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
       masterin->printError("swdiff == \"les2s\" requires swboundary == \"surface\"\n");
       return 0;
     }
-    return new cdiff_les2s(modelin, inputin);
+    return new Diff_les2s(modelin, inputin);
   }
   else
   {
@@ -126,7 +126,7 @@ cdiff* cdiff::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const
   }
 }
 
-int cdiff::prepareDevice()
+int Diff::prepareDevice()
 {
   return 0;
 }

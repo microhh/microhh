@@ -28,18 +28,18 @@
 #include "defines.h"
 
 // MPI functions
-int cgrid::initmpi()
+int Grid::initmpi()
 {
   mpitypes = true;
   return 0;
 } 
 
-int cgrid::exitmpi()
+int Grid::exitmpi()
 {
   return 0;
 }
 
-int cgrid::boundary_cyclic(double * restrict data)
+int Grid::boundary_cyclic(double * restrict data)
 {
   int ncount = 1;
   int ijk0,ijk1,jj,kk;
@@ -117,7 +117,7 @@ int cgrid::boundary_cyclic(double * restrict data)
   return 0;
 }
 
-int cgrid::boundary_cyclic2d(double * restrict data)
+int Grid::boundary_cyclic2d(double * restrict data)
 {
   int ij0,ij1,jj;
 
@@ -187,7 +187,7 @@ int cgrid::boundary_cyclic2d(double * restrict data)
   return 0;
 }
 
-int cgrid::transposezx(double * restrict ar, double * restrict as)
+int Grid::transposezx(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -205,7 +205,7 @@ int cgrid::transposezx(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposexz(double * restrict ar, double * restrict as)
+int Grid::transposexz(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -223,7 +223,7 @@ int cgrid::transposexz(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposexy(double * restrict ar, double * restrict as)
+int Grid::transposexy(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -241,7 +241,7 @@ int cgrid::transposexy(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposeyx(double * restrict ar, double * restrict as)
+int Grid::transposeyx(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -259,7 +259,7 @@ int cgrid::transposeyx(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposeyz(double * restrict ar, double * restrict as)
+int Grid::transposeyz(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -277,7 +277,7 @@ int cgrid::transposeyz(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::transposezy(double * restrict ar, double * restrict as)
+int Grid::transposezy(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -295,23 +295,23 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
   return 0;
 }
 
-int cgrid::getmax(double *var)
+int Grid::getmax(double *var)
 {
   return 0;
 }
 
-int cgrid::getsum(double *var)
+int Grid::getsum(double *var)
 {
   return 0;
 }
 
-int cgrid::getprof(double *prof, int kcellsin)
+int Grid::getprof(double *prof, int kcellsin)
 {
   return 0;
 }
 
 // IO functions
-void cgrid::save()
+void Grid::save()
 {
   // SAVE THE GRID
   FILE *pFile;
@@ -376,7 +376,7 @@ void cgrid::save()
   }
 }
 
-void cgrid::load()
+void Grid::load()
 {
   // LOAD THE GRID
   FILE *pFile;
@@ -442,7 +442,7 @@ void cgrid::load()
   fftw_forget_wisdom();
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "wb");
@@ -477,7 +477,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "rb");
@@ -512,7 +512,7 @@ int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
+int Grid::fftforward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
@@ -572,7 +572,7 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
   return 0;
 }
 
-int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
+int Grid::fftbackward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
@@ -631,7 +631,7 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
 
   return 0;
 }
-int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
+int Grid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -665,7 +665,7 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *file
   return 0;
 }
 
-int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -698,7 +698,7 @@ int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *file
   return 0;
 }
 
-int cgrid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   int count = imax*jmax;
 

@@ -24,17 +24,17 @@
 #define PRES
 
 // forward declarations to speed up build time
-class cmodel;
-class cgrid;
-class cfields;
-class cmaster;
+class Model;
+class Grid;
+class Fields;
+class Master;
 
-class cpres
+class Pres
 {
   public:
-    cpres(cmodel *, cinput *);
-    virtual ~cpres();
-    static cpres* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for pres class generation.
+    Pres(Model *, Input *);
+    virtual ~Pres();
+    static Pres* factory(Master *, Input *, Model *, const std::string); ///< Factory function for pres class generation.
 
     virtual void init();
     virtual void setvalues();
@@ -45,9 +45,9 @@ class cpres
     virtual int prepareDevice();
 
   protected:
-    cmaster *master;
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
+    Master *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
 };
 #endif

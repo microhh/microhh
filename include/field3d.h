@@ -26,15 +26,15 @@
 #include <string>
 
 // forward declarations to reduce compilation time
-class cmaster;
-class cgrid;
+class Master;
+class Grid;
 
-class cfield3d
+class Field3d
 {
   public:
     // functions
-    cfield3d(cgrid *, cmaster *, std::string, std::string, std::string);
-    ~cfield3d();
+    Field3d(Grid *, Master *, std::string, std::string, std::string);
+    ~Field3d();
 
     int init();
     // int checkfornan();
@@ -64,8 +64,8 @@ class cfield3d
     double *datafluxtop_g;
 
   private:
-    cgrid   *grid;
-    cmaster *master;
+    Grid   *grid;
+    Master *master;
 };
 #endif
 

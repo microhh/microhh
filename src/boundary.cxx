@@ -36,7 +36,7 @@
 #include "boundary_surface.h"
 #include "boundary_user.h"
 
-cboundary::cboundary(cmodel *modelin, cinput *inputin)
+Boundary::Boundary(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -44,7 +44,7 @@ cboundary::cboundary(cmodel *modelin, cinput *inputin)
   master = model->master;
 }
 
-cboundary::~cboundary()
+Boundary::~Boundary()
 {
   for(bcmap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
     delete it->second;
@@ -57,7 +57,7 @@ cboundary::~cboundary()
     delete[] it->second;
 }
 
-int cboundary::processbcs(cinput *inputin)
+int Boundary::processbcs(Input *inputin)
 {
   int nerror = 0;
 
@@ -135,7 +135,7 @@ int cboundary::processbcs(cinput *inputin)
   return nerror;
 }
 
-void cboundary::init(cinput *inputin)
+void Boundary::init(Input *inputin)
 {
   int nerror = 0;
   nerror += processbcs(inputin);
@@ -151,7 +151,7 @@ void cboundary::init(cinput *inputin)
     throw 1;
 }
 
-void cboundary::create(cinput *inputin)
+void Boundary::create(Input *inputin)
 {
   int nerror = 0;
   nerror += processtimedep(inputin);
@@ -159,7 +159,7 @@ void cboundary::create(cinput *inputin)
     throw 1;
 }
 
-int cboundary::processtimedep(cinput *inputin)
+int Boundary::processtimedep(Input *inputin)
 {
   int nerror = 0;
 
@@ -191,7 +191,7 @@ int cboundary::processtimedep(cinput *inputin)
   return nerror;
 }
 
-int cboundary::settimedep()
+int Boundary::settimedep()
 {
   if(swtimedep == "0")
     return 0;
@@ -254,15 +254,15 @@ int cboundary::settimedep()
   return 0;
 }
 
-void cboundary::save(int iotime)
+void Boundary::save(int iotime)
 {
 }
 
-void cboundary::load(int iotime)
+void Boundary::load(int iotime)
 {
 }
 
-void cboundary::setvalues()
+void Boundary::setvalues()
 {
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
   setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
@@ -278,7 +278,7 @@ void cboundary::setvalues()
 }
 
 #ifndef USECUDA
-int cboundary::exec()
+int Boundary::exec()
 {
   // cyclic boundary conditions, do this before the bottom BC's
   grid->boundary_cyclic(fields->u->data);
@@ -327,32 +327,32 @@ int cboundary::exec()
 }
 #endif
 
-void cboundary::execcross()
+void Boundary::execcross()
 {
 }
 
-int cboundary::execstats(mask *m)
-{
-  return 0;
-}
-
-int cboundary::bcvalues()
+int Boundary::execstats(mask *m)
 {
   return 0;
 }
 
-cboundary* cboundary::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
+int Boundary::bcvalues()
+{
+  return 0;
+}
+
+Boundary* Boundary::factory(Master *masterin, Input *inputin, Model *modelin)
 {
   std::string swboundary;
   if(inputin->getItem(&swboundary, "boundary", "swboundary", "", "default"))
     return 0;
 
   if(swboundary == "surface")
-    return new cboundary_surface(modelin, inputin);
+    return new Boundary_surface(modelin, inputin);
   else if(swboundary == "user")
-    return new cboundary_user(modelin, inputin);
+    return new Boundary_user(modelin, inputin);
   else if(swboundary == "default")
-    return new cboundary(modelin, inputin);
+    return new Boundary(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
@@ -360,7 +360,7 @@ cboundary* cboundary::factory(cmaster *masterin, cinput *inputin, cmodel *modeli
   }
 }
 
-int cboundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
+int Boundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
 {
   int ij,jj;
   jj = grid->icells;
@@ -402,7 +402,7 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, double * rest
 }
 
 // BOUNDARY CONDITIONS THAT CONTAIN A 2D PATTERN
-int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict abot, double * restrict agradbot)
+int Boundary::setgcbot_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk,kstart;
 
@@ -437,7 +437,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, Boundary
   return 0;
 }
 
-int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict atop, double * restrict agradtop)
+int Boundary::setgctop_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kk,kend;
 
@@ -472,7 +472,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, Boundary
   return 0;
 }
 
-int cboundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict abot, double * restrict agradbot)
+int Boundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk1,kk2,kstart;
 
@@ -510,7 +510,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryTy
   return 0;
 }
 
-int cboundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict atop, double * restrict agradtop)
+int Boundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kend,kk1,kk2;
 
@@ -549,7 +549,7 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryTy
 }
 
 // BOUNDARY CONDITIONS FOR THE VERTICAL VELOCITY (NO PENETRATION)
-int cboundary::setgcbotw_4th(double * restrict w)
+int Boundary::setgcbotw_4th(double * restrict w)
 {
   int ijk,jj,kk1,kk2,kstart;
 
@@ -571,7 +571,7 @@ int cboundary::setgcbotw_4th(double * restrict w)
   return 0;
 }
 
-int cboundary::setgctopw_4th(double * restrict w)
+int Boundary::setgctopw_4th(double * restrict w)
 {
   int ijk,jj,kk1,kk2,kend;
 
@@ -593,23 +593,23 @@ int cboundary::setgctopw_4th(double * restrict w)
   return 0;
 }
 
-int cboundary::prepareDevice()
+int Boundary::prepareDevice()
 {
   return 0;
 }
 
-int cboundary::forwardDevice()
+int Boundary::forwardDevice()
 {
   return 0;
 }
 
-int cboundary::backwardDevice()
+int Boundary::backwardDevice()
 {
   return 0;
 }
 
 
-inline double cboundary::grad4x(const double a, const double b, const double c, const double d)
+inline double Boundary::grad4x(const double a, const double b, const double c, const double d)
 {
   return (-(d-a) + 27.*(c-b));
 }

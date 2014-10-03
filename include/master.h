@@ -29,16 +29,16 @@
 #include <string>
 #include "input.h"
 
-class cinput;
+class Input;
 
-class cmaster
+class Master
 {
   public:
-    cmaster();
-    ~cmaster();
+    Master();
+    ~Master();
 
     void start(int, char**);
-    void init(cinput *);
+    void init(Input *);
 
     double gettime();
     int waitall();

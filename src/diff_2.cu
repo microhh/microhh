@@ -80,7 +80,7 @@ __global__ void diff_2_diffw(double * __restrict__ const at, const double * __re
 }
 
 #ifdef USECUDA
-int cdiff_2::exec()
+int Diff_2::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;

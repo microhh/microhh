@@ -37,7 +37,7 @@
 
 using namespace fd::o4;
 
-__global__ void boundary_setgcbot_2nd(double * __restrict__ a, double * __restrict__ dzh, cboundary::BoundaryType sw, 
+__global__ void boundary_setgcbot_2nd(double * __restrict__ a, double * __restrict__ dzh, Boundary::BoundaryType sw, 
                                       double * __restrict__ abot, double * __restrict__ agradbot,
                                       const int icells, const int icellsp,
                                       const int jcells, const int kstart)
@@ -51,15 +51,15 @@ __global__ void boundary_setgcbot_2nd(double * __restrict__ a, double * __restri
 
   if(i < icells && j < jcells)
   {
-    if(sw == cboundary::DirichletType)
+    if(sw == Boundary::DirichletType)
       a[ijk-kk] = 2.*abot[ij] - a[ijk];
 
-    else if(sw == cboundary::NeumannType || sw == cboundary::FluxType)
+    else if(sw == Boundary::NeumannType || sw == Boundary::FluxType)
       a[ijk-kk] = -agradbot[ij]*dzh[kstart] + a[ijk];
   }
 } 
 
-__global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restrict__ dzh, const cboundary::BoundaryType sw,
+__global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restrict__ dzh, const Boundary::BoundaryType sw,
                                       double * __restrict__ atop, double * __restrict__ agradtop,
                                       const int icells, const int icellsp,
                                       const int jcells, const int kend)
@@ -73,10 +73,10 @@ __global__ void boundary_setgctop_2nd(double * __restrict__ a, double * __restri
 
   if(i < icells && j < jcells)
   {
-    if(sw == cboundary::DirichletType)
+    if(sw == Boundary::DirichletType)
       a[ijk+kk] = 2.*atop[ij] - a[ijk];
 
-    else if(sw == cboundary::NeumannType || sw == cboundary::FluxType)
+    else if(sw == Boundary::NeumannType || sw == Boundary::FluxType)
       a[ijk+kk] = agradtop[ij]*dzh[kend] + a[ijk];
   }
 }
@@ -99,7 +99,7 @@ __device__ double fd_grad4x(const double a, const double b, const double c, cons
   return (-(d-a) + 27.*(c-b));
 }
 
-__global__ void boundary_setgcbot_4th(double * __restrict__ a, const cboundary::BoundaryType sw,
+__global__ void boundary_setgcbot_4th(double * __restrict__ a, const Boundary::BoundaryType sw,
                                       double * __restrict__ abot, double * __restrict__ agradbot,
                                       double * __restrict__ z,
                                       const int icells, const int icellsp,
@@ -116,13 +116,13 @@ __global__ void boundary_setgcbot_4th(double * __restrict__ a, const cboundary::
 
   if(i < icells && j < jcells)
   {
-    if(sw == cboundary::DirichletType)
+    if(sw == Boundary::DirichletType)
     {
       a[ijk-kk1] = (8./3.)*abot[ij] - 2.*a[ijk] + (1./3.)*a[ijk+kk1];
       a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
     }
 
-    else if(sw == cboundary::NeumannType || sw == cboundary::FluxType)
+    else if(sw == Boundary::NeumannType || sw == Boundary::FluxType)
     {
       a[ijk-kk1] = -(1./24.)*fd_grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
       a[ijk-kk2] = -(1./ 8.)*fd_grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
@@ -130,7 +130,7 @@ __global__ void boundary_setgcbot_4th(double * __restrict__ a, const cboundary::
   }
 } 
 
-__global__ void boundary_setgctop_4th(double * __restrict__ a, const cboundary::BoundaryType sw,
+__global__ void boundary_setgctop_4th(double * __restrict__ a, const Boundary::BoundaryType sw,
                                       double * __restrict__ atop, double * __restrict__ agradtop,
                                       double * __restrict__ z,
                                       const int icells, const int icellsp,
@@ -147,13 +147,13 @@ __global__ void boundary_setgctop_4th(double * __restrict__ a, const cboundary::
 
   if(i < icells && j < jcells)
   {
-    if(sw == cboundary::DirichletType)
+    if(sw == Boundary::DirichletType)
     {
       a[ijk+kk1] = (8./3.)*atop[ij] - 2.*a[ijk] + (1./3.)*a[ijk-kk1];
       a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
     }
 
-    else if(sw == cboundary::NeumannType || sw == cboundary::FluxType)
+    else if(sw == Boundary::NeumannType || sw == Boundary::FluxType)
     {
       a[ijk+kk1] = (1./24.)*fd_grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
       a[ijk+kk2] = (1./ 8.)*fd_grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
@@ -200,7 +200,7 @@ __global__ void boundary_setgctopw_4th(double * __restrict__ w,
 }
 
 #ifdef USECUDA
-int cboundary::exec()
+int Boundary::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -325,7 +325,7 @@ int cboundary::exec()
 }
 #endif
 
-int cboundary::setbc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
+int Boundary::setbc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
                        BoundaryType sw, double aval, double visc, double offset)
 {
   const int blocki = cuda::blockSizeI;

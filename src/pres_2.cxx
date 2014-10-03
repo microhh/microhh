@@ -31,7 +31,7 @@
 #include "defines.h"
 #include "model.h"
 
-cpres_2::cpres_2(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
+Pres_2::Pres_2(Model *modelin, Input *inputin) : Pres(modelin, inputin)
 {
   a = 0;
   c = 0;
@@ -40,7 +40,7 @@ cpres_2::cpres_2(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
   bmatj = 0;
 }
 
-cpres_2::~cpres_2()
+Pres_2::~Pres_2()
 {
   delete[] a;
   delete[] c;
@@ -55,7 +55,7 @@ cpres_2::~cpres_2()
 }
 
 #ifndef USECUDA
-void cpres_2::exec(double dt)
+void Pres_2::exec(double dt)
 {
   // create the input for the pressure solver
   pres_in(fields->sd["p"]->data,
@@ -75,7 +75,7 @@ void cpres_2::exec(double dt)
 }
 #endif
 
-double cpres_2::check()
+double Pres_2::check()
 {
   double divmax = 0.;
 
@@ -85,7 +85,7 @@ double cpres_2::check()
   return divmax;
 }
 
-void cpres_2::init()
+void Pres_2::init()
 {
   int imax, jmax, kmax;
   int itot, jtot;
@@ -105,7 +105,7 @@ void cpres_2::init()
   work2d = new double[imax*jmax];
 }
 
-void cpres_2::setvalues()
+void Pres_2::setvalues()
 {
   int imax, jmax, kmax;
   int itot, jtot, kgc;
@@ -143,7 +143,7 @@ void cpres_2::setvalues()
   }
 }
 
-void cpres_2::pres_in(double * restrict p, 
+void Pres_2::pres_in(double * restrict p, 
                      double * restrict u , double * restrict v , double * restrict w ,
                      double * restrict ut, double * restrict vt, double * restrict wt,
                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
@@ -188,7 +188,7 @@ void cpres_2::pres_in(double * restrict p,
       }
 }
 
-void cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b,
+void Pres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b,
                          double * restrict dz, double * restrict rhoref,
                          double * restrict fftini, double * restrict fftouti, 
                          double * restrict fftinj, double * restrict fftoutj)
@@ -294,7 +294,7 @@ void cpres_2::pres_solve(double * restrict p, double * restrict work3d, double *
   grid->boundary_cyclic(p);
 }
 
-void cpres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+void Pres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
                        double * restrict p , double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
@@ -320,7 +320,7 @@ void cpres_2::pres_out(double * restrict ut, double * restrict vt, double * rest
 }
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
-void cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c, 
+void Pres_2::tdma(double * restrict a, double * restrict b, double * restrict c, 
                    double * restrict p, double * restrict work2d, double * restrict work3d)
                 
 {
@@ -390,7 +390,7 @@ void cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c
 }
 
 #ifndef USECUDA
-double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
+double Pres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
                                double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;

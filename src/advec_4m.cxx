@@ -34,15 +34,15 @@
 using fd::o2::interp2;
 using fd::o4::interp4;
 
-cadvec_4m::cadvec_4m(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
+Advec_4m::Advec_4m(Model *modelin, Input *inputin) : Advec(modelin, inputin)
 {
 }
 
-cadvec_4m::~cadvec_4m()
+Advec_4m::~Advec_4m()
 {
 }
 
-unsigned long cadvec_4m::gettimelim(unsigned long idt, double dt)
+unsigned long Advec_4m::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
   double cfl;
@@ -55,7 +55,7 @@ unsigned long cadvec_4m::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-double cadvec_4m::getcfl(double dt)
+double Advec_4m::getcfl(double dt)
 {
   double cfl;
 
@@ -65,7 +65,7 @@ double cadvec_4m::getcfl(double dt)
 }
 
 #ifndef USECUDA
-void cadvec_4m::exec()
+void Advec_4m::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
   advecv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
@@ -77,7 +77,7 @@ void cadvec_4m::exec()
 #endif
 
 #ifndef USECUDA
-double cadvec_4m::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+double Advec_4m::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
@@ -115,7 +115,7 @@ double cadvec_4m::calccfl(double * restrict u, double * restrict v, double * res
 }
 #endif
 
-void cadvec_4m::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+void Advec_4m::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -211,7 +211,7 @@ void cadvec_4m::advecu(double * restrict ut, double * restrict u, double * restr
     }
 }
 
-void cadvec_4m::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+void Advec_4m::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -306,7 +306,7 @@ void cadvec_4m::advecv(double * restrict vt, double * restrict u, double * restr
     }
 }
 
-void cadvec_4m::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi4)
+void Advec_4m::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -405,7 +405,7 @@ void cadvec_4m::advecw(double * restrict wt, double * restrict u, double * restr
     */
 }
 
-void cadvec_4m::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+void Advec_4m::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -501,22 +501,22 @@ void cadvec_4m::advecs(double * restrict st, double * restrict s, double * restr
 }
 
 
-inline double cadvec_4m::grad4(const double a, const double b, const double c, const double d, const double dxi)
+inline double Advec_4m::grad4(const double a, const double b, const double c, const double d, const double dxi)
 {
   return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
 }
 
-inline double cadvec_4m::grad4x(const double a, const double b, const double c, const double d)
+inline double Advec_4m::grad4x(const double a, const double b, const double c, const double d)
 {
   return (-(d-a) + 27.*(c-b)); 
 }
 
-//inline double cadvec_4m::grad4xbiasbot(const double a, const double b, const double c, const double d)
+//inline double Advec_4m::grad4xbiasbot(const double a, const double b, const double c, const double d)
 //{
 //  return (-23.*a + 21.*b + 3.*c - d);
 //}
 //
-//inline double cadvec_4m::grad4xbiastop(const double a, const double b, const double c, const double d)
+//inline double Advec_4m::grad4xbiastop(const double a, const double b, const double c, const double d)
 //{
 //  return ( 23.*d - 21.*c - 3.*b + a);
 //}

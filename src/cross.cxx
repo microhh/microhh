@@ -36,7 +36,7 @@
 #include "timeloop.h"
 #include <netcdfcpp.h>
 
-ccross::ccross(cmodel *modelin, cinput *inputin)
+Cross::Cross(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -61,12 +61,12 @@ ccross::ccross(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-ccross::~ccross()
+Cross::~Cross()
 {
 }
 
 // check whether saving the slice was successful and print appropriate message
-int ccross::checkSave(int error, char * filename)
+int Cross::checkSave(int error, char * filename)
 {
   master->printMessage("Saving \"%s\" ... ", filename);
   if(error == 0)
@@ -81,7 +81,7 @@ int ccross::checkSave(int error, char * filename)
   }
 }
 
-void ccross::init(double ifactor)
+void Cross::init(double ifactor)
 {
   if(swcross == "0")
     return;
@@ -89,7 +89,7 @@ void ccross::init(double ifactor)
   isampletime = (unsigned long)(ifactor * sampletime);
 }
 
-void ccross::create()
+void Cross::create()
 {  
   int nerror = 0;
   int temploc, temploch, hoffset;
@@ -180,7 +180,7 @@ void ccross::create()
     throw 1;
 }
 
-unsigned long ccross::gettimelim(unsigned long itime)
+unsigned long Cross::gettimelim(unsigned long itime)
 {
   if(swcross == "0")
     return constants::ulhuge;
@@ -190,7 +190,7 @@ unsigned long ccross::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int ccross::docross()
+int Cross::docross()
 {
   if(swcross == "0")
     return 0;
@@ -201,7 +201,7 @@ int ccross::docross()
     return 0;
 }
 
-int ccross::crosssimple(double * restrict data, double * restrict tmp, std::string name)
+int Cross::crosssimple(double * restrict data, double * restrict tmp, std::string name)
 {
   int nerror = 0;
   char filename[256];
@@ -245,7 +245,7 @@ int ccross::crosssimple(double * restrict data, double * restrict tmp, std::stri
   return nerror;
 }
 
-int ccross::crossplane(double * restrict data, double * restrict tmp, std::string name)
+int Cross::crossplane(double * restrict data, double * restrict tmp, std::string name)
 {
   int nerror = 0;
   char filename[256];
@@ -256,7 +256,7 @@ int ccross::crossplane(double * restrict data, double * restrict tmp, std::strin
   return nerror;
 } 
 
-int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
+int Cross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
 {
   using namespace fd::o4;
 
@@ -372,7 +372,7 @@ int ccross::crosslngrad(double * restrict a, double * restrict lngrad, double * 
   return nerror;
 }
 
-int ccross::crosspath(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name)
+int Cross::crosspath(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name)
 {
   int ijk,ijk1,jj,kk;
   jj = grid->icells;

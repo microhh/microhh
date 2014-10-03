@@ -170,7 +170,7 @@ __global__ void force_updatetimedepprof(double * const __restrict__ sls, double 
   }
 }
 
-int cforce::prepareDevice()
+int Force::prepareDevice()
 {
   const int nmemsize  = grid->kcells*sizeof(double);
 
@@ -211,7 +211,7 @@ int cforce::prepareDevice()
   return 0;
 }
 
-int cforce::clearDevice()
+int Force::clearDevice()
 {
   if(swlspres == "geo")
   {
@@ -238,7 +238,7 @@ int cforce::clearDevice()
 }
 
 #ifdef USECUDA
-int cforce::exec(double dt)
+int Force::exec(double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -328,7 +328,7 @@ int cforce::exec(double dt)
 #endif
 
 #ifdef USECUDA
-int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
+int Force::settimedepprofiles(double fac0, double fac1, int index0, int index1)
 {
   const int blockk = 128;
   const int gridk  = grid->kmax/blockk + (grid->kmax%blockk > 0);

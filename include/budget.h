@@ -26,19 +26,19 @@
 #include <string>
 
 // forward declarations to reduce compilation time
-class cmodel;
-class cmaster;
-class cinput;
-class cstats;
-class cgrid;
-class cfields;
+class Model;
+class Master;
+class Input;
+class Stats;
+class Grid;
+class Fields;
 struct mask;
 
-class cbudget
+class Budget
 {
   public:
-    cbudget(cmodel *, cinput *);
-    ~cbudget();
+    Budget(Model *, Input *);
+    ~Budget();
 
     void init();
     void create();
@@ -46,11 +46,11 @@ class cbudget
     int execstats(mask *);
 
   private:
-    cmodel  *model;
-    cmaster *master;
-    cstats  *stats;
-    cgrid   *grid;
-    cfields *fields;
+    Model  *model;
+    Master *master;
+    Stats  *stats;
+    Grid   *grid;
+    Fields *fields;
 
     std::string swbudget;
 

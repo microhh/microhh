@@ -44,7 +44,7 @@
 #include <cuda_runtime_api.h> // Needed for cudaDeviceReset(), to check mem leaks 
 #endif
 
-cmodel::cmodel(cmaster *masterin, cinput *inputin)
+Model::Model(Master *masterin, Input *inputin)
 {
   master = masterin;
   input  = inputin;
@@ -66,26 +66,26 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   try
   {
     // create the grid class
-    grid = new cgrid(this, input);
+    grid = new Grid(this, input);
 
     // create the fields class
-    fields = new cfields(this, input);
+    fields = new Fields(this, input);
 
     // create the model components
-    boundary = cboundary::factory(master, input, this);
-    advec    = cadvec   ::factory(master, input, this, grid->swspatialorder);
-    diff     = cdiff    ::factory(master, input, this, grid->swspatialorder);
-    pres     = cpres    ::factory(master, input, this, grid->swspatialorder);
-    thermo   = cthermo  ::factory(master, input, this);
+    boundary = Boundary::factory(master, input, this);
+    advec    = Advec   ::factory(master, input, this, grid->swspatialorder);
+    diff     = Diff    ::factory(master, input, this, grid->swspatialorder);
+    pres     = Pres    ::factory(master, input, this, grid->swspatialorder);
+    thermo   = Thermo  ::factory(master, input, this);
 
-    timeloop = new ctimeloop(this, input);
-    force    = new cforce   (this, input);
-    buffer   = new cbuffer  (this, input);
+    timeloop = new Timeloop(this, input);
+    force    = new Force   (this, input);
+    buffer   = new Buffer  (this, input);
 
     // load the postprocessing modules
-    stats  = new cstats (this, input);
-    cross  = new ccross (this, input);
-    budget = new cbudget(this, input);
+    stats  = new Stats (this, input);
+    cross  = new Cross (this, input);
+    budget = new Budget(this, input);
 
     // get the list of masks
     // TODO This is really UGLY: make an interface that takes this out of the main loops
@@ -131,7 +131,7 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   }
 }
 
-void cmodel::deleteObjects()
+void Model::deleteObjects()
 {
   // delete the components in reversed order
   delete budget;
@@ -150,7 +150,7 @@ void cmodel::deleteObjects()
   delete grid;
 }
 
-cmodel::~cmodel()
+Model::~Model()
 {
   deleteObjects();
 #ifdef USECUDA
@@ -158,7 +158,7 @@ cmodel::~cmodel()
 #endif
 }
 
-void cmodel::init()
+void Model::init()
 {
   grid  ->init();
   fields->init();
@@ -174,7 +174,7 @@ void cmodel::init()
   budget->init();
 }
 
-void cmodel::load()
+void Model::load()
 {
   // first load the grid and time to make their information available
   grid    ->load();
@@ -202,7 +202,7 @@ void cmodel::load()
   pres    ->setvalues();
 }
 
-void cmodel::save()
+void Model::save()
 {
   // Initialize the grid and the fields from the input data.
   grid  ->create(input);
@@ -215,7 +215,7 @@ void cmodel::save()
   boundary->save(timeloop->iotime);
 }
 
-void cmodel::exec()
+void Model::exec()
 {
 #ifdef USECUDA
   master  ->printMessage("Preparing the GPU\n");
@@ -280,7 +280,7 @@ void cmodel::exec()
 
         // always process the default mask
         stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks["default"]);
-        calcstats("default");
+        calStats("default");
 
         // work through the potential masks for the statistics
         for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -288,12 +288,12 @@ void cmodel::exec()
           if(*it == "wplus" || *it == "wmin")
           {
             fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
-            calcstats(*it);
+            calStats(*it);
           }
           else if(*it == "ql" || *it == "qlcore")
           {
             thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
-            calcstats(*it);
+            calStats(*it);
           }
         }
 
@@ -379,7 +379,7 @@ void cmodel::exec()
 #endif
 }
 
-void cmodel::calcstats(std::string maskname)
+void Model::calStats(std::string maskname)
 {
   fields  ->execstats(&stats->masks[maskname]);
   thermo  ->execstats(&stats->masks[maskname]);
@@ -387,7 +387,7 @@ void cmodel::calcstats(std::string maskname)
   boundary->execstats(&stats->masks[maskname]);
 }
 
-void cmodel::printOutputFile(bool doclose)
+void Model::printOutputFile(bool doclose)
 {
   // initialize the check variables
   int    iter;
@@ -442,7 +442,7 @@ void cmodel::printOutputFile(bool doclose)
   }
 }
 
-void cmodel::settimestep()
+void Model::settimestep()
 {
   // Only set the time step if the model is not in a substep
   if(timeloop->inSubStep())

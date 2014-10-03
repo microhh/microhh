@@ -32,7 +32,7 @@
 
 using fd::o4::interp4;
 
-cthermo_buoy_slope::cthermo_buoy_slope(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
+Thermo_buoy_slope::Thermo_buoy_slope(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 {
   swthermo = "slope";
   master = modelin->master;
@@ -55,11 +55,11 @@ cthermo_buoy_slope::cthermo_buoy_slope(cmodel *modelin, cinput *inputin) : cther
     throw 1;
 }
 
-cthermo_buoy_slope::~cthermo_buoy_slope()
+Thermo_buoy_slope::~Thermo_buoy_slope()
 {
 }
 
-int cthermo_buoy_slope::exec()
+int Thermo_buoy_slope::exec()
 {
   calcbuoyancytendu_4th(fields->ut->data, fields->s["b"]->data);
   calcbuoyancytendw_4th(fields->wt->data, fields->s["b"]->data);
@@ -68,7 +68,7 @@ int cthermo_buoy_slope::exec()
   return 0;
 }
 
-int cthermo_buoy_slope::checkthermofield(std::string name)
+int Thermo_buoy_slope::checkthermofield(std::string name)
 {
   if(name == "b")
     return 0;
@@ -76,19 +76,19 @@ int cthermo_buoy_slope::checkthermofield(std::string name)
     return 1;
 }
 
-int cthermo_buoy_slope::getthermofield(cfield3d *field, cfield3d *tmp, std::string name)
+int Thermo_buoy_slope::getthermofield(Field3d *field, Field3d *tmp, std::string name)
 {
   calcbuoyancy(field->data, fields->s["b"]->data);
   return 0;
 }
 
-int cthermo_buoy_slope::getbuoyancyfluxbot(cfield3d *bfield)
+int Thermo_buoy_slope::getbuoyancyfluxbot(Field3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["b"]->datafluxbot);
   return 0;
 }
 
-int cthermo_buoy_slope::getbuoyancysurf(cfield3d *bfield)
+int Thermo_buoy_slope::getbuoyancysurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data        , bfield->databot,
                   fields->s["b"]->data, fields->s["b"]->databot);
@@ -96,13 +96,13 @@ int cthermo_buoy_slope::getbuoyancysurf(cfield3d *bfield)
   return 0;
 }
 
-int cthermo_buoy_slope::getprogvars(std::vector<std::string> *list)
+int Thermo_buoy_slope::getprogvars(std::vector<std::string> *list)
 {
   list->push_back("b");
   return 0;
 }
 
-int cthermo_buoy_slope::calcbuoyancy(double * restrict b, double * restrict s)
+int Thermo_buoy_slope::calcbuoyancy(double * restrict b, double * restrict s)
 {
   int ijk,jj,kk;
   double ql;
@@ -121,7 +121,7 @@ int cthermo_buoy_slope::calcbuoyancy(double * restrict b, double * restrict s)
   return 0;
 }
 
-int cthermo_buoy_slope::calcbuoyancybot(double * restrict b , double * restrict bbot,
+int Thermo_buoy_slope::calcbuoyancybot(double * restrict b , double * restrict bbot,
                                  double * restrict s , double * restrict sbot)
 {
   int ij,ijk,jj,kk,kstart;
@@ -142,7 +142,7 @@ int cthermo_buoy_slope::calcbuoyancybot(double * restrict b , double * restrict 
   return 0;
 }
 
-int cthermo_buoy_slope::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
+int Thermo_buoy_slope::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
 {
   int ij,jj,kk;
   jj = grid->icells;
@@ -158,7 +158,7 @@ int cthermo_buoy_slope::calcbuoyancyfluxbot(double * restrict bfluxbot, double *
   return 0;
 }
 
-int cthermo_buoy_slope::calcbuoyancytendw_4th(double * restrict wt, double * restrict s)
+int Thermo_buoy_slope::calcbuoyancytendw_4th(double * restrict wt, double * restrict s)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -181,7 +181,7 @@ int cthermo_buoy_slope::calcbuoyancytendw_4th(double * restrict wt, double * res
   return 0;
 }
 
-int cthermo_buoy_slope::calcbuoyancytendu_4th(double * restrict ut, double * restrict s)
+int Thermo_buoy_slope::calcbuoyancytendu_4th(double * restrict ut, double * restrict s)
 {
   int ijk,ii1,ii2,jj,kk;
 
@@ -204,7 +204,7 @@ int cthermo_buoy_slope::calcbuoyancytendu_4th(double * restrict ut, double * res
   return 0;
 }
 
-int cthermo_buoy_slope::calcbuoyancytendb_4th(double * restrict st, double * restrict u, double * restrict w)
+int Thermo_buoy_slope::calcbuoyancytendb_4th(double * restrict st, double * restrict u, double * restrict w)
 {
   int ijk,ii1,ii2,jj,kk1,kk2;
 

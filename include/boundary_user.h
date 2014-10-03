@@ -26,14 +26,14 @@
 #include "boundary.h"
 
 // forward declaration to reduce compilation time
-class cmodel;
+class Model;
 
-class cboundary_user : public cboundary
+class Boundary_user : public Boundary
 {
   public:
-    cboundary_user(cmodel *, cinput *);
+    Boundary_user(Model *, Input *);
 
-    void init(cinput *);
+    void init(Input *);
 
     void setvalues();
 

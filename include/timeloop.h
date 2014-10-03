@@ -27,17 +27,17 @@
 #include <string>
 
 // forward declarations to reduce compilation time
-class cinput;
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
+class Input;
+class Master;
+class Model;
+class Grid;
+class Fields;
 
-class ctimeloop
+class Timeloop
 {
   public:
-    ctimeloop(cmodel *, cinput *);
-    ~ctimeloop();
+    Timeloop(Model *, Input *);
+    ~Timeloop();
 
     void stepTime();
     int postprocstep();
@@ -94,10 +94,10 @@ class ctimeloop
     double ifactor;
 
   private:
-    cmaster *master;
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
+    Master *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
 
     timeval start;
     timeval end;

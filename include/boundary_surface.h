@@ -27,18 +27,18 @@
 #include "stats.h"
 
 // forward declaration
-class cmodel;
-class cstats;
+class Model;
+class Stats;
 struct mask;
 
-class cboundary_surface : public cboundary
+class Boundary_surface : public Boundary
 {
   public:
-    cboundary_surface(cmodel *, cinput *);
-    ~cboundary_surface();
+    Boundary_surface(Model *, Input *);
+    ~Boundary_surface();
 
-    void init(cinput *);
-    void create(cinput *);
+    void init(Input *);
+    void create(Input *);
     void setvalues();
 
     int exec();
@@ -99,7 +99,7 @@ class cboundary_surface : public cboundary
     inline double phih(double);
     double ustarin;
 
-    cstats *stats;
+    Stats *stats;
 
     typedef std::map<std::string, int> bcbotmap;
     // int surfmbcbot;

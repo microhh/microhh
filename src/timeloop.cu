@@ -144,7 +144,7 @@ __global__ void rk4_kernel(double * __restrict__ a, double * __restrict__ at, do
   }
 }
 
-int ctimeloop::rk3_GPU(double *a, double *at, double dt)
+int Timeloop::rk3_GPU(double *a, double *at, double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -184,7 +184,7 @@ int ctimeloop::rk3_GPU(double *a, double *at, double dt)
   return 0;
 }
 
-int ctimeloop::rk4_GPU(double *a, double *at, double dt)
+int Timeloop::rk4_GPU(double *a, double *at, double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;

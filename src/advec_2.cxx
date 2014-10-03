@@ -33,15 +33,15 @@
 
 using namespace fd::o2;
 
-cadvec_2::cadvec_2(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
+Advec_2::Advec_2(Model *modelin, Input *inputin) : Advec(modelin, inputin)
 {
 }
 
-cadvec_2::~cadvec_2()
+Advec_2::~Advec_2()
 {
 }
 
-double cadvec_2::getcfl(double dt)
+double Advec_2::getcfl(double dt)
 {
   double cfl;
 
@@ -50,7 +50,7 @@ double cadvec_2::getcfl(double dt)
   return cfl;
 }
 
-unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
+unsigned long Advec_2::gettimelim(unsigned long idt, double dt)
 {
   unsigned long idtlim;
   double cfl;
@@ -65,7 +65,7 @@ unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
 }
 
 #ifndef USECUDA
-void cadvec_2::exec()
+void Advec_2::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
          fields->rhoref, fields->rhorefh);
@@ -81,7 +81,7 @@ void cadvec_2::exec()
 #endif
 
 #ifndef USECUDA
-double cadvec_2::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+double Advec_2::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -112,7 +112,7 @@ double cadvec_2::calccfl(double * restrict u, double * restrict v, double * rest
 }
 #endif
 
-void cadvec_2::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
+void Advec_2::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
@@ -143,7 +143,7 @@ void cadvec_2::advecu(double * restrict ut, double * restrict u, double * restri
       }
 }
 
-void cadvec_2::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w,
+void Advec_2::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
@@ -174,7 +174,7 @@ void cadvec_2::advecv(double * restrict vt, double * restrict u, double * restri
       }
 }
 
-void cadvec_2::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w,
+void Advec_2::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzhi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
@@ -205,7 +205,7 @@ void cadvec_2::advecw(double * restrict wt, double * restrict u, double * restri
       }
 }
 
-void cadvec_2::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w,
+void Advec_2::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;

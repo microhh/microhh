@@ -83,7 +83,7 @@ __global__ void fields_calcmass_2nd(double * __restrict__ s, double * __restrict
 }
 
 #ifdef USECUDA
-int cfields::exec()
+int Fields::exec()
 {
   // calculate the means for the prognostic scalars
   if(calcprofs)
@@ -97,7 +97,7 @@ int cfields::exec()
 #endif
 
 #ifdef USECUDA
-double cfields::checkmom()
+double Fields::checkmom()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -125,7 +125,7 @@ double cfields::checkmom()
 #endif
 
 #ifdef USECUDA
-double cfields::checktke()
+double Fields::checktke()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -155,7 +155,7 @@ double cfields::checktke()
 #endif
 
 #ifdef USECUDA
-double cfields::checkmass()
+double Fields::checkmass()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -189,7 +189,7 @@ double cfields::checkmass()
 }
 #endif
 
-int cfields::prepareDevice()
+int Fields::prepareDevice()
 {
   const int nmemsize   = grid->ncellsp*sizeof(double);
   const int nmemsize1d = grid->kcells*sizeof(double);
@@ -234,7 +234,7 @@ int cfields::prepareDevice()
   return 0;
 }
 
-int cfields::forwardDevice()
+int Fields::forwardDevice()
 {
   const int jcells     = grid->jcells;
   const int jkcells    = grid->jcells * grid->kcells;
@@ -277,7 +277,7 @@ int cfields::forwardDevice()
   return 0;
 }
 
-int cfields::backwardDevice()
+int Fields::backwardDevice()
 {
   const int jcells     = grid->jcells;
   const int jkcells    = grid->jcells * grid->kcells;
@@ -320,7 +320,7 @@ int cfields::backwardDevice()
   return 0;
 }
 
-int cfields::clearDevice()
+int Fields::clearDevice()
 {
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {

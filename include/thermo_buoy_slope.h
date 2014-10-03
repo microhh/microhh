@@ -26,9 +26,9 @@
 #include "thermo.h"
 
 // forward declarations to speed up build time
-class cmaster;
-class cgrid;
-class cfields;
+class Master;
+class Grid;
+class Fields;
 
 /**
  * Class for the dry thermodynamics.
@@ -36,18 +36,18 @@ class cfields;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-class cthermo_buoy_slope : public cthermo
+class Thermo_buoy_slope : public Thermo
 {
   public:
-    cthermo_buoy_slope(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_buoy_slope();                  ///< Destructor of the dry thermodynamics class.
+    Thermo_buoy_slope(Model *, Input *); ///< Constructor of the dry thermodynamics class.
+    ~Thermo_buoy_slope();                  ///< Destructor of the dry thermodynamics class.
 
     int exec();                              ///< Add the tendencies belonging to the buoyancy.
 
     int checkthermofield(std::string name);
-    int getthermofield(cfield3d *, cfield3d *, std::string name);
-    int getbuoyancysurf(cfield3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(cfield3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
+    int getthermofield(Field3d *, Field3d *, std::string name);
+    int getbuoyancysurf(Field3d *);         ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    int getbuoyancyfluxbot(Field3d *);      ///< Compute the bottom buoyancy flux for usage in another routine.
     int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
@@ -62,6 +62,6 @@ class cthermo_buoy_slope : public cthermo
     double alpha; ///< Slope angle in radians.
     double n2;    ///< Background stratification.
 
-    cmaster *master; ///< Pointer to master class.
+    Master *master; ///< Pointer to master class.
 };
 #endif

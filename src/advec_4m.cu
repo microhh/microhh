@@ -29,22 +29,22 @@
 
 using namespace fd::o4;
 
-__device__ double cadvec_4m_grad4(double a, double b, double c, double d, double dxi)
+__device__ double Advec_4m_grad4(double a, double b, double c, double d, double dxi)
 {
   return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
 }
 
-__device__ double cadvec_4m_grad4x(double a, double b, double c, double d)
+__device__ double Advec_4m_grad4x(double a, double b, double c, double d)
 {
   return (-(d-a) + 27.*(c-b)); 
 }
 
-__device__ double cadvec_4m_interp4(double a, double b, double c, double d) 
+__device__ double Advec_4m_interp4(double a, double b, double c, double d) 
 {
   return ci0*a + ci1*b + ci2*c + ci3*d;
 }
 
-__device__ double cadvec_4m_interp2(double a, double b)
+__device__ double Advec_4m_interp2(double a, double b)
 {
   return 0.5*(a + b);
 }
@@ -77,57 +77,57 @@ __global__ void advec_4m_advecu(double * __restrict__ ut, double * __restrict__ 
     if(k == kstart)
     {
       ut[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * cadvec_4m_interp2(u[ijk-ii3], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * cadvec_4m_interp2(u[ijk-ii1], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
+       - Advec_4m_grad4(Advec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * Advec_4m_interp2(u[ijk-ii3], u[ijk    ]),
+                         Advec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * Advec_4m_interp2(u[ijk-ii1], u[ijk    ]),
+                         Advec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * Advec_4m_interp2(u[ijk    ], u[ijk+ii1]),
+                         Advec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * Advec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * cadvec_4m_interp2(u[ijk-jj3], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-jj1], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
+       - Advec_4m_grad4(Advec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * Advec_4m_interp2(u[ijk-jj3], u[ijk    ]),
+                         Advec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * Advec_4m_interp2(u[ijk-jj1], u[ijk    ]),
+                         Advec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * Advec_4m_interp2(u[ijk    ], u[ijk+jj1]),
+                         Advec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * Advec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
 
        // boundary condition
-     - cadvec_4m_grad4x(-cadvec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * cadvec_4m_interp2(u[ijk-kk1], u[ijk+kk2]),
-                         cadvec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-kk1], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk1]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk2], w[ijk-ii1+kk2], w[ijk+kk2], w[ijk+ii1+kk2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk3])) * dzi4[kstart];
+     - Advec_4m_grad4x(-Advec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * Advec_4m_interp2(u[ijk-kk1], u[ijk+kk2]),
+                         Advec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * Advec_4m_interp2(u[ijk-kk1], u[ijk    ]),
+                         Advec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * Advec_4m_interp2(u[ijk    ], u[ijk+kk1]),
+                         Advec_4m_interp4(w[ijk-ii2+kk2], w[ijk-ii1+kk2], w[ijk+kk2], w[ijk+ii1+kk2]) * Advec_4m_interp2(u[ijk    ], u[ijk+kk3])) * dzi4[kstart];
     }
     else if(k == kend-1)
     {
       ut[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * cadvec_4m_interp2(u[ijk-ii3], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * cadvec_4m_interp2(u[ijk-ii1], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
+       - Advec_4m_grad4(Advec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * Advec_4m_interp2(u[ijk-ii3], u[ijk    ]),
+                         Advec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * Advec_4m_interp2(u[ijk-ii1], u[ijk    ]),
+                         Advec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * Advec_4m_interp2(u[ijk    ], u[ijk+ii1]),
+                         Advec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * Advec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * cadvec_4m_interp2(u[ijk-jj3], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-jj1], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
+       - Advec_4m_grad4(Advec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * Advec_4m_interp2(u[ijk-jj3], u[ijk    ]),
+                         Advec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * Advec_4m_interp2(u[ijk-jj1], u[ijk    ]),
+                         Advec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * Advec_4m_interp2(u[ijk    ], u[ijk+jj1]),
+                         Advec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * Advec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
 
-     - cadvec_4m_grad4x( cadvec_4m_interp4(w[ijk-ii2-kk1], w[ijk-ii1-kk1], w[ijk-kk1], w[ijk+ii1-kk1]) * cadvec_4m_interp2(u[ijk-kk3], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-kk1], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk1]),
-                        -cadvec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-kk2], u[ijk+kk1])) * dzi4[kend-1];
+     - Advec_4m_grad4x( Advec_4m_interp4(w[ijk-ii2-kk1], w[ijk-ii1-kk1], w[ijk-kk1], w[ijk+ii1-kk1]) * Advec_4m_interp2(u[ijk-kk3], u[ijk    ]),
+                         Advec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * Advec_4m_interp2(u[ijk-kk1], u[ijk    ]),
+                         Advec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * Advec_4m_interp2(u[ijk    ], u[ijk+kk1]),
+                        -Advec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * Advec_4m_interp2(u[ijk-kk2], u[ijk+kk1])) * dzi4[kend-1];
     }
     else
     {
       ut[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * cadvec_4m_interp2(u[ijk-ii3], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * cadvec_4m_interp2(u[ijk-ii1], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
+       - Advec_4m_grad4(Advec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * Advec_4m_interp2(u[ijk-ii3], u[ijk    ]),
+                         Advec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * Advec_4m_interp2(u[ijk-ii1], u[ijk    ]),
+                         Advec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * Advec_4m_interp2(u[ijk    ], u[ijk+ii1]),
+                         Advec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * Advec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * cadvec_4m_interp2(u[ijk-jj3], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-jj1], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
+       - Advec_4m_grad4(Advec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * Advec_4m_interp2(u[ijk-jj3], u[ijk    ]),
+                         Advec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * Advec_4m_interp2(u[ijk-jj1], u[ijk    ]),
+                         Advec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * Advec_4m_interp2(u[ijk    ], u[ijk+jj1]),
+                         Advec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * Advec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
 
-      - cadvec_4m_grad4x(cadvec_4m_interp4(w[ijk-ii2-kk1], w[ijk-ii1-kk1], w[ijk-kk1], w[ijk+ii1-kk1]) * cadvec_4m_interp2(u[ijk-kk3], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-kk1], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk1]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk2], w[ijk-ii1+kk2], w[ijk+kk2], w[ijk+ii1+kk2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk3])) * dzi4[k];
+      - Advec_4m_grad4x(Advec_4m_interp4(w[ijk-ii2-kk1], w[ijk-ii1-kk1], w[ijk-kk1], w[ijk+ii1-kk1]) * Advec_4m_interp2(u[ijk-kk3], u[ijk    ]),
+                         Advec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * Advec_4m_interp2(u[ijk-kk1], u[ijk    ]),
+                         Advec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * Advec_4m_interp2(u[ijk    ], u[ijk+kk1]),
+                         Advec_4m_interp4(w[ijk-ii2+kk2], w[ijk-ii1+kk2], w[ijk+kk2], w[ijk+ii1+kk2]) * Advec_4m_interp2(u[ijk    ], u[ijk+kk3])) * dzi4[k];
     }
   }
 }
@@ -159,56 +159,56 @@ __global__ void advec_4m_advecv(double * __restrict__ vt, double * __restrict__ 
     if(k == kstart)
     {
       vt[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * cadvec_4m_interp2(v[ijk-ii3], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * cadvec_4m_interp2(v[ijk-ii1], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
+       - Advec_4m_grad4(Advec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * Advec_4m_interp2(v[ijk-ii3], v[ijk    ]),
+                         Advec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * Advec_4m_interp2(v[ijk-ii1], v[ijk    ]),
+                         Advec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * Advec_4m_interp2(v[ijk    ], v[ijk+ii1]),
+                         Advec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * Advec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * cadvec_4m_interp2(v[ijk-jj3], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * cadvec_4m_interp2(v[ijk-jj1], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
+       - Advec_4m_grad4(Advec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * Advec_4m_interp2(v[ijk-jj3], v[ijk    ]),
+                         Advec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * Advec_4m_interp2(v[ijk-jj1], v[ijk    ]),
+                         Advec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * Advec_4m_interp2(v[ijk    ], v[ijk+jj1]),
+                         Advec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * Advec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
 
-     - cadvec_4m_grad4x(-cadvec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * cadvec_4m_interp2(v[ijk-kk1], v[ijk+kk2]),
-                         cadvec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * cadvec_4m_interp2(v[ijk-kk1], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk1]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk3])) * dzi4[kstart];
+     - Advec_4m_grad4x(-Advec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * Advec_4m_interp2(v[ijk-kk1], v[ijk+kk2]),
+                         Advec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * Advec_4m_interp2(v[ijk-kk1], v[ijk    ]),
+                         Advec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * Advec_4m_interp2(v[ijk    ], v[ijk+kk1]),
+                         Advec_4m_interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * Advec_4m_interp2(v[ijk    ], v[ijk+kk3])) * dzi4[kstart];
     }
     else if(k == kend-1)
     {
       vt[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * cadvec_4m_interp2(v[ijk-ii3], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * cadvec_4m_interp2(v[ijk-ii1], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
+       - Advec_4m_grad4(Advec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * Advec_4m_interp2(v[ijk-ii3], v[ijk    ]),
+                         Advec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * Advec_4m_interp2(v[ijk-ii1], v[ijk    ]),
+                         Advec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * Advec_4m_interp2(v[ijk    ], v[ijk+ii1]),
+                         Advec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * Advec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * cadvec_4m_interp2(v[ijk-jj3], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * cadvec_4m_interp2(v[ijk-jj1], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
+       - Advec_4m_grad4(Advec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * Advec_4m_interp2(v[ijk-jj3], v[ijk    ]),
+                         Advec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * Advec_4m_interp2(v[ijk-jj1], v[ijk    ]),
+                         Advec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * Advec_4m_interp2(v[ijk    ], v[ijk+jj1]),
+                         Advec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * Advec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
 
-     - cadvec_4m_grad4x( cadvec_4m_interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * cadvec_4m_interp2(v[ijk-kk3], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * cadvec_4m_interp2(v[ijk-kk1], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk1]),
-                        -cadvec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * cadvec_4m_interp2(v[ijk-kk2], v[ijk+kk1])) * dzi4[kend-1];
+     - Advec_4m_grad4x( Advec_4m_interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * Advec_4m_interp2(v[ijk-kk3], v[ijk    ]),
+                         Advec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * Advec_4m_interp2(v[ijk-kk1], v[ijk    ]),
+                         Advec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * Advec_4m_interp2(v[ijk    ], v[ijk+kk1]),
+                        -Advec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * Advec_4m_interp2(v[ijk-kk2], v[ijk+kk1])) * dzi4[kend-1];
     }
     else
     {
       vt[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * cadvec_4m_interp2(v[ijk-ii3], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * cadvec_4m_interp2(v[ijk-ii1], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
+       - Advec_4m_grad4(Advec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * Advec_4m_interp2(v[ijk-ii3], v[ijk    ]),
+                         Advec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * Advec_4m_interp2(v[ijk-ii1], v[ijk    ]),
+                         Advec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * Advec_4m_interp2(v[ijk    ], v[ijk+ii1]),
+                         Advec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * Advec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * cadvec_4m_interp2(v[ijk-jj3], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * cadvec_4m_interp2(v[ijk-jj1], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
+       - Advec_4m_grad4(Advec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * Advec_4m_interp2(v[ijk-jj3], v[ijk    ]),
+                         Advec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * Advec_4m_interp2(v[ijk-jj1], v[ijk    ]),
+                         Advec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * Advec_4m_interp2(v[ijk    ], v[ijk+jj1]),
+                         Advec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * Advec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
 
-      - cadvec_4m_grad4x(cadvec_4m_interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * cadvec_4m_interp2(v[ijk-kk3], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * cadvec_4m_interp2(v[ijk-kk1], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk1]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk3])) * dzi4[k];
+      - Advec_4m_grad4x(Advec_4m_interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * Advec_4m_interp2(v[ijk-kk3], v[ijk    ]),
+                         Advec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * Advec_4m_interp2(v[ijk-kk1], v[ijk    ]),
+                         Advec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * Advec_4m_interp2(v[ijk    ], v[ijk+kk1]),
+                         Advec_4m_interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * Advec_4m_interp2(v[ijk    ], v[ijk+kk3])) * dzi4[k];
     }
   }
 }
@@ -239,20 +239,20 @@ __global__ void advec_4m_advecw(double * __restrict__ wt, double * __restrict__ 
     int ijk = i + j*jj + k*kk;
 
     wt[ijk] +=
-     - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii1-kk2], u[ijk-ii1-kk1], u[ijk-ii1], u[ijk-ii1+kk1]) * cadvec_4m_interp2(w[ijk-ii3], w[ijk    ]),
-                       cadvec_4m_interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * cadvec_4m_interp2(w[ijk-ii1], w[ijk    ]),
-                       cadvec_4m_interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * cadvec_4m_interp2(w[ijk    ], w[ijk+ii1]),
-                       cadvec_4m_interp4(u[ijk+ii2-kk2], u[ijk+ii2-kk1], u[ijk+ii2], u[ijk+ii2+kk1]) * cadvec_4m_interp2(w[ijk    ], w[ijk+ii3]), dxi)
+     - Advec_4m_grad4(Advec_4m_interp4(u[ijk-ii1-kk2], u[ijk-ii1-kk1], u[ijk-ii1], u[ijk-ii1+kk1]) * Advec_4m_interp2(w[ijk-ii3], w[ijk    ]),
+                       Advec_4m_interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * Advec_4m_interp2(w[ijk-ii1], w[ijk    ]),
+                       Advec_4m_interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * Advec_4m_interp2(w[ijk    ], w[ijk+ii1]),
+                       Advec_4m_interp4(u[ijk+ii2-kk2], u[ijk+ii2-kk1], u[ijk+ii2], u[ijk+ii2+kk1]) * Advec_4m_interp2(w[ijk    ], w[ijk+ii3]), dxi)
 
-     - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-jj1-kk2], v[ijk-jj1-kk1], v[ijk-jj1], v[ijk-jj1+kk1]) * cadvec_4m_interp2(w[ijk-jj3], w[ijk    ]),
-                       cadvec_4m_interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * cadvec_4m_interp2(w[ijk-jj1], w[ijk    ]),
-                       cadvec_4m_interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * cadvec_4m_interp2(w[ijk    ], w[ijk+jj1]),
-                       cadvec_4m_interp4(v[ijk+jj2-kk2], v[ijk+jj2-kk1], v[ijk+jj2], v[ijk+jj2+kk1]) * cadvec_4m_interp2(w[ijk    ], w[ijk+jj3]), dyi)
+     - Advec_4m_grad4(Advec_4m_interp4(v[ijk-jj1-kk2], v[ijk-jj1-kk1], v[ijk-jj1], v[ijk-jj1+kk1]) * Advec_4m_interp2(w[ijk-jj3], w[ijk    ]),
+                       Advec_4m_interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * Advec_4m_interp2(w[ijk-jj1], w[ijk    ]),
+                       Advec_4m_interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * Advec_4m_interp2(w[ijk    ], w[ijk+jj1]),
+                       Advec_4m_interp4(v[ijk+jj2-kk2], v[ijk+jj2-kk1], v[ijk+jj2], v[ijk+jj2+kk1]) * Advec_4m_interp2(w[ijk    ], w[ijk+jj3]), dyi)
 
-    - cadvec_4m_grad4x(cadvec_4m_interp4(w[ijk-kk3],     w[ijk-kk2],     w[ijk-kk1], w[ijk    ])     * cadvec_4m_interp2(w[ijk-kk3], w[ijk    ]),
-                       cadvec_4m_interp4(w[ijk-kk2],     w[ijk-kk1],     w[ijk    ], w[ijk+kk1])     * cadvec_4m_interp2(w[ijk-kk1], w[ijk    ]),
-                       cadvec_4m_interp4(w[ijk-kk1],     w[ijk    ],     w[ijk+kk1], w[ijk+kk2])     * cadvec_4m_interp2(w[ijk    ], w[ijk+kk1]),
-                       cadvec_4m_interp4(w[ijk    ],     w[ijk+kk1],     w[ijk+kk2], w[ijk+kk3])     * cadvec_4m_interp2(w[ijk    ], w[ijk+kk3])) * dzhi4[k];
+    - Advec_4m_grad4x(Advec_4m_interp4(w[ijk-kk3],     w[ijk-kk2],     w[ijk-kk1], w[ijk    ])     * Advec_4m_interp2(w[ijk-kk3], w[ijk    ]),
+                       Advec_4m_interp4(w[ijk-kk2],     w[ijk-kk1],     w[ijk    ], w[ijk+kk1])     * Advec_4m_interp2(w[ijk-kk1], w[ijk    ]),
+                       Advec_4m_interp4(w[ijk-kk1],     w[ijk    ],     w[ijk+kk1], w[ijk+kk2])     * Advec_4m_interp2(w[ijk    ], w[ijk+kk1]),
+                       Advec_4m_interp4(w[ijk    ],     w[ijk+kk1],     w[ijk+kk2], w[ijk+kk3])     * Advec_4m_interp2(w[ijk    ], w[ijk+kk3])) * dzhi4[k];
   }
 }
 
@@ -283,56 +283,56 @@ __global__ void advec_4m_advecs(double * __restrict__ st, double * __restrict__ 
     if(k == kstart)
     {
       st[ijk] +=
-       - cadvec_4m_grad4(u[ijk-ii1] * cadvec_4m_interp2(s[ijk-ii3], s[ijk    ]),
-                         u[ijk    ] * cadvec_4m_interp2(s[ijk-ii1], s[ijk    ]),
-                         u[ijk+ii1] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii1]),
-                         u[ijk+ii2] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
+       - Advec_4m_grad4(u[ijk-ii1] * Advec_4m_interp2(s[ijk-ii3], s[ijk    ]),
+                         u[ijk    ] * Advec_4m_interp2(s[ijk-ii1], s[ijk    ]),
+                         u[ijk+ii1] * Advec_4m_interp2(s[ijk    ], s[ijk+ii1]),
+                         u[ijk+ii2] * Advec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(v[ijk-jj1] * cadvec_4m_interp2(s[ijk-jj3], s[ijk    ]),
-                         v[ijk    ] * cadvec_4m_interp2(s[ijk-jj1], s[ijk    ]),
-                         v[ijk+jj1] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj1]),
-                         v[ijk+jj2] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
+       - Advec_4m_grad4(v[ijk-jj1] * Advec_4m_interp2(s[ijk-jj3], s[ijk    ]),
+                         v[ijk    ] * Advec_4m_interp2(s[ijk-jj1], s[ijk    ]),
+                         v[ijk+jj1] * Advec_4m_interp2(s[ijk    ], s[ijk+jj1]),
+                         v[ijk+jj2] * Advec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
 
-      - cadvec_4m_grad4x(-w[ijk+kk1] * cadvec_4m_interp2(s[ijk-kk1], s[ijk+kk2]),
-                          w[ijk    ] * cadvec_4m_interp2(s[ijk-kk1], s[ijk    ]),
-                          w[ijk+kk1] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk1]),
-                          w[ijk+kk2] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk3])) * dzi4[kstart];
+      - Advec_4m_grad4x(-w[ijk+kk1] * Advec_4m_interp2(s[ijk-kk1], s[ijk+kk2]),
+                          w[ijk    ] * Advec_4m_interp2(s[ijk-kk1], s[ijk    ]),
+                          w[ijk+kk1] * Advec_4m_interp2(s[ijk    ], s[ijk+kk1]),
+                          w[ijk+kk2] * Advec_4m_interp2(s[ijk    ], s[ijk+kk3])) * dzi4[kstart];
     }
     else if(k == kend-1)
     {
       st[ijk] +=
-       - cadvec_4m_grad4(u[ijk-ii1] * cadvec_4m_interp2(s[ijk-ii3], s[ijk    ]),
-                         u[ijk    ] * cadvec_4m_interp2(s[ijk-ii1], s[ijk    ]),
-                         u[ijk+ii1] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii1]),
-                         u[ijk+ii2] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
+       - Advec_4m_grad4(u[ijk-ii1] * Advec_4m_interp2(s[ijk-ii3], s[ijk    ]),
+                         u[ijk    ] * Advec_4m_interp2(s[ijk-ii1], s[ijk    ]),
+                         u[ijk+ii1] * Advec_4m_interp2(s[ijk    ], s[ijk+ii1]),
+                         u[ijk+ii2] * Advec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(v[ijk-jj1] * cadvec_4m_interp2(s[ijk-jj3], s[ijk    ]),
-                         v[ijk    ] * cadvec_4m_interp2(s[ijk-jj1], s[ijk    ]),
-                         v[ijk+jj1] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj1]),
-                         v[ijk+jj2] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
+       - Advec_4m_grad4(v[ijk-jj1] * Advec_4m_interp2(s[ijk-jj3], s[ijk    ]),
+                         v[ijk    ] * Advec_4m_interp2(s[ijk-jj1], s[ijk    ]),
+                         v[ijk+jj1] * Advec_4m_interp2(s[ijk    ], s[ijk+jj1]),
+                         v[ijk+jj2] * Advec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
 
-     - cadvec_4m_grad4x( w[ijk-kk1] * cadvec_4m_interp2(s[ijk-kk3], s[ijk    ]),
-                         w[ijk    ] * cadvec_4m_interp2(s[ijk-kk1], s[ijk    ]),
-                         w[ijk+kk1] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk1]),
-                        -w[ijk    ] * cadvec_4m_interp2(s[ijk-kk2], s[ijk+kk1])) * dzi4[kend-1];
+     - Advec_4m_grad4x( w[ijk-kk1] * Advec_4m_interp2(s[ijk-kk3], s[ijk    ]),
+                         w[ijk    ] * Advec_4m_interp2(s[ijk-kk1], s[ijk    ]),
+                         w[ijk+kk1] * Advec_4m_interp2(s[ijk    ], s[ijk+kk1]),
+                        -w[ijk    ] * Advec_4m_interp2(s[ijk-kk2], s[ijk+kk1])) * dzi4[kend-1];
     }
     else
     {
       st[ijk] +=
-       - cadvec_4m_grad4(u[ijk-ii1] * cadvec_4m_interp2(s[ijk-ii3], s[ijk    ]),
-                         u[ijk    ] * cadvec_4m_interp2(s[ijk-ii1], s[ijk    ]),
-                         u[ijk+ii1] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii1]),
-                         u[ijk+ii2] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
+       - Advec_4m_grad4(u[ijk-ii1] * Advec_4m_interp2(s[ijk-ii3], s[ijk    ]),
+                         u[ijk    ] * Advec_4m_interp2(s[ijk-ii1], s[ijk    ]),
+                         u[ijk+ii1] * Advec_4m_interp2(s[ijk    ], s[ijk+ii1]),
+                         u[ijk+ii2] * Advec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
 
-       - cadvec_4m_grad4(v[ijk-jj1] * cadvec_4m_interp2(s[ijk-jj3], s[ijk    ]),
-                         v[ijk    ] * cadvec_4m_interp2(s[ijk-jj1], s[ijk    ]),
-                         v[ijk+jj1] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj1]),
-                         v[ijk+jj2] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
+       - Advec_4m_grad4(v[ijk-jj1] * Advec_4m_interp2(s[ijk-jj3], s[ijk    ]),
+                         v[ijk    ] * Advec_4m_interp2(s[ijk-jj1], s[ijk    ]),
+                         v[ijk+jj1] * Advec_4m_interp2(s[ijk    ], s[ijk+jj1]),
+                         v[ijk+jj2] * Advec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
 
-      - cadvec_4m_grad4x(w[ijk-kk1] * cadvec_4m_interp2(s[ijk-kk3], s[ijk    ]),
-                         w[ijk    ] * cadvec_4m_interp2(s[ijk-kk1], s[ijk    ]),
-                         w[ijk+kk1] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk1]),
-                         w[ijk+kk2] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk3])) * dzi4[k];
+      - Advec_4m_grad4x(w[ijk-kk1] * Advec_4m_interp2(s[ijk-kk3], s[ijk    ]),
+                         w[ijk    ] * Advec_4m_interp2(s[ijk-kk1], s[ijk    ]),
+                         w[ijk+kk1] * Advec_4m_interp2(s[ijk    ], s[ijk+kk1]),
+                         w[ijk+kk2] * Advec_4m_interp2(s[ijk    ], s[ijk+kk3])) * dzi4[k];
     }
   }
 }
@@ -364,7 +364,7 @@ __global__ void advec_4m_calccfl(double * const __restrict__ tmp1,
 }
 
 #ifdef USECUDA
-void cadvec_4m::exec()
+void Advec_4m::exec()
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -412,7 +412,7 @@ void cadvec_4m::exec()
 #endif
 
 #ifdef USECUDA
-double cadvec_4m::calccfl(double * u, double * v, double * w, double * dzi, double dt)
+double Advec_4m::calccfl(double * u, double * v, double * w, double * dzi, double dt)
 {
   const int blocki = 128;
   const int blockj = 2;

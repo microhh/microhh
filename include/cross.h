@@ -26,16 +26,16 @@
 #include <netcdfcpp.h>
 
 // forward declarations to reduce compilation time
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
+class Master;
+class Model;
+class Grid;
+class Fields;
 
-class ccross
+class Cross
 {
   public:
-    ccross(cmodel *, cinput *);
-    ~ccross();
+    Cross(Model *, Input *);
+    ~Cross();
 
     void init(double);
     void create();
@@ -52,10 +52,10 @@ class ccross
     int crosspath   (double *, double *, double *, std::string);
 
   private:
-    cmaster *master;
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
+    Master *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
 
     double sampletime;
     unsigned long isampletime;

@@ -4,7 +4,7 @@
 #include "tools.h"
 
 #ifdef USECUDA
-cfield3d::~cfield3d()
+Field3d::~Field3d()
 {
   cudaSafeCall(cudaFreeHost(data));
   cudaSafeCall(cudaFreeHost(databot));
@@ -16,7 +16,7 @@ cfield3d::~cfield3d()
   cudaSafeCall(cudaFreeHost(datamean));
 }
 
-int cfield3d::init()
+int Field3d::init()
 {
   // allocate the memory
   master->printMessage("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());

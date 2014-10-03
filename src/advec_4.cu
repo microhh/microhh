@@ -463,7 +463,7 @@ __global__ void advec_4_calccfl(double * const __restrict__ tmp1,
 }
 
 #ifdef USECUDA
-void cadvec_4::exec()
+void Advec_4::exec()
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -560,7 +560,7 @@ void cadvec_4::exec()
 #endif
 
 #ifdef USECUDA
-double cadvec_4::calccfl(double * u, double * v, double * w, double * dzi, double dt)
+double Advec_4::calccfl(double * u, double * v, double * w, double * dzi, double dt)
 {
   const int blocki = 128;
   const int blockj = 2;

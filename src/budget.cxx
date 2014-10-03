@@ -37,7 +37,7 @@ using namespace fd::o4; // budget is only 4th order
 
 // #define NO_OFFSET 0.
 
-cbudget::cbudget(cmodel *modelin, cinput *inputin)
+Budget::Budget(Model *modelin, Input *inputin)
 {
   model = modelin;
 
@@ -51,13 +51,13 @@ cbudget::cbudget(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cbudget::~cbudget()
+Budget::~Budget()
 {
   delete[] umodel;
   delete[] vmodel;
 }
 
-void cbudget::init()
+void Budget::init()
 {
   // copy the pointers
   grid   = model->grid;
@@ -79,7 +79,7 @@ void cbudget::init()
   }
 }
 
-void cbudget::create()
+void Budget::create()
 {
   if(swbudget == "0")
     return;
@@ -142,7 +142,7 @@ void cbudget::create()
   }
 }
 
-int cbudget::execstats(mask *m)
+int Budget::execstats(mask *m)
 {
   if(swbudget == "0")
     return 0;
@@ -215,7 +215,7 @@ int cbudget::execstats(mask *m)
   return 0;
 }
 
-int cbudget::calcke(double * restrict u, double * restrict v, double * restrict w, 
+int Budget::calcke(double * restrict u, double * restrict v, double * restrict w, 
                     double * restrict umodel, double * restrict vmodel,
                     double utrans, double vtrans,
                     double * restrict ke, double * restrict tke)
@@ -274,7 +274,7 @@ int cbudget::calcke(double * restrict u, double * restrict v, double * restrict 
   return 0;
 }
 
-int cbudget::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
+int Budget::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
                            double * restrict wx, double * restrict wy,
                            double * restrict umean, double * restrict vmean,
                            double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
@@ -1077,7 +1077,7 @@ int cbudget::calctkebudget(double * restrict u, double * restrict v, double * re
   return 0;
 }
 
-int cbudget::calctkebudget_buoy(double * restrict w, double * restrict b,
+int Budget::calctkebudget_buoy(double * restrict w, double * restrict b,
                                 double * restrict w2_buoy, double * restrict tke_buoy)
 {
   int ijk,jj1,kk1,kk2;
@@ -1123,7 +1123,7 @@ int cbudget::calctkebudget_buoy(double * restrict w, double * restrict b,
   return 0;
 }
 
-int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restrict zsortbot, double * restrict zsorttop,
+int Budget::calcpe(double * restrict b, double * restrict zsort, double * restrict zsortbot, double * restrict zsorttop,
                     double * restrict z,
                     double * restrict bsort,
                     double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg,
@@ -1256,7 +1256,7 @@ int cbudget::calcpe(double * restrict b, double * restrict zsort, double * restr
   return 0;
 }
 
-double cbudget::calczsort(double b, double * restrict bsort, double * restrict z, int k)
+double Budget::calczsort(double b, double * restrict bsort, double * restrict z, int k)
 {
   double zsortval;
   int ks = k;
@@ -1284,7 +1284,7 @@ double cbudget::calczsort(double b, double * restrict bsort, double * restrict z
   return zsortval;
 }
 
-double cbudget::calcdzstardb(double b, double * restrict bsort, double * restrict z)
+double Budget::calcdzstardb(double b, double * restrict bsort, double * restrict z)
 {
   // start the iteration below the grid to make sure not to miss values below the first full level
   int k = grid->kstart-1;
@@ -1319,7 +1319,7 @@ double cbudget::calcdzstardb(double b, double * restrict bsort, double * restric
 }
 
 
-int cbudget::calcpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
+int Budget::calcpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
                           double * restrict pe_turb, double * restrict pe_visc, double * restrict pe_bous,
                           double * restrict z, double * restrict zh, double * restrict dzi4, double * restrict dzhi4,
                           double visc)
@@ -1529,7 +1529,7 @@ int cbudget::calcpebudget(double * restrict w, double * restrict b, double * res
   return 0;
 }
 
-int cbudget::calcbpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bzbot, double * restrict bztop,
+int Budget::calcbpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bzbot, double * restrict bztop,
                            double * restrict bpe_turb, double * restrict bpe_visc, double * restrict bpe_diss,
                            double * restrict bsort,
                            double * restrict z, double * restrict dzi4, double * restrict dzhi4,

@@ -91,7 +91,7 @@ __global__ void grid_cyclic_y(double * const __restrict__ data,
   }
 }
 
-int cgrid::prepareDevice()
+int Grid::prepareDevice()
 {
   /* Align the interior of the grid (i.e. excluding ghost cells) with 
      the 128 byte memory blocks of the GPU's global memory */
@@ -124,7 +124,7 @@ int cgrid::prepareDevice()
   return 0;
 }
 
-int cgrid::clearDevice()
+int Grid::clearDevice()
 {
   cudaSafeCall(cudaFree(z_g    ));
   cudaSafeCall(cudaFree(zh_g   ));
@@ -138,7 +138,7 @@ int cgrid::clearDevice()
   return 0;
 }
 
-int cgrid::boundary_cyclic_g(double * data)
+int Grid::boundary_cyclic_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -171,7 +171,7 @@ int cgrid::boundary_cyclic_g(double * data)
   return 0;
 }
 
-int cgrid::boundary_cyclic2d_g(double * data)
+int Grid::boundary_cyclic2d_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -205,7 +205,7 @@ int cgrid::boundary_cyclic2d_g(double * data)
 }
 
 
-double cgrid::getmax_g(double *data, double *tmp)
+double Grid::getmax_g(double *data, double *tmp)
 {
   const unsigned int max = 1;
   const double scalefac = 1.;
@@ -223,7 +223,7 @@ double cgrid::getmax_g(double *data, double *tmp)
   return maxvalue;
 }
 
-double cgrid::getsum_g(double *data, double *tmp)
+double Grid::getsum_g(double *data, double *tmp)
 {
   const unsigned int sum = 0;
   const double scalefac = 1.;
@@ -238,7 +238,7 @@ double cgrid::getsum_g(double *data, double *tmp)
   return sumvalue;
 }
 
-int cgrid::calcmean_g(double *prof, double *data, double *tmp)
+int Grid::calcmean_g(double *prof, double *data, double *tmp)
 {
   const unsigned int sum = 0;
   const double scalefac = 1./(itot*jtot);

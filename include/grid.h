@@ -30,8 +30,8 @@
 #include "input.h"
 
 // forward declaration
-class cmodel;
-class cmaster;
+class Model;
+class Master;
 
 /**
  * Class for the grid settings and operators.
@@ -40,14 +40,14 @@ class cmaster;
  * in order to interpolate, transpose and save data. The MPI operations that work over multiple
  * processes on the entire grid are contained in this class.
  */
-class cgrid
+class Grid
 {
   public:
-    cgrid(cmodel *, cinput *); ///< Constructor of the grid class.
-    ~cgrid();                  ///< Destructor of the grid class.
+    Grid(Model *, Input *); ///< Constructor of the grid class.
+    ~Grid();                  ///< Destructor of the grid class.
 
     void init();           ///< Initialization of the grid arrays.
-    void create(cinput *); ///< Creation of the grid data.
+    void create(Input *); ///< Creation of the grid data.
     void calculate();      ///< Computation of dimensions, faces and ghost cells.
     void save();           ///< Saves grid data to file.
     void load();           ///< Loads grid data to file.
@@ -173,7 +173,7 @@ class cgrid
     int ncellsp;
 
   private:
-    cmaster *master; ///< Pointer to master class.
+    Master *master; ///< Pointer to master class.
     bool mpitypes;   ///< Boolean to check whether MPI datatypes are created.
     bool fftwplan;   ///< Boolean to check whether FFTW3 plans are created.
 

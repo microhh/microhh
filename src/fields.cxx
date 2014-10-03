@@ -36,7 +36,7 @@
 
 #define NO_OFFSET 0.
 
-cfields::cfields(cmodel *modelin, cinput *inputin)
+Fields::Fields(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -89,7 +89,7 @@ cfields::cfields(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cfields::~cfields()
+Fields::~Fields()
 {
   // DEALLOCATE ALL THE FIELDS
   // deallocate the prognostic velocity fields
@@ -123,7 +123,7 @@ cfields::~cfields()
 #endif
 }
 
-void cfields::init()
+void Fields::init()
 {
   // set the convenience pointers
   stats = model->stats;
@@ -198,7 +198,7 @@ void cfields::init()
   } 
 }
 
-int cfields::checkaddcross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+int Fields::checkaddcross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
 {
   std::vector<std::string>::iterator position;
   
@@ -217,7 +217,7 @@ int cfields::checkaddcross(std::string var, std::string type, std::vector<std::s
 }
 
 #ifndef USECUDA
-int cfields::exec()
+int Fields::exec()
 {
   // calculate the means for the prognostic scalars
   if(calcprofs)
@@ -230,7 +230,7 @@ int cfields::exec()
 }
 #endif
 
-int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
+int Fields::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
 {
   if(m->name == "wplus")
     calcmaskwplus(mfield->data, mfieldh->data, mfieldh->databot, 
@@ -241,7 +241,7 @@ int cfields::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
   return 0;
 }
 
-int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+int Fields::calcmaskwplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                            int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                            double * restrict w)
 {
@@ -303,7 +303,7 @@ int cfields::calcmaskwplus(double * restrict mask, double * restrict maskh, doub
   return 0;
 }
 
-int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+int Fields::calcmaskwmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                           int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                           double * restrict w)
 {
@@ -365,7 +365,7 @@ int cfields::calcmaskwmin(double * restrict mask, double * restrict maskh, doubl
   return 0;
 }
 
-int cfields::execstats(mask *m)
+int Fields::execstats(mask *m)
 {
   // define locations
   const int uloc[] = {1,0,0};
@@ -415,12 +415,12 @@ int cfields::execstats(mask *m)
                         m->profs["uw"].data, s["tmp2"]->data, uloc,
                         sd["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calcdiff_2nd(u->data, w->data, s["evisc"]->data,
+      stats->calDiff_2nd(u->data, w->data, s["evisc"]->data,
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
                           sd["tmp1"]->data, stats->nmaskh);
     else
-      stats->calcdiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
+      stats->calDiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
                           sd["tmp1"]->data, stats->nmaskh);
 
   }
@@ -430,7 +430,7 @@ int cfields::execstats(mask *m)
                         sd["tmp1"]->data, stats->nmaskh);
     stats->calcflux_4th(u->data, w->data, m->profs["uw"].data, sd["tmp2"]->data, uloc,
                         sd["tmp1"]->data, stats->nmaskh);
-    stats->calcdiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
+    stats->calDiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
                         sd["tmp1"]->data, stats->nmaskh);
   }
 
@@ -457,12 +457,12 @@ int cfields::execstats(mask *m)
                         m->profs["vw"].data, s["tmp2"]->data, vloc,
                         sd["tmp1"]->data, stats->nmaskh);
     if(model->diff->getname() == "les2s")
-      stats->calcdiff_2nd(v->data, w->data, s["evisc"]->data,
+      stats->calDiff_2nd(v->data, w->data, s["evisc"]->data,
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
                           sd["tmp1"]->data, stats->nmaskh);
     else
-      stats->calcdiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
+      stats->calDiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
                           sd["tmp1"]->data, stats->nmaskh);
 
   }
@@ -472,12 +472,12 @@ int cfields::execstats(mask *m)
                         sd["tmp1"]->data, stats->nmaskh);
     stats->calcflux_4th(v->data, w->data, m->profs["vw"].data, s["tmp2"]->data, vloc,
                         sd["tmp1"]->data, stats->nmaskh);
-    stats->calcdiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+    stats->calDiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
                         sd["tmp1"]->data, stats->nmaskh);
   }
 
   // calculate stats for the prognostic scalars
-  cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
+  Diff_les2s *diffptr = static_cast<Diff_les2s *>(model->diff);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
     stats->calcmean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, sd["tmp3"]->data, stats->nmask);
@@ -497,12 +497,12 @@ int cfields::execstats(mask *m)
                           m->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
                           sd["tmp4"]->data, stats->nmaskh);
       if(model->diff->getname() == "les2s")
-        stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
+        stats->calDiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
                             sd["tmp4"]->data, stats->nmaskh);
       else
-        stats->calcdiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
+        stats->calDiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
                             sd["tmp4"]->data, stats->nmaskh);
     }
     else if(grid->swspatialorder == "4")
@@ -511,7 +511,7 @@ int cfields::execstats(mask *m)
                           sd["tmp4"]->data, stats->nmaskh);
       stats->calcflux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, sd["tmp1"]->data, sloc,
                           sd["tmp4"]->data, stats->nmaskh);
-      stats->calcdiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+      stats->calDiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
                           sd["tmp4"]->data, stats->nmaskh);
     }
   }
@@ -531,13 +531,13 @@ int cfields::execstats(mask *m)
   return 0;
 }
 
-int cfields::setcalcprofs(bool sw)
+int Fields::setcalcprofs(bool sw)
 {
   calcprofs = sw;
   return 0;
 }
 
-int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, std::string longname, std::string unit)
+int Fields::initmomfld(Field3d *&fld, Field3d *&fldt, std::string fldname, std::string longname, std::string unit)
 {
   if(mp.find(fldname)!=mp.end())
   {
@@ -546,13 +546,13 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, st
   }
 
   // add a new prognostic momentum variable
-  mp[fldname] = new cfield3d(grid, master, fldname, longname, unit);
+  mp[fldname] = new Field3d(grid, master, fldname, longname, unit);
 
   // add a new tendency for momentum variable
   std::string fldtname  = fldname + "t";
   std::string tunit     = unit + "s-1";
   std::string tlongname = "Tendency of " + longname;
-  mt[fldname] = new cfield3d(grid, master, fldtname, tlongname, tunit);
+  mt[fldname] = new Field3d(grid, master, fldtname, tlongname, tunit);
 
   // TODO remove these from the model?
   fld  = mp[fldname];
@@ -567,7 +567,7 @@ int cfields::initmomfld(cfield3d *&fld, cfield3d *&fldt, std::string fldname, st
   return 0;
 }
 
-int cfields::initpfld(std::string fldname, std::string longname, std::string unit)
+int Fields::initpfld(std::string fldname, std::string longname, std::string unit)
 {
   if(s.find(fldname)!=s.end())
   {
@@ -576,13 +576,13 @@ int cfields::initpfld(std::string fldname, std::string longname, std::string uni
   }
   
   // add a new scalar variable
-  sp[fldname] = new cfield3d(grid, master, fldname,longname, unit);
+  sp[fldname] = new Field3d(grid, master, fldname,longname, unit);
 
   // add a new tendency for scalar variable
   std::string fldtname  = fldname + "t";
   std::string tlongname = "Tendency of " + longname;
   std::string tunit     = unit + "s-1";
-  st[fldname] = new cfield3d(grid, master, fldtname,tlongname, tunit);
+  st[fldname] = new Field3d(grid, master, fldtname,tlongname, tunit);
 
   // add the prognostic variable and its tendency to the collection
   // of all fields and tendencies
@@ -594,7 +594,7 @@ int cfields::initpfld(std::string fldname, std::string longname, std::string uni
   return 0;
 }
 
-int cfields::initdfld(std::string fldname,std::string longname, std::string unit)
+int Fields::initdfld(std::string fldname,std::string longname, std::string unit)
 {
   if(s.find(fldname)!=s.end())
   {
@@ -602,14 +602,14 @@ int cfields::initdfld(std::string fldname,std::string longname, std::string unit
     return 1;
   }
 
-  sd[fldname] = new cfield3d(grid, master, fldname, longname, unit);
+  sd[fldname] = new Field3d(grid, master, fldname, longname, unit);
   s [fldname] = sd[fldname];
   a [fldname] = sd[fldname];
 
   return 0;  
 }
 
-void cfields::create(cinput *inputin)
+void Fields::create(Input *inputin)
 {
   master->printMessage("Creating fields\n");
   
@@ -646,7 +646,7 @@ void cfields::create(cinput *inputin)
     throw 1;
 }
 
-int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data)
+int Fields::randomnize(Input *inputin, std::string fld, double * restrict data)
 {
   int nerror = 0;
 
@@ -700,7 +700,7 @@ int cfields::randomnize(cinput *inputin, std::string fld, double * restrict data
   return nerror;
 }
 
-int cfields::addvortexpair(cinput *inputin)
+int Fields::addvortexpair(Input *inputin)
 {
   int nerror = 0;
 
@@ -741,7 +741,7 @@ int cfields::addvortexpair(cinput *inputin)
   return nerror;
 }
 
-int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict data, double offset)
+int Fields::addmeanprofile(Input *inputin, std::string fld, double * restrict data, double offset)
 {
   int ijk, jj, kk;
   double proftemp[grid->kmax];
@@ -763,7 +763,7 @@ int cfields::addmeanprofile(cinput *inputin, std::string fld, double * restrict 
   return 0;
 }
 
-void cfields::load(int n)
+void Fields::load(int n)
 {
   int nerror = 0;
 
@@ -841,7 +841,7 @@ void cfields::load(int n)
     throw 1;
 }
 
-void cfields::save(int n)
+void Fields::save(int n)
 {
   int nerror = 0;
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
@@ -867,21 +867,21 @@ void cfields::save(int n)
 }
 
 #ifndef USECUDA
-double cfields::checkmom()
+double Fields::checkmom()
 {
   return calcmom_2nd(u->data, v->data, w->data, grid->dz);
 }
 #endif
 
 #ifndef USECUDA
-double cfields::checktke()
+double Fields::checktke()
 {
   return calctke_2nd(u->data, v->data, w->data, grid->dz);
 }
 #endif
 
 #ifndef USECUDA
-double cfields::checkmass()
+double Fields::checkmass()
 {
   // CvH for now, do the mass check on the first scalar... Do we want to change this?
   fieldmap::iterator itProg=sp.begin();
@@ -892,7 +892,7 @@ double cfields::checkmass()
 }
 #endif
 
-double cfields::calcmass(double * restrict s, double * restrict dz)
+double Fields::calcmass(double * restrict s, double * restrict dz)
 {
   int ijk,jj,kk;
 
@@ -917,7 +917,7 @@ double cfields::calcmass(double * restrict s, double * restrict dz)
   return mass;
 }
 
-double cfields::calcmom_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double Fields::calcmom_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   using fd::o2::interp2;
 
@@ -946,7 +946,7 @@ double cfields::calcmom_2nd(double * restrict u, double * restrict v, double * r
   return momentum;
 }
 
-double cfields::calctke_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double Fields::calctke_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   using fd::o2::interp2;
 
@@ -977,7 +977,7 @@ double cfields::calctke_2nd(double * restrict u, double * restrict v, double * r
   return tke;
 }
 
-void cfields::execcross()
+void Fields::execcross()
 {
   int nerror = 0;
 

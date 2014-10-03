@@ -31,7 +31,7 @@
 #include "model.h"
 #include "timeloop.h"
 
-cforce::cforce(cmodel *modelin, cinput *inputin)
+Force::Force(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -84,7 +84,7 @@ cforce::cforce(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cforce::~cforce()
+Force::~Force()
 {
   delete[] ug;
   delete[] vg;
@@ -105,7 +105,7 @@ cforce::~cforce()
 #endif
 }
 
-void cforce::init()
+void Force::init()
 {
   if(swlspres == "geo")
   {
@@ -123,7 +123,7 @@ void cforce::init()
     wls = new double[grid->kcells];
 }
 
-void cforce::create(cinput *inputin)
+void Force::create(Input *inputin)
 {
   int nerror = 0;
 
@@ -184,7 +184,7 @@ void cforce::create(cinput *inputin)
 }
 
 #ifndef USECUDA
-int cforce::exec(double dt)
+int Force::exec(double dt)
 {
   if(swlspres == "uflux")
     flux(fields->ut->data, fields->u->data, grid->dz, dt);
@@ -213,7 +213,7 @@ int cforce::exec(double dt)
 }
 #endif
 
-int cforce::settimedep()
+int Force::settimedep()
 {
   if(swtimedep == "0")
     return 0;
@@ -261,7 +261,7 @@ int cforce::settimedep()
 }
 
 #ifndef USECUDA
-int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
+int Force::settimedepprofiles(double fac0, double fac1, int index0, int index1)
 {
   // process time dependent bcs for the large scale forcings
   int kk = grid->kmax;
@@ -282,7 +282,7 @@ int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
 }
 #endif
 
-int cforce::flux(double * const restrict ut, const double * const restrict u, 
+int Force::flux(double * const restrict ut, const double * const restrict u, 
                  const double * const restrict dz, const double dt)
 {
   int ijk,jj,kk;
@@ -321,7 +321,7 @@ int cforce::flux(double * const restrict ut, const double * const restrict u,
   return 0;
 }
 
-int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
+int Force::coriolis_2nd(double * const restrict ut, double * const restrict vt,
                          const double * const restrict u , const double * const restrict v ,
                          const double * const restrict ug, const double * const restrict vg)
 {
@@ -356,7 +356,7 @@ int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
   return 0;
 }
 
-int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
+int Force::coriolis_4th(double * const restrict ut, double * const restrict vt,
                          const double * const restrict u , const double * const restrict v ,
                          const double * const restrict ug, const double * const restrict vg)
 {
@@ -403,7 +403,7 @@ int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
   return 0;
 }
 
-int cforce::lssource(double * const restrict st, const double * const restrict sls)
+int Force::lssource(double * const restrict st, const double * const restrict sls)
 {
   int ijk,jj,kk;
 
@@ -421,7 +421,7 @@ int cforce::lssource(double * const restrict st, const double * const restrict s
   return 0;
 }
 
-int cforce::advecwls_2nd(double * const restrict st, const double * const restrict s,
+int Force::advecwls_2nd(double * const restrict st, const double * const restrict s,
                          const double * const restrict wls, const double * const dzhi)
 {
   int ijk,jj,kk;

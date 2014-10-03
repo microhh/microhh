@@ -282,7 +282,7 @@ __global__ void boundary_surface_stability(double * __restrict__ ustar, double *
                                            double * __restrict__ b, double * __restrict__ bbot, double * __restrict__ bfluxbot,
                                            double * __restrict__ dutot, double z0m, double z0h, double zsl,
                                            int icells, int jcells, int kstart, int jj, int kk, 
-                                           cboundary::BoundaryType mbcbot, int thermobc)
+                                           Boundary::BoundaryType mbcbot, int thermobc)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x; 
   int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -293,18 +293,18 @@ __global__ void boundary_surface_stability(double * __restrict__ ustar, double *
     int ijk = i + j*jj + kstart*kk;
 
     // case 1: fixed buoyancy flux and fixed ustar
-    if(mbcbot == cboundary::UstarType && thermobc == cboundary::FluxType)
+    if(mbcbot == Boundary::UstarType && thermobc == Boundary::FluxType)
     {
       obuk[ij] = -pow(ustar[ij], 3) / (constants::kappa*bfluxbot[ij]);
     }
     // case 2: fixed buoyancy flux and free ustar
-    else if(mbcbot == cboundary::DirichletType && thermobc == cboundary::FluxType)
+    else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::FluxType)
     {
       obuk [ij] = boundary_surface_calcobuk_noslip_flux(obuk[ij], dutot[ij], bfluxbot[ij], zsl, z0m);
       ustar[ij] = dutot[ij] * boundary_surface_fm(zsl, z0m, obuk[ij]);
     }
     // case 3: fixed buoyancy surface value and free ustar
-    else if(mbcbot == cboundary::DirichletType && thermobc == cboundary::DirichletType)
+    else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::DirichletType)
     {
       double db = b[ijk] - bbot[ij];
       obuk [ij] = boundary_surface_calcobuk_noslip_dirichlet(obuk[ij], dutot[ij], db, zsl, z0m, z0h);
@@ -317,7 +317,7 @@ __global__ void boundary_surface_stability(double * __restrict__ ustar, double *
 __global__ void boundary_surface_stability_neutral(double * __restrict__ ustar, double * __restrict__ obuk,
                                                    double * __restrict__ dutot, double z0m, double z0h, double zsl,
                                                    int icells, int jcells, int kstart, int jj, int kk,
-                                                   cboundary::BoundaryType mbcbot, int thermobc)
+                                                   Boundary::BoundaryType mbcbot, int thermobc)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x; 
   int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -327,18 +327,18 @@ __global__ void boundary_surface_stability_neutral(double * __restrict__ ustar, 
     int ij  = i + j*jj;
 
     // case 1: fixed buoyancy flux and fixed ustar
-    if(mbcbot == cboundary::UstarType && thermobc == cboundary::FluxType)
+    if(mbcbot == Boundary::UstarType && thermobc == Boundary::FluxType)
     {
       obuk[ij] = -constants::dbig;
     }
     // case 2: fixed buoyancy flux and free ustar
-    else if(mbcbot == cboundary::DirichletType && thermobc == cboundary::FluxType)
+    else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::FluxType)
     {
       obuk [ij] = -constants::dbig;
       ustar[ij] = dutot[ij] * boundary_surface_fm(zsl, z0m, obuk[ij]);
     }
     // case 3: fixed buoyancy surface value and free ustar
-    else if(mbcbot == cboundary::DirichletType && thermobc == cboundary::DirichletType)
+    else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::DirichletType)
     {
       obuk [ij] = -constants::dbig;
       ustar[ij] = dutot[ij] * boundary_surface_fm(zsl, z0m, obuk[ij]);
@@ -353,7 +353,7 @@ __global__ void boundary_surface_surfm_flux(double * __restrict__ ufluxbot, doub
                                             double zsl, double z0m,
                                             int istart, int jstart, int kstart,
                                             int iend,   int jend, int jj, int kk,
-                                            cboundary::BoundaryType bcbot)
+                                            Boundary::BoundaryType bcbot)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
   int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -364,13 +364,13 @@ __global__ void boundary_surface_surfm_flux(double * __restrict__ ufluxbot, doub
     int ij  = i + j*jj;
     int ijk = i + j*jj + kstart*kk;
 
-    if(bcbot == cboundary::DirichletType)
+    if(bcbot == Boundary::DirichletType)
     {
       // interpolate the whole stability function rather than ustar or obuk
       ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*boundary_surface_fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*boundary_surface_fm(zsl, z0m, obuk[ij]));
       vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*boundary_surface_fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*boundary_surface_fm(zsl, z0m, obuk[ij]));
     }
-    else if(bcbot == cboundary::UstarType)
+    else if(bcbot == Boundary::UstarType)
     {
       double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
       const double minval = 1.e-2;
@@ -416,7 +416,7 @@ __global__ void boundary_surface_surfs(double * __restrict__ varfluxbot, double 
                                        double * __restrict__ ustar, double * __restrict__ obuk, double zsl, double z0h,
                                        int icells, int jcells, int kstart,
                                        int jj, int kk,
-                                       cboundary::BoundaryType bcbot)
+                                       Boundary::BoundaryType bcbot)
 {
   int i = blockIdx.x*blockDim.x + threadIdx.x; 
   int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -426,12 +426,12 @@ __global__ void boundary_surface_surfs(double * __restrict__ varfluxbot, double 
     int ij  = i + j*jj;
     int ijk = i + j*jj + kstart*kk;
 
-    if(bcbot == cboundary::DirichletType)
+    if(bcbot == Boundary::DirichletType)
     {
       varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*boundary_surface_fh(zsl, z0h, obuk[ij]);
       vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
     }
-    else if(bcbot == cboundary::FluxType)
+    else if(bcbot == Boundary::FluxType)
     {
       varbot[ij]     = varfluxbot[ij] / (ustar[ij]*boundary_surface_fh(zsl, z0h, obuk[ij])) + var[ijk];
       vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
@@ -439,7 +439,7 @@ __global__ void boundary_surface_surfs(double * __restrict__ varfluxbot, double 
   }
 }
 
-int cboundary_surface::prepareDevice()
+int Boundary_surface::prepareDevice()
 {
   const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
   const int imemsizep  = grid->icellsp * sizeof(double);
@@ -455,7 +455,7 @@ int cboundary_surface::prepareDevice()
 }
 
 // TMP BVS
-int cboundary_surface::forwardDevice()
+int Boundary_surface::forwardDevice()
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -467,7 +467,7 @@ int cboundary_surface::forwardDevice()
 }
 
 // TMP BVS
-int cboundary_surface::backwardDevice()
+int Boundary_surface::backwardDevice()
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -478,7 +478,7 @@ int cboundary_surface::backwardDevice()
   return 0;
 }
 
-int cboundary_surface::clearDevice()
+int Boundary_surface::clearDevice()
 {
   cudaSafeCall(cudaFree(obuk_g ));
   cudaSafeCall(cudaFree(ustar_g));
@@ -487,7 +487,7 @@ int cboundary_surface::clearDevice()
 }
 
 #ifdef USECUDA
-int cboundary_surface::bcvalues()
+int Boundary_surface::bcvalues()
 {
   int gridi, gridj;
   const int blocki = 128;

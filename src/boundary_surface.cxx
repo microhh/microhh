@@ -39,13 +39,13 @@
 // a sign function
 inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
 
-cboundary_surface::cboundary_surface(cmodel *modelin, cinput *inputin) : cboundary(modelin, inputin)
+Boundary_surface::Boundary_surface(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
 {
   ustar = 0;
   obuk  = 0;
 }
 
-cboundary_surface::~cboundary_surface()
+Boundary_surface::~Boundary_surface()
 {
   delete[] ustar;
   delete[] obuk;
@@ -55,7 +55,7 @@ cboundary_surface::~cboundary_surface()
 #endif
 }
 
-void cboundary_surface::create(cinput *inputin)
+void Boundary_surface::create(Input *inputin)
 {
   int nerror = 0;
   nerror += processtimedep(inputin);
@@ -71,7 +71,7 @@ void cboundary_surface::create(cinput *inputin)
     throw 1;
 }
 
-void cboundary_surface::init(cinput *inputin)
+void Boundary_surface::init(Input *inputin)
 {
   // 1. Process the boundary conditions now all fields are registered
   int nerror = 0;
@@ -177,7 +177,7 @@ void cboundary_surface::init(cinput *inputin)
   }
 }
 
-void cboundary_surface::execcross()
+void Boundary_surface::execcross()
 {
   int nerror = 0;
 
@@ -193,7 +193,7 @@ void cboundary_surface::execcross()
     throw 1;
 }
 
-int cboundary_surface::execstats(mask *m)
+int Boundary_surface::execstats(mask *m)
 {
   stats->calcmean2d(&m->tseries["obuk"].data , obuk , 0., fields->s["tmp4"]->databot, &stats->nmaskbot);
   stats->calcmean2d(&m->tseries["ustar"].data, ustar, 0., fields->s["tmp4"]->databot, &stats->nmaskbot);
@@ -201,7 +201,7 @@ int cboundary_surface::execstats(mask *m)
   return 0; 
 }
 
-void cboundary_surface::save(int iotime)
+void Boundary_surface::save(int iotime)
 {
   char filename[256];
 
@@ -216,7 +216,7 @@ void cboundary_surface::save(int iotime)
     master->printMessage("OK\n");
 }
 
-void cboundary_surface::load(int iotime)
+void Boundary_surface::load(int iotime)
 {
   char filename[256];
 
@@ -233,7 +233,7 @@ void cboundary_surface::load(int iotime)
   grid->boundary_cyclic2d(obuk);
 }
 
-void cboundary_surface::setvalues()
+void Boundary_surface::setvalues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
@@ -269,7 +269,7 @@ void cboundary_surface::setvalues()
 }
 
 #ifndef USECUDA
-int cboundary_surface::bcvalues()
+int Boundary_surface::bcvalues()
 {
   // start with retrieving the stability information
   if(model->thermo->getsw() == "0")
@@ -306,7 +306,7 @@ int cboundary_surface::bcvalues()
 }
 #endif
 
-int cboundary_surface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
+int Boundary_surface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
                                  double * restrict u    , double * restrict v   , double * restrict b       ,
                                  double * restrict ubot , double * restrict vbot, double * restrict bbot    ,
                                  double * restrict dutot, double * restrict z)
@@ -387,7 +387,7 @@ int cboundary_surface::stability(double * restrict ustar, double * restrict obuk
   return 0;
 }
 
-int cboundary_surface::stability_neutral(double * restrict ustar, double * restrict obuk,
+int Boundary_surface::stability_neutral(double * restrict ustar, double * restrict obuk,
                                          double * restrict u    , double * restrict v   ,
                                          double * restrict ubot , double * restrict vbot,
                                          double * restrict dutot, double * restrict z)
@@ -465,7 +465,7 @@ int cboundary_surface::stability_neutral(double * restrict ustar, double * restr
   return 0;
 }
 
-int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk, 
+int Boundary_surface::surfm(double * restrict ustar, double * restrict obuk, 
                              double * restrict u, double * restrict ubot, double * restrict ugradbot, double * restrict ufluxbot, 
                              double * restrict v, double * restrict vbot, double * restrict vgradbot, double * restrict vfluxbot, 
                              double zsl, int bcbot)
@@ -563,7 +563,7 @@ int cboundary_surface::surfm(double * restrict ustar, double * restrict obuk,
   return 0;
 }
 
-int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, double * restrict var,
+int Boundary_surface::surfs(double * restrict ustar, double * restrict obuk, double * restrict var,
                              double * restrict varbot, double * restrict vargradbot, double * restrict varfluxbot, 
                              double zsl, int bcbot)
 {
@@ -611,7 +611,7 @@ int cboundary_surface::surfs(double * restrict ustar, double * restrict obuk, do
   return 0;
 }
 
-double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bfluxbot, double zsl)
+double Boundary_surface::calcobuk_noslip_flux(double L, double du, double bfluxbot, double zsl)
 {
   double L0;
   double Lstart, Lend;
@@ -681,7 +681,7 @@ double cboundary_surface::calcobuk_noslip_flux(double L, double du, double bflux
 
   return L;
 }
-double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double db, double zsl)
+double Boundary_surface::calcobuk_noslip_dirichlet(double L, double du, double db, double zsl)
 {
   double L0;
   double Lstart, Lend;
@@ -752,21 +752,21 @@ double cboundary_surface::calcobuk_noslip_dirichlet(double L, double du, double 
   return L;
 }
 
-inline double cboundary_surface::fm(double zsl, double z0m, double L)
+inline double Boundary_surface::fm(double zsl, double z0m, double L)
 {
   double fm;
   fm = constants::kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
   return fm;
 }
 
-inline double cboundary_surface::fh(double zsl, double z0h, double L)
+inline double Boundary_surface::fh(double zsl, double z0h, double L)
 {
   double fh;
   fh = constants::kappa / (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L));
   return fh;
 }
 
-inline double cboundary_surface::psim(double zeta)
+inline double Boundary_surface::psim(double zeta)
 {
   double psim;
   double x;
@@ -786,7 +786,7 @@ inline double cboundary_surface::psim(double zeta)
   return psim;
 }
 
-inline double cboundary_surface::psih(double zeta)
+inline double Boundary_surface::psih(double zeta)
 {
   double psih;
   double x;
@@ -806,7 +806,7 @@ inline double cboundary_surface::psih(double zeta)
   return psih;
 }
 
-inline double cboundary_surface::phim(double zeta)
+inline double Boundary_surface::phim(double zeta)
 {
   double phim;
   if(zeta <= 0.)
@@ -822,7 +822,7 @@ inline double cboundary_surface::phim(double zeta)
   return phim;
 }
 
-inline double cboundary_surface::phih(double zeta)
+inline double Boundary_surface::phih(double zeta)
 {
   double phih;
   if(zeta <= 0.)

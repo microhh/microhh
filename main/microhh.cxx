@@ -27,7 +27,7 @@
 int main(int argc, char *argv[])
 {
   // Initialize the master class, it cannot fail.
-  cmaster master;
+  Master master;
   try
   {
     // Start up the master class and the Message Passing Interface.
@@ -37,10 +37,10 @@ int main(int argc, char *argv[])
     master.printMessage("Microhh git-hash: " GITHASH "\n");
 
     // Initialize the input class and read the input data from disk.
-    cinput input(&master);
+    Input input(&master);
 
     // Initialize the model class.
-    cmodel model(&master, &input);
+    Model model(&master, &input);
 
     // Initialize the master class.
     master.init(&input);

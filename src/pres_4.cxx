@@ -37,7 +37,7 @@
 
 using namespace fd::o4;
 
-cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
+Pres_4::Pres_4(Model *modelin, Input *inputin) : Pres(modelin, inputin)
 {
   m1 = 0;
   m2 = 0;
@@ -51,7 +51,7 @@ cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
   bmatj = 0;
 }
 
-cpres_4::~cpres_4()
+Pres_4::~Pres_4()
 {
   delete[] m1;
   delete[] m2;
@@ -70,7 +70,7 @@ cpres_4::~cpres_4()
 }
 
 #ifndef USECUDA
-void cpres_4::exec(double dt)
+void Pres_4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
   pres_in(fields->sd["p"]->data,
@@ -109,7 +109,7 @@ void cpres_4::exec(double dt)
            fields->sd["p"]->data, grid->dzhi4);
 }
 
-double cpres_4::check()
+double Pres_4::check()
 {
   double divmax = 0.;
 
@@ -119,7 +119,7 @@ double cpres_4::check()
 }
 #endif
 
-void cpres_4::init()
+void Pres_4::init()
 {
   int imax, jmax, kmax;
   int itot, jtot, kstart;
@@ -143,7 +143,7 @@ void cpres_4::init()
   m7 = new double[kmax];
 }
 
-void cpres_4::setvalues()
+void Pres_4::setvalues()
 {
   int imax, jmax, kmax;
   int itot, jtot, kstart;
@@ -220,7 +220,7 @@ void cpres_4::setvalues()
   m7[k] = 0.;
 }
 
-void cpres_4::pres_in(double * restrict p, 
+void Pres_4::pres_in(double * restrict p, 
                       double * restrict u , double * restrict v , double * restrict w ,
                       double * restrict ut, double * restrict vt, double * restrict wt,
                       double * restrict dzi4, double dt)
@@ -283,7 +283,7 @@ void cpres_4::pres_in(double * restrict p,
       }
 }
 
-void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
+void Pres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
                          double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
                          double * restrict m5, double * restrict m6, double * restrict m7,
                          double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
@@ -498,7 +498,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
   grid->boundary_cyclic(p);
 }
 
-void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
+void Pres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
                        double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
@@ -538,7 +538,7 @@ void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * rest
       }
 }
 
-void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+void Pres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
                    double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p,
                    const int jslice)
 {
@@ -693,7 +693,7 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
       }
 }
 
-double cpres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+double Pres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart,kend;

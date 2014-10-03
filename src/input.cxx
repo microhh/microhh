@@ -33,7 +33,7 @@
 #include <sstream>
 
 // Public functions
-cinput::cinput(cmaster *masterin)
+Input::Input(Master *masterin)
 {
   master = masterin;
 
@@ -49,18 +49,18 @@ cinput::cinput(cmaster *masterin)
     throw 1;
 }
 
-cinput::~cinput()
+Input::~Input()
 {
 }
 
-void cinput::clear()
+void Input::clear()
 {
   inputlist.clear();
   proflist.clear();
 }
 
 // Private functions
-int cinput::readinifile()
+int Input::readinifile()
 {
   int nerror = 0;
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256], element[256];
@@ -204,7 +204,7 @@ int cinput::readinifile()
   return nerrors;
 }
 
-int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
+int Input::readdatafile(datamap *series, std::string inputname, bool optional)
 {
   int nerror = 0;
   char inputline[256], temp1[256];
@@ -398,7 +398,7 @@ int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
   return 0;
 }
 
-int cinput::checkItemExists(std::string cat, std::string item, std::string el)
+int Input::checkItemExists(std::string cat, std::string item, std::string el)
 {
   inputmap::const_iterator it1 = inputlist.find(cat);
 
@@ -428,7 +428,7 @@ int cinput::checkItemExists(std::string cat, std::string item, std::string el)
 
 // overloaded return functions
 // int functions
-int cinput::getItem(int *value, std::string cat, std::string item, std::string el)
+int Input::getItem(int *value, std::string cat, std::string item, std::string el)
 {
   bool optional = false;
   int dummy = 0;
@@ -439,7 +439,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
   return 0;
 }
 
-int cinput::getItem(int *value, std::string cat, std::string item, std::string el, int def)
+int Input::getItem(int *value, std::string cat, std::string item, std::string el, int def)
 {
   bool optional = true;
 
@@ -450,7 +450,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
 }
 
 template <class valuetype>
-int cinput::parseItem(valuetype *value, std::string cat, std::string item, std::string el, bool optional, valuetype def)
+int Input::parseItem(valuetype *value, std::string cat, std::string item, std::string el, bool optional, valuetype def)
 {
   std::string itemout, itemtype;
   itemout = "[" + cat + "][" + item + "]";
@@ -495,7 +495,7 @@ int cinput::parseItem(valuetype *value, std::string cat, std::string item, std::
   return 0;
 }
 
-int cinput::checkItem(int *value, std::string cat, std::string item, std::string el)
+int Input::checkItem(int *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -526,7 +526,7 @@ int cinput::checkItem(int *value, std::string cat, std::string item, std::string
 }
 
 // double functions
-int cinput::getItem(double *value, std::string cat, std::string item, std::string el)
+int Input::getItem(double *value, std::string cat, std::string item, std::string el)
 {
   bool optional = false;
   double dummy = 0.;
@@ -537,7 +537,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
   return 0;
 }
 
-int cinput::getItem(double *value, std::string cat, std::string item, std::string el, double def)
+int Input::getItem(double *value, std::string cat, std::string item, std::string el, double def)
 {
   bool optional = true;
 
@@ -547,7 +547,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
   return 0;
 }
 
-int cinput::checkItem(double *value, std::string cat, std::string item, std::string el)
+int Input::checkItem(double *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -578,7 +578,7 @@ int cinput::checkItem(double *value, std::string cat, std::string item, std::str
 }
 
 // booleans
-int cinput::getItem(bool *value, std::string cat, std::string item, std::string el)
+int Input::getItem(bool *value, std::string cat, std::string item, std::string el)
 {
   bool optional = false;
   bool dummy = false;
@@ -588,7 +588,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
   return 0;
 }
 
-int cinput::getItem(bool *value, std::string cat, std::string item, std::string el, bool def)
+int Input::getItem(bool *value, std::string cat, std::string item, std::string el, bool def)
 {
   bool optional = true;
 
@@ -598,7 +598,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
   return 0;
 }
 
-int cinput::checkItem(bool *value, std::string cat, std::string item, std::string el)
+int Input::checkItem(bool *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], inputbool[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -640,7 +640,7 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
 }
 
 // strings
-int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el)
+int Input::getItem(std::string *value, std::string cat, std::string item, std::string el)
 {
   bool optional = false;
   std::string dummy = "";
@@ -651,7 +651,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
   return 0;
 }
 
-int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el, std::string def)
+int Input::getItem(std::string *value, std::string cat, std::string item, std::string el, std::string def)
 {
   bool optional = true;
 
@@ -661,7 +661,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
   return 0;
 }
 
-int cinput::checkItem(std::string *value, std::string cat, std::string item, std::string el)
+int Input::checkItem(std::string *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], stringval[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -691,7 +691,7 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
 }
 
 // list retrieval function
-int cinput::getList(std::vector<int> *value, std::string cat, std::string item, std::string el)
+int Input::getList(std::vector<int> *value, std::string cat, std::string item, std::string el)
 {
   if(parseList(value, cat, item, el))
     return 1;
@@ -699,7 +699,7 @@ int cinput::getList(std::vector<int> *value, std::string cat, std::string item, 
   return 0;
 }
 
-int cinput::getList(std::vector<double> *value, std::string cat, std::string item, std::string el)
+int Input::getList(std::vector<double> *value, std::string cat, std::string item, std::string el)
 {
   if(parseList(value, cat, item, el))
     return 1;
@@ -707,7 +707,7 @@ int cinput::getList(std::vector<double> *value, std::string cat, std::string ite
   return 0;
 }
 
-int cinput::getList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
+int Input::getList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
   if(parseList(value, cat, item, el))
     return 1;
@@ -716,7 +716,7 @@ int cinput::getList(std::vector<std::string> *value, std::string cat, std::strin
 }
 
 template <class valuetype>
-int cinput::parseList(std::vector<valuetype> *value, std::string cat, std::string item, std::string el)
+int Input::parseList(std::vector<valuetype> *value, std::string cat, std::string item, std::string el)
 {
   std::string itemout, listout;
   std::stringstream liststream;
@@ -746,7 +746,7 @@ int cinput::parseList(std::vector<valuetype> *value, std::string cat, std::strin
   return 0;
 }
 
-int cinput::checkList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
+int Input::checkList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -792,7 +792,7 @@ int cinput::checkList(std::vector<std::string> *value, std::string cat, std::str
   return 0;
 }
 
-int cinput::checkList(std::vector<int> *value, std::string cat, std::string item, std::string el)
+int Input::checkList(std::vector<int> *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -840,7 +840,7 @@ int cinput::checkList(std::vector<int> *value, std::string cat, std::string item
   return 0;
 }
 
-int cinput::checkList(std::vector<double> *value, std::string cat, std::string item, std::string el)
+int Input::checkList(std::vector<double> *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -891,7 +891,7 @@ int cinput::checkList(std::vector<double> *value, std::string cat, std::string i
 }
 
 
-int cinput::printUnused()
+int Input::printUnused()
 {
   for(inputmap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
   {
@@ -916,7 +916,7 @@ int cinput::printUnused()
   return 0;
 }
 
-int cinput::getProf(double *data, std::string varname, int kmaxin)
+int Input::getProf(double *data, std::string varname, int kmaxin)
 {
   datamap::const_iterator it = proflist.find(varname);
 
@@ -946,7 +946,7 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
   return 0;
 }
 
-int cinput::getTime(double **data, std::vector<double> *time, std::string varname)
+int Input::getTime(double **data, std::vector<double> *time, std::string varname)
 {
   // first get the time list
   datamap::const_iterator it = timelist.find("t");
@@ -984,7 +984,7 @@ int cinput::getTime(double **data, std::vector<double> *time, std::string varnam
   return 0;
 }
 
-int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::string varname, int kmaxin)
+int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::string varname, int kmaxin)
 {
   // container for the raw data
   datamap rawdata;
