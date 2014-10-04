@@ -31,118 +31,122 @@
 #define SUM 0
 #define MAX 1
 
+namespace Tools_g
+{
+  
+  template <int func>
+  __device__ double reduction(double v1, double v2)
+  {
+    double rval;
+    if (func == SUM)
+      rval = v1+v2;
+    else if (func == MAX)
+      rval = fmax(v1,v2);
+    return rval;
+  } 
+  
+  // Reduce one block of data
+  template <int func, int blockSize> 
+  __device__ void reduceBlock(volatile double *as, const unsigned int tid)
+  {
+    /* Loop is completely unrolled for performance */
+    if (blockSize >= 512) { if (tid < 256) { as[tid] = reduction<func>(as[tid],as[tid + 256]); } __syncthreads(); }
+    if (blockSize >= 256) { if (tid < 128) { as[tid] = reduction<func>(as[tid],as[tid + 128]); } __syncthreads(); }
+    if (blockSize >= 128) { if (tid <  64) { as[tid] = reduction<func>(as[tid],as[tid +  64]); } __syncthreads(); }
+  
+    /* Once we get to the last 32 values (1 thread warp), the __syncthreads() is no longer necessary */
+    if (tid < 32)
+    {
+      if (blockSize >=  64) { if (tid < 32) { as[tid] = reduction<func>(as[tid],as[tid + 32]); }}
+      if (blockSize >=  32) { if (tid < 16) { as[tid] = reduction<func>(as[tid],as[tid + 16]); }}
+      if (blockSize >=  16) { if (tid <  8) { as[tid] = reduction<func>(as[tid],as[tid +  8]); }}
+      if (blockSize >=   8) { if (tid <  4) { as[tid] = reduction<func>(as[tid],as[tid +  4]); }}
+      if (blockSize >=   4) { if (tid <  2) { as[tid] = reduction<func>(as[tid],as[tid +  2]); }}
+      if (blockSize >=   2) { if (tid <  1) { as[tid] = reduction<func>(as[tid],as[tid +  1]); }}
+    }
+  }
+  
+  // Reduce field from 3D to 2D, excluding ghost cells and padding
+  template <int func, int blockSize> 
+  __global__ void ReduceInterior(const double *a, double *a2d, 
+                                 unsigned int istart, unsigned int jstart, unsigned int kstart, 
+                                 unsigned int iend,   unsigned int jend,   
+                                 unsigned int icells, unsigned int ijcells)
+  {
+    extern __shared__ double as[];
+  
+    unsigned int tid  = threadIdx.x;
+    unsigned int i    = istart + threadIdx.x;
+    unsigned int j    = jstart + blockIdx.y;
+    unsigned int k    = kstart + blockIdx.z; 
+    unsigned int jk   = blockIdx.y+blockIdx.z*(jend-jstart);   // Index in 2D "a2d"
+    unsigned int ijk  = i + j*icells + k*ijcells;              // Index in 3D "a"
+    unsigned int ijkm = ijkm = iend + j*icells + k*ijcells;    // Max index in X-direction
+  
+    double tmpval;
+    if (func == MAX)
+      tmpval = -DBL_MAX;
+    else if (func == SUM)
+      tmpval = 0;
+    
+    int ii = ijk;
+    while (ii < ijkm)
+    {
+      tmpval = reduction<func>(tmpval,a[ii]);
+      if(ii + blockDim.x < ijkm)
+        tmpval = reduction<func>(tmpval,a[ii+blockDim.x]);
+      ii += 2*blockDim.x;
+    }
+    as[tid] = tmpval;
+  
+    __syncthreads();
+  
+    reduceBlock<func, blockSize>(as, tid);
+  
+    if (tid == 0)
+      a2d[jk] = as[0];
+  }
+  
+  // Reduce array, not accounting from ghost cells or padding 
+  template <int func, int blockSize> 
+  __global__ void ReduceAll(const double *a, double *aout, unsigned int ncells, unsigned int nvaluesperblock, double scalefac)  
+  {
+    extern __shared__ double as[];
+  
+    unsigned int tid  = threadIdx.x;
+    unsigned int ii   = nvaluesperblock *  blockIdx.x + threadIdx.x;
+    unsigned int iim  = nvaluesperblock * (blockIdx.x+1);
+  
+    double tmpval;
+    if (func == MAX)
+      tmpval = -DBL_MAX;
+    else if (func == SUM)
+      tmpval = 0;
+    
+    while (ii < iim)
+    {
+      tmpval = reduction<func>(tmpval,a[ii]);
+      if(ii + blockDim.x < iim && ii + blockDim.x < ncells)
+        tmpval = reduction<func>(tmpval,a[ii+blockDim.x]);
+      ii += 2*blockDim.x;
+    }
+    as[tid] = tmpval * scalefac;
+  
+    /* Make sure all threads are synchronised before reducing the shared array */
+    __syncthreads();
+  
+    /* Reduce block in shared memory */
+    reduceBlock<func, blockSize>(as, tid);
+  
+    /* First value in shared array now holds the reduced value. Write back to global memory */
+    if (tid == 0)
+      aout[blockIdx.x] = as[0];
+  }
+}
+
 int nextpow2(unsigned int x)
 {
   return (int)pow(2,ceil(log(x)/log(2)));
-}
-
-template <int func>
-__device__ double reduction(double v1, double v2)
-{
-  double rval;
-  if (func == SUM)
-    rval = v1+v2;
-  else if (func == MAX)
-    rval = fmax(v1,v2);
-  return rval;
-} 
-
-// Reduce one block of data
-template <int func, int blockSize> 
-__device__ void reduceBlock(volatile double *as, const unsigned int tid)
-{
-  /* Loop is completely unrolled for performance */
-  if (blockSize >= 512) { if (tid < 256) { as[tid] = reduction<func>(as[tid],as[tid + 256]); } __syncthreads(); }
-  if (blockSize >= 256) { if (tid < 128) { as[tid] = reduction<func>(as[tid],as[tid + 128]); } __syncthreads(); }
-  if (blockSize >= 128) { if (tid <  64) { as[tid] = reduction<func>(as[tid],as[tid +  64]); } __syncthreads(); }
-
-  /* Once we get to the last 32 values (1 thread warp), the __syncthreads() is no longer necessary */
-  if (tid < 32)
-  {
-    if (blockSize >=  64) { if (tid < 32) { as[tid] = reduction<func>(as[tid],as[tid + 32]); }}
-    if (blockSize >=  32) { if (tid < 16) { as[tid] = reduction<func>(as[tid],as[tid + 16]); }}
-    if (blockSize >=  16) { if (tid <  8) { as[tid] = reduction<func>(as[tid],as[tid +  8]); }}
-    if (blockSize >=   8) { if (tid <  4) { as[tid] = reduction<func>(as[tid],as[tid +  4]); }}
-    if (blockSize >=   4) { if (tid <  2) { as[tid] = reduction<func>(as[tid],as[tid +  2]); }}
-    if (blockSize >=   2) { if (tid <  1) { as[tid] = reduction<func>(as[tid],as[tid +  1]); }}
-  }
-}
-
-// Reduce field from 3D to 2D, excluding ghost cells and padding
-template <int func, int blockSize> 
-__global__ void deviceReduceInterior(const double *a, double *a2d, 
-                                     unsigned int istart, unsigned int jstart, unsigned int kstart, 
-                                     unsigned int iend,   unsigned int jend,   
-                                     unsigned int icells, unsigned int ijcells)
-{
-  extern __shared__ double as[];
-
-  unsigned int tid  = threadIdx.x;
-  unsigned int i    = istart + threadIdx.x;
-  unsigned int j    = jstart + blockIdx.y;
-  unsigned int k    = kstart + blockIdx.z; 
-  unsigned int jk   = blockIdx.y+blockIdx.z*(jend-jstart);   // Index in 2D "a2d"
-  unsigned int ijk  = i + j*icells + k*ijcells;              // Index in 3D "a"
-  unsigned int ijkm = ijkm = iend + j*icells + k*ijcells;    // Max index in X-direction
-
-  double tmpval;
-  if (func == MAX)
-    tmpval = -DBL_MAX;
-  else if (func == SUM)
-    tmpval = 0;
-  
-  int ii = ijk;
-  while (ii < ijkm)
-  {
-    tmpval = reduction<func>(tmpval,a[ii]);
-    if(ii + blockDim.x < ijkm)
-      tmpval = reduction<func>(tmpval,a[ii+blockDim.x]);
-    ii += 2*blockDim.x;
-  }
-  as[tid] = tmpval;
-
-  __syncthreads();
-
-  reduceBlock<func, blockSize>(as, tid);
-
-  if (tid == 0)
-    a2d[jk] = as[0];
-}
-
-// Reduce array, not accounting from ghost cells or padding 
-template <int func, int blockSize> 
-__global__ void deviceReduceAll(const double *a, double *aout, unsigned int ncells, unsigned int nvaluesperblock, double scalefac)  
-{
-  extern __shared__ double as[];
-
-  unsigned int tid  = threadIdx.x;
-  unsigned int ii   = nvaluesperblock *  blockIdx.x + threadIdx.x;
-  unsigned int iim  = nvaluesperblock * (blockIdx.x+1);
-
-  double tmpval;
-  if (func == MAX)
-    tmpval = -DBL_MAX;
-  else if (func == SUM)
-    tmpval = 0;
-  
-  while (ii < iim)
-  {
-    tmpval = reduction<func>(tmpval,a[ii]);
-    if(ii + blockDim.x < iim && ii + blockDim.x < ncells)
-      tmpval = reduction<func>(tmpval,a[ii+blockDim.x]);
-    ii += 2*blockDim.x;
-  }
-  as[tid] = tmpval * scalefac;
-
-  /* Make sure all threads are synchronised before reducing the shared array */
-  __syncthreads();
-
-  /* Reduce block in shared memory */
-  reduceBlock<func, blockSize>(as, tid);
-
-  /* First value in shared array now holds the reduced value. Write back to global memory */
-  if (tid == 0)
-    aout[blockIdx.x] = as[0];
 }
 
 void reduceInterior(double *a, double *a2d, 
@@ -160,17 +164,17 @@ void reduceInterior(double *a, double *a2d,
     switch (nthreads)
     {
       case 512:
-        deviceReduceInterior<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 256:
-        deviceReduceInterior<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 128:
-        deviceReduceInterior<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 64:
-        deviceReduceInterior<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 32:
-        deviceReduceInterior<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 16:
-        deviceReduceInterior<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
     }
   }
   else if (mode == SUM)
@@ -178,17 +182,17 @@ void reduceInterior(double *a, double *a2d,
     switch (nthreads)
     {
       case 512:
-        deviceReduceInterior<SUM, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<SUM, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 256:
-        deviceReduceInterior<SUM, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<SUM, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 128:
-        deviceReduceInterior<SUM, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<SUM, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 64:
-        deviceReduceInterior<SUM,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<SUM,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 32:
-        deviceReduceInterior<SUM,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<SUM,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
       case 16:
-        deviceReduceInterior<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        Tools_g::ReduceInterior<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
     }
   }
   cudaCheckError();
@@ -205,17 +209,17 @@ void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperb
     switch (nthreads)
     {
       case 512:
-        deviceReduceAll<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<MAX, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 256:
-        deviceReduceAll<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<MAX, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 128:
-        deviceReduceAll<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<MAX, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 64:
-        deviceReduceAll<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<MAX,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 32:
-        deviceReduceAll<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<MAX,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 16:
-        deviceReduceAll<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<MAX,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
     }
   }
   else if (mode == SUM)
@@ -223,17 +227,17 @@ void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperb
     switch (nthreads)
     {
       case 512:
-        deviceReduceAll<SUM, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<SUM, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 256:
-        deviceReduceAll<SUM, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<SUM, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 128:
-        deviceReduceAll<SUM, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<SUM, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 64:
-        deviceReduceAll<SUM,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<SUM,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 32:
-        deviceReduceAll<SUM,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<SUM,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
       case 16:
-        deviceReduceAll<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        Tools_g::ReduceAll<SUM,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
     }
   }
   cudaCheckError();
