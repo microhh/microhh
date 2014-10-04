@@ -38,10 +38,10 @@ class BoundaryUser : public Boundary
     void setValues();
 
   private:
-    int setbc_patch(double *, double *, double *, int, double, double, double,
-                    double *, double, double); ///< Set the values for the boundary fields.
+    void setbc_patch(double *, double *, double *, int, double, double, double,
+                     double *, double, double); ///< Set the values for the boundary fields.
 
-    // patch type
+    // Patch properties
     int    patch_dim;
     double patch_xh;
     double patch_xr;

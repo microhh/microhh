@@ -92,21 +92,21 @@ class Boundary
 
     void processbcs(Input *); ///< Process the boundary condition settings from the ini file.
     void processtimedep(Input *); ///< Process the time dependent settings from the ini file.
-    int setbc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
+    void setbc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
     // GPU functions and variables
-    int setbc_g(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
+    void setbc_g(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
   private:
     virtual void bcvalues(); ///< Update the boundary values.
 
-    int setgcbot_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 2nd-order accuracy.
-    int setgctop_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 2nd-order accuracy.
-    int setgcbot_4th(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 4th-order accuracy.
-    int setgctop_4th(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 4th-order accuracy.
+    void setgcbot_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 2nd-order accuracy.
+    void setgctop_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 2nd-order accuracy.
+    void setgcbot_4th(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 4th-order accuracy.
+    void setgctop_4th(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 4th-order accuracy.
 
-    int setgcbotw_4th(double *); ///< Set the bottom ghost cells for the vertical velocity with 4th order accuracy.
-    int setgctopw_4th(double *); ///< Set the top ghost cells for the vertical velocity with 4th order accuracy.
+    void setgcbotw_4th(double *); ///< Set the bottom ghost cells for the vertical velocity with 4th order accuracy.
+    void setgctopw_4th(double *); ///< Set the top ghost cells for the vertical velocity with 4th order accuracy.
 
     inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
 

@@ -68,7 +68,7 @@ void BoundaryUser::setValues()
   }
 }
 
-int BoundaryUser::setbc_patch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
+void BoundaryUser::setbc_patch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
                                 double * restrict tmp, double facl, double facr)
 {
   double avall, avalr;
@@ -132,6 +132,4 @@ int BoundaryUser::setbc_patch(double * restrict a, double * restrict agrad, doub
         agrad[ij] = -aflux[ij]/visc;
       }
   }
-
-  return 0;
 }

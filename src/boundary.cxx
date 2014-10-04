@@ -355,7 +355,7 @@ Boundary* Boundary::factory(Master *masterin, Input *inputin, Model *modelin)
   }
 }
 
-int Boundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
+void Boundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
 {
   int ij,jj;
   jj = grid->icells;
@@ -395,7 +395,7 @@ int Boundary::setbc(double * restrict a, double * restrict agrad, double * restr
 }
 
 // BOUNDARY CONDITIONS THAT CONTAIN A 2D PATTERN
-int Boundary::setgcbot_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict abot, double * restrict agradbot)
+void Boundary::setgcbot_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk,kstart;
 
@@ -426,11 +426,9 @@ int Boundary::setgcbot_2nd(double * restrict a, double * restrict dzh, BoundaryT
         a[ijk-kk] = -agradbot[ij]*dzh[kstart] + a[ijk];
       }
   }
-
-  return 0;
 }
 
-int Boundary::setgctop_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict atop, double * restrict agradtop)
+void Boundary::setgctop_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kk,kend;
 
@@ -461,11 +459,9 @@ int Boundary::setgctop_2nd(double * restrict a, double * restrict dzh, BoundaryT
         a[ijk+kk] = agradtop[ij]*dzh[kend] + a[ijk];
       }
   }
-
-  return 0;
 }
 
-int Boundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict abot, double * restrict agradbot)
+void Boundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk1,kk2,kstart;
 
@@ -499,11 +495,9 @@ int Boundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryTyp
         a[ijk-kk2] = -(1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
       }
   }
-
-  return 0;
 }
 
-int Boundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict atop, double * restrict agradtop)
+void Boundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kend,kk1,kk2;
 
@@ -537,12 +531,10 @@ int Boundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryTyp
         a[ijk+kk2] = (1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
       }
   }
-
-  return 0;
 }
 
 // BOUNDARY CONDITIONS FOR THE VERTICAL VELOCITY (NO PENETRATION)
-int Boundary::setgcbotw_4th(double * restrict w)
+void Boundary::setgcbotw_4th(double * restrict w)
 {
   int ijk,jj,kk1,kk2,kstart;
 
@@ -560,11 +552,9 @@ int Boundary::setgcbotw_4th(double * restrict w)
       w[ijk-kk1] = -w[ijk+kk1];
       w[ijk-kk2] = -w[ijk+kk2];
     }
-
-  return 0;
 }
 
-int Boundary::setgctopw_4th(double * restrict w)
+void Boundary::setgctopw_4th(double * restrict w)
 {
   int ijk,jj,kk1,kk2,kend;
 
@@ -582,8 +572,6 @@ int Boundary::setgctopw_4th(double * restrict w)
       w[ijk+kk1] = -w[ijk-kk1];
       w[ijk+kk2] = -w[ijk-kk2];
     }
-
-  return 0;
 }
 
 void Boundary::prepareDevice()
