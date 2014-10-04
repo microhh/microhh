@@ -26,7 +26,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "master.h"
-#include "diff_les2s.h"
+#include "diff_smag2.h"
 #include "boundary_surface.h"
 #include "defines.h"
 #include "constants.h"
@@ -579,7 +579,7 @@ __global__ void diff_les2s_calcdnmul(double * __restrict__ dnmul, double * __res
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
 #ifdef USECUDA
-int Diff_les2s::prepareDevice()
+int DiffSmag2::prepareDevice()
 {
   Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
 
@@ -602,14 +602,14 @@ int Diff_les2s::prepareDevice()
 }
 #endif
 
-int Diff_les2s::clearDevice()
+int DiffSmag2::clearDevice()
 {
   cudaSafeCall(cudaFree(mlen_g));
   return 0;
 }
 
 #ifdef USECUDA
-int Diff_les2s::execvisc()
+int DiffSmag2::execViscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
   Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
@@ -669,7 +669,7 @@ int Diff_les2s::execvisc()
 #endif
 
 #ifdef USECUDA
-int Diff_les2s::exec()
+int DiffSmag2::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -732,7 +732,7 @@ int Diff_les2s::exec()
 #endif
 
 #ifdef USECUDA
-unsigned long Diff_les2s::getTimeLimit(unsigned long idt, double dt)
+unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -766,7 +766,7 @@ unsigned long Diff_les2s::getTimeLimit(unsigned long idt, double dt)
 #endif
 
 #ifdef USECUDA
-double Diff_les2s::getdn(double dt)
+double DiffSmag2::getdn(double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;

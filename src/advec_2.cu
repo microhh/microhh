@@ -209,7 +209,7 @@ __global__ void advec_2_calccfl(double * __restrict__ u, double * __restrict__ v
 }
 
 #ifdef USECUDA
-void Advec_2::exec()
+void Advec2::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -264,7 +264,7 @@ void Advec_2::exec()
 #endif
 
 #ifdef USECUDA
-double Advec_2::calccfl(double * u, double * v, double * w, double * dzi, double dt)
+double Advec2::calccfl(double * u, double * v, double * w, double * dzi, double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;

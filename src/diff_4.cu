@@ -158,7 +158,7 @@ __global__ void diff_4_diffw(double * __restrict__ const at, const double * __re
 }
 
 #ifdef USECUDA
-int Diff_4::exec()
+int Diff4::exec()
 {
   const int blocki = 128;
   const int blockj = 2;
