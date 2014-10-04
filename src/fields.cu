@@ -27,58 +27,61 @@
 #include "constants.h"
 #include "tools.h"
 
-// TODO use interp2 functions instead of manual interpolation
-__global__ void fields_calcmom_2nd(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                                   double * __restrict__ mom, double * __restrict__ dz,
-                                   int istart, int jstart, int kstart,
-                                   int iend,   int jend,   int kend,
-                                   int jj, int kk)
+namespace Fields_g
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-  int k = blockIdx.z + kstart; 
-  int ii = 1;
-
-  if(i < iend && j < jend && k < kend)
+  // TODO use interp2 functions instead of manual interpolation
+  __global__ void calcmom_2nd(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
+                              double * __restrict__ mom, double * __restrict__ dz,
+                              int istart, int jstart, int kstart,
+                              int iend,   int jend,   int kend,
+                              int jj, int kk)
   {
-    int ijk = i + j*jj + k*kk;
-    mom[ijk] = (0.5*(u[ijk]+u[ijk+ii]) + 0.5*(v[ijk]+v[ijk+jj]) + 0.5*(w[ijk]+w[ijk+kk]))*dz[k];
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+    int k = blockIdx.z + kstart; 
+    int ii = 1;
+  
+    if(i < iend && j < jend && k < kend)
+    {
+      int ijk = i + j*jj + k*kk;
+      mom[ijk] = (0.5*(u[ijk]+u[ijk+ii]) + 0.5*(v[ijk]+v[ijk+jj]) + 0.5*(w[ijk]+w[ijk+kk]))*dz[k];
+    }
   }
-}
-
-__global__ void fields_calctke_2nd(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                                   double * __restrict__ tke, double * __restrict__ dz,
-                                   int istart, int jstart, int kstart,
-                                   int iend,   int jend,   int kend,
-                                   int jj, int kk)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-  int k = blockIdx.z + kstart; 
-  int ii = 1;
-
-  if(i < iend && j < jend && k < kend)
+  
+  __global__ void calctke_2nd(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
+                              double * __restrict__ tke, double * __restrict__ dz,
+                              int istart, int jstart, int kstart,
+                              int iend,   int jend,   int kend,
+                              int jj, int kk)
   {
-    int ijk = i + j*jj + k*kk;
-    tke[ijk] = ( 0.5*(pow(u[ijk],2)+pow(u[ijk+ii],2)) 
-               + 0.5*(pow(v[ijk],2)+pow(v[ijk+jj],2)) 
-               + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+    int k = blockIdx.z + kstart; 
+    int ii = 1;
+  
+    if(i < iend && j < jend && k < kend)
+    {
+      int ijk = i + j*jj + k*kk;
+      tke[ijk] = ( 0.5*(pow(u[ijk],2)+pow(u[ijk+ii],2)) 
+                 + 0.5*(pow(v[ijk],2)+pow(v[ijk+jj],2)) 
+                 + 0.5*(pow(w[ijk],2)+pow(w[ijk+kk],2)))*dz[k];
+    }
   }
-}
-
-__global__ void fields_calcmass_2nd(double * __restrict__ s, double * __restrict__ mass, double * __restrict__ dz,
-                                    int istart, int jstart, int kstart,
-                                    int iend,   int jend,   int kend,
-                                    int jj, int kk)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-  int k = blockIdx.z + kstart; 
-
-  if(i < iend && j < jend && k < kend)
+  
+  __global__ void calcmass_2nd(double * __restrict__ s, double * __restrict__ mass, double * __restrict__ dz,
+                               int istart, int jstart, int kstart,
+                               int iend,   int jend,   int kend,
+                               int jj, int kk)
   {
-    int ijk = i + j*jj + k*kk;
-    mass[ijk] = s[ijk]*dz[k];
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+    int k = blockIdx.z + kstart; 
+  
+    if(i < iend && j < jend && k < kend)
+    {
+      int ijk = i + j*jj + k*kk;
+      mass[ijk] = s[ijk]*dz[k];
+    }
   }
 }
 
@@ -109,11 +112,11 @@ double Fields::checkmom()
 
   const int offs = grid->memoffset;
 
-  fields_calcmom_2nd<<<gridGPU, blockGPU>>>(&u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
-                                            &atmp["tmp1"]->data_g[offs], grid->dz_g,
-                                            grid->istart,  grid->jstart, grid->kstart,
-                                            grid->iend,    grid->jend,   grid->kend,
-                                            grid->icellsp, grid->ijcellsp);
+  Fields_g::calcmom_2nd<<<gridGPU, blockGPU>>>(&u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
+                                               &atmp["tmp1"]->data_g[offs], grid->dz_g,
+                                               grid->istart,  grid->jstart, grid->kstart,
+                                               grid->iend,    grid->jend,   grid->kend,
+                                               grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
   double mom = grid->getSum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
@@ -137,11 +140,11 @@ double Fields::checktke()
 
   const int offs = grid->memoffset;
 
-  fields_calctke_2nd<<<gridGPU, blockGPU>>>(&u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
-                                            &atmp["tmp1"]->data_g[offs], grid->dz_g,
-                                            grid->istart,  grid->jstart, grid->kstart,
-                                            grid->iend,    grid->jend,   grid->kend,
-                                            grid->icellsp, grid->ijcellsp);
+  Fields_g::calctke_2nd<<<gridGPU, blockGPU>>>(&u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
+                                               &atmp["tmp1"]->data_g[offs], grid->dz_g,
+                                               grid->istart,  grid->jstart, grid->kstart,
+                                               grid->iend,    grid->jend,   grid->kend,
+                                               grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
   double tke = grid->getSum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
@@ -172,10 +175,10 @@ double Fields::checkmass()
   fieldmap::iterator itProg=sp.begin();
   if(sp.begin() != sp.end())
   {
-    fields_calcmass_2nd<<<gridGPU, blockGPU>>>(&itProg->second->data_g[offs], &atmp["tmp1"]->data_g[offs], grid->dz_g,
-                                               grid->istart,  grid->jstart, grid->kstart,
-                                               grid->iend,    grid->jend,   grid->kend,
-                                               grid->icellsp, grid->ijcellsp);
+    Fields_g::calcmass_2nd<<<gridGPU, blockGPU>>>(&itProg->second->data_g[offs], &atmp["tmp1"]->data_g[offs], grid->dz_g,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend,
+                                                  grid->icellsp, grid->ijcellsp);
     cudaCheckError();
 
     mass = grid->getSum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
