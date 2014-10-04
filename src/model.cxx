@@ -197,7 +197,7 @@ void Model::load()
   budget->create();
 
   // end with modules that require all fields to be present
-  boundary->setvalues();
+  boundary->setValues();
   diff    ->setValues();
   pres    ->setValues();
 }
@@ -232,8 +232,8 @@ void Model::exec()
   master->printMessage("Starting time integration\n");
 
   // update the time dependent values
-  boundary->settimedep();
-  force->settimedep();
+  boundary->setTimeDep();
+  force->setTimeDep();
 
   // set the boundary conditions
   boundary->exec();
@@ -243,7 +243,7 @@ void Model::exec()
   // get the viscosity to be used in diffusion
   diff->execViscosity();
 
-  settimestep();
+  setTimeStep();
 
   // print the initial information
   printOutputFile(!timeloop->loop);
@@ -251,66 +251,68 @@ void Model::exec()
   // start the time loop
   while(true)
   {
-    // determine the time step
-    settimestep();
+    // Determine the time step.
+    setTimeStep();
 
-    // advection
+    // Calculate the advection tendency.
     advec->exec();
-    // diffusion
+    // Calculate the diffusion tendency.
     diff->exec();
-    // thermo
+    // Calculate the thermodynamics and the buoyancy tendency.
     thermo->exec();
-    // buffer
+    // Calculate the tendency due to damping in the buffer layer.
     buffer->exec();
-    // large scale forcings
-    force->exec(timeloop->getsubdt());
+
+    // Apply the large scale forcings. Keep this one always right before the pressure.
+    force->exec(timeloop->getSubTimeStep());
 
     // pressure
-    pres->exec(timeloop->getsubdt());
+    pres->exec(timeloop->getSubTimeStep());
 
-    // Do only data analysis statistics when not in substep and not directly after restart
-    if(timeloop->inStatsStep())
+    // Do only data analysis statistics when not in substep and not directly after restart.
+    if(timeloop->isStatsStep())
     {
       if(stats->dostats())
       {
-#ifdef USECUDA
-        fields->backwardDevice();
+        #ifdef USECUDA
+        fields  ->backwardDevice();
         boundary->backwardDevice();
-#endif
+        #endif
 
         // always process the default mask
-        stats->getmask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
-        calStats("default");
+        stats->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
+        calcStats("default");
 
-        // work through the potential masks for the statistics
+        // Work through the potential masks for the statistics.
         for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
         {
           if(*it == "wplus" || *it == "wmin")
           {
-            fields->getmask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            calStats(*it);
+            fields->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            calcStats(*it);
           }
           else if(*it == "ql" || *it == "qlcore")
           {
             thermo->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            calStats(*it);
+            calcStats(*it);
           }
         }
 
-        // store the stats data
+        // Store the stats data.
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 
       if(cross->docross())
       {
-#ifdef USECUDA
+        // Copy back the data from the GPU
+        #ifdef USECUDA
         fields->backwardDevice();
         boundary->backwardDevice();
-#endif      
+        #endif
       
-        fields  ->execcross();
+        fields  ->execCross();
         thermo  ->execCross();
-        boundary->execcross();
+        boundary->execCross();
       }
     }
 
@@ -330,16 +332,14 @@ void Model::exec()
       // save the data for a restart
       if(timeloop->doSave())
       {
-#ifdef USECUDA
-        fields->backwardDevice();
+        #ifdef USECUDA
+        fields  ->backwardDevice();
         boundary->backwardDevice();
-#endif
+        #endif
 
-        // save the time data
+        // Save data to disk.
         timeloop->save(timeloop->iotime);
-        // save the fields
-        fields->save(timeloop->iotime);
-        // save the boundary data
+        fields  ->save(timeloop->iotime);
         boundary->save(timeloop->iotime);
       }
     }
@@ -360,8 +360,8 @@ void Model::exec()
       boundary->load(timeloop->iotime);
     }
     // update the time dependent values
-    boundary->settimedep();
-    force->settimedep();
+    boundary->setTimeDep();
+    force   ->setTimeDep();
 
     // set the boundary conditions
     boundary->exec();
@@ -373,18 +373,18 @@ void Model::exec()
     printOutputFile(!timeloop->loop);
   } // end time loop
 
-#ifdef USECUDA
-  fields->backwardDevice();
+  #ifdef USECUDA
+  fields  ->backwardDevice();
   boundary->backwardDevice();
-#endif
+  #endif
 }
 
-void Model::calStats(std::string maskname)
+void Model::calcStats(std::string maskname)
 {
-  fields  ->execstats(&stats->masks[maskname]);
+  fields  ->execStats(&stats->masks[maskname]);
   thermo  ->execStats(&stats->masks[maskname]);
-  budget  ->execstats(&stats->masks[maskname]);
-  boundary->execstats(&stats->masks[maskname]);
+  budget  ->execStats(&stats->masks[maskname]);
+  boundary->execStats(&stats->masks[maskname]);
 }
 
 void Model::printOutputFile(bool doclose)
@@ -442,7 +442,7 @@ void Model::printOutputFile(bool doclose)
   }
 }
 
-void Model::settimestep()
+void Model::setTimeStep()
 {
   // Only set the time step if the model is not in a substep
   if(timeloop->inSubStep())

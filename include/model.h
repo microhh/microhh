@@ -86,7 +86,7 @@ class Model
     void deleteObjects();
 
     void printOutputFile(bool);
-    void calStats(std::string);
-    void settimestep();
+    void calcStats(std::string);
+    void setTimeStep();
 };
 #endif

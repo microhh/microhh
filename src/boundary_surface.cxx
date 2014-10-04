@@ -39,13 +39,13 @@
 // a sign function
 inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
 
-Boundary_surface::Boundary_surface(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
+BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
 {
   ustar = 0;
   obuk  = 0;
 }
 
-Boundary_surface::~Boundary_surface()
+BoundarySurface::~BoundarySurface()
 {
   delete[] ustar;
   delete[] obuk;
@@ -55,10 +55,9 @@ Boundary_surface::~Boundary_surface()
 #endif
 }
 
-void Boundary_surface::create(Input *inputin)
+void BoundarySurface::create(Input *inputin)
 {
-  int nerror = 0;
-  nerror += processtimedep(inputin);
+  processtimedep(inputin);
 
   // add variables to the statistics
   if(stats->getSwitch() == "1")
@@ -66,17 +65,14 @@ void Boundary_surface::create(Input *inputin)
     stats->addtseries("ustar", "Surface friction velocity", "m s-1");
     stats->addtseries("obuk", "Obukhov length", "m");
   }
-
-  if(nerror)
-    throw 1;
 }
 
-void Boundary_surface::init(Input *inputin)
+void BoundarySurface::init(Input *inputin)
 {
   // 1. Process the boundary conditions now all fields are registered
-  int nerror = 0;
-  nerror += processbcs(inputin);
+  processbcs(inputin);
 
+  int nerror = 0;
   nerror += inputin->getItem(&z0m, "boundary", "z0m", "");
   nerror += inputin->getItem(&z0h, "boundary", "z0h", "");
 
@@ -177,7 +173,7 @@ void Boundary_surface::init(Input *inputin)
   }
 }
 
-void Boundary_surface::execcross()
+void BoundarySurface::execCross()
 {
   int nerror = 0;
 
@@ -193,15 +189,13 @@ void Boundary_surface::execcross()
     throw 1;
 }
 
-int Boundary_surface::execstats(mask *m)
+void BoundarySurface::execStats(Mask *m)
 {
   stats->calcmean2d(&m->tseries["obuk"].data , obuk , 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
   stats->calcmean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
-
-  return 0; 
 }
 
-void Boundary_surface::save(int iotime)
+void BoundarySurface::save(int iotime)
 {
   char filename[256];
 
@@ -216,7 +210,7 @@ void Boundary_surface::save(int iotime)
     master->printMessage("OK\n");
 }
 
-void Boundary_surface::load(int iotime)
+void BoundarySurface::load(int iotime)
 {
   char filename[256];
 
@@ -233,7 +227,7 @@ void Boundary_surface::load(int iotime)
   grid->boundaryCyclic2d(obuk);
 }
 
-void Boundary_surface::setvalues()
+void BoundarySurface::setValues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
@@ -269,15 +263,15 @@ void Boundary_surface::setvalues()
 }
 
 #ifndef USECUDA
-int Boundary_surface::bcvalues()
+void BoundarySurface::bcvalues()
 {
   // start with retrieving the stability information
   if(model->thermo->getSwitch() == "0")
   {
-    stability_neutral(ustar, obuk,
-                      fields->u->data, fields->v->data,
-                      fields->u->databot, fields->v->databot,
-                      fields->atmp["tmp1"]->data, grid->z);
+    stabilityNeutral(ustar, obuk,
+                     fields->u->data, fields->v->data,
+                     fields->u->databot, fields->v->databot,
+                     fields->atmp["tmp1"]->data, grid->z);
   }
   else
   {
@@ -301,21 +295,19 @@ int Boundary_surface::bcvalues()
           it->second->databot, it->second->datagradbot, it->second->datafluxbot,
           grid->z[grid->kstart], sbc[it->first]->bcbot);
   }
-
-  return 0;
 }
 #endif
 
-int Boundary_surface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
-                                 double * restrict u    , double * restrict v   , double * restrict b       ,
-                                 double * restrict ubot , double * restrict vbot, double * restrict bbot    ,
-                                 double * restrict dutot, double * restrict z)
+void BoundarySurface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
+                               double * restrict u    , double * restrict v   , double * restrict b       ,
+                               double * restrict ubot , double * restrict vbot, double * restrict bbot    ,
+                               double * restrict dutot, double * restrict z)
 {
   int ij,ijk,ii,jj,kk,kstart;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -366,7 +358,7 @@ int Boundary_surface::stability(double * restrict ustar, double * restrict obuk,
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
-        obuk [ij] = calcobuk_noslip_flux(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
+        obuk [ij] = calcObukNoslipFlux(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
@@ -379,24 +371,22 @@ int Boundary_surface::stability(double * restrict ustar, double * restrict obuk,
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         db = b[ijk] - bbot[ij];
-        obuk [ij] = calcobuk_noslip_dirichlet(obuk[ij], dutot[ij], db, z[kstart]);
+        obuk [ij] = calcObukNoslipDirichlet(obuk[ij], dutot[ij], db, z[kstart]);
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
-
-  return 0;
 }
 
-int Boundary_surface::stability_neutral(double * restrict ustar, double * restrict obuk,
-                                         double * restrict u    , double * restrict v   ,
-                                         double * restrict ubot , double * restrict vbot,
-                                         double * restrict dutot, double * restrict z)
+void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restrict obuk,
+                                       double * restrict u    , double * restrict v   ,
+                                       double * restrict ubot , double * restrict vbot,
+                                       double * restrict dutot, double * restrict z)
 {
   int ij,ijk,ii,jj,kk,kstart;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -461,11 +451,9 @@ int Boundary_surface::stability_neutral(double * restrict ustar, double * restri
         ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
       }
   }
-
-  return 0;
 }
 
-int Boundary_surface::surfm(double * restrict ustar, double * restrict obuk, 
+void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk, 
                              double * restrict u, double * restrict ubot, double * restrict ugradbot, double * restrict ufluxbot, 
                              double * restrict v, double * restrict vbot, double * restrict vgradbot, double * restrict vfluxbot, 
                              double zsl, int bcbot)
@@ -474,7 +462,7 @@ int Boundary_surface::surfm(double * restrict ustar, double * restrict obuk,
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -559,18 +547,16 @@ int Boundary_surface::surfm(double * restrict ustar, double * restrict obuk,
       ugradbot[ij] = (u[ijk]-ubot[ij])/zsl;
       vgradbot[ij] = (v[ijk]-vbot[ij])/zsl;
     }
-
-  return 0;
 }
 
-int Boundary_surface::surfs(double * restrict ustar, double * restrict obuk, double * restrict var,
-                             double * restrict varbot, double * restrict vargradbot, double * restrict varfluxbot, 
-                             double zsl, int bcbot)
+void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, double * restrict var,
+                            double * restrict varbot, double * restrict vargradbot, double * restrict varfluxbot, 
+                            double zsl, int bcbot)
 {
   int ij,ijk,jj,kk,kstart;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -607,11 +593,9 @@ int Boundary_surface::surfs(double * restrict ustar, double * restrict obuk, dou
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
   }
-
-  return 0;
 }
 
-double Boundary_surface::calcobuk_noslip_flux(double L, double du, double bfluxbot, double zsl)
+double BoundarySurface::calcObukNoslipFlux(double L, double du, double bfluxbot, double zsl)
 {
   double L0;
   double Lstart, Lend;
@@ -681,7 +665,7 @@ double Boundary_surface::calcobuk_noslip_flux(double L, double du, double bfluxb
 
   return L;
 }
-double Boundary_surface::calcobuk_noslip_dirichlet(double L, double du, double db, double zsl)
+double BoundarySurface::calcObukNoslipDirichlet(double L, double du, double db, double zsl)
 {
   double L0;
   double Lstart, Lend;
@@ -752,21 +736,21 @@ double Boundary_surface::calcobuk_noslip_dirichlet(double L, double du, double d
   return L;
 }
 
-inline double Boundary_surface::fm(double zsl, double z0m, double L)
+inline double BoundarySurface::fm(double zsl, double z0m, double L)
 {
   double fm;
   fm = constants::kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
   return fm;
 }
 
-inline double Boundary_surface::fh(double zsl, double z0h, double L)
+inline double BoundarySurface::fh(double zsl, double z0h, double L)
 {
   double fh;
   fh = constants::kappa / (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L));
   return fh;
 }
 
-inline double Boundary_surface::psim(double zeta)
+inline double BoundarySurface::psim(double zeta)
 {
   double psim;
   double x;
@@ -786,7 +770,7 @@ inline double Boundary_surface::psim(double zeta)
   return psim;
 }
 
-inline double Boundary_surface::psih(double zeta)
+inline double BoundarySurface::psih(double zeta)
 {
   double psih;
   double x;
@@ -806,7 +790,7 @@ inline double Boundary_surface::psih(double zeta)
   return psih;
 }
 
-inline double Boundary_surface::phim(double zeta)
+inline double BoundarySurface::phim(double zeta)
 {
   double phim;
   if(zeta <= 0.)
@@ -822,7 +806,7 @@ inline double Boundary_surface::phim(double zeta)
   return phim;
 }
 
-inline double Boundary_surface::phih(double zeta)
+inline double BoundarySurface::phih(double zeta)
 {
   double phih;
   if(zeta <= 0.)

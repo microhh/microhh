@@ -29,11 +29,11 @@
 #include "defines.h"
 #include "model.h"
 
-Boundary_user::Boundary_user(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
+BoundaryUser::BoundaryUser(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
 {
 }
 
-void Boundary_user::init(Input *inputin)
+void BoundaryUser::init(Input *inputin)
 {
   int nerror = 0;
 
@@ -51,7 +51,7 @@ void Boundary_user::init(Input *inputin)
     throw 1;
 }
 
-void Boundary_user::setvalues()
+void BoundaryUser::setValues()
 {
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
   setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
@@ -68,7 +68,7 @@ void Boundary_user::setvalues()
   }
 }
 
-int Boundary_user::setbc_patch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
+void BoundaryUser::setbc_patch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
                                 double * restrict tmp, double facl, double facr)
 {
   double avall, avalr;
@@ -132,6 +132,4 @@ int Boundary_user::setbc_patch(double * restrict a, double * restrict agrad, dou
         agrad[ij] = -aflux[ij]/visc;
       }
   }
-
-  return 0;
 }

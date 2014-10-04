@@ -32,7 +32,7 @@ class Input;
 class Stats;
 class Grid;
 class Fields;
-struct mask;
+struct Mask;
 
 class Budget
 {
@@ -43,7 +43,7 @@ class Budget
     void init();
     void create();
 
-    int execstats(mask *);
+    int execStats(Mask *);
 
   private:
     Model  *model;

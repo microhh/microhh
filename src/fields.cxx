@@ -244,7 +244,7 @@ int Fields::exec()
 }
 #endif
 
-int Fields::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
+int Fields::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if(m->name == "wplus")
     calcmaskwplus(mfield->data, mfieldh->data, mfieldh->databot, 
@@ -379,7 +379,7 @@ int Fields::calcmaskwmin(double * restrict mask, double * restrict maskh, double
   return 0;
 }
 
-int Fields::execstats(mask *m)
+int Fields::execStats(Mask *m)
 {
   // define locations
   const int uloc[] = {1,0,0};
@@ -407,7 +407,7 @@ int Fields::execstats(mask *m)
 
   // calculate the stats on the u location
   // interpolate the mask horizontally onto the u coordinate
-  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
   stats->calcmean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
   stats->calcmean(umodel            , u->data, NO_OFFSET   , uloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
@@ -420,7 +420,7 @@ int Fields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
@@ -449,7 +449,7 @@ int Fields::execstats(mask *m)
   }
 
   // calculate the stats on the v location
-  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
   stats->calcmean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
   stats->calcmean(vmodel            , v->data, NO_OFFSET   , vloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
@@ -462,7 +462,7 @@ int Fields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
@@ -659,8 +659,8 @@ void Fields::create(Input *inputin)
     nerror += addmeanprofile(inputin, it->first, it->second->data, 0.);
   
   // set w equal to zero at the boundaries, just to be sure
-  int lbot = grid->kstart*grid->icells*grid->jcells;
-  int ltop = grid->kend  *grid->icells*grid->jcells;
+  int lbot = grid->kstart*grid->ijcells;
+  int ltop = grid->kend  *grid->ijcells;
   for(int l=0; l<grid->ijcells; ++l)
   {
     w->data[lbot+l] = 0.;
@@ -690,7 +690,7 @@ int Fields::randomnize(Input *inputin, std::string fld, double * restrict data)
   double rndfac;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   // look up the specific randomnizer variables
   nerror += inputin->getItem(&rndamp, "fields", "rndamp", fld, 0.);
@@ -734,7 +734,7 @@ int Fields::addvortexpair(Input *inputin)
   int ijk, jj, kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
     
   // optional parameters
   nerror += inputin->getItem(&vortexnpair, "fields", "vortexnpair", "", 0    );
@@ -772,7 +772,7 @@ int Fields::addmeanprofile(Input *inputin, std::string fld, double * restrict da
   double proftemp[grid->kmax];
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   if(inputin->getProf(proftemp, fld, grid->kmax))
     return 1;
@@ -923,7 +923,7 @@ double Fields::calcmass(double * restrict s, double * restrict dz)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   double mass = 0;
 
@@ -951,7 +951,7 @@ double Fields::calcmom_2nd(double * restrict u, double * restrict v, double * re
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   double momentum;
   momentum = 0;
@@ -980,7 +980,7 @@ double Fields::calctke_2nd(double * restrict u, double * restrict v, double * re
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   double tke = 0;
 
@@ -1003,7 +1003,7 @@ double Fields::calctke_2nd(double * restrict u, double * restrict v, double * re
   return tke;
 }
 
-void Fields::execcross()
+void Fields::execCross()
 {
   int nerror = 0;
 

@@ -213,7 +213,7 @@ int Force::exec(double dt)
 }
 #endif
 
-int Force::settimedep()
+int Force::setTimeDep()
 {
   if(swtimedep == "0")
     return 0;
@@ -330,7 +330,7 @@ int Force::coriolis_2nd(double * const restrict ut, double * const restrict vt,
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   ugrid = grid->utrans;
   vgrid = grid->vtrans;
@@ -369,7 +369,7 @@ int Force::coriolis_4th(double * const restrict ut, double * const restrict vt,
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
 
   ugrid = grid->utrans;
   vgrid = grid->vtrans;

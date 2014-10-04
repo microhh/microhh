@@ -254,7 +254,7 @@ void ThermoMoist::exec()
 }
 #endif
 
-void ThermoMoist::getMask(Field3d *mfield, Field3d *mfieldh, mask *m)
+void ThermoMoist::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if(m->name == "ql")
   {
@@ -412,7 +412,7 @@ int ThermoMoist::calcmaskqlcore(double * restrict mask, double * restrict maskh,
   return 0;
 }
 
-void ThermoMoist::execStats(mask *m)
+void ThermoMoist::execStats(Mask *m)
 {
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
@@ -548,7 +548,7 @@ bool ThermoMoist::checkThermoField(std::string name)
 #ifndef USECUDA
 void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
-  const int kk = grid->icells*grid->jcells;
+  const int kk = grid->ijcells;
   const int kcells = grid->kcells;
 
   // BvS: getThermoField() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
@@ -703,7 +703,7 @@ int ThermoMoist::calcbuoyancytend_2nd(double * restrict wt, double * restrict s,
   int ijk,jj,kk,ij;
   double tl, exnh;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -754,8 +754,8 @@ int ThermoMoist::calcbuoyancytend_4th(double * restrict wt, double * restrict s,
   double tl, exnh;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
@@ -801,7 +801,7 @@ int ThermoMoist::calcbuoyancy(double * restrict b, double * restrict s, double *
   int ijk,jj,kk,ij;
   double tl, ex;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; k++)
   {
@@ -845,7 +845,7 @@ int ThermoMoist::calcqlfield(double * restrict ql, double * restrict s, double *
   double ex;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   // Fill ghost cells with zeros to prevent problems in calculating ql or qlcore masks 
   for(int k=0; k<grid->kstart; k++)
@@ -889,7 +889,7 @@ int ThermoMoist::calcN2(double * restrict N2, double * restrict s, double * rest
 {
   int ijk,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -910,7 +910,7 @@ int ThermoMoist::calcbuoyancybot(double * restrict b , double * restrict bbot,
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
 
   // double thvref = thvs;

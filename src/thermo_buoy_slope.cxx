@@ -101,7 +101,7 @@ int ThermoBuoySlope::calcbuoyancy(double * restrict b, double * restrict s)
   int ijk,jj,kk;
   double ql;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -120,7 +120,7 @@ int ThermoBuoySlope::calcbuoyancybot(double * restrict b , double * restrict bbo
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
 
   for(int j=0; j<grid->jcells; ++j)

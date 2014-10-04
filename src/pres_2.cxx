@@ -155,7 +155,7 @@ void Pres2::input(double * restrict p,
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   jjp = grid->imax;
   kkp = grid->imax*grid->jmax;
@@ -267,7 +267,7 @@ void Pres2::solve(double * restrict p, double * restrict work3d, double * restri
 
   int ijkp,jjp,kkp;
   jjp = grid->icells;
-  kkp = grid->icells*grid->jcells;
+  kkp = grid->ijcells;
 
   // put the pressure back onto the original grid including ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -302,7 +302,7 @@ void Pres2::output(double * restrict ut, double * restrict vt, double * restrict
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -398,7 +398,7 @@ double Pres2::calcDivergence(double * restrict u, double * restrict v, double * 
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;

@@ -30,7 +30,7 @@
 // forward declaration to avoid circular dependency
 class Master;
 
-typedef std::map<std::string, std::vector<double> > datamap;
+typedef std::map<std::string, std::vector<double> > DataMap;
 
 class Input
 {
@@ -58,13 +58,14 @@ class Input
     int getProf(double *, std::string, int size);
     int getTime(double **, std::vector<double> *, std::string);
     int getTimeProf(double **, std::vector<double> *, std::string, int);
-    int printUnused();
+
+    void printUnused();
 
   private:
     Master *master;
 
-    int readinifile();
-    int readdatafile(datamap *, std::string, bool);
+    int readIniFile();
+    int readDataFile(DataMap *, std::string, bool);
 
     template <class valuetype>
     int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);
@@ -83,17 +84,17 @@ class Input
     int checkList(std::vector<double> *     , std::string, std::string, std::string el="default");
     int checkList(std::vector<std::string> *, std::string, std::string, std::string el="default");
 
-    struct inputtype
+    struct InputType
     {
       std::string data;
       bool isused;
     };
-    typedef std::map<std::string, inputtype> inputmap1d;
-    typedef std::map<std::string, inputmap1d> inputmap2d;
-    typedef std::map<std::string, inputmap2d> inputmap;
-    inputmap inputlist;
-    datamap proflist;
-    datamap timelist;
+    typedef std::map<std::string, InputType > InputMap1d;
+    typedef std::map<std::string, InputMap1d> InputMap2d;
+    typedef std::map<std::string, InputMap2d> InputMap;
+    InputMap inputlist;
+    DataMap proflist;
+    DataMap timelist;
     // std::vector<std::string> varnames;
     // std::vector<double> varvalues;
     std::string isused;

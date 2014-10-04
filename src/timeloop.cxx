@@ -220,7 +220,7 @@ int Timeloop::exec()
 }
 #endif
 
-double Timeloop::getsubdt()
+double Timeloop::getSubTimeStep()
 {
   double subdt = 0.;
   if(rkorder == 3)
@@ -258,7 +258,7 @@ int Timeloop::rk3(double * restrict a, double * restrict at, double dt)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
@@ -304,7 +304,7 @@ int Timeloop::rk4(double * restrict a, double * restrict at, double dt)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
@@ -338,8 +338,10 @@ bool Timeloop::inSubStep()
     return false;
 }
 
-bool Timeloop::inStatsStep()
+bool Timeloop::isStatsStep()
 {
+  // In case we are not in a substep and not at the first iteration
+  // after a restart, we can could do statistics.
   if(!inSubStep() && !((iteration > 0) && (itime == istarttime)))
     return true;
   else

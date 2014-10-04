@@ -86,7 +86,7 @@ double DiffSmag2::getdn(double dt)
 int DiffSmag2::execViscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
-  Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
+  BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
 
   strain2(fields->sd["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data,
@@ -148,7 +148,7 @@ int DiffSmag2::strain2(double * restrict strain2,
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
 
   dxi = 1./grid->dx;
@@ -228,7 +228,7 @@ int DiffSmag2::evisc(double * restrict evisc,
   double RitPrratio;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
 
   dx = grid->dx;
@@ -296,7 +296,7 @@ int DiffSmag2::eviscNeutral(double * restrict evisc,
   double RitPrratio;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
 
   dx = grid->dx;
@@ -335,7 +335,7 @@ int DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restric
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
   kend   = grid->kend;
 
@@ -421,7 +421,7 @@ int DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restric
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
   kend   = grid->kend;
 
@@ -507,7 +507,7 @@ int DiffSmag2::diffw(double * restrict wt, double * restrict u, double * restric
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -545,7 +545,7 @@ int DiffSmag2::diffc(double * restrict at, double * restrict a, double * restric
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
   kend   = grid->kend;
 
@@ -629,7 +629,7 @@ double DiffSmag2::calcdnmul(double * restrict evisc, double * restrict dzi, doub
   double dxidxi,dyidyi;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxidxi = 1./(grid->dx * grid->dx);
   dyidyi = 1./(grid->dy * grid->dy);

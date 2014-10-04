@@ -67,7 +67,7 @@ Stats::~Stats()
   delete[] nmaskh;
 
   // delete the profiles
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     delete it->second.dataFile;
     for(profmap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
@@ -102,10 +102,10 @@ void Stats::create(int n)
 
   int nerror = 0;
 
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create a NetCDF file for the statistics
     if(master->mpiid == 0)
@@ -198,10 +198,10 @@ int Stats::exec(int iteration, double time, unsigned long itime)
   if(itime % isampletime != 0)
     return 0;
 
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // put the data into the NetCDF file
     if(master->mpiid == 0)
@@ -241,10 +241,10 @@ int Stats::addprof(std::string name, std::string longname, std::string unit, std
   int nerror = 0;
 
   // add the profile to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
@@ -278,10 +278,10 @@ int Stats::addfixedprof(std::string name, std::string longname, std::string unit
   int nerror = 0;
 
   // add the profile to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
     NcVar *var;
@@ -310,10 +310,10 @@ int Stats::addtseries(std::string name, std::string longname, std::string unit)
   int nerror = 0;
 
   // add the series to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
@@ -331,7 +331,7 @@ int Stats::addtseries(std::string name, std::string longname, std::string unit)
   return nerror;
 }
 
-int Stats::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
+int Stats::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   calcmask(mfield->data, mfieldh->data, mfieldh->databot,
            nmask, nmaskh, &nmaskbot);
@@ -581,7 +581,7 @@ int Stats::calccount(double * restrict data, double * restrict prof, double thre
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; ++k)
   {
@@ -650,7 +650,7 @@ int Stats::calcmoment(double * restrict data, double * restrict datamean, double
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   for(int k=grid->kstart; k<grid->kend+a; ++k)
   {
@@ -714,7 +714,7 @@ int Stats::calcflux_2nd(double * restrict data, double * restrict w, double * re
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -771,12 +771,12 @@ int Stats::calcflux_2nd(double * restrict data, double * restrict datamean, doub
 
   if(loc[0] == 1)
   {
-    grid->interpolate2nd(tmp1, w, wloc, uwloc);
+    grid->interpolate_2nd(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
   else if(loc[1] == 1)
   {
-    grid->interpolate2nd(tmp1, w, wloc, vwloc);
+    grid->interpolate_2nd(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
 
@@ -827,12 +827,12 @@ int Stats::calcflux_4th(double * restrict data, double * restrict w, double * re
 
   if(loc[0] == 1)
   {
-    grid->interpolate4th(tmp1, w, wloc, uwloc);
+    grid->interpolate_4th(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
   else if(loc[1] == 1)
   {
-    grid->interpolate4th(tmp1, w, wloc, vwloc);
+    grid->interpolate_4th(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
  
@@ -867,7 +867,7 @@ int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double *
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -1153,7 +1153,7 @@ int Stats::calcpath(double * restrict data, double * restrict maskbot, int * res
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   int kstart = grid->kstart;
 
   *path = 0.;
@@ -1188,7 +1188,7 @@ int Stats::calccover(double * restrict data, double * restrict maskbot, int * re
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   int kstart = grid->kstart;
 
   *cover = 0.;

@@ -32,7 +32,7 @@ class Input;
 class Model;
 class Grid;
 class Stats;
-struct mask;
+struct Mask;
 
 typedef std::map<std::string, Field3d *> fieldmap;
 
@@ -47,8 +47,8 @@ class Fields
     void create(Input *); ///< Initialization of the fields (random perturbations, vortices)  
 
     int exec();
-    int getmask(Field3d *, Field3d *, mask *);
-    int execstats(mask *);
+    int getMask(Field3d *, Field3d *, Mask *);
+    int execStats(Mask *);
 
     int initmomfld(Field3d*&, Field3d*&, std::string, std::string, std::string);
     int initpfld(std::string, std::string, std::string);
@@ -64,7 +64,7 @@ class Fields
 
     int setcalcprofs(bool);
 
-    void execcross();
+    void execCross();
 
     Field3d *u; ///< Field3d instance of x velocity component
     Field3d *v; ///< Field3d instance of y velocity component

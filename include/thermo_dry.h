@@ -46,7 +46,7 @@ class ThermoDry : public Thermo
     virtual void init();
     virtual void create(Input *);
     virtual void exec();                ///< Add the tendencies belonging to the buoyancy.
-    virtual void execStats(mask *);
+    virtual void execStats(Mask *);
     virtual void execCross();
 
     virtual bool checkThermoField(std::string name);

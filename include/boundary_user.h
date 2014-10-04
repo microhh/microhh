@@ -20,28 +20,28 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_USER
-#define BOUNDARY_USER
+#ifndef BOUNDARYUSER
+#define BOUNDARYUSER
 
 #include "boundary.h"
 
 // forward declaration to reduce compilation time
 class Model;
 
-class Boundary_user : public Boundary
+class BoundaryUser : public Boundary
 {
   public:
-    Boundary_user(Model *, Input *);
+    BoundaryUser(Model *, Input *);
 
     void init(Input *);
 
-    void setvalues();
+    void setValues();
 
   private:
-    int setbc_patch(double *, double *, double *, int, double, double, double,
-                    double *, double, double); ///< Set the values for the boundary fields.
+    void setbc_patch(double *, double *, double *, int, double, double, double,
+                     double *, double, double); ///< Set the values for the boundary fields.
 
-    // patch type
+    // Patch properties
     int    patch_dim;
     double patch_xh;
     double patch_xr;

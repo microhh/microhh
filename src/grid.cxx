@@ -386,7 +386,7 @@ void Grid::calculate()
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   int ijk,ii,jj,kk,iih,jjh;
 
@@ -418,7 +418,7 @@ void Grid::interpolate2nd(double * restrict out, double * restrict in, const int
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   using namespace fd::o4;
 

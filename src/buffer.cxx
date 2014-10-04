@@ -149,7 +149,7 @@ int Buffer::buffer(double * const restrict at, const double * const restrict a,
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   double sigmaz;
   double zsizebuf;

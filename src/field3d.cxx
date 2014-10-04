@@ -77,13 +77,13 @@ int Field3d::init()
   data = new double[grid->ncells];
 
   // allocate the boundary cells
-  databot = new double[grid->icells*grid->jcells];
-  datatop = new double[grid->icells*grid->jcells];
+  databot = new double[grid->ijcells];
+  datatop = new double[grid->ijcells];
   datamean = new double[grid->kcells];
-  datagradbot = new double[grid->icells*grid->jcells];
-  datagradtop = new double[grid->icells*grid->jcells];
-  datafluxbot = new double[grid->icells*grid->jcells];
-  datafluxtop = new double[grid->icells*grid->jcells];
+  datagradbot = new double[grid->ijcells];
+  datagradtop = new double[grid->ijcells];
+  datafluxbot = new double[grid->ijcells];
+  datafluxtop = new double[grid->ijcells];
 
   // set all values to zero
   for(int n=0; n<grid->ncells; n++)
@@ -92,7 +92,7 @@ int Field3d::init()
   for(int n=0; n<grid->kcells; n++)
     datamean[n] = 0.;
 
-  for(int n=0; n<grid->icells*grid->jcells; n++)
+  for(int n=0; n<grid->ijcells; n++)
   {
     databot    [n] = 0.;
     datatop    [n] = 0.;
@@ -115,7 +115,7 @@ int Field3d::checkfornan()
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
