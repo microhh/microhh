@@ -20,18 +20,18 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_USER
-#define BOUNDARY_USER
+#ifndef BOUNDARYUSER
+#define BOUNDARYUSER
 
 #include "boundary.h"
 
 // forward declaration to reduce compilation time
 class Model;
 
-class Boundary_user : public Boundary
+class BoundaryUser : public Boundary
 {
   public:
-    Boundary_user(Model *, Input *);
+    BoundaryUser(Model *, Input *);
 
     void init(Input *);
 

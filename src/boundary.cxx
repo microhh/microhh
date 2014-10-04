@@ -57,7 +57,7 @@ Boundary::~Boundary()
     delete[] it->second;
 }
 
-int Boundary::processbcs(Input *inputin)
+void Boundary::processbcs(Input *inputin)
 {
   int nerror = 0;
 
@@ -132,13 +132,16 @@ int Boundary::processbcs(Input *inputin)
   nerror += inputin->getItem(&swtimedep  , "boundary", "swtimedep"  , "", "0");
   nerror += inputin->getList(&timedeplist, "boundary", "timedeplist", "");
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
 void Boundary::init(Input *inputin)
 {
+  // Read the boundary information from the ini files, it throws at error.
+  processbcs(inputin);
+
   int nerror = 0;
-  nerror += processbcs(inputin);
 
   // there is no option (yet) for prescribing ustar without surface model
   if(mbcbot == UstarType || mbctop == UstarType)
@@ -153,13 +156,10 @@ void Boundary::init(Input *inputin)
 
 void Boundary::create(Input *inputin)
 {
-  int nerror = 0;
-  nerror += processtimedep(inputin);
-  if(nerror)
-    throw 1;
+  processtimedep(inputin);
 }
 
-int Boundary::processtimedep(Input *inputin)
+void Boundary::processtimedep(Input *inputin)
 {
   int nerror = 0;
 
@@ -188,13 +188,14 @@ int Boundary::processtimedep(Input *inputin)
       master->printWarning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int Boundary::setTimeDep()
+void Boundary::setTimeDep()
 {
   if(swtimedep == "0")
-    return 0;
+    return;
 
   // first find the index for the time entries
   unsigned int index0 = 0;
@@ -250,8 +251,6 @@ int Boundary::setTimeDep()
       #endif
     }
   }
-
-  return 0;
 }
 
 void Boundary::save(int iotime)
@@ -278,7 +277,7 @@ void Boundary::setValues()
 }
 
 #ifndef USECUDA
-int Boundary::exec()
+void Boundary::exec()
 {
   // cyclic boundary conditions, do this before the bottom BC's
   grid->boundaryCyclic(fields->u->data);
@@ -322,8 +321,6 @@ int Boundary::exec()
       setgctop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
     }
   }
-
-  return 0;
 }
 #endif
 
@@ -331,14 +328,12 @@ void Boundary::execCross()
 {
 }
 
-int Boundary::execStats(Mask *m)
+void Boundary::execStats(Mask *m)
 {
-  return 0;
 }
 
-int Boundary::bcvalues()
+void Boundary::bcvalues()
 {
-  return 0;
 }
 
 Boundary* Boundary::factory(Master *masterin, Input *inputin, Model *modelin)
@@ -348,9 +343,9 @@ Boundary* Boundary::factory(Master *masterin, Input *inputin, Model *modelin)
     return 0;
 
   if(swboundary == "surface")
-    return new Boundary_surface(modelin, inputin);
+    return new BoundarySurface(modelin, inputin);
   else if(swboundary == "user")
-    return new Boundary_user(modelin, inputin);
+    return new BoundaryUser(modelin, inputin);
   else if(swboundary == "default")
     return new Boundary(modelin, inputin);
   else
@@ -397,8 +392,6 @@ int Boundary::setbc(double * restrict a, double * restrict agrad, double * restr
         agrad[ij] = -aval/visc;
       }
   }
-
-  return 0;
 }
 
 // BOUNDARY CONDITIONS THAT CONTAIN A 2D PATTERN
@@ -593,19 +586,16 @@ int Boundary::setgctopw_4th(double * restrict w)
   return 0;
 }
 
-int Boundary::prepareDevice()
+void Boundary::prepareDevice()
 {
-  return 0;
 }
 
-int Boundary::forwardDevice()
+void Boundary::forwardDevice()
 {
-  return 0;
 }
 
-int Boundary::backwardDevice()
+void Boundary::backwardDevice()
 {
-  return 0;
 }
 
 
