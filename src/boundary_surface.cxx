@@ -177,7 +177,7 @@ void Boundary_surface::init(Input *inputin)
   }
 }
 
-void Boundary_surface::execcross()
+void Boundary_surface::execCross()
 {
   int nerror = 0;
 
@@ -193,7 +193,7 @@ void Boundary_surface::execcross()
     throw 1;
 }
 
-int Boundary_surface::execstats(mask *m)
+int Boundary_surface::execStats(mask *m)
 {
   stats->calcmean2d(&m->tseries["obuk"].data , obuk , 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
   stats->calcmean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
@@ -233,7 +233,7 @@ void Boundary_surface::load(int iotime)
   grid->boundaryCyclic2d(obuk);
 }
 
-void Boundary_surface::setvalues()
+void Boundary_surface::setValues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);

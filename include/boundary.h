@@ -45,14 +45,14 @@ class Boundary
     virtual void init(Input *);   ///< Initialize the fields.
     virtual void create(Input *); ///< Create the fields.
     virtual int settimedep();
-    virtual void setvalues();      ///< Set all 2d fields to the prober BC value.
+    virtual void setValues();      ///< Set all 2d fields to the prober BC value.
 
     virtual void save(int); ///< Save boundary conditions related fields for restarts.
     virtual void load(int); ///< Load boundary conditions related fields for restarts.
 
     int exec();              ///< Update the boundary conditions.
-    virtual void execcross(); ///< Execute cross sections of surface
-    virtual int execstats(mask *); ///< Execute statistics of surface
+    virtual void execCross(); ///< Execute cross sections of surface
+    virtual int execStats(mask *); ///< Execute statistics of surface
 
     enum BoundaryType {DirichletType, NeumannType, FluxType, UstarType};
 

@@ -197,7 +197,7 @@ void Model::load()
   budget->create();
 
   // end with modules that require all fields to be present
-  boundary->setvalues();
+  boundary->setValues();
   diff    ->setValues();
   pres    ->setValues();
 }
@@ -243,7 +243,7 @@ void Model::exec()
   // get the viscosity to be used in diffusion
   diff->execViscosity();
 
-  settimestep();
+  setTimeStep();
 
   // print the initial information
   printOutputFile(!timeloop->loop);
@@ -252,7 +252,7 @@ void Model::exec()
   while(true)
   {
     // determine the time step
-    settimestep();
+    setTimeStep();
 
     // advection
     advec->exec();
@@ -280,7 +280,7 @@ void Model::exec()
 
         // always process the default mask
         stats->getmask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
-        calStats("default");
+        calcStats("default");
 
         // work through the potential masks for the statistics
         for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -288,12 +288,12 @@ void Model::exec()
           if(*it == "wplus" || *it == "wmin")
           {
             fields->getmask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            calStats(*it);
+            calcStats(*it);
           }
           else if(*it == "ql" || *it == "qlcore")
           {
             thermo->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            calStats(*it);
+            calcStats(*it);
           }
         }
 
@@ -308,9 +308,9 @@ void Model::exec()
         boundary->backwardDevice();
 #endif      
       
-        fields  ->execcross();
+        fields  ->execCross();
         thermo  ->execCross();
-        boundary->execcross();
+        boundary->execCross();
       }
     }
 
@@ -379,12 +379,12 @@ void Model::exec()
 #endif
 }
 
-void Model::calStats(std::string maskname)
+void Model::calcStats(std::string maskname)
 {
-  fields  ->execstats(&stats->masks[maskname]);
+  fields  ->execStats(&stats->masks[maskname]);
   thermo  ->execStats(&stats->masks[maskname]);
-  budget  ->execstats(&stats->masks[maskname]);
-  boundary->execstats(&stats->masks[maskname]);
+  budget  ->execStats(&stats->masks[maskname]);
+  boundary->execStats(&stats->masks[maskname]);
 }
 
 void Model::printOutputFile(bool doclose)
@@ -442,7 +442,7 @@ void Model::printOutputFile(bool doclose)
   }
 }
 
-void Model::settimestep()
+void Model::setTimeStep()
 {
   // Only set the time step if the model is not in a substep
   if(timeloop->inSubStep())

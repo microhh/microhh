@@ -142,7 +142,7 @@ void Budget::create()
   }
 }
 
-int Budget::execstats(mask *m)
+int Budget::execStats(mask *m)
 {
   if(swbudget == "0")
     return 0;
@@ -290,8 +290,8 @@ int Budget::calctkebudget(double * restrict u, double * restrict v, double * res
   const int wxloc[3] = {1,0,1};
   const int wyloc[3] = {0,1,1};
 
-  grid->interpolate4th(wx, w, wloc, wxloc);
-  grid->interpolate4th(wy, w, wloc, wyloc);
+  grid->interpolate_4th(wx, w, wloc, wxloc);
+  grid->interpolate_4th(wy, w, wloc, wyloc);
 
   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
   int kstart,kend;

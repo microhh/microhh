@@ -39,12 +39,12 @@ class Boundary_surface : public Boundary
 
     void init(Input *);
     void create(Input *);
-    void setvalues();
+    void setValues();
 
     int exec();
 
-    void execcross(); ///< Execute cross sections of surface
-    int execstats(mask *); ///< Execute statistics of surface
+    void execCross(); ///< Execute cross sections of surface
+    int execStats(mask *); ///< Execute statistics of surface
 
     void save(int);
     void load(int);

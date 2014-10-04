@@ -771,12 +771,12 @@ int Stats::calcflux_2nd(double * restrict data, double * restrict datamean, doub
 
   if(loc[0] == 1)
   {
-    grid->interpolate2nd(tmp1, w, wloc, uwloc);
+    grid->interpolate_2nd(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
   else if(loc[1] == 1)
   {
-    grid->interpolate2nd(tmp1, w, wloc, vwloc);
+    grid->interpolate_2nd(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
 
@@ -827,12 +827,12 @@ int Stats::calcflux_4th(double * restrict data, double * restrict w, double * re
 
   if(loc[0] == 1)
   {
-    grid->interpolate4th(tmp1, w, wloc, uwloc);
+    grid->interpolate_4th(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
   else if(loc[1] == 1)
   {
-    grid->interpolate4th(tmp1, w, wloc, vwloc);
+    grid->interpolate_4th(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
  

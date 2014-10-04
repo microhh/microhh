@@ -51,7 +51,7 @@ void Boundary_user::init(Input *inputin)
     throw 1;
 }
 
-void Boundary_user::setvalues()
+void Boundary_user::setValues()
 {
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
   setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);

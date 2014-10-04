@@ -262,7 +262,7 @@ void Boundary::load(int iotime)
 {
 }
 
-void Boundary::setvalues()
+void Boundary::setValues()
 {
   setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
   setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
@@ -327,11 +327,11 @@ int Boundary::exec()
 }
 #endif
 
-void Boundary::execcross()
+void Boundary::execCross()
 {
 }
 
-int Boundary::execstats(mask *m)
+int Boundary::execStats(mask *m)
 {
   return 0;
 }

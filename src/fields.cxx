@@ -379,7 +379,7 @@ int Fields::calcmaskwmin(double * restrict mask, double * restrict maskh, double
   return 0;
 }
 
-int Fields::execstats(mask *m)
+int Fields::execStats(mask *m)
 {
   // define locations
   const int uloc[] = {1,0,0};
@@ -407,7 +407,7 @@ int Fields::execstats(mask *m)
 
   // calculate the stats on the u location
   // interpolate the mask horizontally onto the u coordinate
-  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
   stats->calcmean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
   stats->calcmean(umodel            , u->data, NO_OFFSET   , uloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
@@ -420,7 +420,7 @@ int Fields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
@@ -449,7 +449,7 @@ int Fields::execstats(mask *m)
   }
 
   // calculate the stats on the v location
-  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
   stats->calcmean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
   stats->calcmean(vmodel            , v->data, NO_OFFSET   , vloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
@@ -462,7 +462,7 @@ int Fields::execstats(mask *m)
   }
 
   // interpolate the mask on half level horizontally onto the u coordinate
-  grid->interpolate2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
+  grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
   if(grid->swspatialorder == "2")
   {
     stats->calcgrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
@@ -1003,7 +1003,7 @@ double Fields::calctke_2nd(double * restrict u, double * restrict v, double * re
   return tke;
 }
 
-void Fields::execcross()
+void Fields::execCross()
 {
   int nerror = 0;
 

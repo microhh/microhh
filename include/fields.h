@@ -48,7 +48,7 @@ class Fields
 
     int exec();
     int getmask(Field3d *, Field3d *, mask *);
-    int execstats(mask *);
+    int execStats(mask *);
 
     int initmomfld(Field3d*&, Field3d*&, std::string, std::string, std::string);
     int initpfld(std::string, std::string, std::string);
@@ -64,7 +64,7 @@ class Fields
 
     int setcalcprofs(bool);
 
-    void execcross();
+    void execCross();
 
     Field3d *u; ///< Field3d instance of x velocity component
     Field3d *v; ///< Field3d instance of y velocity component

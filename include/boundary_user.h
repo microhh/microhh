@@ -35,7 +35,7 @@ class Boundary_user : public Boundary
 
     void init(Input *);
 
-    void setvalues();
+    void setValues();
 
   private:
     int setbc_patch(double *, double *, double *, int, double, double, double,
