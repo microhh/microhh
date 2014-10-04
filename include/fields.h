@@ -40,11 +40,11 @@ class Fields
 {
   public:
     // functions
-    Fields(Model *, Input *);
-    ~Fields();
+    Fields(Model *, Input *); ///< Constructor of the fields class.
+    ~Fields();                ///< Destructor of the fields class
 
-    void init();
-    void create(Input *);
+    void init();          ///< Initialization of the field arrays
+    void create(Input *); ///< Initialization of the fields (random perturbations, vortices)  
 
     int exec();
     int getmask(Field3d *, Field3d *, mask *);
@@ -66,54 +66,52 @@ class Fields
 
     void execcross();
 
-    // 3d fields for momentum
-    Field3d *u;
-    Field3d *v;
-    Field3d *w;
+    Field3d *u; ///< Field3d instance of x velocity component
+    Field3d *v; ///< Field3d instance of y velocity component
+    Field3d *w; ///< Field3d instance of vertical velocity component
 
-    Field3d *ut;
-    Field3d *vt;
-    Field3d *wt;
+    Field3d *ut; ///< Field3d instance of x velocity component tendency 
+    Field3d *vt; ///< Field3d instance of y velocity component tendency
+    Field3d *wt; ///< Field3d instance of vertical velocity component tendency 
 
-    // maps of 3d fields
-    fieldmap a;
-    fieldmap ap;
-    fieldmap at;
+    fieldmap a;  ///< Map containing all field3d instances
+    fieldmap ap; ///< Map containing all prognostic field3d instances
+    fieldmap at; ///< Map containing all tendency field3d instances
 
-    fieldmap mp;
-    fieldmap mt;
+    fieldmap mp; ///< Map containing all momentum field3d instances
+    fieldmap mt; ///< Map containing all momentum tendency field3d instances
 
-    fieldmap sd;
-    fieldmap sp;
-    fieldmap st;
+    fieldmap sd; ///< Map containing all diagnostic scalar field3d instances
+    fieldmap sp; ///< Map containing all prognostic scalar field3d instances
+    fieldmap st; ///< Map containing all prognostic scalar tendency field3d instances
 
-    fieldmap atmp;
+    fieldmap atmp; ///< fieldmap containing all temporary field3d instances
 
-    // reference density
-    double *rhoref;
-    double *rhorefh;
+    double *rhoref;  ///< Reference density at full levels 
+    double *rhorefh; ///< Reference density at half levels
 
     // TODO remove these to and bring them to diffusion model
     double visc;
 
-    // GPU functions and variables
+    /* 
+     *Device (GPU) functions and variables
+     */
     enum OffsetType {Offset, NoOffset};
 
-    int prepareDevice();
-    int forwardDevice();
-    void forward3DFieldDevice (double *, double *, OffsetType);
-    void forward2DFieldDevice (double *, double *, OffsetType);
-    void forward1DFieldDevice (double *, double *, int);
-    void backward3DFieldDevice(double *, double *, OffsetType);
-    void backward2DFieldDevice(double *, double *, OffsetType);
-    void backward1DFieldDevice(double *, double *, int);
-    void forwardField3dDevice(Field3d *);
-    void backwardField3dDevice(Field3d *);
-    int backwardDevice();
-    int clearDevice();
+    void prepareDevice();  ///< Allocation of all fields at device 
+    void forwardDevice();  ///< Copy of all fields from host to device
+    void backwardDevice(); ///< Copy of all fields required for statistics and output from device to host
+    void clearDevice();    ///< Deallocation of all fields at device
 
-    double *rhoref_g;
-    double *rhorefh_g;
+    void forward3DFieldDevice (double *, double *, OffsetType); ///< Copy of a single 3d field from host to device
+    void forward2DFieldDevice (double *, double *, OffsetType); ///< Copy of a single 2d field from host to device
+    void forward1DFieldDevice (double *, double *, int);        ///< Copy of a single array from host to device
+    void backward3DFieldDevice(double *, double *, OffsetType); ///< Copy of a single 3d field from device to host
+    void backward2DFieldDevice(double *, double *, OffsetType); ///< Copy of a single 2d field from device to host
+    void backward1DFieldDevice(double *, double *, int);        ///< Copy of a single array from device to host
+
+    double *rhoref_g;  ///< Reference density at full levels at device
+    double *rhorefh_g; ///< Reference density at half levels at device
     
   private:
     // variables
@@ -158,5 +156,12 @@ class Fields
     // statistics
     double *umodel;
     double *vmodel;
+
+    /* 
+     *Device (GPU) functions and variables
+     */
+    void forwardField3dDevice(Field3d *);  ///< Copy of a complete Field3d instance from host to device
+    void backwardField3dDevice(Field3d *); ///< Copy of a complete Field3d instance from device to host
+
 };
 #endif
