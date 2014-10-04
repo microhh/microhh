@@ -34,7 +34,7 @@ class Grid;
 class Stats;
 struct Mask;
 
-typedef std::map<std::string, Field3d *> fieldmap;
+typedef std::map<std::string, Field3d *> FieldMap;
 
 class Fields
 {
@@ -50,10 +50,10 @@ class Fields
     int getMask(Field3d *, Field3d *, Mask *);
     int execStats(Mask *);
 
-    int initmomfld(Field3d*&, Field3d*&, std::string, std::string, std::string);
-    int initpfld(std::string, std::string, std::string);
-    int initdfld(std::string, std::string, std::string);
-    int inittmpfld(std::string, std::string, std::string);
+    int initMomentumField  (Field3d*&, Field3d*&, std::string, std::string, std::string);
+    int initPrognosticField(std::string, std::string, std::string);
+    int initDiagnosticField(std::string, std::string, std::string);
+    int initTmpField       (std::string, std::string, std::string);
     
     void save(int);
     void load(int);
@@ -74,18 +74,18 @@ class Fields
     Field3d *vt; ///< Field3d instance of y velocity component tendency
     Field3d *wt; ///< Field3d instance of vertical velocity component tendency 
 
-    fieldmap a;  ///< Map containing all field3d instances
-    fieldmap ap; ///< Map containing all prognostic field3d instances
-    fieldmap at; ///< Map containing all tendency field3d instances
+    FieldMap a;  ///< Map containing all field3d instances
+    FieldMap ap; ///< Map containing all prognostic field3d instances
+    FieldMap at; ///< Map containing all tendency field3d instances
 
-    fieldmap mp; ///< Map containing all momentum field3d instances
-    fieldmap mt; ///< Map containing all momentum tendency field3d instances
+    FieldMap mp; ///< Map containing all momentum field3d instances
+    FieldMap mt; ///< Map containing all momentum tendency field3d instances
 
-    fieldmap sd; ///< Map containing all diagnostic scalar field3d instances
-    fieldmap sp; ///< Map containing all prognostic scalar field3d instances
-    fieldmap st; ///< Map containing all prognostic scalar tendency field3d instances
+    FieldMap sd; ///< Map containing all diagnostic scalar field3d instances
+    FieldMap sp; ///< Map containing all prognostic scalar field3d instances
+    FieldMap st; ///< Map containing all prognostic scalar tendency field3d instances
 
-    fieldmap atmp; ///< fieldmap containing all temporary field3d instances
+    FieldMap atmp; ///< Map containing all temporary field3d instances
 
     double *rhoref;  ///< Reference density at full levels 
     double *rhorefh; ///< Reference density at half levels

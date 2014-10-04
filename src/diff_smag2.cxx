@@ -42,7 +42,7 @@ DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
   nerror += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23 );
   nerror += inputin->getItem(&tPr  , "diff", "tPr"  , "", 1./3.);
 
-  nerror += fields->initdfld("evisc", "Eddy viscosity", "m2 s-1");
+  nerror += fields->initDiagnosticField("evisc", "Eddy viscosity", "m2 s-1");
 
   if(nerror)
     throw 1;
@@ -130,7 +130,7 @@ int DiffSmag2::exec()
   diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
   diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->rhoref, fields->rhorefh);
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
     diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
 
   return 0;

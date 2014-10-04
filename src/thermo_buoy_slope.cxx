@@ -42,7 +42,7 @@ ThermoBuoySlope::ThermoBuoySlope(Model *modelin, Input *inputin) : Thermo(modeli
   nerror += inputin->getItem(&alpha, "thermo", "alpha", "");
   nerror += inputin->getItem(&n2   , "thermo", "n2"   , "");
 
-  nerror += fields->initpfld("b", "Buoyancy", "m s-2");
+  nerror += fields->initPrognosticField("b", "Buoyancy", "m s-2");
   nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
 
   if(grid->swspatialorder == "2")

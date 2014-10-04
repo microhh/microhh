@@ -93,7 +93,7 @@ void Boundary::processbcs(Input *inputin)
   }
 
   // read the boundaries per field
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     sbc[it->first] = new field3dbc;
     nerror += inputin->getItem(&swbot, "boundary", "sbcbot", it->first);
@@ -169,7 +169,7 @@ void Boundary::processtimedep(Input *inputin)
     std::vector<std::string> tmplist = timedeplist;
 
     // see if there is data available for the surface boundary conditions
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       std::string name = "sbot[" + it->first + "]";
       if(std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end()) 
@@ -235,7 +235,7 @@ void Boundary::setTimeDep()
   }
 
   // process time dependent bcs for the surface fluxes
-  for(fieldmap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
+  for(FieldMap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
   {
     std::string name = "sbot[" + it1->first + "]";
     std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
@@ -269,7 +269,7 @@ void Boundary::setValues()
   setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
   setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
     setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
@@ -284,7 +284,7 @@ void Boundary::exec()
   grid->boundaryCyclic(fields->v->data);
   grid->boundaryCyclic(fields->w->data);
 
-  for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
     grid->boundaryCyclic(it->second->data);
 
   // calculate boundary values
@@ -298,7 +298,7 @@ void Boundary::exec()
     calcGhostCellsBot_2nd(fields->v->data, grid->dzh, mbcbot, fields->v->databot, fields->v->datagradbot);
     calcGhostCellsTop_2nd(fields->v->data, grid->dzh, mbctop, fields->v->datatop, fields->v->datagradtop);
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       calcGhostCellsBot_2nd(it->second->data, grid->dzh, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
       calcGhostCellsTop_2nd(it->second->data, grid->dzh, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
@@ -315,7 +315,7 @@ void Boundary::exec()
     calcGhostCellsBotw_4th(fields->w->data);
     calcGhostCellsTopw_4th(fields->w->data);
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       calcGhostCellsBot_4th(it->second->data, grid->z, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
       calcGhostCellsTop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);

@@ -60,9 +60,9 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   int nerror = 0;
   nerror += inputin->getItem(&pbot    , "thermo", "pbot"    , "");
 
-  nerror += fields->initpfld("s", "Liquid water potential temperature", "K");
+  nerror += fields->initPrognosticField("s", "Liquid water potential temperature", "K");
   nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
-  nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
+  nerror += fields->initPrognosticField("qt", "Total water mixing ratio", "kg kg-1");
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
 
   // Read list of cross sections

@@ -182,7 +182,7 @@ int Timeloop::exec()
 {
   if(rkorder == 3)
   {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
       rk3_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
 
     substep = (substep+1) % 3;
@@ -190,7 +190,7 @@ int Timeloop::exec()
 
   if(rkorder == 4)
   {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
       rk4_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
 
     substep = (substep+1) % 5;
@@ -202,7 +202,7 @@ int Timeloop::exec()
 {
   if(rkorder == 3)
   {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
       rk3(fields->ap[it->first]->data, it->second->data, dt);
 
     substep = (substep+1) % 3;
@@ -210,7 +210,7 @@ int Timeloop::exec()
 
   if(rkorder == 4)
   {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
       rk4(fields->ap[it->first]->data, it->second->data, dt);
 
     substep = (substep+1) % 5;

@@ -67,10 +67,10 @@ void Buffer::init()
   if(swbuffer == "1")
   {
     // allocate the buffer arrays
-    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
       bufferprofs[it->first] = new double[grid->kcells];
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       bufferprofs[it->first] = new double[grid->kcells];
   }
 }
@@ -96,7 +96,7 @@ void Buffer::create(Input *inputin)
     for(int k=0; k<grid->kcells; ++k)
       bufferprofs["w"][k] = 0.;
  
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       nerror += inputin->getProf(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
 
     // find the starting points
@@ -135,7 +135,7 @@ int Buffer::exec()
     buffer(fields->mt["v"]->data, fields->mp["v"]->data, bufferprofs["v"], grid->z );
     buffer(fields->mt["w"]->data, fields->mp["w"]->data, bufferprofs["w"], grid->zh);
  
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       buffer(fields->st[it->first]->data, it->second->data, bufferprofs[it->first], grid->z);
   }
 

@@ -54,7 +54,7 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 
   int nerror = 0;
 
-  nerror += fields->initpfld("th", "Potential Temperature", "K");
+  nerror += fields->initPrognosticField("th", "Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
 
   // Read list of cross sections

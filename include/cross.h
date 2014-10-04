@@ -73,7 +73,7 @@ class Cross
     std::vector<std::string> lngrad;
     std::vector<std::string> path;
 
-    int checkList(std::vector<std::string> *, fieldmap *, std::string crossname);
+    int checkList(std::vector<std::string> *, FieldMap *, std::string crossname);
     int checkSave(int, char *);
 };
 #endif

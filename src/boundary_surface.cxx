@@ -236,7 +236,7 @@ void BoundarySurface::setValues()
   setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
   setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
     setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
@@ -289,7 +289,7 @@ void BoundarySurface::bcvalues()
         fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
         grid->z[grid->kstart], mbcbot);
 
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     surfs(ustar, obuk, it->second->data,
           it->second->databot, it->second->datagradbot, it->second->datafluxbot,

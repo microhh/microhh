@@ -205,7 +205,7 @@ int Force::exec(double dt)
 
   if(swwls == "1")
   {
-    for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+    for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
       advecwls_2nd(it->second->data, fields->sp[it->first]->datamean, wls, grid->dzhi);
   }
 

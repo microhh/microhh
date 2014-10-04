@@ -67,7 +67,7 @@ Fields::Fields(Model *modelin, Input *inputin)
   // initialize the scalars
   for(std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
   {
-    if(initpfld(*it, *it, "-"))
+    if(initPrognosticField(*it, *it, "-"))
       throw 1;
     nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
@@ -76,14 +76,14 @@ Fields::Fields(Model *modelin, Input *inputin)
   nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
 
   // initialize the basic set of fields
-  nerror += initmomfld(u, ut, "u", "U velocity", "m s-1");
-  nerror += initmomfld(v, vt, "v", "V velocity", "m s-1");
-  nerror += initmomfld(w, wt, "w", "Vertical velocity", "m s-1");
-  nerror += initdfld("p", "Pressure", "Pa");
-  nerror += inittmpfld("tmp1", "", "");
-  nerror += inittmpfld("tmp2", "", "");
-  nerror += inittmpfld("tmp3", "", "");
-  nerror += inittmpfld("tmp4", "", "");
+  nerror += initMomentumField(u, ut, "u", "U velocity", "m s-1");
+  nerror += initMomentumField(v, vt, "v", "V velocity", "m s-1");
+  nerror += initMomentumField(w, wt, "w", "Vertical velocity", "m s-1");
+  nerror += initDiagnosticField("p", "Pressure", "Pa");
+  nerror += initTmpField("tmp1", "", "");
+  nerror += initTmpField("tmp2", "", "");
+  nerror += initTmpField("tmp3", "", "");
+  nerror += initTmpField("tmp4", "", "");
 
   if(nerror)
     throw 1;
@@ -93,27 +93,27 @@ Fields::~Fields()
 {
   // DEALLOCATE ALL THE FIELDS
   // deallocate the prognostic velocity fields
-  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
+  for(FieldMap::iterator it=mp.begin(); it!=mp.end(); ++it)
     delete it->second;
 
   // deallocate the velocity tendency fields
-  for(fieldmap::iterator it=mt.begin(); it!=mt.end(); ++it)
+  for(FieldMap::iterator it=mt.begin(); it!=mt.end(); ++it)
     delete it->second;
 
   // deallocate the prognostic scalar fields
-  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+  for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
     delete it->second;
 
   // deallocate the scalar tendency fields
-  for(fieldmap::iterator it=st.begin(); it!=st.end(); ++it)
+  for(FieldMap::iterator it=st.begin(); it!=st.end(); ++it)
     delete it->second;
 
   // deallocate the diagnostic scalars
-  for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
+  for(FieldMap::iterator it=sd.begin(); it!=sd.end(); ++it)
     delete it->second;
 
   // deallocate the tmp fields
-  for(fieldmap::iterator it=atmp.begin(); it!=atmp.end(); ++it)
+  for(FieldMap::iterator it=atmp.begin(); it!=atmp.end(); ++it)
     delete it->second;
 
   // delete the arrays
@@ -138,27 +138,27 @@ void Fields::init()
 
   // ALLOCATE ALL THE FIELDS
   // allocate the prognostic velocity fields
-  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
+  for(FieldMap::iterator it=mp.begin(); it!=mp.end(); ++it)
     nerror += it->second->init();
 
   // allocate the velocity tendency fields
-  for(fieldmap::iterator it=mt.begin(); it!=mt.end(); ++it)
+  for(FieldMap::iterator it=mt.begin(); it!=mt.end(); ++it)
     nerror += it->second->init();
 
   // allocate the prognostic scalar fields
-  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+  for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
     nerror += it->second->init();
 
   // allocate the scalar tendency fields
-  for(fieldmap::iterator it=st.begin(); it!=st.end(); ++it)
+  for(FieldMap::iterator it=st.begin(); it!=st.end(); ++it)
     nerror += it->second->init();
 
   // allocate the diagnostic scalars
-  for(fieldmap::iterator it=sd.begin(); it!=sd.end(); ++it)
+  for(FieldMap::iterator it=sd.begin(); it!=sd.end(); ++it)
     nerror += it->second->init();
 
   // allocate the tmp fields
-  for(fieldmap::iterator it=atmp.begin(); it!=atmp.end(); ++it)
+  for(FieldMap::iterator it=atmp.begin(); it!=atmp.end(); ++it)
     nerror += it->second->init();
 
   if(nerror > 0)
@@ -188,7 +188,7 @@ void Fields::init()
   }
 
   // Check different type of crosses and put them in their respective lists 
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
     checkaddcross(it->first, "",        &crosslist, &crosssimple);
     checkaddcross(it->first, "lngrad",  &crosslist, &crosslngrad);
@@ -198,7 +198,7 @@ void Fields::init()
     checkaddcross(it->first, "fluxtop", &crosslist, &crossfluxtop);
   }
 
-  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+  for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
     checkaddcross(it->first, "",        &crosslist, &crosssimple);
     checkaddcross(it->first, "lngrad",  &crosslist, &crosslngrad);
@@ -236,7 +236,7 @@ int Fields::exec()
   // calculate the means for the prognostic scalars
   if(calcprofs)
   {
-    for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+    for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcMean(it->second->datamean, it->second->data, grid->kcells);
   }
 
@@ -492,7 +492,7 @@ int Fields::execStats(Mask *m)
 
   // calculate stats for the prognostic scalars
   DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+  for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
     stats->calcMean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
     for(int n=2; n<5; ++n)
@@ -533,7 +533,7 @@ int Fields::execStats(Mask *m)
   // calculate the total fluxes
   stats->addFluxes(m->profs["uflux"].data, m->profs["uw"].data, m->profs["udiff"].data);
   stats->addFluxes(m->profs["vflux"].data, m->profs["vw"].data, m->profs["vdiff"].data);
-  for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+  for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
     stats->addFluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
 
   // other statistics
@@ -551,7 +551,7 @@ int Fields::setcalcprofs(bool sw)
   return 0;
 }
 
-int Fields::initmomfld(Field3d *&fld, Field3d *&fldt, std::string fldname, std::string longname, std::string unit)
+int Fields::initMomentumField(Field3d *&fld, Field3d *&fldt, std::string fldname, std::string longname, std::string unit)
 {
   if(mp.find(fldname)!=mp.end())
   {
@@ -581,7 +581,7 @@ int Fields::initmomfld(Field3d *&fld, Field3d *&fldt, std::string fldname, std::
   return 0;
 }
 
-int Fields::initpfld(std::string fldname, std::string longname, std::string unit)
+int Fields::initPrognosticField(std::string fldname, std::string longname, std::string unit)
 {
   if(sp.find(fldname)!=sp.end())
   {
@@ -607,7 +607,7 @@ int Fields::initpfld(std::string fldname, std::string longname, std::string unit
   return 0;
 }
 
-int Fields::initdfld(std::string fldname,std::string longname, std::string unit)
+int Fields::initDiagnosticField(std::string fldname,std::string longname, std::string unit)
 {
   if(sd.find(fldname)!=sd.end())
   {
@@ -621,7 +621,7 @@ int Fields::initdfld(std::string fldname,std::string longname, std::string unit)
   return 0;  
 }
 
-int Fields::inittmpfld(std::string fldname,std::string longname, std::string unit)
+int Fields::initTmpField(std::string fldname,std::string longname, std::string unit)
 {
   if(atmp.find(fldname)!=atmp.end())
   {
@@ -641,11 +641,11 @@ void Fields::create(Input *inputin)
   int nerror = 0;
   
   // Randomnize the momentum
-  for(fieldmap::iterator it=mp.begin(); it!=mp.end(); ++it)
+  for(FieldMap::iterator it=mp.begin(); it!=mp.end(); ++it)
     nerror += randomnize(inputin, it->first, it->second->data);
   
   // Randomnize the scalars
-  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+  for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
     nerror += randomnize(inputin, it->first, it->second->data);
   
   // Add Vortices
@@ -655,7 +655,7 @@ void Fields::create(Input *inputin)
   nerror += addmeanprofile(inputin, "u", mp["u"]->data, grid->utrans);
   nerror += addmeanprofile(inputin, "v", mp["v"]->data, grid->vtrans);
  
-  for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+  for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
     nerror += addmeanprofile(inputin, it->first, it->second->data, 0.);
   
   // set w equal to zero at the boundaries, just to be sure
@@ -792,7 +792,7 @@ void Fields::load(int n)
 {
   int nerror = 0;
 
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
     // the offset is kept at zero, otherwise bitwise identical restarts is not possible
     char filename[256];
@@ -817,7 +817,7 @@ void Fields::load(int n)
     stats->addProf(v->name, v->longname, v->unit, "z" );
     stats->addProf(w->name, w->longname, w->unit, "zh" );
   
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addProf(it->first,it->second->longname, it->second->unit, "z");
     stats->addProf(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
  
@@ -834,32 +834,32 @@ void Fields::load(int n)
       stats->addProf(u->name + sn,"Moment "+ sn + " of the " + u->longname,"(" + u->unit + ")"+sn, "z" );
       stats->addProf(v->name + sn,"Moment "+ sn + " of the " + v->longname,"(" + v->unit + ")"+sn, "z" );
       stats->addProf(w->name + sn,"Moment "+ sn + " of the " + w->longname,"(" + w->unit + ")"+sn, "zh" );
-      for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+      for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
         stats->addProf(it->first + sn,"Moment "+ sn + " of the " + it->second->longname,"(" + it->second->unit + ")"+sn, "z" );
     }
   
     // gradients
     stats->addProf(u->name + "grad", "Gradient of the " + u->longname,"s-1","zh");
     stats->addProf(v->name + "grad", "Gradient of the " + v->longname,"s-1","zh");
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addProf(it->first+"grad", "Gradient of the " + it->second->longname, it->second->unit + " m-1", "zh");
   
     // turbulent fluxes
     stats->addProf("uw", "Turbulent flux of the " + u->longname, "m2 s-2", "zh");
     stats->addProf("vw", "Turbulent flux of the " + v->longname, "m2 s-2", "zh");
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addProf(it->first+"w", "Turbulent flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   
     // Diffusive fluxes
     stats->addProf("udiff", "Diffusive flux of the " + u->longname, "m2 s-2", "zh");
     stats->addProf("vdiff", "Diffusive flux of the " + v->longname, "m2 s-2", "zh");
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addProf(it->first+"diff", "Diffusive flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   
     //Total fluxes
     stats->addProf("uflux", "Total flux of the " + u->longname, "m2 s-2", "zh");
     stats->addProf("vflux", "Total flux of the " + v->longname, "m2 s-2", "zh");
-    for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
+    for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addProf(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   }
  
@@ -870,7 +870,7 @@ void Fields::load(int n)
 void Fields::save(int n)
 {
   int nerror = 0;
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
@@ -910,7 +910,7 @@ double Fields::checktke()
 double Fields::checkmass()
 {
   // CvH for now, do the mass check on the first scalar... Do we want to change this?
-  fieldmap::iterator itProg=sp.begin();
+  FieldMap::iterator itProg=sp.begin();
   if(sp.begin() != sp.end())
     return calcmass(itProg->second->data, grid->dz);
   else
@@ -1007,23 +1007,25 @@ void Fields::execCross()
 {
   int nerror = 0;
 
+  Cross *cross = model->cross;
+
   for(std::vector<std::string>::const_iterator it=crosssimple.begin(); it<crosssimple.end(); ++it)
-    nerror += model->cross->crossSimple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
+    nerror += cross->crossSimple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
 
   for(std::vector<std::string>::const_iterator it=crosslngrad.begin(); it<crosslngrad.end(); ++it)
-    nerror += model->cross->crossLngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
+    nerror += cross->crossLngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
 
   for(std::vector<std::string>::const_iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
-    nerror += model->cross->crossPlane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
+    nerror += cross->crossPlane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
 
   for(std::vector<std::string>::const_iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
-    nerror += model->cross->crossPlane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
+    nerror += cross->crossPlane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
 
   for(std::vector<std::string>::const_iterator it=crossbot.begin(); it<crossbot.end(); ++it)
-    nerror += model->cross->crossPlane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
+    nerror += cross->crossPlane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
 
   for(std::vector<std::string>::const_iterator it=crosstop.begin(); it<crosstop.end(); ++it)
-    nerror += model->cross->crossPlane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
+    nerror += cross->crossPlane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
 
   if(nerror)
     throw 1;

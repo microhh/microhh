@@ -69,7 +69,7 @@ void Advec2i4::exec()
   advecv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
   advecw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi);
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     advecs(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi);
 }
 

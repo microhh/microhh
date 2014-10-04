@@ -43,7 +43,7 @@ void Diff2::setValues()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
-  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+  for(FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
     viscmax = std::max(it->second->visc, viscmax);
 
   dnmul = 0;
@@ -76,7 +76,7 @@ int Diff2::exec()
   diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
   diffw(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sp[it->first]->visc);
   
   return 0;

@@ -59,7 +59,7 @@ void BoundaryUser::setValues()
   setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
   setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
     setbc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
                 sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset, fields->atmp["tmp1"]->data, patch_facl, patch_facr);

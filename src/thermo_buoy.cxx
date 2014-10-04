@@ -35,7 +35,7 @@ ThermoBuoy::ThermoBuoy(Model *modelin, Input *inputin) : Thermo(modelin, inputin
   swthermo = "buoy";
 
   int nerror = 0;
-  nerror += fields->initpfld("b", "Buoyancy", "m s-2");
+  nerror += fields->initPrognosticField("b", "Buoyancy", "m s-2");
   nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
 
   if(nerror)
