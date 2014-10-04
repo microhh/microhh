@@ -41,9 +41,9 @@ Input::Input(Master *masterin)
   const bool optional = true;
 
   int nerror = 0;
-  nerror += readinifile();
-  nerror += readdatafile(&proflist, master->simname + ".prof", required);
-  nerror += readdatafile(&timelist, master->simname + ".time", optional);
+  nerror += readIniFile();
+  nerror += readDataFile(&proflist, master->simname + ".prof", required);
+  nerror += readDataFile(&timelist, master->simname + ".time", optional);
 
   if(nerror)
     throw 1;
@@ -60,7 +60,7 @@ void Input::clear()
 }
 
 // Private functions
-int Input::readinifile()
+int Input::readIniFile()
 {
   int nerror = 0;
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256], element[256];
@@ -204,7 +204,7 @@ int Input::readinifile()
   return nerrors;
 }
 
-int Input::readdatafile(datamap *series, std::string inputname, bool optional)
+int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
 {
   int nerror = 0;
   char inputline[256], temp1[256];
@@ -400,17 +400,17 @@ int Input::readdatafile(datamap *series, std::string inputname, bool optional)
 
 int Input::checkItemExists(std::string cat, std::string item, std::string el)
 {
-  inputmap::const_iterator it1 = inputlist.find(cat);
+  InputMap::const_iterator it1 = inputlist.find(cat);
 
   bool readerror = false;
 
   if(it1 != inputlist.end())
   {
-    inputmap2d::const_iterator it2 = it1->second.find(item);
+    InputMap2d::const_iterator it2 = it1->second.find(item);
 
     if(it2 != it1->second.end())
     {
-      inputmap1d::const_iterator it3 = it2->second.find(el);
+      InputMap1d::const_iterator it3 = it2->second.find(el);
       if(it3 == it2->second.end())
         readerror = true;
     }
@@ -891,13 +891,11 @@ int Input::checkList(std::vector<double> *value, std::string cat, std::string it
 }
 
 
-int Input::printUnused()
+void Input::printUnused()
 {
-  for(inputmap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
-  {
-    for(inputmap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
-    {
-      for(inputmap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
+  for(InputMap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
+    for(InputMap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
+      for(InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
       {
         if(!it3->second.isused)
         {
@@ -911,14 +909,11 @@ int Input::printUnused()
           }
         }
       }
-    }
-  }
-  return 0;
 }
 
 int Input::getProf(double *data, std::string varname, int kmaxin)
 {
-  datamap::const_iterator it = proflist.find(varname);
+  DataMap::const_iterator it = proflist.find(varname);
 
   if(it != proflist.end())
   {
@@ -949,7 +944,7 @@ int Input::getProf(double *data, std::string varname, int kmaxin)
 int Input::getTime(double **data, std::vector<double> *time, std::string varname)
 {
   // first get the time list
-  datamap::const_iterator it = timelist.find("t");
+  DataMap::const_iterator it = timelist.find("t");
   if(it != timelist.end())
     *time = it->second;
   else
@@ -987,14 +982,14 @@ int Input::getTime(double **data, std::vector<double> *time, std::string varname
 int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::string varname, int kmaxin)
 {
   // container for the raw data
-  datamap rawdata;
+  DataMap rawdata;
 
   // create a typedef to store the time in string and double to allow sorting
-  typedef std::map<double, std::string> timemap;
-  timemap rawtimemap;
+  typedef std::map<double, std::string> TimeMap;
+  TimeMap rawtimemap;
 
   // read the file that contains the time varying data
-  if(readdatafile(&rawdata, varname + ".timeprof", false))
+  if(readDataFile(&rawdata, varname + ".timeprof", false))
     return 1;
 
   // delete the column with the profile data
@@ -1005,7 +1000,7 @@ int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::st
 
   // first process the headers in order to get the time series
   int timecount = 0;
-  for(datamap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
+  for(DataMap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
   {
     // check whether the item name is of type double
     char inputstring[256], temp[256];
@@ -1022,7 +1017,7 @@ int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::st
   }
   
   // now loop over the new time list in the correct order (sort on double rather than string)
-  for(timemap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
+  for(TimeMap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
   {
     int profsize = rawdata[it->second].size();
     if(profsize < kmaxin)
