@@ -49,7 +49,7 @@ class Force
     void init();                ///< Initialize the arrays that contain the profiles.
     void create(Input *);      ///< Read the profiles of the forces from the input.
     int exec(double);           ///< Add the tendencies belonging to the large-scale processes.
-    int settimedep();           ///< Set the time dependent parameters.
+    int setTimeDep();           ///< Set the time dependent parameters.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.

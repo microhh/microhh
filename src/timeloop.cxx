@@ -220,7 +220,7 @@ int Timeloop::exec()
 }
 #endif
 
-double Timeloop::getsubdt()
+double Timeloop::getSubTimeStep()
 {
   double subdt = 0.;
   if(rkorder == 3)
@@ -338,8 +338,10 @@ bool Timeloop::inSubStep()
     return false;
 }
 
-bool Timeloop::inStatsStep()
+bool Timeloop::isStatsStep()
 {
+  // In case we are not in a substep and not at the first iteration
+  // after a restart, we can could do statistics.
   if(!inSubStep() && !((iteration > 0) && (itime == istarttime)))
     return true;
   else

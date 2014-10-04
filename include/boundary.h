@@ -44,7 +44,7 @@ class Boundary
 
     virtual void init(Input *);   ///< Initialize the fields.
     virtual void create(Input *); ///< Create the fields.
-    virtual int settimedep();
+    virtual int setTimeDep();
     virtual void setValues();      ///< Set all 2d fields to the prober BC value.
 
     virtual void save(int); ///< Save boundary conditions related fields for restarts.

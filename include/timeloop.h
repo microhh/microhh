@@ -47,11 +47,11 @@ class Timeloop
 
     // Query functions for main loop
     bool inSubStep();
-    bool inStatsStep();
+    bool isStatsStep();
     bool doCheck();
     bool doSave();
 
-    double getsubdt();
+    double getSubTimeStep();
 
     int settimelim();
 

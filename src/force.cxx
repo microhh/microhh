@@ -213,7 +213,7 @@ int Force::exec(double dt)
 }
 #endif
 
-int Force::settimedep()
+int Force::setTimeDep()
 {
   if(swtimedep == "0")
     return 0;

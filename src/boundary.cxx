@@ -191,7 +191,7 @@ int Boundary::processtimedep(Input *inputin)
   return nerror;
 }
 
-int Boundary::settimedep()
+int Boundary::setTimeDep()
 {
   if(swtimedep == "0")
     return 0;
