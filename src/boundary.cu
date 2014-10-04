@@ -200,7 +200,7 @@ __global__ void boundary_setgctopw_4th(double * __restrict__ w,
 }
 
 #ifdef USECUDA
-int Boundary::exec()
+void Boundary::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -321,11 +321,10 @@ int Boundary::exec()
       cudaCheckError(); 
     }
   }
-  return 0;
 }
 #endif
 
-int Boundary::setbc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
+void Boundary::setbc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
                        BoundaryType sw, double aval, double visc, double offset)
 {
   const int blocki = cuda::blockSizeI;
@@ -352,5 +351,4 @@ int Boundary::setbc_g(double * restrict a, double * restrict agrad, double * res
     boundary_setbc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
     cudaCheckError(); 
   }
-  return 0;
 }

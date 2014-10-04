@@ -439,7 +439,7 @@ __global__ void boundary_surface_surfs(double * __restrict__ varfluxbot, double 
   }
 }
 
-int Boundary_surface::prepareDevice()
+void BoundarySurface::prepareDevice()
 {
   const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
   const int imemsizep  = grid->icellsp * sizeof(double);
@@ -450,44 +450,36 @@ int Boundary_surface::prepareDevice()
 
   cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk, imemsize, imemsize, grid->jcells,   cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
-
-  return 0;
 }
 
 // TMP BVS
-int Boundary_surface::forwardDevice()
+void BoundarySurface::forwardDevice()
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
   cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk,  imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
-
-  return 0;
 }
 
 // TMP BVS
-int Boundary_surface::backwardDevice()
+void BoundarySurface::backwardDevice()
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
 
   cudaSafeCall(cudaMemcpy2D(obuk,  imemsize, &obuk_g[grid->memoffset],  imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
   cudaSafeCall(cudaMemcpy2D(ustar, imemsize, &ustar_g[grid->memoffset], imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
-
-  return 0;
 }
 
-int Boundary_surface::clearDevice()
+void BoundarySurface::clearDevice()
 {
   cudaSafeCall(cudaFree(obuk_g ));
   cudaSafeCall(cudaFree(ustar_g));
-
-  return 0;
 }
 
 #ifdef USECUDA
-int Boundary_surface::bcvalues()
+void BoundarySurface::bcvalues()
 {
   int gridi, gridj;
   const int blocki = 128;
@@ -568,7 +560,5 @@ int Boundary_surface::bcvalues()
                                                     grid->icells, grid->jcells, grid->kstart,
                                                     grid->icellsp, grid->ijcellsp, sbc[it->first]->bcbot);
   cudaCheckError();
-
-  return 0;
 }
 #endif

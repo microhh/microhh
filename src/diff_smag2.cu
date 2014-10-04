@@ -581,7 +581,7 @@ __global__ void diff_les2s_calcdnmul(double * __restrict__ dnmul, double * __res
 #ifdef USECUDA
 int DiffSmag2::prepareDevice()
 {
-  Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
+  BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
 
   const double n=2.;
   double mlen0;
@@ -612,7 +612,7 @@ int DiffSmag2::clearDevice()
 int DiffSmag2::execViscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
-  Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
+  BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
 
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
