@@ -223,49 +223,16 @@ int Fields::prepareDevice()
 int Fields::forwardDevice()
 {
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-  {
-    forward3DFieldDevice(it->second->data_g,        it->second->data,        Offset);
-    forward2DFieldDevice(it->second->databot_g,     it->second->databot,     Offset);
-    forward2DFieldDevice(it->second->datatop_g,     it->second->datatop,     Offset);
-    forward2DFieldDevice(it->second->datagradbot_g, it->second->datagradbot, Offset);
-    forward2DFieldDevice(it->second->datagradtop_g, it->second->datagradtop, Offset);
-    forward2DFieldDevice(it->second->datafluxbot_g, it->second->datafluxbot, Offset);
-    forward2DFieldDevice(it->second->datafluxtop_g, it->second->datafluxtop, Offset);
-    forward1DFieldDevice(it->second->datamean_g,    it->second->datamean, grid->kcells);
-  }
+    forwardField3dDevice(it->second);
 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
-  {
-    forward3DFieldDevice(it->second->data_g,        it->second->data,        Offset);
-    forward2DFieldDevice(it->second->databot_g,     it->second->databot,     Offset);
-    forward2DFieldDevice(it->second->datatop_g,     it->second->datatop,     Offset);
-    forward2DFieldDevice(it->second->datagradbot_g, it->second->datagradbot, Offset);
-    forward2DFieldDevice(it->second->datagradtop_g, it->second->datagradtop, Offset);
-    forward2DFieldDevice(it->second->datafluxbot_g, it->second->datafluxbot, Offset);
-    forward2DFieldDevice(it->second->datafluxtop_g, it->second->datafluxtop, Offset);
-    forward1DFieldDevice(it->second->datamean_g,    it->second->datamean, grid->kcells);
-  }
+    forwardField3dDevice(it->second);
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     forward3DFieldDevice(it->second->data_g, it->second->data, Offset);
 
-  forward3DFieldDevice(atmp["tmp1"]->data_g,        atmp["tmp1"]->data,        Offset);
-  forward2DFieldDevice(atmp["tmp1"]->databot_g,     atmp["tmp1"]->databot,     Offset);
-  forward2DFieldDevice(atmp["tmp1"]->datatop_g,     atmp["tmp1"]->datatop,     Offset);
-  forward2DFieldDevice(atmp["tmp1"]->datagradbot_g, atmp["tmp1"]->datagradbot, Offset);
-  forward2DFieldDevice(atmp["tmp1"]->datagradtop_g, atmp["tmp1"]->datagradtop, Offset);
-  forward2DFieldDevice(atmp["tmp1"]->datafluxbot_g, atmp["tmp1"]->datafluxbot, Offset);
-  forward2DFieldDevice(atmp["tmp1"]->datafluxtop_g, atmp["tmp1"]->datafluxtop, Offset);
-  forward1DFieldDevice(atmp["tmp1"]->datamean_g,    atmp["tmp1"]->datamean, grid->kcells);
-
-  forward3DFieldDevice(atmp["tmp2"]->data_g,        atmp["tmp2"]->data,        Offset);
-  forward2DFieldDevice(atmp["tmp2"]->databot_g,     atmp["tmp2"]->databot,     Offset);
-  forward2DFieldDevice(atmp["tmp2"]->datatop_g,     atmp["tmp2"]->datatop,     Offset);
-  forward2DFieldDevice(atmp["tmp2"]->datagradbot_g, atmp["tmp2"]->datagradbot, Offset);
-  forward2DFieldDevice(atmp["tmp2"]->datagradtop_g, atmp["tmp2"]->datagradtop, Offset);
-  forward2DFieldDevice(atmp["tmp2"]->datafluxbot_g, atmp["tmp2"]->datafluxbot, Offset);
-  forward2DFieldDevice(atmp["tmp2"]->datafluxtop_g, atmp["tmp2"]->datafluxtop, Offset);
-  forward1DFieldDevice(atmp["tmp2"]->datamean_g,    atmp["tmp2"]->datamean, grid->kcells);
+  forwardField3dDevice(atmp["tmp1"]);
+  forwardField3dDevice(atmp["tmp2"]);
 
   forward1DFieldDevice(rhoref_g,  rhoref , grid->kcells);
   forward1DFieldDevice(rhorefh_g, rhorefh, grid->kcells);
@@ -278,49 +245,16 @@ int Fields::forwardDevice()
 int Fields::backwardDevice()
 {
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-  {
-    backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
-    backward2DFieldDevice(it->second->databot,     it->second->databot_g,     Offset);
-    backward2DFieldDevice(it->second->datatop,     it->second->datatop_g,     Offset);
-    backward2DFieldDevice(it->second->datagradbot, it->second->datagradbot_g, Offset);
-    backward2DFieldDevice(it->second->datagradtop, it->second->datagradtop_g, Offset);
-    backward2DFieldDevice(it->second->datafluxbot, it->second->datafluxbot_g, Offset);
-    backward2DFieldDevice(it->second->datafluxtop, it->second->datafluxtop_g, Offset);
-    backward1DFieldDevice(it->second->datamean,    it->second->datamean_g, grid->kcells);
-  }
+    backwardField3dDevice(it->second);
 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
-  {
-    backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
-    backward2DFieldDevice(it->second->databot,     it->second->databot_g,     Offset);
-    backward2DFieldDevice(it->second->datatop,     it->second->datatop_g,     Offset);
-    backward2DFieldDevice(it->second->datagradbot, it->second->datagradbot_g, Offset);
-    backward2DFieldDevice(it->second->datagradtop, it->second->datagradtop_g, Offset);
-    backward2DFieldDevice(it->second->datafluxbot, it->second->datafluxbot_g, Offset);
-    backward2DFieldDevice(it->second->datafluxtop, it->second->datafluxtop_g, Offset);
-    backward1DFieldDevice(it->second->datamean,    it->second->datamean_g, grid->kcells);
-  }
+    backwardField3dDevice(it->second);
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
 
-  backward3DFieldDevice(atmp["tmp1"]->data,        atmp["tmp1"]->data_g,        Offset);
-  backward2DFieldDevice(atmp["tmp1"]->databot,     atmp["tmp1"]->databot_g,     Offset);
-  backward2DFieldDevice(atmp["tmp1"]->datatop,     atmp["tmp1"]->datatop_g,     Offset);
-  backward2DFieldDevice(atmp["tmp1"]->datagradbot, atmp["tmp1"]->datagradbot_g, Offset);
-  backward2DFieldDevice(atmp["tmp1"]->datagradtop, atmp["tmp1"]->datagradtop_g, Offset);
-  backward2DFieldDevice(atmp["tmp1"]->datafluxbot, atmp["tmp1"]->datafluxbot_g, Offset);
-  backward2DFieldDevice(atmp["tmp1"]->datafluxtop, atmp["tmp1"]->datafluxtop_g, Offset);
-  backward1DFieldDevice(atmp["tmp1"]->datamean,    atmp["tmp1"]->datamean_g, grid->kcells);
-
-  backward3DFieldDevice(atmp["tmp2"]->data,        atmp["tmp2"]->data_g,        Offset);
-  backward2DFieldDevice(atmp["tmp2"]->databot,     atmp["tmp2"]->databot_g,     Offset);
-  backward2DFieldDevice(atmp["tmp2"]->datatop,     atmp["tmp2"]->datatop_g,     Offset);
-  backward2DFieldDevice(atmp["tmp2"]->datagradbot, atmp["tmp2"]->datagradbot_g, Offset);
-  backward2DFieldDevice(atmp["tmp2"]->datagradtop, atmp["tmp2"]->datagradtop_g, Offset);
-  backward2DFieldDevice(atmp["tmp2"]->datafluxbot, atmp["tmp2"]->datafluxbot_g, Offset);
-  backward2DFieldDevice(atmp["tmp2"]->datafluxtop, atmp["tmp2"]->datafluxtop_g, Offset);
-  backward1DFieldDevice(atmp["tmp2"]->datamean,    atmp["tmp2"]->datamean_g, grid->kcells);
+  backwardField3dDevice(atmp["tmp1"]);
+  backwardField3dDevice(atmp["tmp2"]);
 
   backward1DFieldDevice(rhoref,  rhoref_g,  grid->kcells);
   backward1DFieldDevice(rhorefh, rhorefh_g, grid->kcells);
@@ -328,6 +262,52 @@ int Fields::backwardDevice()
   //master->printMessage("Synchronized CPU with GPU (backward)\n");
 
   return 0;
+}
+
+int Fields::clearDevice()
+{
+  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+    it->second->clearDevice();
+
+  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+    it->second->clearDevice();
+
+  for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
+    cudaSafeCall(cudaFree(it->second->data_g));
+
+  atmp["tmp1"]->clearDevice();
+  atmp["tmp2"]->clearDevice();
+  
+  cudaSafeCall(cudaFree(rhoref_g));
+  cudaSafeCall(cudaFree(rhorefh_g));
+
+  return 0;
+}
+
+/* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
+void Fields::forwardField3dDevice(Field3d *fld)
+{
+  forward3DFieldDevice(fld->data_g,        fld->data,        Offset);
+  forward2DFieldDevice(fld->databot_g,     fld->databot,     Offset);
+  forward2DFieldDevice(fld->datatop_g,     fld->datatop,     Offset);
+  forward2DFieldDevice(fld->datagradbot_g, fld->datagradbot, Offset);
+  forward2DFieldDevice(fld->datagradtop_g, fld->datagradtop, Offset);
+  forward2DFieldDevice(fld->datafluxbot_g, fld->datafluxbot, Offset);
+  forward2DFieldDevice(fld->datafluxtop_g, fld->datafluxtop, Offset);
+  forward1DFieldDevice(fld->datamean_g,    fld->datamean, grid->kcells);
+}
+
+/* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
+void Fields::backwardField3dDevice(Field3d *fld)
+{
+  backward3DFieldDevice(fld->data,        fld->data_g,        Offset);
+  backward2DFieldDevice(fld->databot,     fld->databot_g,     Offset);
+  backward2DFieldDevice(fld->datatop,     fld->datatop_g,     Offset);
+  backward2DFieldDevice(fld->datagradbot, fld->datagradbot_g, Offset);
+  backward2DFieldDevice(fld->datagradtop, fld->datagradtop_g, Offset);
+  backward2DFieldDevice(fld->datafluxbot, fld->datafluxbot_g, Offset);
+  backward2DFieldDevice(fld->datafluxtop, fld->datafluxtop_g, Offset);
+  backward1DFieldDevice(fld->datamean,    fld->datamean_g, grid->kcells);
 }
 
 void Fields::forward3DFieldDevice(double * field_g, double * field, OffsetType sw)
@@ -383,24 +363,3 @@ void Fields::backward1DFieldDevice(double * field, double * field_g, int ncells)
 {
   cudaSafeCall(cudaMemcpy(field, field_g, ncells*sizeof(double), cudaMemcpyDeviceToHost));
 }
-
-int Fields::clearDevice()
-{
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-    it->second->clearDevice();
-
-  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
-    it->second->clearDevice();
-
-  for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-    cudaSafeCall(cudaFree(it->second->data_g));
-
-  atmp["tmp1"]->clearDevice();
-  atmp["tmp2"]->clearDevice();
-  
-  cudaSafeCall(cudaFree(rhoref_g));
-  cudaSafeCall(cudaFree(rhorefh_g));
-
-  return 0;
-}
-

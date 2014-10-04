@@ -107,6 +107,8 @@ class Fields
     void backward3DFieldDevice(double *, double *, OffsetType);
     void backward2DFieldDevice(double *, double *, OffsetType);
     void backward1DFieldDevice(double *, double *, int);
+    void forwardField3dDevice(Field3d *);
+    void backwardField3dDevice(Field3d *);
     int backwardDevice();
     int clearDevice();
 
