@@ -73,3 +73,15 @@ void Field3d::initDevice()
   cudaSafeCall(cudaMalloc(&datafluxtop_g, nmemsize2d));
   cudaSafeCall(cudaMalloc(&datamean_g,    nmemsize1d));
 }
+
+void Field3d::clearDevice()
+{
+  cudaSafeCall(cudaFree(data_g));
+  cudaSafeCall(cudaFree(databot_g));
+  cudaSafeCall(cudaFree(datatop_g));
+  cudaSafeCall(cudaFree(datagradbot_g));
+  cudaSafeCall(cudaFree(datagradtop_g));
+  cudaSafeCall(cudaFree(datafluxbot_g));
+  cudaSafeCall(cudaFree(datafluxtop_g));
+  cudaSafeCall(cudaFree(datamean_g));
+}

@@ -387,54 +387,19 @@ void Fields::backward1DFieldDevice(double * field, double * field_g, int ncells)
 int Fields::clearDevice()
 {
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-  {
-    cudaSafeCall(cudaFree(it->second->data_g));
-    cudaSafeCall(cudaFree(it->second->databot_g));
-    cudaSafeCall(cudaFree(it->second->datatop_g));
-    cudaSafeCall(cudaFree(it->second->datagradbot_g));
-    cudaSafeCall(cudaFree(it->second->datagradtop_g));
-    cudaSafeCall(cudaFree(it->second->datafluxbot_g));
-    cudaSafeCall(cudaFree(it->second->datafluxtop_g));
-    cudaSafeCall(cudaFree(it->second->datamean_g));
-  }
+    it->second->clearDevice();
 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
-  {
-    cudaSafeCall(cudaFree(it->second->data_g));
-    cudaSafeCall(cudaFree(it->second->databot_g));
-    cudaSafeCall(cudaFree(it->second->datatop_g));
-    cudaSafeCall(cudaFree(it->second->datagradbot_g));
-    cudaSafeCall(cudaFree(it->second->datagradtop_g));
-    cudaSafeCall(cudaFree(it->second->datafluxbot_g));
-    cudaSafeCall(cudaFree(it->second->datafluxtop_g));
-    cudaSafeCall(cudaFree(it->second->datamean_g));
-  }
+    it->second->clearDevice();
 
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
-  {
     cudaSafeCall(cudaFree(it->second->data_g));
-  }
 
+  atmp["tmp1"]->clearDevice();
+  atmp["tmp2"]->clearDevice();
+  
   cudaSafeCall(cudaFree(rhoref_g));
   cudaSafeCall(cudaFree(rhorefh_g));
-
-  cudaSafeCall(cudaFree(atmp["tmp1"]->data_g));
-  cudaSafeCall(cudaFree(atmp["tmp1"]->databot_g));
-  cudaSafeCall(cudaFree(atmp["tmp1"]->datatop_g));
-  cudaSafeCall(cudaFree(atmp["tmp1"]->datagradbot_g));
-  cudaSafeCall(cudaFree(atmp["tmp1"]->datagradtop_g));
-  cudaSafeCall(cudaFree(atmp["tmp1"]->datafluxbot_g));
-  cudaSafeCall(cudaFree(atmp["tmp1"]->datafluxtop_g));
-  cudaSafeCall(cudaFree(atmp["tmp1"]->datamean_g));
-
-  cudaSafeCall(cudaFree(atmp["tmp2"]->data_g));
-  cudaSafeCall(cudaFree(atmp["tmp2"]->databot_g));
-  cudaSafeCall(cudaFree(atmp["tmp2"]->datatop_g));
-  cudaSafeCall(cudaFree(atmp["tmp2"]->datagradbot_g));
-  cudaSafeCall(cudaFree(atmp["tmp2"]->datagradtop_g));
-  cudaSafeCall(cudaFree(atmp["tmp2"]->datafluxbot_g));
-  cudaSafeCall(cudaFree(atmp["tmp2"]->datafluxtop_g));
-  cudaSafeCall(cudaFree(atmp["tmp2"]->datamean_g));
 
   return 0;
 }
