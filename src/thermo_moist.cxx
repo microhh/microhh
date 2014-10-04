@@ -172,32 +172,32 @@ void ThermoMoist::create(Input *inputin)
   if(stats->getSwitch() == "1")
   {
     // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
-    stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
-    stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
-    stats->addfixedprof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
-    stats->addfixedprof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
-    stats->addfixedprof("thvref",  "Full level reference virtual potential temperature", "K", "z",thvref);
-    stats->addfixedprof("thvrefh", "Half level reference virtual potential temperature", "K", "zh",thvref);
+    stats->addFixedProf("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
+    stats->addFixedProf("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
+    stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
+    stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
+    stats->addFixedProf("thvref",  "Full level reference virtual potential temperature", "K", "z",thvref);
+    stats->addFixedProf("thvrefh", "Half level reference virtual potential temperature", "K", "zh",thvref);
 
-    stats->addprof("b", "Buoyancy", "m s-2", "z");
+    stats->addProf("b", "Buoyancy", "m s-2", "z");
     for(int n=2; n<5; ++n)
     {
       std::stringstream ss;
       ss << n;
       std::string sn = ss.str();
-      stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
     }
 
-    stats->addprof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-    stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-    stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-    stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
+    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
-    stats->addprof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
-    stats->addprof("cfrac", "Cloud fraction", "-","z");
+    stats->addProf("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+    stats->addProf("cfrac", "Cloud fraction", "-","z");
 
-    stats->addtseries("lwp", "Liquid water path", "kg m-2");
-    stats->addtseries("ccover", "Projected cloud cover", "-");
+    stats->addTimeSeries("lwp", "Liquid water path", "kg m-2");
+    stats->addTimeSeries("ccover", "Projected cloud cover", "-");
   }
 
   // Cross sections (isn't there an easier way to populate this list?)
@@ -422,7 +422,7 @@ void ThermoMoist::execStats(Mask *m)
   const int sloc[] = {0,0,0};
 
   // mean
-  stats->calcmean(m->profs["b"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc,
+  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc,
                   fields->atmp["tmp3"]->data, stats->nmask);
 
   // moments
@@ -431,25 +431,25 @@ void ThermoMoist::execStats(Mask *m)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+    stats->calcMoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
                       fields->atmp["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+    stats->calcGrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+    stats->calcGrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+    stats->calcFlux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
                         m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+    stats->calcFlux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
@@ -458,35 +458,35 @@ void ThermoMoist::execStats(Mask *m)
     if(model->diff->getName() == "smag2")
     {
       DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
-      stats->calcdiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
+      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
                           fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
     {
-      stats->calcdiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
     }
   }
   else if(grid->swspatialorder == "4")
   {
     // take the diffusivity of temperature for that of buoyancy
-    stats->calcdiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+    stats->calcDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
-  stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
+  stats->addFluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the liquid water stats
   calcqlfield(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref);
-  stats->calcmean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc, fields->atmp["tmp3"]->data, stats->nmask);
-  stats->calccount(fields->atmp["tmp1"]->data, m->profs["cfrac"].data, 0.,
+  stats->calcMean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+  stats->calcCount(fields->atmp["tmp1"]->data, m->profs["cfrac"].data, 0.,
                    fields->atmp["tmp3"]->data, stats->nmask);
 
-  stats->calccover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
-  stats->calcpath(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
+  stats->calcCover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
+  stats->calcPath (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 }
 
 void ThermoMoist::execCross()

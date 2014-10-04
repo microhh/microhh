@@ -179,26 +179,26 @@ void ThermoDry::create(Input *inputin)
     // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
     //stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
     //stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
-    stats->addfixedprof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
-    stats->addfixedprof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
-    stats->addfixedprof("thref",   "Full level reference potential temperature", "K", "z",thref);
-    stats->addfixedprof("threfh",  "Half level reference potential temperature", "K", "zh",thref);
+    stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
+    stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
+    stats->addFixedProf("thref",   "Full level reference potential temperature", "K", "z",thref);
+    stats->addFixedProf("threfh",  "Half level reference potential temperature", "K", "zh",thref);
 
-    stats->addprof("b", "Buoyancy", "m s-2", "z");
+    stats->addProf("b", "Buoyancy", "m s-2", "z");
     for(int n=2; n<5; ++n)
     {
       std::stringstream ss;
       ss << n;
       std::string sn = ss.str();
-      stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
     }
 
-    stats->addprof("bgrad", "Gradient of the buoyancy", "s-2", "zh");
-    stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-    stats->addprof("bdiff", "usive flux of the buoyancy", "m2 s-3", "zh");
-    stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bgrad", "Gradient of the buoyancy", "s-2", "zh");
+    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bdiff", "usive flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
-    stats->addprof("bsort", "Sorted buoyancy", "m s-2", "z");
+    stats->addProf("bsort", "Sorted buoyancy", "m s-2", "z");
   }
 
   // Cross sections (isn't there an easier way to populate this list?)
@@ -245,7 +245,7 @@ void ThermoDry::execStats(Mask *m)
   const int sloc[] = {0,0,0};
 
   // calculate the mean
-  stats->calcmean(m->profs["b"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc,
+  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc,
                   fields->atmp["tmp3"]->data, stats->nmask);
 
   // calculate the moments
@@ -254,25 +254,25 @@ void ThermoDry::execStats(Mask *m)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+    stats->calcMoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
                       fields->atmp["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+    stats->calcGrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+    stats->calcGrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+    stats->calcFlux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
                         m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+    stats->calcFlux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
@@ -281,26 +281,26 @@ void ThermoDry::execStats(Mask *m)
     if(model->diff->getName() == "smag2")
     {
       DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
-      stats->calcdiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
+      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
                           fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
-      stats->calcdiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcdiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+    stats->calcDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
-  stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
+  stats->addFluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the sorted buoyancy profile
-  //stats->calcsortprof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
+  //stats->calcSortedProf(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 }
 
 void ThermoDry::execCross()

@@ -70,7 +70,7 @@ Stats::~Stats()
   for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     delete it->second.dataFile;
-    for(profmap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
+    for(ProfMap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
       delete[] it2->second.data;
   }
 }
@@ -83,7 +83,7 @@ void Stats::init(double ifactor)
   master = model->master;
 
   // add the default mask
-  addmask("default");
+  addMask("default");
 
   isampletime = (unsigned long)(ifactor * sampletime);
 
@@ -160,8 +160,8 @@ void Stats::create(int n)
   }
 
   // for each mask add the area as a variable
-  addprof("area" , "Fractional area contained in mask", "-", "z");
-  addprof("areah", "Fractional area contained in mask", "-", "zh");
+  addProf("area" , "Fractional area contained in mask", "-", "z");
+  addProf("areah", "Fractional area contained in mask", "-", "zh");
 }
 
 unsigned long Stats::getTimeLimit(unsigned long itime)
@@ -173,30 +173,30 @@ unsigned long Stats::getTimeLimit(unsigned long itime)
   return idtlim;
 }
 
-int Stats::dostats()
+bool Stats::doStats()
 {
   // check if stats are enabled
   if(swstats == "0")
-    return 0;
+    return false;
 
   // check if time for execution
   if(model->timeloop->itime % isampletime != 0)
-    return 0;
+    return false;
 
   // write message in case stats is triggered
-  if(master->mpiid == 0) std::printf("Saving stats for time %f\n", model->timeloop->time);
+  master->printMessage("Saving stats for time %f\n", model->timeloop->time);
 
   // return true such that stats are computed
-  return 1;
+  return true;
 }
 
-int Stats::exec(int iteration, double time, unsigned long itime)
+void Stats::exec(int iteration, double time, unsigned long itime)
 {
-  // this function is only called when stats are enabled no need for swstats check
+  // This function is only called when stats are enabled no need for swstats check.
 
   // check if time for execution
   if(itime % isampletime != 0)
-    return 0;
+    return;
 
   for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
@@ -209,10 +209,10 @@ int Stats::exec(int iteration, double time, unsigned long itime)
       m->t_var   ->put_rec(&time     , nstats);
       m->iter_var->put_rec(&iteration, nstats);
 
-      for(profmap::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
+      for(ProfMap::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
         m->profs[it->first].ncvar->put_rec(&m->profs[it->first].data[grid->kstart], nstats);
 
-      for(tseriesmap::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
+      for(TimeSeriesMap::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
         m->tseries[it->first].ncvar->put_rec(&m->tseries[it->first].data, nstats);
 
       // sync the data
@@ -221,8 +221,6 @@ int Stats::exec(int iteration, double time, unsigned long itime)
   }
 
   ++nstats;
-
-  return 0;
 }
 
 std::string Stats::getSwitch()
@@ -230,13 +228,13 @@ std::string Stats::getSwitch()
   return swstats;
 }
 
-void Stats::addmask(const std::string maskname)
+void Stats::addMask(const std::string maskname)
 {
   masks[maskname].name = maskname;
   masks[maskname].dataFile = 0;
 }
 
-int Stats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
+void Stats::addProf(std::string name, std::string longname, std::string unit, std::string zloc)
 {
   int nerror = 0;
 
@@ -270,10 +268,11 @@ int Stats::addprof(std::string name, std::string longname, std::string unit, std
       m->profs[name].data[k] = 0.;
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int Stats::addfixedprof(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
+void Stats::addFixedProf(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
 {
   int nerror = 0;
 
@@ -302,10 +301,11 @@ int Stats::addfixedprof(std::string name, std::string longname, std::string unit
     }
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int Stats::addtseries(std::string name, std::string longname, std::string unit)
+void Stats::addTimeSeries(std::string name, std::string longname, std::string unit)
 {
   int nerror = 0;
 
@@ -328,18 +328,18 @@ int Stats::addtseries(std::string name, std::string longname, std::string unit)
     m->tseries[name].data = 0.;
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int Stats::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
+void Stats::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
-  calcmask(mfield->data, mfieldh->data, mfieldh->databot,
+  calcMask(mfield->data, mfieldh->data, mfieldh->databot,
            nmask, nmaskh, &nmaskbot);
-  return 0;
 }
 
 // COMPUTATIONAL KERNELS BELOW
-int Stats::calcmask(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+void Stats::calcMask(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                      int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot)
 {
   int ijtot = grid->itot*grid->jtot;
@@ -360,12 +360,10 @@ int Stats::calcmask(double * restrict mask, double * restrict maskh, double * re
     nmaskh[k] = ijtot;
   }
   *nmaskbot = ijtot;
-
-  return 0;
 }
 
 /*
-void Stats::calcmean(double * const restrict prof, const double * const restrict data,
+void Stats::calcMean(double * const restrict prof, const double * const restrict data,
                       const double offset)
 {
   int ijk,jj,kk;
@@ -394,7 +392,7 @@ void Stats::calcmean(double * const restrict prof, const double * const restrict
 }
 */
 
-int Stats::calcarea(double * restrict area, const int loc[3], int * restrict nmask)
+void Stats::calcArea(double * restrict area, const int loc[3], int * restrict nmask)
 {
   int ijtot = grid->itot*grid->jtot;
 
@@ -405,11 +403,9 @@ int Stats::calcarea(double * restrict area, const int loc[3], int * restrict nma
     else
       area[k] = 0.;
   }
-
-  return 0;
 }
 
-void Stats::calcmean(double * const restrict prof, const double * const restrict data,
+void Stats::calcMean(double * const restrict prof, const double * const restrict data,
                       const double offset, const int loc[3],
                       const double * const restrict mask, const int * const restrict nmask)
 {
@@ -441,7 +437,7 @@ void Stats::calcmean(double * const restrict prof, const double * const restrict
   }
 }
 
-void Stats::calcmean2d(double * const restrict mean, const double * const restrict data,
+void Stats::calcMean2d(double * const restrict mean, const double * const restrict data,
                         const double offset,
                         const double * const restrict mask, const int * const restrict nmask)
 {
@@ -465,7 +461,7 @@ void Stats::calcmean2d(double * const restrict mean, const double * const restri
     *mean = NC_FILL_DOUBLE; 
 }
 
-int Stats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
+void Stats::calcSortedProf(double * restrict data, double * restrict bin, double * restrict prof)
 {
   int ijk,jj,kk,index,kstart,kend;
   double minval,maxval,range;
@@ -571,8 +567,6 @@ int Stats::calcsortprof(double * restrict data, double * restrict bin, double * 
     prof[kend]     = (8./3.)*proftop - 2.*prof[kend-1] + (1./3.)*prof[kend-2];
     prof[kend+1]   = 8.*proftop      - 9.*prof[kend-1] + 2.*prof[kend-2];
   }
-
-  return 0;
 }
 
 /*
@@ -610,7 +604,7 @@ int Stats::calccount(double * restrict data, double * restrict prof, double thre
 */
 
 // \TODO the count function assumes that the variable to count is at the mask location
-int Stats::calccount(double * restrict data, double * restrict prof, double threshold,
+void Stats::calcCount(double * restrict data, double * restrict prof, double threshold,
                       double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -640,12 +634,10 @@ int Stats::calccount(double * restrict data, double * restrict prof, double thre
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
 /*
-int Stats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
+void Stats::calcMoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
   int ijk,jj,kk;
 
@@ -670,12 +662,10 @@ int Stats::calcmoment(double * restrict data, double * restrict datamean, double
     prof[k] /= n;
 
   grid->getProf(prof, grid->kcells);
-
-  return 0;
 }
 */
 
-int Stats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
+void Stats::calcMoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
                        double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -704,12 +694,10 @@ int Stats::calcmoment(double * restrict data, double * restrict datamean, double
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
 /*
-int Stats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
+int Stats::calcFlux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
   int ijk,jj,kk;
 
@@ -752,7 +740,7 @@ int Stats::calcflux_2nd(double * restrict data, double * restrict w, double * re
 }
 */
 
-int Stats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
+void Stats::calcFlux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
                         double * restrict prof, double * restrict tmp1, const int loc[3],
                         double * restrict mask, int * restrict nmask)
 {
@@ -802,11 +790,9 @@ int Stats::calcflux_2nd(double * restrict data, double * restrict datamean, doub
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int Stats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
+void Stats::calcFlux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -857,12 +843,10 @@ int Stats::calcflux_4th(double * restrict data, double * restrict w, double * re
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
 /*
-int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
+int Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
 {
   int ijk,jj,kk;
 
@@ -892,7 +876,7 @@ int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double *
 }
 */
 
-int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
+void Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -921,11 +905,9 @@ int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double *
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int Stats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
+void Stats::calcGrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -957,11 +939,9 @@ int Stats::calcgrad_4th(double * restrict data, double * restrict prof, double *
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int Stats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
+void Stats::calcDiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -993,11 +973,9 @@ int Stats::calcdiff_4th(double * restrict data, double * restrict prof, double *
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int Stats::calcdiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
+void Stats::calcDiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -1026,12 +1004,10 @@ int Stats::calcdiff_2nd(double * restrict data, double * restrict prof, double *
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
 
-int Stats::calcdiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
+void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
                          double * restrict prof, double * restrict dzhi,
                          double * restrict fluxbot, double * restrict fluxtop, double tPr, const int loc[3],
                          double * restrict mask, int * restrict nmask)
@@ -1129,11 +1105,9 @@ int Stats::calcdiff_2nd(double * restrict data, double * restrict w, double * re
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int Stats::addfluxes(double * restrict flux, double * restrict turb, double * restrict diff)
+void Stats::addFluxes(double * restrict flux, double * restrict turb, double * restrict diff)
 {
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -1142,14 +1116,12 @@ int Stats::addfluxes(double * restrict flux, double * restrict turb, double * re
     else
       flux[k] = turb[k] + diff[k];
   }
-
-  return 0;
 }
 
 /**
  * This function calculates the total domain integrated path of variable data over maskbot
  */
-int Stats::calcpath(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict path)
+void Stats::calcPath(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict path)
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
@@ -1177,14 +1149,12 @@ int Stats::calcpath(double * restrict data, double * restrict maskbot, int * res
   }
   else
     *path = NC_FILL_DOUBLE;
-
-  return 0;
 }
 
 /**
  * This function calculates the vertical projected cover of variable data over maskbot
  */
-int Stats::calccover(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict cover, double threshold)
+void Stats::calcCover(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict cover, double threshold)
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
@@ -1216,7 +1186,4 @@ int Stats::calccover(double * restrict data, double * restrict maskbot, int * re
   }
   else
     *cover = NC_FILL_DOUBLE;
-
-  return 0;
 }
-

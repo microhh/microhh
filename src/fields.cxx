@@ -391,31 +391,31 @@ int Fields::execStats(Mask *m)
   const int vwloc[] = {0,1,1};
 
   // save the area coverage of the mask
-  stats->calcarea(m->profs["area" ].data, sloc, stats->nmask );
-  stats->calcarea(m->profs["areah"].data, wloc, stats->nmaskh);
+  stats->calcArea(m->profs["area" ].data, sloc, stats->nmask );
+  stats->calcArea(m->profs["areah"].data, wloc, stats->nmaskh);
 
   // start with the stats on the w location, to make the wmean known for the flux calculations
-  stats->calcmean(m->profs["w"].data, w->data, NO_OFFSET, wloc, atmp["tmp4"]->data, stats->nmaskh);
+  stats->calcMean(m->profs["w"].data, w->data, NO_OFFSET, wloc, atmp["tmp4"]->data, stats->nmaskh);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(w->data, m->profs["w"].data, m->profs["w"+sn].data, n, wloc,
+    stats->calcMoment(w->data, m->profs["w"].data, m->profs["w"+sn].data, n, wloc,
                       atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the u location
   // interpolate the mask horizontally onto the u coordinate
   grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
-  stats->calcmean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
-  stats->calcmean(umodel            , u->data, NO_OFFSET   , uloc, atmp["tmp1"]->data, stats->nmask);
+  stats->calcMean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
+  stats->calcMean(umodel            , u->data, NO_OFFSET   , uloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(u->data, umodel, m->profs["u"+sn].data, n, uloc,
+    stats->calcMoment(u->data, umodel, m->profs["u"+sn].data, n, uloc,
                       atmp["tmp1"]->data, stats->nmask);
   }
 
@@ -423,41 +423,41 @@ int Fields::execStats(Mask *m)
   grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, uwloc);
   if(grid->swspatialorder == "2")
   {
-    stats->calcgrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
+    stats->calcGrad_2nd(u->data, m->profs["ugrad"].data, grid->dzhi, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    stats->calcflux_2nd(u->data, umodel, w->data, m->profs["w"].data,
+    stats->calcFlux_2nd(u->data, umodel, w->data, m->profs["w"].data,
                         m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
     if(model->diff->getName() == "smag2")
-      stats->calcdiff_2nd(u->data, w->data, sd["evisc"]->data,
+      stats->calcDiff_2nd(u->data, w->data, sd["evisc"]->data,
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
                           atmp["tmp1"]->data, stats->nmaskh);
     else
-      stats->calcdiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
+      stats->calcDiff_2nd(u->data, m->profs["udiff"].data, grid->dzhi, visc, uloc,
                           atmp["tmp1"]->data, stats->nmaskh);
 
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcgrad_4th(u->data, m->profs["ugrad"].data, grid->dzhi4, uloc,
+    stats->calcGrad_4th(u->data, m->profs["ugrad"].data, grid->dzhi4, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    stats->calcflux_4th(u->data, w->data, m->profs["uw"].data, atmp["tmp2"]->data, uloc,
+    stats->calcFlux_4th(u->data, w->data, m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    stats->calcdiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
+    stats->calcDiff_4th(u->data, m->profs["udiff"].data, grid->dzhi4, visc, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
   }
 
   // calculate the stats on the v location
   grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
-  stats->calcmean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
-  stats->calcmean(vmodel            , v->data, NO_OFFSET   , vloc, atmp["tmp1"]->data, stats->nmask);
+  stats->calcMean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
+  stats->calcMean(vmodel            , v->data, NO_OFFSET   , vloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(v->data, vmodel, m->profs["v"+sn].data, n, vloc,
+    stats->calcMoment(v->data, vmodel, m->profs["v"+sn].data, n, vloc,
                       atmp["tmp1"]->data, stats->nmask);
   }
 
@@ -465,28 +465,28 @@ int Fields::execStats(Mask *m)
   grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp4"]->data, wloc, vwloc);
   if(grid->swspatialorder == "2")
   {
-    stats->calcgrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
+    stats->calcGrad_2nd(v->data, m->profs["vgrad"].data, grid->dzhi, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    stats->calcflux_2nd(v->data, vmodel, w->data, m->profs["w"].data,
+    stats->calcFlux_2nd(v->data, vmodel, w->data, m->profs["w"].data,
                         m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
     if(model->diff->getName() == "smag2")
-      stats->calcdiff_2nd(v->data, w->data, sd["evisc"]->data,
+      stats->calcDiff_2nd(v->data, w->data, sd["evisc"]->data,
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
                           atmp["tmp1"]->data, stats->nmaskh);
     else
-      stats->calcdiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
+      stats->calcDiff_2nd(v->data, m->profs["vdiff"].data, grid->dzhi, visc, vloc,
                           atmp["tmp1"]->data, stats->nmaskh);
 
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcgrad_4th(v->data, m->profs["vgrad"].data, grid->dzhi4, vloc,
+    stats->calcGrad_4th(v->data, m->profs["vgrad"].data, grid->dzhi4, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    stats->calcflux_4th(v->data, w->data, m->profs["vw"].data, atmp["tmp2"]->data, vloc,
+    stats->calcFlux_4th(v->data, w->data, m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    stats->calcdiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
+    stats->calcDiff_4th(v->data, m->profs["vdiff"].data, grid->dzhi4, visc, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
   }
 
@@ -494,53 +494,53 @@ int Fields::execStats(Mask *m)
   DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
-    stats->calcmean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
+    stats->calcMean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
     for(int n=2; n<5; ++n)
     {
       std::stringstream ss;
       ss << n;
       std::string sn = ss.str();
-      stats->calcmoment(it->second->data, m->profs[it->first].data, m->profs[it->first+sn].data, n, sloc,
+      stats->calcMoment(it->second->data, m->profs[it->first].data, m->profs[it->first+sn].data, n, sloc,
                         atmp["tmp3"]->data, stats->nmask);
     }
     if(grid->swspatialorder == "2")
     {
-      stats->calcgrad_2nd(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi, sloc,
+      stats->calcGrad_2nd(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
-      stats->calcflux_2nd(it->second->data, m->profs[it->first].data, w->data, m->profs["w"].data,
+      stats->calcFlux_2nd(it->second->data, m->profs[it->first].data, w->data, m->profs["w"].data,
                           m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
       if(model->diff->getName() == "smag2")
-        stats->calcdiff_2nd(it->second->data, w->data, sd["evisc"]->data,
+        stats->calcDiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
                             atmp["tmp4"]->data, stats->nmaskh);
       else
-        stats->calcdiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
+        stats->calcDiff_2nd(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi, it->second->visc, sloc,
                             atmp["tmp4"]->data, stats->nmaskh);
     }
     else if(grid->swspatialorder == "4")
     {
-      stats->calcgrad_4th(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi4, sloc,
+      stats->calcGrad_4th(it->second->data, m->profs[it->first+"grad"].data, grid->dzhi4, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
-      stats->calcflux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
+      stats->calcFlux_4th(it->second->data, w->data, m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
-      stats->calcdiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
+      stats->calcDiff_4th(it->second->data, m->profs[it->first+"diff"].data, grid->dzhi4, it->second->visc, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
     }
   }
 
   // calculate the total fluxes
-  stats->addfluxes(m->profs["uflux"].data, m->profs["uw"].data, m->profs["udiff"].data);
-  stats->addfluxes(m->profs["vflux"].data, m->profs["vw"].data, m->profs["vdiff"].data);
+  stats->addFluxes(m->profs["uflux"].data, m->profs["uw"].data, m->profs["udiff"].data);
+  stats->addFluxes(m->profs["vflux"].data, m->profs["vw"].data, m->profs["vdiff"].data);
   for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-    stats->addfluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
+    stats->addFluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
 
   // other statistics
-  stats->calcmean(m->profs["p"].data, sd["p"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
+  stats->calcMean(m->profs["p"].data, sd["p"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
 
   if(model->diff->getName() == "smag2")
-    stats->calcmean(m->profs["evisc"].data, sd["evisc"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
+    stats->calcMean(m->profs["evisc"].data, sd["evisc"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
 
   return 0;
 }
@@ -813,17 +813,17 @@ void Fields::load(int n)
   if(stats->getSwitch() == "1")
   {
     // add variables to the statistics
-    stats->addprof(u->name, u->longname, u->unit, "z" );
-    stats->addprof(v->name, v->longname, v->unit, "z" );
-    stats->addprof(w->name, w->longname, w->unit, "zh" );
+    stats->addProf(u->name, u->longname, u->unit, "z" );
+    stats->addProf(v->name, v->longname, v->unit, "z" );
+    stats->addProf(w->name, w->longname, w->unit, "zh" );
   
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first,it->second->longname, it->second->unit, "z");
-    stats->addprof(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+      stats->addProf(it->first,it->second->longname, it->second->unit, "z");
+    stats->addProf(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
  
     // CvH, shouldn't this call be in the diffusion class?
     if(model->diff->getName() == "smag2")
-      stats->addprof(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
+      stats->addProf(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
   
     // moments
     for(int n=2; n<5; ++n)
@@ -831,36 +831,36 @@ void Fields::load(int n)
       std::stringstream ss;
       ss << n;
       std::string sn = ss.str();
-      stats->addprof(u->name + sn,"Moment "+ sn + " of the " + u->longname,"(" + u->unit + ")"+sn, "z" );
-      stats->addprof(v->name + sn,"Moment "+ sn + " of the " + v->longname,"(" + v->unit + ")"+sn, "z" );
-      stats->addprof(w->name + sn,"Moment "+ sn + " of the " + w->longname,"(" + w->unit + ")"+sn, "zh" );
+      stats->addProf(u->name + sn,"Moment "+ sn + " of the " + u->longname,"(" + u->unit + ")"+sn, "z" );
+      stats->addProf(v->name + sn,"Moment "+ sn + " of the " + v->longname,"(" + v->unit + ")"+sn, "z" );
+      stats->addProf(w->name + sn,"Moment "+ sn + " of the " + w->longname,"(" + w->unit + ")"+sn, "zh" );
       for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-        stats->addprof(it->first + sn,"Moment "+ sn + " of the " + it->second->longname,"(" + it->second->unit + ")"+sn, "z" );
+        stats->addProf(it->first + sn,"Moment "+ sn + " of the " + it->second->longname,"(" + it->second->unit + ")"+sn, "z" );
     }
   
     // gradients
-    stats->addprof(u->name + "grad", "Gradient of the " + u->longname,"s-1","zh");
-    stats->addprof(v->name + "grad", "Gradient of the " + v->longname,"s-1","zh");
+    stats->addProf(u->name + "grad", "Gradient of the " + u->longname,"s-1","zh");
+    stats->addProf(v->name + "grad", "Gradient of the " + v->longname,"s-1","zh");
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first+"grad", "Gradient of the " + it->second->longname, it->second->unit + " m-1", "zh");
+      stats->addProf(it->first+"grad", "Gradient of the " + it->second->longname, it->second->unit + " m-1", "zh");
   
     // turbulent fluxes
-    stats->addprof("uw", "Turbulent flux of the " + u->longname, "m2 s-2", "zh");
-    stats->addprof("vw", "Turbulent flux of the " + v->longname, "m2 s-2", "zh");
+    stats->addProf("uw", "Turbulent flux of the " + u->longname, "m2 s-2", "zh");
+    stats->addProf("vw", "Turbulent flux of the " + v->longname, "m2 s-2", "zh");
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first+"w", "Turbulent flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
+      stats->addProf(it->first+"w", "Turbulent flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   
     // Diffusive fluxes
-    stats->addprof("udiff", "Diffusive flux of the " + u->longname, "m2 s-2", "zh");
-    stats->addprof("vdiff", "Diffusive flux of the " + v->longname, "m2 s-2", "zh");
+    stats->addProf("udiff", "Diffusive flux of the " + u->longname, "m2 s-2", "zh");
+    stats->addProf("vdiff", "Diffusive flux of the " + v->longname, "m2 s-2", "zh");
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first+"diff", "Diffusive flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
+      stats->addProf(it->first+"diff", "Diffusive flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   
     //Total fluxes
-    stats->addprof("uflux", "Total flux of the " + u->longname, "m2 s-2", "zh");
-    stats->addprof("vflux", "Total flux of the " + v->longname, "m2 s-2", "zh");
+    stats->addProf("uflux", "Total flux of the " + u->longname, "m2 s-2", "zh");
+    stats->addProf("vflux", "Total flux of the " + v->longname, "m2 s-2", "zh");
     for(fieldmap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
-      stats->addprof(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
+      stats->addProf(it->first+"flux", "Total flux of the " + it->second->longname, it->second->unit + " m s-1", "zh");
   }
  
   if(nerror)

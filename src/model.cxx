@@ -101,7 +101,7 @@ Model::Model(Master *masterin, Input *inputin)
         master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
       }
       else
-        stats->addmask(*it);
+        stats->addMask(*it);
     }
 
     // Get base state option (boussinesq or anelastic)
@@ -272,7 +272,7 @@ void Model::exec()
     // Do only data analysis statistics when not in substep and not directly after restart.
     if(timeloop->isStatsStep())
     {
-      if(stats->dostats())
+      if(stats->doStats())
       {
         #ifdef USECUDA
         fields  ->backwardDevice();

@@ -62,8 +62,8 @@ void BoundarySurface::create(Input *inputin)
   // add variables to the statistics
   if(stats->getSwitch() == "1")
   {
-    stats->addtseries("ustar", "Surface friction velocity", "m s-1");
-    stats->addtseries("obuk", "Obukhov length", "m");
+    stats->addTimeSeries("ustar", "Surface friction velocity", "m s-1");
+    stats->addTimeSeries("obuk", "Obukhov length", "m");
   }
 }
 
@@ -191,8 +191,8 @@ void BoundarySurface::execCross()
 
 void BoundarySurface::execStats(Mask *m)
 {
-  stats->calcmean2d(&m->tseries["obuk"].data , obuk , 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
-  stats->calcmean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
+  stats->calcMean2d(&m->tseries["obuk"].data , obuk , 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
+  stats->calcMean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
 }
 
 void BoundarySurface::save(int iotime)

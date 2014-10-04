@@ -85,60 +85,60 @@ void Budget::create()
     return;
 
   // add the profiles for the kinetic energy to the statistics
-  stats->addprof("ke" , "Kinetic energy" , "m2 s-2", "z");
-  stats->addprof("tke", "Turbulent kinetic energy" , "m2 s-2", "z");
+  stats->addProf("ke" , "Kinetic energy" , "m2 s-2", "z");
+  stats->addProf("tke", "Turbulent kinetic energy" , "m2 s-2", "z");
 
   // add the profiles for the kinetic energy budget to the statistics
-  stats->addprof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z");
-  stats->addprof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z");
-  stats->addprof("tke_shear", "Shear production term in TKE budget", "m2 s-3", "z");
+  stats->addProf("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z");
+  stats->addProf("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z");
+  stats->addProf("tke_shear", "Shear production term in TKE budget", "m2 s-3", "z");
 
-  stats->addprof("u2_turb" , "Turbulent transport term in U2 budget" , "m2 s-3", "z" );
-  stats->addprof("v2_turb" , "Turbulent transport term in V2 budget" , "m2 s-3", "z" );
-  stats->addprof("w2_turb" , "Turbulent transport term in W2 budget" , "m2 s-3", "zh");
-  stats->addprof("tke_turb", "Turbulent transport term in TKE budget", "m2 s-3", "z" );
+  stats->addProf("u2_turb" , "Turbulent transport term in U2 budget" , "m2 s-3", "z" );
+  stats->addProf("v2_turb" , "Turbulent transport term in V2 budget" , "m2 s-3", "z" );
+  stats->addProf("w2_turb" , "Turbulent transport term in W2 budget" , "m2 s-3", "zh");
+  stats->addProf("tke_turb", "Turbulent transport term in TKE budget", "m2 s-3", "z" );
 
-  stats->addprof("u2_visc" , "Viscous transport term in U2 budget" , "m2 s-3", "z" );
-  stats->addprof("v2_visc" , "Viscous transport term in V2 budget" , "m2 s-3", "z" );
-  stats->addprof("w2_visc" , "Viscous transport term in W2 budget" , "m2 s-3", "zh");
-  stats->addprof("tke_visc", "Viscous transport term in TKE budget", "m2 s-3", "z" );
+  stats->addProf("u2_visc" , "Viscous transport term in U2 budget" , "m2 s-3", "z" );
+  stats->addProf("v2_visc" , "Viscous transport term in V2 budget" , "m2 s-3", "z" );
+  stats->addProf("w2_visc" , "Viscous transport term in W2 budget" , "m2 s-3", "zh");
+  stats->addProf("tke_visc", "Viscous transport term in TKE budget", "m2 s-3", "z" );
 
-  stats->addprof("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" );
-  stats->addprof("v2_diss" , "Dissipation term in V2 budget" , "m2 s-3", "z" );
-  stats->addprof("w2_diss" , "Dissipation term in W2 budget" , "m2 s-3", "zh");
-  stats->addprof("tke_diss", "Dissipation term in TKE budget", "m2 s-3", "z" );
+  stats->addProf("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" );
+  stats->addProf("v2_diss" , "Dissipation term in V2 budget" , "m2 s-3", "z" );
+  stats->addProf("w2_diss" , "Dissipation term in W2 budget" , "m2 s-3", "zh");
+  stats->addProf("tke_diss", "Dissipation term in TKE budget", "m2 s-3", "z" );
 
-  stats->addprof("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh");
-  stats->addprof("tke_pres", "Pressure transport term in TKE budget", "m2 s-3", "z" );
+  stats->addProf("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh");
+  stats->addProf("tke_pres", "Pressure transport term in TKE budget", "m2 s-3", "z" );
 
-  stats->addprof("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" );
-  stats->addprof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
-  stats->addprof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
+  stats->addProf("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" );
+  stats->addProf("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
+  stats->addProf("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
 
   if(model->thermo->getSwitch() != "0")
   {
-    stats->addprof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
-    stats->addprof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
+    stats->addProf("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
+    stats->addProf("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
   }
 
   if(model->thermo->getSwitch() != "0")
   {
     // add the profiles for the potential energy budget to the statistics
-    stats->addprof("bsort", "Sorted buoyancy", "m s-2", "z");
-    stats->addprof("zsort", "Height diff buoyancy and sorted buoyancy", "m", "z");
-    stats->addprof("pe"   , "Total potential energy", "m2 s-2", "z");
-    stats->addprof("ape"  , "Available potential energy", "m2 s-2", "z");
-    stats->addprof("bpe"  , "Background potential energy", "m2 s-2", "z");
+    stats->addProf("bsort", "Sorted buoyancy", "m s-2", "z");
+    stats->addProf("zsort", "Height diff buoyancy and sorted buoyancy", "m", "z");
+    stats->addProf("pe"   , "Total potential energy", "m2 s-2", "z");
+    stats->addProf("ape"  , "Available potential energy", "m2 s-2", "z");
+    stats->addProf("bpe"  , "Background potential energy", "m2 s-2", "z");
 
     // add the budget terms for the potential energy
-    stats->addprof("pe_turb", "Turbulent transport term in potential energy budget", "m2 s-3", "z");
-    stats->addprof("pe_visc", "Viscous transport term in potential energy budget", "m2 s-3", "z");
-    stats->addprof("pe_bous", "Boussinesq term in potential energy budget", "m2 s-3", "z");
+    stats->addProf("pe_turb", "Turbulent transport term in potential energy budget", "m2 s-3", "z");
+    stats->addProf("pe_visc", "Viscous transport term in potential energy budget", "m2 s-3", "z");
+    stats->addProf("pe_bous", "Boussinesq term in potential energy budget", "m2 s-3", "z");
 
     // add the budget terms for the background potential energy
-    stats->addprof("bpe_turb", "Turbulent transport term in background potential energy budget", "m2 s-3", "z");
-    stats->addprof("bpe_visc", "Viscous transport term in background potential energy budget", "m2 s-3", "z");
-    stats->addprof("bpe_diss", "Dissipation term in background potential energy budget", "m2 s-3", "z");
+    stats->addProf("bpe_turb", "Turbulent transport term in background potential energy budget", "m2 s-3", "z");
+    stats->addProf("bpe_visc", "Viscous transport term in background potential energy budget", "m2 s-3", "z");
+    stats->addProf("bpe_diss", "Dissipation term in background potential energy budget", "m2 s-3", "z");
   }
 }
 
@@ -183,7 +183,7 @@ int Budget::execStats(Mask *m)
     if(model->thermo->getSwitch() != "0")
     {
       // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
-      stats->calcsortprof(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, m->profs["bsort"].data);
+      stats->calcSortedProf(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, m->profs["bsort"].data);
 
       // calculate the potential energy back, tmp1 contains the buoyancy, tmp2 will contain height that the local buoyancy
       // will reach in the sorted profile
