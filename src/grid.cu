@@ -23,70 +23,73 @@
 #include "grid.h"
 #include "tools.h"
 
-__global__ void grid_cyclic_x(double * const __restrict__ data,
-                              const int icells, const int jcells, const int kcells,
-                              const int icellsp,
-                              const int istart, const int jstart,
-                              const int iend,   const int jend, 
-                              const int igc,    const int jgc)
+namespace Grid_g
 {
-  const int i = blockIdx.x*blockDim.x + threadIdx.x;
-  const int j = blockIdx.y*blockDim.y + threadIdx.y;
-  const int k = blockIdx.z;
-
-  const int jj = icellsp;
-  const int kk = icellsp*jcells;
-
-  // East-west
-  if(k < kcells && j < jcells && i < igc)
+  __global__ void boundaryCyclic_x(double * const __restrict__ data,
+                                   const int icells, const int jcells, const int kcells,
+                                   const int icellsp,
+                                   const int istart, const int jstart,
+                                   const int iend,   const int jend, 
+                                   const int igc,    const int jgc)
   {
-    const int ijk0 = i          + j*jj + k*kk;
-    const int ijk1 = iend-igc+i + j*jj + k*kk;
-    const int ijk2 = i+iend     + j*jj + k*kk;
-    const int ijk3 = i+istart   + j*jj + k*kk;
-
-    data[ijk0] = data[ijk1];
-    data[ijk2] = data[ijk3];
-  }
-}
-
-__global__ void grid_cyclic_y(double * const __restrict__ data,
-                              const int icells, const int jcells, const int kcells,
-                              const int icellsp,
-                              const int istart, const int jstart,
-                              const int iend,   const int jend, 
-                              const int igc,    const int jgc)
-{
-  const int i = blockIdx.x*blockDim.x + threadIdx.x;
-  const int j = blockIdx.y*blockDim.y + threadIdx.y;
-  const int k = blockIdx.z;
-
-  const int jj = icellsp;
-  const int kk = icellsp*jcells;
-
-  // North-south
-  if(jend-jstart == 1)
-  {
-    if(k < kcells && j < jgc && i < icells)
+    const int i = blockIdx.x*blockDim.x + threadIdx.x;
+    const int j = blockIdx.y*blockDim.y + threadIdx.y;
+    const int k = blockIdx.z;
+  
+    const int jj = icellsp;
+    const int kk = icellsp*jcells;
+  
+    // East-west
+    if(k < kcells && j < jcells && i < igc)
     {
-      const int ijkref   = i + jstart*jj   + k*kk;
-      const int ijknorth = i + j*jj        + k*kk;
-      const int ijksouth = i + (jend+j)*jj + k*kk;
-      data[ijknorth] = data[ijkref];
-      data[ijksouth] = data[ijkref];
-    }
-  }
-  else
-  {
-    if(k < kcells && j < jgc && i < icells)
-    {
-      const int ijk0 = i + j           *jj + k*kk;
-      const int ijk1 = i + (jend-jgc+j)*jj + k*kk;
-      const int ijk2 = i + (j+jend  )*jj + k*kk;
-      const int ijk3 = i + (j+jstart)*jj + k*kk;
-
+      const int ijk0 = i          + j*jj + k*kk;
+      const int ijk1 = iend-igc+i + j*jj + k*kk;
+      const int ijk2 = i+iend     + j*jj + k*kk;
+      const int ijk3 = i+istart   + j*jj + k*kk;
+  
       data[ijk0] = data[ijk1];
       data[ijk2] = data[ijk3];
+    }
+  }
+  
+  __global__ void boundaryCyclic_y(double * const __restrict__ data,
+                                   const int icells, const int jcells, const int kcells,
+                                   const int icellsp,
+                                   const int istart, const int jstart,
+                                   const int iend,   const int jend, 
+                                   const int igc,    const int jgc)
+  {
+    const int i = blockIdx.x*blockDim.x + threadIdx.x;
+    const int j = blockIdx.y*blockDim.y + threadIdx.y;
+    const int k = blockIdx.z;
+  
+    const int jj = icellsp;
+    const int kk = icellsp*jcells;
+  
+    // North-south
+    if(jend-jstart == 1)
+    {
+      if(k < kcells && j < jgc && i < icells)
+      {
+        const int ijkref   = i + jstart*jj   + k*kk;
+        const int ijknorth = i + j*jj        + k*kk;
+        const int ijksouth = i + (jend+j)*jj + k*kk;
+        data[ijknorth] = data[ijkref];
+        data[ijksouth] = data[ijkref];
+      }
+    }
+    else
+    {
+      if(k < kcells && j < jgc && i < icells)
+      {
+        const int ijk0 = i + j           *jj + k*kk;
+        const int ijk1 = i + (jend-jgc+j)*jj + k*kk;
+        const int ijk2 = i + (j+jend  )*jj + k*kk;
+        const int ijk3 = i + (j+jstart)*jj + k*kk;
+  
+        data[ijk0] = data[ijk1];
+        data[ijk2] = data[ijk3];
+      }
     }
   }
 }
@@ -152,15 +155,15 @@ void Grid::boundaryCyclic_g(double * data)
   dim3 gridGPUy (gridi_y, gridj_y, kcells);
   dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-  grid_cyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
-                                        istart, jstart,
-                                        iend,   jend,
-                                        igc,    jgc);
+  Grid_g::boundaryCyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
+                                                   istart, jstart,
+                                                   iend,   jend,
+                                                   igc,    jgc);
 
-  grid_cyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
-                                        istart, jstart,
-                                        iend,   jend,
-                                        igc,    jgc);
+  Grid_g::boundaryCyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
+                                                   istart, jstart,
+                                                   iend,   jend,
+                                                   igc,    jgc);
 
   cudaCheckError();
 }
@@ -183,15 +186,15 @@ void Grid::boundaryCyclic2d_g(double * data)
   dim3 gridGPUy (gridi_y, gridj_y, 1);
   dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-  grid_cyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
-                                        istart, jstart,
-                                        iend,   jend,
-                                        igc,    jgc);
+  Grid_g::boundaryCyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
+                                                   istart, jstart,
+                                                   iend,   jend,
+                                                   igc,    jgc);
 
-  grid_cyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
-                                        istart, jstart,
-                                        iend,   jend,
-                                        igc,    jgc);
+  Grid_g::boundaryCyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
+                                                   istart, jstart,
+                                                   iend,   jend,
+                                                   igc,    jgc);
 
   cudaCheckError();
 }
