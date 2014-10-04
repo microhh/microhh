@@ -162,6 +162,5 @@ class Fields
      */
     void forwardField3dDevice(Field3d *);  ///< Copy of a complete Field3d instance from host to device
     void backwardField3dDevice(Field3d *); ///< Copy of a complete Field3d instance from device to host
-
 };
 #endif
