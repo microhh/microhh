@@ -235,7 +235,7 @@ void ThermoDry::exec()
 }
 #endif
 
-void ThermoDry::execStats(mask *m)
+void ThermoDry::execStats(Mask *m)
 {
   // calculate the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);

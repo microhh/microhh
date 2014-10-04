@@ -67,7 +67,7 @@ Stats::~Stats()
   delete[] nmaskh;
 
   // delete the profiles
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     delete it->second.dataFile;
     for(profmap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
@@ -102,10 +102,10 @@ void Stats::create(int n)
 
   int nerror = 0;
 
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create a NetCDF file for the statistics
     if(master->mpiid == 0)
@@ -198,10 +198,10 @@ int Stats::exec(int iteration, double time, unsigned long itime)
   if(itime % isampletime != 0)
     return 0;
 
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // put the data into the NetCDF file
     if(master->mpiid == 0)
@@ -241,10 +241,10 @@ int Stats::addprof(std::string name, std::string longname, std::string unit, std
   int nerror = 0;
 
   // add the profile to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
@@ -278,10 +278,10 @@ int Stats::addfixedprof(std::string name, std::string longname, std::string unit
   int nerror = 0;
 
   // add the profile to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
     NcVar *var;
@@ -310,10 +310,10 @@ int Stats::addtseries(std::string name, std::string longname, std::string unit)
   int nerror = 0;
 
   // add the series to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
@@ -331,7 +331,7 @@ int Stats::addtseries(std::string name, std::string longname, std::string unit)
   return nerror;
 }
 
-int Stats::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
+int Stats::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   calcmask(mfield->data, mfieldh->data, mfieldh->databot,
            nmask, nmaskh, &nmaskbot);

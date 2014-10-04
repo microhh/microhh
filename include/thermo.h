@@ -28,7 +28,7 @@ class Master;
 class Input;
 class Grid;
 class Fields;
-struct mask;
+struct Mask;
 
 class Thermo
 {
@@ -40,11 +40,11 @@ class Thermo
     virtual void init();
     virtual void create(Input *);
     virtual void exec();
-    virtual void execStats(mask *);
+    virtual void execStats(Mask *);
 
     virtual void execCross();
 
-    virtual void getMask(Field3d *, Field3d *, mask *);
+    virtual void getMask(Field3d *, Field3d *, Mask *);
 
     // interfacing functions to get buoyancy properties from other classes
     virtual bool checkThermoField(std::string name);

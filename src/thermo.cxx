@@ -60,7 +60,7 @@ void Thermo::exec()
 {
 }
 
-void Thermo::execStats(mask *f)
+void Thermo::execStats(Mask *f)
 {
 }
 
@@ -94,7 +94,7 @@ void Thermo::getProgVars(std::vector<std::string> *list)
 {
 }
 
-void Thermo::getMask(Field3d *mfield, Field3d *mfieldh, mask *f)
+void Thermo::getMask(Field3d *mfield, Field3d *mfieldh, Mask *f)
 {
 }
 

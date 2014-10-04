@@ -254,7 +254,7 @@ void ThermoMoist::exec()
 }
 #endif
 
-void ThermoMoist::getMask(Field3d *mfield, Field3d *mfieldh, mask *m)
+void ThermoMoist::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if(m->name == "ql")
   {
@@ -412,7 +412,7 @@ int ThermoMoist::calcmaskqlcore(double * restrict mask, double * restrict maskh,
   return 0;
 }
 
-void ThermoMoist::execStats(mask *m)
+void ThermoMoist::execStats(Mask *m)
 {
   // calc the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["s"]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);

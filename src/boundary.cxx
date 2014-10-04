@@ -331,7 +331,7 @@ void Boundary::execCross()
 {
 }
 
-int Boundary::execStats(mask *m)
+int Boundary::execStats(Mask *m)
 {
   return 0;
 }

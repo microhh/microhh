@@ -279,7 +279,7 @@ void Model::exec()
 #endif
 
         // always process the default mask
-        stats->getmask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
+        stats->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
         calcStats("default");
 
         // work through the potential masks for the statistics
@@ -287,7 +287,7 @@ void Model::exec()
         {
           if(*it == "wplus" || *it == "wmin")
           {
-            fields->getmask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            fields->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
             calcStats(*it);
           }
           else if(*it == "ql" || *it == "qlcore")

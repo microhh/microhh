@@ -193,7 +193,7 @@ void Boundary_surface::execCross()
     throw 1;
 }
 
-int Boundary_surface::execStats(mask *m)
+int Boundary_surface::execStats(Mask *m)
 {
   stats->calcmean2d(&m->tseries["obuk"].data , obuk , 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
   stats->calcmean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);

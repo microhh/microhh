@@ -28,7 +28,7 @@ class Master;
 class Model;
 class Grid;
 class Fields;
-struct mask;
+struct Mask;
 
 /**
  * Base class for the advection scheme.
@@ -52,7 +52,7 @@ class Boundary
 
     int exec();              ///< Update the boundary conditions.
     virtual void execCross(); ///< Execute cross sections of surface
-    virtual int execStats(mask *); ///< Execute statistics of surface
+    virtual int execStats(Mask *); ///< Execute statistics of surface
 
     enum BoundaryType {DirichletType, NeumannType, FluxType, UstarType};
 

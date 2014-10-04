@@ -50,7 +50,7 @@ typedef std::map<std::string, profvar> profmap;
 typedef std::map<std::string, tseriesvar> tseriesmap;
 
 // structure
-struct mask
+struct Mask
 {
   std::string name;
   NcFile *dataFile;
@@ -60,7 +60,7 @@ struct mask
   tseriesmap tseries;
 };
 
-typedef std::map<std::string, mask> maskmap;
+typedef std::map<std::string, Mask> MaskMap;
 
 class Stats
 {
@@ -72,13 +72,13 @@ class Stats
     void create(int);
 
     unsigned long getTimeLimit(unsigned long);
-    int getmask(Field3d *, Field3d *, mask *);
+    int getMask(Field3d *, Field3d *, Mask *);
     int exec(int, double, unsigned long);
     int dostats();
     std::string getSwitch();
 
     // container for all stats, masks as uppermost in hierarchy
-    maskmap masks;
+    MaskMap masks;
     int *nmask;
     int *nmaskh;
     int nmaskbot;

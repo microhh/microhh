@@ -244,7 +244,7 @@ int Fields::exec()
 }
 #endif
 
-int Fields::getmask(Field3d *mfield, Field3d *mfieldh, mask *m)
+int Fields::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if(m->name == "wplus")
     calcmaskwplus(mfield->data, mfieldh->data, mfieldh->databot, 
@@ -379,7 +379,7 @@ int Fields::calcmaskwmin(double * restrict mask, double * restrict maskh, double
   return 0;
 }
 
-int Fields::execStats(mask *m)
+int Fields::execStats(Mask *m)
 {
   // define locations
   const int uloc[] = {1,0,0};

@@ -29,7 +29,7 @@
 // forward declaration
 class Model;
 class Stats;
-struct mask;
+struct Mask;
 
 class Boundary_surface : public Boundary
 {
@@ -44,7 +44,7 @@ class Boundary_surface : public Boundary
     int exec();
 
     void execCross(); ///< Execute cross sections of surface
-    int execStats(mask *); ///< Execute statistics of surface
+    int execStats(Mask *); ///< Execute statistics of surface
 
     void save(int);
     void load(int);

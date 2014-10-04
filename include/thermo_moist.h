@@ -30,7 +30,7 @@ class Master;
 class Grid;
 class Fields;
 class Stats;
-struct mask;
+struct Mask;
 
 class ThermoMoist : public Thermo
 {
@@ -41,8 +41,8 @@ class ThermoMoist : public Thermo
     virtual void init();
     virtual void create(Input *);
     virtual void exec();
-    virtual void getMask(Field3d *, Field3d *, mask *);
-    virtual void execStats(mask *);
+    virtual void getMask(Field3d *, Field3d *, Mask *);
+    virtual void execStats(Mask *);
 
     virtual void execCross();
 
