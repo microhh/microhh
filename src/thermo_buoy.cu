@@ -27,46 +27,48 @@
 #include "fd.h"
 #include "tools.h"
 
-// BvS: what to do with these double functions? Make generic .cu file with interp2, interp4, etc.?
-__device__ double interp22(double a, double b)
+namespace ThermoBuoy_g
 {
-  return 0.5*(a + b);
-}
-
-__global__ void ThermoBuoy_calcBuoyancyTend_2nd(double * __restrict__ wt, double * __restrict__ b, 
-                                                int istart, int jstart, int kstart,
-                                                int iend,   int jend,   int kend,
-                                                int jj, int kk)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-  int k = blockIdx.z + kstart; 
-
-  if(i < iend && j < jend && k < kend)
+  __device__ double interp2(double a, double b)
   {
-    int ijk = i + j*jj + k*kk;
-    wt[ijk] += interp22(b[ijk-kk], b[ijk]);
+    return 0.5*(a + b);
   }
-}
-
-__global__ void ThermoBuoy_calcBuoyancyTend_4th(double * __restrict__ wt, double * __restrict__ b, 
-                                                int istart, int jstart, int kstart,
-                                                int iend,   int jend,   int kend,
-                                                int jj, int kk)
-{
-  const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-  const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-  const int k = blockIdx.z + kstart;
-
-  const int kk1 = 1*kk;
-  const int kk2 = 2*kk;
-
-  if(i < iend && j < jend && k < kend)
+  
+  __global__ void calcBuoyancyTend_2nd(double * __restrict__ wt, double * __restrict__ b, 
+                                       int istart, int jstart, int kstart,
+                                       int iend,   int jend,   int kend,
+                                       int jj, int kk)
   {
-    const int ijk = i + j*jj + k*kk;
-    wt[ijk] += fd::o4::ci0*b[ijk-kk2] + fd::o4::ci1*b[ijk-kk1] + fd::o4::ci2*b[ijk] + fd::o4::ci3*b[ijk+kk1];
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+    int k = blockIdx.z + kstart; 
+  
+    if(i < iend && j < jend && k < kend)
+    {
+      int ijk = i + j*jj + k*kk;
+      wt[ijk] += interp2(b[ijk-kk], b[ijk]);
+    }
   }
-}
+  
+  __global__ void calcBuoyancyTend_4th(double * __restrict__ wt, double * __restrict__ b, 
+                                       int istart, int jstart, int kstart,
+                                       int iend,   int jend,   int kend,
+                                       int jj, int kk)
+  {
+    const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+    const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+    const int k = blockIdx.z + kstart;
+  
+    const int kk1 = 1*kk;
+    const int kk2 = 2*kk;
+  
+    if(i < iend && j < jend && k < kend)
+    {
+      const int ijk = i + j*jj + k*kk;
+      wt[ijk] += fd::o4::ci0*b[ijk-kk2] + fd::o4::ci1*b[ijk-kk1] + fd::o4::ci2*b[ijk] + fd::o4::ci3*b[ijk+kk1];
+    }
+  }
+} // end namespace
 
 #ifdef USECUDA
 void ThermoBuoy::exec()
@@ -83,18 +85,18 @@ void ThermoBuoy::exec()
 
   if(grid->swspatialorder== "2")
   {
-    ThermoBuoy_calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
-                                                           grid->istart, grid->jstart, grid->kstart+1,
-                                                           grid->iend,   grid->jend, grid->kend,
-                                                           grid->icellsp, grid->ijcellsp);
+    ThermoBuoy_g::calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
+                                                              grid->istart, grid->jstart, grid->kstart+1,
+                                                              grid->iend,   grid->jend, grid->kend,
+                                                              grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
   else if(grid->swspatialorder== "4")
   {
-    ThermoBuoy_calcBuoyancyTend_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
-                                                           grid->istart, grid->jstart, grid->kstart+1,
-                                                           grid->iend,   grid->jend, grid->kend,
-                                                           grid->icellsp, grid->ijcellsp);
+    ThermoBuoy_g::calcBuoyancyTend_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
+                                                              grid->istart, grid->jstart, grid->kstart+1,
+                                                              grid->iend,   grid->jend, grid->kend,
+                                                              grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
 }
