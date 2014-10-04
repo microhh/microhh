@@ -53,7 +53,9 @@ class Field3d
     std::string longname;
     double visc;
 
-    // variables at GPU
+    // Device functions and variables
+    void initDevice(); ///< Allocate Field3D fields at device 
+
     double *data_g;
     double *databot_g;
     double *datatop_g;

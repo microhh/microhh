@@ -57,3 +57,19 @@ int Field3d::init()
   return 0;
 }
 #endif
+
+void Field3d::initDevice()
+{
+  const int nmemsize   = grid->ncellsp*sizeof(double);
+  const int nmemsize1d = grid->kcells *sizeof(double);
+  const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
+
+  cudaSafeCall(cudaMalloc(&data_g,        nmemsize  ));
+  cudaSafeCall(cudaMalloc(&databot_g,     nmemsize2d));
+  cudaSafeCall(cudaMalloc(&datatop_g,     nmemsize2d));
+  cudaSafeCall(cudaMalloc(&datagradbot_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&datagradtop_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&datafluxbot_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&datafluxtop_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&datamean_g,    nmemsize1d));
+}

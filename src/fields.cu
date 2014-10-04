@@ -193,56 +193,22 @@ int Fields::prepareDevice()
 {
   const int nmemsize   = grid->ncellsp*sizeof(double);
   const int nmemsize1d = grid->kcells*sizeof(double);
-  const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
 
   // Prognostic fields
   for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-  {
-    cudaSafeCall(cudaMalloc(&it->second->data_g,        nmemsize  ));
-    cudaSafeCall(cudaMalloc(&it->second->databot_g,     nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datatop_g,     nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datagradbot_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datagradtop_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datafluxbot_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datafluxtop_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datamean_g,    nmemsize1d));
-  }
+    it->second->initDevice();
  
   // Diagnostic fields 
   for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
-  {
-    cudaSafeCall(cudaMalloc(&it->second->data_g,        nmemsize  ));
-    cudaSafeCall(cudaMalloc(&it->second->databot_g,     nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datatop_g,     nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datagradbot_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datagradtop_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datafluxbot_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datafluxtop_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&it->second->datamean_g,    nmemsize1d));
-  }
+    it->second->initDevice();
 
   // Tendencies
   for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaSafeCall(cudaMalloc(&it->second->data_g, nmemsize));
 
   // Temporary fields
-  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->data_g,        nmemsize  ));
-  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->databot_g,     nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datatop_g,     nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datagradbot_g, nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datagradtop_g, nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datafluxbot_g, nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datafluxtop_g, nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp1"]->datamean_g,    nmemsize1d));
-
-  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->data_g,        nmemsize  ));
-  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->databot_g,     nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datatop_g,     nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datagradbot_g, nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datagradtop_g, nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datafluxbot_g, nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datafluxtop_g, nmemsize2d));
-  cudaSafeCall(cudaMalloc(&atmp["tmp2"]->datamean_g,    nmemsize1d));
+  atmp["tmp1"]->initDevice();
+  atmp["tmp2"]->initDevice();
 
   // Reference profiles
   cudaSafeCall(cudaMalloc(&rhoref_g,  nmemsize1d));
