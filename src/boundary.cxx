@@ -292,33 +292,33 @@ void Boundary::exec()
 
   if(grid->swspatialorder == "2")
   {
-    setgcbot_2nd(fields->u->data, grid->dzh, mbcbot, fields->u->databot, fields->u->datagradbot);
-    setgctop_2nd(fields->u->data, grid->dzh, mbctop, fields->u->datatop, fields->u->datagradtop);
+    calcGhostCellsBot_2nd(fields->u->data, grid->dzh, mbcbot, fields->u->databot, fields->u->datagradbot);
+    calcGhostCellsTop_2nd(fields->u->data, grid->dzh, mbctop, fields->u->datatop, fields->u->datagradtop);
 
-    setgcbot_2nd(fields->v->data, grid->dzh, mbcbot, fields->v->databot, fields->v->datagradbot);
-    setgctop_2nd(fields->v->data, grid->dzh, mbctop, fields->v->datatop, fields->v->datagradtop);
+    calcGhostCellsBot_2nd(fields->v->data, grid->dzh, mbcbot, fields->v->databot, fields->v->datagradbot);
+    calcGhostCellsTop_2nd(fields->v->data, grid->dzh, mbctop, fields->v->datatop, fields->v->datagradtop);
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-      setgcbot_2nd(it->second->data, grid->dzh, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
-      setgctop_2nd(it->second->data, grid->dzh, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
+      calcGhostCellsBot_2nd(it->second->data, grid->dzh, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
+      calcGhostCellsTop_2nd(it->second->data, grid->dzh, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
     }
   }
   else if(grid->swspatialorder == "4")
   {
-    setgcbot_4th(fields->u->data, grid->z, mbcbot, fields->u->databot, fields->u->datagradbot);
-    setgctop_4th(fields->u->data, grid->z, mbctop, fields->u->datatop, fields->u->datagradtop);
+    calcGhostCellsBot_4th(fields->u->data, grid->z, mbcbot, fields->u->databot, fields->u->datagradbot);
+    calcGhostCellsTop_4th(fields->u->data, grid->z, mbctop, fields->u->datatop, fields->u->datagradtop);
 
-    setgcbot_4th(fields->v->data, grid->z, mbcbot, fields->v->databot, fields->v->datagradbot);
-    setgctop_4th(fields->v->data, grid->z, mbctop, fields->v->datatop, fields->v->datagradtop);
+    calcGhostCellsBot_4th(fields->v->data, grid->z, mbcbot, fields->v->databot, fields->v->datagradbot);
+    calcGhostCellsTop_4th(fields->v->data, grid->z, mbctop, fields->v->datatop, fields->v->datagradtop);
 
-    setgcbotw_4th(fields->w->data);
-    setgctopw_4th(fields->w->data);
+    calcGhostCellsBotw_4th(fields->w->data);
+    calcGhostCellsTopw_4th(fields->w->data);
 
     for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-      setgcbot_4th(it->second->data, grid->z, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
-      setgctop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
+      calcGhostCellsBot_4th(it->second->data, grid->z, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
+      calcGhostCellsTop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
     }
   }
 }
@@ -395,7 +395,8 @@ void Boundary::setbc(double * restrict a, double * restrict agrad, double * rest
 }
 
 // BOUNDARY CONDITIONS THAT CONTAIN A 2D PATTERN
-void Boundary::setgcbot_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict abot, double * restrict agradbot)
+void Boundary::calcGhostCellsBot_2nd(double * restrict a, double * restrict dzh, BoundaryType boundaryType,
+                                     double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk,kstart;
 
@@ -404,7 +405,7 @@ void Boundary::setgcbot_2nd(double * restrict a, double * restrict dzh, Boundary
 
   kstart = grid->kstart;
 
-  if(sw == DirichletType)
+  if(boundaryType == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -415,7 +416,7 @@ void Boundary::setgcbot_2nd(double * restrict a, double * restrict dzh, Boundary
         a[ijk-kk] = 2.*abot[ij] - a[ijk];
       }
   }
-  else if(sw == NeumannType || sw == FluxType)
+  else if(boundaryType == NeumannType || boundaryType == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -428,7 +429,8 @@ void Boundary::setgcbot_2nd(double * restrict a, double * restrict dzh, Boundary
   }
 }
 
-void Boundary::setgctop_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict atop, double * restrict agradtop)
+void Boundary::calcGhostCellsTop_2nd(double * restrict a, double * restrict dzh, BoundaryType boundaryType,
+                                     double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kk,kend;
 
@@ -437,7 +439,7 @@ void Boundary::setgctop_2nd(double * restrict a, double * restrict dzh, Boundary
   jj = grid->icells;
   kk = grid->icells*grid->jcells;
 
-  if(sw == DirichletType)
+  if(boundaryType == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -448,7 +450,7 @@ void Boundary::setgctop_2nd(double * restrict a, double * restrict dzh, Boundary
         a[ijk+kk] = 2.*atop[ij] - a[ijk];
       }
   }
-  else if(sw == NeumannType || sw == FluxType)
+  else if(boundaryType == NeumannType || boundaryType == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -461,7 +463,8 @@ void Boundary::setgctop_2nd(double * restrict a, double * restrict dzh, Boundary
   }
 }
 
-void Boundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict abot, double * restrict agradbot)
+void Boundary::calcGhostCellsBot_4th(double * restrict a, double * restrict z, BoundaryType boundaryType,
+                                     double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk1,kk2,kstart;
 
@@ -471,7 +474,7 @@ void Boundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryTy
 
   kstart = grid->kstart;
 
-  if(sw == DirichletType)
+  if(boundaryType == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -483,7 +486,7 @@ void Boundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryTy
         a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
       }
   }
-  else if(sw == NeumannType || sw == FluxType)
+  else if(boundaryType == NeumannType || boundaryType == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -497,7 +500,8 @@ void Boundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryTy
   }
 }
 
-void Boundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict atop, double * restrict agradtop)
+void Boundary::calcGhostCellsTop_4th(double * restrict a, double * restrict z, BoundaryType boundaryType,
+                                     double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kend,kk1,kk2;
 
@@ -507,7 +511,7 @@ void Boundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryTy
   kk1 = 1*grid->icells*grid->jcells;
   kk2 = 2*grid->icells*grid->jcells;
 
-  if(sw == DirichletType)
+  if(boundaryType == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -519,7 +523,7 @@ void Boundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryTy
         a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
       }
   }
-  else if(sw == NeumannType || sw == FluxType)
+  else if(boundaryType == NeumannType || boundaryType == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -534,7 +538,7 @@ void Boundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryTy
 }
 
 // BOUNDARY CONDITIONS FOR THE VERTICAL VELOCITY (NO PENETRATION)
-void Boundary::setgcbotw_4th(double * restrict w)
+void Boundary::calcGhostCellsBotw_4th(double * restrict w)
 {
   int ijk,jj,kk1,kk2,kstart;
 
@@ -554,7 +558,7 @@ void Boundary::setgcbotw_4th(double * restrict w)
     }
 }
 
-void Boundary::setgctopw_4th(double * restrict w)
+void Boundary::calcGhostCellsTopw_4th(double * restrict w)
 {
   int ijk,jj,kk1,kk2,kend;
 

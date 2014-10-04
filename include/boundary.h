@@ -100,13 +100,13 @@ class Boundary
   private:
     virtual void bcvalues(); ///< Update the boundary values.
 
-    void setgcbot_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 2nd-order accuracy.
-    void setgctop_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 2nd-order accuracy.
-    void setgcbot_4th(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 4th-order accuracy.
-    void setgctop_4th(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 4th-order accuracy.
+    void calcGhostCellsBot_2nd(double *, double *, BoundaryType, double *, double *); ///< Calculate the bottom ghost cells with 2nd-order accuracy.
+    void calcGhostCellsTop_2nd(double *, double *, BoundaryType, double *, double *); ///< Calculate the top ghost cells with 2nd-order accuracy.
+    void calcGhostCellsBot_4th(double *, double *, BoundaryType, double *, double *); ///< Calculate the bottom ghost cells with 4th-order accuracy.
+    void calcGhostCellsTop_4th(double *, double *, BoundaryType, double *, double *); ///< Calculate the top ghost cells with 4th-order accuracy.
 
-    void setgcbotw_4th(double *); ///< Set the bottom ghost cells for the vertical velocity with 4th order accuracy.
-    void setgctopw_4th(double *); ///< Set the top ghost cells for the vertical velocity with 4th order accuracy.
+    void calcGhostCellsBotw_4th(double *); ///< Calculate the bottom ghost cells for the vertical velocity with 4th order accuracy.
+    void calcGhostCellsTopw_4th(double *); ///< Calculate the top ghost cells for the vertical velocity with 4th order accuracy.
 
     inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
 
