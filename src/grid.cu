@@ -202,16 +202,16 @@ void Grid::boundaryCyclic2d_g(double * data)
 
 double Grid::getMax_g(double *data, double *tmp)
 {
-  const unsigned int max = 1;
+  //const unsigned int max = 1;
   const double scalefac = 1.;
   double maxvalue;
 
   // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, max);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, maxType);
   // Reduce jtot*ktot to ktot values
-  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, max, scalefac);
+  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, maxType, scalefac);
   // Reduce ktot values to a single value
-  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, max, scalefac);
+  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, maxType, scalefac);
   // Copy back result from GPU
   cudaSafeCall(cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost));
   
@@ -220,13 +220,13 @@ double Grid::getMax_g(double *data, double *tmp)
 
 double Grid::getSum_g(double *data, double *tmp)
 {
-  const unsigned int sum = 0;
+  //const unsigned int sum = 0;
   const double scalefac = 1.;
   double sumvalue;
 
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, sum);
-  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sum, scalefac);
-  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sum, scalefac);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, sumType);
+  reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sumType, scalefac);
+  reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sumType, scalefac);
 
   cudaSafeCall(cudaMemcpy(&sumvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost));
   
@@ -235,12 +235,12 @@ double Grid::getSum_g(double *data, double *tmp)
 
 void Grid::calcMean_g(double *prof, double *data, double *tmp)
 {
-  const unsigned int sum = 0;
+  //const unsigned int sum = 0;
   const double scalefac = 1./(itot*jtot);
 
   // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
-  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, kcells, 0, icellsp, ijcellsp, sum);
+  reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, kcells, 0, icellsp, ijcellsp, sumType);
   // Reduce jtot*kcells to kcells values
-  reduceAll     (tmp, prof, jtot*kcells, kcells, jtot, sum, scalefac);
+  reduceAll     (tmp, prof, jtot*kcells, kcells, jtot, sumType, scalefac);
 } 
 

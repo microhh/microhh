@@ -7,8 +7,11 @@
 #define cudaSafeCall(err) __cudaSafeCall(err, __FILE__, __LINE__)
 #define cudaCheckError()  __cudaCheckError(__FILE__, __LINE__)
 
-void reduceInterior(double *, double *, int, int, int, int, int, int, int, int, int, int, int);
-void reduceAll(double *, double *, int, int, int, int, double);
+enum ReduceType {sumType, maxType}; ///< Enumerator holding the different reduction types
+const int reduceMaxThreads = 0.;    ///< Maximum number of threads used in reduce algorithms
+
+void reduceInterior(double *, double *, int, int, int, int, int, int, int, int, int, int, ReduceType);
+void reduceAll(double *, double *, int, int, int, ReduceType, double);
 
 // Wrapper to check for errors in CUDA api calls (e.g. cudaMalloc)
 inline void __cudaSafeCall(cudaError err, const char *file, const int line)
