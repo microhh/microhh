@@ -581,7 +581,7 @@ int Stats::calccount(double * restrict data, double * restrict prof, double thre
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; ++k)
   {
@@ -650,7 +650,7 @@ int Stats::calcmoment(double * restrict data, double * restrict datamean, double
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   for(int k=grid->kstart; k<grid->kend+a; ++k)
   {
@@ -714,7 +714,7 @@ int Stats::calcflux_2nd(double * restrict data, double * restrict w, double * re
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -867,7 +867,7 @@ int Stats::calcgrad_2nd(double * restrict data, double * restrict prof, double *
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -1153,7 +1153,7 @@ int Stats::calcpath(double * restrict data, double * restrict maskbot, int * res
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   int kstart = grid->kstart;
 
   *path = 0.;
@@ -1188,7 +1188,7 @@ int Stats::calccover(double * restrict data, double * restrict maskbot, int * re
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   int kstart = grid->kstart;
 
   *cover = 0.;

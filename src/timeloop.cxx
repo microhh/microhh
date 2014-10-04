@@ -258,7 +258,7 @@ int Timeloop::rk3(double * restrict a, double * restrict at, double dt)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
@@ -304,7 +304,7 @@ int Timeloop::rk4(double * restrict a, double * restrict at, double dt)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)

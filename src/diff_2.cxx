@@ -90,7 +90,7 @@ int Diff2::diffc(double * restrict at, double * restrict a, double * restrict dz
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxidxi = 1./(grid->dx * grid->dx);
   dyidyi = 1./(grid->dy * grid->dy);
@@ -120,7 +120,7 @@ int Diff2::diffw(double * restrict wt, double * restrict w, double * restrict dz
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxidxi = 1./(grid->dx*grid->dx);
   dyidyi = 1./(grid->dy*grid->dy);

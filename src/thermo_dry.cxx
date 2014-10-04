@@ -388,7 +388,7 @@ int ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double * 
 {
   int ijk,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -406,7 +406,7 @@ int ThermoDry::calcN2(double * restrict N2, double * restrict th, double * restr
 {
   int ijk,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -426,7 +426,7 @@ int ThermoDry::calcbuoyancybot(double * restrict b , double * restrict bbot,
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
 
   for(int j=0; j<grid->jcells; ++j)
@@ -468,7 +468,7 @@ int ThermoDry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, 
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -488,8 +488,8 @@ int ThermoDry::calcbuoyancytend_4th(double * restrict wt, double * restrict th, 
   int kk1,kk2;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)

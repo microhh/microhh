@@ -96,7 +96,7 @@ int ThermoBuoy::calcbuoyancy(double * restrict b, double * restrict bin)
 {
   int ijk,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int n=0; n<grid->ncells; ++n)
     b[n] = bin[n];
@@ -109,7 +109,7 @@ int ThermoBuoy::calcbuoyancybot(double * restrict b  , double * restrict bbot,
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
 
   for(int j=0; j<grid->jcells; ++j)
@@ -144,7 +144,7 @@ int ThermoBuoy::calcbuoyancytend_2nd(double * restrict wt, double * restrict b)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -164,8 +164,8 @@ int ThermoBuoy::calcbuoyancytend_4th(double * restrict wt, double * restrict b)
   int kk1,kk2;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)

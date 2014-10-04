@@ -659,8 +659,8 @@ void Fields::create(Input *inputin)
     nerror += addmeanprofile(inputin, it->first, it->second->data, 0.);
   
   // set w equal to zero at the boundaries, just to be sure
-  int lbot = grid->kstart*grid->icells*grid->jcells;
-  int ltop = grid->kend  *grid->icells*grid->jcells;
+  int lbot = grid->kstart*grid->ijcells;
+  int ltop = grid->kend  *grid->ijcells;
   for(int l=0; l<grid->ijcells; ++l)
   {
     w->data[lbot+l] = 0.;
@@ -690,7 +690,7 @@ int Fields::randomnize(Input *inputin, std::string fld, double * restrict data)
   double rndfac;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   // look up the specific randomnizer variables
   nerror += inputin->getItem(&rndamp, "fields", "rndamp", fld, 0.);
@@ -734,7 +734,7 @@ int Fields::addvortexpair(Input *inputin)
   int ijk, jj, kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
     
   // optional parameters
   nerror += inputin->getItem(&vortexnpair, "fields", "vortexnpair", "", 0    );
@@ -772,7 +772,7 @@ int Fields::addmeanprofile(Input *inputin, std::string fld, double * restrict da
   double proftemp[grid->kmax];
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   if(inputin->getProf(proftemp, fld, grid->kmax))
     return 1;
@@ -923,7 +923,7 @@ double Fields::calcmass(double * restrict s, double * restrict dz)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   double mass = 0;
 
@@ -951,7 +951,7 @@ double Fields::calcmom_2nd(double * restrict u, double * restrict v, double * re
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   double momentum;
   momentum = 0;
@@ -980,7 +980,7 @@ double Fields::calctke_2nd(double * restrict u, double * restrict v, double * re
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   double tke = 0;
 

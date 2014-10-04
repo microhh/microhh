@@ -272,9 +272,9 @@ int Cross::crosslngrad(double * restrict a, double * restrict lngrad, double * r
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
   jj3 = 3*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+  kk3 = 3*grid->ijcells;
 
   kstart = grid->kstart;
   kend   = grid->kend;
@@ -376,7 +376,7 @@ int Cross::crosspath(double * restrict data, double * restrict tmp, double * res
 {
   int ijk,ijk1,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   int kstart = grid->kstart;
   int nerror = 0;
   char filename[256];

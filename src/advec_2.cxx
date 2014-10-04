@@ -88,7 +88,7 @@ double Advec2::calccfl(double * restrict u, double * restrict v, double * restri
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -120,7 +120,7 @@ void Advec2::advecu(double * restrict ut, double * restrict u, double * restrict
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -151,7 +151,7 @@ void Advec2::advecv(double * restrict vt, double * restrict u, double * restrict
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -182,7 +182,7 @@ void Advec2::advecw(double * restrict wt, double * restrict u, double * restrict
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -213,7 +213,7 @@ void Advec2::advecs(double * restrict st, double * restrict s, double * restrict
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;

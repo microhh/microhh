@@ -87,8 +87,8 @@ double Advec4m::calccfl(double * restrict u, double * restrict v, double * restr
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -127,9 +127,9 @@ void Advec4m::advecu(double * restrict ut, double * restrict u, double * restric
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
   jj3 = 3*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+  kk3 = 3*grid->ijcells;
 
   kstart = grid->kstart;
   kend   = grid->kend;
@@ -223,9 +223,9 @@ void Advec4m::advecv(double * restrict vt, double * restrict u, double * restric
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
   jj3 = 3*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+  kk3 = 3*grid->ijcells;
 
   kstart = grid->kstart;
   kend   = grid->kend;
@@ -318,9 +318,9 @@ void Advec4m::advecw(double * restrict wt, double * restrict u, double * restric
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
   jj3 = 3*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+  kk3 = 3*grid->ijcells;
 
   kstart = grid->kstart;
   kend   = grid->kend;
@@ -417,9 +417,9 @@ void Advec4m::advecs(double * restrict st, double * restrict s, double * restric
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
   jj3 = 3*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+  kk3 = 3*grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;

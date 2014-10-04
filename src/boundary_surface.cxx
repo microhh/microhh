@@ -307,7 +307,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -386,7 +386,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -462,7 +462,7 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -556,7 +556,7 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   int ij,ijk,jj,kk,kstart;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 

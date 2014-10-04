@@ -401,7 +401,7 @@ void Boundary::calcGhostCellsBot_2nd(double * restrict a, double * restrict dzh,
   int ij,ijk,jj,kk,kstart;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -437,7 +437,7 @@ void Boundary::calcGhostCellsTop_2nd(double * restrict a, double * restrict dzh,
   kend = grid->kend;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   if(boundaryType == DirichletType)
   {
@@ -469,8 +469,8 @@ void Boundary::calcGhostCellsBot_4th(double * restrict a, double * restrict z, B
   int ij,ijk,jj,kk1,kk2,kstart;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -508,8 +508,8 @@ void Boundary::calcGhostCellsTop_4th(double * restrict a, double * restrict z, B
   kend = grid->kend;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   if(boundaryType == DirichletType)
   {
@@ -543,8 +543,8 @@ void Boundary::calcGhostCellsBotw_4th(double * restrict w)
   int ijk,jj,kk1,kk2,kstart;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -563,8 +563,8 @@ void Boundary::calcGhostCellsTopw_4th(double * restrict w)
   int ijk,jj,kk1,kk2,kend;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kend = grid->kend;
 
