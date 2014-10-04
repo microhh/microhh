@@ -180,9 +180,9 @@ void BoundarySurface::execCross()
   for(std::vector<std::string>::const_iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
     if(*it == "ustar")
-      nerror += model->cross->crossplane(ustar, fields->atmp["tmp1"]->data, "ustar");
+      nerror += model->cross->crossPlane(ustar, fields->atmp["tmp1"]->data, "ustar");
     else if(*it == "obuk")
-      nerror += model->cross->crossplane(obuk,  fields->atmp["tmp1"]->data, "obuk");
+      nerror += model->cross->crossPlane(obuk,  fields->atmp["tmp1"]->data, "obuk");
   }  
 
   if(nerror)

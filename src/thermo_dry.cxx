@@ -307,6 +307,8 @@ void ThermoDry::execCross()
 {
   int nerror = 0;
 
+  Cross *cross = model->cross;
+
   // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
   for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
@@ -317,14 +319,14 @@ void ThermoDry::execCross()
     {
       //getThermoField(fields->s["tmp1"], fields->s["tmp2"], *it);
       calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
-      nerror += model->cross->crosssimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
+      nerror += cross->crossSimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
       //getThermoField(fields->s["tmp1"], fields->s["tmp2"], "b");
       calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += model->cross->crosslngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
+      nerror += cross->crossLngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
@@ -333,9 +335,9 @@ void ThermoDry::execCross()
       calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 
       if(*it == "bbot")
-        nerror += model->cross->crossplane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
+        nerror += cross->crossPlane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
-        nerror += model->cross->crossplane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
+        nerror += cross->crossPlane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
     }
   }
 

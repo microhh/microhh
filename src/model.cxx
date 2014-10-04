@@ -302,11 +302,11 @@ void Model::exec()
         stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
       }
 
-      if(cross->docross())
+      if(cross->doCross())
       {
         // Copy back the data from the GPU
         #ifdef USECUDA
-        fields->backwardDevice();
+        fields  ->backwardDevice();
         boundary->backwardDevice();
         #endif
       

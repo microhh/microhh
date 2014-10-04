@@ -44,12 +44,12 @@ class Cross
     //int exec(double, unsigned long, int);
 
     std::string swcross;
-    int docross();
+    bool doCross();
 
-    int crosssimple (double *, double *, std::string);
-    int crosslngrad (double *, double *, double *, double *, std::string);
-    int crossplane  (double *, double *, std::string);
-    int crosspath   (double *, double *, double *, std::string);
+    int crossSimple(double *, double *, std::string);
+    int crossLngrad(double *, double *, double *, double *, std::string);
+    int crossPlane (double *, double *, std::string);
+    int crossPath  (double *, double *, double *, std::string);
 
   private:
     Master *master;

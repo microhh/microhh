@@ -1008,27 +1008,22 @@ void Fields::execCross()
   int nerror = 0;
 
   for(std::vector<std::string>::const_iterator it=crosssimple.begin(); it<crosssimple.end(); ++it)
-    nerror += model->cross->crosssimple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
+    nerror += model->cross->crossSimple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
 
   for(std::vector<std::string>::const_iterator it=crosslngrad.begin(); it<crosslngrad.end(); ++it)
-    nerror += model->cross->crosslngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
+    nerror += model->cross->crossLngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
 
   for(std::vector<std::string>::const_iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
+    nerror += model->cross->crossPlane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
 
   for(std::vector<std::string>::const_iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
+    nerror += model->cross->crossPlane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
 
   for(std::vector<std::string>::const_iterator it=crossbot.begin(); it<crossbot.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
+    nerror += model->cross->crossPlane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
 
   for(std::vector<std::string>::const_iterator it=crosstop.begin(); it<crosstop.end(); ++it)
-    nerror += model->cross->crossplane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
-
-
-
-
-
+    nerror += model->cross->crossPlane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
 
   if(nerror)
     throw 1;

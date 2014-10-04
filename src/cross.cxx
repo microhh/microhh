@@ -190,18 +190,18 @@ unsigned long Cross::getTimeLimit(unsigned long itime)
   return idtlim;
 }
 
-int Cross::docross()
+bool Cross::doCross()
 {
   if(swcross == "0")
-    return 0;
+    return false;
 
   if(model->timeloop->itime % isampletime == 0)
-    return 1;
+    return true;
   else
-    return 0;
+    return false;
 }
 
-int Cross::crosssimple(double * restrict data, double * restrict tmp, std::string name)
+int Cross::crossSimple(double * restrict data, double * restrict tmp, std::string name)
 {
   int nerror = 0;
   char filename[256];
@@ -245,7 +245,7 @@ int Cross::crosssimple(double * restrict data, double * restrict tmp, std::strin
   return nerror;
 }
 
-int Cross::crossplane(double * restrict data, double * restrict tmp, std::string name)
+int Cross::crossPlane(double * restrict data, double * restrict tmp, std::string name)
 {
   int nerror = 0;
   char filename[256];
@@ -256,7 +256,7 @@ int Cross::crossplane(double * restrict data, double * restrict tmp, std::string
   return nerror;
 } 
 
-int Cross::crosslngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
+int Cross::crossLngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
 {
   using namespace fd::o4;
 
@@ -372,7 +372,7 @@ int Cross::crosslngrad(double * restrict a, double * restrict lngrad, double * r
   return nerror;
 }
 
-int Cross::crosspath(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name)
+int Cross::crossPath(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name)
 {
   int ijk,ijk1,jj,kk;
   jj = grid->icells;
