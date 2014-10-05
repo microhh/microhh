@@ -321,7 +321,7 @@ int Force::exec(double dt)
 
   if(swwls == "1")
   {
-    for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    for(FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     {
       Force_g::advecwls_2nd<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], fields->sp[it->first]->datamean_g, wls_g, grid->dzhi_g,
                                                    grid->istart,  grid->jstart, grid->kstart,

@@ -91,7 +91,7 @@ int Fields::exec()
   // calculate the means for the prognostic scalars
   if(calcprofs)
   {
-    for(fieldmap::iterator it=sp.begin(); it!=sp.end(); ++it)
+    for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcMean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
   }
 
@@ -172,7 +172,7 @@ double Fields::checkmass()
   double mass;
 
   // CvH for now, do the mass check on the first scalar... Do we want to change this?
-  fieldmap::iterator itProg=sp.begin();
+  FieldMap::iterator itProg=sp.begin();
   if(sp.begin() != sp.end())
   {
     Fields_g::calcmass_2nd<<<gridGPU, blockGPU>>>(&itProg->second->data_g[offs], &atmp["tmp1"]->data_g[offs], grid->dz_g,
@@ -201,15 +201,15 @@ void Fields::prepareDevice()
   const int nmemsize1d = grid->kcells*sizeof(double);
 
   // Prognostic fields
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
     it->second->initDevice();
  
   // Diagnostic fields 
-  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+  for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
     it->second->initDevice();
 
   // Tendencies
-  for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
+  for(FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaSafeCall(cudaMalloc(&it->second->data_g, nmemsize));
 
   // Temporary fields
@@ -229,13 +229,13 @@ void Fields::prepareDevice()
  */
 void Fields::clearDevice()
 {
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
     it->second->clearDevice();
 
-  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+  for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
     it->second->clearDevice();
 
-  for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
+  for(FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaSafeCall(cudaFree(it->second->data_g));
 
   atmp["tmp1"]->clearDevice();
@@ -250,13 +250,13 @@ void Fields::clearDevice()
  */
 void Fields::forwardDevice()
 {
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
     forwardField3dDevice(it->second);
 
-  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+  for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
     forwardField3dDevice(it->second);
 
-  for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
+  for(FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
     forward3DFieldDevice(it->second->data_g, it->second->data, Offset);
 
   forwardField3dDevice(atmp["tmp1"]);
@@ -273,13 +273,13 @@ void Fields::forwardDevice()
  */
 void Fields::backwardDevice()
 {
-  for(fieldmap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
+  for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
     backwardField3dDevice(it->second);
 
-  for(fieldmap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
+  for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
     backwardField3dDevice(it->second);
 
-  //for(fieldmap::const_iterator it=at.begin(); it!=at.end(); ++it)
+  //for(FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
   //  backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
 
   //backwardField3dDevice(atmp["tmp1"]);

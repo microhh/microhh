@@ -554,7 +554,7 @@ void BoundarySurface::bcvalues()
   cudaCheckError();
 
   // Calculate scalar fluxes, gradients and/or values, including ghost cells
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     BoundarySurface_g::surfs<<<gridGPU2, blockGPU2>>>(&it->second->datafluxbot_g[offs], &it->second->datagradbot_g[offs],
                                                       &it->second->databot_g[offs],     &it->second->data_g[offs],
                                                       &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0h,            

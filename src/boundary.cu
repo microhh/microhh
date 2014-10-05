@@ -220,7 +220,7 @@ void Boundary::exec()
   grid->boundaryCyclic_g(&fields->v->data_g[offs]);
   grid->boundaryCyclic_g(&fields->w->data_g[offs]);
 
-  for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
     grid->boundaryCyclic_g(&it->second->data_g[offs]);
 
   // Calculate the boundary values.
@@ -252,7 +252,7 @@ void Boundary::exec()
                                                                  grid->jcells, grid->kend);
     cudaCheckError(); 
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       Boundary_g::calcGhostCellsBot_2nd<<<grid2dGPU, block2dGPU>>>(&it->second->data_g[offs], grid->dzh_g, sbc[it->first]->bcbot, 
                                                                    &it->second->databot_g[offs], &it->second->datagradbot_g[offs],
@@ -307,7 +307,7 @@ void Boundary::exec()
                                                                   grid->jcells, grid->kend);
     cudaCheckError(); 
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       Boundary_g::calcGhostCellsBot_4th<<<grid2dGPU, block2dGPU>>>(&it->second->data_g[offs], sbc[it->first]->bcbot,
                                                                    &it->second->databot_g[offs], &it->second->datagradbot_g[offs],

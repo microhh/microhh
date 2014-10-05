@@ -514,7 +514,7 @@ int DiffSmag2::exec()
                                               grid->icellsp, grid->ijcellsp);  
   cudaCheckError();
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
     DiffSmag2_g::diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], &fields->sd["evisc"]->data_g[offs], 
                                               &fields->sp[it->first]->datafluxbot_g[offs], &fields->sp[it->first]->datafluxtop_g[offs],
                                               grid->dzi_g, grid->dzhi_g, dxidxi, dyidyi,

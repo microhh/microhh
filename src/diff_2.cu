@@ -123,7 +123,7 @@ int Diff2::exec()
   cudaCheckError();
 
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     Diff2_g::diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs],
                                           grid->dzi_g, grid->dzhi_g,
                                           dxidxi, dyidyi, fields->sp[it->first]->visc,

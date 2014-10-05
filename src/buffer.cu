@@ -66,15 +66,15 @@ int Buffer::prepareDevice()
     const int nmemsize = grid->kcells*sizeof(double);
 
     // Allocate the buffer arrays at GPU.
-    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
       cudaSafeCall(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       cudaSafeCall(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
 
     // Copy buffers to GPU.
-    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
       cudaSafeCall(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       cudaSafeCall(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
   }
   return 0;
@@ -84,9 +84,9 @@ int Buffer::clearDevice()
 {
   if(swbuffer == "1")
   {
-    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
       cudaSafeCall(cudaFree(bufferprofs_g[it->first]));
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       cudaSafeCall(cudaFree(bufferprofs_g[it->first]));
   }
   return 0;
@@ -133,7 +133,7 @@ int Buffer::exec()
                                             grid->icellsp, grid->ijcellsp);
     cudaCheckError();
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       Buffer_g::buffer<<<gridGPU, blockGPU>>>(&fields->st[it->first]->data_g[offs], &it->second->data_g[offs],
                                               bufferprofs_g[it->first], grid->z_g, 
                                               zstart, zsizebufi, sigma, beta, 

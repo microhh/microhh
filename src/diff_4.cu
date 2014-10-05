@@ -197,7 +197,7 @@ int Diff4::exec()
                                         grid->iend, grid->jend, grid->kend);
   cudaCheckError();
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     Diff4_g::diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs],
                                           grid->dzi4_g, grid->dzhi4_g,
                                           grid->dx, grid->dy, fields->sp[it->first]->visc,

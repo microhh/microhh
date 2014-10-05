@@ -158,7 +158,7 @@ void Advec2::exec()
                                             grid->iend,   grid->jend, grid->kend);
   cudaCheckError(); 
   
-  for(fieldmap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+  for(FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     Advec2_g::advecs<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
                                             &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
                                             fields->rhoref_g, fields->rhorefh_g, 
