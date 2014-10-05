@@ -202,7 +202,8 @@ void Grid::boundaryCyclic2d_g(double * data)
 
 double Grid::getMax_g(double *data, double *tmp)
 {
-  //const unsigned int max = 1;
+  using namespace Tools_g;
+
   const double scalefac = 1.;
   double maxvalue;
 
@@ -220,14 +221,18 @@ double Grid::getMax_g(double *data, double *tmp)
 
 double Grid::getSum_g(double *data, double *tmp)
 {
-  //const unsigned int sum = 0;
+  using namespace Tools_g;
+
   const double scalefac = 1.;
   double sumvalue;
 
+  // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
   reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, sumType);
+  // Reduce jtot*ktot to ktot values
   reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sumType, scalefac);
+  // Reduce ktot values to a single value
   reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sumType, scalefac);
-
+  // Copy back result from GPU
   cudaSafeCall(cudaMemcpy(&sumvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost));
   
   return sumvalue;
@@ -235,7 +240,8 @@ double Grid::getSum_g(double *data, double *tmp)
 
 void Grid::calcMean_g(double *prof, double *data, double *tmp)
 {
-  //const unsigned int sum = 0;
+  using namespace Tools_g;
+
   const double scalefac = 1./(itot*jtot);
 
   // Reduce 3D field excluding ghost cells and padding to jtot*kcells values

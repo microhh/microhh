@@ -137,104 +137,103 @@ namespace Tools_g
     if (tid == 0)
       aout[blockIdx.x] = as[0];
   }
-}
 
-int nextpow2(unsigned int x)
-{
-  return (int)pow(2,ceil(log(x)/log(2)));
-}
-
-void reduceInterior(double *a, double *a2d, 
-                    int itot, int istart, int iend,
-                    int jtot, int jstart, int jend,
-                    int ktot, int kstart,
-                    int icells, int ijcells, ReduceType mode)
-{
-  int nthreads = max(16,min(reduceMaxThreads, nextpow2(itot/2)));
-  dim3 gridGPU (1, jtot, ktot);
-  dim3 blockGPU(nthreads, 1, 1);
-
-  if (mode == maxType)
+  int nextpow2(unsigned int x)
   {
-    switch (nthreads)
-    {
-      case 512:
-        Tools_g::ReduceInterior<maxType, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 256:
-        Tools_g::ReduceInterior<maxType, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 128:
-        Tools_g::ReduceInterior<maxType, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 64:
-        Tools_g::ReduceInterior<maxType,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 32:
-        Tools_g::ReduceInterior<maxType,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 16:
-        Tools_g::ReduceInterior<maxType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-    }
+    return (int)pow(2,ceil(log(x)/log(2)));
   }
-  else if (mode == sumType)
+  
+  void reduceInterior(double *a, double *a2d, 
+                      int itot, int istart, int iend,
+                      int jtot, int jstart, int jend,
+                      int ktot, int kstart,
+                      int icells, int ijcells, ReduceType mode)
   {
-    switch (nthreads)
+    int nthreads = max(16,min(reduceMaxThreads, nextpow2(itot/2)));
+    dim3 gridGPU (1, jtot, ktot);
+    dim3 blockGPU(nthreads, 1, 1);
+  
+    if (mode == maxType)
     {
-      case 512:
-        Tools_g::ReduceInterior<sumType, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 256:
-        Tools_g::ReduceInterior<sumType, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 128:
-        Tools_g::ReduceInterior<sumType, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 64:
-        Tools_g::ReduceInterior<sumType,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 32:
-        Tools_g::ReduceInterior<sumType,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
-      case 16:
-        Tools_g::ReduceInterior<sumType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      switch (nthreads)
+      {
+        case 512:
+          ReduceInterior<maxType, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 256:
+          ReduceInterior<maxType, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 128:
+          ReduceInterior<maxType, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 64:
+          ReduceInterior<maxType,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 32:
+          ReduceInterior<maxType,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 16:
+          ReduceInterior<maxType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      }
     }
+    else if (mode == sumType)
+    {
+      switch (nthreads)
+      {
+        case 512:
+          ReduceInterior<sumType, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 256:
+          ReduceInterior<sumType, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 128:
+          ReduceInterior<sumType, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 64:
+          ReduceInterior<sumType,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 32:
+          ReduceInterior<sumType,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+        case 16:
+          ReduceInterior<sumType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
+      }
+    }
+    cudaCheckError();
   }
-  cudaCheckError();
+  
+  void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperblock, ReduceType mode, double scalefac)
+  {
+    int nthreads = max(16,min(reduceMaxThreads, nextpow2(nvaluesperblock/2)));
+    dim3 gridGPU (nblocks,  1, 1);
+    dim3 blockGPU(nthreads, 1, 1);
+  
+    if (mode == maxType)
+    {
+      switch (nthreads)
+      {
+        case 512:
+          ReduceAll<maxType, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 256:
+          ReduceAll<maxType, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 128:
+          ReduceAll<maxType, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 64:
+          ReduceAll<maxType,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 32:
+          ReduceAll<maxType,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 16:
+          ReduceAll<maxType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+      }
+    }
+    else if (mode == sumType)
+    {
+      switch (nthreads)
+      {
+        case 512:
+          ReduceAll<sumType, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 256:
+          ReduceAll<sumType, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 128:
+          ReduceAll<sumType, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 64:
+          ReduceAll<sumType,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 32:
+          ReduceAll<sumType,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+        case 16:
+          ReduceAll<sumType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
+      }
+    }
+    cudaCheckError();
+  }
 }
-
-void reduceAll(double *a, double *aout, int ncells, int nblocks, int nvaluesperblock, ReduceType mode, double scalefac)
-{
-  int nthreads = max(16,min(reduceMaxThreads, nextpow2(nvaluesperblock/2)));
-  dim3 gridGPU (nblocks,  1, 1);
-  dim3 blockGPU(nthreads, 1, 1);
-
-  if (mode == maxType)
-  {
-    switch (nthreads)
-    {
-      case 512:
-        Tools_g::ReduceAll<maxType, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 256:
-        Tools_g::ReduceAll<maxType, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 128:
-        Tools_g::ReduceAll<maxType, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 64:
-        Tools_g::ReduceAll<maxType,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 32:
-        Tools_g::ReduceAll<maxType,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 16:
-        Tools_g::ReduceAll<maxType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-    }
-  }
-  else if (mode == sumType)
-  {
-    switch (nthreads)
-    {
-      case 512:
-        Tools_g::ReduceAll<sumType, 512><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 256:
-        Tools_g::ReduceAll<sumType, 256><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 128:
-        Tools_g::ReduceAll<sumType, 128><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 64:
-        Tools_g::ReduceAll<sumType,  64><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 32:
-        Tools_g::ReduceAll<sumType,  32><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-      case 16:
-        Tools_g::ReduceAll<sumType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
-    }
-  }
-  cudaCheckError();
-}
-
