@@ -415,10 +415,10 @@ void Model::printOutputFile(bool doclose)
     iter    = timeloop->iteration;
     time    = timeloop->time;
     dt      = timeloop->dt;
-    div     = pres->check();
-    mom     = fields->checkmom();
-    tke     = fields->checktke();
-    mass    = fields->checkmass();
+    div     = pres->checkDivergence();
+    mom     = fields->checkMomentum();
+    tke     = fields->checkTke();
+    mass    = fields->checkMass();
     cfl     = advec->getcfl(timeloop->dt);
     dn      = diff->getdn(timeloop->dt);
 

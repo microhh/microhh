@@ -893,32 +893,32 @@ void Fields::save(int n)
 }
 
 #ifndef USECUDA
-double Fields::checkmom()
+double Fields::checkMomentum()
 {
-  return calcmom_2nd(u->data, v->data, w->data, grid->dz);
+  return calcMomentum_2nd(u->data, v->data, w->data, grid->dz);
 }
 #endif
 
 #ifndef USECUDA
-double Fields::checktke()
+double Fields::checkTke()
 {
-  return calctke_2nd(u->data, v->data, w->data, grid->dz);
+  return calcTke_2nd(u->data, v->data, w->data, grid->dz);
 }
 #endif
 
 #ifndef USECUDA
-double Fields::checkmass()
+double Fields::checkMass()
 {
   // CvH for now, do the mass check on the first scalar... Do we want to change this?
-  FieldMap::iterator itProg=sp.begin();
+  FieldMap::const_iterator itProg=sp.begin();
   if(sp.begin() != sp.end())
-    return calcmass(itProg->second->data, grid->dz);
+    return calcMass(itProg->second->data, grid->dz);
   else
     return 0.;
 }
 #endif
 
-double Fields::calcmass(double * restrict s, double * restrict dz)
+double Fields::calcMass(double * restrict s, double * restrict dz)
 {
   int ijk,jj,kk;
 
@@ -943,7 +943,7 @@ double Fields::calcmass(double * restrict s, double * restrict dz)
   return mass;
 }
 
-double Fields::calcmom_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double Fields::calcMomentum_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   using fd::o2::interp2;
 
@@ -972,7 +972,7 @@ double Fields::calcmom_2nd(double * restrict u, double * restrict v, double * re
   return momentum;
 }
 
-double Fields::calctke_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double Fields::calcTke_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   using fd::o2::interp2;
 

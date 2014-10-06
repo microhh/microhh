@@ -109,7 +109,7 @@ void Pres4::exec(double dt)
          fields->sd["p"]->data, grid->dzhi4);
 }
 
-double Pres4::check()
+double Pres4::checkDivergence()
 {
   double divmax = 0.;
 

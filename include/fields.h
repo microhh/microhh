@@ -58,9 +58,9 @@ class Fields
     void save(int);
     void load(int);
 
-    double checkmom ();
-    double checktke ();
-    double checkmass();
+    double checkMomentum();
+    double checkTke();
+    double checkMass();
 
     int setcalcprofs(bool);
 
@@ -145,13 +145,14 @@ class Fields
     int vortexnpair;
     std::string vortexaxis;
     
-    // functions
-    double calcmom_2nd(double *, double *, double *, double *);
-    double calctke_2nd(double *, double *, double *, double *);
+    // Kernels for the check functions.
+    double calcMomentum_2nd(double *, double *, double *, double *);
+    double calcTke_2nd     (double *, double *, double *, double *);
+    double calcMass        (double *, double *);
+
     int addmeanprofile(Input *, std::string, double *, double);
     int randomnize(Input *, std::string, double *);
     int addvortexpair(Input* inputin);
-    double calcmass(double *, double *);
 
     // statistics
     double *umodel;

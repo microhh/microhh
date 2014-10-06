@@ -75,7 +75,7 @@ void Pres2::exec(double dt)
 }
 #endif
 
-double Pres2::check()
+double Pres2::checkDivergence()
 {
   double divmax = 0.;
 

@@ -42,7 +42,7 @@ class Pres4 : public Pres
     void setValues();
 
     void exec(double);
-    double check();
+    double checkDivergence();
 
     #ifdef USECUDA
     int prepareDevice();

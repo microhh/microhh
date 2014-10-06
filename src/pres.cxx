@@ -59,7 +59,7 @@ void Pres::exec(double dt)
 {
 }
 
-double Pres::check()
+double Pres::checkDivergence()
 {
   double divmax = 0.;
   return divmax;

@@ -40,7 +40,7 @@ class Pres
     virtual void setValues();
 
     virtual void exec(double);
-    virtual double check();
+    virtual double checkDivergence();
 
     virtual int prepareDevice();
 
