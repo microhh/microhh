@@ -11,13 +11,20 @@ void initPrognosticVariable;
 
 // 2.2 All accessors and mutators contain the name of the variable without changing the case:
 bool get_calcMeanProfs();
-void set_calcMeanProfs(true);
+void set_calcMeanProfs(bool);
 void get_gridData();
 
 // 2.3 Functions that distinguish multiple versions for different spatial orders use underscore suffix:
 void interpolate_4th();
 void calcFlux_2nd();
 
+// 2.3 Functions that refer to the used name of quantity can also apply underscores:
+void calcMask_ql();
+void calcMask_qlcore();
+
+// 2.4 Inline functions that are used inside of kernels can be kept short for readability:
+inline double interp4(const double, const double, const double, const double);
+a[ijk] = u[ijk]*interp4(s[ijk-ii2], s[ijk-ii1], s[ijk], s[ijk+ii1]);
 
 // 3.1 Variable names go at the wish of the user:
 bool calcProfs = true;
