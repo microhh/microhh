@@ -37,12 +37,12 @@ DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
   swdiff = "smag2";
 
+  fields->initDiagnosticField("evisc", "Eddy viscosity", "m2 s-1");
+
   int nerror = 0;
   nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5  );
   nerror += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23 );
   nerror += inputin->getItem(&tPr  , "diff", "tPr"  , "", 1./3.);
-
-  nerror += fields->initDiagnosticField("evisc", "Eddy viscosity", "m2 s-1");
 
   if(nerror)
     throw 1;

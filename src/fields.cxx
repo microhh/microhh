@@ -42,7 +42,7 @@ Fields::Fields(Model *modelin, Input *inputin)
   grid   = model->grid;
   master = model->master;
 
-  calcprofs = false;
+  calcMeanProfs = false;
 
   // Initialize the pointers.
   rhoref  = 0;
@@ -67,26 +67,25 @@ Fields::Fields(Model *modelin, Input *inputin)
   // initialize the scalars
   for(std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
   {
-    if(initPrognosticField(*it, *it, "-"))
-      throw 1;
+    initPrognosticField(*it, *it, "-");
     nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
 
-  // initialize the basic set of fields
-  nerror += initMomentumField(u, ut, "u", "U velocity", "m s-1");
-  nerror += initMomentumField(v, vt, "v", "V velocity", "m s-1");
-  nerror += initMomentumField(w, wt, "w", "Vertical velocity", "m s-1");
-  nerror += initDiagnosticField("p", "Pressure", "Pa");
-  nerror += initTmpField("tmp1", "", "");
-  nerror += initTmpField("tmp2", "", "");
-  nerror += initTmpField("tmp3", "", "");
-  nerror += initTmpField("tmp4", "", "");
-
   if(nerror)
     throw 1;
+
+  // initialize the basic set of fields
+  initMomentumField(u, ut, "u", "U velocity", "m s-1");
+  initMomentumField(v, vt, "v", "V velocity", "m s-1");
+  initMomentumField(w, wt, "w", "Vertical velocity", "m s-1");
+  initDiagnosticField("p", "Pressure", "Pa");
+  initTmpField("tmp1", "", "");
+  initTmpField("tmp2", "", "");
+  initTmpField("tmp3", "", "");
+  initTmpField("tmp4", "", "");
 }
 
 Fields::~Fields()
@@ -234,7 +233,7 @@ int Fields::checkaddcross(std::string var, std::string type, std::vector<std::st
 int Fields::exec()
 {
   // calculate the means for the prognostic scalars
-  if(calcprofs)
+  if(calcMeanProfs)
   {
     for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcMean(it->second->datamean, it->second->data, grid->kcells);
@@ -545,18 +544,17 @@ int Fields::execStats(Mask *m)
   return 0;
 }
 
-int Fields::setcalcprofs(bool sw)
+void Fields::set_calcMeanProfs(bool sw)
 {
-  calcprofs = sw;
-  return 0;
+  calcMeanProfs = sw;
 }
 
-int Fields::initMomentumField(Field3d *&fld, Field3d *&fldt, std::string fldname, std::string longname, std::string unit)
+void Fields::initMomentumField(Field3d *&fld, Field3d *&fldt, std::string fldname, std::string longname, std::string unit)
 {
   if(mp.find(fldname)!=mp.end())
   {
     master->printError("\"%s\" already exists\n", fldname.c_str());
-    return 1;
+    throw 1;
   }
 
   // add a new prognostic momentum variable
@@ -577,16 +575,14 @@ int Fields::initMomentumField(Field3d *&fld, Field3d *&fldt, std::string fldname
   a [fldname] = mp[fldname];
   ap[fldname] = mp[fldname];
   at[fldname] = mt[fldname];
-
-  return 0;
 }
 
-int Fields::initPrognosticField(std::string fldname, std::string longname, std::string unit)
+void Fields::initPrognosticField(std::string fldname, std::string longname, std::string unit)
 {
   if(sp.find(fldname)!=sp.end())
   {
     master->printError("\"%s\" already exists\n", fldname.c_str());
-    return 1;
+    throw 1;
   }
   
   // add a new scalar variable
@@ -603,35 +599,29 @@ int Fields::initPrognosticField(std::string fldname, std::string longname, std::
   a [fldname] = sp[fldname];
   ap[fldname] = sp[fldname];
   at[fldname] = st[fldname];
-
-  return 0;
 }
 
-int Fields::initDiagnosticField(std::string fldname,std::string longname, std::string unit)
+void Fields::initDiagnosticField(std::string fldname,std::string longname, std::string unit)
 {
   if(sd.find(fldname)!=sd.end())
   {
     master->printError("\"%s\" already exists\n", fldname.c_str());
-    return 1;
+    throw 1;
   }
 
   sd[fldname] = new Field3d(grid, master, fldname, longname, unit);
   a [fldname] = sd[fldname];
-
-  return 0;  
 }
 
-int Fields::initTmpField(std::string fldname,std::string longname, std::string unit)
+void Fields::initTmpField(std::string fldname,std::string longname, std::string unit)
 {
   if(atmp.find(fldname)!=atmp.end())
   {
     master->printError("\"%s\" already exists\n", fldname.c_str());
-    return 1;
+    throw 1;
   }
 
   atmp[fldname] = new Field3d(grid, master, fldname, longname, unit);
-
-  return 0;  
 }
 
 void Fields::create(Input *inputin)

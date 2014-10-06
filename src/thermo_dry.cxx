@@ -52,12 +52,10 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
   exner  = 0;
   exnerh = 0;
 
+  fields->initPrognosticField("th", "Potential Temperature", "K");
+
   int nerror = 0;
-
-  nerror += fields->initPrognosticField("th", "Potential Temperature", "K");
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
-
-  // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
 
   if(nerror)
@@ -95,7 +93,6 @@ void ThermoDry::init()
 void ThermoDry::create(Input *inputin)
 {
   // Only in case of Boussinesq, read in reference potential temperature
-  int nerror = 0;
   if(model->swbasestate == "boussinesq")
   {
     if(inputin->getItem(&thref0, "thermo", "thref0", ""))

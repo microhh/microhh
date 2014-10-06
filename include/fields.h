@@ -50,10 +50,10 @@ class Fields
     int getMask(Field3d *, Field3d *, Mask *);
     int execStats(Mask *);
 
-    int initMomentumField  (Field3d*&, Field3d*&, std::string, std::string, std::string);
-    int initPrognosticField(std::string, std::string, std::string);
-    int initDiagnosticField(std::string, std::string, std::string);
-    int initTmpField       (std::string, std::string, std::string);
+    void initMomentumField  (Field3d*&, Field3d*&, std::string, std::string, std::string);
+    void initPrognosticField(std::string, std::string, std::string);
+    void initDiagnosticField(std::string, std::string, std::string);
+    void initTmpField       (std::string, std::string, std::string);
     
     void save(int);
     void load(int);
@@ -62,7 +62,7 @@ class Fields
     double checkTke();
     double checkMass();
 
-    int setcalcprofs(bool);
+    void set_calcMeanProfs(bool);
 
     void execCross();
 
@@ -120,7 +120,7 @@ class Fields
     Master *master;
     Stats  *stats;
 
-    bool calcprofs;
+    bool calcMeanProfs;
 
     // cross sections
     std::vector<std::string> crosslist;      // List with all crosses from ini file

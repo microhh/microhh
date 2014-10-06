@@ -57,13 +57,14 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   pref    = 0;
   prefh   = 0;
 
-  int nerror = 0;
-  nerror += inputin->getItem(&pbot    , "thermo", "pbot"    , "");
+  // Initialize the prognostic fields
+  fields->initPrognosticField("s", "Liquid water potential temperature", "K");
+  fields->initPrognosticField("qt", "Total water mixing ratio", "kg kg-1");
 
-  nerror += fields->initPrognosticField("s", "Liquid water potential temperature", "K");
-  nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
-  nerror += fields->initPrognosticField("qt", "Total water mixing ratio", "kg kg-1");
+  int nerror = 0;
+  nerror += inputin->getItem(&fields->sp["s" ]->visc, "fields", "svisc", "s" );
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
+  nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
@@ -132,7 +133,7 @@ void ThermoMoist::create(Input *inputin)
   int kend   = grid->kend;
 
   // Enable automated calculation of horizontally averaged fields
-  fields->setcalcprofs(true);
+  fields->set_calcMeanProfs(true);
 
   if(model->swbasestate == "anelastic")
   {
