@@ -189,18 +189,18 @@ void Fields::init()
   // Check different type of crosses and put them in their respective lists 
   for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    checkaddcross(it->first, "",        &crosslist, &crosssimple);
-    checkaddcross(it->first, "lngrad",  &crosslist, &crosslngrad);
-    checkaddcross(it->first, "bot",     &crosslist, &crossbot);
-    checkaddcross(it->first, "top",     &crosslist, &crosstop);
-    checkaddcross(it->first, "fluxbot", &crosslist, &crossfluxbot);
-    checkaddcross(it->first, "fluxtop", &crosslist, &crossfluxtop);
+    checkAddedCross(it->first, "",        &crosslist, &crosssimple);
+    checkAddedCross(it->first, "lngrad",  &crosslist, &crosslngrad);
+    checkAddedCross(it->first, "bot",     &crosslist, &crossbot);
+    checkAddedCross(it->first, "top",     &crosslist, &crosstop);
+    checkAddedCross(it->first, "fluxbot", &crosslist, &crossfluxbot);
+    checkAddedCross(it->first, "fluxtop", &crosslist, &crossfluxtop);
   }
 
   for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    checkaddcross(it->first, "",        &crosslist, &crosssimple);
-    checkaddcross(it->first, "lngrad",  &crosslist, &crosslngrad);
+    checkAddedCross(it->first, "",       &crosslist, &crosssimple);
+    checkAddedCross(it->first, "lngrad", &crosslist, &crosslngrad);
   }
 
   // If crosslist not empty, illegal variables or cross types were selected
@@ -211,7 +211,7 @@ void Fields::init()
   } 
 }
 
-int Fields::checkaddcross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+void Fields::checkAddedCross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
 {
   std::vector<std::string>::iterator position;
   
@@ -225,12 +225,10 @@ int Fields::checkaddcross(std::string var, std::string type, std::vector<std::st
       crosslist->erase(position);
     }
   }
-
-  return 0;
 }
 
 #ifndef USECUDA
-int Fields::exec()
+void Fields::exec()
 {
   // calculate the means for the prognostic scalars
   if(calcMeanProfs)
@@ -238,25 +236,22 @@ int Fields::exec()
     for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcMean(it->second->datamean, it->second->data, grid->kcells);
   }
-
-  return 0;
 }
 #endif
 
-int Fields::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
+void Fields::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if(m->name == "wplus")
-    calcmaskwplus(mfield->data, mfieldh->data, mfieldh->databot, 
-                  stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
+    calcMask_wplus(mfield->data, mfieldh->data, mfieldh->databot, 
+                   stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
   else if(m->name == "wmin")                                                  
-    calcmaskwmin (mfield->data, mfieldh->data, mfieldh->databot,
+    calcMask_wmin(mfield->data, mfieldh->data, mfieldh->databot,
                   stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
-  return 0;
 }
 
-int Fields::calcmaskwplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                           int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
-                           double * restrict w)
+void Fields::calcMask_wplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                            int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                            double * restrict w)
 {
   int ijk,ij,jj,kk,kstart;
 
@@ -312,13 +307,11 @@ int Fields::calcmaskwplus(double * restrict mask, double * restrict maskh, doubl
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
   *nmaskbot = nmaskh[grid->kstart];
-
-  return 0;
 }
 
-int Fields::calcmaskwmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                          int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
-                          double * restrict w)
+void Fields::calcMask_wmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                           int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                           double * restrict w)
 {
   int ijk,ij,jj,kk,kstart;
 
@@ -374,11 +367,9 @@ int Fields::calcmaskwmin(double * restrict mask, double * restrict maskh, double
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
   *nmaskbot = nmaskh[grid->kstart];
-
-  return 0;
 }
 
-int Fields::execStats(Mask *m)
+void Fields::execStats(Mask *m)
 {
   // define locations
   const int uloc[] = {1,0,0};
@@ -540,8 +531,6 @@ int Fields::execStats(Mask *m)
 
   if(model->diff->getName() == "smag2")
     stats->calcMean(m->profs["evisc"].data, sd["evisc"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
-
-  return 0;
 }
 
 void Fields::set_calcMeanProfs(bool sw)

@@ -46,9 +46,9 @@ class Fields
     void init();          ///< Initialization of the field arrays
     void create(Input *); ///< Initialization of the fields (random perturbations, vortices)  
 
-    int exec();
-    int getMask(Field3d *, Field3d *, Mask *);
-    int execStats(Mask *);
+    void exec();
+    void getMask(Field3d *, Field3d *, Mask *);
+    void execStats(Mask *);
 
     void initMomentumField  (Field3d*&, Field3d*&, std::string, std::string, std::string);
     void initPrognosticField(std::string, std::string, std::string);
@@ -123,19 +123,21 @@ class Fields
     bool calcMeanProfs;
 
     // cross sections
-    std::vector<std::string> crosslist;      // List with all crosses from ini file
-    // Cross sections split per type
+    std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
+
+    // Cross sections split per type.
     std::vector<std::string> crosssimple;
     std::vector<std::string> crosslngrad;   
     std::vector<std::string> crossbot;
     std::vector<std::string> crosstop;
     std::vector<std::string> crossfluxbot;
     std::vector<std::string> crossfluxtop;
-    int checkaddcross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
+
+    void checkAddedCross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
 
     // masks
-    int calcmaskwplus(double *, double *, double *, int *, int *, int *, double *);
-    int calcmaskwmin (double *, double *, double *, int *, int *, int *, double *);
+    void calcMask_wplus(double *, double *, double *, int *, int *, int *, double *);
+    void calcMask_wmin (double *, double *, double *, int *, int *, int *, double *);
 
     // perturbations
     double rndamp;
