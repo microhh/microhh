@@ -10,7 +10,7 @@
 namespace Tools_g
 {
   enum ReduceType {sumType, maxType}; ///< Enumerator holding the different reduction types
-  const int reduceMaxThreads = 0.;    ///< Maximum number of threads used in reduce algorithms
+  const int reduceMaxThreads = 512;   ///< Maximum number of threads used in reduce algorithms
   
   void reduceInterior(double *, double *, int, int, int, int, int, int, int, int, int, int, ReduceType);
   void reduceAll(double *, double *, int, int, int, ReduceType, double);
