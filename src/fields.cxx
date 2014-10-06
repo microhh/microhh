@@ -639,14 +639,14 @@ void Fields::create(Input *inputin)
     nerror += randomnize(inputin, it->first, it->second->data);
   
   // Add Vortices
-  nerror += addvortexpair(inputin);
+  nerror += addVortexPair(inputin);
   
   // Add the mean profiles to the fields
-  nerror += addmeanprofile(inputin, "u", mp["u"]->data, grid->utrans);
-  nerror += addmeanprofile(inputin, "v", mp["v"]->data, grid->vtrans);
+  nerror += addMeanProf(inputin, "u", mp["u"]->data, grid->utrans);
+  nerror += addMeanProf(inputin, "v", mp["v"]->data, grid->vtrans);
  
   for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    nerror += addmeanprofile(inputin, it->first, it->second->data, 0.);
+    nerror += addMeanProf(inputin, it->first, it->second->data, 0.);
   
   // set w equal to zero at the boundaries, just to be sure
   int lbot = grid->kstart*grid->ijcells;
@@ -715,7 +715,7 @@ int Fields::randomnize(Input *inputin, std::string fld, double * restrict data)
   return nerror;
 }
 
-int Fields::addvortexpair(Input *inputin)
+int Fields::addVortexPair(Input *inputin)
 {
   int nerror = 0;
 
@@ -756,7 +756,7 @@ int Fields::addvortexpair(Input *inputin)
   return nerror;
 }
 
-int Fields::addmeanprofile(Input *inputin, std::string fld, double * restrict data, double offset)
+int Fields::addMeanProf(Input *inputin, std::string fld, double * restrict data, double offset)
 {
   int ijk, jj, kk;
   double proftemp[grid->kmax];

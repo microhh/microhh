@@ -150,9 +150,9 @@ class Fields
     double calcTke_2nd     (double *, double *, double *, double *);
     double calcMass        (double *, double *);
 
-    int addmeanprofile(Input *, std::string, double *, double);
-    int randomnize(Input *, std::string, double *);
-    int addvortexpair(Input* inputin);
+    int addMeanProf  (Input *, std::string, double *, double);
+    int randomnize   (Input *, std::string, double *);
+    int addVortexPair(Input *);
 
     // statistics
     double *umodel;
