@@ -42,12 +42,11 @@ class Buffer
 
     void init();           ///< Initialize the arrays that contain the profiles.
     void create(Input *); ///< Read the profiles of the forces from the input.
-    int exec();            ///< Add the tendencies created by the damping.
+    void exec();            ///< Add the tendencies created by the damping.
 
     // GPU functions and variables
-    int prepareDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
-    int clearDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
-
+    void prepareDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
+    void clearDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
 
   private:
     Master *master; ///< Pointer to master class.
@@ -66,8 +65,8 @@ class Buffer
 
     std::string swbuffer; ///< Switch for buffer.
 
-    int buffer(double * const, const double * const, 
-               const double * const, const double * const); ///< Calculate the tendency 
+    void buffer(double * const, const double * const, 
+                const double * const, const double * const); ///< Calculate the tendency.
 
     // GPU functions and variables
     std::map<std::string, double*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.

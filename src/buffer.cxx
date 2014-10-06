@@ -126,7 +126,7 @@ void Buffer::create(Input *inputin)
 }
 
 #ifndef USECUDA
-int Buffer::exec()
+void Buffer::exec()
 {
   if(swbuffer == "1")
   {
@@ -138,12 +138,10 @@ int Buffer::exec()
     for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       buffer(fields->st[it->first]->data, it->second->data, bufferprofs[it->first], grid->z);
   }
-
-  return 0;
 }
 #endif
 
-int Buffer::buffer(double * const restrict at, const double * const restrict a, 
+void Buffer::buffer(double * const restrict at, const double * const restrict a, 
                     const double * const restrict abuf, const double * const restrict z)
 { 
   int ijk,jj,kk;
@@ -167,7 +165,4 @@ int Buffer::buffer(double * const restrict at, const double * const restrict a,
         at[ijk] -= sigmaz*(a[ijk]-abuf[k]);
       }
   }
-
-  return 0;
 }
-
