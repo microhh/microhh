@@ -639,7 +639,7 @@ void Pres4::exec(double dt)
   cudaCheckError();
 }
 
-double Pres4::check()
+double Pres4::checkDivergence()
 {
   const int blocki = 128;
   const int blockj = 2;

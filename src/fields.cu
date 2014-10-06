@@ -89,7 +89,7 @@ namespace Fields_g
 int Fields::exec()
 {
   // calculate the means for the prognostic scalars
-  if(calcprofs)
+  if(calcMeanProfs)
   {
     for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcMean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
@@ -100,7 +100,7 @@ int Fields::exec()
 #endif
 
 #ifdef USECUDA
-double Fields::checkmom()
+double Fields::checkMomentum()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -128,7 +128,7 @@ double Fields::checkmom()
 #endif
 
 #ifdef USECUDA
-double Fields::checktke()
+double Fields::checkTke()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -158,7 +158,7 @@ double Fields::checktke()
 #endif
 
 #ifdef USECUDA
-double Fields::checkmass()
+double Fields::checkMass()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
