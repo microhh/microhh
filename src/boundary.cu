@@ -327,7 +327,7 @@ void Boundary::exec()
 }
 #endif
 
-void Boundary::setbc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
+void Boundary::setBc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
                        BoundaryType sw, double aval, double visc, double offset)
 {
   const int blocki = cuda::blockSizeI;

@@ -59,7 +59,7 @@ namespace Buffer_g
   }
 }
 
-int Buffer::prepareDevice()
+void Buffer::prepareDevice()
 {
   if(swbuffer == "1")
   {
@@ -77,10 +77,9 @@ int Buffer::prepareDevice()
     for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       cudaSafeCall(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
   }
-  return 0;
 }
 
-int Buffer::clearDevice()
+void Buffer::clearDevice()
 {
   if(swbuffer == "1")
   {
@@ -89,11 +88,10 @@ int Buffer::clearDevice()
     for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       cudaSafeCall(cudaFree(bufferprofs_g[it->first]));
   }
-  return 0;
 }
 
 #ifdef USECUDA
-int Buffer::exec()
+void Buffer::exec()
 {
   if(swbuffer == "1")
   {
@@ -142,7 +140,5 @@ int Buffer::exec()
                                               grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
-
-  return 0;
 }
 #endif

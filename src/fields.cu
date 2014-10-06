@@ -86,7 +86,7 @@ namespace Fields_g
 }
 
 #ifdef USECUDA
-int Fields::exec()
+void Fields::exec()
 {
   // calculate the means for the prognostic scalars
   if(calcMeanProfs)
@@ -94,8 +94,6 @@ int Fields::exec()
     for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcMean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
   }
-
-  return 0;
 }
 #endif
 
