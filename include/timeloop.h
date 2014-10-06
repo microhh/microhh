@@ -26,7 +26,6 @@
 #include <sys/time.h>
 #include <string>
 
-// forward declarations to reduce compilation time
 class Input;
 class Master;
 class Model;

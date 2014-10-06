@@ -25,8 +25,8 @@
 
 #include "boundary.h"
 
-// forward declaration to reduce compilation time
 class Model;
+class Input;
 
 class BoundaryUser : public Boundary
 {
@@ -38,10 +38,10 @@ class BoundaryUser : public Boundary
     void setValues();
 
   private:
-    void setbc_patch(double *, double *, double *, int, double, double, double,
-                     double *, double, double); ///< Set the values for the boundary fields.
+    void setBcPatch(double *, double *, double *, int, double, double, double,
+                    double *, double, double); ///< Set the values for the boundary fields.
 
-    // Patch properties
+    // Patch properties.
     int    patch_dim;
     double patch_xh;
     double patch_xr;

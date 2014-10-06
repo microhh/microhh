@@ -57,7 +57,7 @@ BoundarySurface::~BoundarySurface()
 
 void BoundarySurface::create(Input *inputin)
 {
-  processtimedep(inputin);
+  processTimeDep(inputin);
 
   // add variables to the statistics
   if(stats->getSwitch() == "1")
@@ -70,7 +70,7 @@ void BoundarySurface::create(Input *inputin)
 void BoundarySurface::init(Input *inputin)
 {
   // 1. Process the boundary conditions now all fields are registered
-  processbcs(inputin);
+  processBcs(inputin);
 
   int nerror = 0;
   nerror += inputin->getItem(&z0m, "boundary", "z0m", "");
@@ -94,7 +94,7 @@ void BoundarySurface::init(Input *inputin)
     nerror += inputin->getItem(&ustarin, "boundary", "ustar", "");
 
   // process the scalars
-  for(bcmap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
+  for(BcMap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
   {
     // surfsbcbot[it->first] = it->second->bcbot;
     // it->second->bcbot = FluxType;
@@ -230,16 +230,16 @@ void BoundarySurface::load(int iotime)
 void BoundarySurface::setValues()
 {
   // grid transformation is properly taken into account by setting the databot and top values
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
+  setBc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
+  setBc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
   for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
-    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
+    setBc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
+    setBc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
   }
 
   // in case the momentum has a fixed ustar, set the value to that of the input
@@ -248,8 +248,8 @@ void BoundarySurface::setValues()
     int ij,jj;
     jj = grid->icells;
 
-    setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, DirichletType, noVelocity, fields->visc, grid->utrans);
-    setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, DirichletType, noVelocity, fields->visc, grid->vtrans);
+    setBc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, DirichletType, noVelocity, fields->visc, grid->utrans);
+    setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, DirichletType, noVelocity, fields->visc, grid->vtrans);
 
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -263,7 +263,7 @@ void BoundarySurface::setValues()
 }
 
 #ifndef USECUDA
-void BoundarySurface::bcvalues()
+void BoundarySurface::updateBcs()
 {
   // start with retrieving the stability information
   if(model->thermo->getSwitch() == "0")

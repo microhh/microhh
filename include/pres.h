@@ -23,7 +23,6 @@
 #ifndef PRES
 #define PRES
 
-// forward declarations to speed up build time
 class Model;
 class Grid;
 class Fields;

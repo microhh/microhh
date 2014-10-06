@@ -26,8 +26,8 @@
 #include "boundary.h"
 #include "stats.h"
 
-// forward declaration
 class Model;
+class Input;
 class Stats;
 struct Mask;
 
@@ -71,7 +71,7 @@ class BoundarySurface : public Boundary
     std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
     // surface scheme
-    void bcvalues();
+    void updateBcs();
     void stability(double *, double *, double *,
                    double *, double *, double *,
                    double *, double *, double *,

@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-// forward declaration to avoid circular dependency
+// Forward declaration to avoid circular dependency.
 class Master;
 
 typedef std::map<std::string, std::vector<double> > DataMap;

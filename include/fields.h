@@ -26,7 +26,6 @@
 #include <vector>
 #include "field3d.h"
 
-// forward declarations to reduce compilation time
 class Master;
 class Input;
 class Model;

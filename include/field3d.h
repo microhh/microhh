@@ -25,7 +25,6 @@
 
 #include <string>
 
-// forward declarations to reduce compilation time
 class Master;
 class Grid;
 

@@ -224,7 +224,7 @@ void Boundary::exec()
     grid->boundaryCyclic_g(&it->second->data_g[offs]);
 
   // Calculate the boundary values.
-  bcvalues();
+  updateBcs();
 
   if(grid->swspatialorder == "2")
   {

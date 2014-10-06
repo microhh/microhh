@@ -27,7 +27,6 @@
 #include <string>
 #include <map>
 
-// forward declaration
 class Model;
 class Grid;
 class Fields;

@@ -46,7 +46,7 @@ Boundary::Boundary(Model *modelin, Input *inputin)
 
 Boundary::~Boundary()
 {
-  for(bcmap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
+  for(BcMap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
     delete it->second;
 
   // empty the map
@@ -57,7 +57,7 @@ Boundary::~Boundary()
     delete[] it->second;
 }
 
-void Boundary::processbcs(Input *inputin)
+void Boundary::processBcs(Input *inputin)
 {
   int nerror = 0;
 
@@ -95,7 +95,7 @@ void Boundary::processbcs(Input *inputin)
   // read the boundaries per field
   for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    sbc[it->first] = new field3dbc;
+    sbc[it->first] = new Field3dBc;
     nerror += inputin->getItem(&swbot, "boundary", "sbcbot", it->first);
     nerror += inputin->getItem(&swtop, "boundary", "sbctop", it->first);
     nerror += inputin->getItem(&sbc[it->first]->bot, "boundary", "sbot", it->first);
@@ -139,7 +139,7 @@ void Boundary::processbcs(Input *inputin)
 void Boundary::init(Input *inputin)
 {
   // Read the boundary information from the ini files, it throws at error.
-  processbcs(inputin);
+  processBcs(inputin);
 
   int nerror = 0;
 
@@ -156,10 +156,10 @@ void Boundary::init(Input *inputin)
 
 void Boundary::create(Input *inputin)
 {
-  processtimedep(inputin);
+  processTimeDep(inputin);
 }
 
-void Boundary::processtimedep(Input *inputin)
+void Boundary::processTimeDep(Input *inputin)
 {
   int nerror = 0;
 
@@ -245,9 +245,9 @@ void Boundary::setTimeDep()
 
       // BvS: for now branched here; seems a bit wasteful to copy the entire settimedep to boundary.cu?
       #ifndef USECUDA
-      setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
+      setBc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
       #else
-      setbc_g(it1->second->databot_g, it1->second->datagradbot_g, it1->second->datafluxbot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
+      setBc_g(it1->second->databot_g, it1->second->datagradbot_g, it1->second->datafluxbot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
       #endif
     }
   }
@@ -263,23 +263,23 @@ void Boundary::load(int iotime)
 
 void Boundary::setValues()
 {
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
+  setBc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
+  setBc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
   for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
-    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
+    setBc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
+    setBc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
   }
 }
 
 #ifndef USECUDA
 void Boundary::exec()
 {
-  // cyclic boundary conditions, do this before the bottom BC's
+  // Cyclic boundary conditions, do this before the bottom BC's
   grid->boundaryCyclic(fields->u->data);
   grid->boundaryCyclic(fields->v->data);
   grid->boundaryCyclic(fields->w->data);
@@ -287,8 +287,8 @@ void Boundary::exec()
   for(FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
     grid->boundaryCyclic(it->second->data);
 
-  // calculate boundary values
-  bcvalues();
+  // Update the boundary values.
+  updateBcs();
 
   if(grid->swspatialorder == "2")
   {
@@ -332,7 +332,7 @@ void Boundary::execStats(Mask *m)
 {
 }
 
-void Boundary::bcvalues()
+void Boundary::updateBcs()
 {
 }
 
@@ -355,7 +355,7 @@ Boundary* Boundary::factory(Master *masterin, Input *inputin, Model *modelin)
   }
 }
 
-void Boundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
+void Boundary::setBc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
 {
   int ij,jj;
   jj = grid->icells;

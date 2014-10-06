@@ -23,9 +23,9 @@
 #ifndef BOUNDARY
 #define BOUNDARY
 
-// forward declarations to speed up build time
 class Master;
 class Model;
+class Input;
 class Grid;
 class Fields;
 struct Mask;
@@ -50,9 +50,10 @@ class Boundary
     virtual void save(int); ///< Save boundary conditions related fields for restarts.
     virtual void load(int); ///< Load boundary conditions related fields for restarts.
 
-    virtual void exec();              ///< Update the boundary conditions.
-    virtual void execCross(); ///< Execute cross sections of surface
+    virtual void exec(); ///< Update the boundary conditions.
+
     virtual void execStats(Mask *); ///< Execute statistics of surface
+    virtual void execCross();       ///< Execute cross sections of surface
 
     enum BoundaryType {DirichletType, NeumannType, FluxType, UstarType};
 
@@ -73,7 +74,7 @@ class Boundary
     /**
      * Structure containing the boundary options and values per 3d field.
      */
-    struct field3dbc
+    struct Field3dBc
     {
       double bot; ///< Value of the bottom boundary.
       double top; ///< Value of the top boundary.
@@ -81,8 +82,8 @@ class Boundary
       BoundaryType bctop; ///< Switch for the top boundary.
     };
 
-    typedef std::map<std::string, field3dbc *> bcmap;
-    bcmap sbc;
+    typedef std::map<std::string, Field3dBc *> BcMap;
+    BcMap sbc;
 
     // time dependent variables
     std::string swtimedep;
@@ -90,15 +91,16 @@ class Boundary
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
-    void processbcs(Input *); ///< Process the boundary condition settings from the ini file.
-    void processtimedep(Input *); ///< Process the time dependent settings from the ini file.
-    void setbc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
+    void processBcs(Input *);     ///< Process the boundary condition settings from the ini file.
+    void processTimeDep(Input *); ///< Process the time dependent settings from the ini file.
+
+    void setBc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
     // GPU functions and variables
-    void setbc_g(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
+    void setBc_g(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
   private:
-    virtual void bcvalues(); ///< Update the boundary values.
+    virtual void updateBcs(); ///< Update the boundary values.
 
     void calcGhostCellsBot_2nd(double *, double *, BoundaryType, double *, double *); ///< Calculate the bottom ghost cells with 2nd-order accuracy.
     void calcGhostCellsTop_2nd(double *, double *, BoundaryType, double *, double *); ///< Calculate the top ghost cells with 2nd-order accuracy.

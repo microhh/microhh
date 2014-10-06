@@ -23,7 +23,6 @@
 #ifndef THERMO
 #define THERMO
 
-// forward declarations to speed up build time
 class Master;
 class Input;
 class Grid;

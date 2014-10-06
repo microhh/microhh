@@ -480,7 +480,7 @@ void BoundarySurface::clearDevice()
 }
 
 #ifdef USECUDA
-void BoundarySurface::bcvalues()
+void BoundarySurface::updateBcs()
 {
   int gridi, gridj;
   const int blocki = 128;

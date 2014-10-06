@@ -25,7 +25,6 @@
 
 #include <string>
 
-// forward declarations to speed up build time
 class Master;
 class Input;
 class Model;

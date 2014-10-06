@@ -37,7 +37,7 @@ void BoundaryUser::init(Input *inputin)
 {
   int nerror = 0;
 
-  processbcs(inputin);
+  processBcs(inputin);
 
   // patch type
   nerror += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , "", 2 );
@@ -53,23 +53,23 @@ void BoundaryUser::init(Input *inputin)
 
 void BoundaryUser::setValues()
 {
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
+  setBc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
+  setBc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
   for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
-                sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset, fields->atmp["tmp1"]->data, patch_facl, patch_facr);
-    setbc      (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
-                sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
+    setBcPatch(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
+               sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset, fields->atmp["tmp1"]->data, patch_facl, patch_facr);
+    setBc     (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
+               sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
   }
 }
 
-void BoundaryUser::setbc_patch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
-                                double * restrict tmp, double facl, double facr)
+void BoundaryUser::setBcPatch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
+                              double * restrict tmp, double facl, double facr)
 {
   double avall, avalr;
   double xmod, ymod;

@@ -25,7 +25,6 @@
 
 #include <string>
 
-// forward declaration to prevent very long building times
 class Master;
 class Input;
 class Grid;

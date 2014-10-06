@@ -23,7 +23,6 @@
 #ifndef BUFFER
 #define BUFFER
 
-// forward declarations to reduce compilation time
 class Master;
 class Model;
 class Grid;

@@ -29,7 +29,6 @@
 #include <cufft.h>
 #endif
 
-// forward declaration
 class Model;
 
 class Pres4 : public Pres

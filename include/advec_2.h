@@ -25,8 +25,8 @@
 
 #include "advec.h"
 
-// forward declaration
 class Model;
+class Input;
 
 /**
  * Derived class for 2nd order advection scheme.

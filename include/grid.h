@@ -29,7 +29,6 @@
 #include <fftw3.h>
 #include "input.h"
 
-// forward declaration
 class Model;
 class Master;
 

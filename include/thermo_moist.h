@@ -25,7 +25,6 @@
 
 #include "thermo.h"
 
-// forward declarations to speed up build time
 class Master;
 class Grid;
 class Fields;
