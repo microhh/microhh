@@ -42,7 +42,7 @@ class Budget
     void init();
     void create();
 
-    int execStats(Mask *);
+    void execStats(Mask *);
 
   private:
     Model  *model;
@@ -55,40 +55,40 @@ class Budget
 
     double *umodel, *vmodel;
 
-    int calcke(double *, double *, double *,
-               double *, double *,
-               double, double,
-               double *, double *);
+    void calcke(double *, double *, double *,
+                double *, double *,
+                double, double,
+                double *, double *);
 
-    int calctkebudget(double *, double *, double *, double *,
-                      double *, double *,
-                      double *, double *,
+    void calctkebudget(double *, double *, double *, double *,
+                       double *, double *,
+                       double *, double *,
+                       double *, double *, double *,
+                       double *, double *, double *, double *,
+                       double *, double *, double *, double *,
+                       double *, double *, double *, double *,
+                       double *, double *,
+                       double *, double *, double *,
+                       double *, double *, double);
+
+    void calctkebudget_buoy(double *, double *, double *, double *);
+
+    void calcpe(double *, double *, double *, double *,
+                double *,
+                double *,
+                double *, double *, double *,
+                double *);
+
+    void calcpebudget(double *, double *, double *, double *,
                       double *, double *, double *,
                       double *, double *, double *, double *,
-                      double *, double *, double *, double *,
-                      double *, double *, double *, double *,
-                      double *, double *,
-                      double *, double *, double *,
-                      double *, double *, double);
-
-    int calctkebudget_buoy(double *, double *, double *, double *);
-
-    int calcpe(double *, double *, double *, double *,
-               double *,
-               double *,
-               double *, double *, double *,
-               double *);
-
-    int calcpebudget(double *, double *, double *, double *,
-                     double *, double *, double *,
-                     double *, double *, double *, double *,
-                     double);
-
-    int calcbpebudget(double *, double *, double *, double *, double *,
-                      double *, double *, double *,
-                      double *,
-                      double *, double *, double *,
                       double);
+
+    void calcbpebudget(double *, double *, double *, double *, double *,
+                       double *, double *, double *,
+                       double *,
+                       double *, double *, double *,
+                       double);
 
     double calczsort   (double, double *, double *, int);
     double calcdzstardb(double, double *, double *);

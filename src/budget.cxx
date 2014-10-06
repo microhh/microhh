@@ -142,10 +142,10 @@ void Budget::create()
   }
 }
 
-int Budget::execStats(Mask *m)
+void Budget::execStats(Mask *m)
 {
   if(swbudget == "0")
-    return 0;
+    return;
 
   // calculate the mean of the fields
   grid->calcMean(umodel, fields->u->data, grid->kcells);
@@ -211,11 +211,9 @@ int Budget::execStats(Mask *m)
                    fields->visc);
     }
   }
-
-  return 0;
 }
 
-int Budget::calcke(double * restrict u, double * restrict v, double * restrict w, 
+void Budget::calcke(double * restrict u, double * restrict v, double * restrict w, 
                     double * restrict umodel, double * restrict vmodel,
                     double utrans, double vtrans,
                     double * restrict ke, double * restrict tke)
@@ -270,11 +268,9 @@ int Budget::calcke(double * restrict u, double * restrict v, double * restrict w
     ke [k] /= n;
     tke[k] /= n;
   }
-
-  return 0;
 }
 
-int Budget::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
+void Budget::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
                            double * restrict wx, double * restrict wy,
                            double * restrict umean, double * restrict vmean,
                            double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
@@ -1073,11 +1069,9 @@ int Budget::calctkebudget(double * restrict u, double * restrict v, double * res
     v2_rdstr[k] /= n;
     w2_rdstr[k] /= n;
   }
-
-  return 0;
 }
 
-int Budget::calctkebudget_buoy(double * restrict w, double * restrict b,
+void Budget::calctkebudget_buoy(double * restrict w, double * restrict b,
                                 double * restrict w2_buoy, double * restrict tke_buoy)
 {
   int ijk,jj1,kk1,kk2;
@@ -1119,11 +1113,9 @@ int Budget::calctkebudget_buoy(double * restrict w, double * restrict b,
 
   grid->getProf(w2_buoy , grid->kcells);
   grid->getProf(tke_buoy, grid->kcells);
-
-  return 0;
 }
 
-int Budget::calcpe(double * restrict b, double * restrict zsort, double * restrict zsortbot, double * restrict zsorttop,
+void Budget::calcpe(double * restrict b, double * restrict zsort, double * restrict zsortbot, double * restrict zsorttop,
                     double * restrict z,
                     double * restrict bsort,
                     double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg,
@@ -1252,8 +1244,6 @@ int Budget::calcpe(double * restrict b, double * restrict zsort, double * restri
       zsort[ijk+kk1] = (8./3.)*zsorttop[ij] - 2.*zsort[ijk] + (1./3.)*zsort[ijk-kk1];
       zsort[ijk+kk2] = 8.*zsorttop[ij] - 9.*zsort[ijk] + 2.*zsort[ijk-kk1];
     }
-
-  return 0;
 }
 
 double Budget::calczsort(double b, double * restrict bsort, double * restrict z, int k)
@@ -1319,7 +1309,7 @@ double Budget::calcdzstardb(double b, double * restrict bsort, double * restrict
 }
 
 
-int Budget::calcpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
+void Budget::calcpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
                           double * restrict pe_turb, double * restrict pe_visc, double * restrict pe_bous,
                           double * restrict z, double * restrict zh, double * restrict dzi4, double * restrict dzhi4,
                           double visc)
@@ -1525,11 +1515,9 @@ int Budget::calcpebudget(double * restrict w, double * restrict b, double * rest
     pe_visc[k] /= n;
     pe_bous[k] /= n;
   }
-
-  return 0;
 }
 
-int Budget::calcbpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bzbot, double * restrict bztop,
+void Budget::calcbpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bzbot, double * restrict bztop,
                            double * restrict bpe_turb, double * restrict bpe_visc, double * restrict bpe_diss,
                            double * restrict bsort,
                            double * restrict z, double * restrict dzi4, double * restrict dzhi4,
@@ -1808,6 +1796,4 @@ int Budget::calcbpebudget(double * restrict w, double * restrict b, double * res
     bpe_visc[k] /= n;
     bpe_diss[k] /= n;
   }
-
-  return 0;
 }
