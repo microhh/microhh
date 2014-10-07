@@ -105,7 +105,7 @@ void ThermoBuoySlope::getProgVars(std::vector<std::string> *list)
   list->push_back("b");
 }
 
-int ThermoBuoySlope::calcbuoyancy(double * restrict b, double * restrict s)
+void ThermoBuoySlope::calcbuoyancy(double * restrict b, double * restrict s)
 {
   int ijk,jj,kk;
   double ql;
@@ -120,12 +120,10 @@ int ThermoBuoySlope::calcbuoyancy(double * restrict b, double * restrict s)
         ijk = i + j*jj + k*kk;
         b[ijk] = s[ijk];
       }
-
-  return 0;
 }
 
-int ThermoBuoySlope::calcbuoyancybot(double * restrict b , double * restrict bbot,
-                                 double * restrict s , double * restrict sbot)
+void ThermoBuoySlope::calcbuoyancybot(double * restrict b, double * restrict bbot,
+                                      double * restrict s, double * restrict sbot)
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
@@ -141,11 +139,9 @@ int ThermoBuoySlope::calcbuoyancybot(double * restrict b , double * restrict bbo
       bbot[ij] = sbot[ij];
       b[ijk]   = s[ijk];
     }
-
-  return 0;
 }
 
-int ThermoBuoySlope::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
+void ThermoBuoySlope::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
 {
   int ij,jj,kk;
   jj = grid->icells;
@@ -157,34 +153,9 @@ int ThermoBuoySlope::calcbuoyancyfluxbot(double * restrict bfluxbot, double * re
       ij  = i + j*jj;
       bfluxbot[ij] = sfluxbot[ij];
     }
-
-  return 0;
 }
 
-int ThermoBuoySlope::calcbuoyancytendw_4th(double * restrict wt, double * restrict s)
-{
-  int ijk,jj;
-  int kk1,kk2;
-
-  jj  = grid->icells;
-  kk1 = 1*grid->ijcells;
-  kk2 = 2*grid->ijcells;
-
-  const double cosalpha = std::cos(this->alpha);
-
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
-      {
-        ijk = i + j*jj + k*kk1;
-        wt[ijk] += cosalpha * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
-      }
-
-  return 0;
-}
-
-int ThermoBuoySlope::calcbuoyancytendu_4th(double * restrict ut, double * restrict s)
+void ThermoBuoySlope::calcbuoyancytendu_4th(double * restrict ut, double * restrict b)
 {
   int ijk,ii1,ii2,jj,kk;
 
@@ -201,13 +172,32 @@ int ThermoBuoySlope::calcbuoyancytendu_4th(double * restrict ut, double * restri
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        ut[ijk] += sinalpha * interp4(s[ijk-ii2], s[ijk-ii1], s[ijk], s[ijk+ii1]);
+        ut[ijk] += sinalpha * interp4(b[ijk-ii2], b[ijk-ii1], b[ijk], b[ijk+ii1]);
       }
-
-  return 0;
 }
 
-int ThermoBuoySlope::calcbuoyancytendb_4th(double * restrict st, double * restrict u, double * restrict w)
+void ThermoBuoySlope::calcbuoyancytendw_4th(double * restrict wt, double * restrict b)
+{
+  int ijk,jj;
+  int kk1,kk2;
+
+  jj  = grid->icells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
+
+  const double cosalpha = std::cos(this->alpha);
+
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for(int j=grid->jstart; j<grid->jend; ++j)
+#pragma ivdep
+      for(int i=grid->istart; i<grid->iend; ++i)
+      {
+        ijk = i + j*jj + k*kk1;
+        wt[ijk] += cosalpha * interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
+      }
+}
+
+void ThermoBuoySlope::calcbuoyancytendb_4th(double * restrict bt, double * restrict u, double * restrict w)
 {
   int ijk,ii1,ii2,jj,kk1,kk2;
 
@@ -227,9 +217,7 @@ int ThermoBuoySlope::calcbuoyancytendb_4th(double * restrict st, double * restri
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
-        st[ijk] -= n2 * ( sinalpha*interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2])
+        bt[ijk] -= n2 * ( sinalpha*interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2])
                         + cosalpha*interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
       }
-
-  return 0;
 }

@@ -90,7 +90,7 @@ namespace ThermoBuoySlope_g
     if(i < iend && j < jend && k < kend)
     {
       const int ijk = i + j*jj + k*kk;
-      bt[ijk] += n2 * ( sinalpha * (fd::o4::ci0*u[ijk-ii1] + fd::o4::ci1*u[ijk] + fd::o4::ci2*u[ijk+ii1] + fd::o4::ci3*u[ijk+ii2])
+      bt[ijk] -= n2 * ( sinalpha * (fd::o4::ci0*u[ijk-ii1] + fd::o4::ci1*u[ijk] + fd::o4::ci2*u[ijk+ii1] + fd::o4::ci3*u[ijk+ii2])
                       + cosalpha * (fd::o4::ci0*w[ijk-kk1] + fd::o4::ci1*w[ijk] + fd::o4::ci2*w[ijk+kk1] + fd::o4::ci3*w[ijk+kk2]) );
     }
   }
