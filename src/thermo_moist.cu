@@ -117,17 +117,13 @@ namespace ThermoMoist_g
       // Half level temperature and moisture content
       double thh = 0.5 * (th[ijk-kk] + th[ijk]);        // Half level liq. water pot. temp.
       double qth = 0.5 * (qt[ijk-kk] + qt[ijk]);        // Half level specific hum.
-      double tl  = thh * exnh[k];                       // Half level liq. water temp.
-      double ql  = qth - qsat(ph[k], tl);
-  
-      // If ql(Tl)>0, saturation adjustment routine needed. 
-      if(ql > 0)
-        ql = satAdjust(thh, qth, ph[k], exnh[k]);
-      else
-        ql = 0.;
-  
+      double ql  = satAdjust(thh, qth, ph[k], exnh[k]); // Half level liquid water content
+ 
       // Calculate tendency
-      wt[ijk] += buoyancy(ph[k], thh, qth, ql, thvrefh[k]);
+      if(ql > 0) 
+        wt[ijk] += buoyancy(ph[k], thh, qth, ql, thvrefh[k]);
+      else
+        wt[ijk] += buoyancyNoql(thh, qth, thvrefh[k]);
     }
   }
   
@@ -144,9 +140,13 @@ namespace ThermoMoist_g
   
     if(i < iend && j < jend && k < kcells)
     {
-      int ijk = i + j*jj + k*kk;
+      int ijk   = i + j*jj + k*kk;
       double ql = satAdjust(th[ijk], qt[ijk], p[k], exn[k]);
-      b[ijk] = buoyancy(p[k], th[ijk], qt[ijk], ql, thvref[k]);
+    
+      if(ql > 0)
+        b[ijk] = buoyancy(p[k], th[ijk], qt[ijk], ql, thvref[k]);
+      else
+        b[ijk] = buoyancyNoql(th[ijk], qt[ijk], thvref[k]);
     }
   }
   
