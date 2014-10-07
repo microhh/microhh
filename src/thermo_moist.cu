@@ -65,30 +65,24 @@ namespace ThermoMoist_g
     return grav/thvref * (sflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*s*qtflux);
   }
   
-  __device__ double eSat(double T)
+  __device__ double esat(double T)
   {
     const double x=fmax(-80.,T-T0);
     return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
   }
   
-  __device__ double qSat(double p, double T)
+  __device__ double qsat(double p, double T)
   {
-    double esl = eSat(T);
+    double esl = esat(T);
     return ep*esl/(p-(1-ep)*esl);
   }
   
-  /*
-  s = liquid water potential temperature [K]
-  qt = moisture mixing ratio [kg kg-1]
-  p = pressure [pa]
-  exn = exner [-]
-  */
-  __device__ double calcql(double s, double qt, double p, double exn)
+  __device__ double satAdjust(double s, double qt, double p, double exn)
   {
     double tl = s * exn;  // Liquid water temperature
   
     // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-    if(qt-qSat(p, tl) <= 0)
+    if(qt-qsat(p, tl) <= 0)
       return 0.;
   
     int niter = 0; //, nitermax = 5;
@@ -98,7 +92,7 @@ namespace ThermoMoist_g
     {
       ++niter;
       tnr_old = tnr;
-      qs = qSat(p,tnr);
+      qs = qsat(p,tnr);
       tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(pow(Lv,2)*qs)/ (Rv*cp*pow(tnr,2)));
     }
     ql = fmax(0.,qt-qs);
@@ -124,11 +118,11 @@ namespace ThermoMoist_g
       double thh = 0.5 * (th[ijk-kk] + th[ijk]);        // Half level liq. water pot. temp.
       double qth = 0.5 * (qt[ijk-kk] + qt[ijk]);        // Half level specific hum.
       double tl  = thh * exnh[k];                       // Half level liq. water temp.
-      double ql  = qth - qSat(ph[k], tl);
+      double ql  = qth - qsat(ph[k], tl);
   
       // If ql(Tl)>0, saturation adjustment routine needed. 
       if(ql > 0)
-        ql = calcql(thh, qth, ph[k], exnh[k]);
+        ql = satAdjust(thh, qth, ph[k], exnh[k]);
       else
         ql = 0.;
   
@@ -151,7 +145,7 @@ namespace ThermoMoist_g
     if(i < iend && j < jend && k < kcells)
     {
       int ijk = i + j*jj + k*kk;
-      double ql = calcql(th[ijk], qt[ijk], p[k], exn[k]);
+      double ql = satAdjust(th[ijk], qt[ijk], p[k], exn[k]);
       b[ijk] = buoyancy(p[k], th[ijk], qt[ijk], ql, thvref[k]);
     }
   }
@@ -210,11 +204,11 @@ namespace ThermoMoist_g
     }
   }
   
-  __global__ void calcqlField(double * __restrict__ ql, double * __restrict__ th, double * __restrict__ qt,
-                              double * __restrict__ exn, double * __restrict__ p,  
-                              int istart, int jstart, int kstart,
-                              int iend,   int jend,   int kend,
-                              int jj, int kk)
+  __global__ void calcLiquidWater(double * __restrict__ ql, double * __restrict__ th, double * __restrict__ qt,
+                                  double * __restrict__ exn, double * __restrict__ p,  
+                                  int istart, int jstart, int kstart,
+                                  int iend,   int jend,   int kend,
+                                  int jj, int kk)
   {
     int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
     int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -223,7 +217,7 @@ namespace ThermoMoist_g
     if(i < iend && j < jend && k < kend)
     {
       int ijk = i + j*jj + k*kk;
-      ql[ijk] = calcql(th[ijk], qt[ijk], p[k], exn[k]);
+      ql[ijk] = satAdjust(th[ijk], qt[ijk], p[k], exn[k]);
     }
   }
   
@@ -254,7 +248,7 @@ namespace ThermoMoist_g
   
     // Calculate surface (half=kstart) values
     exh[kstart]   = exner(pbot);
-    ql            = calcql(ssurf,qtsurf,pbot,exh[kstart]); 
+    ql            = satAdjust(ssurf,qtsurf,pbot,exh[kstart]); 
     thvh[kstart]  = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
     prefh[kstart] = pbot;
     rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
@@ -266,7 +260,7 @@ namespace ThermoMoist_g
     {
       // 1. Calculate values at full level below zh[k] 
       ex[k-1]  = exner(pref[k-1]);
-      ql       = calcql(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
+      ql       = satAdjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
       thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
       rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
    
@@ -286,7 +280,7 @@ namespace ThermoMoist_g
       }
   
       exh[k]   = exner(prefh[k]);
-      qli      = calcql(si,qti,prefh[k],exh[k]);
+      qli      = satAdjust(si,qti,prefh[k],exh[k]);
       thvh[k]  = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
       rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]); 
   
@@ -333,7 +327,7 @@ namespace ThermoMoist_g
     }
   
     // Calculate surface (half=kstart) values
-    ql            = calcql(ssurf,qtsurf,pbot,exh[kstart]); 
+    ql            = satAdjust(ssurf,qtsurf,pbot,exh[kstart]); 
     thvh          = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
     prefh[kstart] = pbot;
   
@@ -343,7 +337,7 @@ namespace ThermoMoist_g
     {
       // 1. Calculate values at full level below zh[k] 
       ex[k-1]  = exner(pref[k-1]);
-      ql       = calcql(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
+      ql       = satAdjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
       thv      = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
    
       // 2. Calculate half level pressure at zh[k] using values at z[k-1]
@@ -362,7 +356,7 @@ namespace ThermoMoist_g
       }
   
       exh[k]   = exner(prefh[k]);
-      qli      = calcql(si,qti,prefh[k],exh[k]);
+      qli      = satAdjust(si,qti,prefh[k],exh[k]);
       thvh     = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
   
       // 4. Calculate full level pressure at z[k]
@@ -504,10 +498,11 @@ void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
   }
   else if(name == "ql")
   {
-    ThermoMoist_g::calcqlField<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["s"]->data_g[offs], &fields->sp["qt"]->data_g[offs], exnref_g, pref_g, 
-                                                        grid->istart,  grid->jstart,  grid->kstart, 
-                                                        grid->iend,    grid->jend,    grid->kend,
-                                                        grid->icellsp, grid->ijcellsp);
+    ThermoMoist_g::calcLiquidWater<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["s"]->data_g[offs], &fields->sp["qt"]->data_g[offs], 
+                                                            exnref_g, pref_g, 
+                                                            grid->istart,  grid->jstart,  grid->kstart, 
+                                                            grid->iend,    grid->jend,    grid->kend,
+                                                            grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
   else if(name == "N2")
