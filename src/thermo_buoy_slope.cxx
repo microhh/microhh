@@ -58,12 +58,22 @@ ThermoBuoySlope::~ThermoBuoySlope()
 {
 }
 
+#ifndef USECUDA
 void ThermoBuoySlope::exec()
 {
-  calcbuoyancytendu_4th(fields->ut->data, fields->sp["b"]->data);
-  calcbuoyancytendw_4th(fields->wt->data, fields->sp["b"]->data);
-  calcbuoyancytendb_4th(fields->st["b"]->data, fields->u->data, fields->w->data);
+  if(grid->swspatialorder == "2")
+  {
+    master->printError("Second order not implemented for slope flow thermodynamics\n");
+    throw 1;
+  }
+  else if(grid->swspatialorder == "4")
+  {
+    calcbuoyancytendu_4th(fields->ut->data, fields->sp["b"]->data);
+    calcbuoyancytendw_4th(fields->wt->data, fields->sp["b"]->data);
+    calcbuoyancytendb_4th(fields->st["b"]->data, fields->u->data, fields->w->data);
+  }
 }
+#endif
 
 bool ThermoBuoySlope::checkThermoField(std::string name)
 {
@@ -160,7 +170,7 @@ int ThermoBuoySlope::calcbuoyancytendw_4th(double * restrict wt, double * restri
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
 
-  double alpha = this->alpha;
+  const double cosalpha = std::cos(this->alpha);
 
   for(int k=grid->kstart+1; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -168,7 +178,7 @@ int ThermoBuoySlope::calcbuoyancytendw_4th(double * restrict wt, double * restri
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
-        wt[ijk] += std::cos(alpha) * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
+        wt[ijk] += cosalpha * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk], s[ijk+kk1]);
       }
 
   return 0;
@@ -183,7 +193,7 @@ int ThermoBuoySlope::calcbuoyancytendu_4th(double * restrict ut, double * restri
   jj  = grid->icells;
   kk  = grid->ijcells;
 
-  double alpha = this->alpha;
+  const double sinalpha = std::sin(this->alpha);
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -191,7 +201,7 @@ int ThermoBuoySlope::calcbuoyancytendu_4th(double * restrict ut, double * restri
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        ut[ijk] += std::sin(alpha) * interp4(s[ijk-ii2], s[ijk-ii1], s[ijk], s[ijk+ii1]);
+        ut[ijk] += sinalpha * interp4(s[ijk-ii2], s[ijk-ii1], s[ijk], s[ijk+ii1]);
       }
 
   return 0;
@@ -207,8 +217,9 @@ int ThermoBuoySlope::calcbuoyancytendb_4th(double * restrict st, double * restri
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
 
-  double alpha = this->alpha;
-  double n2    = this->n2;
+  const double sinalpha = std::sin(this->alpha);
+  const double cosalpha = std::cos(this->alpha);
+  const double n2 = this->n2;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -216,8 +227,8 @@ int ThermoBuoySlope::calcbuoyancytendb_4th(double * restrict st, double * restri
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
-        st[ijk] -= ( n2*std::sin(alpha)*interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2])
-                   + n2*std::cos(alpha)*interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
+        st[ijk] -= n2 * ( sinalpha*interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2])
+                        + cosalpha*interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
       }
 
   return 0;
