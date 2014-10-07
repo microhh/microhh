@@ -102,12 +102,12 @@ class Fields
     void backwardDevice(); ///< Copy of all fields required for statistics and output from device to host
     void clearDevice();    ///< Deallocation of all fields at device
 
-    void forward3DFieldDevice (double *, double *, OffsetType); ///< Copy of a single 3d field from host to device
-    void forward2DFieldDevice (double *, double *, OffsetType); ///< Copy of a single 2d field from host to device
-    void forward1DFieldDevice (double *, double *, int);        ///< Copy of a single array from host to device
-    void backward3DFieldDevice(double *, double *, OffsetType); ///< Copy of a single 3d field from device to host
-    void backward2DFieldDevice(double *, double *, OffsetType); ///< Copy of a single 2d field from device to host
-    void backward1DFieldDevice(double *, double *, int);        ///< Copy of a single array from device to host
+    void forwardFieldDevice_3d (double *, double *, OffsetType); ///< Copy of a single 3d field from host to device
+    void forwardFieldDevice_2d (double *, double *, OffsetType); ///< Copy of a single 2d field from host to device
+    void forwardFieldDevice_1d (double *, double *, int);        ///< Copy of a single array from host to device
+    void backwardFieldDevice_3d(double *, double *, OffsetType); ///< Copy of a single 3d field from device to host
+    void backwardFieldDevice_2d(double *, double *, OffsetType); ///< Copy of a single 2d field from device to host
+    void backwardFieldDevice_1d(double *, double *, int);        ///< Copy of a single array from device to host
 
     double *rhoref_g;  ///< Reference density at full levels at device
     double *rhorefh_g; ///< Reference density at half levels at device
