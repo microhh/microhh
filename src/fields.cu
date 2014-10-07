@@ -255,13 +255,13 @@ void Fields::forwardDevice()
     forwardField3dDevice(it->second);
 
   for(FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
-    forward3DFieldDevice(it->second->data_g, it->second->data, Offset);
+    forwardFieldDevice_3d(it->second->data_g, it->second->data, Offset);
 
   forwardField3dDevice(atmp["tmp1"]);
   forwardField3dDevice(atmp["tmp2"]);
 
-  forward1DFieldDevice(rhoref_g,  rhoref , grid->kcells);
-  forward1DFieldDevice(rhorefh_g, rhorefh, grid->kcells);
+  forwardFieldDevice_1d(rhoref_g,  rhoref , grid->kcells);
+  forwardFieldDevice_1d(rhorefh_g, rhorefh, grid->kcells);
 
   //master->printMessage("Synchronized GPU with CPU (forward)\n");
 }
@@ -277,15 +277,6 @@ void Fields::backwardDevice()
   for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
     backwardField3dDevice(it->second);
 
-  //for(FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
-  //  backward3DFieldDevice(it->second->data,        it->second->data_g,        Offset);
-
-  //backwardField3dDevice(atmp["tmp1"]);
-  //backwardField3dDevice(atmp["tmp2"]);
-
-  //backward1DFieldDevice(rhoref,  rhoref_g,  grid->kcells);
-  //backward1DFieldDevice(rhorefh, rhorefh_g, grid->kcells);
-
   //master->printMessage("Synchronized CPU with GPU (backward)\n");
 }
 
@@ -296,14 +287,14 @@ void Fields::backwardDevice()
  */
 void Fields::forwardField3dDevice(Field3d *fld)
 {
-  forward3DFieldDevice(fld->data_g,        fld->data,        Offset);
-  forward2DFieldDevice(fld->databot_g,     fld->databot,     Offset);
-  forward2DFieldDevice(fld->datatop_g,     fld->datatop,     Offset);
-  forward2DFieldDevice(fld->datagradbot_g, fld->datagradbot, Offset);
-  forward2DFieldDevice(fld->datagradtop_g, fld->datagradtop, Offset);
-  forward2DFieldDevice(fld->datafluxbot_g, fld->datafluxbot, Offset);
-  forward2DFieldDevice(fld->datafluxtop_g, fld->datafluxtop, Offset);
-  forward1DFieldDevice(fld->datamean_g,    fld->datamean, grid->kcells);
+  forwardFieldDevice_3d(fld->data_g,        fld->data,        Offset);
+  forwardFieldDevice_2d(fld->databot_g,     fld->databot,     Offset);
+  forwardFieldDevice_2d(fld->datatop_g,     fld->datatop,     Offset);
+  forwardFieldDevice_2d(fld->datagradbot_g, fld->datagradbot, Offset);
+  forwardFieldDevice_2d(fld->datagradtop_g, fld->datagradtop, Offset);
+  forwardFieldDevice_2d(fld->datafluxbot_g, fld->datafluxbot, Offset);
+  forwardFieldDevice_2d(fld->datafluxtop_g, fld->datafluxtop, Offset);
+  forwardFieldDevice_1d(fld->datamean_g,    fld->datamean,    grid->kcells);
 }
 
 /* BvS: it would make more sense to put this routine in field3d.cu, but how to solve this with the calls to fields.cu? */
@@ -313,14 +304,14 @@ void Fields::forwardField3dDevice(Field3d *fld)
  */
 void Fields::backwardField3dDevice(Field3d *fld)
 {
-  backward3DFieldDevice(fld->data,        fld->data_g,        Offset);
-  backward2DFieldDevice(fld->databot,     fld->databot_g,     Offset);
-  backward2DFieldDevice(fld->datatop,     fld->datatop_g,     Offset);
-  backward2DFieldDevice(fld->datagradbot, fld->datagradbot_g, Offset);
-  backward2DFieldDevice(fld->datagradtop, fld->datagradtop_g, Offset);
-  backward2DFieldDevice(fld->datafluxbot, fld->datafluxbot_g, Offset);
-  backward2DFieldDevice(fld->datafluxtop, fld->datafluxtop_g, Offset);
-  backward1DFieldDevice(fld->datamean,    fld->datamean_g, grid->kcells);
+  backwardFieldDevice_3d(fld->data,        fld->data_g,        Offset);
+  backwardFieldDevice_2d(fld->databot,     fld->databot_g,     Offset);
+  backwardFieldDevice_2d(fld->datatop,     fld->datatop_g,     Offset);
+  backwardFieldDevice_2d(fld->datagradbot, fld->datagradbot_g, Offset);
+  backwardFieldDevice_2d(fld->datagradtop, fld->datagradtop_g, Offset);
+  backwardFieldDevice_2d(fld->datafluxbot, fld->datafluxbot_g, Offset);
+  backwardFieldDevice_2d(fld->datafluxtop, fld->datafluxtop_g, Offset);
+  backwardFieldDevice_1d(fld->datamean,    fld->datamean_g,    grid->kcells);
 }
 
 /**
@@ -329,7 +320,7 @@ void Fields::backwardField3dDevice(Field3d *fld)
  * @param field Pointer to 3d field at host 
  * @param sw Switch to align the host field to device memory 
  */
-void Fields::forward3DFieldDevice(double * field_g, double * field, OffsetType sw)
+void Fields::forwardFieldDevice_3d(double * field_g, double * field, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -346,7 +337,7 @@ void Fields::forward3DFieldDevice(double * field_g, double * field, OffsetType s
  * @param field Pointer to 2d field at host 
  * @param sw Switch to align the host field to device memory 
  */
-void Fields::forward2DFieldDevice(double * field_g, double * field, OffsetType sw)
+void Fields::forwardFieldDevice_2d(double * field_g, double * field, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -363,7 +354,7 @@ void Fields::forward2DFieldDevice(double * field_g, double * field, OffsetType s
  * @param field Pointer to array at host 
  * @param ncells Number of (double precision) values to copy 
  */
-void Fields::forward1DFieldDevice(double * field_g, double * field, int ncells)
+void Fields::forwardFieldDevice_1d(double * field_g, double * field, int ncells)
 {
   cudaSafeCall(cudaMemcpy(field_g, field, ncells*sizeof(double), cudaMemcpyHostToDevice));
 }
@@ -374,7 +365,7 @@ void Fields::forward1DFieldDevice(double * field_g, double * field, int ncells)
  * @param field_g Pointer to 3d field at device  
  * @param sw Switch to align the host field to device memory 
  */
-void Fields::backward3DFieldDevice(double * field, double * field_g, OffsetType sw)
+void Fields::backwardFieldDevice_3d(double * field, double * field_g, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -391,7 +382,7 @@ void Fields::backward3DFieldDevice(double * field, double * field_g, OffsetType 
  * @param field_g Pointer to 2d field at device  
  * @param sw Switch to align the host field to device memory 
  */
-void Fields::backward2DFieldDevice(double * field, double * field_g, OffsetType sw)
+void Fields::backwardFieldDevice_2d(double * field, double * field_g, OffsetType sw)
 {
   const int imemsizep  = grid->icellsp * sizeof(double);
   const int imemsize   = grid->icells  * sizeof(double);
@@ -408,7 +399,7 @@ void Fields::backward2DFieldDevice(double * field, double * field_g, OffsetType 
  * @param field_g Pointer array at device  
  * @param ncells Number of (double precision) values to copy 
  */
-void Fields::backward1DFieldDevice(double * field, double * field_g, int ncells)
+void Fields::backwardFieldDevice_1d(double * field, double * field_g, int ncells)
 {
   cudaSafeCall(cudaMemcpy(field, field_g, ncells*sizeof(double), cudaMemcpyDeviceToHost));
 }
