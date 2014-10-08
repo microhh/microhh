@@ -133,43 +133,45 @@ void ThermoMoist::create(Input *inputin)
   int kend   = grid->kend;
 
   // Enable automated calculation of horizontally averaged fields
-  fields->set_calcMeanProfs(true);
+  if(swupdatebasestate)
+    fields->set_calcMeanProfs(true);
 
-  if(model->swbasestate == "anelastic")
-  {
-    // Calculate the base state profiles. With swupdatebasestate=1, these profiles 
-    // are updated on every tstep. First take the initial profile as the reference
-    if(inputin->getProf(&thl0[grid->kstart], "s", grid->kmax))
-      throw 1;
-    if(inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
-      throw 1;
+  // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration. 
+  // 1. Take the initial profile as the reference
+  if(inputin->getProf(&thl0[grid->kstart], "s", grid->kmax))
+    throw 1;
+  if(inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
+    throw 1;
 
-    // Calculate surface and model top values thl and qt
-    double thl0s, qt0s, thl0t, qt0t;
-    thl0s = thl0[kstart] - grid->z[kstart]*(thl0[kstart+1]-thl0[kstart])*grid->dzhi[kstart+1];
-    qt0s  = qt0[kstart]  - grid->z[kstart]*(qt0[kstart+1] -qt0[kstart] )*grid->dzhi[kstart+1];
-    thl0t = thl0[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thl0[kend-1]-thl0[kend-2])*grid->dzhi[kend-1];
-    qt0t  = qt0[kend-1]  + (grid->zh[kend]-grid->z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*grid->dzhi[kend-1];
+  // 2. Calculate surface and model top values thl and qt
+  double thl0s, qt0s, thl0t, qt0t;
+  thl0s = thl0[kstart] - grid->z[kstart]*(thl0[kstart+1]-thl0[kstart])*grid->dzhi[kstart+1];
+  qt0s  = qt0[kstart]  - grid->z[kstart]*(qt0[kstart+1] -qt0[kstart] )*grid->dzhi[kstart+1];
+  thl0t = thl0[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thl0[kend-1]-thl0[kend-2])*grid->dzhi[kend-1];
+  qt0t  = qt0[kend-1]  + (grid->zh[kend]-grid->z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*grid->dzhi[kend-1];
 
-    // Set the ghost cells for the reference temperature and moisture
-    thl0[kstart-1]  = 2.*thl0s - thl0[kstart];
-    thl0[kend]      = 2.*thl0t - thl0[kend-1];
-    qt0[kstart-1]   = 2.*qt0s  - qt0[kstart];
-    qt0[kend]       = 2.*qt0t  - qt0[kend-1];
+  // 3. Set the ghost cells for the reference temperature and moisture
+  thl0[kstart-1]  = 2.*thl0s - thl0[kstart];
+  thl0[kend]      = 2.*thl0t - thl0[kend-1];
+  qt0[kstart-1]   = 2.*qt0s  - qt0[kstart];
+  qt0[kend]       = 2.*qt0t  - qt0[kend-1];
 
-    // Calculate the initial/reference base state
-    calcBaseState(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, thl0, qt0);
-  }
-  else
+  // 4. Calculate the initial/reference base state
+  calcBaseState(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, thl0, qt0);
+
+  // 5. In Boussinesq mode, overwrite reference temperature and density
+  if(model->swbasestate == "boussinesq")
   {
     for(int k=0; k<grid->kcells; ++k)
     {
-      thvref[k]  = thvref0;
-      thvrefh[k] = thvref0;
+      fields->rhoref[k]  = 1.;
+      fields->rhorefh[k] = 1.;
+      thvref[k]          = thvref0;
+      thvrefh[k]         = thvref0;
     }
   }
 
-  // add variables to the statistics
+  // Add variables to the statistics
   if(stats->getSwitch() == "1")
   {
     // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
