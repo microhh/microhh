@@ -83,7 +83,7 @@ namespace Diff2_g
 }
 
 #ifdef USECUDA
-int Diff2::exec()
+void Diff2::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -131,7 +131,5 @@ int Diff2::exec()
                                           grid->istart, grid->jstart, grid->kstart,
                                           grid->iend, grid->jend, grid->kend);
   cudaCheckError();
-
-  return 0;
 }
 #endif

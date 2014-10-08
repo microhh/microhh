@@ -73,7 +73,7 @@ double Diff4::getdn(double dt)
 }
 
 #ifndef USECUDA
-int Diff4::exec()
+void Diff4::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
@@ -81,12 +81,10 @@ int Diff4::exec()
 
   for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
-
-  return 0;
 }
 #endif
 
-int Diff4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+void Diff4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -152,11 +150,9 @@ int Diff4::diffc(double * restrict at, double * restrict a, double * restrict dz
                         + cg3*(tg0*a[ijk-kk1] + tg1*a[ijk    ] + tg2*a[ijk+kk1] + tg3*a[ijk+kk2]) * dzhi4[kend+1] )
                         * dzi4[kend-1];
     }
-
-  return 0;
 }
 
-int Diff4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+void Diff4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
 {
   int    ijk,kstart,kend;
   int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
@@ -222,6 +218,4 @@ int Diff4::diffw(double * restrict at, double * restrict a, double * restrict dz
                         + cg3*(tg0*a[ijk-kk1] + tg1*a[ijk    ] + tg2*a[ijk+kk1] + tg3*a[ijk+kk2]) * dzi4[kend  ] )
                         * dzhi4[kend-1];
     }
-
-  return 0;
 }

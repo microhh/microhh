@@ -420,7 +420,7 @@ void Model::printOutputFile(bool doclose)
     tke     = fields->checkTke();
     mass    = fields->checkMass();
     cfl     = advec->getcfl(timeloop->dt);
-    dn      = diff->getdn(timeloop->dt);
+    dn      = diff->get_dn(timeloop->dt);
 
     end     = master->getTime();
     cputime = end - start;

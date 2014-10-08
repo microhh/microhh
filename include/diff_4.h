@@ -32,7 +32,7 @@ class Diff4 : public Diff
     ~Diff4();
 
     void setValues();
-    int exec();
+    void exec();
 
     unsigned long getTimeLimit(unsigned long, double);
     double getdn(double);
@@ -40,7 +40,7 @@ class Diff4 : public Diff
   private:
     double dnmul;
 
-    int diffc(double *, double *, double *, double *, double);
-    int diffw(double *, double *, double *, double *, double);
+    void diffc(double *, double *, double *, double *, double);
+    void diffw(double *, double *, double *, double *, double);
 };
 #endif

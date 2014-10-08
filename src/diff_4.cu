@@ -161,7 +161,7 @@ namespace Diff4_g
 }
 
 #ifdef USECUDA
-int Diff4::exec()
+void Diff4::exec()
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -205,7 +205,5 @@ int Diff4::exec()
                                           grid->istart, grid->jstart, grid->kstart,
                                           grid->iend, grid->jend, grid->kend);
   cudaCheckError();
-
-  return 0;
 }
 #endif

@@ -60,7 +60,7 @@ unsigned long Diff2::getTimeLimit(unsigned long idt, double dt)
   return idtlim;
 }
 
-double Diff2::getdn(double dt)
+double Diff2::get_dn(double dt)
 {
   double dn;
 
@@ -70,7 +70,7 @@ double Diff2::getdn(double dt)
 }
 
 #ifndef USECUDA
-int Diff2::exec()
+void Diff2::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
@@ -83,7 +83,7 @@ int Diff2::exec()
 }
 #endif
 
-int Diff2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
+void Diff2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
@@ -109,11 +109,9 @@ int Diff2::diffc(double * restrict at, double * restrict a, double * restrict dz
               + (  (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
                  - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k] );
       }
-
-  return 0;
 }
 
-int Diff2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
+void Diff2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
@@ -139,6 +137,4 @@ int Diff2::diffw(double * restrict wt, double * restrict w, double * restrict dz
               + (  (w[ijk+kk] - w[ijk   ]) * dzi[k]
                  - (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
       }
-
-  return 0;
 }

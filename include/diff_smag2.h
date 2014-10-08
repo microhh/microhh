@@ -31,8 +31,8 @@ class DiffSmag2 : public Diff
     DiffSmag2(Model *, Input *);
     ~DiffSmag2();
 
-    int exec();
-    int execViscosity();
+    void exec();
+    void execViscosity();
 
     unsigned long getTimeLimit(unsigned long, double);
     double getdn(double);
@@ -40,34 +40,35 @@ class DiffSmag2 : public Diff
     double tPr;
 
     // GPU functions and variables
-    int prepareDevice();
-    int clearDevice();
+    void prepareDevice();
+    void clearDevice();
+
     double *mlen_g; 
 
   private:
-    int strain2(double *,
-                double *, double *, double *,
-                double *, double *,
-                double *, double *,
-                double *, double *, double *);
+    void strain2(double *,
+                 double *, double *, double *,
+                 double *, double *,
+                 double *, double *,
+                 double *, double *, double *);
 
-    int evisc(double *,
-              double *, double *, double *, double *,
-              double *, double *, double *,
-              double *, double *,
-              double *, double *, double *,
-              double);
-    int eviscNeutral(double *,
-                     double *, double *, double *,
-                     double *, double *,
-                     double *, double *,
-                     double);
-    int diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int diffw(double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    int diffc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
+    void evisc(double *,
+               double *, double *, double *, double *,
+               double *, double *, double *,
+               double *, double *,
+               double *, double *, double *,
+               double);
+    void eviscNeutral(double *,
+                      double *, double *, double *,
+                      double *, double *,
+                      double *, double *,
+                      double);
+    void diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    void diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    void diffw(double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    void diffc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
 
-    double calcdnmul(double *, double *, double);
+    double calc_dnmul(double *, double *, double);
 
     inline double phim(double);
     inline double phih(double);

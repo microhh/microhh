@@ -67,7 +67,7 @@ void Diff::setValues()
 {
 }
 
-double Diff::getdn(double dt)
+double Diff::get_dn(double dt)
 {
   double dn;
 
@@ -76,14 +76,12 @@ double Diff::getdn(double dt)
   return dn;
 }
 
-int Diff::execViscosity()
+void Diff::execViscosity()
 {
-  return 0;
 }
 
-int Diff::exec()
+void Diff::exec()
 {
-  return 0;
 }
 
 std::string Diff::getName()
@@ -126,7 +124,6 @@ Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std:
   }
 }
 
-int Diff::prepareDevice()
+void Diff::prepareDevice()
 {
-  return 0;
 }
