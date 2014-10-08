@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ADVEC4
-#define ADVEC4
+#ifndef ADVEC_4
+#define ADVEC_4
 
 #include "advec.h"
 

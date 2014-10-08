@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARYUSER
-#define BOUNDARYUSER
+#ifndef BOUNDARY_USER
+#define BOUNDARY_USER
 
 #include "boundary.h"
 

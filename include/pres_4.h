@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PRES4
-#define PRES4
+#ifndef PRES_4
+#define PRES_4
 
 #include "pres.h"
 

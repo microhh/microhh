@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF2
-#define DIFF2
+#ifndef DIFF_2
+#define DIFF_2
 
 #include "diff.h"
 

@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFFSMAG2
-#define DIFFSMAG2
+#ifndef DIFF_SMAG_2
+#define DIFF_SMAG_2
 
 #include "diff.h"
 
