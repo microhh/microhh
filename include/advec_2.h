@@ -40,10 +40,10 @@ class Advec2 : public Advec
     void exec(); ///< Execute the advection scheme.
 
     unsigned long getTimeLimit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-    double getcfl(double);                                 ///< Get the CFL number.
+    double get_cfl(double);                                 ///< Get the CFL number.
 
   private:
-    double calccfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
+    double calc_cfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
 
     void advecu(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
     void advecv(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.

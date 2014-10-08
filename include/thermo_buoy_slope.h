@@ -50,13 +50,13 @@ class ThermoBuoySlope : public Thermo
     virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
   private:
-    void calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
-    void calcbuoyancybot(double *, double *,
-                         double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
-    void calcbuoyancyfluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-    void calcbuoyancytendu_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-    void calcbuoyancytendw_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-    void calcbuoyancytendb_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+    void calcBuoyancy(double *, double *); ///< Calculation of the buoyancy.
+    void calcBuoyancyBot(double *, double *,
+                         double *, double *); ///< Calculation of the near-surface and surface buoyancy.
+    void calcBuoyancyFluxbot(double *, double *); ///< Calculation of the buoyancy flux at the bottom.
+    void calcBuoyancyTend_u_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+    void calcBuoyancyTend_w_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+    void calcBuoyancyTend_b_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
     double alpha; ///< Slope angle in radians.
     double n2;    ///< Background stratification.

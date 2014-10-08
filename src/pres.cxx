@@ -84,7 +84,6 @@ Pres* Pres::factory(Master *masterin, Input *inputin, Model *modelin, const std:
   }
 }
 
-int Pres::prepareDevice()
+void Pres::prepareDevice()
 {
-  return 0;
 }

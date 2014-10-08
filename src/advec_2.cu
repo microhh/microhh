@@ -111,12 +111,12 @@ namespace Advec2_g
     }
   }
   
-  __global__ void calccfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
-                          double * __restrict__ cfl,
-                          double * __restrict__ dzi, double dxi, double dyi,
-                          int jj, int kk,
-                          int istart, int jstart, int kstart,
-                          int iend, int jend, int kend)
+  __global__ void calc_cfl(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w, 
+                           double * __restrict__ cfl,
+                           double * __restrict__ dzi, double dxi, double dyi,
+                           int jj, int kk,
+                           int istart, int jstart, int kstart,
+                           int iend, int jend, int kend)
   {
     int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
     int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -171,7 +171,7 @@ void Advec2::exec()
 #endif
 
 #ifdef USECUDA
-double Advec2::calccfl(double * u, double * v, double * w, double * dzi, double dt)
+double Advec2::get_cfl(const double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -187,12 +187,12 @@ double Advec2::calccfl(double * u, double * v, double * w, double * dzi, double 
 
   const int offs = grid->memoffset;
 
-  Advec2_g::calccfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-                                           &fields->atmp["tmp1"]->data_g[offs],
-                                           grid->dzi_g, dxi, dyi,
-                                           grid->icellsp, grid->ijcellsp,
-                                           grid->istart,  grid->jstart, grid->kstart,
-                                           grid->iend,    grid->jend,   grid->kend);
+  Advec2_g::calc_cfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
+                                            &fields->atmp["tmp1"]->data_g[offs],
+                                            grid->dzi_g, dxi, dyi,
+                                            grid->icellsp, grid->ijcellsp,
+                                            grid->istart,  grid->jstart, grid->kstart,
+                                            grid->iend,    grid->jend,   grid->kend);
   cudaCheckError(); 
 
   cfl = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 

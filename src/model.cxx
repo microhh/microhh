@@ -348,7 +348,7 @@ void Model::exec()
     else if(master->mode == "post")
     {
       // step to the next time step
-      timeloop->postprocstep();
+      timeloop->stepPostProcTime();
 
       // if simulation is done break
       if(!timeloop->loop)
@@ -419,8 +419,8 @@ void Model::printOutputFile(bool doclose)
     mom     = fields->checkMomentum();
     tke     = fields->checkTke();
     mass    = fields->checkMass();
-    cfl     = advec->getcfl(timeloop->dt);
-    dn      = diff->getdn(timeloop->dt);
+    cfl     = advec->get_cfl(timeloop->dt);
+    dn      = diff->get_dn(timeloop->dt);
 
     end     = master->getTime();
     cputime = end - start;
@@ -448,7 +448,7 @@ void Model::setTimeStep()
   if(timeloop->inSubStep())
     return;
 
-  timeloop->settimelim();
+  timeloop->setTimeLimit();
 
   timeloop->idtlim = std::min(timeloop->idtlim, advec->getTimeLimit(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, diff ->getTimeLimit(timeloop->idt, timeloop->dt));

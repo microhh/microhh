@@ -113,12 +113,10 @@ Timeloop::~Timeloop()
 {
 }
 
-int Timeloop::settimelim()
+void Timeloop::setTimeLimit()
 {
   idtlim = idtmax;
   idtlim = std::min(idtlim, isavetime - itime % isavetime);
-
-  return 0;
 }
 
 void Timeloop::stepTime()
@@ -177,28 +175,8 @@ void Timeloop::setTimeStep()
   }
 }
 
-#ifdef USECUDA
-int Timeloop::exec()
-{
-  if(rkorder == 3)
-  {
-    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
-      rk3_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
-
-    substep = (substep+1) % 3;
-  }
-
-  if(rkorder == 4)
-  {
-    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
-      rk4_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
-
-    substep = (substep+1) % 5;
-  }
-  return substep;
-}
-#else
-int Timeloop::exec()
+#ifndef USECUDA
+void Timeloop::exec()
 {
   if(rkorder == 3)
   {
@@ -215,8 +193,6 @@ int Timeloop::exec()
 
     substep = (substep+1) % 5;
   }
-
-  return substep;
 }
 #endif
 
@@ -231,13 +207,13 @@ double Timeloop::getSubTimeStep()
   return subdt;
 }
 
-double Timeloop::rk3subdt(double dt)
+inline double Timeloop::rk3subdt(const double dt)
 {
   const double cB [] = {1./3., 15./16., 8./15.};
   return cB[substep]*dt;
 }
 
-double Timeloop::rk4subdt(double dt)
+inline double Timeloop::rk4subdt(const double dt)
 {
   const double cB [] = {
     1432997174477./ 9575080441755.,
@@ -245,11 +221,10 @@ double Timeloop::rk4subdt(double dt)
     1720146321549./ 2090206949498.,
     3134564353537./ 4481467310338.,
     2277821191437./14882151754819.};
-
   return cB[substep]*dt;
 }
 
-int Timeloop::rk3(double * restrict a, double * restrict at, double dt)
+void Timeloop::rk3(double * restrict a, double * restrict at, double dt)
 {
   const double cA [] = {0., -5./9., -153./128.};
   const double cB [] = {1./3., 15./16., 8./15.};
@@ -280,11 +255,9 @@ int Timeloop::rk3(double * restrict a, double * restrict at, double dt)
         ijk = i + j*jj + k*kk;
         at[ijk] = cA[substepn]*at[ijk];
       }
-
-  return 0;
 }
 
-int Timeloop::rk4(double * restrict a, double * restrict at, double dt)
+void Timeloop::rk4(double * restrict a, double * restrict at, double dt)
 {
   const double cA [] = {
       0.,
@@ -326,8 +299,6 @@ int Timeloop::rk4(double * restrict a, double * restrict at, double dt)
         ijk = i + j*jj + k*kk;
         at[ijk] = cA[substepn]*at[ijk];
       }
-
-  return 0;
 }
 
 bool Timeloop::inSubStep()
@@ -418,13 +389,11 @@ void Timeloop::load(int starttime)
   dt   = (double)idt   / ifactor;
 }
 
-int Timeloop::postprocstep()
+void Timeloop::stepPostProcTime()
 {
   itime += ipostproctime;
   iotime = (int)(itime/iiotimeprec);
 
   if(itime > iendtime)
     loop = false;
-
-  return 0;
 }

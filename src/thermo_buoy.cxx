@@ -52,27 +52,27 @@ void ThermoBuoy::exec()
 {
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder== "2")
-    calcbuoyancytend_2nd(fields->wt->data, fields->sp["b"]->data);
+    calcBuoyancyTend_2nd(fields->wt->data, fields->sp["b"]->data);
   else if(grid->swspatialorder == "4")
-    calcbuoyancytend_4th(fields->wt->data, fields->sp["b"]->data);
+    calcBuoyancyTend_4th(fields->wt->data, fields->sp["b"]->data);
 }
 #endif
 
 void ThermoBuoy::getBuoyancy(Field3d *bfield, Field3d *tmp)
 {
-  calcbuoyancy(bfield->data, fields->sp["b"]->data);
+  calcBuoyancy(bfield->data, fields->sp["b"]->data);
 }
 
 void ThermoBuoy::getBuoyancyFluxbot(Field3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
+  calcBuoyancyFluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
 void ThermoBuoy::getBuoyancySurf(Field3d *bfield)
 {
-  calcbuoyancybot(bfield->data, bfield->databot,
+  calcBuoyancyBot(bfield->data, bfield->databot,
                   fields->sp["b"]->data, fields->sp["b"]->databot);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
+  calcBuoyancyFluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
 bool ThermoBuoy::checkThermoField(std::string name)
@@ -85,7 +85,7 @@ bool ThermoBuoy::checkThermoField(std::string name)
 
 void ThermoBuoy::getThermoField(Field3d *field, Field3d *tmp, std::string name)
 {
-  calcbuoyancy(field->data, fields->sp["b"]->data);
+  calcBuoyancy(field->data, fields->sp["b"]->data);
 }
 
 void ThermoBuoy::getProgVars(std::vector<std::string> *list)
@@ -93,7 +93,7 @@ void ThermoBuoy::getProgVars(std::vector<std::string> *list)
   list->push_back("b");
 }
 
-int ThermoBuoy::calcbuoyancy(double * restrict b, double * restrict bin)
+void ThermoBuoy::calcBuoyancy(double * restrict b, double * restrict bin)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -101,12 +101,10 @@ int ThermoBuoy::calcbuoyancy(double * restrict b, double * restrict bin)
 
   for(int n=0; n<grid->ncells; ++n)
     b[n] = bin[n];
-
-  return 0;
 }
 
-int ThermoBuoy::calcbuoyancybot(double * restrict b  , double * restrict bbot,
-                                  double * restrict bin, double * restrict binbot)
+void ThermoBuoy::calcBuoyancyBot(double * restrict b  , double * restrict bbot,
+                                 double * restrict bin, double * restrict binbot)
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
@@ -122,11 +120,9 @@ int ThermoBuoy::calcbuoyancybot(double * restrict b  , double * restrict bbot,
       bbot[ij] = binbot[ij];
       b[ijk]   = bin[ijk];
     }
-
-  return 0;
 }
 
-int ThermoBuoy::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict binfluxbot)
+void ThermoBuoy::calcBuoyancyFluxbot(double * restrict bfluxbot, double * restrict binfluxbot)
 {
   int ij,jj;
   jj = grid->icells;
@@ -140,7 +136,7 @@ int ThermoBuoy::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restric
     }
 }
 
-int ThermoBuoy::calcbuoyancytend_2nd(double * restrict wt, double * restrict b)
+void ThermoBuoy::calcBuoyancyTend_2nd(double * restrict wt, double * restrict b)
 {
   int ijk,jj,kk;
 
@@ -155,11 +151,9 @@ int ThermoBuoy::calcbuoyancytend_2nd(double * restrict wt, double * restrict b)
         ijk = i + j*jj + k*kk;
         wt[ijk] += interp2(b[ijk-kk], b[ijk]);
       }
-
-  return 0;
 }
 
-int ThermoBuoy::calcbuoyancytend_4th(double * restrict wt, double * restrict b)
+void ThermoBuoy::calcBuoyancyTend_4th(double * restrict wt, double * restrict b)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -176,6 +170,4 @@ int ThermoBuoy::calcbuoyancytend_4th(double * restrict wt, double * restrict b)
         ijk = i + j*jj + k*kk1;
         wt[ijk] += interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
       }
-
-  return 0;
 }

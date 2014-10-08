@@ -75,6 +75,7 @@ void Pres2::exec(double dt)
 }
 #endif
 
+#ifndef USECUDA
 double Pres2::checkDivergence()
 {
   double divmax = 0.;
@@ -84,6 +85,7 @@ double Pres2::checkDivergence()
 
   return divmax;
 }
+#endif
 
 void Pres2::init()
 {

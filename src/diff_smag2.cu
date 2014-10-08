@@ -398,7 +398,7 @@ namespace DiffSmag2_g
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
 #ifdef USECUDA
-int DiffSmag2::prepareDevice()
+void DiffSmag2::prepareDevice()
 {
   BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
 
@@ -416,19 +416,16 @@ int DiffSmag2::prepareDevice()
   cudaSafeCall(cudaMemcpy(mlen_g, mlen, nmemsize, cudaMemcpyHostToDevice));
 
   delete[] mlen;
-
-  return 0;
 }
 #endif
 
-int DiffSmag2::clearDevice()
+void DiffSmag2::clearDevice()
 {
   cudaSafeCall(cudaFree(mlen_g));
-  return 0;
 }
 
 #ifdef USECUDA
-int DiffSmag2::execViscosity()
+void DiffSmag2::execViscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
   BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
@@ -482,13 +479,11 @@ int DiffSmag2::execViscosity()
 
     grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
-
-  return 0;
 }
 #endif
 
 #ifdef USECUDA
-int DiffSmag2::exec()
+void DiffSmag2::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -522,8 +517,6 @@ int DiffSmag2::exec()
                                               grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend,
                                               grid->icellsp, grid->ijcellsp);  
   cudaCheckError();
-
-  return 0;
 }
 #endif
 
@@ -591,4 +584,3 @@ double DiffSmag2::getdn(double dt)
   return dnmul*dt;
 }
 #endif
-

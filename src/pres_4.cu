@@ -666,7 +666,7 @@ double Pres4::checkDivergence()
   return divmax;
 }
 
-int Pres4::prepareDevice()
+void Pres4::prepareDevice()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -725,11 +725,9 @@ int Pres4::prepareDevice()
   // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1
   cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot);
   cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist, i_nj, i_jstride, i_jdist, CUFFT_Z2D, grid->itot);
-
-  return 0;
 }
 
-int Pres4::clearDevice()
+void Pres4::clearDevice()
 {
   cudaSafeCall(cudaFree(bmati_g));
   cudaSafeCall(cudaFree(bmatj_g));
@@ -749,8 +747,5 @@ int Pres4::clearDevice()
   cufftDestroy(jplanf);
   cufftDestroy(iplanb);
   cufftDestroy(jplanb);
-
-  return 0;
 }
-
 #endif

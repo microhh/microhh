@@ -39,28 +39,23 @@ class Timeloop
     ~Timeloop();
 
     void stepTime();
-    int postprocstep();
+    void stepPostProcTime();
     void setTimeStep();
+    void setTimeLimit();
+    double getSubTimeStep();
 
-    int exec();
+    void exec();
+
+    double check();
+
+    void save(int);
+    void load(int);
 
     // Query functions for main loop
     bool inSubStep();
     bool isStatsStep();
     bool doCheck();
     bool doSave();
-
-    double getSubTimeStep();
-
-    int settimelim();
-
-    unsigned long settimelim(unsigned long);
-
-    void save(int);
-    void load(int);
-
-    double check();
-
 
     // variables
     int substep;
@@ -105,12 +100,10 @@ class Timeloop
 
     int outputiter;
 
-    int rk3(double *, double *, double);
-    int rk4(double *, double *, double);
+    void rk3(double *, double *, double);
+    void rk4(double *, double *, double);
+
     double rk3subdt(double);
     double rk4subdt(double);
-
-    int rk3_GPU(double *, double *, double);
-    int rk4_GPU(double *, double *, double);
 };
 #endif

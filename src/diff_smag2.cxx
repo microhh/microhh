@@ -37,6 +37,8 @@ DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
   swdiff = "smag2";
 
+  mlen_g = 0;
+
   fields->initDiagnosticField("evisc", "Eddy viscosity", "m2 s-1");
 
   int nerror = 0;
@@ -61,7 +63,7 @@ unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
   unsigned long idtlim;
   double dnmul;
 
-  dnmul = calcdnmul(fields->sd["evisc"]->data, grid->dzi, this->tPr);
+  dnmul = calc_dnmul(fields->sd["evisc"]->data, grid->dzi, this->tPr);
   // avoid zero division
   dnmul = std::max(constants::dsmall, dnmul);
   idtlim = idt * dnmax/(dnmul*dt);
@@ -76,14 +78,14 @@ double DiffSmag2::getdn(double dt)
   double dnmul;
 
   // calculate eddy viscosity
-  dnmul = calcdnmul(fields->sd["evisc"]->data, grid->dzi, this->tPr);
+  dnmul = calc_dnmul(fields->sd["evisc"]->data, grid->dzi, this->tPr);
 
   return dnmul*dt;
 }
 #endif
 
 #ifndef USECUDA
-int DiffSmag2::execViscosity()
+void DiffSmag2::execViscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
   BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
@@ -118,13 +120,11 @@ int DiffSmag2::execViscosity()
           grid->z, grid->dz, grid->dzi,
           boundaryptr->z0m);
   }
-
-  return 0;
 }
 #endif
 
 #ifndef USECUDA
-int DiffSmag2::exec()
+void DiffSmag2::exec()
 {
   diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
   diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
@@ -132,16 +132,14 @@ int DiffSmag2::exec()
 
   for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
     diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
-
-  return 0;
 }
 #endif
 
-int DiffSmag2::strain2(double * restrict strain2,
-                          double * restrict u, double * restrict v, double * restrict w,
-                          double * restrict ufluxbot, double * restrict vfluxbot,
-                          double * restrict ustar, double * restrict obuk,
-                          double * restrict z, double * restrict dzi, double * restrict dzhi)
+void DiffSmag2::strain2(double * restrict strain2,
+                        double * restrict u, double * restrict v, double * restrict w,
+                        double * restrict ufluxbot, double * restrict vfluxbot,
+                        double * restrict ustar, double * restrict obuk,
+                        double * restrict z, double * restrict dzi, double * restrict dzhi)
 {
   int    ij,ijk,ii,jj,kk,kstart;
   double dxi,dyi;
@@ -207,16 +205,14 @@ int DiffSmag2::strain2(double * restrict strain2,
         // add a small number to avoid zero divisions
         strain2[ijk] += constants::dsmall;
       }
-
-  return 0;
 }
 
-int DiffSmag2::evisc(double * restrict evisc,
-                        double * restrict u, double * restrict v, double * restrict w,  double * restrict N2,
-                        double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
-                        double * restrict ustar, double * restrict obuk,
-                        double * restrict z, double * restrict dz, double * restrict dzi,
-                        double z0m)
+void DiffSmag2::evisc(double * restrict evisc,
+                      double * restrict u, double * restrict v, double * restrict w,  double * restrict N2,
+                      double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
+                      double * restrict ustar, double * restrict obuk,
+                      double * restrict z, double * restrict dz, double * restrict dzi,
+                      double z0m)
 {
   int    ij,ijk,jj,kk,kstart;
   double dx,dy;
@@ -277,14 +273,12 @@ int DiffSmag2::evisc(double * restrict evisc,
   }
 
   grid->boundaryCyclic(evisc);
-
-  return 0;
 }
 
-int DiffSmag2::eviscNeutral(double * restrict evisc,
-                            double * restrict u, double * restrict v, double * restrict w,
-                            double * restrict ufluxbot, double * restrict vfluxbot,
-                            double * restrict z, double * restrict dz, double z0m)
+void DiffSmag2::eviscNeutral(double * restrict evisc,
+                             double * restrict u, double * restrict v, double * restrict w,
+                             double * restrict ufluxbot, double * restrict vfluxbot,
+                             double * restrict z, double * restrict dz, double z0m)
 {
   int    ij,ijk,jj,kk,kstart;
   double dx,dy;
@@ -323,11 +317,12 @@ int DiffSmag2::eviscNeutral(double * restrict evisc,
   }
 
   grid->boundaryCyclic(evisc);
-
-  return 0;
 }
 
-int DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh)
+void DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
+                      double * restrict dzi, double * restrict dzhi, double * restrict evisc,
+                      double * restrict fluxbot, double * restrict fluxtop,
+                      double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
@@ -409,11 +404,12 @@ int DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restric
             + (- rhorefh[kend  ] * fluxtop[ij]
                - rhorefh[kend-1] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[kend-1] * dzi[kend-1];
     }
-
-  return 0;
 }
 
-int DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh)
+void DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w,
+                      double * restrict dzi, double * restrict dzhi, double * restrict evisc,
+                      double * restrict fluxbot, double * restrict fluxtop,
+                      double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
@@ -495,11 +491,11 @@ int DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restric
             + (- rhorefh[kend  ] * fluxtop[ij]
                - rhorefh[kend-1] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[kend-1] * dzi[kend-1];
     }
-
-  return 0;
 }
 
-int DiffSmag2::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict rhoref, double * restrict rhorefh)
+void DiffSmag2::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w,
+                      double * restrict dzi, double * restrict dzhi, double * restrict evisc,
+                      double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -533,11 +529,12 @@ int DiffSmag2::diffw(double * restrict wt, double * restrict u, double * restric
               + (  rhoref[k  ] * evisc[ijk   ]*(w[ijk+kk]-w[ijk   ])*dzi[k  ]
                  - rhoref[k-1] * evisc[ijk-kk]*(w[ijk   ]-w[ijk-kk])*dzi[k-1] ) / rhorefh[k] * 2.* dzhi[k];
       }
-
-  return 0;
 }
 
-int DiffSmag2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double * restrict evisc, double * restrict fluxbot, double * restrict fluxtop, double * restrict rhoref, double * restrict rhorefh, double tPr)
+void DiffSmag2::diffc(double * restrict at, double * restrict a,
+                      double * restrict dzi, double * restrict dzhi, double * restrict evisc,
+                      double * restrict fluxbot, double * restrict fluxtop, 
+                      double * restrict rhoref, double * restrict rhorefh, double tPr)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxidxi,dyidyi;
@@ -619,11 +616,9 @@ int DiffSmag2::diffc(double * restrict at, double * restrict a, double * restric
             + (- rhorefh[kend  ] * fluxtop[ij]
                - rhorefh[kend-1] * eviscb*(a[ijk   ]-a[ijk-kk])*dzhi[kend-1] ) / rhoref[kend-1] * dzi[kend-1];
     }
-
-  return 0;
 }
 
-double DiffSmag2::calcdnmul(double * restrict evisc, double * restrict dzi, double tPr)
+double DiffSmag2::calc_dnmul(double * restrict evisc, double * restrict dzi, double tPr)
 {
   int    ijk,jj,kk;
   double dxidxi,dyidyi;
@@ -687,8 +682,7 @@ inline double DiffSmag2::phih(double zeta)
 }
 
 #ifndef USECUDA
-int DiffSmag2::prepareDevice()
+void DiffSmag2::prepareDevice()
 {
-  return 0;
 }
 #endif

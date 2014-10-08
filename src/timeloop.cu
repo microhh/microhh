@@ -147,7 +147,8 @@ namespace Timeloop_g
   }
 }
 
-int Timeloop::rk3_GPU(double *a, double *at, double dt)
+#ifdef USECUDA
+void Timeloop::exec()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -159,79 +160,78 @@ int Timeloop::rk3_GPU(double *a, double *at, double dt)
 
   const int offs = grid->memoffset;
 
-  if(substep==0) {
-    Timeloop_g::rk3<0><<<gridGPU, blockGPU>>>(&a[offs], &at[offs], dt,
-                                              grid->icellsp, grid->ijcellsp,
-                                              grid->istart,  grid->jstart, grid->kstart,
-                                              grid->iend,    grid->jend,   grid->kend); }
-  else if(substep==1) {
-    Timeloop_g::rk3<1><<<gridGPU, blockGPU>>>(&a[offs], &at[offs], dt,
-                                              grid->icellsp, grid->ijcellsp,
-                                              grid->istart,  grid->jstart, grid->kstart,
-                                              grid->iend,    grid->jend,   grid->kend); }
-  else if(substep==2) {
-    Timeloop_g::rk3<2><<<gridGPU, blockGPU>>>(&a[offs], &at[offs], dt,
-                                              grid->icellsp, grid->ijcellsp,
-                                              grid->istart,  grid->jstart, grid->kstart,
-                                              grid->iend,    grid->jend,   grid->kend); }
+  if(rkorder == 3)
+  {
+    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    {
+      if(substep == 0) {
+        Timeloop_g::rk3<0><<<gridGPU, blockGPU>>>(&fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
+                                                  grid->icellsp, grid->ijcellsp,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend); }
+      else if(substep == 1) {
+        Timeloop_g::rk3<1><<<gridGPU, blockGPU>>>(&fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
+                                                  grid->icellsp, grid->ijcellsp,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend); }
+      else if(substep == 2) {
+        Timeloop_g::rk3<2><<<gridGPU, blockGPU>>>(&fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
+                                                  grid->icellsp, grid->ijcellsp,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend); }
+    }
+
+    substep = (substep+1) % 3;
+
+    /*
+    rk3_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
+                                      substep, grid->icells, grid->ijcells,
+                                      grid->istart, grid->jstart, grid->kstart,
+                                      grid->iend, grid->jend, grid->kend);
+                                      */
+  }
+
+  else if(rkorder == 4)
+  {
+    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    {
+      if(substep==0) {
+        Timeloop_g::rk4<0><<<gridGPU, blockGPU>>>(&fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
+                                                  grid->icellsp, grid->ijcellsp,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend); }
+      else if(substep==1) {
+        Timeloop_g::rk4<1><<<gridGPU, blockGPU>>>(&fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
+                                                  grid->icellsp, grid->ijcellsp,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend); }
+      else if(substep==2) {
+        Timeloop_g::rk4<2><<<gridGPU, blockGPU>>>(&fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
+                                                  grid->icellsp, grid->ijcellsp,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend); }
+      else if(substep==3) {
+        Timeloop_g::rk4<3><<<gridGPU, blockGPU>>>(&fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
+                                                  grid->icellsp, grid->ijcellsp,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend); }
+      else if(substep==4) {
+        Timeloop_g::rk4<4><<<gridGPU, blockGPU>>>(&fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
+                                                  grid->icellsp, grid->ijcellsp,
+                                                  grid->istart,  grid->jstart, grid->kstart,
+                                                  grid->iend,    grid->jend,   grid->kend); }
+    }
+
+    substep = (substep+1) % 5;
+
+    /*
+    rk4_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
+                                      substep, grid->icells, grid->ijcells,
+                                      grid->istart, grid->jstart, grid->kstart,
+                                      grid->iend, grid->jend, grid->kend);
+                                      */
+  }
 
   cudaCheckError();
-
-  /*
-  rk3_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
-                                    substep, grid->icells, grid->ijcells,
-                                    grid->istart, grid->jstart, grid->kstart,
-                                    grid->iend, grid->jend, grid->kend);
-                                    */
-
-  return 0;
 }
-
-int Timeloop::rk4_GPU(double *a, double *at, double dt)
-{
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
-  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-  dim3 gridGPU (gridi, gridj, grid->kmax);
-  dim3 blockGPU(blocki, blockj, 1);
-
-  const int offs = grid->memoffset;
-
-  if(substep==0) {
-    Timeloop_g::rk4<0><<<gridGPU, blockGPU>>>(&a[offs], &at[offs], dt,
-                                              grid->icellsp, grid->ijcellsp,
-                                              grid->istart,  grid->jstart, grid->kstart,
-                                              grid->iend,    grid->jend,   grid->kend); }
-  else if(substep==1) {
-    Timeloop_g::rk4<1><<<gridGPU, blockGPU>>>(&a[offs], &at[offs], dt,
-                                              grid->icellsp, grid->ijcellsp,
-                                              grid->istart,  grid->jstart, grid->kstart,
-                                              grid->iend,    grid->jend,   grid->kend); }
-  else if(substep==2) {
-    Timeloop_g::rk4<2><<<gridGPU, blockGPU>>>(&a[offs], &at[offs], dt,
-                                              grid->icellsp, grid->ijcellsp,
-                                              grid->istart,  grid->jstart, grid->kstart,
-                                              grid->iend,    grid->jend,   grid->kend); }
-  else if(substep==3) {
-    Timeloop_g::rk4<3><<<gridGPU, blockGPU>>>(&a[offs], &at[offs], dt,
-                                              grid->icellsp, grid->ijcellsp,
-                                              grid->istart,  grid->jstart, grid->kstart,
-                                              grid->iend,    grid->jend,   grid->kend); }
-  else if(substep==4) {
-    Timeloop_g::rk4<4><<<gridGPU, blockGPU>>>(&a[offs], &at[offs], dt,
-                                              grid->icellsp, grid->ijcellsp,
-                                              grid->istart,  grid->jstart, grid->kstart,
-                                              grid->iend,    grid->jend,   grid->kend); }
-
-  cudaCheckError();
-
-  /*
-  rk4_kernel<<<gridGPU, blockGPU>>>(a, at, dt,
-                                    substep, grid->icells, grid->ijcells,
-                                    grid->istart, grid->jstart, grid->kstart,
-                                    grid->iend, grid->jend, grid->kend);
-                                    */
-  return 0;
-}
+#endif

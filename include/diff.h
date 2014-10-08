@@ -37,17 +37,17 @@ class Diff
     static Diff* factory(Master *, Input *, Model *, const std::string); ///< Factory function for diff class generation.
 
     virtual void setValues();
-    virtual int execViscosity();
-    virtual int exec();
+    virtual void execViscosity();
+    virtual void exec();
 
     std::string getName();
     virtual unsigned long getTimeLimit(unsigned long, double);
-    virtual double getdn(double);
+    virtual double get_dn(double);
 
     double dnmax;
 
     // GPU functions and variables
-    virtual int prepareDevice(); 
+    virtual void prepareDevice();
 
   protected:
     Model  *model;

@@ -51,11 +51,11 @@ class ThermoBuoy : public Thermo
     virtual void getThermoField(Field3d *, Field3d *, std::string name);
 
   private:
-    int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
-    int calcbuoyancybot(double *, double *,
-                        double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
-    int calcbuoyancyfluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-    int calcbuoyancytend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-    int calcbuoyancytend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+    void calcBuoyancy(double *, double *);         ///< Calculation of the buoyancy.
+    void calcBuoyancyBot(double *, double *,
+                         double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
+    void calcBuoyancyFluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
+    void calcBuoyancyTend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+    void calcBuoyancyTend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 };
 #endif

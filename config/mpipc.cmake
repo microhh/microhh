@@ -1,6 +1,11 @@
 # MPI-PC
-# set(ENV{CXX} g++) # compiler for serial build
-set(ENV{CXX} mpicxx) # compiler for parallel build
+if(USEMPI) 
+  set(ENV{CC}  mpicc ) # C compiler for parallel build
+  set(ENV{CXX} mpicxx) # C++ compiler for parallel build
+else()
+  set(ENV{CC}  gcc) # C compiler for serial build
+  set(ENV{CXX} g++) # C++ compiler for serial build
+endif()
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")

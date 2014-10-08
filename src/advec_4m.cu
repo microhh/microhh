@@ -339,12 +339,12 @@ namespace Advec4m_g
     }
   }
   
-  __global__ void calccfl(double * const __restrict__ tmp1,
-                          const double * const __restrict__ u, const double * const __restrict__ v, const double * const __restrict__ w, 
-                          const double * const __restrict__ dzi, const double dxi, const double dyi,
-                          const int jj, const int kk,
-                          const int istart, const int jstart, const int kstart,
-                          const int iend, const int jend, const int kend)
+  __global__ void calc_cfl(double * const __restrict__ tmp1,
+                           const double * const __restrict__ u, const double * const __restrict__ v, const double * const __restrict__ w, 
+                           const double * const __restrict__ dzi, const double dxi, const double dyi,
+                           const int jj, const int kk,
+                           const int istart, const int jstart, const int kstart,
+                           const int iend, const int jend, const int kend)
   {
     const int i = blockIdx.x*blockDim.x + threadIdx.x; 
     const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -415,7 +415,7 @@ void Advec4m::exec()
 #endif
 
 #ifdef USECUDA
-double Advec4m::calccfl(double * u, double * v, double * w, double * dzi, double dt)
+double Advec4m::get_cfl(const double dt)
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -431,12 +431,12 @@ double Advec4m::calccfl(double * u, double * v, double * w, double * dzi, double
 
   const int offs = grid->memoffset;
 
-  Advec4m_g::calccfl<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs],
-                                          &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
-                                          grid->dzi_g, dxi, dyi,
-                                          grid->icellsp, grid->ijcellsp,
-                                          grid->istart, grid->jstart, grid->kstart,
-                                          grid->iend,   grid->jend,   grid->kend);
+  Advec4m_g::calc_cfl<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs],
+                                             &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
+                                             grid->dzi_g, dxi, dyi,
+                                             grid->icellsp, grid->ijcellsp,
+                                             grid->istart, grid->jstart, grid->kstart,
+                                             grid->iend,   grid->jend,   grid->kend);
   cudaCheckError(); 
 
   cfl = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 

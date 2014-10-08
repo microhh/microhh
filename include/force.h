@@ -47,15 +47,15 @@ class Force
     ~Force();                  ///< Destructor of the force class.
     void init();                ///< Initialize the arrays that contain the profiles.
     void create(Input *);      ///< Read the profiles of the forces from the input.
-    int exec(double);           ///< Add the tendencies belonging to the large-scale processes.
-    int setTimeDep();           ///< Set the time dependent parameters.
+    void exec(double);           ///< Add the tendencies belonging to the large-scale processes.
+    void setTimeDep();           ///< Set the time dependent parameters.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
 
     // GPU functions and variables
-    int prepareDevice();
-    int clearDevice();
+    void prepareDevice();
+    void clearDevice();
 
     std::map<std::string, double *> lsprofs_g; ///< Map of profiles with forcings stored by its name.
 
@@ -82,22 +82,23 @@ class Force
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
-    int settimedepprofiles(double, double, int, int); ///< Set the time dependent profiles.
+    void setTimeDepProfs(double, double, int, int); ///< Set the time dependent profiles.
 
-    int flux(double * const, const double * const,
-             const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
+    void calcFlux(double * const, const double * const,
+                  const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
 
-    int coriolis_2nd(double * const, double * const,
-                     const double * const, const double * const,
-                     const double * const, const double * const); ///< Calculates Coriolis force with 2nd-order accuracy.
-    int coriolis_4th(double * const, double * const,
-                     const double * const, const double * const,
-                     const double * const, const double * const); ///< Calculates Coriolis force with 4th-order accuracy.
+    void calcCoriolis_2nd(double * const, double * const,
+                          const double * const, const double * const,
+                          const double * const, const double * const); ///< Calculates Coriolis force with 2nd-order accuracy.
 
-    int lssource(double * const, const double * const); ///< Applies the large scale scalar tendency.
+    void calcCoriolis_4th(double * const, double * const,
+                          const double * const, const double * const,
+                          const double * const, const double * const); ///< Calculates Coriolis force with 4th-order accuracy.
 
-    int advecwls_2nd(double * const, const double * const,
-                     const double * const, const double * const); ///< Calculates the large-scale vertical transport.
+    void calcLargeScaleSource(double * const, const double * const); ///< Applies the large scale scalar tendency.
+
+    void advec_wls_2nd(double * const, const double * const,
+                       const double * const, const double * const); ///< Calculates the large-scale vertical transport.
 
     // GPU functions and variables
     double *ug_g;  ///< Pointer to GPU array u-component geostrophic wind.

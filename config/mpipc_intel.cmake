@@ -1,7 +1,13 @@
-# MPI-PC
-#set(ENV{CXX} icc) # compiler for serial build
-set(ENV{CXX} mpicxx) # compiler for parallel build
+# MPI-PC, Intel compiler
+if(USEMPI) 
+  set(ENV{CC}  mpicc) # C compiler for parallel build
+  set(ENV{CXX} mpiCC) # C++ compiler for parallel build
+else()
+  set(ENV{CC}  icc ) # C compiler for serial build
+  set(ENV{CXX} icpc) # C++ compiler for serial build
+endif()
 
+set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS "-restrict")
 set(USER_CXX_FLAGS_RELEASE "-xHOST -O3")
 set(USER_CXX_FLAGS_DEBUG "-traceback -check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common")

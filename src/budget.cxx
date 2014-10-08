@@ -33,9 +33,7 @@
 #include "stats.h"
 #include <netcdfcpp.h>
 
-using namespace fd::o4; // budget is only 4th order
-
-// #define NO_OFFSET 0.
+using namespace fd::o4;
 
 Budget::Budget(Model *modelin, Input *inputin)
 {
@@ -154,12 +152,12 @@ void Budget::execStats(Mask *m)
   if(grid->swspatialorder == "4")
   {
     // calculate the TKE budget
-    calcke(fields->u->data, fields->v->data, fields->w->data,
+    calcKe(fields->u->data, fields->v->data, fields->w->data,
            umodel, vmodel,
            grid->utrans, grid->vtrans,
            m->profs["ke"].data, m->profs["tke"].data);
 
-    calctkebudget(fields->u->data, fields->v->data, fields->w->data, fields->sd["p"]->data,
+    calcTkeBudget(fields->u->data, fields->v->data, fields->w->data, fields->sd["p"]->data,
                   fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data,
                   umodel, vmodel,
                   m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data,
@@ -175,8 +173,8 @@ void Budget::execStats(Mask *m)
     {
       // store the buoyancy in the tmp1 field
       model->thermo->getThermoField(fields->atmp["tmp1"], fields->atmp["tmp2"], "b");
-      calctkebudget_buoy(fields->w->data, fields->atmp["tmp1"]->data,
-                    m->profs["w2_buoy"].data, m->profs["tke_buoy"].data);
+      calcTkeBudgetBuoy(fields->w->data, fields->atmp["tmp1"]->data,
+                        m->profs["w2_buoy"].data, m->profs["tke_buoy"].data);
     }
 
     // calculate the potential energy budget
@@ -187,7 +185,7 @@ void Budget::execStats(Mask *m)
 
       // calculate the potential energy back, tmp1 contains the buoyancy, tmp2 will contain height that the local buoyancy
       // will reach in the sorted profile
-      calcpe(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->datatop,
+      calcPe(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->datatop,
              grid->z,
              m->profs["bsort"].data,
              m->profs["pe"].data, m->profs["ape"].data, m->profs["bpe"].data,
@@ -196,7 +194,7 @@ void Budget::execStats(Mask *m)
 
       // calculate the budget of background potential energy, start with this one, because tmp2 contains the needed height
       // which will be overwritten inside of the routine
-      calcbpebudget(fields->w->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->datatop,
+      calcBpeBudget(fields->w->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->datatop,
                     m->profs["bpe_turb"].data, m->profs["bpe_visc"].data, m->profs["bpe_diss"].data,
                     // TODO put the correct value for visc here!!!!!
                     m->profs["bsort"].data,
@@ -204,7 +202,7 @@ void Budget::execStats(Mask *m)
                     fields->visc);
 
       // calculate the budget of potential energy
-      calcpebudget(fields->w->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->datatop,
+      calcPeBudget(fields->w->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->datatop,
                    m->profs["pe_turb"].data, m->profs["pe_visc"].data, m->profs["pe_bous"].data,
                    // TODO put the correct value for visc here!!!!!
                    grid->z, grid->zh, grid->dzi4, grid->dzhi4,
@@ -213,7 +211,7 @@ void Budget::execStats(Mask *m)
   }
 }
 
-void Budget::calcke(double * restrict u, double * restrict v, double * restrict w, 
+void Budget::calcKe(double * restrict u, double * restrict v, double * restrict w, 
                     double * restrict umodel, double * restrict vmodel,
                     double utrans, double vtrans,
                     double * restrict ke, double * restrict tke)
@@ -270,7 +268,7 @@ void Budget::calcke(double * restrict u, double * restrict v, double * restrict 
   }
 }
 
-void Budget::calctkebudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
+void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
                            double * restrict wx, double * restrict wy,
                            double * restrict umean, double * restrict vmean,
                            double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
@@ -1071,8 +1069,8 @@ void Budget::calctkebudget(double * restrict u, double * restrict v, double * re
   }
 }
 
-void Budget::calctkebudget_buoy(double * restrict w, double * restrict b,
-                                double * restrict w2_buoy, double * restrict tke_buoy)
+void Budget::calcTkeBudgetBuoy(double * restrict w, double * restrict b,
+                               double * restrict w2_buoy, double * restrict tke_buoy)
 {
   int ijk,jj1,kk1,kk2;
 
@@ -1115,7 +1113,7 @@ void Budget::calctkebudget_buoy(double * restrict w, double * restrict b,
   grid->getProf(tke_buoy, grid->kcells);
 }
 
-void Budget::calcpe(double * restrict b, double * restrict zsort, double * restrict zsortbot, double * restrict zsorttop,
+void Budget::calcPe(double * restrict b, double * restrict zsort, double * restrict zsortbot, double * restrict zsorttop,
                     double * restrict z,
                     double * restrict bsort,
                     double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg,
@@ -1182,7 +1180,7 @@ void Budget::calcpe(double * restrict b, double * restrict zsort, double * restr
         else
           zsortval = z[ks];
           */
-        zsortval = calczsort(b[ijk], bsort, z, k);
+        zsortval = calc_zsort(b[ijk], bsort, z, k);
         zsort[ijk] = zsortval;
 
         zsortprof[k] += zsortval;
@@ -1210,7 +1208,7 @@ void Budget::calcpe(double * restrict b, double * restrict zsort, double * restr
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk1;
-      zsortbot[ij] = calczsort(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1], bsort, z, kstart);
+      zsortbot[ij] = calc_zsort(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1], bsort, z, kstart);
     }
 
   // top bc
@@ -1220,7 +1218,7 @@ void Budget::calcpe(double * restrict b, double * restrict zsort, double * restr
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk1;
-      zsorttop[ij] = calczsort(ci0*b[ijk-kk1] + ci1*b[ijk] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2], bsort, z, kend-1);
+      zsorttop[ij] = calc_zsort(ci0*b[ijk-kk1] + ci1*b[ijk] + ci2*b[ijk+kk1] + ci3*b[ijk+kk2], bsort, z, kend-1);
     }
 
   // calculate the ghost cells at the bottom
@@ -1246,7 +1244,7 @@ void Budget::calcpe(double * restrict b, double * restrict zsort, double * restr
     }
 }
 
-double Budget::calczsort(double b, double * restrict bsort, double * restrict z, int k)
+double Budget::calc_zsort(double b, double * restrict bsort, double * restrict z, int k)
 {
   double zsortval;
   int ks = k;
@@ -1274,7 +1272,7 @@ double Budget::calczsort(double b, double * restrict bsort, double * restrict z,
   return zsortval;
 }
 
-double Budget::calcdzstardb(double b, double * restrict bsort, double * restrict z)
+double Budget::calc_dzstardb(double b, double * restrict bsort, double * restrict z)
 {
   // start the iteration below the grid to make sure not to miss values below the first full level
   int k = grid->kstart-1;
@@ -1309,7 +1307,7 @@ double Budget::calcdzstardb(double b, double * restrict bsort, double * restrict
 }
 
 
-void Budget::calcpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
+void Budget::calcPeBudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
                           double * restrict pe_turb, double * restrict pe_visc, double * restrict pe_bous,
                           double * restrict z, double * restrict zh, double * restrict dzi4, double * restrict dzhi4,
                           double visc)
@@ -1517,7 +1515,8 @@ void Budget::calcpebudget(double * restrict w, double * restrict b, double * res
   }
 }
 
-void Budget::calcbpebudget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bzbot, double * restrict bztop,
+void Budget::calcBpeBudget(double * restrict w, double * restrict b, 
+                           double * restrict bz, double * restrict bzbot, double * restrict bztop,
                            double * restrict bpe_turb, double * restrict bpe_visc, double * restrict bpe_diss,
                            double * restrict bsort,
                            double * restrict z, double * restrict dzi4, double * restrict dzhi4,
@@ -1610,7 +1609,7 @@ void Budget::calcbpebudget(double * restrict w, double * restrict b, double * re
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk  = i + j*jj1 + kstart*kk1;
-      dzstardb = calcdzstardb(b[ijk], bsort, z);
+      dzstardb = calc_dzstardb(b[ijk], bsort, z);
       bpe_diss[kstart] += visc * dzstardb * (
                          std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
                                    + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])
@@ -1637,7 +1636,7 @@ void Budget::calcbpebudget(double * restrict w, double * restrict b, double * re
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj1 + k*kk1;
-        dzstardb = calcdzstardb(b[ijk], bsort, z);
+        dzstardb = calc_dzstardb(b[ijk], bsort, z);
         bpe_diss[k] += visc * dzstardb * (
                         std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
                                   + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])
@@ -1663,7 +1662,7 @@ void Budget::calcbpebudget(double * restrict w, double * restrict b, double * re
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
-      dzstardb = calcdzstardb(b[ijk], bsort, z);
+      dzstardb = calc_dzstardb(b[ijk], bsort, z);
       bpe_diss[kend-1] += visc * dzstardb * (
                       std::pow( ( cg0*(ci0*b[ijk-ii3] + ci1*b[ijk-ii2] + ci2*b[ijk-ii1] + ci3*b[ijk    ])
                                 + cg1*(ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk    ] + ci3*b[ijk+ii1])

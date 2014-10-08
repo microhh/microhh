@@ -23,18 +23,31 @@ cmake_minimum_required (VERSION 2.8.1)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/config)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-# load system specific settings if not set, force default.cmake
+# Check whether USEMPI and USECUDA are set, if not, set to FALSE.
+if(NOT USEMPI)
+  set(USEMPI FALSE)
+endif()
+if(NOT USECUDA)
+  set(USECUDA FALSE)
+endif()
+
+# Crash on using CUDA and MPI together, not implemented yet.
+if(USEMPI AND USECUDA)
+  message(FATAL_ERROR "MPI support for CUDA runs is not supported yet")
+endif()
+
+# Load system specific settings if not set, force default.cmake.
 if(NOT SYST)
   set(SYST default)
 endif()
 include(${SYST} OPTIONAL RESULT_VARIABLE SYSTINC)
 
-# trigger fatal error if illegal module is loaded
+# Trigger fatal error if illegal module is loaded.
 if(${SYSTINC} STREQUAL "NOTFOUND")
   message(FATAL_ERROR "Config file config/" ${SYST} ".cmake does not exist.")
 endif()
 
-# set the default build type to RELEASE
+# Set the default build type to RELEASE.
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RELEASE CACHE STRING
     "Choose the type of build, options are: None Debug Release." FORCE)
@@ -44,27 +57,29 @@ else()
     "Choose the type of build, options are: None Debug Release." FORCE)
 endif()
 
-# start the project only after the system specific settings are loaded
+# Start the project only after the system specific settings are loaded.
 project(microhhc)
 
-# enable or disable MPI, enabled by default
-set(MPI TRUE CACHE BOOL "Choose to enable MPI or not.")
-if(MPI)
-  message(STATUS "MPI: enabled.")
+# Display status messages for MPI set precompiler flags.
+if(USEMPI)
+  message(STATUS "MPI: Enabled.")
   # add the necessary precompiler flag
-  add_definitions("-DPARALLEL")
+  add_definitions("-DUSEMPI")
 else()
-  message(STATUS "MPI: disabled.")
+  message(STATUS "MPI: Disabled.")
 endif()
 
-# load the cuda settings in case cuda is used
+# Load the CUDA module in case CUDA is enabled and display status message.
 if(USECUDA)
+  message(STATUS "CUDA: Enabled.")
   find_package(CUDA)
   add_definitions("-DUSECUDA")
+else()
+  message(STATUS "CUDA: Disabled.")
 endif()
 
-# only set the compiler flags when the cache is created
-# to enable editing of the flags in the CMakeCache.txt file
+# Only set the compiler flags when the cache is created
+# to enable editing of the flags in the CMakeCache.txt file.
 if(NOT HASCACHE)
   set(CMAKE_C_FLAGS ${USER_C_FLAGS} CACHE STRING
     "Flags used by the C-compiler during all build types." FORCE)
@@ -81,36 +96,41 @@ if(NOT HASCACHE)
   if(USECUDA)
     set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
       "Flags used by NVCC." FORCE)
-    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
   endif()
 
   message(STATUS "Build Type: " ${CMAKE_BUILD_TYPE})
   set(HASCACHE TRUE CACHE BOOL "CMakeCache.txt created." FORCE)
-  # make sure that ccmake only contains build type and MPI setting
+  # Make sure that ccmake only contains build type.
   mark_as_advanced(HASCACHE)
   mark_as_advanced(CMAKE_INSTALL_PREFIX)
 endif()
 
-# print the compiler flags to the screen
+# Print the C++ and CUDA compiler flags to the screen.
 if(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
   message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_RELEASE})
 else()
   message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
-  # Add debug definition, to do CUDA api and kernel checks
-  add_definitions("-DCUDACHECKS")
 endif()
 
-# set the include dirs
+if(USECUDA)
+  # Add CUDA debug definition, to enforce CUDA API and kernel checks.
+  if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+    add_definitions("-DCUDACHECKS")
+  endif()
+  message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
+endif()
+
+# Set the include dirs.
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_subdirectory(src)
 add_subdirectory(main)
 add_subdirectory(test)
 
-# documentation
+# Documentation generation
 add_custom_target(todo ALL)
-# if a non-default sed is not set revert to standard sed
-if(NOT DEFINED GNU_SED)
+# If a non-default sed is not set revert to standard sed.
+if(NOT GNU_SED)
   set(GNU_SED "sed")
 endif()
 add_custom_command(TARGET todo POST_BUILD

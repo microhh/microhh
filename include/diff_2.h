@@ -32,15 +32,15 @@ class Diff2 : public Diff
     ~Diff2();
 
     void setValues();
-    int exec();
+    void exec();
 
     unsigned long getTimeLimit(unsigned long, double);
-    double getdn(double);
+    double get_dn(double);
 
   private:
     double dnmul;
 
-    int diffc(double *, double *, double *, double *, double);
-    int diffw(double *, double *, double *, double *, double);
+    void diffc(double *, double *, double *, double *, double);
+    void diffw(double *, double *, double *, double *, double);
 };
 #endif
