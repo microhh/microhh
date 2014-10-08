@@ -379,6 +379,23 @@ void Model::exec()
   #endif
 }
 
+void Model::setTimeStep()
+{
+  // Only set the time step if the model is not in a substep.
+  if(timeloop->inSubStep())
+    return;
+
+  // Retrieve the maximum allowed time step per class.
+  timeloop->setTimeStepLimit();
+  timeloop->setTimeStepLimit(advec->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->setTimeStepLimit(diff ->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->setTimeStepLimit(stats->getTimeLimit(timeloop->get_itime()));
+  timeloop->setTimeStepLimit(cross->getTimeLimit(timeloop->get_itime()));
+
+  // Set the time step.
+  timeloop->setTimeStep();
+}
+
 void Model::calcStats(std::string maskname)
 {
   fields  ->execStats(&stats->masks[maskname]);
@@ -438,19 +455,4 @@ void Model::printOutputFile()
     if(master->mpiid == 0)
       std::fclose(dnsout);
   }
-}
-
-void Model::setTimeStep()
-{
-  // Only set the time step if the model is not in a substep
-  if(timeloop->inSubStep())
-    return;
-
-  timeloop->setTimeLimit();
-  timeloop->setTimeLimit(advec->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
-  timeloop->setTimeLimit(diff ->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
-  timeloop->setTimeLimit(stats->getTimeLimit(timeloop->get_itime()));
-  timeloop->setTimeLimit(cross->getTimeLimit(timeloop->get_itime()));
-
-  timeloop->setTimeStep();
 }

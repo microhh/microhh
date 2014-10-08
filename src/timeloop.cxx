@@ -113,13 +113,13 @@ Timeloop::~Timeloop()
 {
 }
 
-void Timeloop::setTimeLimit()
+void Timeloop::setTimeStepLimit()
 {
   idtlim = idtmax;
   idtlim = std::min(idtlim, isavetime - itime % isavetime);
 }
 
-void Timeloop::setTimeLimit(unsigned long idtlimin)
+void Timeloop::setTimeStepLimit(unsigned long idtlimin)
 {
   idtlim = std::min(idtlim, idtlimin);
 }

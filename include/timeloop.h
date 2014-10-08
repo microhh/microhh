@@ -41,8 +41,8 @@ class Timeloop
     void stepTime();
     void stepPostProcTime();
     void setTimeStep();
-    void setTimeLimit();
-    void setTimeLimit(unsigned long);
+    void setTimeStepLimit();
+    void setTimeStepLimit(unsigned long);
     double getSubTimeStep();
 
     void exec();
