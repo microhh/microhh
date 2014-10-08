@@ -34,15 +34,25 @@ Then, go back to the main directory and create a subdirectory with an arbitrary 
     mkdir build  
     cd build   
 
-From this directory, run cmake with the suffix .. to point to the parent directory:
+From this directory, run cmake with the suffix .. to point to the parent directory where the CMakeLists.txt is found. This builds the model without Message Passing Interface (MPI) and CUDA support.
 
     cmake ..
 
-This should trigger the build system and create the make files, if the default.cmake file contains the correct settings. In case this works correctly, you can start the compilation of the code and create the microhh executable:
+In case you prefer to enable either MPI or CUDA, run INSTEAD of the previous command:
+    
+    cmake .. -DUSEMPI=TRUE
+
+or
+
+    cmake .. -DUSECUDA=TRUE
+
+(Note that once the build has been configured and you wish to change the USECUDA or USEMPI setting, you must delete the build directory or create an additional empty directory from which cmake is run.)
+
+With the previous command you have triggered the build system and created the make files, if the default.cmake file contains the correct settings. Now, you can start the compilation of the code and create the microhh executable with:
 
     make -j
 
-Your directory should contain a file named "microhh" now, that is the main executable.
+Your directory should contain a file named "microhh" now. This is the main executable.
 
 Running an example case
 -----------------------
