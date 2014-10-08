@@ -78,8 +78,6 @@ void Diff2::exec()
 
   for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sp[it->first]->visc);
-  
-  return 0;
 }
 #endif
 
