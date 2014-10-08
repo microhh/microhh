@@ -55,12 +55,12 @@ class Budget
 
     double *umodel, *vmodel;
 
-    void calcke(double *, double *, double *,
+    void calcKe(double *, double *, double *,
                 double *, double *,
                 double, double,
                 double *, double *);
 
-    void calctkebudget(double *, double *, double *, double *,
+    void calcTkeBudget(double *, double *, double *, double *,
                        double *, double *,
                        double *, double *,
                        double *, double *, double *,
@@ -71,26 +71,26 @@ class Budget
                        double *, double *, double *,
                        double *, double *, double);
 
-    void calctkebudget_buoy(double *, double *, double *, double *);
+    void calcTkeBudgetBuoy(double *, double *, double *, double *);
 
-    void calcpe(double *, double *, double *, double *,
+    void calcPe(double *, double *, double *, double *,
                 double *,
                 double *,
                 double *, double *, double *,
                 double *);
 
-    void calcpebudget(double *, double *, double *, double *,
+    void calcPeBudget(double *, double *, double *, double *,
                       double *, double *, double *,
                       double *, double *, double *, double *,
                       double);
 
-    void calcbpebudget(double *, double *, double *, double *, double *,
+    void calcBpeBudget(double *, double *, double *, double *, double *,
                        double *, double *, double *,
                        double *,
                        double *, double *, double *,
                        double);
 
-    double calczsort   (double, double *, double *, int);
-    double calcdzstardb(double, double *, double *);
+    double calc_zsort   (double, double *, double *, int);
+    double calc_dzstardb(double, double *, double *);
 };
 #endif
