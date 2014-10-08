@@ -60,12 +60,10 @@ unsigned long Advec::getTimeLimit(unsigned long idt, double dt)
   return idtlim;
 }
 
-double Advec::getcfl(double dt)
+double Advec::get_cfl(double dt)
 {
   double cfl;
-
   cfl = constants::dsmall;
-
   return cfl;
 }
 

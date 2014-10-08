@@ -47,7 +47,7 @@ unsigned long Advec4m::getTimeLimit(unsigned long idt, double dt)
   unsigned long idtlim;
   double cfl;
 
-  cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+  cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   // avoid zero divisons
   cfl = std::max(constants::dsmall, cfl);
   idtlim = idt * cflmax / cfl;
@@ -55,14 +55,14 @@ unsigned long Advec4m::getTimeLimit(unsigned long idt, double dt)
   return idtlim;
 }
 
-double Advec4m::getcfl(double dt)
+#ifndef USECUDA
+double Advec4m::get_cfl(double dt)
 {
   double cfl;
-
-  cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
-
+  cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   return cfl;
 }
+#endif
 
 #ifndef USECUDA
 void Advec4m::exec()
@@ -76,8 +76,7 @@ void Advec4m::exec()
 }
 #endif
 
-#ifndef USECUDA
-double Advec4m::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+double Advec4m::calc_cfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
@@ -113,7 +112,6 @@ double Advec4m::calccfl(double * restrict u, double * restrict v, double * restr
 
   return cfl;
 }
-#endif
 
 void Advec4m::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {

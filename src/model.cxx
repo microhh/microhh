@@ -419,7 +419,7 @@ void Model::printOutputFile(bool doclose)
     mom     = fields->checkMomentum();
     tke     = fields->checkTke();
     mass    = fields->checkMass();
-    cfl     = advec->getcfl(timeloop->dt);
+    cfl     = advec->get_cfl(timeloop->dt);
     dn      = diff->get_dn(timeloop->dt);
 
     end     = master->getTime();

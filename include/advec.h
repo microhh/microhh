@@ -48,7 +48,7 @@ class Advec
     virtual void exec(); ///< Execute the advection scheme.
 
     virtual unsigned long getTimeLimit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-    virtual double getcfl(double);                             ///< Retrieve the CFL number.
+    virtual double get_cfl(double);                            ///< Retrieve the CFL number.
 
   protected:
     Master *master; ///< Pointer to master class.
