@@ -211,7 +211,7 @@ void Force::exec(double dt)
 }
 #endif
 
-void Force::setTimeDep()
+void Force::updateTimeDep()
 {
   if(swtimedep == "0")
     return;
@@ -253,11 +253,11 @@ void Force::setTimeDep()
     fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
   }
 
-  setTimeDepProfs(fac0, fac1, index0, index1);
+  updateTimeDepProfs(fac0, fac1, index0, index1);
 }
 
 #ifndef USECUDA
-void Force::setTimeDepProfs(const double fac0, const double fac1, const int index0, const int index1)
+void Force::updateTimeDepProfs(const double fac0, const double fac1, const int index0, const int index1)
 {
   // process time dependent bcs for the large scale forcings
   int kk = grid->kmax;

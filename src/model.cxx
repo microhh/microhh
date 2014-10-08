@@ -239,9 +239,9 @@ void Model::exec()
 
   master->printMessage("Starting time integration\n");
 
-  // Update the time dependent values.
-  boundary->setTimeDep();
-  force   ->setTimeDep();
+  // Update the time dependent parameters.
+  boundary->updateTimeDep();
+  force   ->updateTimeDep();
 
   // Set the boundary conditions.
   boundary->exec();
@@ -286,7 +286,7 @@ void Model::exec()
       if(stats->doStats())
       {
         #ifdef USECUDA
-        // First, copy the data back from the GPU
+        // First, copy the data back from the GPU, statistics are done on CPU.
         fields  ->backwardDevice();
         boundary->backwardDevice();
         #endif
@@ -314,7 +314,7 @@ void Model::exec()
         stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
       }
 
-      // Save the selected cross sections to disk.
+      // Save the selected cross sections to disk, cross sections are handled on CPU.
       if(cross->doCross())
       {
         #ifdef USECUDA
@@ -374,8 +374,8 @@ void Model::exec()
     }
 
     // Update the time dependent parameters.
-    boundary->setTimeDep();
-    force   ->setTimeDep();
+    boundary->updateTimeDep();
+    force   ->updateTimeDep();
 
     // Set the boundary conditions.
     boundary->exec();
@@ -448,24 +448,26 @@ void Model::printStatus()
     start = master->getTime();
   }
 
-  // Retrieve all the information.
+  // Retrieve all the status information.
   if(timeloop->doCheck())
   {
-    iter    = timeloop->get_iteration();
-    time    = timeloop->get_time();
-    dt      = timeloop->get_dt();
-    div     = pres->checkDivergence();
-    mom     = fields->checkMomentum();
-    tke     = fields->checkTke();
-    mass    = fields->checkMass();
-    cfl     = advec->get_cfl(timeloop->get_dt());
-    dn      = diff->get_dn(timeloop->get_dt());
+    // Get status variables.
+    iter = timeloop->get_iteration();
+    time = timeloop->get_time();
+    dt   = timeloop->get_dt();
+    div  = pres->checkDivergence();
+    mom  = fields->checkMomentum();
+    tke  = fields->checkTke();
+    mass = fields->checkMass();
+    cfl  = advec->get_cfl(timeloop->get_dt());
+    dn   = diff->get_dn(timeloop->get_dt());
 
+    // Store time interval in betwteen two writes.
     end     = master->getTime();
     cputime = end - start;
     start   = end;
 
-    // Write the output to file.
+    // Write the status information to disk.
     if(master->mpiid == 0)
       std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
         iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);

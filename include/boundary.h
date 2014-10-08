@@ -39,13 +39,14 @@ class Boundary
 {
   public:
     Boundary(Model *, Input *); ///< Constuctor of the boundary class.
-    virtual ~Boundary();          ///< Destructor of the boundary class.
+    virtual ~Boundary();        ///< Destructor of the boundary class.
+
     static Boundary* factory(Master *, Input *, Model *); ///< Factory function for boundary class generation.
 
     virtual void init(Input *);   ///< Initialize the fields.
     virtual void create(Input *); ///< Create the fields.
-    virtual void setTimeDep();
-    virtual void setValues();      ///< Set all 2d fields to the prober BC value.
+    virtual void updateTimeDep(); ///< Update the time dependent parameters.
+    virtual void setValues();     ///< Set all 2d fields to the prober BC value.
 
     virtual void save(int); ///< Save boundary conditions related fields for restarts.
     virtual void load(int); ///< Load boundary conditions related fields for restarts.

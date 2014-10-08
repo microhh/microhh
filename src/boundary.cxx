@@ -192,7 +192,7 @@ void Boundary::processTimeDep(Input *inputin)
     throw 1;
 }
 
-void Boundary::setTimeDep()
+void Boundary::updateTimeDep()
 {
   if(swtimedep == "0")
     return;

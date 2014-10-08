@@ -44,11 +44,12 @@ class Force
 {
   public:
     Force(Model *, Input *); ///< Constructor of the force class.
-    ~Force();                  ///< Destructor of the force class.
-    void init();                ///< Initialize the arrays that contain the profiles.
-    void create(Input *);      ///< Read the profiles of the forces from the input.
-    void exec(double);           ///< Add the tendencies belonging to the large-scale processes.
-    void setTimeDep();           ///< Set the time dependent parameters.
+    ~Force();                ///< Destructor of the force class.
+
+    void init();          ///< Initialize the arrays that contain the profiles.
+    void create(Input *); ///< Read the profiles of the forces from the input.
+    void exec(double);    ///< Add the tendencies belonging to the large-scale processes.
+    void updateTimeDep(); ///< Update the time dependent parameters.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
@@ -82,7 +83,7 @@ class Force
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
-    void setTimeDepProfs(double, double, int, int); ///< Set the time dependent profiles.
+    void updateTimeDepProfs(double, double, int, int); ///< Set the time dependent profiles.
 
     void calcFlux(double * const, const double * const,
                   const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
