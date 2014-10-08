@@ -269,7 +269,7 @@ namespace Pres2_g
   }
 } // End namespace.
 
-int Pres2::prepareDevice()
+void Pres2::prepareDevice()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -320,11 +320,9 @@ int Pres2::prepareDevice()
   // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1
   cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot);
   cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist, i_nj, i_jstride, i_jdist, CUFFT_Z2D, grid->itot);
-
-  return 0;
 }
 
-int Pres2::clearDevice()
+void Pres2::clearDevice()
 {
   cudaSafeCall(cudaFree(bmati_g       ));
   cudaSafeCall(cudaFree(bmatj_g       ));
@@ -338,8 +336,6 @@ int Pres2::clearDevice()
   cufftDestroy(jplanf);
   cufftDestroy(iplanb);
   cufftDestroy(jplanb);
-
-  return 0;
 }
 
 #ifdef USECUDA
@@ -451,14 +447,13 @@ void Pres2::exec(double dt)
 #endif
 
 #ifdef USECUDA
-// TODO: BvS branch cpu/gpu code at check(). Now the input to this routine (u, v, ..) isn't actually used.
-double Pres2::calcDivergence(double * restrict u, double * restrict v, double * restrict w,
-                             double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
+double Pres2::checkDivergence()
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
   double divmax = 0;
 
   dim3 gridGPU (gridi, gridj, grid->kcells);

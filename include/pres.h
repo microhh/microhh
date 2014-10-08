@@ -41,7 +41,7 @@ class Pres
     virtual void exec(double);
     virtual double checkDivergence();
 
-    virtual int prepareDevice();
+    virtual void prepareDevice();
 
   protected:
     Master *master;

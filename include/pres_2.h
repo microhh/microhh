@@ -44,8 +44,8 @@ class Pres2 : public Pres
     double checkDivergence();
 
     #ifdef USECUDA
-    int prepareDevice();
-    int clearDevice();
+    void prepareDevice();
+    void clearDevice();
     #endif
 
   private:
