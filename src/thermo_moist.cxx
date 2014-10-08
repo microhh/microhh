@@ -281,12 +281,11 @@ int ThermoMoist::calcMask_ql(double * restrict mask, double * restrict maskh, do
                              double * restrict ql)
 {
   int ijk,ij,jj,kk;
-  int kstart,kend;
+  int kstart;
 
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
-  kend   = grid->kend;
 
   int ntmp;
 
@@ -350,12 +349,11 @@ int ThermoMoist::calcMask_qlcore(double * restrict mask, double * restrict maskh
                                  double * restrict ql, double * restrict b, double * restrict bmean)
 {
   int ijk,ij,jj,kk;
-  int kstart,kend;
+  int kstart;
 
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
-  kend   = grid->kend;
 
   int ntmp;
 
@@ -551,7 +549,6 @@ bool ThermoMoist::checkThermoField(std::string name)
 #ifndef USECUDA
 void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
-  const int kk = grid->ijcells;
   const int kcells = grid->kcells;
 
   // BvS: getThermoField() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
@@ -619,7 +616,7 @@ int ThermoMoist::calcBaseState(double * restrict pref,     double * restrict pre
                                double * restrict thlmean,  double * restrict qtmean)
 {
   int kstart,kend;
-  double ssurf,qtsurf,stop,qttop,ptop,ql,si,qti,qli,thvt;
+  double ssurf,qtsurf,ql,si,qti,qli;
   double rdcp = Rd/cp;
 
   kstart = grid->kstart;
@@ -628,16 +625,12 @@ int ThermoMoist::calcBaseState(double * restrict pref,     double * restrict pre
   if(grid->swspatialorder == "2")
   {
     ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
-    stop   = interp2(thlmean[kend-1],   thlmean[kend]);
     qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
-    qttop  = interp2(qtmean[kend-1],    qtmean[kend]);
   }
   else if(grid->swspatialorder == "4")
   {
     ssurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
-    stop   = interp4(thlmean[kend-2],   thlmean[kend-1],   thlmean[kend],   thlmean[kend+1]);
     qtsurf = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
-    qttop  = interp4(qtmean[kend-2],    qtmean[kend-1],    qtmean[kend],    qtmean[kend+1]);
   }
 
   // Calculate surface (half=kstart) values
@@ -711,7 +704,6 @@ int ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict s,
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
-    //ph   = interp2(p[k-1],p[k]);   // BvS To-do: calculate pressure at full and half levels
     exnh = exner(ph[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
@@ -732,7 +724,9 @@ int ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict s,
       {
         ij  = i + j*jj;
         if(ql[ij]>0)   // already doesn't vectorize because of iteration in satAdjust()
+        {
           ql[ij] = satAdjust(sh[ij], qth[ij], ph[k], exnh);
+        }
         else
           ql[ij] = 0.;
       }
@@ -742,7 +736,7 @@ int ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict s,
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        wt[ijk] += buoyancy(ph[k], sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += buoyancy(ph[k], exnh, sh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
   return 0;
@@ -792,7 +786,7 @@ int ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict s,
       {
         ijk = i + j*jj + k*kk1;
         ij  = i + j*jj;
-        wt[ijk] += buoyancy(ph[k], sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += buoyancy(ph[k], exnh, sh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
   return 0;
@@ -835,7 +829,7 @@ int ThermoMoist::calcBuoyancy(double * restrict b, double * restrict s, double *
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        b[ijk] = buoyancy(p[k], s[ijk], qt[ijk], ql[ij], thvref[k]);
+        b[ijk] = buoyancy(p[k], ex, s[ijk], qt[ijk], ql[ij], thvref[k]);
       }
   }
 
@@ -954,9 +948,9 @@ int ThermoMoist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restri
 }
 
 // INLINE FUNCTIONS
-inline double ThermoMoist::buoyancy(const double p, const double s, const double qt, const double ql, const double thvref)
+inline double ThermoMoist::buoyancy(const double p, const double exn, const double s, const double qt, const double ql, const double thvref)
 {
-  return grav * ((s + Lv*ql/(cp*exner(p))) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
+  return grav * ((s + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
 }
 
 inline double ThermoMoist::buoyancyNoql(const double s, const double qt, const double thvref)
