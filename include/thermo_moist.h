@@ -69,31 +69,31 @@ class ThermoMoist : public Thermo
     Stats *stats;
 
     // masks
-    int calcmaskql    (double *, double *, double *, int *, int *, int *, double *);
-    int calcmaskqlcore(double *, double *, double *, int *, int *, int *, double *, double *, double *);
+    int calcMask_ql    (double *, double *, double *, int *, int *, int *, double *);
+    int calcMask_qlcore(double *, double *, double *, int *, int *, int *, double *, double *, double *);
 
-    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
-    int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
+    int calcBuoyancyTend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
+    int calcBuoyancyTend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
 
-    int calcbuoyancy(double *, double *, double *, double *, double *, double *);
+    int calcBuoyancy(double *, double *, double *, double *, double *, double *);
     int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
-    int calcbasestate(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    int calcBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
-    int calcqlfield(double *, double *, double *, double *);
-    int calcbuoyancybot(double *, double *,
+    int calcLiquidWater(double *, double *, double *, double *);
+    int calcBuoyancyBot(double *, double *,
                         double *, double *,
                         double *, double *,
                         double *, double *);
-    int calcbuoyancyfluxbot(double *, double *, double *, double *, double *, double *);
+    int calcBuoyancyFluxBot(double *, double *, double *, double *, double *, double *);
 
-    inline double calcql(const double, const double, const double ,const double);
-    inline double bu(const double, const double, const double, const double, const double);
-    inline double bunoql(const double, const double, const double);
-    inline double bufluxnoql(const double, const double, const double, const double, const double);
-    inline double exn(const double);
+    inline double satAdjust(const double, const double, const double ,const double);
+    inline double buoyancy(const double, const double, const double, const double, const double);
+    inline double buoyancyNoql(const double, const double, const double);
+    inline double buoyancyFluxNoql(const double, const double, const double, const double, const double);
+    inline double exner(const double);
     inline double exn2(const double);
-    inline double rslf(const double, const double);
-    inline double esl(const double);
+    inline double qsat(const double, const double);
+    inline double esat(const double);
 
     double pbot;
     double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
@@ -115,6 +115,5 @@ class ThermoMoist : public Thermo
     double *exnrefh_g;
     double *pref_g;
     double *prefh_g;
-
 };
 #endif
