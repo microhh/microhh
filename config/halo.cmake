@@ -1,7 +1,11 @@
-# MPI-PC
-# set(ENV{CXX} g++) # compiler for serial build
-set(ENV{CC}  /sw/centos58-x64/mpi/openmpi-1.8.1-cuda-shared-gcc47/bin/mpicc)
-set(ENV{CXX} /sw/centos58-x64/mpi/openmpi-1.8.1-cuda-shared-gcc47/bin/mpicxx)
+# HALO, DKRZ Visualization cluster
+if(USEMPI) 
+  set(ENV{CC}  /sw/centos58-x64/mpi/openmpi-1.8.1-cuda-shared-gcc47/bin/mpicc) # C compiler for serial build
+  set(ENV{CXX} /sw/centos58-x64/mpi/openmpi-1.8.1-cuda-shared-gcc47/bin/mpicxx) # C++ compiler for serial build
+else()
+  set(ENV{CC}  gcc) # C compiler for serial build
+  set(ENV{CXX} g++) # C++ compiler for serial build
+endif()
 
 set(USER_C_FLAGS "")
 set(USER_C_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")

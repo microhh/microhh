@@ -1,6 +1,11 @@
 # Thunder
-# set(ENV{CXX} icc) # compiler for serial build
-set(ENV{CXX} mpicxx) # compiler for parallel build
+if(USEMPI) 
+  set(ENV{CC}  mpicc ) # C compiler for parallel build
+  set(ENV{CXX} mpicxx) # C++ compiler for parallel build
+else()
+  set(ENV{CC}  icc ) # C compiler for serial build
+  set(ENV{CXX} icpc) # C++ compiler for serial build
+endif()
 
 set(USER_CXX_FLAGS "-restrict")
 set(USER_CXX_FLAGS_RELEASE "-march=corei7-avx -O3")
