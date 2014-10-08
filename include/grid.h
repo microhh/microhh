@@ -23,7 +23,7 @@
 #ifndef GRID
 #define GRID
 
-#ifdef PARALLEL
+#ifdef USEMPI
 #include <mpi.h>
 #endif
 #include <fftw3.h>
@@ -176,7 +176,7 @@ class Grid
 
     void calculate(); ///< Computation of dimensions, faces and ghost cells.
 
-    #ifdef PARALLEL
+    #ifdef USEMPI
     // MPI Datatypes
     MPI_Datatype eastwestedge;     ///< MPI datatype containing the ghostcells at the east-west sides.
     MPI_Datatype northsouthedge;   ///< MPI datatype containing the ghostcells at the north-south sides.

@@ -20,7 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef PARALLEL
+#ifdef USEMPI
 #include <mpi.h>
 #include <stdexcept>
 #include "grid.h"

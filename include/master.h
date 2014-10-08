@@ -23,7 +23,7 @@
 #ifndef MASTER
 #define MASTER
 
-#ifdef PARALLEL
+#ifdef USEMPI
 #include <mpi.h>
 #endif
 #include <string>
@@ -73,7 +73,7 @@ class Master
     int mpicoordx;
     int mpicoordy;
 
-    #ifdef PARALLEL
+    #ifdef USEMPI
     int nnorth;
     int nsouth;
     int neast;
@@ -91,7 +91,7 @@ class Master
     bool initialized;
     bool allocated;
 
-    #ifdef PARALLEL
+    #ifdef USEMPI
     int checkError(int);
     #endif
 };
