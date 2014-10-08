@@ -429,18 +429,18 @@ void ThermoMoist::exec()
   {
     if(grid->swspatialorder == "2")
       ThermoMoist_g::calcHydrostaticPressure<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                                          fields->sp["s"]->datamean_g, fields->sp["qt"]->datamean_g, 
+                                                          fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
                                                           grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     else if(grid->swspatialorder == "4")
       ThermoMoist_g::calcHydrostaticPressure<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                                          fields->sp["s"]->datamean_g, fields->sp["qt"]->datamean_g, 
+                                                          fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
                                                           grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     cudaCheckError();
   }
 
   if(grid->swspatialorder== "2")
   {
-    ThermoMoist_g::calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["s"]->data_g[offs], 
+    ThermoMoist_g::calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["thl"]->data_g[offs], 
                                                                &fields->sp["qt"]->data_g[offs], thvrefh_g, exnrefh_g, prefh_g,  
                                                                grid->istart,  grid->jstart, grid->kstart+1,
                                                                grid->iend,    grid->jend,   grid->kend,
@@ -479,18 +479,18 @@ void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
   {
     if(grid->swspatialorder == "2")
       ThermoMoist_g::calcHydrostaticPressure<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                                          fields->sp["s"]->datamean_g, fields->sp["qt"]->datamean_g, 
+                                                          fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
                                                           grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     else if(grid->swspatialorder == "4")
       ThermoMoist_g::calcHydrostaticPressure<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                                          fields->sp["s"]->datamean_g, fields->sp["qt"]->datamean_g, 
+                                                          fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
                                                           grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
     cudaCheckError();
   }
 
   if(name == "b")
   {
-    ThermoMoist_g::calcBuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->sp["s"]->data_g[offs], &fields->sp["qt"]->data_g[offs],
+    ThermoMoist_g::calcBuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->sp["thl"]->data_g[offs], &fields->sp["qt"]->data_g[offs],
                                                        thvref_g, pref_g, exnref_g,
                                                        grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
                                                        grid->icellsp, grid->ijcellsp);
@@ -498,7 +498,7 @@ void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
   }
   else if(name == "ql")
   {
-    ThermoMoist_g::calcLiquidWater<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["s"]->data_g[offs], &fields->sp["qt"]->data_g[offs], 
+    ThermoMoist_g::calcLiquidWater<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["thl"]->data_g[offs], &fields->sp["qt"]->data_g[offs], 
                                                             exnref_g, pref_g, 
                                                             grid->istart,  grid->jstart,  grid->kstart, 
                                                             grid->iend,    grid->jend,    grid->kend,
@@ -507,7 +507,7 @@ void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
   }
   else if(name == "N2")
   {
-    ThermoMoist_g::calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["s"]->data_g[offs], thvref_g, grid->dzi_g, 
+    ThermoMoist_g::calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["thl"]->data_g[offs], thvref_g, grid->dzi_g, 
                                                    grid->istart, grid->jstart, grid->kstart, 
                                                    grid->iend,   grid->jend,   grid->kend,
                                                    grid->icellsp, grid->ijcellsp);
@@ -532,7 +532,7 @@ void ThermoMoist::getBuoyancyFluxbot(Field3d *bfield)
   const int offs = grid->memoffset;
 
   ThermoMoist_g::calcBuoyancyFluxBot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], 
-                                                            &fields->sp["s"] ->databot_g[offs], &fields->sp["s"] ->datafluxbot_g[offs], 
+                                                            &fields->sp["thl"] ->databot_g[offs], &fields->sp["thl"] ->datafluxbot_g[offs], 
                                                             &fields->sp["qt"]->databot_g[offs], &fields->sp["qt"]->datafluxbot_g[offs], 
                                                             thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                             grid->icellsp, grid->ijcellsp);
@@ -554,14 +554,14 @@ void ThermoMoist::getBuoyancySurf(Field3d *bfield)
   const int offs = grid->memoffset;
 
   ThermoMoist_g::calcBuoyancyBot<<<gridGPU, blockGPU>>>(&bfield->data_g[offs], &bfield->databot_g[offs], 
-                                                        &fields->sp["s"] ->data_g[offs], &fields->sp["s"] ->databot_g[offs],
+                                                        &fields->sp["thl"] ->data_g[offs], &fields->sp["thl"] ->databot_g[offs],
                                                         &fields->sp["qt"]->data_g[offs], &fields->sp["qt"]->databot_g[offs],
                                                         thvref_g, thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                         grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
   ThermoMoist_g::calcBuoyancyFluxBot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], 
-                                                            &fields->sp["s"] ->databot_g[offs], &fields->sp["s"] ->datafluxbot_g[offs], 
+                                                            &fields->sp["thl"] ->databot_g[offs], &fields->sp["thl"] ->datafluxbot_g[offs], 
                                                             &fields->sp["qt"]->databot_g[offs], &fields->sp["qt"]->datafluxbot_g[offs], 
                                                             thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
                                                             grid->icellsp, grid->ijcellsp);
