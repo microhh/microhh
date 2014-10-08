@@ -171,7 +171,7 @@ namespace Force_g
   }
 }
 
-int Force::prepareDevice()
+void Force::prepareDevice()
 {
   const int nmemsize  = grid->kcells*sizeof(double);
 
@@ -208,11 +208,9 @@ int Force::prepareDevice()
       cudaSafeCall(cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice));
     }
   }
-
-  return 0;
 }
 
-int Force::clearDevice()
+void Force::clearDevice()
 {
   if(swlspres == "geo")
   {
@@ -234,12 +232,10 @@ int Force::clearDevice()
     for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
       cudaSafeCall(cudaFree(timedepdata_g[it->first]));
   }
-
-  return 0; 
 }
 
 #ifdef USECUDA
-int Force::exec(double dt)
+void Force::exec(double dt)
 {
   const int blocki = cuda::blockSizeI;
   const int blockj = cuda::blockSizeJ;
@@ -330,13 +326,11 @@ int Force::exec(double dt)
       cudaCheckError();
     }
   }
-
-  return 0;
 }
 #endif
 
 #ifdef USECUDA
-int Force::settimedepprofiles(double fac0, double fac1, int index0, int index1)
+void Force::setTimeDepProfs(double fac0, double fac1, int index0, int index1)
 {
   const int blockk = 128;
   const int gridk  = grid->kmax/blockk + (grid->kmax%blockk > 0);
@@ -353,7 +347,5 @@ int Force::settimedepprofiles(double fac0, double fac1, int index0, int index1)
       cudaCheckError();
     }
   }
-
-  return 0;
 }
 #endif
