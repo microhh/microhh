@@ -48,7 +48,6 @@ double Advec2::get_cfl(double dt)
   cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   return cfl;
 }
-#endif
 
 unsigned long Advec2::getTimeLimit(unsigned long idt, double dt)
 {
@@ -64,7 +63,6 @@ unsigned long Advec2::getTimeLimit(unsigned long idt, double dt)
   return idtlim;
 }
 
-#ifndef USECUDA
 void Advec2::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
