@@ -348,7 +348,7 @@ void Model::exec()
     else if(master->mode == "post")
     {
       // step to the next time step
-      timeloop->postprocstep();
+      timeloop->stepPostProcTime();
 
       // if simulation is done break
       if(!timeloop->loop)

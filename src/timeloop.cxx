@@ -389,13 +389,11 @@ void Timeloop::load(int starttime)
   dt   = (double)idt   / ifactor;
 }
 
-int Timeloop::postprocstep()
+void Timeloop::stepPostProcTime()
 {
   itime += ipostproctime;
   iotime = (int)(itime/iiotimeprec);
 
   if(itime > iendtime)
     loop = false;
-
-  return 0;
 }
