@@ -169,8 +169,8 @@ void Model::init()
   pres    ->init();
   thermo  ->init();
 
-  stats ->init(timeloop->ifactor);
-  cross ->init(timeloop->ifactor);
+  stats ->init(timeloop->get_ifactor());
+  cross ->init(timeloop->get_ifactor());
   budget->init();
 }
 
@@ -178,16 +178,16 @@ void Model::load()
 {
   // first load the grid and time to make their information available
   grid    ->load();
-  timeloop->load(timeloop->iotime);
+  timeloop->load(timeloop->get_iotime());
 
   // initialize the statistics file to open the possiblity to add profiles
-  stats->create(timeloop->iotime);
+  stats->create(timeloop->get_iotime());
   cross->create();
 
-  fields->load(timeloop->iotime);
+  fields->load(timeloop->get_iotime());
 
   // \TODO call boundary load for the data and then timedep, not nice...
-  boundary->load(timeloop->iotime);
+  boundary->load(timeloop->get_iotime());
   boundary->create(input);
 
   buffer->create(input);
@@ -210,9 +210,9 @@ void Model::save()
 
   // Save the initialized data to disk for the run mode.
   grid    ->save();
-  fields  ->save(timeloop->iotime);
-  timeloop->save(timeloop->iotime);
-  boundary->save(timeloop->iotime);
+  fields  ->save(timeloop->get_iotime());
+  timeloop->save(timeloop->get_iotime());
+  boundary->save(timeloop->get_iotime());
 }
 
 void Model::exec()
@@ -299,7 +299,7 @@ void Model::exec()
         }
 
         // Store the stats data.
-        stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
+        stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
       }
 
       if(cross->doCross())
@@ -338,9 +338,9 @@ void Model::exec()
         #endif
 
         // Save data to disk.
-        timeloop->save(timeloop->iotime);
-        fields  ->save(timeloop->iotime);
-        boundary->save(timeloop->iotime);
+        timeloop->save(timeloop->get_iotime());
+        fields  ->save(timeloop->get_iotime());
+        boundary->save(timeloop->get_iotime());
       }
     }
 
@@ -355,9 +355,9 @@ void Model::exec()
         break;
 
       // load the data
-      timeloop->load(timeloop->iotime);
-      fields  ->load(timeloop->iotime);
-      boundary->load(timeloop->iotime);
+      timeloop->load(timeloop->get_iotime());
+      fields  ->load(timeloop->get_iotime());
+      boundary->load(timeloop->get_iotime());
     }
     // update the time dependent values
     boundary->setTimeDep();
@@ -412,15 +412,15 @@ void Model::printOutputFile()
 
   if(timeloop->doCheck())
   {
-    iter    = timeloop->iteration;
-    time    = timeloop->time;
-    dt      = timeloop->dt;
+    iter    = timeloop->get_iteration();
+    time    = timeloop->get_time();
+    dt      = timeloop->get_dt();
     div     = pres->checkDivergence();
     mom     = fields->checkMomentum();
     tke     = fields->checkTke();
     mass    = fields->checkMass();
-    cfl     = advec->get_cfl(timeloop->dt);
-    dn      = diff->get_dn(timeloop->dt);
+    cfl     = advec->get_cfl(timeloop->get_dt());
+    dn      = diff->get_dn(timeloop->get_dt());
 
     end     = master->getTime();
     cputime = end - start;
@@ -447,10 +447,10 @@ void Model::setTimeStep()
     return;
 
   timeloop->setTimeLimit();
-  timeloop->setTimeLimit(advec->getTimeLimit(timeloop->idt, timeloop->dt));
-  timeloop->setTimeLimit(diff ->getTimeLimit(timeloop->idt, timeloop->dt));
-  timeloop->setTimeLimit(stats->getTimeLimit(timeloop->itime));
-  timeloop->setTimeLimit(cross->getTimeLimit(timeloop->itime));
+  timeloop->setTimeLimit(advec->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->setTimeLimit(diff ->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->setTimeLimit(stats->getTimeLimit(timeloop->get_itime()));
+  timeloop->setTimeLimit(cross->getTimeLimit(timeloop->get_itime()));
 
   timeloop->setTimeStep();
 }

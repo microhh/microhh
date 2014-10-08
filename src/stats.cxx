@@ -180,11 +180,11 @@ bool Stats::doStats()
     return false;
 
   // check if time for execution
-  if(model->timeloop->itime % isampletime != 0)
+  if(model->timeloop->get_itime() % isampletime != 0)
     return false;
 
   // write message in case stats is triggered
-  master->printMessage("Saving stats for time %f\n", model->timeloop->time);
+  master->printMessage("Saving stats for time %f\n", model->timeloop->get_time());
 
   // return true such that stats are computed
   return true;

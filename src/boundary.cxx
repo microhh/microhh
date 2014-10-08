@@ -202,7 +202,7 @@ void Boundary::setTimeDep()
   unsigned int index1 = 0;
   for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
   {
-    if(model->timeloop->time < *it)
+    if(model->timeloop->get_time() < *it)
       break;
     else
       ++index1;
@@ -230,8 +230,8 @@ void Boundary::setTimeDep()
     index0 = index1-1;
     double timestep;
     timestep = timedeptime[index1] - timedeptime[index0];
-    fac0 = (timedeptime[index1] - model->timeloop->time) / timestep;
-    fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
+    fac0 = (timedeptime[index1] - model->timeloop->get_time()) / timestep;
+    fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
   }
 
   // process time dependent bcs for the surface fluxes

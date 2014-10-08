@@ -59,7 +59,37 @@ class Timeloop
     bool doSave();
     bool isFinished();
 
-    // variables
+    // Accessors for other classes
+    double get_time()   { return time;    }
+    double get_dt()     { return dt;      }
+    double get_ifactor(){ return ifactor; }
+    unsigned long get_itime() { return itime; }
+    unsigned long get_idt()   { return idt;   }
+    int get_iotime()    { return iotime;    }
+    int get_iteration() { return iteration; }
+
+  private:
+    Master *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
+
+    timeval start;
+    timeval end;
+
+    int rkorder;
+
+    int outputiter;
+
+    void rk3(double *, double *, double);
+    void rk4(double *, double *, double);
+
+    double rk3subdt(double);
+    double rk4subdt(double);
+
+    // Variables
+    bool loop;
+
     int substep;
     bool adaptivestep;
 
@@ -87,27 +117,5 @@ class Timeloop
     unsigned long iiotimeprec;
 
     double ifactor;
-
-  private:
-    Master *master;
-    Model  *model;
-    Grid   *grid;
-    Fields *fields;
-
-    timeval start;
-    timeval end;
-
-    int rkorder;
-
-    int outputiter;
-
-    void rk3(double *, double *, double);
-    void rk4(double *, double *, double);
-
-    double rk3subdt(double);
-    double rk4subdt(double);
-
-    // Variables
-    bool loop;
 };
 #endif
