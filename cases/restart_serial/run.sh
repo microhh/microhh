@@ -9,6 +9,7 @@ mv u.0000002 u.0000002ref
 mv v.0000002 v.0000002ref
 mv w.0000002 w.0000002ref
 mv b.0000002 b.0000002ref
+mv time.0000002 time.0000002ref
 ./microhh run drycbl_flow_restart
 cmp u.0000002 u.0000002ref
 diffu=$?

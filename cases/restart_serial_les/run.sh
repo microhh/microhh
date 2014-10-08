@@ -9,6 +9,7 @@ mv v.0003600 v.0003600ref
 mv w.0003600 w.0003600ref
 mv th.0003600 th.0003600ref
 mv obuk.0003600 obuk.0003600ref
+mv time.0003600 time.0003600ref
 ./microhh run drycblles_restart
 cmp u.0003600 u.0003600ref
 diffu=$?
