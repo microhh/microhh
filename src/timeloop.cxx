@@ -340,11 +340,11 @@ void Timeloop::save(int starttime)
     master->printMessage("Saving \"%s\" ... ", filename);
 
     FILE *pFile;
-    pFile = fopen(filename, "wb");
+    pFile = fopen(filename, "wbx");
 
     if(pFile == NULL)
     {
-      master->printError("\"%s\" cannot be written", filename);
+      master->printMessage("FAILED\n", filename);
       throw 1;
     }
 

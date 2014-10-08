@@ -296,7 +296,7 @@ void Grid::save()
   FILE *pFile;
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  pFile = fopen(filename, "wb");
+  pFile = fopen(filename, "wbx");
   master->printMessage("Saving \"%s\" ... ", filename);
 
   if(pFile == NULL)
@@ -424,7 +424,7 @@ void Grid::load()
 int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
-  pFile = fopen(filename, "wb");
+  pFile = fopen(filename, "wbx");
 
   if(pFile == NULL)
     return 1;
@@ -631,7 +631,7 @@ int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filen
     }
 
   FILE *pFile;
-  pFile = fopen(filename, "wb");
+  pFile = fopen(filename, "wbx");
   if(pFile == NULL)
     return 1;
 
@@ -664,7 +664,7 @@ int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filen
     }
 
   FILE *pFile;
-  pFile = fopen(filename, "wb");
+  pFile = fopen(filename, "wbx");
   if(pFile == NULL)
     return 1;
 
