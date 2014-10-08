@@ -448,7 +448,7 @@ void Model::setTimeStep()
   if(timeloop->inSubStep())
     return;
 
-  timeloop->settimelim();
+  timeloop->setTimeLimit();
 
   timeloop->idtlim = std::min(timeloop->idtlim, advec->getTimeLimit(timeloop->idt, timeloop->dt));
   timeloop->idtlim = std::min(timeloop->idtlim, diff ->getTimeLimit(timeloop->idt, timeloop->dt));
