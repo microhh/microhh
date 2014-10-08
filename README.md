@@ -10,10 +10,11 @@ Requirements
 ------------
 In order to compile MicroHH you need:
 * C++ compiler
-* MPI2 implementation (optional, serial mode is supported)
 * FFTW3 libraries
 * NetCDF4
 * CMake
+* MPI2/3 implementation (optional for MPI support)
+* CUDA (optional for GPU support)
 * Doxygen (optional for creating automatic documentation)
 * Python + numpy (optional for running example cases)
 * Ipython + python-netcdf4 + matplotlib (optional for plotting results example cases)
