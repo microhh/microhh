@@ -96,7 +96,6 @@ if(NOT HASCACHE)
   if(USECUDA)
     set(CUDA_NVCC_FLAGS ${USER_CUDA_NVCC_FLAGS} CACHE STRING
       "Flags used by NVCC." FORCE)
-    message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
   endif()
 
   message(STATUS "Build Type: " ${CMAKE_BUILD_TYPE})
@@ -111,21 +110,27 @@ if(CMAKE_BUILD_TYPE STREQUAL "RELEASE")
   message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_RELEASE})
 else()
   message(STATUS "Compiler flags: " ${CMAKE_CXX_FLAGS} " " ${CMAKE_CXX_FLAGS_DEBUG})
-  # Add CUDA debug definition, to enforce CUDA API and kernel checks.
-  add_definitions("-DCUDACHECKS")
 endif()
 
-# set the include dirs
+if(USECUDA)
+  # Add CUDA debug definition, to enforce CUDA API and kernel checks.
+  if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+    add_definitions("-DCUDACHECKS")
+  endif()
+  message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
+endif()
+
+# Set the include dirs.
 set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_subdirectory(src)
 add_subdirectory(main)
 add_subdirectory(test)
 
-# documentation
+# Documentation generation
 add_custom_target(todo ALL)
-# if a non-default sed is not set revert to standard sed
-if(NOT DEFINED GNU_SED)
+# If a non-default sed is not set revert to standard sed.
+if(NOT GNU_SED)
   set(GNU_SED "sed")
 endif()
 add_custom_command(TARGET todo POST_BUILD

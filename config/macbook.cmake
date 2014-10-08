@@ -23,4 +23,10 @@ set(HDF5_LIB_2         "/opt/local/lib/libhdf5_hl.a")
 set(SZIP_LIB           "")
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
 
+if(USECUDA)
+  set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+  set(LIBS ${LIBS} -rdynamic /usr/local/cuda/lib64/libcufft.so)
+  set(USER_CUDA_NVCC_FLAGS "-arch=sm_20")
+endif()
+
 add_definitions(-DRESTRICTKEYWORD=__restrict__)
