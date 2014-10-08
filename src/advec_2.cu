@@ -134,6 +134,52 @@ namespace Advec2_g
 }
 
 #ifdef USECUDA
+unsigned long Advec2::getTimeLimit(unsigned long idt, double dt)
+{
+  unsigned long idtlim;
+  double cfl;
+
+  // Calculate cfl and prevent zero divisons.
+  cfl = get_cfl(dt);
+  cfl = std::max(constants::dsmall, cfl);
+
+  idtlim = idt * cflmax / cfl;
+
+  return idtlim;
+}
+
+double Advec2::get_cfl(const double dt)
+{
+  const int blocki = cuda::blockSizeI;
+  const int blockj = cuda::blockSizeJ;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  double cfl = 0;
+
+  dim3 gridGPU (gridi, gridj, grid->kcells);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  const double dxi = 1./grid->dx;
+  const double dyi = 1./grid->dy;
+
+  const int offs = grid->memoffset;
+
+  Advec2_g::calc_cfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
+                                            &fields->atmp["tmp1"]->data_g[offs],
+                                            grid->dzi_g, dxi, dyi,
+                                            grid->icellsp, grid->ijcellsp,
+                                            grid->istart,  grid->jstart, grid->kstart,
+                                            grid->iend,    grid->jend,   grid->kend);
+  cudaCheckError(); 
+
+  cfl = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+  grid->getMax(&cfl); 
+  cfl = cfl*dt;
+
+  return cfl;
+}
+
 void Advec2::exec()
 {
   const int blocki = cuda::blockSizeI;
@@ -167,38 +213,5 @@ void Advec2::exec()
                                             grid->istart, grid->jstart, grid->kstart,
                                             grid->iend,   grid->jend, grid->kend);
   cudaCheckError(); 
-}
-#endif
-
-#ifdef USECUDA
-double Advec2::get_cfl(const double dt)
-{
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
-  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
-  double cfl = 0;
-
-  dim3 gridGPU (gridi, gridj, grid->kcells);
-  dim3 blockGPU(blocki, blockj, 1);
-
-  const double dxi = 1./grid->dx;
-  const double dyi = 1./grid->dy;
-
-  const int offs = grid->memoffset;
-
-  Advec2_g::calc_cfl<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-                                            &fields->atmp["tmp1"]->data_g[offs],
-                                            grid->dzi_g, dxi, dyi,
-                                            grid->icellsp, grid->ijcellsp,
-                                            grid->istart,  grid->jstart, grid->kstart,
-                                            grid->iend,    grid->jend,   grid->kend);
-  cudaCheckError(); 
-
-  cfl = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
-  grid->getMax(&cfl); 
-  cfl = cfl*dt;
-
-  return cfl;
 }
 #endif
