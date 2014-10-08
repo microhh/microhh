@@ -119,6 +119,11 @@ void Timeloop::setTimeLimit()
   idtlim = std::min(idtlim, isavetime - itime % isavetime);
 }
 
+void Timeloop::setTimeLimit(unsigned long idtlimin)
+{
+  idtlim = std::min(idtlim, idtlimin);
+}
+
 void Timeloop::stepTime()
 {
   // Only step forward in time if we are not in a substep
@@ -150,6 +155,12 @@ bool Timeloop::doSave()
     return true;
 
   return false;
+}
+
+bool Timeloop::isFinished()
+{
+  // Return true if loop is false and vice versa.
+  return !loop;
 }
 
 double Timeloop::check()

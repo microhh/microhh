@@ -246,7 +246,7 @@ void Model::exec()
   setTimeStep();
 
   // print the initial information
-  printOutputFile(!timeloop->loop);
+  printOutputFile();
 
   // start the time loop
   while(true)
@@ -317,7 +317,7 @@ void Model::exec()
     }
 
     // exit the simulation when the runtime has been hit after the pressure calculation
-    if(!timeloop->loop)
+    if(timeloop->isFinished())
       break;
 
     // RUN MODE
@@ -351,7 +351,7 @@ void Model::exec()
       timeloop->stepPostProcTime();
 
       // if simulation is done break
-      if(!timeloop->loop)
+      if(timeloop->isFinished())
         break;
 
       // load the data
@@ -370,7 +370,7 @@ void Model::exec()
     // get the viscosity to be used in diffusion
     diff->execViscosity();
 
-    printOutputFile(!timeloop->loop);
+    printOutputFile();
   } // end time loop
 
   #ifdef USECUDA
@@ -387,7 +387,7 @@ void Model::calcStats(std::string maskname)
   boundary->execStats(&stats->masks[maskname]);
 }
 
-void Model::printOutputFile(bool doclose)
+void Model::printOutputFile()
 {
   // initialize the check variables
   int    iter;
@@ -428,13 +428,11 @@ void Model::printOutputFile(bool doclose)
 
     // write the output to file
     if(master->mpiid == 0)
-    {
       std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
         iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
-    }
   }
 
-  if(doclose)
+  if(timeloop->isFinished())
   {
     // close the output file
     if(master->mpiid == 0)
@@ -449,10 +447,10 @@ void Model::setTimeStep()
     return;
 
   timeloop->setTimeLimit();
+  timeloop->setTimeLimit(advec->getTimeLimit(timeloop->idt, timeloop->dt));
+  timeloop->setTimeLimit(diff ->getTimeLimit(timeloop->idt, timeloop->dt));
+  timeloop->setTimeLimit(stats->getTimeLimit(timeloop->itime));
+  timeloop->setTimeLimit(cross->getTimeLimit(timeloop->itime));
 
-  timeloop->idtlim = std::min(timeloop->idtlim, advec->getTimeLimit(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim, diff ->getTimeLimit(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim, stats->getTimeLimit(timeloop->itime));
-  timeloop->idtlim = std::min(timeloop->idtlim, cross->getTimeLimit(timeloop->itime));
   timeloop->setTimeStep();
 }

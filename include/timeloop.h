@@ -42,6 +42,7 @@ class Timeloop
     void stepPostProcTime();
     void setTimeStep();
     void setTimeLimit();
+    void setTimeLimit(unsigned long);
     double getSubTimeStep();
 
     void exec();
@@ -56,10 +57,10 @@ class Timeloop
     bool isStatsStep();
     bool doCheck();
     bool doSave();
+    bool isFinished();
 
     // variables
     int substep;
-    bool loop;
     bool adaptivestep;
 
     double time;
@@ -105,5 +106,8 @@ class Timeloop
 
     double rk3subdt(double);
     double rk4subdt(double);
+
+    // Variables
+    bool loop;
 };
 #endif
