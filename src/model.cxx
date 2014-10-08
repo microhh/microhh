@@ -41,15 +41,16 @@
 #include "budget.h"
 
 #ifdef USECUDA
-#include <cuda_runtime_api.h> // Needed for cudaDeviceReset(), to check mem leaks 
+#include <cuda_runtime_api.h>
 #endif
 
+// In the constructor all classes are initialized and their input is read.
 Model::Model(Master *masterin, Input *inputin)
 {
   master = masterin;
   input  = inputin;
 
-  // initialize the pointers at zero
+  // Initialize the pointers as zero
   grid     = 0;
   fields   = 0;
   diff     = 0;
@@ -65,13 +66,13 @@ Model::Model(Master *masterin, Input *inputin)
 
   try
   {
-    // create the grid class
+    // Create an instance of the Grid class.
     grid = new Grid(this, input);
 
-    // create the fields class
+    // Create an instance of the Fields class.
     fields = new Fields(this, input);
 
-    // create the model components
+    // Create instances of the other model classes.
     boundary = Boundary::factory(master, input, this);
     advec    = Advec   ::factory(master, input, this, grid->swspatialorder);
     diff     = Diff    ::factory(master, input, this, grid->swspatialorder);
@@ -82,13 +83,13 @@ Model::Model(Master *masterin, Input *inputin)
     force    = new Force   (this, input);
     buffer   = new Buffer  (this, input);
 
-    // load the postprocessing modules
+    // Create instances of the statistics classes.
     stats  = new Stats (this, input);
     cross  = new Cross (this, input);
     budget = new Budget(this, input);
 
-    // get the list of masks
-    // TODO This is really UGLY: make an interface that takes this out of the main loops
+    // Get the list of masks.
+    // TODO Make an interface that takes this out of the main loop.
     int nerror = 0;
     nerror += input->getList(&masklist, "stats", "masklist", "");
     for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -131,9 +132,10 @@ Model::Model(Master *masterin, Input *inputin)
   }
 }
 
+// In this function all instances of objects are deleted and the memory is freed.
 void Model::deleteObjects()
 {
-  // delete the components in reversed order
+  // Delete the components in reversed order.
   delete budget;
   delete cross;
   delete stats;
@@ -150,14 +152,16 @@ void Model::deleteObjects()
   delete grid;
 }
 
+// In the destructor the deletion of all class instances is triggered.
 Model::~Model()
 {
   deleteObjects();
-#ifdef USECUDA
+  #ifdef USECUDA
   cudaDeviceReset();
-#endif
+  #endif
 }
 
+// In the init stage all class individual settings are known and the dynamic arrays are allocated.
 void Model::init()
 {
   grid  ->init();
@@ -174,18 +178,20 @@ void Model::init()
   budget->init();
 }
 
+// In these functions data necessary to start the model is loaded from disk.
 void Model::load()
 {
-  // first load the grid and time to make their information available
+  // First load the grid and time to make their information available.
   grid    ->load();
   timeloop->load(timeloop->get_iotime());
 
-  // initialize the statistics file to open the possiblity to add profiles
+  // Initialize the statistics file to open the possiblity to add profiles.
   stats->create(timeloop->get_iotime());
   cross->create();
 
   fields->load(timeloop->get_iotime());
 
+  // Initialize data or load data from disk.
   // \TODO call boundary load for the data and then timedep, not nice...
   boundary->load(timeloop->get_iotime());
   boundary->create(input);
@@ -196,12 +202,13 @@ void Model::load()
 
   budget->create();
 
-  // end with modules that require all fields to be present
+  // End with those modules that require all fields to be loaded.
   boundary->setValues();
   diff    ->setValues();
   pres    ->setValues();
 }
 
+// In these functions data necessary to start the model is saved to disk.
 void Model::save()
 {
   // Initialize the grid and the fields from the input data.
@@ -217,7 +224,8 @@ void Model::save()
 
 void Model::exec()
 {
-#ifdef USECUDA
+  #ifdef USECUDA
+  // Load all the necessary data to the GPU.
   master  ->printMessage("Preparing the GPU\n");
   grid    ->prepareDevice();
   fields  ->prepareDevice();
@@ -227,26 +235,28 @@ void Model::exec()
   boundary->prepareDevice();
   diff    ->prepareDevice();
   force   ->prepareDevice();
-#endif
+  #endif
 
   master->printMessage("Starting time integration\n");
 
-  // update the time dependent values
+  // Update the time dependent values.
   boundary->setTimeDep();
-  force->setTimeDep();
+  force   ->setTimeDep();
 
-  // set the boundary conditions
+  // Set the boundary conditions.
   boundary->exec();
 
-  // get the field means, in case needed
+  // Calculate the field means, in case needed.
   fields->exec();
-  // get the viscosity to be used in diffusion
+
+  // Get the viscosity to be used in diffusion.
   diff->execViscosity();
 
+  // Set the time step.
   setTimeStep();
 
-  // print the initial information
-  printOutputFile();
+  // Print the initial status information.
+  printStatus();
 
   // start the time loop
   while(true)
@@ -266,20 +276,22 @@ void Model::exec()
     // Apply the large scale forcings. Keep this one always right before the pressure.
     force->exec(timeloop->getSubTimeStep());
 
-    // pressure
+    // Solve the poisson equation for pressure.
     pres->exec(timeloop->getSubTimeStep());
 
-    // Do only data analysis statistics when not in substep and not directly after restart.
+    // Allow only for statistics when not in substep and not directly after restart.
     if(timeloop->isStatsStep())
     {
+      // Do the statistics.
       if(stats->doStats())
       {
         #ifdef USECUDA
+        // First, copy the data back from the GPU
         fields  ->backwardDevice();
         boundary->backwardDevice();
         #endif
 
-        // always process the default mask
+        // Always process the default mask (the full field)
         stats->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
         calcStats("default");
 
@@ -302,10 +314,11 @@ void Model::exec()
         stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
       }
 
+      // Save the selected cross sections to disk.
       if(cross->doCross())
       {
-        // Copy back the data from the GPU
         #ifdef USECUDA
+        // Copy back the data from the GPU.
         fields  ->backwardDevice();
         boundary->backwardDevice();
         #endif
@@ -316,20 +329,20 @@ void Model::exec()
       }
     }
 
-    // exit the simulation when the runtime has been hit after the pressure calculation
+    // Exit the simulation when the runtime has been hit.
     if(timeloop->isFinished())
       break;
 
-    // RUN MODE
+    // RUN MODE: In case of run mode do the time stepping.
     if(master->mode == "run")
     {
-      // integrate in time
+      // Integrate in time.
       timeloop->exec();
 
-      // step the time step
+      // Increase the time with the time step.
       timeloop->stepTime();
 
-      // save the data for a restart
+      // Save the data for restarts.
       if(timeloop->doSave())
       {
         #ifdef USECUDA
@@ -344,36 +357,42 @@ void Model::exec()
       }
     }
 
-    // POST PROCESS MODE
+    // POST PROCESS MODE: In case of post-process mode, load a new set of files.
     else if(master->mode == "post")
     {
-      // step to the next time step
+      // Step to the next time step.
       timeloop->stepPostProcTime();
 
-      // if simulation is done break
+      // In case the simulation is done, step out of the loop.
       if(timeloop->isFinished())
         break;
 
-      // load the data
+      // Load the data from disk.
       timeloop->load(timeloop->get_iotime());
       fields  ->load(timeloop->get_iotime());
       boundary->load(timeloop->get_iotime());
     }
-    // update the time dependent values
+
+    // Update the time dependent parameters.
     boundary->setTimeDep();
     force   ->setTimeDep();
 
-    // set the boundary conditions
+    // Set the boundary conditions.
     boundary->exec();
-    // get the field means, in case needed
+
+    // Calculate the field means, in case needed.
     fields->exec();
-    // get the viscosity to be used in diffusion
+
+    // Get the viscosity to be used in diffusion.
     diff->execViscosity();
 
-    printOutputFile();
-  } // end time loop
+    // Write status information to disk.
+    printStatus();
+
+  } // End time loop.
 
   #ifdef USECUDA
+  // At the end of the run, copy the data back from the GPU.
   fields  ->backwardDevice();
   boundary->backwardDevice();
   #endif
@@ -396,6 +415,7 @@ void Model::setTimeStep()
   timeloop->setTimeStep();
 }
 
+// Calculate the statistics for all classes that have a statistics function.
 void Model::calcStats(std::string maskname)
 {
   fields  ->execStats(&stats->masks[maskname]);
@@ -404,9 +424,10 @@ void Model::calcStats(std::string maskname)
   boundary->execStats(&stats->masks[maskname]);
 }
 
-void Model::printOutputFile()
+// Print the status information to the .out file.
+void Model::printStatus()
 {
-  // initialize the check variables
+  // Initialize the check variables
   int    iter;
   double time, dt;
   double mom, tke, mass;
@@ -416,7 +437,7 @@ void Model::printOutputFile()
   static double start;
   static FILE *dnsout = NULL;
 
-  // write output file header to the main processor and set the time
+  // Write output file header on the main process and set the time of writing.
   if(master->mpiid == 0 && dnsout == NULL)
   {
     std::string outputname = master->simname + ".out";
@@ -427,6 +448,7 @@ void Model::printOutputFile()
     start = master->getTime();
   }
 
+  // Retrieve all the information.
   if(timeloop->doCheck())
   {
     iter    = timeloop->get_iteration();
@@ -443,7 +465,7 @@ void Model::printOutputFile()
     cputime = end - start;
     start   = end;
 
-    // write the output to file
+    // Write the output to file.
     if(master->mpiid == 0)
       std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
         iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
@@ -451,7 +473,7 @@ void Model::printOutputFile()
 
   if(timeloop->isFinished())
   {
-    // close the output file
+    // Close the output file when the run is done.
     if(master->mpiid == 0)
       std::fclose(dnsout);
   }
