@@ -68,3 +68,13 @@ if(True):
     legend(frameon=False)
     xlabel('vw/u*^2')
     ylabel('z*fc/u*')
+
+if(True):
+    kappa = 0.4
+    phi = kappa * c.zh / c.ustar * c.ugrad
+
+    figure()
+    plot(phi, zhp)
+    legend(frameon=False)
+    xlabel('phi_m')
+    ylabel('z*fc/u*')
