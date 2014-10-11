@@ -71,7 +71,7 @@ if(True):
 
 if(True):
     kappa = 0.4
-    phi = kappa * c.zh / c.ustar * c.ugrad
+    phi = kappa * c.zh / c.ustar * ((c.ugrad)**2 + (c.vgrad)**2)**.5
 
     figure()
     plot(phi, zhp)
