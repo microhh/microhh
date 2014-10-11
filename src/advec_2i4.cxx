@@ -37,8 +37,8 @@ using namespace fd::o2;
 Advec2i4::Advec2i4(Model *modelin, Input *inputin) : Advec(modelin, inputin)
 {
   // BvS Where to put this?
-  grid->igc = 2;
-  grid->jgc = 2;
+  grid->igc = std::max(grid->igc,2);
+  grid->jgc = std::max(grid->jgc,2);
 }
 
 Advec2i4::~Advec2i4()
