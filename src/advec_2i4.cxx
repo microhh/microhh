@@ -35,6 +35,11 @@ using namespace fd::o4;
 
 Advec2i4::Advec2i4(Model *modelin, Input *inputin) : Advec(modelin, inputin)
 {
+  const int igc = 2;
+  const int jgc = 2;
+  const int kgc = 2;
+
+  grid->setGhostCellsMin(igc, jgc, kgc);
 }
 
 Advec2i4::~Advec2i4()
