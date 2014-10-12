@@ -107,6 +107,8 @@ class Grid
 
     std::string swspatialorder; ///< Default spatial order of the operators to be used on this grid.
 
+    void setGhostCellsMin(int, int, int);
+
     // MPI functions
     void initMpi(); ///< Creates the MPI data types used in grid operations.
     void exitMpi(); ///< Destructs the MPI data types used in grid operations.

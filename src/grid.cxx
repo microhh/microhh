@@ -379,6 +379,19 @@ void Grid::calculate()
 }
 
 /**
+ * This function increases the number of ghost cells in case necessary.
+ * @param igc Ghost cells in the x-direction.
+ * @param jgc Ghost cells in the y-direction.
+ * @param kgc Ghost cells in the z-direction.
+ */
+void Grid::setGhostCellsMin(const int igcin, const int jgcin, const int kgcin)
+{
+  igc = std::max(igc, igcin);
+  jgc = std::max(jgc, jgcin);
+  kgc = std::max(kgc, kgcin);
+}
+
+/**
  * This function does a second order horizontal interpolation in the x-direction
  * to the selected location on the grid.
  * @param out Pointer to the output field.
