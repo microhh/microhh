@@ -71,12 +71,17 @@ double Advec2i4::get_cfl(double dt)
 
 void Advec2i4::exec()
 {
-  advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
-  advecv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi );
-  advecw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi);
+  advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, 
+         fields->rhoref, fields->rhorefh);
+  advecv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
+         fields->rhoref, fields->rhorefh);
+  advecw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi,
+         fields->rhoref, fields->rhorefh);
 
   for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advecs(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi);
+    advecs(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
+           fields->rhoref, fields->rhorefh);
+
 }
 
 double Advec2i4::calc_cfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
@@ -140,7 +145,8 @@ double Advec2i4::calc_cfl(double * restrict u, double * restrict v, double * res
   return cfl;
 }
 
-void Advec2i4::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+void Advec2i4::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w, 
+                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii1,jj1,kk1,ii2,jj2,kk2,k;
   double dxi,dyi;
@@ -175,7 +181,7 @@ void Advec2i4::advecu(double * restrict ut, double * restrict u, double * restri
                - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
             // w*du/dz -> second order interpolation for fluxtop, fluxbot = 0. as w=0
-            - (  interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1]) ) * dzi[k];
+            - (  rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
     }
 
   k = kstart + 1; 
@@ -194,8 +200,8 @@ void Advec2i4::advecu(double * restrict ut, double * restrict u, double * restri
                  - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
               // w*du/dz -> second order interpolation for fluxbot
-              - (  interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
-                 - interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) * dzi[k];
+              - (  rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
+                 - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k];
     }
 
   for(k=grid->kstart+2; k<grid->kend-2; k++)
@@ -214,8 +220,8 @@ void Advec2i4::advecu(double * restrict ut, double * restrict u, double * restri
                  - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
               // w*du/dz
-              - (  interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
-                 - interp2(w[ijk-ii1    ], w[ijk    ]) * interp4(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) * dzi[k];
+              - (  rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp4(u[ijk-kk1], u[ijk    ], u[ijk+kk1], u[ijk+kk2])
+                 - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp4(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
       }
 
   k = kend - 2; 
@@ -234,8 +240,8 @@ void Advec2i4::advecu(double * restrict ut, double * restrict u, double * restri
                  - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
               // w*du/dz -> second order interpolation for fluxtop
-              - (  interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1])
-                 - interp2(w[ijk-ii1    ], w[ijk    ]) * interp4(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) * dzi[k];
+              - (  rhorefh[k+1] * interp2(w[ijk-ii1+kk1], w[ijk+kk1]) * interp2(u[ijk    ], u[ijk+kk1])
+                 - rhorefh[k  ] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp4(u[ijk-kk2], u[ijk-kk1], u[ijk    ], u[ijk+kk1]) ) / rhoref[k] * dzi[k];
     }
 
   k = kend - 1; 
@@ -254,11 +260,12 @@ void Advec2i4::advecu(double * restrict ut, double * restrict u, double * restri
                  - interp2(v[ijk-ii1    ], v[ijk    ]) * interp4(u[ijk-jj2], u[ijk-jj1], u[ijk    ], u[ijk+jj1]) ) * dyi 
 
               // w*du/dz -> second order interpolation for fluxbot, fluxtop=0 as w=0
-              - ( -interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) * dzi[k];
+              - ( -rhorefh[k] * interp2(w[ijk-ii1    ], w[ijk    ]) * interp2(u[ijk-kk1], u[ijk    ]) ) / rhoref[k] * dzi[k];
     }
 }
 
-void Advec2i4::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+void Advec2i4::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w,
+                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii1,jj1,kk1,ii2,jj2,kk2,k;
   double dxi,dyi;
@@ -293,7 +300,7 @@ void Advec2i4::advecv(double * restrict vt, double * restrict u, double * restri
                  - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
               // w*dv/dz
-              - (  interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp2(v[ijk    ], v[ijk+kk1]) ) * dzi[k];
+              - (  rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp2(v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
     }
 
   k = kstart+1;
@@ -312,8 +319,8 @@ void Advec2i4::advecv(double * restrict vt, double * restrict u, double * restri
                  - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
               // w*dv/dz
-              - (  interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp4(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2])
-                 - interp2(w[ijk-jj1    ], w[ijk    ]) * interp2(v[ijk-kk1], v[ijk    ]) ) * dzi[k];
+              - (  rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp4(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2])
+                 - rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp2(v[ijk-kk1], v[ijk    ]) ) / rhoref[k] * dzi[k];
     }
 
   for(k=grid->kstart+2; k<grid->kend-2; k++)
@@ -332,8 +339,8 @@ void Advec2i4::advecv(double * restrict vt, double * restrict u, double * restri
                  - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
               // w*dv/dz
-              - (  interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp4(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2])
-                 - interp2(w[ijk-jj1    ], w[ijk    ]) * interp4(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) * dzi[k];
+              - (  rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp4(v[ijk-kk1], v[ijk    ], v[ijk+kk1], v[ijk+kk2])
+                 - rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp4(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
       }
 
   k = kend-2;
@@ -352,8 +359,8 @@ void Advec2i4::advecv(double * restrict vt, double * restrict u, double * restri
                  - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
               // w*dv/dz
-              - (  interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp2(v[ijk    ], v[ijk+kk1])
-                 - interp2(w[ijk-jj1    ], w[ijk    ]) * interp4(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) * dzi[k];
+              - (  rhorefh[k+1] * interp2(w[ijk-jj1+kk1], w[ijk+kk1]) * interp2(v[ijk    ], v[ijk+kk1])
+                 - rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp4(v[ijk-kk2], v[ijk-kk1], v[ijk    ], v[ijk+kk1]) ) / rhoref[k] * dzi[k];
     }
 
   k = kend-1;
@@ -372,11 +379,12 @@ void Advec2i4::advecv(double * restrict vt, double * restrict u, double * restri
                  - interp2(v[ijk-jj1    ], v[ijk    ]) * interp4(v[ijk-jj2], v[ijk-jj1], v[ijk    ], v[ijk+jj1]) ) * dyi
 
               // w*dv/dz
-              - (- interp2(w[ijk-jj1    ], w[ijk    ]) * interp2(v[ijk-kk1], v[ijk    ]) ) * dzi[k];
+              - (- rhorefh[k  ] * interp2(w[ijk-jj1    ], w[ijk    ]) * interp2(v[ijk-kk1], v[ijk    ]) ) / rhoref[k] * dzi[k];
     }
 }
 
-void Advec2i4::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi)
+void Advec2i4::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w,
+                      double * restrict dzhi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii1,jj1,kk1,ii2,jj2,kk2,k;
   double dxi,dyi;
@@ -411,8 +419,8 @@ void Advec2i4::advecw(double * restrict wt, double * restrict u, double * restri
                  - interp2(v[ijk    -kk1], v[ijk    ]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
               // w*dw/dz 
-              - (  interp2(w[ijk        ], w[ijk+kk1]) * interp4(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
-                 - interp2(w[ijk-kk1    ], w[ijk    ]) * interp2(w[ijk-kk1], w[ijk    ]) ) * dzhi[k];
+              - (  rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp4(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
+                 - rhoref[k-1] * interp2(w[ijk-kk1    ], w[ijk    ]) * interp2(w[ijk-kk1], w[ijk    ]) ) / rhorefh[k] * dzhi[k];
     }
 
   for(k=grid->kstart+2; k<grid->kend-1; k++)
@@ -431,8 +439,8 @@ void Advec2i4::advecw(double * restrict wt, double * restrict u, double * restri
                  - interp2(v[ijk    -kk1], v[ijk    ]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
               // w*dw/dz 
-              - (  interp2(w[ijk        ], w[ijk+kk1]) * interp4(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
-                 - interp2(w[ijk-kk1    ], w[ijk    ]) * interp4(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) * dzhi[k];
+              - (  rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp4(w[ijk-kk1], w[ijk    ], w[ijk+kk1], w[ijk+kk2])
+                 - rhoref[k-1] * interp2(w[ijk-kk1    ], w[ijk    ]) * interp4(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) / rhorefh[k] * dzhi[k];
       }
 
   k = kend-1;
@@ -451,12 +459,13 @@ void Advec2i4::advecw(double * restrict wt, double * restrict u, double * restri
                  - interp2(v[ijk    -kk1], v[ijk    ]) * interp4(w[ijk-jj2], w[ijk-jj1], w[ijk    ], w[ijk+jj1]) ) * dyi
 
               // w*dw/dz 
-              - (  interp2(w[ijk        ], w[ijk+kk1]) * interp2(w[ijk    ], w[ijk+kk1])
-                 - interp2(w[ijk-kk1    ], w[ijk    ]) * interp4(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) * dzhi[k];
+              - (  rhoref[k  ] * interp2(w[ijk        ], w[ijk+kk1]) * interp2(w[ijk    ], w[ijk+kk1])
+                 - rhoref[k-1] * interp2(w[ijk-kk1    ], w[ijk    ]) * interp4(w[ijk-kk2], w[ijk-kk1], w[ijk    ], w[ijk+kk1]) ) / rhorefh[k] * dzhi[k];
     }
 }
 
-void Advec2i4::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w, double * restrict dzi)
+void Advec2i4::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w,
+                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii1,jj1,kk1,ii2,jj2,kk2,k;
   double dxi,dyi;
@@ -489,7 +498,7 @@ void Advec2i4::advecs(double * restrict st, double * restrict s, double * restri
             - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
-            - (  w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]) ) * dzi[k];
+            - (  rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
     }
 
   k = kstart+1;
@@ -505,8 +514,8 @@ void Advec2i4::advecs(double * restrict st, double * restrict s, double * restri
             - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
-            - (  w[ijk+kk1] * interp4(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-               - w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) * dzi[k];
+            - (  rhorefh[k+1] * w[ijk+kk1] * interp4(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+               - rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
     }
 
   for(k=grid->kstart+2; k<grid->kend-2; k++)
@@ -522,8 +531,8 @@ void Advec2i4::advecs(double * restrict st, double * restrict s, double * restri
               - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                  - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
-              - (  w[ijk+kk1] * interp4(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
-                 - w[ijk    ] * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzi[k];
+              - (  rhorefh[k+1] * w[ijk+kk1] * interp4(s[ijk-kk1], s[ijk    ], s[ijk+kk1], s[ijk+kk2])
+                 - rhorefh[k  ] * w[ijk    ] * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
       }
 
   k = kend-2;
@@ -539,8 +548,8 @@ void Advec2i4::advecs(double * restrict st, double * restrict s, double * restri
             - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
-            - (  w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
-               - w[ijk    ] * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) * dzi[k];
+            - (  rhorefh[k+1] * w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1])
+               - rhorefh[k  ] * w[ijk    ] * interp4(s[ijk-kk2], s[ijk-kk1], s[ijk    ], s[ijk+kk1]) ) / rhoref[k] * dzi[k];
     }
 
   // assume that w at the boundary equals zero...
@@ -557,7 +566,7 @@ void Advec2i4::advecs(double * restrict st, double * restrict s, double * restri
             - (  v[ijk+jj1] * interp4(s[ijk-jj1], s[ijk    ], s[ijk+jj1], s[ijk+jj2])
                - v[ijk    ] * interp4(s[ijk-jj2], s[ijk-jj1], s[ijk    ], s[ijk+jj1]) ) * dyi 
 
-            - (- w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) * dzi[k];
+            - (- rhorefh[k  ] * w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]) ) / rhoref[k] * dzi[k];
     }
 }
 

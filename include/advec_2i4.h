@@ -42,9 +42,9 @@ class Advec2i4 : public Advec
   private:
     double calc_cfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
 
-    void advecu(double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
-    void advecv(double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
-    void advecw(double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
-    void advecs(double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
+    void advecu(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
+    void advecv(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
+    void advecw(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
+    void advecs(double *, double *, double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
 };
 #endif
