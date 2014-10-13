@@ -170,10 +170,8 @@ void Pres2::input(double * restrict p,
   kgc = grid->kgc;
 
   // set the cyclic boundary conditions for the tendencies
-  grid->boundaryCyclic(ut);
-  grid->boundaryCyclic(vt);
-  grid->boundaryCyclic(wt);
-
+  grid->boundaryCyclic(ut, EastWestEdge  );
+  grid->boundaryCyclic(vt, NorthSouthEdge);
 
   // write pressure as a 3d array without ghost cells
   for(int k=0; k<grid->kmax; k++)
