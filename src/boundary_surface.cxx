@@ -229,6 +229,9 @@ void BoundarySurface::load(int iotime)
 
 void BoundarySurface::setValues()
 {
+  const double noVelocity = 0.;
+  const double noOffset = 0.;
+
   // grid transformation is properly taken into account by setting the databot and top values
   setBc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
   setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
