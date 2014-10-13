@@ -34,8 +34,6 @@
 #include "cross.h"
 #include "diff_smag2.h"
 
-#define NO_OFFSET 0.
-
 Fields::Fields(Model *modelin, Input *inputin)
 {
   model  = modelin;
@@ -380,12 +378,14 @@ void Fields::execStats(Mask *m)
   const int uwloc[] = {1,0,1};
   const int vwloc[] = {0,1,1};
 
+  const double NoOffset = 0.;
+
   // save the area coverage of the mask
   stats->calcArea(m->profs["area" ].data, sloc, stats->nmask );
   stats->calcArea(m->profs["areah"].data, wloc, stats->nmaskh);
 
   // start with the stats on the w location, to make the wmean known for the flux calculations
-  stats->calcMean(m->profs["w"].data, w->data, NO_OFFSET, wloc, atmp["tmp4"]->data, stats->nmaskh);
+  stats->calcMean(m->profs["w"].data, w->data, NoOffset, wloc, atmp["tmp4"]->data, stats->nmaskh);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
@@ -399,7 +399,7 @@ void Fields::execStats(Mask *m)
   // interpolate the mask horizontally onto the u coordinate
   grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
   stats->calcMean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
-  stats->calcMean(umodel            , u->data, NO_OFFSET   , uloc, atmp["tmp1"]->data, stats->nmask);
+  stats->calcMean(umodel            , u->data, NoOffset   , uloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
@@ -441,7 +441,7 @@ void Fields::execStats(Mask *m)
   // calculate the stats on the v location
   grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
   stats->calcMean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
-  stats->calcMean(vmodel            , v->data, NO_OFFSET   , vloc, atmp["tmp1"]->data, stats->nmask);
+  stats->calcMean(vmodel            , v->data, NoOffset   , vloc, atmp["tmp1"]->data, stats->nmask);
   for(int n=2; n<5; ++n)
   {
     std::stringstream ss;
@@ -484,7 +484,7 @@ void Fields::execStats(Mask *m)
   DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
   for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
-    stats->calcMean(m->profs[it->first].data, it->second->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
+    stats->calcMean(m->profs[it->first].data, it->second->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
     for(int n=2; n<5; ++n)
     {
       std::stringstream ss;
@@ -527,10 +527,10 @@ void Fields::execStats(Mask *m)
     stats->addFluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
 
   // other statistics
-  stats->calcMean(m->profs["p"].data, sd["p"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
+  stats->calcMean(m->profs["p"].data, sd["p"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
 
   if(model->diff->getName() == "smag2")
-    stats->calcMean(m->profs["evisc"].data, sd["evisc"]->data, NO_OFFSET, sloc, atmp["tmp3"]->data, stats->nmask);
+    stats->calcMean(m->profs["evisc"].data, sd["evisc"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
 }
 
 void Fields::set_calcMeanProfs(bool sw)
@@ -769,6 +769,8 @@ int Fields::addMeanProf(Input *inputin, std::string fld, double * restrict data,
 
 void Fields::load(int n)
 {
+  const double NoOffset = 0.;
+
   int nerror = 0;
 
   for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
@@ -777,7 +779,7 @@ void Fields::load(int n)
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
     master->printMessage("Loading \"%s\" ... ", filename);
-    if(grid->loadField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NO_OFFSET))
+    if(grid->loadField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
     {
       master->printMessage("FAILED\n");
       ++nerror;
@@ -848,6 +850,8 @@ void Fields::load(int n)
 
 void Fields::save(int n)
 {
+  const double NoOffset = 0.;
+
   int nerror = 0;
   for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
@@ -856,7 +860,7 @@ void Fields::save(int n)
     master->printMessage("Saving \"%s\" ... ", filename);
 
     // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
-    if(grid->saveField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NO_OFFSET))
+    if(grid->saveField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
     {
       master->printMessage("FAILED\n");
       ++nerror;
