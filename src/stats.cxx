@@ -35,8 +35,6 @@
 #include "timeloop.h"
 #include <netcdfcpp.h>
 
-#define NTHRES 0
-
 Stats::Stats(Model *modelin, Input *inputin)
 {
   model = modelin;
@@ -398,7 +396,7 @@ void Stats::calcArea(double * restrict area, const int loc[3], int * restrict nm
 
   for(int k=grid->kstart; k<grid->kend+loc[2]; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       area[k] = (double)(nmask[k]) / (double)ijtot;
     else
       area[k] = 0.;
@@ -430,7 +428,7 @@ void Stats::calcMean(double * const restrict prof, const double * const restrict
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -444,7 +442,7 @@ void Stats::calcMean2d(double * const restrict mean, const double * const restri
   int ij,jj;
   jj = grid->icells;
 
-  if(*nmask > NTHRES)
+  if(*nmask > nthres)
   {
     *mean = 0.;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -629,7 +627,7 @@ void Stats::calcCount(double * restrict data, double * restrict prof, double thr
 
   for(int k=0; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -689,7 +687,7 @@ void Stats::calcMoment(double * restrict data, double * restrict datamean, doubl
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -785,7 +783,7 @@ void Stats::calcFlux_2nd(double * restrict data, double * restrict datamean, dou
 
   for(int k=1; k<grid->kcells; ++k)
   {
-    if(nmask[k] > NTHRES && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
+    if(nmask[k] > nthres && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -838,7 +836,7 @@ void Stats::calcFlux_4th(double * restrict data, double * restrict w, double * r
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -900,7 +898,7 @@ void Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -934,7 +932,7 @@ void Stats::calcGrad_4th(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -968,7 +966,7 @@ void Stats::calcDiff_4th(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -999,7 +997,7 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -1100,7 +1098,7 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * r
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -1130,7 +1128,7 @@ void Stats::calcPath(double * restrict data, double * restrict maskbot, int * re
 
   *path = 0.;
 
-  if(*nmaskbot > NTHRES)
+  if(*nmaskbot > nthres)
   {
     // Integrate liquid water
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -1163,7 +1161,7 @@ void Stats::calcCover(double * restrict data, double * restrict maskbot, int * r
 
   *cover = 0.;
 
-  if(*nmaskbot > NTHRES)
+  if(*nmaskbot > nthres)
   {
     // Per column, check if cloud present
     for(int j=grid->jstart; j<grid->jend; j++)

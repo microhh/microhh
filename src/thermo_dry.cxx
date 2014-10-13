@@ -35,8 +35,6 @@
 #include "master.h"
 #include "cross.h"
 
-#define NO_OFFSET 0.
-
 using fd::o2::interp2;
 using fd::o4::interp4;
 using namespace constants;
@@ -234,6 +232,8 @@ void ThermoDry::exec()
 
 void ThermoDry::execStats(Mask *m)
 {
+  const double NoOffset = 0.;
+
   // calculate the buoyancy and its surface flux for the profiles
   calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
   calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
@@ -242,7 +242,7 @@ void ThermoDry::execStats(Mask *m)
   const int sloc[] = {0,0,0};
 
   // calculate the mean
-  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc,
+  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset, sloc,
                   fields->atmp["tmp3"]->data, stats->nmask);
 
   // calculate the moments

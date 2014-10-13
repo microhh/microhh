@@ -132,5 +132,7 @@ class Stats
     unsigned long isampletime;
 
     std::string swstats;
+
+    static const int nthres = 0;
 };
 #endif

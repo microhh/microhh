@@ -37,8 +37,6 @@
 #include "master.h"
 #include "cross.h"
 
-#define NO_OFFSET 0.
-
 using fd::o2::interp2;
 using fd::o4::interp4;
 using namespace constants;
@@ -415,6 +413,8 @@ int ThermoMoist::calcMask_qlcore(double * restrict mask, double * restrict maskh
 
 void ThermoMoist::execStats(Mask *m)
 {
+  const double NoOffset = 0.;
+
   // calc the buoyancy and its surface flux for the profiles
   calcBuoyancy(fields->atmp["tmp1"]->data, fields->sp["thl"]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
   calcBuoyancyFluxBot(fields->atmp["tmp1"]->datafluxbot, fields->sp["thl"]->databot, fields->sp["thl"]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
@@ -423,7 +423,7 @@ void ThermoMoist::execStats(Mask *m)
   const int sloc[] = {0,0,0};
 
   // mean
-  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc,
+  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset, sloc,
                   fields->atmp["tmp3"]->data, stats->nmask);
 
   // moments
@@ -482,7 +482,7 @@ void ThermoMoist::execStats(Mask *m)
 
   // calculate the liquid water stats
   calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp["thl"]->data, fields->sp["qt"]->data, pref);
-  stats->calcMean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NO_OFFSET, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+  stats->calcMean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
   stats->calcCount(fields->atmp["tmp1"]->data, m->profs["cfrac"].data, 0.,
                    fields->atmp["tmp3"]->data, stats->nmask);
 
