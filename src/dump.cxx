@@ -50,19 +50,6 @@ Dump::~Dump()
 {
 }
 
-// check whether saving the slice was successful and print appropriate message
-void Dump::checkSave(int error, char * filename)
-{
-  master->printMessage("Saving \"%s\" ... ", filename);
-  if(error == 0)
-    master->printMessage("OK\n");
-  else
-  {
-    master->printMessage("FAILED\n");
-    throw 1;
-  }
-}
-
 void Dump::init(double ifactor)
 {
   if(swdump == "0")
@@ -70,10 +57,6 @@ void Dump::init(double ifactor)
 
   isampletime = (unsigned long)(ifactor * sampletime);
 }
-
-//void Dump::create()
-//{  
-//}
 
 unsigned long Dump::getTimeLimit(unsigned long itime)
 {

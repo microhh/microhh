@@ -35,7 +35,6 @@ class Dump
     ~Dump();
 
     void init(double);
-    //void create();
 
     unsigned long getTimeLimit(unsigned long);
 
@@ -50,8 +49,6 @@ class Dump
 
     double sampletime;
     unsigned long isampletime;
-
-    void checkSave(int, char *);
 };
 #endif
 
