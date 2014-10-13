@@ -68,6 +68,10 @@ void Thermo::execCross()
 {
 }
 
+void Thermo::execDump(int time)
+{
+}
+
 bool Thermo::checkThermoField(std::string name)
 {
   return true;  // always returns error 

@@ -42,8 +42,8 @@ class ThermoMoist : public Thermo
     virtual void exec();
     virtual void getMask(Field3d *, Field3d *, Mask *);
     virtual void execStats(Mask *);
-
     virtual void execCross();
+    virtual void execDump(int);
 
     // functions to retrieve buoyancy properties, to be called from other classes
     virtual bool checkThermoField(std::string name);

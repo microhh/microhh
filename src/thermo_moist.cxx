@@ -540,6 +540,14 @@ void ThermoMoist::execCross()
     throw 1;
 }
 
+void ThermoMoist::execDump(int time)
+{
+  int nerror = 0;
+
+  if(nerror)
+    throw 1;
+}
+
 bool ThermoMoist::checkThermoField(std::string name)
 {
   if(name == "b" || name == "ql")

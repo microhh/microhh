@@ -55,6 +55,7 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
   int nerror = 0;
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
+  nerror += inputin->getList(&dumplist ,  "thermo", "dumplist" ,  "");
 
   if(nerror)
     throw 1;
@@ -218,6 +219,19 @@ void ThermoDry::create(Input *inputin)
 
   // Sort crosslist to group ql and b variables
   std::sort(crosslist.begin(),crosslist.end());
+
+  // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
+  std::vector<std::string>::iterator dumpvar=dumplist.begin();
+  while(dumpvar != dumplist.end())
+  {
+    if(checkThermoField(*dumpvar))
+    {
+      master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
+      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+    }
+    else
+      ++dumpvar;
+  }
 }
 
 #ifndef USECUDA
@@ -335,6 +349,39 @@ void ThermoDry::execCross()
         nerror += cross->crossPlane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
         nerror += cross->crossPlane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
+    }
+  }
+
+  if(nerror)
+    throw 1;
+}
+
+void ThermoDry::execDump(int time)
+{
+  int nerror = 0;
+  const double NoOffset = 0.;
+
+  for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
+  {
+    // TODO BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant... 
+    if(*it == "b")
+      calcbuoyancy(fields->atmp["tmp2"]->data, fields->sp["th"]->data, thref);
+    else
+      throw 1;
+
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->c_str(), time);
+    master->printMessage("Saving \"%s\" ... ", filename);
+
+    // TODO: remove tmp2 from saveField3d -> no longer used
+    if(grid->saveField3d(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, filename, NoOffset))
+    {
+      master->printMessage("FAILED\n");
+      ++nerror;
+    }  
+    else
+    {
+      master->printMessage("OK\n");
     }
   }
 

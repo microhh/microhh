@@ -47,6 +47,7 @@ class ThermoDry : public Thermo
     virtual void exec();                ///< Add the tendencies belonging to the buoyancy.
     virtual void execStats(Mask *);
     virtual void execCross();
+    virtual void execDump(int);
 
     virtual bool checkThermoField(std::string name);
     virtual void getThermoField(Field3d *, Field3d *, std::string name);
@@ -67,6 +68,7 @@ class ThermoDry : public Thermo
     // cross sections
     std::vector<std::string> crosslist;        ///< List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
+    std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
     int calcbuoyancybot(double *, double *,
                         double *, double *,

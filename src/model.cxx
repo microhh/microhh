@@ -342,6 +342,7 @@ void Model::exec()
         #endif
 
         fields->execDump(timeloop->get_iotime());
+        thermo->execDump(timeloop->get_iotime());
       }
 
     }
