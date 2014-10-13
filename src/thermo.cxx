@@ -68,7 +68,7 @@ void Thermo::execCross()
 {
 }
 
-void Thermo::execDump(int time)
+void Thermo::execDump()
 {
 }
 

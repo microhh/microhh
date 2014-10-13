@@ -34,6 +34,7 @@
 #include "diff_smag2.h"
 #include "master.h"
 #include "cross.h"
+#include "dump.h"
 
 using fd::o2::interp2;
 using fd::o4::interp4;
@@ -356,11 +357,8 @@ void ThermoDry::execCross()
     throw 1;
 }
 
-void ThermoDry::execDump(int time)
+void ThermoDry::execDump()
 {
-  int nerror = 0;
-  const double NoOffset = 0.;
-
   for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
   {
     // TODO BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant... 
@@ -369,24 +367,8 @@ void ThermoDry::execDump(int time)
     else
       throw 1;
 
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", it->c_str(), time);
-    master->printMessage("Saving \"%s\" ... ", filename);
-
-    // TODO: remove tmp2 from saveField3d -> no longer used
-    if(grid->saveField3d(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, filename, NoOffset))
-    {
-      master->printMessage("FAILED\n");
-      ++nerror;
-    }  
-    else
-    {
-      master->printMessage("OK\n");
-    }
+    model->dump->saveDump(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, *it);
   }
-
-  if(nerror)
-    throw 1;
 }
 
 bool ThermoDry::checkThermoField(std::string name)

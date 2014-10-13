@@ -32,6 +32,7 @@
 #include "model.h"
 #include "stats.h"
 #include "cross.h"
+#include "dump.h"
 #include "diff_smag2.h"
 
 Fields::Fields(Model *modelin, Input *inputin)
@@ -1030,28 +1031,8 @@ void Fields::execCross()
     throw 1;
 }
 
-void Fields::execDump(int time)
+void Fields::execDump()
 {
-  int nerror = 0;
-  const double NoOffset = 0.;
-
   for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
-  {
-    char filename[256];
-    std::sprintf(filename, "%s.%07d", it->c_str(), time);
-    master->printMessage("Saving \"%s\" ... ", filename);
-
-    if(grid->saveField3d(sd[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
-    {
-      master->printMessage("FAILED\n");
-      ++nerror;
-    }  
-    else
-    {
-      master->printMessage("OK\n");
-    }
-  }
-
-  if(nerror)
-    throw 1;
+    model->dump->saveDump(sd[*it]->data, atmp["tmp1"]->data, *it);
 }

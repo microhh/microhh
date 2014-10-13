@@ -341,8 +341,8 @@ void Model::exec()
         fields  ->backwardDevice();
         #endif
 
-        fields->execDump(timeloop->get_iotime());
-        thermo->execDump(timeloop->get_iotime());
+        fields->execDump();
+        thermo->execDump();
       }
     }
 

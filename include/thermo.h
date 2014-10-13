@@ -42,7 +42,7 @@ class Thermo
     virtual void execStats(Mask *);
 
     virtual void execCross();
-    virtual void execDump(int);
+    virtual void execDump();
 
     virtual void getMask(Field3d *, Field3d *, Mask *);
 

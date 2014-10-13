@@ -20,6 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdio>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -28,6 +29,7 @@
 #include "thermo.h"
 #include "timeloop.h"
 #include "constants.h"
+#include "defines.h"
 
 Dump::Dump(Model *modelin, Input *inputin)
 {
@@ -77,4 +79,23 @@ bool Dump::doDump()
     return true;
   else
     return false;
+}
+
+void Dump::saveDump(double * restrict data, double * restrict tmp, std::string varname)
+{
+  const double NoOffset = 0.;
+  char filename[256];
+
+  std::sprintf(filename, "%s.%07d", varname.c_str(), model->timeloop->get_iotime());
+  master->printMessage("Saving \"%s\" ... ", filename);
+
+  if(grid->saveField3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))
+  {
+    master->printMessage("FAILED\n");
+    throw 1;
+  }  
+  else
+  {
+    master->printMessage("OK\n");
+  }
 }
