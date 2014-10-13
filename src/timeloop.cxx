@@ -332,6 +332,8 @@ bool Timeloop::isStatsStep()
 
 void Timeloop::save(int starttime)
 {
+  int nerror = 0;
+
   if(master->mpiid == 0)
   {
     char filename[256];
@@ -345,16 +347,23 @@ void Timeloop::save(int starttime)
     if(pFile == NULL)
     {
       master->printMessage("FAILED\n", filename);
-      throw 1;
+      ++nerror;
     }
+    else
+    {
+      fwrite(&itime    , sizeof(long), 1, pFile);
+      fwrite(&idt      , sizeof(long), 1, pFile);
+      fwrite(&iteration, sizeof(long), 1, pFile);
 
-    fwrite(&itime    , sizeof(long), 1, pFile);
-    fwrite(&idt      , sizeof(long), 1, pFile);
-    fwrite(&iteration, sizeof(long), 1, pFile);
-
-    fclose(pFile);
-    master->printMessage("OK\n");
+      fclose(pFile);
+      master->printMessage("OK\n");
+    }
   }
+
+  // Broadcast the error code to prevent deadlocks in case of error.
+  master->broadcast(&nerror, 1);
+  if(nerror)
+    throw 1;
 }
 
 void Timeloop::load(int starttime)
