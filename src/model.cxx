@@ -38,6 +38,7 @@
 #include "force.h"
 #include "stats.h"
 #include "cross.h"
+#include "dump.h"
 #include "budget.h"
 
 #ifdef USECUDA
@@ -62,6 +63,7 @@ Model::Model(Master *masterin, Input *inputin)
 
   stats  = 0;
   cross  = 0;
+  dump   = 0;
   budget = 0;
 
   try
@@ -86,6 +88,7 @@ Model::Model(Master *masterin, Input *inputin)
     // Create instances of the statistics classes.
     stats  = new Stats (this, input);
     cross  = new Cross (this, input);
+    dump   = new Dump  (this, input);
     budget = new Budget(this, input);
 
     // Get the list of masks.
@@ -137,6 +140,7 @@ void Model::deleteObjects()
 {
   // Delete the components in reversed order.
   delete budget;
+  delete dump;
   delete cross;
   delete stats;
   delete buffer;
@@ -175,6 +179,7 @@ void Model::init()
 
   stats ->init(timeloop->get_ifactor());
   cross ->init(timeloop->get_ifactor());
+  dump  ->init(timeloop->get_ifactor());
   budget->init();
 }
 
@@ -327,6 +332,22 @@ void Model::exec()
         thermo  ->execCross();
         boundary->execCross();
       }
+
+      // Save the 3d dumps to disk
+      if(dump->doDump())
+      {
+        master->printMessage("woohoo, dumping\n");
+        //#ifdef USECUDA
+        //// Copy back the data from the GPU.
+        //fields  ->backwardDevice();
+        //boundary->backwardDevice();
+        //#endif
+      
+        //fields  ->execCross();
+        //thermo  ->execCross();
+        //boundary->execCross();
+      }
+
     }
 
     // Exit the simulation when the runtime has been hit.
@@ -410,6 +431,7 @@ void Model::setTimeStep()
   timeloop->setTimeStepLimit(diff ->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
   timeloop->setTimeStepLimit(stats->getTimeLimit(timeloop->get_itime()));
   timeloop->setTimeStepLimit(cross->getTimeLimit(timeloop->get_itime()));
+  timeloop->setTimeStepLimit(dump ->getTimeLimit(timeloop->get_itime()));
 
   // Set the time step.
   timeloop->setTimeStep();

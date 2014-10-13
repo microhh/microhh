@@ -72,6 +72,9 @@ Fields::Fields(Model *modelin, Input *inputin)
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
 
+  // Read list of 3d fiels to save
+  nerror += inputin->getList(&dumplist , "fields", "dumplist" , "");
+
   if(nerror)
     throw 1;
 
@@ -207,6 +210,19 @@ void Fields::init()
     for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
       master->printWarning("field %s in [fields][crosslist] is illegal\n", it->c_str());
   } 
+
+  // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
+  std::vector<std::string>::iterator it=dumplist.begin();
+  while(it != dumplist.end())
+  {
+    if(sd.count(*it) == 0)
+    {
+      master->printWarning("field %s in [fields][dumplist] is illegal\n", it->c_str());
+      it = dumplist.erase(it);  // erase() returns iterator of next element..
+    }
+    else
+      ++it;
+  }
 }
 
 void Fields::checkAddedCross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)

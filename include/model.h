@@ -39,6 +39,7 @@ class Thermo;
 class Buffer;
 class Stats;
 class Cross;
+class Dump;
 class Budget;
 
 class Model
@@ -69,9 +70,10 @@ class Model
     Thermo   *thermo;
     Buffer   *buffer;
 
-    // postprocessing modules
+    // postprocessing and output modules
     Stats  *stats;
     Cross  *cross;
+    Dump   *dump;
     Budget *budget;
 
     // BvS where to best put this..?

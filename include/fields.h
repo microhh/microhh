@@ -123,6 +123,7 @@ class Fields
 
     // cross sections
     std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
+    std::vector<std::string> dumplist;  ///< List with all 3d dumps from the ini file.
 
     // Cross sections split per type.
     std::vector<std::string> crosssimple;
