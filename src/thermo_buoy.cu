@@ -29,11 +29,6 @@
 
 namespace ThermoBuoy_g
 {
-  __device__ double interp2(double a, double b)
-  {
-    return 0.5*(a + b);
-  }
-  
   __global__ void calcBuoyancyTend_2nd(double * __restrict__ wt, double * __restrict__ b, 
                                        int istart, int jstart, int kstart,
                                        int iend,   int jend,   int kend,
@@ -46,7 +41,7 @@ namespace ThermoBuoy_g
     if(i < iend && j < jend && k < kend)
     {
       int ijk = i + j*jj + k*kk;
-      wt[ijk] += interp2(b[ijk-kk], b[ijk]);
+      wt[ijk] += fd::o2::interp2(b[ijk-kk], b[ijk]);
     }
   }
   

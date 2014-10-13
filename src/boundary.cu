@@ -39,11 +39,6 @@ using namespace fd::o4;
 
 namespace Boundary_g
 {
-  __device__ double grad4x(const double a, const double b, const double c, const double d)
-  {
-    return (-(d-a) + 27.*(c-b));
-  }
-
   __global__ void setbc(double * __restrict__ a, double aval, 
                         const int icells, const int icellsp, const int jcells)
   {

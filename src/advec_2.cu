@@ -26,14 +26,12 @@
 #include "tools.h"
 #include "constants.h"
 #include "tools.h"
+#include "fd.h"
+
+using namespace fd::o2;
 
 namespace Advec2_g
 {
-  __device__ double interp2(double a, double b)
-  {
-    return 0.5*(a + b);
-  }
-  
   __global__ void advecuvw(double * __restrict__ ut, double * __restrict__ vt, double * __restrict__ wt, 
                            double * __restrict__ u,  double * __restrict__ v,  double * __restrict__ w,
                            double * __restrict__ rhoref, double * __restrict__ rhorefh,

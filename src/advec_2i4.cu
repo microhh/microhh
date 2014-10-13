@@ -29,20 +29,11 @@
 #include "tools.h"
 #include "constants.h"
 
+using namespace fd::o2;
 using namespace fd::o4;
 
 namespace Advec2i4_g
 {
-  __device__ double interp4(double a, double b, double c, double d) 
-  {
-    return ci0*a + ci1*b + ci2*c + ci3*d;
-  }
-  
-  __device__ double interp2(double a, double b)
-  {
-    return 0.5*(a + b);
-  }
-
   __global__ void advecu(double * __restrict__ ut, double * __restrict__ u, 
                          double * __restrict__ v, double * __restrict__ w,
                          double * __restrict__ rhoref, double * __restrict__ rhorefh, 

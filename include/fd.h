@@ -33,9 +33,9 @@ namespace fd
 {
   namespace o2
   {
-    CUDA_MACRO inline double interp2(const double a, const double b) 
+    CUDA_MACRO inline double interp2(const double a, const double b)
     {
-      return 0.5 * (a + b); 
+      return 0.5 * (a + b);
     }
   }
 
@@ -93,6 +93,16 @@ namespace fd
     CUDA_MACRO inline double interp4top(const double a, const double b, const double c, const double d)
     {
       return ti0*a + ti1*b + ti2*c + ti3*d;
+    }
+
+    CUDA_MACRO inline double grad4(double a, double b, double c, double d, double dxi)
+    {
+      return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
+    }
+    
+    CUDA_MACRO inline double grad4x(double a, double b, double c, double d)
+    {
+      return (-(d-a) + 27.*(c-b)); 
     }
   }
 }

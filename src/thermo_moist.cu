@@ -31,20 +31,12 @@
 #include "tools.h"
 
 using namespace constants;
+
+using namespace fd::o2;
 using namespace fd::o4;
 
 namespace ThermoMoist_g
 {
-  __device__ double interp2(double a, double b)
-  {
-    return 0.5*(a + b);
-  }
-  
-  __device__ double interp4(double a, double b, double c, double d) 
-  {
-    return ci0*a + ci1*b + ci2*c + ci3*d;
-  }
-  
   __device__ double exner(double p)
   {
     return pow((p/p0),(Rd/cp));
