@@ -62,20 +62,20 @@ class ThermoDry : public Thermo
     #endif
 
   private:
-    int calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
-    int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
+    void calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
+    void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
     
     // cross sections
     std::vector<std::string> crosslist;        ///< List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
     std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
-    int calcbuoyancybot(double *, double *,
-                        double *, double *,
-                        double *, double *);                ///< Calculation of the near-surface and surface buoyancy.
-    int calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-    int calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-    int calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+    void calcbuoyancybot(double *, double *,
+                         double *, double *,
+                         double *, double *);                ///< Calculation of the near-surface and surface buoyancy.
+    void calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
+    void calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+    void calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
     Stats *stats;
 

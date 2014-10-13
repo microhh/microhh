@@ -412,7 +412,7 @@ void ThermoDry::getProgVars(std::vector<std::string> *list)
   list->push_back("th");
 }
 
-int ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double * restrict thref)
+void ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double * restrict thref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -426,11 +426,9 @@ int ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double * 
         ijk = i + j*jj + k*kk;
         b[ijk] = grav/thref[k] * (th[ijk] - thref[k]);
       }
-
-  return 0;
 }
 
-int ThermoDry::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
+void ThermoDry::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -444,13 +442,11 @@ int ThermoDry::calcN2(double * restrict N2, double * restrict th, double * restr
         ijk = i + j*jj + k*kk;
         N2[ijk] = grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
       }
-
-  return 0;
 }
 
-int ThermoDry::calcbuoyancybot(double * restrict b , double * restrict bbot,
-                                 double * restrict th, double * restrict thbot,
-                                 double * restrict thref, double * restrict threfh)
+void ThermoDry::calcbuoyancybot(double * restrict b , double * restrict bbot,
+                                double * restrict th, double * restrict thbot,
+                                double * restrict thref, double * restrict threfh)
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
@@ -467,11 +463,9 @@ int ThermoDry::calcbuoyancybot(double * restrict b , double * restrict bbot,
       bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
       b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
     }
-
-  return 0;
 }
 
-int ThermoDry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict thfluxbot, double * restrict threfh)
+void ThermoDry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict thfluxbot, double * restrict threfh)
 {
   int ij,jj;
   jj = grid->icells;
@@ -485,11 +479,9 @@ int ThermoDry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict
       ij  = i + j*jj;
       bfluxbot[ij] = grav/threfh[kstart]*thfluxbot[ij];
     }
-
-  return 0;
 }
 
-int ThermoDry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
+void ThermoDry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
 {
   using namespace fd::o2;
 
@@ -506,11 +498,9 @@ int ThermoDry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, 
         ijk = i + j*jj + k*kk;
         wt[ijk] += grav/threfh[k] * (interp2(th[ijk-kk], th[ijk]) - threfh[k]);
       }
-
-  return 0;
 }
 
-int ThermoDry::calcbuoyancytend_4th(double * restrict wt, double * restrict th, double * restrict threfh)
+void ThermoDry::calcbuoyancytend_4th(double * restrict wt, double * restrict th, double * restrict threfh)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -527,6 +517,4 @@ int ThermoDry::calcbuoyancytend_4th(double * restrict wt, double * restrict th, 
         ijk = i + j*jj + k*kk1;
         wt[ijk] += grav/threfh[k] * (interp4(th[ijk-kk2], th[ijk-kk1], th[ijk], th[ijk+kk1]) - threfh[k]);
       }
-
-  return 0;
 }
