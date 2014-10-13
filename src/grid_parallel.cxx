@@ -166,68 +166,73 @@ void Grid::exitMpi()
   }
 }
 
-void Grid::boundaryCyclic(double * restrict data)
+void Grid::boundaryCyclic(double * restrict data, Edge edge)
 {
-  int ncount = 1;
+  const int ncount = 1;
 
-  // communicate east-west edges
-  int eastout = iend-igc;
-  int westin  = 0;
-  int westout = istart;
-  int eastin  = iend;
-
-  // communicate north-south edges
-  int northout = (jend-jgc)*icells;
-  int southin  = 0;
-  int southout = jstart*icells;
-  int northin  = jend  *icells;
-
-  // first, send and receive the ghost cells in east-west direction
-  MPI_Isend(&data[eastout], ncount, eastwestedge, master->neast, 1, master->commxy, &master->reqs[master->reqsn]);
-  master->reqsn++;
-  MPI_Irecv(&data[westin], ncount, eastwestedge, master->nwest, 1, master->commxy, &master->reqs[master->reqsn]);
-  master->reqsn++;
-  MPI_Isend(&data[westout], ncount, eastwestedge, master->nwest, 2, master->commxy, &master->reqs[master->reqsn]);
-  master->reqsn++;
-  MPI_Irecv(&data[eastin], ncount, eastwestedge, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
-  master->reqsn++;
-  // wait here for the mpi to have correct values in the corners of the cells
-  master->waitAll();
-
-  // if the run is 3D, apply the BCs
-  if(jtot > 1)
+  if(edge == EastWestEdge || edge == BothEdges)
   {
-    // second, send and receive the ghost cells in the north-south direction
-    MPI_Isend(&data[northout], ncount, northsouthedge, master->nnorth, 1, master->commxy, &master->reqs[master->reqsn]);
+    // Communicate east-west edges.
+    const int eastout = iend-igc;
+    const int westin  = 0;
+    const int westout = istart;
+    const int eastin  = iend;
+
+    // Send and receive the ghost cells in east-west direction.
+    MPI_Isend(&data[eastout], ncount, eastwestedge, master->neast, 1, master->commxy, &master->reqs[master->reqsn]);
     master->reqsn++;
-    MPI_Irecv(&data[southin], ncount, northsouthedge, master->nsouth, 1, master->commxy, &master->reqs[master->reqsn]);
+    MPI_Irecv(&data[westin], ncount, eastwestedge, master->nwest, 1, master->commxy, &master->reqs[master->reqsn]);
     master->reqsn++;
-    MPI_Isend(&data[southout], ncount, northsouthedge, master->nsouth, 2, master->commxy, &master->reqs[master->reqsn]);
+    MPI_Isend(&data[westout], ncount, eastwestedge, master->nwest, 2, master->commxy, &master->reqs[master->reqsn]);
     master->reqsn++;
-    MPI_Irecv(&data[northin], ncount, northsouthedge, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
+    MPI_Irecv(&data[eastin], ncount, eastwestedge, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
     master->reqsn++;
+    // Wait here for the MPI to have correct values in the corners of the cells.
     master->waitAll();
   }
-  // in case of 2D, fill all the ghost cells with the current value
-  else
+
+  if(edge == NorthSouthEdge || edge == BothEdges)
   {
-    // 2d essential variables
-    int ijkref,ijknorth,ijksouth,jj,kk;
+    // If the run is 3D, perform the cyclic boundary routine for the north-south direction.
+    if(jtot > 1)
+    {
+      // Communicate north-south edges.
+      const int northout = (jend-jgc)*icells;
+      const int southin  = 0;
+      const int southout = jstart*icells;
+      const int northin  = jend  *icells;
 
-    jj = icells;
-    kk = icells*jcells;
+      // Send and receive the ghost cells in the north-south direction.
+      MPI_Isend(&data[northout], ncount, northsouthedge, master->nnorth, 1, master->commxy, &master->reqs[master->reqsn]);
+      master->reqsn++;
+      MPI_Irecv(&data[southin], ncount, northsouthedge, master->nsouth, 1, master->commxy, &master->reqs[master->reqsn]);
+      master->reqsn++;
+      MPI_Isend(&data[southout], ncount, northsouthedge, master->nsouth, 2, master->commxy, &master->reqs[master->reqsn]);
+      master->reqsn++;
+      MPI_Irecv(&data[northin], ncount, northsouthedge, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
+      master->reqsn++;
+      master->waitAll();
+    }
+    // In case of 2D, fill all the ghost cells in the y-direction with the same value.
+    else
+    {
+      int ijkref,ijknorth,ijksouth,jj,kk;
 
-    for(int k=kstart; k<kend; k++)
-      for(int j=0; j<jgc; j++)
+      jj = icells;
+      kk = icells*jcells;
+
+      for(int k=kstart; k<kend; k++)
+        for(int j=0; j<jgc; j++)
 #pragma ivdep
-        for(int i=0; i<icells; i++)
-        {
-          ijkref   = i + jstart*jj   + k*kk;
-          ijknorth = i + j*jj        + k*kk;
-          ijksouth = i + (jend+j)*jj + k*kk;
-          data[ijknorth] = data[ijkref];
-          data[ijksouth] = data[ijkref];
-        }
+          for(int i=0; i<icells; i++)
+          {
+            ijkref   = i + jstart*jj   + k*kk;
+            ijknorth = i + j*jj        + k*kk;
+            ijksouth = i + (jend+j)*jj + k*kk;
+            data[ijknorth] = data[ijkref];
+            data[ijksouth] = data[ijkref];
+          }
+    }
   }
 }
 

@@ -37,7 +37,7 @@ void Grid::exitMpi()
 {
 }
 
-void Grid::boundaryCyclic(double * restrict data)
+void Grid::boundaryCyclic(double * restrict data, Edge edge)
 {
   int ncount = 1;
   int ijk0,ijk1,jj,kk;
@@ -45,71 +45,77 @@ void Grid::boundaryCyclic(double * restrict data)
   jj = icells;
   kk = icells*jcells;
 
-  // first, east west boundaries
-  for(int k=0; k<kcells; k++)
-    for(int j=0; j<jcells; j++)
-#pragma ivdep
-      for(int i=0; i<igc; i++)
-      {
-        ijk0 = i          + j*jj + k*kk;
-        ijk1 = iend-igc+i + j*jj + k*kk;
-        data[ijk0] = data[ijk1];
-      }
-
-  for(int k=0; k<kcells; k++)
-    for(int j=0; j<jcells; j++)
-#pragma ivdep
-      for(int i=0; i<igc; i++)
-      {
-        ijk0 = i+iend   + j*jj + k*kk;
-        ijk1 = i+istart + j*jj + k*kk;
-        data[ijk0] = data[ijk1];
-      }
-
-  // if the run is 3D, apply the BCs
-  if(jtot > 1)
+  if(edge == EastWestEdge || edge == BothEdges)
   {
-    // second, send and receive the ghost cells in the north-south direction
+    // first, east west boundaries
     for(int k=0; k<kcells; k++)
-      for(int j=0; j<jgc; j++)
-#pragma ivdep
-        for(int i=0; i<icells; i++)
+      for(int j=0; j<jcells; j++)
+  #pragma ivdep
+        for(int i=0; i<igc; i++)
         {
-          ijk0 = i + j           *jj + k*kk;
-          ijk1 = i + (jend-jgc+j)*jj + k*kk;
+          ijk0 = i          + j*jj + k*kk;
+          ijk1 = iend-igc+i + j*jj + k*kk;
           data[ijk0] = data[ijk1];
         }
 
     for(int k=0; k<kcells; k++)
-      for(int j=0; j<jgc; j++)
+      for(int j=0; j<jcells; j++)
 #pragma ivdep
-        for(int i=0; i<icells; i++)
+        for(int i=0; i<igc; i++)
         {
-          ijk0 = i + (j+jend  )*jj + k*kk;
-          ijk1 = i + (j+jstart)*jj + k*kk;
+          ijk0 = i+iend   + j*jj + k*kk;
+          ijk1 = i+istart + j*jj + k*kk;
           data[ijk0] = data[ijk1];
         }
   }
-  // in case of 2D, fill all the ghost cells with the current value
-  else
+
+  if(edge == NorthSouthEdge || edge == BothEdges)
   {
-    // 2d essential variables
-    int ijkref,ijknorth,ijksouth,jj,kk;
+    // if the run is 3D, apply the BCs
+    if(jtot > 1)
+    {
+      // second, send and receive the ghost cells in the north-south direction
+      for(int k=0; k<kcells; k++)
+        for(int j=0; j<jgc; j++)
+  #pragma ivdep
+          for(int i=0; i<icells; i++)
+          {
+            ijk0 = i + j           *jj + k*kk;
+            ijk1 = i + (jend-jgc+j)*jj + k*kk;
+            data[ijk0] = data[ijk1];
+          }
 
-    jj = icells;
-    kk = icells*jcells;
+      for(int k=0; k<kcells; k++)
+        for(int j=0; j<jgc; j++)
+  #pragma ivdep
+          for(int i=0; i<icells; i++)
+          {
+            ijk0 = i + (j+jend  )*jj + k*kk;
+            ijk1 = i + (j+jstart)*jj + k*kk;
+            data[ijk0] = data[ijk1];
+          }
+    }
+    // in case of 2D, fill all the ghost cells with the current value
+    else
+    {
+      // 2d essential variables
+      int ijkref,ijknorth,ijksouth,jj,kk;
 
-    for(int k=kstart; k<kend; k++)
-      for(int j=0; j<jgc; j++)
+      jj = icells;
+      kk = icells*jcells;
+
+      for(int k=kstart; k<kend; k++)
+        for(int j=0; j<jgc; j++)
 #pragma ivdep
-        for(int i=0; i<icells; i++)
-        {
-          ijkref   = i + jstart*jj   + k*kk;
-          ijknorth = i + j*jj        + k*kk;
-          ijksouth = i + (jend+j)*jj + k*kk;
-          data[ijknorth] = data[ijkref];
-          data[ijksouth] = data[ijkref];
-        }
+          for(int i=0; i<icells; i++)
+          {
+            ijkref   = i + jstart*jj   + k*kk;
+            ijknorth = i + j*jj        + k*kk;
+            ijksouth = i + (jend+j)*jj + k*kk;
+            data[ijknorth] = data[ijkref];
+            data[ijksouth] = data[ijkref];
+          }
+    }
   }
 }
 

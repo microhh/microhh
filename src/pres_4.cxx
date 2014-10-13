@@ -250,9 +250,8 @@ void Pres4::input(double * restrict p,
   kmax = grid->kmax;
 
   // Set the cyclic boundary conditions for the tendencies.
-  grid->boundaryCyclic(ut);
-  grid->boundaryCyclic(vt);
-  grid->boundaryCyclic(wt);
+  grid->boundaryCyclic(ut, EastWestEdge  );
+  grid->boundaryCyclic(vt, NorthSouthEdge);
 
   // Set the bc. 
   for(int j=0; j<grid->jmax; j++)
