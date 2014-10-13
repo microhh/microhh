@@ -113,8 +113,10 @@ class Boundary
 
     inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
 
+    /*
   protected:
     static const double noVelocity = 0.;
     static const double noOffset = 0.;
+    */
 };
 #endif

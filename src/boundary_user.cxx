@@ -53,6 +53,9 @@ void BoundaryUser::init(Input *inputin)
 
 void BoundaryUser::setValues()
 {
+  const double noVelocity = 0.;
+  const double noOffset = 0.;
+
   setBc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
   setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
