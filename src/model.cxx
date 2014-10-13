@@ -344,7 +344,6 @@ void Model::exec()
         fields->execDump(timeloop->get_iotime());
         thermo->execDump(timeloop->get_iotime());
       }
-
     }
 
     // Exit the simulation when the runtime has been hit.

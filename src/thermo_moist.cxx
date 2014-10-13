@@ -66,10 +66,12 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
 
   // Read list of cross sections
   nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
+  // Read list of 3d dumps
+  nerror += inputin->getList(&dumplist ,  "thermo", "dumplist" ,  "");
   
   // BvS test for updating hydrostatic prssure during run
-  // swupdate..=0 -> initial base state pressure used in saturation calc
-  // swupdate..=1 -> base state pressure updated before saturation calc
+  // swupdate..=0 -> initial base state pressure used in saturation calculation
+  // swupdate..=1 -> base state pressure updated before saturation calculation
   nerror += inputin->getItem(&swupdatebasestate,"thermo","swupdatebasestate",""); 
 
   if(nerror)
@@ -225,6 +227,19 @@ void ThermoMoist::create(Input *inputin)
 
   // Sort crosslist to group ql and b variables
   std::sort(crosslist.begin(),crosslist.end());
+
+  // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
+  std::vector<std::string>::iterator dumpvar=dumplist.begin();
+  while(dumpvar != dumplist.end())
+  {
+    if(checkThermoField(*dumpvar))
+    {
+      master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
+      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+    }
+    else
+      ++dumpvar;
+  }
 }
 
 #ifndef USECUDA
@@ -543,6 +558,33 @@ void ThermoMoist::execCross()
 void ThermoMoist::execDump(int time)
 {
   int nerror = 0;
+  const double NoOffset = 0.;
+
+  for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
+  {
+    // TODO BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant... 
+    if(*it == "b")
+      calcBuoyancy(fields->atmp["tmp2"]->data, fields->sp["thl"]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp1"]->data, thvref);
+    else if(*it == "ql")
+      calcLiquidWater(fields->atmp["tmp2"]->data, fields->sp["thl"]->data, fields->sp["qt"]->data, pref);
+    else
+      throw 1;
+
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->c_str(), time);
+    master->printMessage("Saving \"%s\" ... ", filename);
+
+    // TODO: remove tmp2 from saveField3d -> no longer used
+    if(grid->saveField3d(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, filename, NoOffset))
+    {
+      master->printMessage("FAILED\n");
+      ++nerror;
+    }  
+    else
+    {
+      master->printMessage("OK\n");
+    }
+  }
 
   if(nerror)
     throw 1;

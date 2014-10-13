@@ -63,8 +63,9 @@ class ThermoMoist : public Thermo
     int swupdatebasestate;
 
     // cross sections
-    std::vector<std::string> crosslist;        // List with all crosses from ini file
-    std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+    std::vector<std::string> crosslist;        ///< List with all crosses from ini file
+    std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
+    std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
     Stats *stats;
 
