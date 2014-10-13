@@ -212,16 +212,16 @@ void Fields::init()
   } 
 
   // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-  std::vector<std::string>::iterator it=dumplist.begin();
-  while(it != dumplist.end())
+  std::vector<std::string>::iterator dumpvar=dumplist.begin();
+  while(dumpvar != dumplist.end())
   {
-    if(sd.count(*it) == 0)
+    if(sd.count(*dumpvar) == 0)
     {
-      master->printWarning("field %s in [fields][dumplist] is illegal\n", it->c_str());
-      it = dumplist.erase(it);  // erase() returns iterator of next element..
+      master->printWarning("field %s in [fields][dumplist] is not a diagnostic field\n", dumpvar->c_str());
+      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
     }
     else
-      ++it;
+      ++dumpvar;
   }
 }
 
@@ -1025,6 +1025,32 @@ void Fields::execCross()
 
   for(std::vector<std::string>::const_iterator it=crosstop.begin(); it<crosstop.end(); ++it)
     nerror += cross->crossPlane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
+
+  if(nerror)
+    throw 1;
+}
+
+void Fields::execDump(int time)
+{
+  int nerror = 0;
+  const double NoOffset = 0.;
+
+  for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
+  {
+    char filename[256];
+    std::sprintf(filename, "%s.%07d", it->c_str(), time);
+    master->printMessage("Saving \"%s\" ... ", filename);
+
+    if(grid->saveField3d(sd[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
+    {
+      master->printMessage("FAILED\n");
+      ++nerror;
+    }  
+    else
+    {
+      master->printMessage("OK\n");
+    }
+  }
 
   if(nerror)
     throw 1;

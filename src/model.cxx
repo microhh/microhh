@@ -336,16 +336,12 @@ void Model::exec()
       // Save the 3d dumps to disk
       if(dump->doDump())
       {
-        master->printMessage("woohoo, dumping\n");
-        //#ifdef USECUDA
-        //// Copy back the data from the GPU.
-        //fields  ->backwardDevice();
-        //boundary->backwardDevice();
-        //#endif
-      
-        //fields  ->execCross();
-        //thermo  ->execCross();
-        //boundary->execCross();
+        #ifdef USECUDA
+        // Copy back the data from the GPU.
+        fields  ->backwardDevice();
+        #endif
+
+        fields->execDump(timeloop->get_iotime());
       }
 
     }

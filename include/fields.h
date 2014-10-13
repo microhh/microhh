@@ -64,6 +64,7 @@ class Fields
     void set_calcMeanProfs(bool);
 
     void execCross();
+    void execDump(int);
 
     Field3d *u; ///< Field3d instance of x velocity component
     Field3d *v; ///< Field3d instance of y velocity component
