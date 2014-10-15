@@ -97,6 +97,9 @@ class Grid
     double *dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
     double *dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
 
+    double dzhi4biasbot;
+    double dzhi4biastop;
+
     double *x;  ///< Grid coordinate of cell center in x-direction.
     double *y;  ///< Grid coordinate of cell center in y-direction.
     double *z;  ///< Grid coordinate of cell center in z-direction.

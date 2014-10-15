@@ -370,6 +370,10 @@ void Grid::calculate()
     dzi4 [kend  ] = 1./(tg0*zh[kend-2] + tg1*zh[kend-1] + tg2*zh[kend] + tg3*zh[kend+1]);
     dzhi4[kend+1] = 1./(tg0*z [kend-2] + tg1*z [kend-1] + tg2*z [kend] + tg3*z [kend+1]);
 
+    // Define gradients at the boundary for the divgrad calculations.
+    dzhi4biasbot = 1./(bg0*z[kstart-1] + bg1*z[kstart] + bg2*z[kstart+1] + bg3*z[kstart+2]);
+    dzhi4biastop = 1./(tg0*z[kend-3  ] + tg1*z[kend-2] + tg2*z[kend-1  ] + tg3*z[kend    ]);
+
     // Initialize the unused values at a huge value to allow for easier error tracing.
     dzi4[kstart-2] = constants::dhuge;
     dzi4[kstart-3] = constants::dhuge;
