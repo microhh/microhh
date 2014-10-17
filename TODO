@@ -1,0 +1,20 @@
+MICROHH TODO LIST
+Thu Oct 16 13:42:30 CDT 2014
+src/budget.cxx:199: put the correct value for visc here!!!!!
+src/budget.cxx:207: put the correct value for visc here!!!!!
+src/budget.cxx:585: implement the proper BC as soon as the full BC's for pressure are added
+src/diff_smag2.cxx:249: use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
+src/fields.cu:32: use interp2 functions instead of manual interpolation
+src/fields.cxx:172: Define a reference density. Needs to be replaced once anelastic is there
+src/fields.cxx:575: remove these from the model?
+src/force.cxx:163: make sure to give each element its own time series and remove the clear()
+src/grid.cxx:418: add the vertical component
+src/grid.cxx:455: add the vertical component
+src/model.cxx:95: Make an interface that takes this out of the main loop.
+src/model.cxx:200: call boundary load for the data and then timedep, not nice...
+src/stats.cxx:552: this is not accurate enough, extrapolate properly
+src/stats.cxx:604: the count function assumes that the variable to count is at the mask location
+src/thermo_dry.cxx:364: BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant... 
+src/thermo_moist.cxx:559: BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant... 
+include/fields.h:93: remove these to and bring them to diffusion model
+include/model.h:57: maybe it is safer to create get functions
