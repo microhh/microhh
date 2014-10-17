@@ -39,7 +39,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   master = model->master;
 
   substep = 0;
-  ifactor = 1e6;
+  ifactor = 1e9;
 
   // input parameters
   int n = 0;
