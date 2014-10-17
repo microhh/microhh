@@ -1,4 +1,4 @@
-# MPI-PC
+# MPI-PC GNU compilers
 if(USEMPI) 
   set(ENV{CC}  mpicc ) # C compiler for parallel build
   set(ENV{CXX} mpicxx) # C++ compiler for parallel build

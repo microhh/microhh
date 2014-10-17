@@ -1,4 +1,4 @@
-# MPI-PC, Intel compiler
+# MPI-PC, Intel compilers
 if(USEMPI) 
   set(ENV{CC}  mpicc) # C compiler for parallel build
   set(ENV{CXX} mpiCC) # C++ compiler for parallel build

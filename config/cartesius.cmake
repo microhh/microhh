@@ -1,6 +1,9 @@
-# SuperMUC
-# set(ENV{CXX} icc) # compiler for serial build
-set(ENV{CXX} mpiicpc) # compiler for parallel build
+# Cartesius SurfSARA
+if(USEMPI)
+  set(ENV{CXX} mpiicpc) # compiler for parallel build
+elseif()
+  set(ENV{CXX} icpc) # compiler for serial build
+endif()
 
 set(USER_CXX_FLAGS "-restrict -DMPICH_IGNORE_CXX_SEEK")
 set(USER_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -xHOST -fno-alias -restrict -vec-report1 -no-prec-div")
