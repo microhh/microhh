@@ -35,7 +35,7 @@ class DiffSmag2 : public Diff
     void execViscosity();
 
     unsigned long getTimeLimit(unsigned long, double);
-    double getdn(double);
+    double get_dn(double);
 
     double tPr;
 

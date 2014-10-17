@@ -73,7 +73,7 @@ unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
 #endif
 
 #ifndef USECUDA
-double DiffSmag2::getdn(double dt)
+double DiffSmag2::get_dn(double dt)
 {
   double dnmul;
 
