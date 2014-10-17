@@ -241,6 +241,12 @@ void Grid::create(Input *inputin)
   if(inputin->getProf(&z[kstart], "z", kmax))
     throw 1;
 
+  if(z[kend-1] > zsize)
+  {
+    master->printError("Highest grid point is above prescribed zsize\n");
+    throw 1;
+  }
+
   // calculate the grid
   calculate();
 }
