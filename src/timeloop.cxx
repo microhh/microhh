@@ -181,6 +181,11 @@ void Timeloop::setTimeStep()
 
   if(adaptivestep)
   {
+    if(idt == 0)
+    {
+      master->printError("Required time step less than precision %E of the time stepping\n", 1./ifactor);
+      throw 1;
+    }
     idt = idtlim;
     dt  = (double)idt / ifactor;
   }
