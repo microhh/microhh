@@ -59,7 +59,6 @@ unsigned long Diff4::getTimeLimit(unsigned long idt, double dt)
   unsigned long idtlim;
 
   idtlim = idt * dnmax / (dt * dnmul);
-  master->printMessage("getTimeLimit %lu, %lu, %E, %E, %E\n", idtlim, idt, dnmax, dnmul, dnmul*dt);
 
   return idtlim;
 }
@@ -69,7 +68,6 @@ double Diff4::get_dn(double dt)
   double dn;
 
   dn = dnmul*dt;
-  master->printMessage("getdn %E, %E, %E, %E\n", dn, dnmul, dt, dnmul*dt);
 
   return dn;
 }
