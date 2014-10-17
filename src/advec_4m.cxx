@@ -304,25 +304,20 @@ void Advec4m::advecv(double * restrict vt, double * restrict u, double * restric
 
 void Advec4m::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w, double * restrict dzhi4)
 {
-  int    ijk,kstart,kend;
-  int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
-  double dxi,dyi;
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int ii3 = 3;
+  const int jj1 = 1*grid->icells;
+  const int jj2 = 2*grid->icells;
+  const int jj3 = 3*grid->icells;
+  const int kk1 = 1*grid->ijcells;
+  const int kk2 = 2*grid->ijcells;
+  const int kk3 = 3*grid->ijcells;
 
-  ii1 = 1;
-  ii2 = 2;
-  ii3 = 3;
-  jj1 = 1*grid->icells;
-  jj2 = 2*grid->icells;
-  jj3 = 3*grid->icells;
-  kk1 = 1*grid->ijcells;
-  kk2 = 2*grid->ijcells;
-  kk3 = 3*grid->ijcells;
+  const double dxi = 1./grid->dx;
+  const double dyi = 1./grid->dy;
 
-  kstart = grid->kstart;
-  kend   = grid->kend;
-
-  dxi = 1./grid->dx;
-  dyi = 1./grid->dy;
+  int ijk;
 
 /*
   // bottom boundary 

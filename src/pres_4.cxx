@@ -121,39 +121,24 @@ double Pres4::checkDivergence()
 
 void Pres4::init()
 {
-  int imax, jmax, kmax;
-  int itot, jtot, kstart;
+  bmati = new double[grid->itot];
+  bmatj = new double[grid->jtot];
 
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  kstart = grid->kstart;
-
-  bmati = new double[itot];
-  bmatj = new double[jtot];
-
-  m1 = new double[kmax];
-  m2 = new double[kmax];
-  m3 = new double[kmax];
-  m4 = new double[kmax];
-  m5 = new double[kmax];
-  m6 = new double[kmax];
-  m7 = new double[kmax];
+  m1 = new double[grid->kmax];
+  m2 = new double[grid->kmax];
+  m3 = new double[grid->kmax];
+  m4 = new double[grid->kmax];
+  m5 = new double[grid->kmax];
+  m6 = new double[grid->kmax];
+  m7 = new double[grid->kmax];
 }
 
 void Pres4::setValues()
 {
-  int imax, jmax, kmax;
-  int itot, jtot, kstart;
-
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  kstart = grid->kstart;
+  const int itot   = grid->itot;
+  const int jtot   = grid->jtot;
+  const int kmax   = grid->kmax;
+  const int kstart = grid->kstart;
 
   // compute the modified wave numbers of the 4th order scheme
   double dxidxi = 1./(grid->dx*grid->dx);
@@ -290,31 +275,22 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
                   double * restrict bmati, double * restrict bmatj,
                   const int jslice)
 {
-  int jj,kk,ijk;
-  int imax,jmax,kmax;
-  int itot,jtot;
-  int iblock,jblock,kblock;
-  int igc,jgc,kgc;
-  int iindex,jindex;
-
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  iblock = grid->iblock;
-  jblock = grid->jblock;
-  kblock = grid->kblock;
-  igc    = grid->igc;
-  jgc    = grid->jgc;
-  kgc    = grid->kgc;
+  const int imax   = grid->imax;
+  const int jmax   = grid->jmax;
+  const int kmax   = grid->kmax;
+  const int iblock = grid->iblock;
+  const int jblock = grid->jblock;
+  const int igc    = grid->igc;
+  const int jgc    = grid->jgc;
+  const int kgc    = grid->kgc;
 
   grid->fftForward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
+  int jj,kk,ik,ijk;
+  int iindex,jindex;
+
   jj = iblock;
   kk = iblock*jblock;
-
-  int ik;
 
   const int mpicoordx = master->mpicoordx;
   const int mpicoordy = master->mpicoordy;
@@ -694,22 +670,15 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
 
 double Pres4::calcDivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
-  int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
-  int    kstart,kend;
-  double dxi,dyi;
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int jj1 = 1*grid->icells;
+  const int jj2 = 2*grid->icells;
+  const int kk1 = 1*grid->ijcells;
+  const int kk2 = 2*grid->ijcells;
 
-  ii1 = 1;
-  ii2 = 2;
-  jj1 = 1*grid->icells;
-  jj2 = 2*grid->icells;
-  kk1 = 1*grid->ijcells;
-  kk2 = 2*grid->ijcells;
-
-  kstart = grid->kstart;
-  kend   = grid->kend;
-
-  dxi = 1./grid->dx;
-  dyi = 1./grid->dy;
+  const double dxi = 1./grid->dx;
+  const double dyi = 1./grid->dy;
 
   double div, divmax;
   divmax = 0;
@@ -719,7 +688,7 @@ double Pres4::calcDivergence(double * restrict u, double * restrict v, double * 
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj1 + k*kk1;
+        const int ijk = i + j*jj1 + k*kk1;
         div = (cg0*u[ijk-ii1] + cg1*u[ijk] + cg2*u[ijk+ii1] + cg3*u[ijk+ii2]) * cgi*dxi
             + (cg0*v[ijk-jj1] + cg1*v[ijk] + cg2*v[ijk+jj1] + cg3*v[ijk+jj2]) * cgi*dyi
             + (cg0*w[ijk-kk1] + cg1*w[ijk] + cg2*w[ijk+kk1] + cg3*w[ijk+kk2]) * dzi4[k];

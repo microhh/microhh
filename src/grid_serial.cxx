@@ -39,7 +39,6 @@ void Grid::exitMpi()
 
 void Grid::boundaryCyclic(double * restrict data, Edge edge)
 {
-  int ncount = 1;
   int ijk0,ijk1,jj,kk;
 
   jj = icells;
@@ -332,13 +331,13 @@ void Grid::save()
   int jdist = 1;
   fftw_r2r_kind kindf[] = {FFTW_R2HC};
   fftw_r2r_kind kindb[] = {FFTW_HC2R};
-  iplanf = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanf = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanb = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanf = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanb = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
   fftwplan = true;
@@ -413,13 +412,13 @@ void Grid::load()
   int jdist = 1;
   fftw_r2r_kind kindf[] = {FFTW_R2HC};
   fftw_r2r_kind kindb[] = {FFTW_HC2R};
-  iplanf = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanf = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanb = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanf = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanb = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
   fftwplan = true;
@@ -501,9 +500,8 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
-  int ij,ijk,jj,kk;
+  int ij,ijk,kk;
 
-  jj = itot;
   kk = itot*jmax;
 
   // process the fourier transforms slice by slice
@@ -528,7 +526,6 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
     }
   }
 
-  jj = iblock;
   kk = iblock*jtot;
 
   // do the second fourier transform
@@ -559,9 +556,8 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
-  int ij,ijk,jj,kk;
+  int ij,ijk,kk;
 
-  jj = iblock;
   kk = iblock*jtot;
 
   // transform the second transform back
@@ -586,7 +582,6 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
     }
   }
 
-  jj = itot;
   kk = itot*jmax;
 
   // transform the first transform back
@@ -617,11 +612,10 @@ int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filen
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
+  int ijkb,kkb;
 
   jj  = icells;
   kk  = icells*jcells;
-  jjb = imax;
   kkb = imax;
 
   int count = imax*kmax;
@@ -651,7 +645,7 @@ int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filen
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
+  int ijkb,jjb;
 
   jj  = icells;
   kk  = icells*jcells;
@@ -694,7 +688,7 @@ int Grid::loadxySlice(double * restrict data, double * restrict tmp, char *filen
 
   // put the data back into a field with ghost cells
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
+  int ijkb,jjb;
 
   jj  = icells;
   kk  = icells*jcells;
