@@ -281,7 +281,7 @@ void Stats::addFixedProf(std::string name, std::string longname, std::string uni
     Mask *m = &it->second;
 
     // create the NetCDF variable
-    NcVar *var;
+    NcVar *var = 0;
     if(master->mpiid == 0)
     {
       if(zloc == "z")

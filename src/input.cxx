@@ -66,7 +66,7 @@ int Input::readIniFile()
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256], element[256];
 
   // read the input file
-  FILE *inputfile;
+  FILE *inputfile = 0;
   std::string inputfilename = master->simname + ".ini";
 
   if(master->mpiid == 0)
@@ -212,7 +212,7 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
   int n;
 
   // read the input file
-  FILE *inputfile;
+  FILE *inputfile = 0;
   std::string inputfilename = inputname;
 
   int doreturn = 0;
@@ -957,7 +957,7 @@ int Input::getTime(double **data, std::vector<double> *time, std::string varname
   it = timelist.find(varname);
   if(it != timelist.end())
   {
-    int timesize = timelist[varname].size();
+    unsigned int timesize = timelist[varname].size();
     if(timesize != time->size())
     {
       if(master->mpiid == 0) std::printf("ERROR number of values does not match number of time entries\n");
@@ -965,7 +965,7 @@ int Input::getTime(double **data, std::vector<double> *time, std::string varname
     }
     // allocate the data
     *data = new double[timesize];
-    for(int n=0; n<timesize; ++n)
+    for(unsigned int n=0; n<timesize; ++n)
       (*data)[n] = (it->second)[n];
 
     if(master->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
