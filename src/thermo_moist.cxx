@@ -56,6 +56,13 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   pref    = 0;
   prefh   = 0;
 
+  thvref_g  = 0;
+  thvrefh_g = 0;
+  exnref_g  = 0;
+  exnrefh_g = 0;
+  pref_g    = 0;
+  prefh_g   = 0;
+
   // Initialize the prognostic fields
   fields->initPrognosticField("thl", "Liquid water potential temperature", "K");
   fields->initPrognosticField("qt", "Total water mixing ratio", "kg kg-1");
@@ -644,12 +651,13 @@ void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict p
                                  double * restrict ex,       double * restrict exh,
                                  double * restrict thlmean,  double * restrict qtmean)
 {
-  int kstart,kend;
-  double ssurf,qtsurf,ql,si,qti,qli;
-  double rdcp = Rd/cp;
+  const double rdcp = Rd/cp;
 
-  kstart = grid->kstart;
-  kend = grid->kend;
+  const int kstart = grid->kstart;
+  const int kend = grid->kend;
+
+  double ssurf = constants::dhuge;
+  double qtsurf = constants::dhuge;
 
   if(grid->swspatialorder == "2")
   {
@@ -661,6 +669,8 @@ void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict p
     ssurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
     qtsurf = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
   }
+
+  double ql,si,qti,qli;
 
   // Calculate surface (half=kstart) values
   exh[kstart]   = exner(pbot);

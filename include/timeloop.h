@@ -100,7 +100,6 @@ class Timeloop
     double postproctime;
     double savetime;
     double starttime;
-    double dtlim;
 
     int iteration;
     int iotime;
