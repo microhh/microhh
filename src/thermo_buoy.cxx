@@ -95,10 +95,6 @@ void ThermoBuoy::getProgVars(std::vector<std::string> *list)
 
 void ThermoBuoy::calcBuoyancy(double * restrict b, double * restrict bin)
 {
-  int ijk,jj,kk;
-  jj = grid->icells;
-  kk = grid->ijcells;
-
   for(int n=0; n<grid->ncells; ++n)
     b[n] = bin[n];
 }
