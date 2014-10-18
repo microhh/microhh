@@ -107,17 +107,15 @@ void ThermoBuoySlope::getProgVars(std::vector<std::string> *list)
 
 void ThermoBuoySlope::calcBuoyancy(double * restrict b, double * restrict s)
 {
-  int ijk,jj,kk;
-  double ql;
-  jj = grid->icells;
-  kk = grid->ijcells;
+  const int jj = grid->icells;
+  const int kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
-        ijk = i + j*jj + k*kk;
+        const int ijk = i + j*jj + k*kk;
         b[ijk] = s[ijk];
       }
 }
@@ -143,14 +141,13 @@ void ThermoBuoySlope::calcBuoyancyBot(double * restrict b, double * restrict bbo
 
 void ThermoBuoySlope::calcBuoyancyFluxbot(double * restrict bfluxbot, double * restrict sfluxbot)
 {
-  int ij,jj,kk;
-  jj = grid->icells;
+  const int jj = grid->icells;
 
   for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
     for(int i=0; i<grid->icells; ++i)
     {
-      ij  = i + j*jj;
+      const int ij  = i + j*jj;
       bfluxbot[ij] = sfluxbot[ij];
     }
 }

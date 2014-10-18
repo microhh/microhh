@@ -51,6 +51,13 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
   exner  = 0;
   exnerh = 0;
 
+  thref_g  = 0;
+  threfh_g = 0;
+  pref_g   = 0;
+  prefh_g  = 0;
+  exner_g  = 0;
+  exnerh_g = 0;
+
   fields->initPrognosticField("th", "Potential Temperature", "K");
 
   int nerror = 0;

@@ -92,24 +92,21 @@ void Advec2i4::exec()
 
 double Advec2i4::calc_cfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
-  int    ijk,ii1,jj1,kk1,ii2,jj2,kk2,kk3,k;
-  double dxi,dyi;
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int jj1 = 1*grid->icells;
+  const int jj2 = 2*grid->icells;
+  const int kk1 = 1*grid->ijcells;
+  const int kk2 = 2*grid->ijcells;
 
-  ii1 = 1;
-  ii2 = 2;
-  jj1 = 1*grid->icells;
-  jj2 = 2*grid->icells;
-  kk1 = 1*grid->ijcells;
-  kk2 = 2*grid->ijcells;
-  kk3 = 2*grid->ijcells;
+  const int kstart = grid->kstart;
+  const int kend   = grid->kend;
 
-  dxi = 1./grid->dx;
-  dyi = 1./grid->dy;
+  const double dxi = 1./grid->dx;
+  const double dyi = 1./grid->dy;
 
+  int ijk, k;
   double cfl = 0;
-
-  int kstart = grid->kstart;
-  int kend   = grid->kend;
 
   k = kstart;
   for(int j=grid->jstart; j<grid->jend; j++)

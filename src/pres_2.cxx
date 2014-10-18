@@ -109,19 +109,14 @@ void Pres2::init()
 
 void Pres2::setValues()
 {
-  int imax, jmax, kmax;
-  int itot, jtot, kgc;
-
-  itot = grid->itot;
-  jtot = grid->jtot;
-  imax = grid->imax;
-  jmax = grid->jmax;
-  kmax = grid->kmax;
-  kgc  = grid->kgc;
+  const int itot = grid->itot;
+  const int jtot = grid->jtot;
+  const int kmax = grid->kmax;
+  const int kgc  = grid->kgc;
 
   // compute the modified wave numbers of the 2nd order scheme
-  double dxidxi = 1./(grid->dx*grid->dx);
-  double dyidyi = 1./(grid->dy*grid->dy);
+  const double dxidxi = 1./(grid->dx*grid->dx);
+  const double dyidyi = 1./(grid->dy*grid->dy);
 
   const double pi = std::acos(-1.);
 
@@ -193,24 +188,17 @@ void Pres2::solve(double * restrict p, double * restrict work3d, double * restri
                   double * restrict fftini, double * restrict fftouti, 
                   double * restrict fftinj, double * restrict fftoutj)
 {
-  int i,j,k,jj,kk,ijk;
-  int imax,jmax,kmax;
-  int itot,jtot;
-  int iblock,jblock,kblock;
-  int igc,jgc,kgc;
-  int iindex,jindex;
+  const int imax   = grid->imax;
+  const int jmax   = grid->jmax;
+  const int kmax   = grid->kmax;
+  const int iblock = grid->iblock;
+  const int jblock = grid->jblock;
+  const int igc    = grid->igc;
+  const int jgc    = grid->jgc;
+  const int kgc    = grid->kgc;
 
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  iblock = grid->iblock;
-  jblock = grid->jblock;
-  kblock = grid->kblock;
-  igc    = grid->igc;
-  jgc    = grid->jgc;
-  kgc    = grid->kgc;
+  int i,j,k,jj,kk,ijk;
+  int iindex,jindex;
 
   grid->fftForward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 

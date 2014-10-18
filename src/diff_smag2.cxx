@@ -280,32 +280,25 @@ void DiffSmag2::eviscNeutral(double * restrict evisc,
                              double * restrict ufluxbot, double * restrict vfluxbot,
                              double * restrict z, double * restrict dz, double z0m)
 {
-  int    ij,ijk,jj,kk,kstart;
-  double dx,dy;
+  const int jj = grid->icells;
+  const int kk = grid->ijcells;
 
-  // wall damping
-  double mlen,mlen0,fac;
-  const double n  = 2.;
+  // Make local copies to aid vectorization.
+  const double dx = grid->dx;
+  const double dy = grid->dy;
+  const double cs = this->cs;
 
-  double RitPrratio;
+  // Wall damping constant.
+  const int n = 2;
 
-  jj = grid->icells;
-  kk = grid->ijcells;
-  kstart = grid->kstart;
-
-  dx = grid->dx;
-  dy = grid->dy;
-
-  // local copies to aid vectorization
-  double tPr = this->tPr;
-  double cs  = this->cs;
+  int ijk;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
   {
-    // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-    mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[k]+z0m), n))), 1./n);
-    fac   = std::pow(mlen, 2);
+    // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
+    const double mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+    const double mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[k]+z0m), n))), 1./n);
+    const double fac   = std::pow(mlen, 2);
 
     for(int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
