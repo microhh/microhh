@@ -55,7 +55,7 @@ unsigned long Advec2i4::getTimeLimit(unsigned long idt, double dt)
 
   cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   // avoid zero divisons
-  cfl = std::max(constants::dsmall, cfl);
+  cfl = std::max(cflmin, cfl);
   idtlim = idt * cflmax / cfl;
 
   return idtlim;

@@ -63,7 +63,7 @@ unsigned long Advec::getTimeLimit(unsigned long idt, double dt)
 double Advec::get_cfl(double dt)
 {
   double cfl;
-  cfl = constants::dsmall;
+  cfl = cflmin;
   return cfl;
 }
 
@@ -93,3 +93,5 @@ Advec* Advec::factory(Master *masterin, Input *inputin, Model *modelin, const st
     throw 1;
   }
 }
+
+const double Advec::cflmin = 1.E-5;
