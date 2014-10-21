@@ -57,5 +57,6 @@ class Advec
     Fields *fields; ///< Pointer to fields class.
 
     double cflmax; ///< Maximum allowed value for the CFL criterion.
+    static const double cflmin; ///< Minimum value for CFL used to avoid overflows.
 };
 #endif
