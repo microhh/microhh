@@ -471,13 +471,16 @@ void ThermoDry::initStat()
 {
   if(stats->getSwitch() == "1")
   {
-    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
-    //stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
-    //stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
+    // Add base state profiles to statistics
     stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
     stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
-    stats->addFixedProf("thref",   "Full level reference potential temperature", "K", "z",thref);
-    stats->addFixedProf("threfh",  "Half level reference potential temperature", "K", "zh",thref);
+    stats->addFixedProf("thref",   "Full level basic state potential temperature", "K", "z", thref);
+    stats->addFixedProf("threfh",  "Half level basic state potential temperature", "K", "zh",thref);
+    if(model->swbasestate == "anelastic")
+    {
+      stats->addFixedProf("ph",    "Full level hydrostatic pressure", "Pa",     "z",  pref);
+      stats->addFixedProf("phh",   "Half level hydrostatic pressure", "Pa",     "zh", prefh);
+    }
 
     stats->addProf("b", "Buoyancy", "m s-2", "z");
     for(int n=2; n<5; ++n)

@@ -437,6 +437,24 @@ void ThermoMoist::execStats(Mask *m)
 
   stats->calcCover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
   stats->calcPath (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
+
+  // Calculate base state in tmp array
+  if(swupdatebasestate == 1)
+  {
+    const int kcells = grid->kcells;
+    double * restrict tmp2 = fields->atmp["tmp2"]->data;
+    calcBaseState(&tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], 
+                  &tmp2[4*kcells], &tmp2[5*kcells], &tmp2[6*kcells], &tmp2[7*kcells], 
+                  fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
+
+    for(int k=0; k<kcells; ++k)
+    {
+      m->profs["ph"  ].data[k] = tmp2[0*kcells+k];
+      m->profs["phh" ].data[k] = tmp2[1*kcells+k];
+      m->profs["rho" ].data[k] = tmp2[2*kcells+k];
+      m->profs["rhoh"].data[k] = tmp2[3*kcells+k];
+    } 
+  }
 }
 
 void ThermoMoist::execCross()
@@ -908,13 +926,25 @@ void ThermoMoist::initStat()
   // Add variables to the statistics
   if(stats->getSwitch() == "1")
   {
-    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
-    stats->addFixedProf("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
-    stats->addFixedProf("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
-    stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
-    stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
-    stats->addFixedProf("thvref",  "Full level reference virtual potential temperature", "K", "z",thvref);
-    stats->addFixedProf("thvrefh", "Half level reference virtual potential temperature", "K", "zh",thvref);
+    /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
+       there the statistics are initialized before thermo->create() is called */
+    stats->addFixedProf("rhoref",  "Full level basic state density", "kg m-3", "z",  fields->rhoref );
+    stats->addFixedProf("rhorefh", "Half level basic state density", "kg m-3", "zh", fields->rhorefh);
+    stats->addFixedProf("thvref",  "Full level basic state virtual potential temperature", "K", "z", thvref );
+    stats->addFixedProf("thvrefh", "Half level basic state virtual potential temperature", "K", "zh",thvrefh);
+
+    if(swupdatebasestate == 1)
+    {
+      stats->addProf("ph",   "Full level hydrostatic pressure", "Pa",     "z" );
+      stats->addProf("phh",  "Half level hydrostatic pressure", "Pa",     "zh");
+      stats->addProf("rho",  "Full level density",  "kg m-3", "z" );
+      stats->addProf("rhoh", "Half level density",  "kg m-3", "zh");
+    }
+    else
+    {
+      stats->addFixedProf("ph",  "Full level hydrostatic pressure", "Pa", "z",  pref );
+      stats->addFixedProf("phh", "Half level hydrostatic pressure", "Pa", "zh", prefh);
+    }
 
     stats->addProf("b", "Buoyancy", "m s-2", "z");
     for(int n=2; n<5; ++n)
