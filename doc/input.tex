@@ -68,10 +68,8 @@ beta     & 2.  &   & exponent of the damping increase with height [-] \\
 swcross       & 0     & 0 & disable cross sections \\
               &       & 1 & enable cross sections \\ 
 sampletime    & n/a   &   & sampling time step [s] \\
-jxz           & empty &   & list of j-values at which xz-crosssection are taken \\
-kxy           & empty &   & list of k-values at which xy-crosssection are taken \\
-simple        & empty &   & list of variables of which standard cross sections are taken \\
-lngrad        & empty &   & list of variables of which the $ln( \|\Delta var)\| )$ is taken \\
+xz            & empty &   & list of y locations at which xz-crosssection are taken \\
+xy            & empty &   & list of z locations at which xy-crosssection are taken \\
 \end{supertabular}
 \subsection*{[diff]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -86,6 +84,16 @@ swdiff        & [grid][spatialorder] & 0     & disable diffusion \\
 dnmax         & 0.4                  &       & maximum diffusion number for numerical scheme \\
 cs            & 0.23                 &       & Smagorinsky constant (only valid for \textit{les2s}) \\
 tPr           & 1./3.                &       & turbulent Prandtl number (only valid for \textit{les2s}) \\
+\end{supertabular}
+\subsection*{[dump]}
+\tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
+\tablehead{\textit{... continued from previous page} \\ NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
+\tabletail{\hline \textit{Continued on next page ...} \\} 
+\tablelasttail{\hline}
+\begin{supertabular}{lccl}
+swdump        & 0     & 0 & disable writing 3d diagnostic fields \\
+              &       & 1 & enable writing 3d diagnostic fields \\ 
+sampletime    & n/a   &   & sampling time step [s] \\
 \end{supertabular}
 \subsection*{[fields]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -103,6 +111,8 @@ rndexp        & 2.    &  & exponent of decay of perturbation \\
 vortexnpair   & 0     &  & number of rotating vortex pairs \\
 vortexamp     & 1.e-3 &  & amplitude of vortex pairs \\
 vortexaxis    & x     &  & axis around which the vortices are evolving \\
+crosslist     & empty &  & list of cross-section variables \\
+dumplist      & empty &  & list of diagnostic 3D fields to write \\
 \end{supertabular}
 \subsection*{[force]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -135,6 +145,8 @@ jtot           & n/a   &   & number of grid points in y-direction \\
 ktot           & n/a   &   & number of grid points in z-direction \\
 swspatialorder & n/a   & 2 & 2nd-order spatial discretization \\
                &       & 4 & 4th-order spatial discretization \\
+swbasestate    & n/a   & boussinesq & constant density and reference temperature \\
+               &       & anelastic  & anelastic approximation (Bannon, 1996) \\
 utrans         & 0.    &   & translation velocity in x-direction [m s$^{-1}$] \\
 vtrans         & 0.    &   & translation velocity in y-direction [m s$^{-1}$] \\
 \end{supertabular}
@@ -179,10 +191,13 @@ swthermo      & 0         & 0     & disable thermodynamics \\
               &           & moist & moist thermodynamics \\
               &           & buoy  & buoyancy thermodynamics \\
               &           & buoy\_slope  & buoyancy thermodynamics including slope\\
-gravity       & 9.81      &       & gravity acceleration [m~s$^{-2}$] \\
-expcoef       & 1./300.   &       & thermal expansion coefficient [m$^3$~K$^{-1}$] \\
-thvref        & 300.      &       & reference virtual temperature [K] \\
+thvref0       & n/a       &       & reference virtual potential temperature [K] (moist) \\
+thref0        & n/a       &       & reference potential temperature [K] (dry) \\
 ps            & n/a       &       & surface pressure [Pa] \\
+swupdatebasestate & n/a   & 0     & use initial hydrostatic pressure in $q_l$ calculation \\
+              &           & 1     & update hydrostatic pressure in $q_l$ calculation \\          
+crosslist     & empty &   & list of cross-section variables \\
+dumplist      & empty &   & list of diagnostic 3D fields to write \\
 \end{supertabular}
 \subsection*{[timeloop]}
 \tablefirsthead{NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
