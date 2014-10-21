@@ -514,7 +514,7 @@ void ThermoDry::initCross()
     {
       if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
       {
-        if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
+        master->printWarning("field %s in [thermo][crosslist] is illegal\n", it->c_str());
         it = crosslist.erase(it);  // erase() returns iterator of next element..
       }
       else

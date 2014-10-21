@@ -117,7 +117,7 @@ void Buffer::create(Input *inputin)
     if(bufferkstarth == grid->kend)
     {
       ++nerror;
-      if(master->mpiid == 0) std::printf("ERROR buffer is too close to the model top\n");
+      master->printError("buffer is too close to the model top\n");
     }
   }
 

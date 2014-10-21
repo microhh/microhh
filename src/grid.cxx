@@ -82,7 +82,7 @@ Grid::Grid(Model *modelin, Input *inputin)
 
   if(!(swspatialorder == "2" || swspatialorder == "4"))
   {
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+    master->printError("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
     throw 1;
   }
  

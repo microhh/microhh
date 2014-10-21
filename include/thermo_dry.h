@@ -83,9 +83,6 @@ class ThermoDry : public Thermo
 
     void initBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double); ///< For anelastic setup, calculate base state from initial input profiles
 
-
-
-
     Stats *stats;
 
     double pbot;   ///< Surface pressure.

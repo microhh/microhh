@@ -176,7 +176,7 @@ void Force::create(Input *inputin)
 
     // display a warning for the non-supported 
     for(std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
-      if(master->mpiid == 0) std::printf("WARNING %s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
+      master->printWarning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
   if(nerror)

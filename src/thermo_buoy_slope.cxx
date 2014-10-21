@@ -46,7 +46,7 @@ ThermoBuoySlope::ThermoBuoySlope(Model *modelin, Input *inputin) : Thermo(modeli
 
   if(grid->swspatialorder == "2")
   {
-    if(master->mpiid == 0) std::printf("ERROR swthermo = buoy_slope is incompatible with swspatialorder = 2\n");
+    master->printError("swthermo = buoy_slope is incompatible with swspatialorder = 2\n");
     ++nerror;
   }
 
