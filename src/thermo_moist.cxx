@@ -73,14 +73,14 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
   // Read list of cross sections
-  nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
+  nerror += inputin->getList(&crosslist, "thermo", "crosslist", "");
   // Read list of 3d dumps
-  nerror += inputin->getList(&dumplist ,  "thermo", "dumplist" ,  "");
+  nerror += inputin->getList(&dumplist,  "thermo", "dumplist",  "");
   
   // BvS test for updating hydrostatic prssure during run
   // swupdate..=0 -> initial base state pressure used in saturation calculation
   // swupdate..=1 -> base state pressure updated before saturation calculation
-  nerror += inputin->getItem(&swupdatebasestate,"thermo","swupdatebasestate",""); 
+  nerror += inputin->getItem(&swupdatebasestate, "thermo", "swupdatebasestate", ""); 
 
   if(nerror)
     throw 1;
@@ -130,13 +130,6 @@ void ThermoMoist::init()
 
 void ThermoMoist::create(Input *inputin)
 {
-  // Only in case of Boussinesq, read in reference potential temperature
-  if(model->swbasestate == "boussinesq")
-  {
-    if(inputin->getItem(&thvref0, "thermo", "thvref0", ""))
-      throw 1;
-  }
-
   int kstart = grid->kstart;
   int kend   = grid->kend;
 
@@ -170,6 +163,9 @@ void ThermoMoist::create(Input *inputin)
   // 5. In Boussinesq mode, overwrite reference temperature and density
   if(model->swbasestate == "boussinesq")
   {
+    if(inputin->getItem(&thvref0, "thermo", "thvref0", ""))
+      throw 1;
+
     for(int k=0; k<grid->kcells; ++k)
     {
       fields->rhoref[k]  = 1.;
@@ -179,75 +175,9 @@ void ThermoMoist::create(Input *inputin)
     }
   }
 
-  // Add variables to the statistics
-  if(stats->getSwitch() == "1")
-  {
-    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
-    stats->addFixedProf("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
-    stats->addFixedProf("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
-    stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
-    stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
-    stats->addFixedProf("thvref",  "Full level reference virtual potential temperature", "K", "z",thvref);
-    stats->addFixedProf("thvrefh", "Half level reference virtual potential temperature", "K", "zh",thvref);
-
-    stats->addProf("b", "Buoyancy", "m s-2", "z");
-    for(int n=2; n<5; ++n)
-    {
-      std::stringstream ss;
-      ss << n;
-      std::string sn = ss.str();
-      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
-    }
-
-    stats->addProf("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-    stats->addProf("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
-
-    stats->addProf("ql", "Liquid water mixing ratio", "kg kg-1", "z");
-    stats->addProf("cfrac", "Cloud fraction", "-","z");
-
-    stats->addTimeSeries("lwp", "Liquid water path", "kg m-2");
-    stats->addTimeSeries("ccover", "Projected cloud cover", "-");
-  }
-
-  // Cross sections (isn't there an easier way to populate this list?)
-  allowedcrossvars.push_back("b");
-  allowedcrossvars.push_back("bbot");
-  allowedcrossvars.push_back("bfluxbot");
-  if(grid->swspatialorder == "4")
-    allowedcrossvars.push_back("blngrad");
-  allowedcrossvars.push_back("ql");
-  allowedcrossvars.push_back("qlpath");
-
-  // Check input list of cross variables (crosslist)
-  std::vector<std::string>::iterator it=crosslist.begin();
-  while(it != crosslist.end())
-  {
-    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
-    {
-      if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
-      it = crosslist.erase(it);  // erase() returns iterator of next element..
-    }
-    else
-      ++it;
-  }
-
-  // Sort crosslist to group ql and b variables
-  std::sort(crosslist.begin(),crosslist.end());
-
-  // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
-  std::vector<std::string>::iterator dumpvar=dumplist.begin();
-  while(dumpvar != dumplist.end())
-  {
-    if(checkThermoField(*dumpvar))
-    {
-      master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
-      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
-    }
-    else
-      ++dumpvar;
-  }
+  initStat();
+  initCross();
+  initDump();
 }
 
 #ifndef USECUDA
@@ -971,6 +901,90 @@ void ThermoMoist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restr
       ij  = i + j*jj;
       bfluxbot[ij] = buoyancyFluxNoql(sbot[ij], sfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
     }
+}
+
+void ThermoMoist::initStat()
+{
+  // Add variables to the statistics
+  if(stats->getSwitch() == "1")
+  {
+    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
+    stats->addFixedProf("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
+    stats->addFixedProf("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
+    stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
+    stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
+    stats->addFixedProf("thvref",  "Full level reference virtual potential temperature", "K", "z",thvref);
+    stats->addFixedProf("thvrefh", "Half level reference virtual potential temperature", "K", "zh",thvref);
+
+    stats->addProf("b", "Buoyancy", "m s-2", "z");
+    for(int n=2; n<5; ++n)
+    {
+      std::stringstream ss;
+      ss << n;
+      std::string sn = ss.str();
+      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+    }
+
+    stats->addProf("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
+    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+
+    stats->addProf("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+    stats->addProf("cfrac", "Cloud fraction", "-","z");
+
+    stats->addTimeSeries("lwp", "Liquid water path", "kg m-2");
+    stats->addTimeSeries("ccover", "Projected cloud cover", "-");
+  }
+}
+
+void ThermoMoist::initCross()
+{
+  if(model->cross->getSwitch() == "1")
+  {
+    allowedcrossvars.push_back("b");
+    allowedcrossvars.push_back("bbot");
+    allowedcrossvars.push_back("bfluxbot");
+    if(grid->swspatialorder == "4")
+      allowedcrossvars.push_back("blngrad");
+    allowedcrossvars.push_back("ql");
+    allowedcrossvars.push_back("qlpath");
+
+    // Check input list of cross variables (crosslist)
+    std::vector<std::string>::iterator it=crosslist.begin();
+    while(it != crosslist.end())
+    {
+      if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+      {
+        if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
+        it = crosslist.erase(it);  // erase() returns iterator of next element..
+      }
+      else
+        ++it;
+    }
+
+    // Sort crosslist to group ql and b variables
+    std::sort(crosslist.begin(),crosslist.end());
+  }
+}
+
+void ThermoMoist::initDump()
+{
+  if(model->dump->getSwitch() == "1")
+  {
+    // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
+    std::vector<std::string>::iterator dumpvar=dumplist.begin();
+    while(dumpvar != dumplist.end())
+    {
+      if(checkThermoField(*dumpvar))
+      {
+        master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
+        dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+      }
+      else
+        ++dumpvar;
+    }
+  }
 }
 
 // INLINE FUNCTIONS

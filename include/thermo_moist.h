@@ -59,6 +59,9 @@ class ThermoMoist : public Thermo
     #endif
 
   private:
+    void initStat();  ///< Initialize the thermo statistics
+    void initCross(); ///< Initialize the thermo cross-sections
+    void initDump();  ///< Initialize the thermo field dumps
 
     int swupdatebasestate;
 
