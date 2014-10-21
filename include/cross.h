@@ -38,6 +38,7 @@ class Cross
 
     void init(double);
     void create();
+    std::string getSwitch();
 
     unsigned long getTimeLimit(unsigned long);
     //int exec(double, unsigned long, int);

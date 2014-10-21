@@ -190,6 +190,11 @@ unsigned long Cross::getTimeLimit(unsigned long itime)
   return idtlim;
 }
 
+std::string Cross::getSwitch()
+{
+  return swcross;
+}
+
 bool Cross::doCross()
 {
   if(swcross == "0")

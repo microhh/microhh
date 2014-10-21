@@ -70,6 +70,11 @@ unsigned long Dump::getTimeLimit(unsigned long itime)
   return idtlim;
 }
 
+std::string Dump::getSwitch()
+{
+  return swdump;
+}
+
 bool Dump::doDump()
 {
   if(swdump == "0")

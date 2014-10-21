@@ -35,8 +35,8 @@ class Dump
     ~Dump();
 
     void init(double);
-
     unsigned long getTimeLimit(unsigned long);
+    std::string getSwitch();
 
     std::string swdump;
     bool doDump();

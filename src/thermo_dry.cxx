@@ -499,42 +499,48 @@ void ThermoDry::initStat()
 
 void ThermoDry::initCross()
 {
-  // Populate list with allowed cross-section variables
-  allowedcrossvars.push_back("b");
-  allowedcrossvars.push_back("bbot");
-  allowedcrossvars.push_back("bfluxbot");
-  if(grid->swspatialorder == "4")
-    allowedcrossvars.push_back("blngrad");
-
-  // Check input list of cross variables (crosslist)
-  std::vector<std::string>::iterator it=crosslist.begin();
-  while(it != crosslist.end())
+  if(model->cross->getSwitch() == "1")
   {
-    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
-    {
-      if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
-      it = crosslist.erase(it);  // erase() returns iterator of next element..
-    }
-    else
-      ++it;
-  }
+    // Populate list with allowed cross-section variables
+    allowedcrossvars.push_back("b");
+    allowedcrossvars.push_back("bbot");
+    allowedcrossvars.push_back("bfluxbot");
+    if(grid->swspatialorder == "4")
+      allowedcrossvars.push_back("blngrad");
 
-  // Sort crosslist to group ql and b variables
-  std::sort(crosslist.begin(),crosslist.end());
+    // Check input list of cross variables (crosslist)
+    std::vector<std::string>::iterator it=crosslist.begin();
+    while(it != crosslist.end())
+    {
+      if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+      {
+        if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
+        it = crosslist.erase(it);  // erase() returns iterator of next element..
+      }
+      else
+        ++it;
+    }
+
+    // Sort crosslist to group ql and b variables
+    std::sort(crosslist.begin(),crosslist.end());
+  }
 }
 
 void ThermoDry::initDump()
 {
-  // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
-  std::vector<std::string>::iterator dumpvar=dumplist.begin();
-  while(dumpvar != dumplist.end())
+  if(model->dump->getSwitch() == "1")
   {
-    if(checkThermoField(*dumpvar))
+    // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
+    std::vector<std::string>::iterator dumpvar=dumplist.begin();
+    while(dumpvar != dumplist.end())
     {
-      master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
-      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+      if(checkThermoField(*dumpvar))
+      {
+        master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
+        dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+      }
+      else
+        ++dumpvar;
     }
-    else
-      ++dumpvar;
   }
 }
