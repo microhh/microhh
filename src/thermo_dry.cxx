@@ -99,147 +99,34 @@ void ThermoDry::init()
 
 void ThermoDry::create(Input *inputin)
 {
-  // Only in case of Boussinesq, read in reference potential temperature
-  if(model->swbasestate == "boussinesq")
-  {
-    if(inputin->getItem(&thref0, "thermo", "thref0", ""))
-      throw 1;
-  }
-
-  // For dry thermo, only anelastic needs surface pressure
+  /* Setup base state: 
+     For anelastic setup, calculate reference density and temperature from input sounding
+     For boussinesq, reference density and temperature are fixed */
   if(model->swbasestate == "anelastic")
   {
     if(inputin->getItem(&pbot, "thermo", "pbot", ""))
       throw 1;
-  }
-
-  // Setup base state for anelastic solver
-  if(model->swbasestate == "anelastic")
-  {
-    // take the initial profile as the reference
     if(inputin->getProf(&thref[grid->kstart], "th", grid->kmax))
       throw 1;
 
-    int kstart = grid->kstart;
-    int kend   = grid->kend;
-
-    // extrapolate the profile to get the bottom value
-    threfh[kstart] = thref[kstart] - grid->z[kstart]*(thref[kstart+1]-thref[kstart])*grid->dzhi[kstart+1];
-
-    // extrapolate the profile to get the top value
-    threfh[kend] = thref[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thref[kend-1]-thref[kend-2])*grid->dzhi[kend-1];
-
-    // set the ghost cells for the reference temperature
-    thref[kstart-1] = 2.*threfh[kstart] - thref[kstart];
-    thref[kend]     = 2.*threfh[kend]   - thref[kend-1];
-
-    // interpolate the reference temperature profile
-    for(int k=grid->kstart+1; k<grid->kend; ++k)
-      threfh[k] = 0.5*(thref[k-1] + thref[k]);
-
-    // ANELASTIC
-    // calculate the base state pressure and density
-    for(int k=grid->kstart; k<grid->kend; ++k)
-    {
-      pref [k] = pbot*std::exp(-grav/(Rd*thref[k])*grid->z[k]);
-      exner[k] = std::pow(pref[k]/pbot, Rd/cp);
-
-      // set the base density for the entire model
-      fields->rhoref[k] = pref[k] / (Rd*exner[k]*thref[k]);
-    }
-
-    for(int k=grid->kstart; k<grid->kend+1; ++k)
-    {
-      prefh [k] = pbot*std::exp(-grav/(Rd*threfh[k])*grid->zh[k]);
-      exnerh[k] = std::pow(prefh[k]/pbot, Rd/cp);
-
-      // set the base density for the entire model
-      fields->rhorefh[k] = prefh[k] / (Rd*exnerh[k]*threfh[k]);
-    }
-
-    // set the ghost cells for the reference variables
-    // CvH for now in 2nd order
-    pref [kstart-1] = 2.*prefh [kstart] - pref [kstart];
-    exner[kstart-1] = 2.*exnerh[kstart] - exner[kstart];
-    fields->rhoref[kstart-1] = 2.*fields->rhorefh[kstart] - fields->rhoref[kstart];
-
-    pref [kend] = 2.*prefh [kend] - pref [kend-1];
-    exner[kend] = 2.*exnerh[kend] - exner[kend-1];
-    fields->rhoref[kend] = 2.*fields->rhorefh[kend] - fields->rhoref[kend-1];
+    initBaseState(fields->rhoref, fields->rhorefh, pref, prefh, exner, exnerh, thref, threfh, pbot);
   }
   else
   {
-    // Set entire column to reference value
+    if(inputin->getItem(&thref0, "thermo", "thref0", ""))
+      throw 1;
+
+    // Set entire column to reference value. Density is already initialized at 1.0 in fields.cxx
     for(int k=0; k<grid->kcells; ++k)
     {
       thref[k]  = thref0;
       threfh[k] = thref0;
     }
   }
-  
-  // add variables to the statistics
-  if(stats->getSwitch() == "1")
-  {
-    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
-    //stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
-    //stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
-    stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
-    stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
-    stats->addFixedProf("thref",   "Full level reference potential temperature", "K", "z",thref);
-    stats->addFixedProf("threfh",  "Half level reference potential temperature", "K", "zh",thref);
-
-    stats->addProf("b", "Buoyancy", "m s-2", "z");
-    for(int n=2; n<5; ++n)
-    {
-      std::stringstream ss;
-      ss << n;
-      std::string sn = ss.str();
-      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
-    }
-
-    stats->addProf("bgrad", "Gradient of the buoyancy", "s-2", "zh");
-    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-    stats->addProf("bdiff", "usive flux of the buoyancy", "m2 s-3", "zh");
-    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
-
-    stats->addProf("bsort", "Sorted buoyancy", "m s-2", "z");
-  }
-
-  // Cross sections (isn't there an easier way to populate this list?)
-  allowedcrossvars.push_back("b");
-  allowedcrossvars.push_back("bbot");
-  allowedcrossvars.push_back("bfluxbot");
-  if(grid->swspatialorder == "4")
-    allowedcrossvars.push_back("blngrad");
-
-  // Check input list of cross variables (crosslist)
-  std::vector<std::string>::iterator it=crosslist.begin();
-  while(it != crosslist.end())
-  {
-    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
-    {
-      if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
-      it = crosslist.erase(it);  // erase() returns iterator of next element..
-    }
-    else
-      ++it;
-  }
-
-  // Sort crosslist to group ql and b variables
-  std::sort(crosslist.begin(),crosslist.end());
-
-  // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
-  std::vector<std::string>::iterator dumpvar=dumplist.begin();
-  while(dumpvar != dumplist.end())
-  {
-    if(checkThermoField(*dumpvar))
-    {
-      master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
-      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
-    }
-    else
-      ++dumpvar;
-  }
+ 
+  initStat();
+  initCross();
+  initDump(); 
 }
 
 #ifndef USECUDA
@@ -524,4 +411,130 @@ void ThermoDry::calcbuoyancytend_4th(double * restrict wt, double * restrict th,
         ijk = i + j*jj + k*kk1;
         wt[ijk] += grav/threfh[k] * (interp4(th[ijk-kk2], th[ijk-kk1], th[ijk], th[ijk+kk1]) - threfh[k]);
       }
+}
+
+void ThermoDry::initBaseState(double * restrict rho,    double * restrict rhoh,
+                              double * restrict pref,   double * restrict prefh,
+                              double * restrict exner,  double * restrict exnerh,
+                              double * restrict thref,  double * restrict threfh,
+                              double pbot)
+{
+  int kstart = grid->kstart;
+  int kend   = grid->kend;
+
+  // extrapolate the input sounding to get the bottom value
+  threfh[kstart] = thref[kstart] - grid->z[kstart]*(thref[kstart+1]-thref[kstart])*grid->dzhi[kstart+1];
+
+  // extrapolate the input sounding to get the top value
+  threfh[kend] = thref[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thref[kend-1]-thref[kend-2])*grid->dzhi[kend-1];
+
+  // set the ghost cells for the reference temperature
+  thref[kstart-1] = 2.*threfh[kstart] - thref[kstart];
+  thref[kend]     = 2.*threfh[kend]   - thref[kend-1];
+
+  // interpolate the input sounding to half levels
+  for(int k=grid->kstart+1; k<grid->kend; ++k)
+    threfh[k] = 0.5*(thref[k-1] + thref[k]);
+
+  // calculate the full level base state pressure and density
+  for(int k=grid->kstart; k<grid->kend; ++k)
+  {
+    pref [k] = pbot*std::exp(-grav/(Rd*thref[k])*grid->z[k]);
+    exner[k] = std::pow(pref[k]/pbot, Rd/cp);
+
+    // set the base density
+    rho[k] = pref[k] / (Rd*exner[k]*thref[k]);
+  }
+
+  // calculate the half level base state pressure and density
+  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  {
+    prefh [k] = pbot*std::exp(-grav/(Rd*threfh[k])*grid->zh[k]);
+    exnerh[k] = std::pow(prefh[k]/pbot, Rd/cp);
+
+    // set the base density for the entire model
+    rhoh[k] = prefh[k] / (Rd*exnerh[k]*threfh[k]);
+  }
+
+  // set the ghost cells for the reference variables
+  // CvH for now in 2nd order
+  pref[kstart-1]  = 2.*prefh [kstart] - pref [kstart];
+  exner[kstart-1] = 2.*exnerh[kstart] - exner[kstart];
+  rho[kstart-1]   = 2.*rhoh[kstart] - rho[kstart];
+
+  pref[kend]      = 2.*prefh [kend] - pref [kend-1];
+  exner[kend]     = 2.*exnerh[kend] - exner[kend-1];
+  rho[kend]       = 2.*rhoh[kend] - rho[kend-1];
+}
+
+void ThermoDry::initStat()
+{
+  if(stats->getSwitch() == "1")
+  {
+    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
+    //stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
+    //stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
+    stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
+    stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
+    stats->addFixedProf("thref",   "Full level reference potential temperature", "K", "z",thref);
+    stats->addFixedProf("threfh",  "Half level reference potential temperature", "K", "zh",thref);
+
+    stats->addProf("b", "Buoyancy", "m s-2", "z");
+    for(int n=2; n<5; ++n)
+    {
+      std::stringstream ss;
+      ss << n;
+      std::string sn = ss.str();
+      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+    }
+
+    stats->addProf("bgrad", "Gradient of the buoyancy", "s-2", "zh");
+    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bdiff", "usive flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+
+    stats->addProf("bsort", "Sorted buoyancy", "m s-2", "z");
+  }
+}
+
+void ThermoDry::initCross()
+{
+  // Populate list with allowed cross-section variables
+  allowedcrossvars.push_back("b");
+  allowedcrossvars.push_back("bbot");
+  allowedcrossvars.push_back("bfluxbot");
+  if(grid->swspatialorder == "4")
+    allowedcrossvars.push_back("blngrad");
+
+  // Check input list of cross variables (crosslist)
+  std::vector<std::string>::iterator it=crosslist.begin();
+  while(it != crosslist.end())
+  {
+    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+    {
+      if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
+      it = crosslist.erase(it);  // erase() returns iterator of next element..
+    }
+    else
+      ++it;
+  }
+
+  // Sort crosslist to group ql and b variables
+  std::sort(crosslist.begin(),crosslist.end());
+}
+
+void ThermoDry::initDump()
+{
+  // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
+  std::vector<std::string>::iterator dumpvar=dumplist.begin();
+  while(dumpvar != dumplist.end())
+  {
+    if(checkThermoField(*dumpvar))
+    {
+      master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
+      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+    }
+    else
+      ++dumpvar;
+  }
 }

@@ -62,6 +62,10 @@ class ThermoDry : public Thermo
     #endif
 
   private:
+    void initStat();  ///< Initialize the thermo statistics
+    void initCross(); ///< Initialize the thermo cross-sections
+    void initDump();  ///< Initialize the thermo field dumps
+
     void calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
     void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
     
@@ -76,6 +80,11 @@ class ThermoDry : public Thermo
     void calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
     void calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
     void calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+
+    void initBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double); ///< For anelastic setup, calculate base state from initial input profiles
+
+
+
 
     Stats *stats;
 
