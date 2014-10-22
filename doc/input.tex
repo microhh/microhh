@@ -1,28 +1,23 @@
 % The design of this document has been borrowed from the DALES manual.
-\documentclass[a4paper,9pt]{extarticle}
-\usepackage[twoside, bindingoffset=0.4cm, paper=a4paper, left=2cm, right=2cm, top=2cm, bottom=2.5cm]{geometry}
+\documentclass[a4paper,8pt, twocolumn]{extarticle}
+\usepackage[twoside, bindingoffset=0cm, paper=a4paper, left=0.6cm, right=0.6cm, top=0.6cm, bottom=0.2cm, landscape]{geometry}
 \usepackage{amsmath}
 \usepackage{supertabular}
 \usepackage{longtable}
-
 
 %% Fonts
 %\usepackage{pxfonts}
 \usepackage{fourier}
 \usepackage[T1]{fontenc}
 
-
 % Column widths:
 \def \wname{1.8cm}
-\def \wdesc{9cm}
+\def \wdesc{7.2cm}
 
-\title{\huge MicroHH cheat sheet}
-\date{}
 \begin{document}
-\maketitle
+\section*{\huge MicroHH 1.0 cheat sheet}
 
-\subsection*{Advection [advec]}
-
+\subsection*{[advec] Advection}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -36,8 +31,7 @@ swadvec       & swspatialorder       & 0   & disable advection \\
 cflmax        & 1.0                  &     & \\
 \end{supertabular}
 
-\subsection*{Boundary conditions [boundary]}
-
+\subsection*{[boundary] Boundary conditions}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -64,8 +58,7 @@ z0h           & n/a     &           & roughness length of scalars [m]\\
 ustar         & n/a     &           & value of the friction velocity [m~s$^{-1}$]\\
 \end{supertabular}
 
-\subsection*{Buffer layer [buffer]}
-
+\subsection*{[buffer] Buffer layer}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -78,10 +71,7 @@ sigma    & n/a &   & damping time scale of the buffer layer [s$^{-1}$]\\
 beta     & 2.  &   & exponent of the damping increase with height [-] \\
 \end{supertabular}
 
-\subsection*{Cross-section [cross]}
-
-Shared properties of the cross-sections. The outpur variables are controlled by the \textit{crosslist} option in [fields] and [thermo]\newline
-
+\subsection*{[cross] Cross-section}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -94,8 +84,9 @@ xz            & empty &   & list of y locations at which xz-crosssection are tak
 xy            & empty &   & list of z locations at which xy-crosssection are taken \\
 \end{supertabular}
 
-\clearpage
-\subsection*{Diffusion [diff]}
+\newpage
+
+\subsection*{[diff] Diffusion}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -111,10 +102,7 @@ cs            & 0.23                 &       & Smagorinsky constant \\
 tPr           & 1./3.                &       & turbulent Prandtl number \\
 \end{supertabular}
 
-\subsection*{3D output [dump]}
-
-Shared properties of the 3D output. The outpur variables are controlled by the \textit{dumplist} option in [fields] and [thermo]\newline
-
+\subsection*{[dump] 3D output}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -125,7 +113,7 @@ swdump        & 0     & 0 & disable writing 3d diagnostic fields \\
 sampletime    & n/a   &   & sampling time step [s] \\
 \end{supertabular}
 
-\subsection*{Fields [fields]}
+\subsection*{[fields] Fields}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -145,7 +133,7 @@ crosslist     & empty &  & list of cross-section variables \\
 dumplist      & empty &  & list of diagnostic 3D fields to write \\
 \end{supertabular}
 
-\subsection*{Large scale forcings [force]}
+\subsection*{[force] Large scale forcings}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -163,7 +151,7 @@ fc            & n/a   &       & coriolis parameter [s$^{-1}$] \\
 uflux         & n/a   &       & mean flow velocity [m~s$^{-1}$] \\
 \end{supertabular}
 
-\subsection*{Grid [grid]}
+\subsection*{[grid] Grid}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -183,7 +171,7 @@ utrans         & 0.    &   & translation velocity in x-direction [m s$^{-1}$] \\
 vtrans         & 0.    &   & translation velocity in y-direction [m s$^{-1}$] \\
 \end{supertabular}
 
-\subsection*{Communication [mpi]}
+\subsection*{[mpi] Communication}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -193,7 +181,7 @@ npx           & 1     & & number of processors in x-direction \\
 npy           & 1     & & number of processors in y-direction \\
 \end{supertabular}
 
-\subsection*{Pressure [pres]}
+\subsection*{[pres] Pressure}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -204,7 +192,7 @@ swpres        & swspatialorder        & 0 & disable pressure solver \\
               &                       & 4 & 4th-order pressure solver (heptadiagonal solver) \\
 \end{supertabular}
 
-\subsection*{Statistics [stats]}
+\subsection*{[stat] Statistics}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -214,7 +202,7 @@ swstats       & 0     & 0   & disable statistics \\
 sampletime    & n/a   &     & sampling time step [s] \\
 \end{supertabular}
 
-\subsection*{Thermodynamics [thermo]}
+\subsection*{[thermo] Thermodynamics}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
@@ -225,8 +213,8 @@ swthermo      & 0         & 0     & disable thermodynamics \\
               &           & moist & moist thermodynamics \\
               &           & buoy  & buoyancy thermodynamics \\
               &           & buoy\_slope  & buoyancy thermodynamics including slope\\
-thvref0       & n/a       &       & reference virtual potential temperature [K] (moist) \\
-thref0        & n/a       &       & reference potential temperature [K] (dry) \\
+thvref0       & n/a       &       & reference virtual potential temperature [K] (moist Boussinesq) \\
+thref0        & n/a       &       & reference potential temperature [K] (dry Boussinesq) \\
 ps            & n/a       &       & surface pressure [Pa] \\
 swupdatebasestate & n/a   & 0     & use initial hydrostatic pressure in $q_l$ calculation \\
               &           & 1     & update hydrostatic pressure in $q_l$ calculation \\          
@@ -234,7 +222,9 @@ crosslist     & empty &   & list of cross-section variables \\
 dumplist      & empty &   & list of diagnostic 3D fields to write \\
 \end{supertabular}
 
-\subsection*{Time [timeloop]}
+\newpage
+
+\subsection*{[timeloop] Time}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
