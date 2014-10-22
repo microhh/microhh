@@ -95,6 +95,9 @@ void ThermoDry::init()
   prefh  = new double[grid->kcells];
   exner  = new double[grid->kcells];
   exnerh = new double[grid->kcells];
+
+  initCross();
+  initDump(); 
 }
 
 void ThermoDry::create(Input *inputin)
@@ -123,10 +126,8 @@ void ThermoDry::create(Input *inputin)
       threfh[k] = thref0;
     }
   }
- 
+
   initStat();
-  initCross();
-  initDump(); 
 }
 
 #ifndef USECUDA
@@ -511,14 +512,18 @@ void ThermoDry::initCross()
     if(grid->swspatialorder == "4")
       allowedcrossvars.push_back("blngrad");
 
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+
     // Check input list of cross variables (crosslist)
-    std::vector<std::string>::iterator it=crosslist.begin();
-    while(it != crosslist.end())
+    std::vector<std::string>::iterator it=crosslist_global->begin();
+    while(it != crosslist_global->end())
     {
-      if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+      if(std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
       {
-        master->printWarning("field %s in [thermo][crosslist] is illegal\n", it->c_str());
-        it = crosslist.erase(it);  // erase() returns iterator of next element..
+        // Remove variable from global list, put in local list
+        crosslist.push_back(*it);
+        crosslist_global->erase(it); // erase() returns iterator of next element..
       }
       else
         ++it;

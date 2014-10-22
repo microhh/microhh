@@ -188,29 +188,25 @@ void Fields::init()
     vmodel[k] = 0.; 
   }
 
+  // Get global cross-list from cross.cxx
+  std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+
   // Check different type of crosses and put them in their respective lists 
   for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    checkAddedCross(it->first, "",        &crosslist, &crosssimple);
-    checkAddedCross(it->first, "lngrad",  &crosslist, &crosslngrad);
-    checkAddedCross(it->first, "bot",     &crosslist, &crossbot);
-    checkAddedCross(it->first, "top",     &crosslist, &crosstop);
-    checkAddedCross(it->first, "fluxbot", &crosslist, &crossfluxbot);
-    checkAddedCross(it->first, "fluxtop", &crosslist, &crossfluxtop);
+    checkAddedCross(it->first, "",        crosslist_global, &crosssimple);
+    checkAddedCross(it->first, "lngrad",  crosslist_global, &crosslngrad);
+    checkAddedCross(it->first, "bot",     crosslist_global, &crossbot);
+    checkAddedCross(it->first, "top",     crosslist_global, &crosstop);
+    checkAddedCross(it->first, "fluxbot", crosslist_global, &crossfluxbot);
+    checkAddedCross(it->first, "fluxtop", crosslist_global, &crossfluxtop);
   }
 
   for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    checkAddedCross(it->first, "",       &crosslist, &crosssimple);
-    checkAddedCross(it->first, "lngrad", &crosslist, &crosslngrad);
+    checkAddedCross(it->first, "",        crosslist_global, &crosssimple);
+    checkAddedCross(it->first, "lngrad",  crosslist_global, &crosslngrad);
   }
-
-  // If crosslist not empty, illegal variables or cross types were selected
-  if(crosslist.size() > 0)
-  {
-    for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
-      master->printWarning("field %s in [fields][crosslist] is illegal\n", it->c_str());
-  } 
 
   // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
   std::vector<std::string>::iterator dumpvar=dumplist.begin();

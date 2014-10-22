@@ -159,14 +159,18 @@ void BoundarySurface::init(Input *inputin)
   allowedcrossvars.push_back("ustar");
   allowedcrossvars.push_back("obuk");
 
+  // Get global cross-list from cross.cxx
+  std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+
   // Check input list of cross variables (crosslist)
-  std::vector<std::string>::iterator it2 = crosslist.begin();
-  while(it2 != crosslist.end())
+  std::vector<std::string>::iterator it2=crosslist_global->begin();
+  while(it2 != crosslist_global->end())
   {
-    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
+    if(std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
     {
-      master->printWarning("field %s in [boundary][crosslist] is illegal\n", it2->c_str());
-      it2 = crosslist.erase(it2);  // erase() returns iterator of next element..
+      // Remove variable from global list, put in local list
+      crosslist.push_back(*it2);
+      crosslist_global->erase(it2); // erase() returns iterator of next element..
     }
     else
       ++it2;

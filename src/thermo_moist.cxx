@@ -72,8 +72,6 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
   nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
-  // Read list of cross sections
-  nerror += inputin->getList(&crosslist, "thermo", "crosslist", "");
   // Read list of 3d dumps
   nerror += inputin->getList(&dumplist,  "thermo", "dumplist",  "");
   
@@ -126,6 +124,9 @@ void ThermoMoist::init()
     pref   [k] = 0.;
     prefh  [k] = 0.;
   }
+
+  initCross();
+  initDump();
 }
 
 void ThermoMoist::create(Input *inputin)
@@ -176,8 +177,6 @@ void ThermoMoist::create(Input *inputin)
   }
 
   initStat();
-  initCross();
-  initDump();
 }
 
 #ifndef USECUDA
@@ -972,6 +971,7 @@ void ThermoMoist::initCross()
 {
   if(model->cross->getSwitch() == "1")
   {
+
     allowedcrossvars.push_back("b");
     allowedcrossvars.push_back("bbot");
     allowedcrossvars.push_back("bfluxbot");
@@ -980,14 +980,18 @@ void ThermoMoist::initCross()
     allowedcrossvars.push_back("ql");
     allowedcrossvars.push_back("qlpath");
 
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+
     // Check input list of cross variables (crosslist)
-    std::vector<std::string>::iterator it=crosslist.begin();
-    while(it != crosslist.end())
+    std::vector<std::string>::iterator it=crosslist_global->begin();
+    while(it != crosslist_global->end())
     {
-      if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+      if(std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
       {
-        master->printWarning("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
-        it = crosslist.erase(it);  // erase() returns iterator of next element..
+        // Remove variable from global list, put in local list
+        crosslist.push_back(*it);
+        crosslist_global->erase(it); // erase() returns iterator of next element..
       }
       else
         ++it;

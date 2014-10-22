@@ -52,6 +52,9 @@ Cross::Cross(Model *modelin, Input *inputin)
     // get the time at which the cross sections are triggered
     nerror += inputin->getItem(&sampletime, "cross", "sampletime", "");
 
+    // get list of cross variables
+    nerror += inputin->getList(&crosslist , "cross", "crosslist" , "");
+
     // get the list of indices at which to take cross sections
     nerror += inputin->getList(&xz, "cross", "xz", "");
     nerror += inputin->getList(&xy, "cross", "xy", "");
@@ -176,6 +179,14 @@ void Cross::create()
     }
   }
 
+  /* All classes (fields, thermo, boundary) have removed their cross-variables from
+     crosslist by now. If it isnt empty, print warnings for invalid variables */
+  if(crosslist.size() > 0)
+  {
+    for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
+      master->printWarning("field %s in [cross][crosslist] is illegal\n", it->c_str());
+  } 
+
   if(nerror)
     throw 1;
 }
@@ -193,6 +204,11 @@ unsigned long Cross::getTimeLimit(unsigned long itime)
 std::string Cross::getSwitch()
 {
   return swcross;
+}
+
+std::vector<std::string>* Cross::getCrossList()
+{
+  return &crosslist;
 }
 
 bool Cross::doCross()

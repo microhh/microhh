@@ -39,6 +39,7 @@ class Cross
     void init(double);
     void create();
     std::string getSwitch();
+    std::vector<std::string> * getCrossList();
 
     unsigned long getTimeLimit(unsigned long);
     //int exec(double, unsigned long, int);
@@ -59,6 +60,8 @@ class Cross
 
     double sampletime;
     unsigned long isampletime;
+
+    std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
 
     std::vector<int> jxz;   ///< Index of nearest full y position of xz input
     std::vector<int> kxy;   ///< Index of nearest full height level of xy input
