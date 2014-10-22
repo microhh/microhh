@@ -1046,17 +1046,24 @@ inline double ThermoMoist::buoyancyFluxNoql(const double s, const double sflux, 
 
 inline double ThermoMoist::satAdjust(const double s, const double qt, const double p, const double exn)
 {
-  int niter = 0; //, nitermax = 5;
+  int niter = 0, nitermax = 30;
   double ql, tl, tnr_old = 1.e9, tnr, qs;
   tl = s * exn;
   tnr = tl;
-  while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5)// && niter < nitermax)
+  while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
   {
     ++niter;
     tnr_old = tnr;
     qs = qsat(p,tnr);
     tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(std::pow(Lv,2)*qs)/ (Rv*cp*std::pow(tnr,2)));
   }
+
+  if(niter == nitermax)
+  {  
+    printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",s,qt,p);
+    throw 1;
+  }  
+
   ql = std::max(0.,qt - qs);
   return ql;
 }
