@@ -64,6 +64,7 @@ class ThermoMoist : public Thermo
     void initDump();  ///< Initialize the thermo field dumps
 
     int swupdatebasestate;
+    std::string thvar; ///< Name of prognostic potential temperature variable
 
     // cross sections
     std::vector<std::string> crosslist;        ///< List with all crosses from ini file
