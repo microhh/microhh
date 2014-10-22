@@ -82,6 +82,7 @@ swcross       & 0     & 0 & disable cross sections \\
 sampletime    & n/a   &   & sampling time step [s] \\
 xz            & empty &   & list of y locations at which xz-crosssection are taken \\
 xy            & empty &   & list of z locations at which xy-crosssection are taken \\
+crosslist     & empty &   & list of cross-section variables \\
 \end{supertabular}
 
 \newpage
@@ -111,6 +112,7 @@ tPr           & 1./3.                &       & turbulent Prandtl number \\
 swdump        & 0     & 0 & disable writing 3d diagnostic fields \\
               &       & 1 & enable writing 3d diagnostic fields \\ 
 sampletime    & n/a   &   & sampling time step [s] \\
+dumplist      & empty &   & list of diagnostic 3D fields \\
 \end{supertabular}
 
 \subsection*{[fields] Fields}
@@ -129,8 +131,6 @@ rndexp        & 2.    &  & exponent of decay of perturbation \\
 vortexnpair   & 0     &  & number of rotating vortex pairs \\
 vortexamp     & 1.e-3 &  & amplitude of vortex pairs \\
 vortexaxis    & x     &  & axis around which the vortices are evolving \\
-crosslist     & empty &  & list of cross-section variables \\
-dumplist      & empty &  & list of diagnostic 3D fields to write \\
 \end{supertabular}
 
 \subsection*{[force] Large scale forcings}
@@ -217,9 +217,7 @@ thvref0       & n/a       &       & reference virtual potential temperature [K] 
 thref0        & n/a       &       & reference potential temperature [K] (dry Boussinesq) \\
 ps            & n/a       &       & surface pressure [Pa] \\
 swupdatebasestate & n/a   & 0     & use initial hydrostatic pressure in $q_l$ calculation \\
-              &           & 1     & update hydrostatic pressure in $q_l$ calculation \\          
-crosslist     & empty &   & list of cross-section variables \\
-dumplist      & empty &   & list of diagnostic 3D fields to write \\
+              &           & 1     & update hydrostatic pressure in $q_l$ calculation \\         
 \end{supertabular}
 
 \newpage
