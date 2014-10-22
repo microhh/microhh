@@ -62,8 +62,6 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 
   int nerror = 0;
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
-  nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
-  nerror += inputin->getList(&dumplist ,  "thermo", "dumplist" ,  "");
 
   if(nerror)
     throw 1;
@@ -538,14 +536,18 @@ void ThermoDry::initDump()
 {
   if(model->dump->getSwitch() == "1")
   {
-    // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
-    std::vector<std::string>::iterator dumpvar=dumplist.begin();
-    while(dumpvar != dumplist.end())
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
+
+    // Check if fields in dumplist are retrievable thermo fields
+    std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+    while(dumpvar != dumplist_global->end())
     {
-      if(checkThermoField(*dumpvar))
+      if(!checkThermoField(*dumpvar))
       {
-        master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
-        dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+        // Remove variable from global list, put in local list
+        dumplist.push_back(*dumpvar);
+        dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
       }
       else
         ++dumpvar;

@@ -72,9 +72,6 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
   nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
-  // Read list of 3d dumps
-  nerror += inputin->getList(&dumplist,  "thermo", "dumplist",  "");
-  
   // BvS test for updating hydrostatic prssure during run
   // swupdate..=0 -> initial base state pressure used in saturation calculation
   // swupdate..=1 -> base state pressure updated before saturation calculation
@@ -1006,14 +1003,18 @@ void ThermoMoist::initDump()
 {
   if(model->dump->getSwitch() == "1")
   {
-    // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
-    std::vector<std::string>::iterator dumpvar=dumplist.begin();
-    while(dumpvar != dumplist.end())
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
+
+    // Check if fields in dumplist are retrievable thermo fields
+    std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+    while(dumpvar != dumplist_global->end())
     {
-      if(checkThermoField(*dumpvar))
+      if(!checkThermoField(*dumpvar))
       {
-        master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
-        dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+        // Remove variable from global list, put in local list
+        dumplist.push_back(*dumpvar);
+        dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
       }
       else
         ++dumpvar;

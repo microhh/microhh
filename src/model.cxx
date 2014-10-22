@@ -193,6 +193,7 @@ void Model::load()
   // Initialize the statistics file to open the possiblity to add profiles.
   stats->create(timeloop->get_iotime());
   cross->create();
+  dump ->create();
 
   fields->load(timeloop->get_iotime());
 

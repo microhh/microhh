@@ -70,12 +70,6 @@ Fields::Fields(Model *modelin, Input *inputin)
     nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
-  // Read list of cross sections
-  nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
-
-  // Read list of 3d fiels to save
-  nerror += inputin->getList(&dumplist , "fields", "dumplist" , "");
-
   if(nerror)
     throw 1;
 
@@ -208,14 +202,18 @@ void Fields::init()
     checkAddedCross(it->first, "lngrad",  crosslist_global, &crosslngrad);
   }
 
+  // Get global dump-list from cross.cxx
+  std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
+
   // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-  std::vector<std::string>::iterator dumpvar=dumplist.begin();
-  while(dumpvar != dumplist.end())
+  std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+  while(dumpvar != dumplist_global->end())
   {
-    if(sd.count(*dumpvar) == 0)
+    if(sd.count(*dumpvar))
     {
-      master->printWarning("field %s in [fields][dumplist] is not a diagnostic field\n", dumpvar->c_str());
-      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+      // Remove variable from global list, put in local list
+      dumplist.push_back(*dumpvar);
+      dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
     }
     else
       ++dumpvar;
