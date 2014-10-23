@@ -167,8 +167,6 @@ jtot           & n/a   &   & number of grid points in y-direction \\
 ktot           & n/a   &   & number of grid points in z-direction \\
 swspatialorder & n/a   & 2 & 2nd-order spatial discretization \\
                &       & 4 & 4th-order spatial discretization \\
-swbasestate    & n/a   & boussinesq & constant density and reference temperature \\
-               &       & anelastic  & anelastic approximation (Bannon, 1996) \\
 utrans         & 0.    &   & translation velocity in x-direction [m s$^{-1}$] \\
 vtrans         & 0.    &   & translation velocity in y-direction [m s$^{-1}$] \\
 \end{supertabular}
@@ -215,6 +213,8 @@ swthermo      & 0         & 0     & disable thermodynamics \\
               &           & moist & moist thermodynamics \\
               &           & buoy  & buoyancy thermodynamics \\
               &           & buoy\_slope  & buoyancy thermodynamics including slope\\
+swbasestate    & n/a   & boussinesq & constant density and reference temperature \\
+               &       & anelastic  & anelastic approximation (Bannon, 1996) \\
 thvref0       & n/a       &       & reference virtual potential temperature [K] (moist Boussinesq) \\
 thref0        & n/a       &       & reference potential temperature [K] (dry Boussinesq) \\
 ps            & n/a       &       & surface pressure [Pa] \\
