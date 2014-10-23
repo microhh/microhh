@@ -72,18 +72,29 @@ Field3d::~Field3d()
 
 int Field3d::init()
 {
-  // allocate the memory
-  master->printMessage("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
-  data = new double[grid->ncells];
+  // Calculate the total field memory size
+  const long fieldMemorySize = (grid->ncells + 6*grid->ijcells + grid->kcells)*sizeof(double);
 
-  // allocate the boundary cells
-  databot = new double[grid->ijcells];
-  datatop = new double[grid->ijcells];
-  datamean = new double[grid->kcells];
-  datagradbot = new double[grid->ijcells];
-  datagradtop = new double[grid->ijcells];
-  datafluxbot = new double[grid->ijcells];
-  datafluxtop = new double[grid->ijcells];
+  // Keep track of the total memory in fields
+  static long totalMemorySize = 0;
+  try
+  {
+    totalMemorySize += fieldMemorySize;
+    // Allocate all fields belonging to the 3d field
+    data = new double[grid->ncells];
+    databot = new double[grid->ijcells];
+    datatop = new double[grid->ijcells];
+    datamean = new double[grid->kcells];
+    datagradbot = new double[grid->ijcells];
+    datagradtop = new double[grid->ijcells];
+    datafluxbot = new double[grid->ijcells];
+    datafluxtop = new double[grid->ijcells];
+  }
+  catch (std::exception &e)
+  {
+    master->printError("Field %s cannot be allocated, total fields memsize %lu is too large\n", name.c_str(), totalMemorySize);
+    throw;
+  }
 
   // set all values to zero
   for(int n=0; n<grid->ncells; n++)
