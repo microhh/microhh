@@ -100,6 +100,7 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   if(master->mode == "init")
   {
     inputin->flagUsed("thermo", "thvref0");
+    inputin->flagUsed("thermo", "pbot");
   }
 
   if(nerror)

@@ -83,9 +83,8 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
   if(master->mode == "init")
   {
     inputin->flagUsed("thermo", "thref0");
+    inputin->flagUsed("thermo", "pbot");
   }
-
-
 
   if(nerror)
     throw 1;
