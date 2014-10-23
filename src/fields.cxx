@@ -90,6 +90,10 @@ Fields::Fields(Model *modelin, Input *inputin)
     inputin->flagUsed("fields", "rndexp");
     inputin->flagUsed("fields", "rndseed");
     inputin->flagUsed("fields", "rndz");
+
+    inputin->flagUsed("fields", "vortexnpair");
+    inputin->flagUsed("fields", "vortexamp"  );
+    inputin->flagUsed("fields", "vortexaxis" );
   }
 }
 
@@ -135,8 +139,6 @@ void Fields::init()
 {
   // set the convenience pointers
   stats = model->stats;
-
-  master->printMessage("Initializing fields\n");
 
   int nerror = 0;
 
@@ -635,8 +637,6 @@ void Fields::initTmpField(std::string fldname,std::string longname, std::string 
 
 void Fields::create(Input *inputin)
 {
-  master->printMessage("Creating fields\n");
-  
   int nerror = 0;
   
   // Randomnize the momentum
