@@ -35,8 +35,11 @@ class Dump
     ~Dump();
 
     void init(double);
+    void create();
+
     unsigned long getTimeLimit(unsigned long);
     std::string getSwitch();
+    std::vector<std::string> * getDumpList();
 
     std::string swdump;
     bool doDump();
@@ -47,6 +50,8 @@ class Dump
     Model  *model;
     Grid   *grid;
     Fields *fields;
+
+    std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
 
     double sampletime;
     unsigned long isampletime;

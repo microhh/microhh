@@ -42,7 +42,10 @@ Dump::Dump(Model *modelin, Input *inputin)
   nerror += inputin->getItem(&swdump, "dump", "swdump", "", "0");
 
   if(swdump == "1")
+  {  
     nerror += inputin->getItem(&sampletime, "dump", "sampletime", "");
+    nerror += inputin->getList(&dumplist ,  "dump", "dumplist" ,  "");
+  }  
 
   if(nerror)
     throw 1;
@@ -60,6 +63,17 @@ void Dump::init(double ifactor)
   isampletime = (unsigned long)(ifactor * sampletime);
 }
 
+void Dump::create()
+{  
+  /* All classes (fields, thermo) have removed their dump-variables from
+     dumplist by now. If it isnt empty, print warnings for invalid variables */
+  if(dumplist.size() > 0)
+  {
+    for(std::vector<std::string>::const_iterator it=dumplist.begin(); it!=dumplist.end(); ++it)
+      master->printWarning("field %s in [dump][dumplist] is illegal\n", it->c_str());
+  } 
+}
+
 unsigned long Dump::getTimeLimit(unsigned long itime)
 {
   if(swdump == "0")
@@ -73,6 +87,11 @@ unsigned long Dump::getTimeLimit(unsigned long itime)
 std::string Dump::getSwitch()
 {
   return swdump;
+}
+
+std::vector<std::string>* Dump::getDumpList()
+{
+  return &dumplist;
 }
 
 bool Dump::doDump()

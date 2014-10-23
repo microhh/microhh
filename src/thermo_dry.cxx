@@ -58,12 +58,34 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
   exner_g  = 0;
   exnerh_g = 0;
 
+  int nerror = 0;
+
   fields->initPrognosticField("th", "Potential Temperature", "K");
 
-  int nerror = 0;
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
-  nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
-  nerror += inputin->getList(&dumplist ,  "thermo", "dumplist" ,  "");
+
+  // Get base state option (boussinesq or anelastic)
+  nerror += inputin->getItem(&swbasestate, "thermo", "swbasestate", "", "");
+
+  if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
+  {
+    master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
+    throw 1;
+  }
+   
+  if(grid->swspatialorder == "4" && swbasestate == "anelastic")
+  {
+    master->printError("Anelastic mode is not supported for swspatialorder=4\n");
+    throw 1;
+  }
+
+  // Remove the data from the input that is not used, to avoid warnings.
+  if(master->mode == "init")
+  {
+    inputin->flagUsed("thermo", "thref0");
+  }
+
+
 
   if(nerror)
     throw 1;
@@ -95,6 +117,9 @@ void ThermoDry::init()
   prefh  = new double[grid->kcells];
   exner  = new double[grid->kcells];
   exnerh = new double[grid->kcells];
+
+  initCross();
+  initDump(); 
 }
 
 void ThermoDry::create(Input *inputin)
@@ -102,7 +127,7 @@ void ThermoDry::create(Input *inputin)
   /* Setup base state: 
      For anelastic setup, calculate reference density and temperature from input sounding
      For boussinesq, reference density and temperature are fixed */
-  if(model->swbasestate == "anelastic")
+  if(swbasestate == "anelastic")
   {
     if(inputin->getItem(&pbot, "thermo", "pbot", ""))
       throw 1;
@@ -123,10 +148,8 @@ void ThermoDry::create(Input *inputin)
       threfh[k] = thref0;
     }
   }
- 
+
   initStat();
-  initCross();
-  initDump(); 
 }
 
 #ifndef USECUDA
@@ -476,7 +499,7 @@ void ThermoDry::initStat()
     stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
     stats->addFixedProf("thref",   "Full level basic state potential temperature", "K", "z", thref);
     stats->addFixedProf("threfh",  "Half level basic state potential temperature", "K", "zh",thref);
-    if(model->swbasestate == "anelastic")
+    if(swbasestate == "anelastic")
     {
       stats->addFixedProf("ph",    "Full level hydrostatic pressure", "Pa",     "z",  pref);
       stats->addFixedProf("phh",   "Half level hydrostatic pressure", "Pa",     "zh", prefh);
@@ -511,14 +534,18 @@ void ThermoDry::initCross()
     if(grid->swspatialorder == "4")
       allowedcrossvars.push_back("blngrad");
 
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+
     // Check input list of cross variables (crosslist)
-    std::vector<std::string>::iterator it=crosslist.begin();
-    while(it != crosslist.end())
+    std::vector<std::string>::iterator it=crosslist_global->begin();
+    while(it != crosslist_global->end())
     {
-      if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+      if(std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
       {
-        master->printWarning("field %s in [thermo][crosslist] is illegal\n", it->c_str());
-        it = crosslist.erase(it);  // erase() returns iterator of next element..
+        // Remove variable from global list, put in local list
+        crosslist.push_back(*it);
+        crosslist_global->erase(it); // erase() returns iterator of next element..
       }
       else
         ++it;
@@ -533,14 +560,18 @@ void ThermoDry::initDump()
 {
   if(model->dump->getSwitch() == "1")
   {
-    // Check if fields in dumplist are retrievable thermo fields, if not delete them and print warning
-    std::vector<std::string>::iterator dumpvar=dumplist.begin();
-    while(dumpvar != dumplist.end())
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
+
+    // Check if fields in dumplist are retrievable thermo fields
+    std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+    while(dumpvar != dumplist_global->end())
     {
-      if(checkThermoField(*dumpvar))
+      if(!checkThermoField(*dumpvar))
       {
-        master->printWarning("field %s in [thermo][dumplist] is not a thermo field\n", dumpvar->c_str());
-        dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+        // Remove variable from global list, put in local list
+        dumplist.push_back(*dumpvar);
+        dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
       }
       else
         ++dumpvar;

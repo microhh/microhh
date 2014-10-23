@@ -18,9 +18,6 @@ Field3d::~Field3d()
 
 int Field3d::init()
 {
-  // allocate the memory
-  master->printMessage("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
-
   const int ijksize = grid->ncells *sizeof(double);
   const int ijsize  = grid->ijcells*sizeof(double);
   const int ksize   = grid->kcells *sizeof(double);

@@ -76,9 +76,6 @@ class Model
     Dump   *dump;
     Budget *budget;
 
-    // BvS where to best put this..?
-    std::string swbasestate;
-
   private:
 
     // list of masks for statistics

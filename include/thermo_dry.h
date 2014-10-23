@@ -68,7 +68,7 @@ class ThermoDry : public Thermo
 
     void calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
     void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
-    
+   
     // cross sections
     std::vector<std::string> crosslist;        ///< List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
@@ -84,6 +84,8 @@ class ThermoDry : public Thermo
     void initBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double); ///< For anelastic setup, calculate base state from initial input profiles
 
     Stats *stats;
+
+    std::string swbasestate;
 
     double pbot;   ///< Surface pressure.
     double thref0; ///< Reference potential temperature in case of Boussinesq

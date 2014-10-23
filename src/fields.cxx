@@ -70,12 +70,6 @@ Fields::Fields(Model *modelin, Input *inputin)
     nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
-  // Read list of cross sections
-  nerror += inputin->getList(&crosslist , "fields", "crosslist" , "");
-
-  // Read list of 3d fiels to save
-  nerror += inputin->getList(&dumplist , "fields", "dumplist" , "");
-
   if(nerror)
     throw 1;
 
@@ -199,38 +193,38 @@ void Fields::init()
     vmodel[k] = 0.; 
   }
 
+  // Get global cross-list from cross.cxx
+  std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+
   // Check different type of crosses and put them in their respective lists 
   for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    checkAddedCross(it->first, "",        &crosslist, &crosssimple);
-    checkAddedCross(it->first, "lngrad",  &crosslist, &crosslngrad);
-    checkAddedCross(it->first, "bot",     &crosslist, &crossbot);
-    checkAddedCross(it->first, "top",     &crosslist, &crosstop);
-    checkAddedCross(it->first, "fluxbot", &crosslist, &crossfluxbot);
-    checkAddedCross(it->first, "fluxtop", &crosslist, &crossfluxtop);
+    checkAddedCross(it->first, "",        crosslist_global, &crosssimple);
+    checkAddedCross(it->first, "lngrad",  crosslist_global, &crosslngrad);
+    checkAddedCross(it->first, "bot",     crosslist_global, &crossbot);
+    checkAddedCross(it->first, "top",     crosslist_global, &crosstop);
+    checkAddedCross(it->first, "fluxbot", crosslist_global, &crossfluxbot);
+    checkAddedCross(it->first, "fluxtop", crosslist_global, &crossfluxtop);
   }
 
   for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    checkAddedCross(it->first, "",       &crosslist, &crosssimple);
-    checkAddedCross(it->first, "lngrad", &crosslist, &crosslngrad);
+    checkAddedCross(it->first, "",        crosslist_global, &crosssimple);
+    checkAddedCross(it->first, "lngrad",  crosslist_global, &crosslngrad);
   }
 
-  // If crosslist not empty, illegal variables or cross types were selected
-  if(crosslist.size() > 0)
-  {
-    for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
-      master->printWarning("field %s in [fields][crosslist] is illegal\n", it->c_str());
-  } 
+  // Get global dump-list from cross.cxx
+  std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
 
   // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
-  std::vector<std::string>::iterator dumpvar=dumplist.begin();
-  while(dumpvar != dumplist.end())
+  std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+  while(dumpvar != dumplist_global->end())
   {
-    if(sd.count(*dumpvar) == 0)
+    if(sd.count(*dumpvar))
     {
-      master->printWarning("field %s in [fields][dumplist] is not a diagnostic field\n", dumpvar->c_str());
-      dumpvar = dumplist.erase(dumpvar);  // erase() returns iterator of next element
+      // Remove variable from global list, put in local list
+      dumplist.push_back(*dumpvar);
+      dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
     }
     else
       ++dumpvar;
