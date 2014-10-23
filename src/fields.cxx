@@ -142,8 +142,6 @@ void Fields::init()
   // set the convenience pointers
   stats = model->stats;
 
-  master->printMessage("Initializing fields\n");
-
   int nerror = 0;
 
   // ALLOCATE ALL THE FIELDS
@@ -641,8 +639,6 @@ void Fields::initTmpField(std::string fldname,std::string longname, std::string 
 
 void Fields::create(Input *inputin)
 {
-  master->printMessage("Creating fields\n");
-  
   int nerror = 0;
   
   // Randomnize the momentum
