@@ -46,7 +46,10 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
 
   // obligatory parameters
   if(master->mode == "init")
+  {
     starttime = 0.;
+    inputin->flagUsed("time", "starttime");
+  }
   else
     n += inputin->getItem(&starttime, "time", "starttime", "");
 
