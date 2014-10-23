@@ -196,6 +196,7 @@ void Model::load()
   dump ->create();
 
   fields->load(timeloop->get_iotime());
+  fields->createStats();
 
   // Initialize data or load data from disk.
   // \TODO call boundary load for the data and then timedep, not nice...

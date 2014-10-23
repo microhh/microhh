@@ -82,6 +82,15 @@ Fields::Fields(Model *modelin, Input *inputin)
   initTmpField("tmp2", "", "");
   initTmpField("tmp3", "", "");
   initTmpField("tmp4", "", "");
+
+  // Remove the data from the input that is not used in run mode, to avoid warnings.
+  if(master->mode == "run")
+  {
+    inputin->flagUsed("fields", "rndamp");
+    inputin->flagUsed("fields", "rndexp");
+    inputin->flagUsed("fields", "rndseed");
+    inputin->flagUsed("fields", "rndz");
+  }
 }
 
 Fields::~Fields()
@@ -117,9 +126,9 @@ Fields::~Fields()
   delete[] umodel;
   delete[] vmodel;
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
 void Fields::init()
@@ -274,7 +283,7 @@ void Fields::calcMask_wplus(double * restrict mask, double * restrict maskh, dou
   {
     nmask[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -288,7 +297,7 @@ void Fields::calcMask_wplus(double * restrict mask, double * restrict maskh, dou
   {
     nmaskh[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -301,7 +310,7 @@ void Fields::calcMask_wplus(double * restrict mask, double * restrict maskh, dou
   // Set the mask for surface projected quantities
   // In this case: velocity at surface, so zero
   for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+    #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ij  = i + j*jj;
@@ -334,7 +343,7 @@ void Fields::calcMask_wmin(double * restrict mask, double * restrict maskh, doub
   {
     nmask[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -348,7 +357,7 @@ void Fields::calcMask_wmin(double * restrict mask, double * restrict maskh, doub
   {
     nmaskh[k] = 0;
     for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
@@ -361,7 +370,7 @@ void Fields::calcMask_wmin(double * restrict mask, double * restrict maskh, doub
   // Set the mask for surface projected quantities
   // In this case: velocity at surface, so zero
   for(int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+    #pragma ivdep
     for(int i=grid->istart; i<grid->iend; i++)
     {
       ij  = i + j*jj;
@@ -632,11 +641,11 @@ void Fields::create(Input *inputin)
   
   // Randomnize the momentum
   for(FieldMap::iterator it=mp.begin(); it!=mp.end(); ++it)
-    nerror += randomnize(inputin, it->first, it->second->data);
+    nerror += randomize(inputin, it->first, it->second->data);
   
   // Randomnize the scalars
   for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    nerror += randomnize(inputin, it->first, it->second->data);
+    nerror += randomize(inputin, it->first, it->second->data);
   
   // Add Vortices
   nerror += addVortexPair(inputin);
@@ -661,7 +670,7 @@ void Fields::create(Input *inputin)
     throw 1;
 }
 
-int Fields::randomnize(Input *inputin, std::string fld, double * restrict data)
+int Fields::randomize(Input *inputin, std::string fld, double * restrict data)
 {
   int nerror = 0;
 
@@ -682,7 +691,7 @@ int Fields::randomnize(Input *inputin, std::string fld, double * restrict data)
   jj = grid->icells;
   kk = grid->ijcells;
   
-  // look up the specific randomnizer variables
+  // look up the specific randomizer variables
   nerror += inputin->getItem(&rndamp, "fields", "rndamp", fld, 0.);
   nerror += inputin->getItem(&rndz  , "fields", "rndz"  , fld, 0.);
   nerror += inputin->getItem(&rndexp, "fields", "rndexp", fld, 0.);
@@ -694,7 +703,7 @@ int Fields::randomnize(Input *inputin, std::string fld, double * restrict data)
 
   if(kendrnd > grid->kend)
   {
-    master->printError("randomnizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
+    master->printError("randomizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
     return 1;
   }
   
@@ -800,6 +809,14 @@ void Fields::load(int n)
       master->printMessage("OK\n");
     }  
   }
+
+  if(nerror)
+    throw 1;
+}
+
+void Fields::createStats()
+{
+  int nerror = 0;
 
   // add the profiles to te statistics
   if(stats->getSwitch() == "1")

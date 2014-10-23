@@ -60,6 +60,7 @@ class Input
     int getTimeProf(double **, std::vector<double> *, std::string, int);
 
     void printUnused();
+    void flagUsed(std::string, std::string);
 
   private:
     Master *master;
