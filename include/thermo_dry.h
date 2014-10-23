@@ -87,6 +87,8 @@ class ThermoDry : public Thermo
 
     Stats *stats;
 
+    std::string swbasestate;
+
     double pbot;   ///< Surface pressure.
     double thref0; ///< Reference potential temperature in case of Boussinesq
 

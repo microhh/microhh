@@ -108,21 +108,6 @@ Model::Model(Master *masterin, Input *inputin)
         stats->addMask(*it);
     }
 
-    // Get base state option (boussinesq or anelastic)
-    nerror += input->getItem(&swbasestate , "grid"  , "swbasestate" , "", "");  // BvS: where to put switch??
-
-    if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
-    {
-      master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
-      throw 1;
-    }
-    // 2nd order with LES diffusion is only option supporting anelastic (for now) 
-    //if(swdiff != "smag2" and swbasestate != "boussinesq")
-    //{
-    //  std::printf("ERROR swdiff=%s is not allowed with swbasestate=%s \n", swdiff.c_str(),swbasestate.c_str());
-    //  return 1;
-    //}
-
     // if one or more arguments fails, then crash
     if(nerror > 0)
       throw 1;

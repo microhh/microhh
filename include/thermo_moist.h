@@ -100,6 +100,7 @@ class ThermoMoist : public Thermo
     inline double qsat(const double, const double);
     inline double esat(const double);
 
+    std::string swbasestate;
     double pbot;
     double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
 

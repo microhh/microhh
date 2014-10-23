@@ -76,6 +76,21 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
   nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
+  // Get base state option (boussinesq or anelastic)
+  nerror += inputin->getItem(&swbasestate, "thermo", "swbasestate", "", "");
+
+  if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
+  {
+    master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
+    throw 1;
+  }
+   
+  if(grid->swspatialorder == "4" && swbasestate == "anelastic")
+  {
+    master->printError("Anelastic mode is not supported for swspatialorder=4\n");
+    throw 1;
+  }
+
   // BvS test for updating hydrostatic prssure during run
   // swupdate..=0 -> initial base state pressure used in saturation calculation
   // swupdate..=1 -> base state pressure updated before saturation calculation
@@ -169,7 +184,7 @@ void ThermoMoist::create(Input *inputin)
   calcBaseState(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, thl0, qt0);
 
   // 5. In Boussinesq mode, overwrite reference temperature and density
-  if(model->swbasestate == "boussinesq")
+  if(swbasestate == "boussinesq")
   {
     if(inputin->getItem(&thvref0, "thermo", "thvref0", ""))
       throw 1;

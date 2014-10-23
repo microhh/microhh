@@ -67,6 +67,29 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 
   nerror += inputin->getItem(&fields->sp[thvar]->visc, "fields", "svisc", thvar);
 
+  // Get base state option (boussinesq or anelastic)
+  nerror += inputin->getItem(&swbasestate, "thermo", "swbasestate", "", "");
+
+  if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
+  {
+    master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
+    throw 1;
+  }
+   
+  if(grid->swspatialorder == "4" && swbasestate == "anelastic")
+  {
+    master->printError("Anelastic mode is not supported for swspatialorder=4\n");
+    throw 1;
+  }
+
+  // Remove the data from the input that is not used, to avoid warnings.
+  if(master->mode == "init")
+  {
+    inputin->flagUsed("thermo", "thref0");
+  }
+
+
+
   if(nerror)
     throw 1;
 }
@@ -107,7 +130,7 @@ void ThermoDry::create(Input *inputin)
   /* Setup base state: 
      For anelastic setup, calculate reference density and temperature from input sounding
      For boussinesq, reference density and temperature are fixed */
-  if(model->swbasestate == "anelastic")
+  if(swbasestate == "anelastic")
   {
     if(inputin->getItem(&pbot, "thermo", "pbot", ""))
       throw 1;
@@ -479,7 +502,7 @@ void ThermoDry::initStat()
     stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
     stats->addFixedProf("thref",   "Full level basic state potential temperature", "K", "z", thref);
     stats->addFixedProf("threfh",  "Half level basic state potential temperature", "K", "zh",thref);
-    if(model->swbasestate == "anelastic")
+    if(swbasestate == "anelastic")
     {
       stats->addFixedProf("ph",    "Full level hydrostatic pressure", "Pa",     "z",  pref);
       stats->addFixedProf("phh",   "Half level hydrostatic pressure", "Pa",     "zh", prefh);
