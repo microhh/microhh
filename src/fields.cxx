@@ -96,6 +96,10 @@ Fields::Fields(Model *modelin, Input *inputin)
     inputin->flagUsed("fields", "rndexp");
     inputin->flagUsed("fields", "rndseed");
     inputin->flagUsed("fields", "rndz");
+
+    inputin->flagUsed("fields", "vortexnpair");
+    inputin->flagUsed("fields", "vortexamp"  );
+    inputin->flagUsed("fields", "vortexaxis" );
   }
 }
 

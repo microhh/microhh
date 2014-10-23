@@ -46,10 +46,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
 
   // obligatory parameters
   if(master->mode == "init")
-  {
     starttime = 0.;
-    inputin->flagUsed("time", "starttime");
-  }
   else
     n += inputin->getItem(&starttime, "time", "starttime", "");
 
@@ -110,6 +107,9 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   iotime = (int)(istarttime / iiotimeprec);
 
   gettimeofday(&start, NULL);
+
+  if(master->mode == "init")
+    inputin->flagUsed("time", "starttime");
 }
 
 Timeloop::~Timeloop()
