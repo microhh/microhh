@@ -937,8 +937,6 @@ int Input::getTime(double **data, std::vector<double> *time, std::string varname
     *data = new double[timesize];
     for(unsigned int n=0; n<timesize; ++n)
       (*data)[n] = (it->second)[n];
-
-    if(master->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
   }
   else
   {
@@ -1006,7 +1004,6 @@ int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::st
     for(int k=0; k<kmaxin; k++)
       (*timeprof)[timecount*kmaxin + k] = rawdata[it->second][k];
 
-    if(master->mpiid == 0) std::printf("Header item \"%s\" has been read from the input\n", it->second.c_str());
     ++timecount;
   }
 
