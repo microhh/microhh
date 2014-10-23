@@ -92,10 +92,9 @@ int Input::readIniFile()
 
   if(master->mpiid == 0)
   {
-    std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
+    std::printf("Processing ini file \"%s\"\n", inputfilename.c_str());
     while(std::fgets(inputline, 256, inputfile) != NULL)
       nlines++;
-    std::printf("Inifile contains %d lines\n", nlines);
     rewind(inputfile);
   }
   master->broadcast(&nlines, 1);
@@ -196,10 +195,7 @@ int Input::readIniFile()
   }
 
   if(master->mpiid == 0)
-  {
-    std::printf("Inifile has been processed with %d errors\n", nerrors);
     fclose(inputfile);
-  }
 
   return nerrors;
 }
@@ -246,10 +242,9 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
 
   if(master->mpiid == 0)
   {
-    std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
+    std::printf("Processing data file \"%s\"\n", inputfilename.c_str());
     while(std::fgets(inputline, 256, inputfile) != NULL)
       nlines++;
-    std::printf("Inifile contains %d lines\n", nlines);
     rewind(inputfile);
   }
   master->broadcast(&nlines, 1);
@@ -296,8 +291,6 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
         return 1;
       }
       */
-
-      if(master->mpiid == 0) std::printf("Found header item \"%s\"\n", substring);
 
       // temporarily store the variable name
       varnames.push_back(std::string(substring));
@@ -928,8 +921,6 @@ int Input::getProf(double *data, std::string varname, int kmaxin)
 
     for(int k=0; k<kmaxin; k++)
       data[k] = proflist[varname][k];
-
-    if(master->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
   }
   else
   {
