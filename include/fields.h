@@ -155,7 +155,7 @@ class Fields
     double calcMass        (double *, double *);
 
     int addMeanProf  (Input *, std::string, double *, double);
-    int randomnize   (Input *, std::string, double *);
+    int randomize    (Input *, std::string, double *);
     int addVortexPair(Input *);
 
     // statistics

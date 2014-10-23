@@ -883,27 +883,6 @@ int Input::checkList(std::vector<double> *value, std::string cat, std::string it
   return 0;
 }
 
-
-void Input::printUnused()
-{
-  for(InputMap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
-    for(InputMap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
-      for(InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
-      {
-        if(!it3->second.isused)
-        {
-          if(it3->first == "default")
-          {
-            if(master->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
-          }
-          else
-          {
-            if(master->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
-          }
-        }
-      }
-}
-
 int Input::getProf(double *data, std::string varname, int kmaxin)
 {
   DataMap::const_iterator it = proflist.find(varname);
@@ -1034,3 +1013,37 @@ int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::st
   return 0;
 }
 
+void Input::printUnused()
+{
+  for(InputMap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
+    for(InputMap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
+      for(InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
+      {
+        if(!it3->second.isused)
+        {
+          if(it3->first == "default")
+          {
+            if(master->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
+          }
+          else
+          {
+            if(master->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
+          }
+        }
+      }
+}
+
+void Input::flagUsed(std::string cat, std::string item)
+{
+  // Loop over the entire map to flag the chosen option as used.
+  InputMap::iterator it1 = inputlist.find(cat);
+  if(it1 != inputlist.end())
+  {
+    InputMap2d::iterator it2 = it1->second.find(item);
+    if(it2 != it1->second.end())
+    {
+      for(InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
+        it3->second.isused = true;
+    }
+  }
+}
