@@ -60,12 +60,9 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 
   int nerror = 0;
 
-  // Option to overrule the prognostic variable 
-  nerror += inputin->getItem(&thvar, "thermo", "progvar", "", "th");  // defaults to th
+  fields->initPrognosticField("th", "Potential Temperature", "K");
 
-  fields->initPrognosticField(thvar, "Potential Temperature", "K");
-
-  nerror += inputin->getItem(&fields->sp[thvar]->visc, "fields", "svisc", thvar);
+  nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
 
   // Get base state option (boussinesq or anelastic)
   nerror += inputin->getItem(&swbasestate, "thermo", "swbasestate", "", "");
@@ -134,7 +131,7 @@ void ThermoDry::create(Input *inputin)
   {
     if(inputin->getItem(&pbot, "thermo", "pbot", ""))
       throw 1;
-    if(inputin->getProf(&thref[grid->kstart], thvar, grid->kmax))
+    if(inputin->getProf(&thref[grid->kstart], "th", grid->kmax))
       throw 1;
 
     initBaseState(fields->rhoref, fields->rhorefh, pref, prefh, exner, exnerh, thref, threfh, pbot);
@@ -159,9 +156,9 @@ void ThermoDry::create(Input *inputin)
 void ThermoDry::exec()
 {
   if(grid->swspatialorder== "2")
-    calcbuoyancytend_2nd(fields->wt->data, fields->sp[thvar]->data, threfh);
+    calcbuoyancytend_2nd(fields->wt->data, fields->sp["th"]->data, threfh);
   else if(grid->swspatialorder == "4")
-    calcbuoyancytend_4th(fields->wt->data, fields->sp[thvar]->data, threfh);
+    calcbuoyancytend_4th(fields->wt->data, fields->sp["th"]->data, threfh);
 }
 #endif
 
@@ -170,8 +167,8 @@ void ThermoDry::execStats(Mask *m)
   const double NoOffset = 0.;
 
   // calculate the buoyancy and its surface flux for the profiles
-  calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, thref);
-  calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp[thvar]->datafluxbot, threfh);
+  calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
+  calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 
   // define the location
   const int sloc[] = {0,0,0};
@@ -219,12 +216,12 @@ void ThermoDry::execStats(Mask *m)
                           fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
-      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp[thvar]->visc, sloc,
+      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
   }
   else if(grid->swspatialorder == "4")
   {
-    stats->calcDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp[thvar]->visc, sloc,
+    stats->calcDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
@@ -250,21 +247,21 @@ void ThermoDry::execCross()
     if(*it == "b")
     {
       //getThermoField(fields->s["tmp1"], fields->s["tmp2"], *it);
-      calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, thref);
+      calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
       nerror += cross->crossSimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
       //getThermoField(fields->s["tmp1"], fields->s["tmp2"], "b");
-      calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, thref);
+      calcbuoyancy(fields->atmp["tmp1"]->data, fields->sp["th"]->data, thref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
       nerror += cross->crossLngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
       //getBuoyancySurf(fields->s["tmp1"]);
-      calcbuoyancybot(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->sp[thvar]->data, fields->sp[thvar]->databot, thref, threfh);
-      calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp[thvar]->datafluxbot, threfh);
+      calcbuoyancybot(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->sp["th"]->data, fields->sp["th"]->databot, thref, threfh);
+      calcbuoyancyfluxbot(fields->atmp["tmp1"]->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 
       if(*it == "bbot")
         nerror += cross->crossPlane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
@@ -283,7 +280,7 @@ void ThermoDry::execDump()
   {
     // TODO BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant... 
     if(*it == "b")
-      calcbuoyancy(fields->atmp["tmp2"]->data, fields->sp[thvar]->data, thref);
+      calcbuoyancy(fields->atmp["tmp2"]->data, fields->sp["th"]->data, thref);
     else
       throw 1;
 
@@ -303,9 +300,9 @@ bool ThermoDry::checkThermoField(std::string name)
 void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
   if(name == "b")
-    calcbuoyancy(fld->data, fields->sp[thvar]->data, thref);
+    calcbuoyancy(fld->data, fields->sp["th"]->data, thref);
   else if(name == "N2")
-    calcN2(fld->data, fields->sp[thvar]->data, grid->dzi, thref);
+    calcN2(fld->data, fields->sp["th"]->data, grid->dzi, thref);
   else
     throw 1;
 }
@@ -314,7 +311,7 @@ void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #ifndef USECUDA
 void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp[thvar]->datafluxbot, threfh);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 }
 #endif
 
@@ -322,14 +319,14 @@ void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
 void ThermoDry::getBuoyancySurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
-                  fields->sp[thvar]->data, fields->sp[thvar]->databot, thref, threfh);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp[thvar]->datafluxbot, threfh);
+                  fields->sp["th"]->data, fields->sp["th"]->databot, thref, threfh);
+  calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 }
 #endif
 
 void ThermoDry::getProgVars(std::vector<std::string> *list)
 {
-  list->push_back(thvar);
+  list->push_back("th");
 }
 
 void ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double * restrict thref)

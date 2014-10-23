@@ -69,8 +69,6 @@ class ThermoDry : public Thermo
     void calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
     void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
    
-    std::string thvar; ///< Name of prognostic potential temperature variable
-    
     // cross sections
     std::vector<std::string> crosslist;        ///< List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
