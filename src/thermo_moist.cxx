@@ -81,6 +81,12 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   // swupdate..=1 -> base state pressure updated before saturation calculation
   nerror += inputin->getItem(&swupdatebasestate, "thermo", "swupdatebasestate", ""); 
 
+  // Remove the data from the input that is not used, to avoid warnings.
+  if(master->mode == "init")
+  {
+    inputin->flagUsed("thermo", "thvref0");
+  }
+
   if(nerror)
     throw 1;
 }
