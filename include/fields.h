@@ -40,10 +40,11 @@ class Fields
   public:
     // functions
     Fields(Model *, Input *); ///< Constructor of the fields class.
-    ~Fields();                ///< Destructor of the fields class
+    ~Fields();                ///< Destructor of the fields class.
 
-    void init();          ///< Initialization of the field arrays
-    void create(Input *); ///< Initialization of the fields (random perturbations, vortices)  
+    void init();          ///< Initialization of the field arrays.
+    void create(Input *); ///< Initialization of the fields (random perturbations, vortices).
+    void createStats();   ///< Initialization of the fields statistics.
 
     void exec();
     void getMask(Field3d *, Field3d *, Mask *);

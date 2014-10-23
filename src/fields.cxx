@@ -807,6 +807,14 @@ void Fields::load(int n)
     }  
   }
 
+  if(nerror)
+    throw 1;
+}
+
+void Fields::createStats()
+{
+  int nerror = 0;
+
   // add the profiles to te statistics
   if(stats->getSwitch() == "1")
   {
