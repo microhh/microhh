@@ -376,10 +376,6 @@ void ThermoMoist::calcMask_qlcore(double * restrict mask, double * restrict mask
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
   *nmaskbot = nmaskh[grid->kstart];
-
-  // BvS: should no longer be necessary now that the ql ghost cells are set to zero
-  //nmaskh[kstart] = 0;
-  //nmaskh[kend  ] = 0;
 }
 
 void ThermoMoist::execStats(Mask *m)
@@ -626,26 +622,26 @@ void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict p
   const int kstart = grid->kstart;
   const int kend = grid->kend;
 
-  double ssurf = constants::dhuge;
+  double thlsurf = constants::dhuge;
   double qtsurf = constants::dhuge;
 
   if(grid->swspatialorder == "2")
   {
-    ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
-    qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
+    thlsurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
+    qtsurf   = interp2(qtmean[kstart-1],  qtmean[kstart]);
   }
   else if(grid->swspatialorder == "4")
   {
-    ssurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
-    qtsurf = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
+    thlsurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
+    qtsurf   = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
   }
 
-  double ql,si=0,qti=0,qli;
+  double ql,thli=0,qti=0,qli;
 
   // Calculate surface (half=kstart) values
   exh[kstart]   = exner(pbot);
-  ql            = satAdjust(ssurf,qtsurf,pbot,exh[kstart]); 
-  thvh[kstart]  = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
+  ql            = satAdjust(thlsurf,qtsurf,pbot,exh[kstart]); 
+  thvh[kstart]  = (thlsurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
   prefh[kstart] = pbot;
   rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
 
@@ -666,18 +662,18 @@ void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict p
     // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
     if(grid->swspatialorder == "2")
     {
-      si     = interp2(thlmean[k-1],thlmean[k]);
+      thli   = interp2(thlmean[k-1],thlmean[k]);
       qti    = interp2(qtmean[k-1],qtmean[k]);
     }
     else if(grid->swspatialorder == "4")
     {
-      si     = interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
+      thli   = interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
       qti    = interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
     }
 
     exh[k]   = exner(prefh[k]);
-    qli      = satAdjust(si,qti,prefh[k],exh[k]);
-    thvh[k]  = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
+    qli      = satAdjust(thli,qti,prefh[k],exh[k]);
+    thvh[k]  = (thli + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
     rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]); 
 
     // 4. Calculate full level pressure at z[k]
@@ -699,8 +695,8 @@ void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict p
   }
 }
 
-void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict s, double * restrict qt, 
-                                       double * restrict ph, double * restrict sh, double * restrict qth, double * restrict ql,
+void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict thl, double * restrict qt, 
+                                       double * restrict ph, double * restrict thlh, double * restrict qth, double * restrict ql,
                                        double * restrict thvrefh)
 {
   int ijk,jj,kk,ij;
@@ -718,9 +714,9 @@ void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict s
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        sh[ij]  = interp2(s[ijk-kk], s[ijk]);
-        qth[ij] = interp2(qt[ijk-kk], qt[ijk]);
-        tl      = sh[ij] * exnh;
+        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+        qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+        tl       = thlh[ij] * exnh;
         // Calculate first estimate of ql using Tl
         // if ql(Tl)>0, saturation adjustment routine needed
         ql[ij]  = qth[ij]-qsat(ph[k],tl);
@@ -732,7 +728,7 @@ void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict s
         ij  = i + j*jj;
         if(ql[ij]>0)   // already doesn't vectorize because of iteration in satAdjust()
         {
-          ql[ij] = satAdjust(sh[ij], qth[ij], ph[k], exnh);
+          ql[ij] = satAdjust(thlh[ij], qth[ij], ph[k], exnh);
         }
         else
           ql[ij] = 0.;
@@ -743,13 +739,13 @@ void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict s
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        wt[ijk] += buoyancy(exnh, sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
 }
 
-void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict s, double * restrict qt, 
-                                       double * restrict ph, double * restrict sh, double * restrict qth, double * restrict ql,
+void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict thl,  double * restrict qt, 
+                                       double * restrict ph, double * restrict thlh, double * restrict qth, double * restrict ql,
                                        double * restrict thvrefh)
 {
   int ijk,jj,ij;
@@ -769,9 +765,9 @@ void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict s
       {
         ijk = i + j*jj + k*kk1;
         ij  = i + j*jj;
-        sh[ij]  = interp4(s[ijk-kk2] , s[ijk-kk1] , s[ijk] , s[ijk+kk1]);
-        qth[ij] = interp4(qt[ijk-kk2], qt[ijk-kk1], qt[ijk], qt[ijk+kk1]);
-        tl      = sh[ij] * exnh;
+        thlh[ij] = interp4(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
+        qth[ij]  = interp4(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
+        tl       = thlh[ij] * exnh;
         // Calculate first estimate of ql using Tl
         // if ql(Tl)>0, saturation adjustment routine needed
         ql[ij]  = qth[ij]-qsat(ph[k],tl);   
@@ -782,7 +778,7 @@ void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict s
       {
         ij  = i + j*jj;
         if(ql[ij]>0)   // already doesn't vectorize because of iteration in satAdjust()
-          ql[ij] = satAdjust(sh[ij], qth[ij], ph[k], exnh);
+          ql[ij] = satAdjust(thlh[ij], qth[ij], ph[k], exnh);
         else
           ql[ij] = 0.;
       }
@@ -792,12 +788,12 @@ void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict s
       {
         ijk = i + j*jj + k*kk1;
         ij  = i + j*jj;
-        wt[ijk] += buoyancy(exnh, sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
 }
 
-void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict s, double * restrict qt, double * restrict p, double * restrict ql,
+void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict thl, double * restrict qt, double * restrict p, double * restrict ql,
                                double * restrict thvref)
 {
   int ijk,jj,kk,ij;
@@ -814,7 +810,7 @@ void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict s, double 
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        tl  = s[ijk] * ex;
+        tl  = thl[ijk] * ex;
         ql[ij]  = qt[ijk]-qsat(p[k],tl);   // not real ql, just estimate
       }
 
@@ -825,7 +821,7 @@ void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict s, double 
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
         if(ql[ij] > 0)
-          ql[ij] = satAdjust(s[ijk], qt[ijk], p[k], ex);
+          ql[ij] = satAdjust(thl[ijk], qt[ijk], p[k], ex);
         else
           ql[ij] = 0.;
       }
@@ -836,12 +832,12 @@ void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict s, double 
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        b[ijk] = buoyancy(ex, s[ijk], qt[ijk], ql[ij], thvref[k]);
+        b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ij], thvref[k]);
       }
   }
 }
 
-void ThermoMoist::calcLiquidWater(double * restrict ql, double * restrict s, double * restrict qt, double * restrict p)
+void ThermoMoist::calcLiquidWater(double * restrict ql, double * restrict thl, double * restrict qt, double * restrict p)
 {
   int ijk,jj,kk;
   double ex;
@@ -881,12 +877,12 @@ void ThermoMoist::calcLiquidWater(double * restrict ql, double * restrict s, dou
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        ql[ijk] = satAdjust(s[ijk], qt[ijk], p[k], ex);
+        ql[ijk] = satAdjust(thl[ijk], qt[ijk], p[k], ex);
       }
   }
 }
 
-void ThermoMoist::calcN2(double * restrict N2, double * restrict s, double * restrict dzi, double * restrict thvref)
+void ThermoMoist::calcN2(double * restrict N2, double * restrict thl, double * restrict dzi, double * restrict thvref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -898,21 +894,19 @@ void ThermoMoist::calcN2(double * restrict N2, double * restrict s, double * res
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        N2[ijk] = grav/thvref[k]*0.5*(s[ijk+kk] - s[ijk-kk])*dzi[k];
+        N2[ijk] = grav/thvref[k]*0.5*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
       }
 }
 
-void ThermoMoist::calcBuoyancyBot(double * restrict b , double * restrict bbot,
-                                  double * restrict s , double * restrict sbot,
-                                  double * restrict qt, double * restrict qtbot,
+void ThermoMoist::calcBuoyancyBot(double * restrict b,   double * restrict bbot,
+                                  double * restrict thl, double * restrict thlbot,
+                                  double * restrict qt,  double * restrict qtbot,
                                   double * restrict thvref, double * restrict thvrefh)
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
-
-  // double thvref = thvs;
 
   // assume no liquid water at the lowest model level
   for(int j=0; j<grid->jcells; j++)
@@ -921,19 +915,17 @@ void ThermoMoist::calcBuoyancyBot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij ] = buoyancyNoql(sbot[ij], qtbot[ij], thvrefh[kstart]);
-      b   [ijk] = buoyancyNoql(s[ijk], qt[ijk], thvref[kstart]);
+      bbot[ij ] = buoyancyNoql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
+      b   [ijk] = buoyancyNoql(thl[ijk], qt[ijk], thvref[kstart]);
     }
 }
 
-void ThermoMoist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restrict sbot, double * restrict sfluxbot, double * restrict qtbot, double * restrict qtfluxbot,
+void ThermoMoist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restrict thlbot, double * restrict thlfluxbot, double * restrict qtbot, double * restrict qtfluxbot,
                                       double * restrict thvrefh)
 {
   int ij,jj,kstart;
   jj = grid->icells;
   kstart = grid->kstart;
-
-  // double thvref = thvs;
 
   // assume no liquid water at the lowest model level
   for(int j=0; j<grid->jcells; j++)
@@ -941,7 +933,7 @@ void ThermoMoist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restr
     for(int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
-      bfluxbot[ij] = buoyancyFluxNoql(sbot[ij], sfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+      bfluxbot[ij] = buoyancyFluxNoql(thlbot[ij], thlfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
     }
 }
 
@@ -1051,26 +1043,26 @@ void ThermoMoist::initDump()
 }
 
 // INLINE FUNCTIONS
-inline double ThermoMoist::buoyancy(const double exn, const double s, const double qt, const double ql, const double thvref)
+inline double ThermoMoist::buoyancy(const double exn, const double thl, const double qt, const double ql, const double thvref)
 {
-  return grav * ((s + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
+  return grav * ((thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
 }
 
-inline double ThermoMoist::buoyancyNoql(const double s, const double qt, const double thvref)
+inline double ThermoMoist::buoyancyNoql(const double thl, const double qt, const double thvref)
 {
-  return grav * (s * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
+  return grav * (thl * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
 }
 
-inline double ThermoMoist::buoyancyFluxNoql(const double s, const double sflux, const double qt, const double qtflux, const double thvref)
+inline double ThermoMoist::buoyancyFluxNoql(const double thl, const double thlflux, const double qt, const double qtflux, const double thvref)
 {
-  return grav/thvref * (sflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*s*qtflux);
+  return grav/thvref * (thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux);
 }
 
-inline double ThermoMoist::satAdjust(const double s, const double qt, const double p, const double exn)
+inline double ThermoMoist::satAdjust(const double thl, const double qt, const double p, const double exn)
 {
   int niter = 0, nitermax = 30;
   double ql, tl, tnr_old = 1.e9, tnr, qs=0;
-  tl = s * exn;
+  tl = thl * exn;
   tnr = tl;
   while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
   {
@@ -1082,7 +1074,7 @@ inline double ThermoMoist::satAdjust(const double s, const double qt, const doub
 
   if(niter == nitermax)
   {  
-    printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",s,qt,p);
+    printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",thl,qt,p);
     throw 1;
   }  
 
