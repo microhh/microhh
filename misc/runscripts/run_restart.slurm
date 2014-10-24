@@ -1,23 +1,20 @@
 #!/bin/bash
-#SBATCH --job-name=mhh128c
-#SBATCH --output=les-%j.out
-#SBATCH --error=les-%j.err
+#SBATCH --job-name=moser600
+#SBATCH --output=mhh-%j.out
+#SBATCH --error=mhh-%j.err
 #SBATCH --partition=mpi-compute
-##SBATCH --mail-type=end
-##SBATCH --mail-user=bart.vanstratum@mpimet.mpg.de
-#SBATCH --nodes=4
-#SBATCH --ntasks-per-node=16
+#SBATCH --mail-type=end
+#SBATCH --mail-user=abc@def.de
+#SBATCH --nodes=32
 #SBATCH -t 08:00:00 
-
-#ulimit -l unlimited
-#source /sw/share/Modules/init/bash
 
 # CASE SETTINGS
 # ----------------------
-case='drycblles'
-totaltime=32400      # total simulation time
-maxtime=32400         # integration time per job
-precision=1.00       
+case='moser600'
+totaltime=5400      # total simulation time
+maxtime=1800         # integration time per job
+precision=1.00      
+ncores=512 
 # ----------------------
 
 # 1. Check if .tmp file exist, if not copy case.ini
@@ -47,21 +44,13 @@ echo "Inserting runtime ${runtime} into $case.ini"
 sed "s/\(endtime\).*/\1=${runtime}/g" $case.tmp > $case.ini 
 echo "Inserting starttime ${starttime} into $case.ini"
 sed -i -e "s/\(starttime\).*/\1=${starttime}/g" $case.ini 
-#sed -i "s/\(starttime\).*/\1=${starttime}/g" $case.ini 
 
 # 6. Init if t=0 + run the model
-#if [ ${starttime} -eq "0" ]; then
-#  mpirun --mca btl self,sm,openib ./microhh init $case
-#  mpirun --mca btl self,sm,openib ./microhh run $case
-#else
-#  mpirun --mca btl self,sm,openib ./microhh run $case
-#fi
-
 if [ ${starttime} -eq "0" ]; then
-  ./microhh init $case
-  ./microhh run $case
+  mpirun --mca btl self,sm,openib -n $ncores ./microhh init $case
+  mpirun --mca btl self,sm,openib -n $ncores ./microhh run $case
 else
-  ./microhh run $case
+  mpirun --mca btl self,sm,openib -n $ncores ./microhh run $case
 fi
 
 # 7. Get return code model
@@ -76,9 +65,5 @@ starttime=$(($starttime + 0))
 # If there is sim time left -> restart
 timeleft=`echo "${starttime}<${totaltime}" | bc`
 if [ "${runjobval}" -eq "0" -a "${timeleft}" -eq "1" ]; then
-  runscriptname=`basename $0`
-  #sbatch $runscriptname
-  ./$runscriptname 
+  sbatch run_restart.slurm
 fi
-
-
