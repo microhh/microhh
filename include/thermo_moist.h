@@ -92,7 +92,7 @@ class ThermoMoist : public Thermo
     void calcBuoyancyFluxBot(double *, double *, double *, double *, double *, double *);
 
     inline double satAdjust(const double, const double, const double ,const double);
-    inline double buoyancy(const double, const double, const double, const double, const double, const double);
+    inline double buoyancy(const double, const double, const double, const double, const double);
     inline double buoyancyNoql(const double, const double, const double);
     inline double buoyancyFluxNoql(const double, const double, const double, const double, const double);
     inline double exner(const double);

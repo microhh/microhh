@@ -98,10 +98,7 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
     else
     {
       // 2d essential variables
-      int ijkref,ijknorth,ijksouth,jj,kk;
-
-      jj = icells;
-      kk = icells*jcells;
+      int ijkref,ijknorth,ijksouth;
 
       for(int k=kstart; k<kend; k++)
         for(int j=0; j<jgc; j++)
@@ -169,9 +166,7 @@ void Grid::boundaryCyclic2d(double * restrict data)
   else
   {
     // 2d essential variables
-    int ijref,ijnorth,ijsouth,jj;
-
-    jj = icells;
+    int ijref,ijnorth,ijsouth;
 
     for(int j=0; j<jgc; j++)
 #pragma ivdep

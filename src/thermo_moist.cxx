@@ -606,8 +606,8 @@ void ThermoMoist::getProgVars(std::vector<std::string> *list)
  * Solves: dpi/dz=-g/thv with pi=cp*(p/p0)**(rd/cp)
  * @param pref Pointer to output hydrostatic pressure array (full level) 
  * @param prefh Pointer to output hydrostatic pressure array (half level) 
- * @param dn Pointer to output density array (full level) 
- * @param dnh Pointer to output density array (half level) 
+ * @param rho Pointer to output density array (full level) 
+ * @param rhoh Pointer to output density array (half level) 
  * @param thv Pointer to output virtual potential temperature array (full level) 
  * @param thvh Pointer to output virtual potential temperature array (half level) 
  * @param ex Pointer to output exner array (full level) 
@@ -640,7 +640,7 @@ void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict p
     qtsurf = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
   }
 
-  double ql,si,qti,qli;
+  double ql,si=0,qti=0,qli;
 
   // Calculate surface (half=kstart) values
   exh[kstart]   = exner(pbot);
@@ -743,7 +743,7 @@ void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict s
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        wt[ijk] += buoyancy(ph[k], exnh, sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += buoyancy(exnh, sh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
 }
@@ -792,7 +792,7 @@ void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict s
       {
         ijk = i + j*jj + k*kk1;
         ij  = i + j*jj;
-        wt[ijk] += buoyancy(ph[k], exnh, sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += buoyancy(exnh, sh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
 }
@@ -836,7 +836,7 @@ void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict s, double 
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        b[ijk] = buoyancy(p[k], ex, s[ijk], qt[ijk], ql[ij], thvref[k]);
+        b[ijk] = buoyancy(ex, s[ijk], qt[ijk], ql[ij], thvref[k]);
       }
   }
 }
@@ -1051,7 +1051,7 @@ void ThermoMoist::initDump()
 }
 
 // INLINE FUNCTIONS
-inline double ThermoMoist::buoyancy(const double p, const double exn, const double s, const double qt, const double ql, const double thvref)
+inline double ThermoMoist::buoyancy(const double exn, const double s, const double qt, const double ql, const double thvref)
 {
   return grav * ((s + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
 }
@@ -1069,7 +1069,7 @@ inline double ThermoMoist::buoyancyFluxNoql(const double s, const double sflux, 
 inline double ThermoMoist::satAdjust(const double s, const double qt, const double p, const double exn)
 {
   int niter = 0, nitermax = 30;
-  double ql, tl, tnr_old = 1.e9, tnr, qs;
+  double ql, tl, tnr_old = 1.e9, tnr, qs=0;
   tl = s * exn;
   tnr = tl;
   while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)

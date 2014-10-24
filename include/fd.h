@@ -51,7 +51,7 @@ namespace fd
     const double bi1  = 15./16.;
     const double bi2  = -5./16.;
     const double bi3  =  1./16.;
-                               ;
+
     const double ti0  =  1./16.;
     const double ti1  = -5./16.;
     const double ti2  = 15./16.;

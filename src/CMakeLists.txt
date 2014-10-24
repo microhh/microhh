@@ -21,6 +21,8 @@
 #
 FILE(GLOB sourcefiles "../src/*.cxx" "../src/*.cu")
 include_directories(${INCLUDE_DIRS} "../include")
+# BvS: for CLANG (untested for other compilers), this suppresses warnings from e.g. NetCDF
+#include_directories("../include" SYSTEM ${INCLUDE_DIRS}) 
 
 if(USECUDA)
   cuda_add_library(microhhc STATIC ${sourcefiles})
