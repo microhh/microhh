@@ -11,7 +11,8 @@ set(GNU_SED "gsed")
 
 set(USER_CXX_FLAGS "-stdlib=libstdc++")
 set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
-set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
+set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wno-unknown-pragmas -Weverything") # Very strict
+#set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wno-unknown-pragmas -Weverything -Wno-padded -Wno-old-style-cast") # Slightly less strict
 
 set(FFTW_INCLUDE_DIR   "/opt/local/include")
 set(FFTW_LIB           "/opt/local/lib/libfftw3.a")
