@@ -14,15 +14,12 @@ case='thermal'
 totaltime=2  # total simulation time
 maxtime=0.5  # integration time per job
 precision=0.1
-ncores=512
+nprocesses=512
+runscriptname='run_restart.slurm'
 # ----------------------
-# DO NOT EDIT BELOW THIS LINE
 
-# 1. Check if .tmp file exist, if not copy case.ini
-if [ ! -f $case.tmp ]; then
-  echo "No $case.tmp file, copying $case.ini"
-  cp $case.ini $case.tmp
-fi
+# 1. Copy .ini to .tmp
+cp $case.ini $case.tmp
 
 # 2. Get the latest time step of the restart files
 timename=`ls time.* | tail -n1`
@@ -48,12 +45,12 @@ sed -i -e "s/\(starttime\).*/\1=${starttime}/g" $case.ini
 
 # 6. Init if t=0 + run the model
 if [ ${istarttime} -eq "0" ]; then
-  #mpirun --mca btl self,sm,openib -n $ncores ./microhh init $case
-  #mpirun --mca btl self,sm,openib -n $ncores ./microhh run $case
+  #mpirun --mca btl self,sm,openib -n $nprocesses ./microhh init $case
+  #mpirun --mca btl self,sm,openib -n $nprocesses ./microhh run $case
   ./microhh init $case
   ./microhh run $case
 else
-  #mpirun --mca btl self,sm,openib -n $ncores ./microhh run $case
+  #mpirun --mca btl self,sm,openib -n $nprocesses ./microhh run $case
   ./microhh run $case
 fi
 
@@ -74,8 +71,8 @@ starttime=`echo "scale=${digits};${istarttime}*${precision}" | bc`
 timeleft=`echo "${starttime}<${totaltime}" | bc`
 if [ "${runjobval}" -eq "0" -a "${timeleft}" -eq "1" ]; then
   echo "RUNSCRIPT: Dispatching job with starttime ${starttime}"
-  #sbatch thermalrestart.512
-  ./thermalrestart.512
+  #sbatch $runscriptname
+  ./$runscriptname
 else
   echo "RUNSCRIPT: Totaltime ${totaltime} has been reached."
 fi
