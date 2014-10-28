@@ -118,7 +118,7 @@ void Master::init(Input *inputin)
   if(nerror)
     throw 1;
 
-  wallClockEnd = wallClockStart + wallClockLimit;
+  wallClockEnd = wallClockStart + 3600.*wallClockLimit;
 
   if(nprocs != npx*npy)
   {

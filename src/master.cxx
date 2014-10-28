@@ -69,8 +69,9 @@ void Master::printError(const char *format, ...)
 
 bool Master::atWallClockLimit()
 {
-  double wallClockTimeLeft = wallClockEnd - getWallClockTime();
-  double tenMinutes = 10.*60.;
+  const double wallClockTimeLeft = wallClockEnd - getWallClockTime();
+  const double tenMinutes = 10.*60.;
+
   if(wallClockTimeLeft < tenMinutes)
     return true;
   else
