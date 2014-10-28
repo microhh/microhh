@@ -378,9 +378,9 @@ void Timeloop::save(int starttime)
     }
     else
     {
-      fwrite(&itime    , sizeof(long), 1, pFile);
-      fwrite(&idt      , sizeof(long), 1, pFile);
-      fwrite(&iteration, sizeof(long), 1, pFile);
+      fwrite(&itime    , sizeof(unsigned long), 1, pFile);
+      fwrite(&idt      , sizeof(unsigned long), 1, pFile);
+      fwrite(&iteration, sizeof(int), 1, pFile);
 
       fclose(pFile);
       master->printMessage("OK\n");
@@ -414,9 +414,9 @@ void Timeloop::load(int starttime)
     }
     else
     {
-      fread(&itime    , sizeof(long), 1, pFile);
-      fread(&idt      , sizeof(long), 1, pFile);
-      fread(&iteration, sizeof(long), 1, pFile);
+      fread(&itime    , sizeof(unsigned long), 1, pFile);
+      fread(&idt      , sizeof(unsigned long), 1, pFile);
+      fread(&iteration, sizeof(int), 1, pFile);
 
       fclose(pFile);
     }
