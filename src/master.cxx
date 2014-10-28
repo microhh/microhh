@@ -66,3 +66,13 @@ void Master::printError(const char *format, ...)
     va_end(args);
   }
 }
+
+bool Master::atWallClockLimit()
+{
+  double wallClockTimeLeft = wallClockEnd - getWallClockTime();
+  double tenMinutes = 10.*60.;
+  if(wallClockTimeLeft < tenMinutes)
+    return true;
+  else
+    return false;
+}

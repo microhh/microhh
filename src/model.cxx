@@ -452,7 +452,7 @@ void Model::printStatus()
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
-    start = master->getTime();
+    start = master->getWallClockTime();
   }
 
   // Retrieve all the status information.
@@ -470,7 +470,7 @@ void Model::printStatus()
     dn   = diff->get_dn(timeloop->get_dt());
 
     // Store time interval in betwteen two writes.
-    end     = master->getTime();
+    end     = master->getWallClockTime();
     cputime = end - start;
     start   = end;
 

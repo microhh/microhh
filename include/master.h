@@ -40,7 +40,9 @@ class Master
     void start(int, char**);
     void init(Input *);
 
-    double getTime();
+    double getWallClockTime();
+    bool atWallClockLimit();
+
     void waitAll();
 
     // overload the broadcast function
@@ -90,6 +92,9 @@ class Master
   private:
     bool initialized;
     bool allocated;
+
+    double wallClockStart;
+    double wallClockEnd;
 
     #ifdef USEMPI
     int checkError(int);
