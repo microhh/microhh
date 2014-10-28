@@ -76,8 +76,15 @@ void Master::init(Input *inputin)
   int nerror = 0;
   nerror += inputin->getItem(&npx, "mpi", "npx", "", 1);
   nerror += inputin->getItem(&npy, "mpi", "npy", "", 1);
+
+  // Get the wall clock limit with a default value of 1E8 hours, which will be never hit
+  double wallClockLimit;
+  nerror += inputin->getItem(&wallClockLimit, "mpi", "wallclocklimit", "", 1E8);
+
   if(nerror)
     throw 1;
+
+  wallClockEnd = wallClockStart + 3600.*wallClockLimit;
 
   if(nprocs != npx*npy)
   {
@@ -92,7 +99,7 @@ void Master::init(Input *inputin)
   allocated = true;
 }
 
-double Master::getTime()
+double Master::getWallClockTime()
 {
   timeval timestruct;
   gettimeofday(&timestruct, NULL);
