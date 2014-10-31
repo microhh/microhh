@@ -475,7 +475,7 @@ unsigned long Advec4::getTimeLimit(unsigned long idt, double dt)
 
   // Calculate cfl and prevent zero divisons.
   cfl = get_cfl(dt);
-  cfl = std::max(constants::dsmall, cfl);
+  cfl = std::max(cflmin, cfl);
 
   idtlim = idt * cflmax / cfl;
   return idtlim;
