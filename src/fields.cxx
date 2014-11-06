@@ -542,14 +542,23 @@ void Fields::execStats(Mask *m)
     }
   }
 
+  // Calculate pressure statistics
+  stats->calcMean(m->profs["p"].data, sd["p"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
+  stats->calcMoment(sd["p"]->data, m->profs["p"].data, m->profs["p2"].data, 2, sloc,
+                    atmp["tmp1"]->data, stats->nmask);
+  if(grid->swspatialorder == "2")
+    stats->calcFlux_2nd(sd["p"]->data, m->profs["p"].data, w->data, m->profs["w"].data,
+                        m->profs["pw"].data, atmp["tmp1"]->data, sloc,
+                        atmp["tmp4"]->data, stats->nmaskh);
+  else if(grid->swspatialorder == "4")
+    stats->calcFlux_4th(sd["p"]->data, w->data, m->profs["wp"].data, atmp["tmp1"]->data, sloc,
+                        atmp["tmp4"]->data, stats->nmaskh);
+
   // calculate the total fluxes
   stats->addFluxes(m->profs["uflux"].data, m->profs["uw"].data, m->profs["udiff"].data);
   stats->addFluxes(m->profs["vflux"].data, m->profs["vw"].data, m->profs["vdiff"].data);
   for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
     stats->addFluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
-
-  // other statistics
-  stats->calcMean(m->profs["p"].data, sd["p"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
 
   if(model->diff->getName() == "smag2")
     stats->calcMean(m->profs["evisc"].data, sd["evisc"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
@@ -828,7 +837,11 @@ void Fields::createStats()
   
     for(FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
       stats->addProf(it->first,it->second->longname, it->second->unit, "z");
+
     stats->addProf(sd["p"]->name, sd["p"]->longname, sd["p"]->unit, "z");
+    std::string sn("2");
+    stats->addProf(sd["p"]->name + sn,"Moment "+ sn + " of the " + sd["p"]->longname,"(" + sd["p"]->unit + ")"+sn, "z" );
+    stats->addProf(sd["p"]->name +"w", "Turbulent flux of the " + sd["p"]->longname, sd["p"]->unit + " m s-1", "zh");
  
     // CvH, shouldn't this call be in the diffusion class?
     if(model->diff->getName() == "smag2")
