@@ -41,14 +41,17 @@ void Master::start(int argc, char *argv[])
 {
   initialized = true;
 
-  // set the rank of the only process to 0
+  // Set the rank of the only process to 0.
   mpiid = 0;
-  // set the number of processes to 1
+  // Set the number of processes to 1.
   nprocs = 1;
+
+  // Set the wall clock time at start.
+  wallClockStart = getWallClockTime();
 
   printMessage("Starting run on %d processes\n", nprocs);
 
-  // process the command line options
+  // Process the command line options.
   if(argc <= 1)
   {
     printError("Specify init, run or post mode\n");
@@ -56,14 +59,14 @@ void Master::start(int argc, char *argv[])
   }
   else
   {
-    // check the execution mode
+    // Check the execution mode.
     mode = argv[1];
     if(mode != "init" && mode != "run" && mode != "post")
     {
       printError("Specify init, run or post mode\n");
       throw 1;
     }
-    // set the name of the simulation
+    // Set the name of the simulation.
     if(argc > 2)
       simname = argv[2];
     else
