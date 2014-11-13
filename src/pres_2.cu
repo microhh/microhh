@@ -313,12 +313,12 @@ void Pres2::prepareDevice()
   int o_jdist   = 1;
 
   // Forward FFTs
-  cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist, o_ni, o_istride, o_idist, CUFFT_D2Z, grid->jtot);
+  cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist, o_ni, o_istride, o_idist, CUFFT_D2Z, grid->jtot*grid->ktot);
   cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist, o_nj, o_jstride, o_jdist, CUFFT_D2Z, grid->itot);
 
   // Backward FFTs
   // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1
-  cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot);
+  cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot*grid->ktot);
   cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist, i_nj, i_jstride, i_jdist, CUFFT_Z2D, grid->itot);
 }
 
@@ -346,6 +346,10 @@ void Pres2::exec(double dt)
   const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj   = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
+  int kk = grid->itot*grid->jtot;
+  int kki = 2*(grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
+  int kkj = 2*grid->itot*(grid->jtot/2+1); // Size complex slice FFT - y direction
+
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
@@ -371,18 +375,24 @@ void Pres2::exec(double dt)
 
   // Forward FFT -> how to get rid of the loop at the host side....
   // A massive FFT (e.g. 3D field) would require large host fields for the FFT output
-  int kk = grid->itot*grid->jtot;
+  cufftExecD2Z(iplanf, (cufftDoubleReal*)fields->sd["p"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
+  cudaThreadSynchronize();
+
   for (int k=0; k<grid->ktot; ++k)
   {
-    int ijk = k*kk;
+    int ijk  = k*kk;
+    int ijk2 = k*kki;
 
-    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], ffti_complex_g);
-    cudaThreadSynchronize();
-    Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
+    Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
     cudaCheckError();
+  }
 
-    if (grid->jtot > 1)
+  if (grid->jtot > 1)
+  {
+    for (int k=0; k<grid->ktot; ++k)
     {
+      int ijk  = k*kk;
+
       cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], fftj_complex_g);
       cudaThreadSynchronize();
       Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
@@ -409,6 +419,7 @@ void Pres2::exec(double dt)
   for (int k=0; k<grid->ktot; ++k)
   {
     int ijk = k*kk;
+    int ijk2 = k*kki;
 
     if (grid->jtot > 1)
     {
@@ -418,12 +429,27 @@ void Pres2::exec(double dt)
       cudaCheckError();
     }
 
-    Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-    cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-    cudaThreadSynchronize();
+    //Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
+    //cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
+    //cudaThreadSynchronize();
+    //Pres2_g::normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
+    //cudaCheckError();
+
+    Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
+  }
+
+  cufftExecZ2D(iplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
+  cudaThreadSynchronize();
+
+  for (int k=0; k<grid->ktot; ++k)
+  {
+    int ijk = k*kk;
+
     Pres2_g::normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
     cudaCheckError();
   }
+
+
 
   cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
