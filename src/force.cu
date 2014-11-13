@@ -223,6 +223,8 @@ void Force::clearDevice()
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
       cudaSafeCall(cudaFree(lsprofs_g[*it]));
   }
+
+  if(swwls == "1")
     cudaSafeCall(cudaFree(wls_g));
 
   if(swtimedep == "1")
