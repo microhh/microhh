@@ -42,6 +42,10 @@ Force::Force(Model *modelin, Input *inputin)
   vg = 0;
   wls = 0;
 
+  ug_g = 0;
+  vg_g = 0;
+  wls_g = 0;
+
   int nerror = 0;
   nerror += inputin->getItem(&swlspres, "force", "swlspres", "", "0");
   nerror += inputin->getItem(&swls    , "force", "swls"    , "", "0");
@@ -100,9 +104,9 @@ Force::~Force()
   for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
 void Force::init()

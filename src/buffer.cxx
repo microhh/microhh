@@ -57,9 +57,9 @@ Buffer::~Buffer()
   for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
     delete[] it->second;
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
 void Buffer::init()

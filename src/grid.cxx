@@ -58,6 +58,15 @@ Grid::Grid(Model *modelin, Input *inputin)
   dzi4  = 0;
   dzhi4 = 0;
 
+  z_g     = 0;
+  zh_g    = 0;
+  dz_g    = 0;
+  dzh_g   = 0;
+  dzi_g   = 0;
+  dzhi_g  = 0;
+  dzi4_g  = 0;
+  dzhi4_g = 0;
+
   fftini  = 0;
   fftouti = 0;
   fftinj  = 0;
