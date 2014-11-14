@@ -342,15 +342,15 @@ void Pres2::exec(double dt)
   const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj   = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
-  const int kk = grid->itot*grid->jtot;
-  const int kki = (grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
-  const int kkj = (grid->jtot/2+1)*grid->itot; // Size complex slice FFT - y direction
-
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
   dim3 grid2dGPU (gridi, gridj);
   dim3 block2dGPU(blocki, blockj);
+
+  const int kk = grid->itot*grid->jtot;
+  const int kki = (grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
+  const int kkj = (grid->jtot/2+1)*grid->itot; // Size complex slice FFT - y direction
 
   const int offs = grid->memoffset;
 
