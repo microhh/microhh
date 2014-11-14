@@ -291,10 +291,6 @@ void Pres2::prepareDevice()
   cudaSafeCall(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
   cudaSafeCall(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
 
-  // cuFFT
-  cudaSafeCall(cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)))); // sizeof(complex) = 16
-  cudaSafeCall(cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1))));
-
   // Make cuFFT plan
   int rank      = 1;
 
@@ -331,8 +327,6 @@ void Pres2::clearDevice()
   cudaSafeCall(cudaFree(a_g           ));
   cudaSafeCall(cudaFree(c_g           ));
   cudaSafeCall(cudaFree(work2d_g      ));
-  cudaSafeCall(cudaFree(ffti_complex_g));
-  cudaSafeCall(cudaFree(fftj_complex_g));
 
   cufftDestroy(iplanf);
   cufftDestroy(jplanf);

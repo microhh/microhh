@@ -44,8 +44,6 @@ Pres2::Pres2(Model *modelin, Input *inputin) : Pres(modelin, inputin)
   work2d_g = 0;
   bmati_g  = 0;
   bmatj_g  = 0;
-  ffti_complex_g = 0;
-  fftj_complex_g = 0;
   iplanf = 0;
   jplanf = 0;
   iplanb = 0;

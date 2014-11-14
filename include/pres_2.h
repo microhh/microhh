@@ -59,7 +59,6 @@ class Pres2 : public Pres
     double *a_g, *c_g;
     double *work2d_g;
 
-    cufftDoubleComplex *ffti_complex_g, *fftj_complex_g; 
     cufftHandle iplanf, jplanf; 
     cufftHandle iplanb, jplanb; 
     #endif
