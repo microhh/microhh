@@ -44,8 +44,10 @@ BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(mode
   ustar = 0;
   obuk  = 0;
 
+  #ifdef USECUDA
   ustar_g = 0;
   obuk_g  = 0;
+  #endif
 }
 
 BoundarySurface::~BoundarySurface()
