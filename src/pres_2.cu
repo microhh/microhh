@@ -346,9 +346,9 @@ void Pres2::exec(double dt)
   const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj   = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
-  int kk = grid->itot*grid->jtot;
-  int kki = 2*(grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
-  int kkj = 2*grid->itot*(grid->jtot/2+1); // Size complex slice FFT - y direction
+  const int kk = grid->itot*grid->jtot;
+  const int kki = 2*(grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
+  const int kkj = 2*(grid->jtot/2+1)*grid->itot; // Size complex slice FFT - y direction
 
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
@@ -373,8 +373,7 @@ void Pres2::exec(double dt)
                                          grid->igc, grid->jgc, grid->kgc);
   cudaCheckError();
 
-  // Forward FFT -> how to get rid of the loop at the host side....
-  // A massive FFT (e.g. 3D field) would require large host fields for the FFT output
+  // Batch FFT over entire domain in the X-direction.
   cufftExecD2Z(iplanf, (cufftDoubleReal*)fields->sd["p"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
   cudaThreadSynchronize();
 
@@ -392,12 +391,20 @@ void Pres2::exec(double dt)
     for (int k=0; k<grid->ktot; ++k)
     {
       int ijk  = k*kk;
-
-      cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], fftj_complex_g);
-      cudaThreadSynchronize();
-      Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
-      cudaCheckError();
+      int ijk2 = k*kkj;
+      cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2]);
     }
+
+    cudaThreadSynchronize();
+    cudaCheckError();
+
+    for (int k=0; k<grid->ktot; ++k)
+    {
+      int ijk  = k*kk;
+      int ijk2 = k*kkj;
+      Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
+    }
+    cudaCheckError();
   }
 
   Pres2_g::solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
@@ -440,6 +447,7 @@ void Pres2::exec(double dt)
 
   cufftExecZ2D(iplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
   cudaThreadSynchronize();
+  cudaCheckError();
 
   for (int k=0; k<grid->ktot; ++k)
   {
