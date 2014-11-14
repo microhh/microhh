@@ -423,24 +423,32 @@ void Pres2::exec(double dt)
   cudaCheckError();
 
   // Backward FFT
+  if(grid->jtot > 1)
+  {
+    for (int k=0; k<grid->ktot; ++k)
+    {
+      int ijk = k*kk;
+      int ijk2 = k*kkj;
+      Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
+    }
+
+    cudaCheckError();
+
+    for (int k=0; k<grid->ktot; ++k)
+    {
+      int ijk = k*kk;
+      int ijk2 = k*kkj;
+      cufftExecZ2D(jplanb, (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
+    }
+
+    cudaThreadSynchronize();
+    cudaCheckError();
+  }
+
   for (int k=0; k<grid->ktot; ++k)
   {
     int ijk = k*kk;
     int ijk2 = k*kki;
-
-    if (grid->jtot > 1)
-    {
-      Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-      cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-      cudaThreadSynchronize();
-      cudaCheckError();
-    }
-
-    //Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-    //cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-    //cudaThreadSynchronize();
-    //Pres2_g::normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
-    //cudaCheckError();
 
     Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
   }
@@ -452,12 +460,9 @@ void Pres2::exec(double dt)
   for (int k=0; k<grid->ktot; ++k)
   {
     int ijk = k*kk;
-
     Pres2_g::normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
     cudaCheckError();
   }
-
-
 
   cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
