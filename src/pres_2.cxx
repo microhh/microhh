@@ -39,6 +39,7 @@ Pres2::Pres2(Model *modelin, Input *inputin) : Pres(modelin, inputin)
   bmati  = 0;
   bmatj  = 0;
 
+  #ifdef USECUDA
   a_g = 0;
   c_g = 0;
   work2d_g = 0;
@@ -48,6 +49,7 @@ Pres2::Pres2(Model *modelin, Input *inputin) : Pres(modelin, inputin)
   jplanf = 0;
   iplanb = 0;
   jplanb = 0;
+  #endif
 }
 
 Pres2::~Pres2()

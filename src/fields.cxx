@@ -551,7 +551,7 @@ void Fields::execStats(Mask *m)
                         m->profs["pw"].data, atmp["tmp1"]->data, sloc,
                         atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcFlux_4th(sd["p"]->data, w->data, m->profs["wp"].data, atmp["tmp1"]->data, sloc,
+    stats->calcFlux_4th(sd["p"]->data, w->data, m->profs["pw"].data, atmp["tmp1"]->data, sloc,
                         atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate the total fluxes
