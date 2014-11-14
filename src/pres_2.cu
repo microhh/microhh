@@ -211,6 +211,63 @@ namespace Pres2_g
     }
   }
 
+  __global__ void complex_double_x2(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kki, bool forward)
+  {
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y;
+    int k = blockIdx.z;
+
+    int ij   = i + j*itot + k*kk;         // index real part in ddata
+    int ij2  = (itot-i) + j*itot + k*kk;  // index complex part in ddata
+    int imax = itot/2+1;
+    int ijc  = i + j*imax + k*kki;        // index in cdata
+
+    if((j < jtot) && (i < imax))
+    {
+      if(forward) // complex -> double
+      {
+        ddata[ij]  = cdata[ijc].x;
+        if(i>0 && i<imax-1)
+          ddata[ij2] = cdata[ijc].y;
+      }
+      else // double -> complex
+      {
+        cdata[ijc].x = ddata[ij];
+        if(i>0 && i<imax-1)
+          cdata[ijc].y = ddata[ij2];
+      }
+    }
+  }
+
+  __global__ void complex_double_y2(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kkj, bool forward)
+  {
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    int j = blockIdx.y*blockDim.y + threadIdx.y;
+    int k = blockIdx.z;
+
+    int ij   = i + j*itot + k*kk;        // index real part in ddata
+    int ij2  = i + (jtot-j)*itot + k*kk;    // index complex part in ddata
+    int jmax = jtot/2+1;
+    int ijc  = i + j*itot + k*kkj;
+
+    if((i < itot) && (j < jmax))
+    {
+      if(forward) // complex -> double
+      {
+        ddata[ij] = cdata[ijc].x;
+        if(j>0 && j<jmax-1)
+          ddata[ij2] = cdata[ijc].y;
+      }
+      else // double -> complex
+      {
+        cdata[ijc].x = ddata[ij];
+        if(j>0 && j<jmax-1)
+          cdata[ijc].y = ddata[ij2];
+      }
+    }
+  }
+
+
   __global__ void complex_double_y(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, bool forward)
   {
     int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -237,6 +294,8 @@ namespace Pres2_g
       }
     }
   }
+
+
 
    __global__ void normalize(double * __restrict__ data, const unsigned int itot, const unsigned int jtot, const double in)
   {
@@ -377,14 +436,17 @@ void Pres2::exec(double dt)
   cufftExecD2Z(iplanf, (cufftDoubleReal*)fields->sd["p"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
   cudaThreadSynchronize();
 
-  for (int k=0; k<grid->ktot; ++k)
-  {
-    int ijk  = k*kk;
-    int ijk2 = k*kki;
+  Pres2_g::complex_double_x2<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kki/2,  true);
+  cudaCheckError();
 
-    Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
-    cudaCheckError();
-  }
+  //for (int k=0; k<grid->ktot; ++k)
+  //{
+  //  int ijk  = k*kk;
+  //  int ijk2 = k*kki;
+
+  //  Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
+  //  cudaCheckError();
+  //}
 
   if (grid->jtot > 1)
   {
@@ -398,12 +460,14 @@ void Pres2::exec(double dt)
     cudaThreadSynchronize();
     cudaCheckError();
 
-    for (int k=0; k<grid->ktot; ++k)
-    {
-      int ijk  = k*kk;
-      int ijk2 = k*kkj;
-      Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
-    }
+    //for (int k=0; k<grid->ktot; ++k)
+    //{
+    //  int ijk  = k*kk;
+    //  int ijk2 = k*kkj;
+    //  Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
+    //}
+
+    Pres2_g::complex_double_y2<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj/2, true);
     cudaCheckError();
   }
 
@@ -425,13 +489,14 @@ void Pres2::exec(double dt)
   // Backward FFT
   if(grid->jtot > 1)
   {
-    for (int k=0; k<grid->ktot; ++k)
-    {
-      int ijk = k*kk;
-      int ijk2 = k*kkj;
-      Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-    }
+    //for (int k=0; k<grid->ktot; ++k)
+    //{
+    //  int ijk = k*kk;
+    //  int ijk2 = k*kkj;
+    //  Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
+    //}
 
+    Pres2_g::complex_double_y2<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj/2, false);
     cudaCheckError();
 
     for (int k=0; k<grid->ktot; ++k)
@@ -445,13 +510,16 @@ void Pres2::exec(double dt)
     cudaCheckError();
   }
 
-  for (int k=0; k<grid->ktot; ++k)
-  {
-    int ijk = k*kk;
-    int ijk2 = k*kki;
+  Pres2_g::complex_double_x2<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kki/2,  false);
+  cudaCheckError();
 
-    Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-  }
+  //for (int k=0; k<grid->ktot; ++k)
+  //{
+  //  int ijk = k*kk;
+  //  int ijk2 = k*kki;
+
+  //  Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>((cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
+  //}
 
   cufftExecZ2D(iplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
   cudaThreadSynchronize();
