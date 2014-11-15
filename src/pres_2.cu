@@ -240,14 +240,15 @@ namespace Pres2_g
     }
   }
 
-   __global__ void normalize(double * __restrict__ data, const unsigned int itot, const unsigned int jtot, const double in)
+   __global__ void normalize(double * const __restrict__ data, const int itot, const int jtot, const int ktot, const double in)
   {
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     int j = blockIdx.y*blockDim.y + threadIdx.y;
+    int k = blockIdx.z;
 
-    int ij = i + j * itot;
-    if((i < itot) && (j < jtot))
-      data[ij] = data[ij] * in;
+    int ijk = i + j*itot + k*itot*jtot;
+    if((i < itot) && (j < jtot) && (k < ktot))
+      data[ijk] = data[ijk] * in;
   }
 
   __global__ void calcdivergence(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
@@ -438,12 +439,9 @@ void Pres2::exec(double dt)
   cudaThreadSynchronize();
   cudaCheckError();
 
-  for (int k=0; k<grid->ktot; ++k)
-  {
-    int ijk = k*kk;
-    Pres2_g::normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
-    cudaCheckError();
-  }
+  // Normalize output
+  Pres2_g::normalize<<<gridGPU,blockGPU>>>(fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot, 1./(grid->itot*grid->jtot));
+  cudaCheckError();
 
   cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
