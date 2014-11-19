@@ -43,17 +43,24 @@ Cross::Cross(Model *modelin, Input *inputin)
   fields = model->fields;
   master = model->master;
 
-  // optional, by default switch cross off
+  // Optional, by default switch cross off.
   int nerror = 0;
   nerror += inputin->getItem(&swcross, "cross", "swcross", "", "0");
 
   if(swcross == "1")
   {
-    // get the time at which the cross sections are triggered
+    // Get the time at which the cross sections are triggered.
     nerror += inputin->getItem(&sampletime, "cross", "sampletime", "");
 
-    // get list of cross variables
+    // Get list of cross variables.
     nerror += inputin->getList(&crosslist , "cross", "crosslist" , "");
+
+    // Crash on empty list.
+    if(crosslist.empty())
+    {
+      master->printError("empty cross section list\n");
+      throw 1;
+    }
 
     // get the list of indices at which to take cross sections
     nerror += inputin->getList(&xz, "cross", "xz", "");
