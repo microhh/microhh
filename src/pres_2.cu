@@ -38,6 +38,15 @@ const int TILE_DIM = 16;
 
 namespace Pres2_g
 {
+  inline void cudaCheckFFTPlan(cufftResult err)
+  {
+    if (CUFFT_SUCCESS != err)
+    {
+      printf("cufftPlanMany() error\n");
+      throw 1;
+    }
+  }
+
   __global__ void transpose(double *fieldOut, const double *fieldIn, const int itot, const int jtot, const int ktot)
   {
     __shared__ double tile[TILE_DIM][TILE_DIM+1];
@@ -355,15 +364,15 @@ void Pres2::prepareDevice()
   // batch      Batch size for this transform
 
   // Forward FFTs
-  cufftPlanMany(&iplanf,   rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot);
-  cufftPlanMany(&jplanf,   rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot);
-  cufftPlanMany(&jplanf2d, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot); // old y-dir fft, per slice
+  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanf,   rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot));
+  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanf,   rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot));
+  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanf2d, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); // old y-dir fft, per slice
 
   // Backward FFTs
   // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1
-  cufftPlanMany(&iplanb,   rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot);
-  cufftPlanMany(&jplanb,   rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot);
-  cufftPlanMany(&jplanb2d, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot);
+  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanb,   rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot));
+  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanb,   rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot));
+  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanb2d, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
 }
 
 void Pres2::clearDevice()
@@ -415,6 +424,7 @@ void Pres2::exec(double dt)
 
   const int offs = grid->memoffset;
 
+
   // calculate the cyclic BCs first
   grid->boundaryCyclic_g(&fields->ut->data_g[offs]);
   grid->boundaryCyclic_g(&fields->vt->data_g[offs]);
@@ -443,7 +453,7 @@ void Pres2::exec(double dt)
   {
     // For small grid sizes, transposing the domain followed by a batch FFT over the 
     // entire domain is a lot faster. Tipping point is somewhere in between 128-256 grid points
-    if(grid->itot <= 128 || grid->jtot <= 128)
+    if((grid->itot <= 128) || (grid->jtot <= 128))
     {
       Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
       cudaCheckError();
@@ -497,7 +507,7 @@ void Pres2::exec(double dt)
   {
     // For small grid sizes, transposing the domain followed by a batch FFT over the 
     // entire domain is a lot faster. Tipping point is somewhere in between 128-256 grid points
-    if(grid->itot <= 128 || grid->jtot <= 128)
+    if((grid->itot <= 128) || (grid->jtot <= 128))
     {
       Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
       cudaCheckError();
