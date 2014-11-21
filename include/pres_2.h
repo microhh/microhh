@@ -59,8 +59,8 @@ class Pres2 : public Pres
     double *a_g, *c_g;
     double *work2d_g;
 
-    cufftHandle iplanf, jplanf; 
-    cufftHandle iplanb, jplanb; 
+    cufftHandle iplanf, jplanf, jplanf2d; 
+    cufftHandle iplanb, jplanb, jplanb2d; 
     #endif
 
     void input(double *, 

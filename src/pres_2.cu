@@ -34,31 +34,35 @@
 #include "tools.h"
 #include "constants.h"
 
-const int TILE_DIM = 32;
-const int BLOCK_ROWS = 8;
+const int TILE_DIM = 16;
 
 namespace Pres2_g
 {
-  // ONLY WORKS FOR SQUARE GRIDS :)
-  __global__ void transpose(double * __restrict__ odata, const double * __restrict__ idata, const int itot, const int jtot, const int ktot)
+  __global__ void transpose(double *fieldOut, const double *fieldIn, const int itot, const int jtot, const int ktot)
   {
     __shared__ double tile[TILE_DIM][TILE_DIM+1];
+    
+    int i,j,k,ijk;
+   
+    // Index in fieldIn 
+    i = blockIdx.x * TILE_DIM + threadIdx.x;
+    j = blockIdx.y * TILE_DIM + threadIdx.y;
+    k = blockIdx.z;
+    ijk = i + j*itot + k*itot*jtot;
   
-    int x = blockIdx.x * TILE_DIM + threadIdx.x;
-    int y = blockIdx.y * TILE_DIM + threadIdx.y;
-    int z = blockIdx.z;
-    int width = gridDim.x * TILE_DIM;
-  
-    for (int j = 0; j < TILE_DIM; j += BLOCK_ROWS)
-       tile[threadIdx.y+j][threadIdx.x] = idata[(y+j)*width + x + z*itot*jtot];
-  
+    // Read to shared memory
+    if(i < itot && j < jtot)
+      tile[threadIdx.y][threadIdx.x] = fieldIn[ijk];
+   
     __syncthreads();
-  
-    x = blockIdx.y * TILE_DIM + threadIdx.x;  // transpose block offset
-    y = blockIdx.x * TILE_DIM + threadIdx.y;
-  
-    for (int j = 0; j < TILE_DIM; j += BLOCK_ROWS)
-       odata[(y+j)*width + x + z*itot*jtot] = tile[threadIdx.x][threadIdx.y + j];
+    
+    // Transposed index
+    i = blockIdx.y * TILE_DIM + threadIdx.x;
+    j = blockIdx.x * TILE_DIM + threadIdx.y;
+    ijk = i + j*jtot + k*itot*jtot;
+   
+    if(i < jtot && j < itot) 
+      fieldOut[ijk] = tile[threadIdx.x][threadIdx.y];
   }
 
   __global__ void presin(double * __restrict__ p,
@@ -336,23 +340,39 @@ void Pres2::prepareDevice()
   int o_idist   = grid->itot/2+1;
   int o_jdist   = 1;
 
+  // NOTES :)
+  // cufftPlanMany(cufftHandle *plan, int rank, int *n, int *inembed, int istride, int idist, int *onembed, int ostride, int odist, cufftType type, int batch);
+  // plan       Pointer to a cufftHandle object
+  // rank       Dimensionality of the transform (1, 2, or 3)
+  // n	        Array of size rank, describing the size of each dimension
+  // ** inembed    Pointer of size rank that indicates the storage dimensions of the input data in memory. If set to NULL all other advanced data layout parameters are ignored.
+  // istride    Indicates the distance between two successive input elements in the least significant (i.e., innermost) dimension
+  // idist      Indicates the distance between the first element of two consecutive signals in a batch of the input data
+  // ** onembed    Pointer of size rank that indicates the storage dimensions of the output data in memory. If set to NULL all other advanced data layout parameters are ignored.
+  // ostride    Indicates the distance between two successive output elements in the output array in the least significant (i.e., innermost) dimension
+  // odist      Indicates the distance between the first element of two consecutive signals in a batch of the output data
+  // type       The transform data type (e.g., CUFFT_R2C for single precision real to complex)
+  // batch      Batch size for this transform
+
   // Forward FFTs
-  cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist, o_ni, o_istride, o_idist, CUFFT_D2Z, grid->jtot*grid->ktot);
-  cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist, o_nj, o_jstride, o_jdist, CUFFT_D2Z, grid->itot);
+  cufftPlanMany(&iplanf,   rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot);
+  cufftPlanMany(&jplanf,   rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot);
+  cufftPlanMany(&jplanf2d, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot); // old y-dir fft, per slice
 
   // Backward FFTs
   // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1
-  cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot*grid->ktot);
-  cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist, i_nj, i_jstride, i_jdist, CUFFT_Z2D, grid->itot);
+  cufftPlanMany(&iplanb,   rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot);
+  cufftPlanMany(&jplanb,   rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot);
+  cufftPlanMany(&jplanb2d, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot);
 }
 
 void Pres2::clearDevice()
 {
-  cudaSafeCall(cudaFree(bmati_g       ));
-  cudaSafeCall(cudaFree(bmatj_g       ));
-  cudaSafeCall(cudaFree(a_g           ));
-  cudaSafeCall(cudaFree(c_g           ));
-  cudaSafeCall(cudaFree(work2d_g      ));
+  cudaSafeCall(cudaFree(bmati_g ));
+  cudaSafeCall(cudaFree(bmatj_g ));
+  cudaSafeCall(cudaFree(a_g     ));
+  cudaSafeCall(cudaFree(c_g     ));
+  cudaSafeCall(cudaFree(work2d_g));
 
   cufftDestroy(iplanf);
   cufftDestroy(jplanf);
@@ -368,14 +388,24 @@ void Pres2::exec(double dt)
   const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj   = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
+  // 3D grid
   dim3 gridGPU (gridi, gridj, grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
+  // ij transposed version
+  dim3 gridGPUji(gridj, gridi, grid->kmax);
+  dim3 blockGPUji(blocki, blockj, 1);
+
+  // 2D grid
   dim3 grid2dGPU (gridi, gridj);
   dim3 block2dGPU(blocki, blockj);
 
-  dim3 dimGrid(grid->itot/TILE_DIM, grid->jtot/TILE_DIM, grid->ktot);
-  dim3 dimBlock(TILE_DIM, BLOCK_ROWS, 1);
+  // Square grid for transposes 
+  const int gridiT = grid->imax/TILE_DIM + (grid->imax%TILE_DIM > 0);
+  const int gridjT = grid->jmax/TILE_DIM + (grid->jmax%TILE_DIM > 0);
+  dim3 gridGPUTf(gridiT, gridjT, grid->ktot);
+  dim3 gridGPUTb(gridjT, gridiT, grid->ktot);
+  dim3 blockGPUT(TILE_DIM, TILE_DIM, 1);
 
   const int kk = grid->itot*grid->jtot;
   const int kki = (grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
@@ -409,32 +439,38 @@ void Pres2::exec(double dt)
   // Forward FFT in the y-direction. Batch FFT over entire domain not possible (?), solve per slice
   if (grid->jtot > 1)
   {
-    //for (int k=0; k<grid->ktot; ++k)
-    //{
-    //  int ijk  = k*kk;
-    //  int ijk2 = 2*k*kkj;
-    //  cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2]);
-    //}
+    for (int k=0; k<grid->ktot; ++k)
+    {
+      int ijk  = k*kk;
+      int ijk2 = 2*k*kkj;
+      cufftExecD2Z(jplanf2d, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2]);
+    }
 
-    Pres2_g::transpose<<<dimGrid, dimBlock>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
-    cudaCheckError();
-
-    cufftExecD2Z(iplanf, (cufftDoubleReal*)fields->atmp["tmp2"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
     cudaThreadSynchronize();
-
-    // Transform complex to double output. Allows for creating parallel cuda version at a later stage
-    Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kki,  true);
     cudaCheckError();
 
     // Transform complex to double output.
-    //Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj, true);
-    //cudaCheckError();
-
-    Pres2_g::transpose<<<dimGrid, dimBlock>>>(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
-    cudaSafeCall(cudaMemcpy(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+    Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj, true);
     cudaCheckError();
-
   }
+
+  // Forward FFT in the y-direction. Batch FFT over entire domain not possible (?), solve per slice
+  //if (grid->jtot > 1)
+  //{
+  //  Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
+  //  cudaCheckError();
+
+  //  cufftExecD2Z(jplanf, (cufftDoubleReal*)fields->atmp["tmp2"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
+  //  cudaThreadSynchronize();
+
+  //  // Transform complex to double output. Allows for creating parallel cuda version at a later stage
+  //  Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, kk, kkj,  true);
+  //  cudaCheckError();
+
+  //  Pres2_g::transpose<<<gridGPUTb, blockGPUT>>>(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, grid->ktot); 
+  //  cudaSafeCall(cudaMemcpy(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+  //  cudaCheckError();
+  //}
 
   Pres2_g::solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                           fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g,
@@ -454,30 +490,41 @@ void Pres2::exec(double dt)
   // Backward FFT in the y-direction.
   if(grid->jtot > 1)
   {
-    Pres2_g::transpose<<<dimGrid, dimBlock>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
-    cudaCheckError();
-
     // Transform double -> complex
-    Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g, grid->itot, grid->jtot, kk, kkj, false);
+    Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj, false);
     cudaCheckError();
 
     // FFTs per slice
-    //for (int k=0; k<grid->ktot; ++k)
-    //{
-    //  int ijk = k*kk;
-    //  int ijk2 = 2*k*kkj;
-    //  cufftExecZ2D(jplanb, (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-    //}
+    for (int k=0; k<grid->ktot; ++k)
+    {
+      int ijk = k*kk;
+      int ijk2 = 2*k*kkj;
+      cufftExecZ2D(jplanb2d, (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
+    }
 
-    cufftExecZ2D(iplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
     cudaThreadSynchronize();
     cudaCheckError();
-
-    Pres2_g::transpose<<<dimGrid, dimBlock>>>(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
-    cudaCheckError();
-    cudaSafeCall(cudaMemcpy(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-    cudaCheckError();
   }
+
+  // Backward FFT in the y-direction.
+  //if(grid->jtot > 1)
+  //{
+  //  Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
+  //  cudaCheckError();
+
+  //  // Transform double -> complex
+  //  Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g, grid->jtot, grid->itot, kk, kkj, false);
+  //  cudaCheckError();
+
+  //  cufftExecZ2D(jplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
+  //  cudaThreadSynchronize();
+  //  cudaCheckError();
+
+  //  Pres2_g::transpose<<<gridGPUTb, blockGPUT>>>(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, grid->ktot); 
+  //  cudaCheckError();
+  //  cudaSafeCall(cudaMemcpy(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+  //  cudaCheckError();
+  //}
 
   // Backward FFT in the x-direction
   Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kki,  false);
