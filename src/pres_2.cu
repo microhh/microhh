@@ -438,40 +438,43 @@ void Pres2::exec(double dt)
   Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kki,  true);
   cudaCheckError();
 
-  // Forward FFT in the y-direction. Batch FFT over entire domain not possible (?), solve per slice
-  //if (grid->jtot > 1)
-  //{
-  //  for (int k=0; k<grid->ktot; ++k)
-  //  {
-  //    int ijk  = k*kk;
-  //    int ijk2 = 2*k*kkj;
-  //    cufftExecD2Z(jplanf2d, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2]);
-  //  }
-
-  //  cudaThreadSynchronize();
-  //  cudaCheckError();
-
-  //  // Transform complex to double output.
-  //  Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj, true);
-  //  cudaCheckError();
-  //}
-
-  // Forward FFT in the y-direction. Batch FFT over entire domain not possible (?), solve per slice
-  if (grid->jtot > 1)
+  // Forward FFT in the y-direction.
+  if(grid->jtot > 1)
   {
-    Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
-    cudaCheckError();
+    // For small grid sizes, transposing the domain followed by a batch FFT over the 
+    // entire domain is a lot faster. Tipping point is somewhere in between 128-256 grid points
+    if(grid->itot <= 128 || grid->jtot <= 128)
+    {
+      Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
+      cudaCheckError();
 
-    cufftExecD2Z(jplanf, (cufftDoubleReal*)fields->atmp["tmp2"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
-    cudaThreadSynchronize();
+      cufftExecD2Z(jplanf, (cufftDoubleReal*)fields->atmp["tmp2"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
+      cudaThreadSynchronize();
 
-    // Transform complex to double output. Allows for creating parallel cuda version at a later stage
-    Pres2_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, kk, kkj,  true);
-    cudaCheckError();
+      // Transform complex to double output. Allows for creating parallel cuda version at a later stage
+      Pres2_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, kk, kkj,  true);
+      cudaCheckError();
 
-    Pres2_g::transpose<<<gridGPUTb, blockGPUT>>>(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, grid->ktot); 
-    cudaSafeCall(cudaMemcpy(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-    cudaCheckError();
+      Pres2_g::transpose<<<gridGPUTb, blockGPUT>>>(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, grid->ktot); 
+      cudaSafeCall(cudaMemcpy(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+      cudaCheckError();
+    }
+    else
+    {
+      for (int k=0; k<grid->ktot; ++k)
+      {
+        int ijk  = k*kk;
+        int ijk2 = 2*k*kkj;
+        cufftExecD2Z(jplanf2d, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2]);
+      }
+
+      cudaThreadSynchronize();
+      cudaCheckError();
+
+      // Transform complex to double output.
+      Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj, true);
+      cudaCheckError();
+    }
   }
 
   Pres2_g::solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
@@ -490,42 +493,44 @@ void Pres2::exec(double dt)
   cudaCheckError();
 
   // Backward FFT in the y-direction.
-  //if(grid->jtot > 1)
-  //{
-  //  // Transform double -> complex
-  //  Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj, false);
-  //  cudaCheckError();
-
-  //  // FFTs per slice
-  //  for (int k=0; k<grid->ktot; ++k)
-  //  {
-  //    int ijk = k*kk;
-  //    int ijk2 = 2*k*kkj;
-  //    cufftExecZ2D(jplanb2d, (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-  //  }
-
-  //  cudaThreadSynchronize();
-  //  cudaCheckError();
-  //}
-
-  // Backward FFT in the y-direction.
   if(grid->jtot > 1)
   {
-    Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
-    cudaCheckError();
+    // For small grid sizes, transposing the domain followed by a batch FFT over the 
+    // entire domain is a lot faster. Tipping point is somewhere in between 128-256 grid points
+    if(grid->itot <= 128 || grid->jtot <= 128)
+    {
+      Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(fields->atmp["tmp2"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot); 
+      cudaCheckError();
 
-    // Transform double -> complex
-    Pres2_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g, grid->jtot, grid->itot, kk, kkj, false);
-    cudaCheckError();
+      // Transform double -> complex
+      Pres2_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g, grid->jtot, grid->itot, kk, kkj, false);
+      cudaCheckError();
 
-    cufftExecZ2D(jplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
-    cudaThreadSynchronize();
-    cudaCheckError();
+      cufftExecZ2D(jplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
+      cudaThreadSynchronize();
+      cudaCheckError();
 
-    Pres2_g::transpose<<<gridGPUTb, blockGPUT>>>(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, grid->ktot); 
-    cudaCheckError();
-    cudaSafeCall(cudaMemcpy(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-    cudaCheckError();
+      Pres2_g::transpose<<<gridGPUTb, blockGPUT>>>(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->jtot, grid->itot, grid->ktot); 
+      cudaCheckError();
+      cudaSafeCall(cudaMemcpy(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+      cudaCheckError();
+    }
+    else
+    {
+      Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj, false);
+      cudaCheckError();
+
+      // FFTs per slice
+      for (int k=0; k<grid->ktot; ++k)
+      {
+        int ijk = k*kk;
+        int ijk2 = 2*k*kkj;
+        cufftExecZ2D(jplanb2d, (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
+      }
+
+      cudaThreadSynchronize();
+      cudaCheckError();
+    }
   }
 
   // Backward FFT in the x-direction
