@@ -65,6 +65,6 @@ namespace constants
 
 namespace cuda
 {
-  const int blockSizeI = 128;  ///< Threads per threadblock in x-direction
-  const int blockSizeJ = 1;    ///< Threads per threadblock in y-direction
+  //const int blockSizeI = 128;  ///< Threads per threadblock in x-direction
+  //const int blockSizeJ = 1;    ///< Threads per threadblock in y-direction
 }

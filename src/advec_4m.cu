@@ -365,8 +365,8 @@ unsigned long Advec4m::getTimeLimit(unsigned long idt, double dt)
 
 double Advec4m::get_cfl(const double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
   double cfl = 0;
@@ -396,8 +396,8 @@ double Advec4m::get_cfl(const double dt)
 
 void Advec4m::exec()
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

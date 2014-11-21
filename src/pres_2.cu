@@ -384,8 +384,8 @@ void Pres2::clearDevice()
 void Pres2::exec(double dt)
 {
   int gridi, gridj;
-  const int blocki  = cuda::blockSizeI;
-  const int blockj  = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -570,8 +570,8 @@ void Pres2::exec(double dt)
 #ifdef USECUDA
 double Pres2::checkDivergence()
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

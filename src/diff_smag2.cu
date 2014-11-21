@@ -430,8 +430,8 @@ void DiffSmag2::execViscosity()
   // do a cast because the base boundary class does not have the MOST related variables
   BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
 
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -485,8 +485,8 @@ void DiffSmag2::execViscosity()
 #ifdef USECUDA
 void DiffSmag2::exec()
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -523,8 +523,8 @@ void DiffSmag2::exec()
 #ifdef USECUDA
 unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -557,8 +557,8 @@ unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
 #ifdef USECUDA
 double DiffSmag2::get_dn(double dt)
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

@@ -100,8 +100,8 @@ void Fields::exec()
 #ifdef USECUDA
 double Fields::checkMomentum()
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -128,8 +128,8 @@ double Fields::checkMomentum()
 #ifdef USECUDA
 double Fields::checkTke()
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -158,8 +158,8 @@ double Fields::checkTke()
 #ifdef USECUDA
 double Fields::checkMass()
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

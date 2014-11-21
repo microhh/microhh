@@ -68,8 +68,8 @@ namespace ThermoBuoy_g
 #ifdef USECUDA
 void ThermoBuoy::exec()
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

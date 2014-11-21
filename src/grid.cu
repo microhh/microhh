@@ -22,6 +22,7 @@
 
 #include "grid.h"
 #include "tools.h"
+#include "math.h"
 
 namespace Grid_g
 {
@@ -104,6 +105,10 @@ void Grid::prepareDevice()
   ijcellsp  = icellsp * jcells;  
   ncellsp   = ijcellsp * kcells + memoffset;
 
+  // Calculate optimal size thread blocks based on grid
+  iThreadBlock = min(256,(int)ceil(itot/16)*16); 
+  jThreadBlock = 256 / iThreadBlock;
+ 
   const int kmemsize = kcells*sizeof(double);
 
   cudaSafeCall(cudaMalloc((void**)&z_g    , kmemsize));

@@ -153,6 +153,9 @@ class Grid
     void interpolate_4th(double *, double *, const int[3], const int[3]); ///< Fourth order interpolation
 
     // GPU functions and variables
+    int iThreadBlock; ///< Number of grid cells in the x-direction for GPU thread block.
+    int jThreadBlock; ///< Number of grid cells in the y-direction for GPU thread block.
+
     double *z_g;
     double *zh_g;
     double *dz_g;
