@@ -60,6 +60,8 @@ class Pres2 : public Pres
     double *work2d_g;
 
     bool iFFTPerSlice, jFFTPerSlice;
+    void fftForward (double *, double *, double *);
+    void fftBackward(double *, double *, double *);
 
     cufftHandle iplanf, jplanf; 
     cufftHandle iplanb, jplanb; 
