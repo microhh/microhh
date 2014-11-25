@@ -61,8 +61,8 @@ class Pres2 : public Pres
 
     bool iFFTPerSlice, jFFTPerSlice;
 
-    cufftHandle iplanf, iplanf2d, jplanf, jplanf2d; 
-    cufftHandle iplanb, iplanb2d, jplanb, jplanb2d; 
+    cufftHandle iplanf, jplanf; 
+    cufftHandle iplanb, jplanb; 
     #endif
 
     void input(double *, 

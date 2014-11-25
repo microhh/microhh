@@ -360,32 +360,27 @@ void Pres2::prepareDevice()
   int o_idist   = grid->itot/2+1;
   int o_jdist   = 1;
 
-  // NOTES :)
-  // cufftPlanMany(cufftHandle *plan, int rank, int *n, int *inembed, int istride, int idist, int *onembed, int ostride, int odist, cufftType type, int batch);
-  // plan       Pointer to a cufftHandle object
-  // rank       Dimensionality of the transform (1, 2, or 3)
-  // n	        Array of size rank, describing the size of each dimension
-  // ** inembed    Pointer of size rank that indicates the storage dimensions of the input data in memory. If set to NULL all other advanced data layout parameters are ignored.
-  // istride    Indicates the distance between two successive input elements in the least significant (i.e., innermost) dimension
-  // idist      Indicates the distance between the first element of two consecutive signals in a batch of the input data
-  // ** onembed    Pointer of size rank that indicates the storage dimensions of the output data in memory. If set to NULL all other advanced data layout parameters are ignored.
-  // ostride    Indicates the distance between two successive output elements in the output array in the least significant (i.e., innermost) dimension
-  // odist      Indicates the distance between the first element of two consecutive signals in a batch of the output data
-  // type       The transform data type (e.g., CUFFT_R2C for single precision real to complex)
-  // batch      Batch size for this transform
+  if(iFFTPerSlice)
+  {
+    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
+    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
+  }
+  else
+  {
+    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot));
+    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot));
+  }
 
-  // Forward FFTs
-  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanf,   rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot));
-  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanf,   rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot));
-  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanf2d, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
-  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanf2d, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
-
-  // Backward FFTs
-  // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1
-  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanb,   rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot));
-  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanb,   rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot));
-  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanb2d, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
-  Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanb2d, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
+  if(jFFTPerSlice)
+  {
+    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
+    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
+  }
+  else
+  {
+    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot));
+    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot));
+  }
 }
 
 void Pres2::clearDevice()
@@ -437,7 +432,6 @@ void Pres2::exec(double dt)
 
   const int offs = grid->memoffset;
 
-
   // calculate the cyclic BCs first
   grid->boundaryCyclic_g(&fields->ut->data_g[offs]);
   grid->boundaryCyclic_g(&fields->vt->data_g[offs]);
@@ -453,9 +447,22 @@ void Pres2::exec(double dt)
                                          grid->igc, grid->jgc, grid->kgc);
   cudaCheckError();
 
-  // Forward FFT in the x-direction, single batch over entire 3D field
-  cufftExecD2Z(iplanf, (cufftDoubleReal*)fields->sd["p"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
-  cudaThreadSynchronize();
+  // Forward FFT in the x-direction.
+  if(iFFTPerSlice)
+  {
+    for (int k=0; k<grid->ktot; ++k)
+    {
+      int ijk  = k*kk;
+      int ijk2 = 2*k*kki;
+      cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2]);
+    }
+  }
+  else
+  {
+    // Forward FFT in the x-direction, single batch over entire 3D field
+    cufftExecD2Z(iplanf, (cufftDoubleReal*)fields->sd["p"]->data_g, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g);
+    cudaThreadSynchronize();
+  }
 
   // Transform complex to double output. Allows for creating parallel cuda version at a later stage
   Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kki,  true);
@@ -472,7 +479,7 @@ void Pres2::exec(double dt)
       {
         int ijk  = k*kk;
         int ijk2 = 2*k*kkj;
-        cufftExecD2Z(jplanf2d, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2]);
+        cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2]);
       }
 
       cudaThreadSynchronize();
@@ -520,14 +527,12 @@ void Pres2::exec(double dt)
     {
       Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kkj, false);
       cudaCheckError();
-
       for (int k=0; k<grid->ktot; ++k)
       {
         int ijk = k*kk;
         int ijk2 = 2*k*kkj;
-        cufftExecZ2D(jplanb2d, (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
+        cufftExecZ2D(jplanb, (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
       }
-
       cudaThreadSynchronize();
       cudaCheckError();
     }
@@ -555,10 +560,24 @@ void Pres2::exec(double dt)
   Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->itot, grid->jtot, kk, kki,  false);
   cudaCheckError();
 
-  // Batch FFT over entire domain
-  cufftExecZ2D(iplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
-  cudaThreadSynchronize();
-  cudaCheckError();
+  if(iFFTPerSlice)
+  {
+    for (int k=0; k<grid->ktot; ++k)
+    {
+      int ijk = k*kk;
+      int ijk2 = 2*k*kki;
+      cufftExecZ2D(iplanb, (cufftDoubleComplex*)&fields->atmp["tmp1"]->data_g[ijk2], (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
+    }
+    cudaThreadSynchronize();
+    cudaCheckError();
+  }
+  else
+  {
+    // Batch FFT over entire domain
+    cufftExecZ2D(iplanb, (cufftDoubleComplex*)fields->atmp["tmp1"]->data_g, (cufftDoubleReal*)fields->sd["p"]->data_g);
+    cudaThreadSynchronize();
+    cudaCheckError();
+  }
 
   // Normalize output
   Pres2_g::normalize<<<gridGPU,blockGPU>>>(fields->sd["p"]->data_g, grid->itot, grid->jtot, grid->ktot, 1./(grid->itot*grid->jtot));
