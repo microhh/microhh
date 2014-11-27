@@ -37,37 +37,6 @@
 
 namespace Pres2_g
 {
-  inline int checkCuFFT(cufftResult err)
-  {
-    if (err == CUFFT_SUCCESS)
-      return 0;
-    else
-    {
-       if(err == CUFFT_INVALID_PLAN)
-         printf("cuFFT plan error: INVALID PLAN\n");
-       else if(err == CUFFT_ALLOC_FAILED)
-         printf("cuFFT plan error: ALLOC FAILED\n");
-       else if(err == CUFFT_INVALID_TYPE)
-         printf("cuFFT plan error: INVALID TYPE\n");
-       else if(err == CUFFT_INVALID_VALUE)
-         printf("cuFFT plan error: INVALID VALUE\n");
-       else if(err == CUFFT_INTERNAL_ERROR)
-         printf("cuFFT plan error: INTERNAL ERROR\n");
-       else if(err == CUFFT_EXEC_FAILED)
-         printf("cuFFT plan error: EXEC FAILED\n");
-       else if(err == CUFFT_SETUP_FAILED)
-         printf("cuFFT plan error: SETUP FAILED\n");
-       else if(err == CUFFT_INVALID_SIZE)
-         printf("cuFFT plan error: INVALID SIZE\n");
-       else if(err == CUFFT_UNALIGNED_DATA)
-         printf("cuFFT plan error: UNALIGNED DATA\n");
-       else 
-         printf("cuFFT plan error: OTHER\n");
-    
-       return 1; 
-    }
-  }
-
   __global__ void presin(double * __restrict__ p,
                          double * __restrict__ u ,  double * __restrict__ v ,     double * __restrict__ w ,
                          double * __restrict__ ut,  double * __restrict__ vt,     double * __restrict__ wt,
@@ -257,61 +226,7 @@ void Pres2::prepareDevice()
   cudaSafeCall(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
   cudaSafeCall(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
 
-  // Make cuFFT plan
-  int rank      = 1;
-
-  // Double input
-  int i_ni[]    = {grid->itot};
-  int i_nj[]    = {grid->jtot};
-  int i_istride = 1;
-  int i_jstride = grid->itot;
-  int i_idist   = grid->itot;
-  int i_jdist   = 1;
-
-  // Double-complex output
-  int o_ni[]    = {grid->itot/2+1};
-  int o_nj[]    = {grid->jtot/2+1};
-  int o_istride = 1;
-  int o_jstride = grid->itot;
-  int o_idist   = grid->itot/2+1;
-  int o_jdist   = 1;
-
-  // Try to make FFT plan batched over entire field. If fails, make plan per slice
-  int nerror = 0;
-  nerror += Pres2_g::checkCuFFT(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot)); 
-  nerror += Pres2_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot)); 
-  nerror += Pres2_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
-  nerror += Pres2_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
-
-  if(nerror == 0)
-  {
-    FFTPerSlice = false;
-    master->printMessage("cuFFT strategy: batched over entire 3D field\n");
-  }
-  else
-  {
-    cufftDestroy(iplanf);
-    cufftDestroy(jplanf);
-    cufftDestroy(iplanb);
-    cufftDestroy(jplanb);
-
-    nerror = 0;
-    nerror += Pres2_g::checkCuFFT(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
-    nerror += Pres2_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
-    nerror += Pres2_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
-    nerror += Pres2_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
-
-    if(nerror == 0)
-    {
-      FFTPerSlice = true;
-      master->printMessage("cuFFT strategy: batched per 2D slice\n");
-    }
-    else
-    {
-      master->printError("cuFFT plan failed both for batch/field and batch/slice\n");
-      throw 1;
-    }
-  }
+  makeCufftPlan();
 }
 
 void Pres2::clearDevice()

@@ -54,6 +54,7 @@ class Pres
     Fields *fields;
 
     #ifdef USECUDA
+    void makeCufftPlan();
     void fftForward (double *, double *, double *);
     void fftBackward(double *, double *, double *);
 
