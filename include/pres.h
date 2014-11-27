@@ -57,7 +57,7 @@ class Pres
     void fftForward (double *, double *, double *);
     void fftBackward(double *, double *, double *);
 
-    bool iFFTPerSlice, jFFTPerSlice;
+    bool FFTPerSlice;
     cufftHandle iplanf, jplanf; 
     cufftHandle iplanb, jplanb; 
     #endif

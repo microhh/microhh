@@ -159,7 +159,7 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
   const int kkj = (grid->jtot/2+1)*grid->itot;
 
   // Forward FFT in the x-direction.
-  if(iFFTPerSlice) // Batched FFT per horizontal slice
+  if(FFTPerSlice) // Batched FFT per horizontal slice
   {
     for (int k=0; k<grid->ktot; ++k)
     {
@@ -182,7 +182,7 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
   // Forward FFT in the y-direction.
   if(grid->jtot > 1)
   {
-    if(jFFTPerSlice) // Batched FFT per horizontal slice
+    if(FFTPerSlice) // Batched FFT per horizontal slice
     {
       for (int k=0; k<grid->ktot; ++k)
       {
@@ -245,7 +245,7 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
   // Backward FFT in the y-direction.
   if(grid->jtot > 1)
   {
-    if(jFFTPerSlice) // Batched FFT per horizontal slice
+    if(FFTPerSlice) // Batched FFT per horizontal slice
     {
       Pres_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, false);
       cudaCheckError();
@@ -281,7 +281,7 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
   Pres_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  false);
   cudaCheckError();
 
-  if(iFFTPerSlice) // Batched FFT per horizontal slice
+  if(FFTPerSlice) // Batched FFT per horizontal slice
   {
     for (int k=0; k<grid->ktot; ++k)
     {

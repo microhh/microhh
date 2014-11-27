@@ -37,12 +37,34 @@
 
 namespace Pres2_g
 {
-  inline void cudaCheckFFTPlan(cufftResult err)
+  inline int checkCuFFT(cufftResult err)
   {
-    if (CUFFT_SUCCESS != err)
+    if (err == CUFFT_SUCCESS)
+      return 0;
+    else
     {
-      printf("cufftPlanMany() error\n");
-      throw 1;
+       if(err == CUFFT_INVALID_PLAN)
+         printf("cuFFT plan error: INVALID PLAN\n");
+       else if(err == CUFFT_ALLOC_FAILED)
+         printf("cuFFT plan error: ALLOC FAILED\n");
+       else if(err == CUFFT_INVALID_TYPE)
+         printf("cuFFT plan error: INVALID TYPE\n");
+       else if(err == CUFFT_INVALID_VALUE)
+         printf("cuFFT plan error: INVALID VALUE\n");
+       else if(err == CUFFT_INTERNAL_ERROR)
+         printf("cuFFT plan error: INTERNAL ERROR\n");
+       else if(err == CUFFT_EXEC_FAILED)
+         printf("cuFFT plan error: EXEC FAILED\n");
+       else if(err == CUFFT_SETUP_FAILED)
+         printf("cuFFT plan error: SETUP FAILED\n");
+       else if(err == CUFFT_INVALID_SIZE)
+         printf("cuFFT plan error: INVALID SIZE\n");
+       else if(err == CUFFT_UNALIGNED_DATA)
+         printf("cuFFT plan error: UNALIGNED DATA\n");
+       else 
+         printf("cuFFT plan error: OTHER\n");
+    
+       return 1; 
     }
   }
 
@@ -254,40 +276,41 @@ void Pres2::prepareDevice()
   int o_idist   = grid->itot/2+1;
   int o_jdist   = 1;
 
-  /* For small horizontal grid dimensions, a batched FFT over the entire 3D field (with required horizontal transpose for the y-direction FFT) 
-     is much faster than batched FFTs per slice. Downside: the cuFFT plans use a lot of memory (e.g. ~2.3 GB for 512x512x384 case). 
-     Use a somewhat arbitrarily chosen switch to tune performance / memory usage: */
-  if(grid->jtot == 1 || (grid->itot <= 256 && grid->jtot <= 256))
-  {
-    iFFTPerSlice = false;
-    jFFTPerSlice = false;
-  }
-  else
-  {
-    iFFTPerSlice = true;
-    iFFTPerSlice = true;
-  }
+  // Try to make FFT plan batched over entire field. If fails, make plan per slice
+  int nerror = 0;
+  nerror += Pres2_g::checkCuFFT(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot)); 
+  nerror += Pres2_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot)); 
+  nerror += Pres2_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
+  nerror += Pres2_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
 
-  if(iFFTPerSlice)
+  if(nerror == 0)
   {
-    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
-    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
+    FFTPerSlice = false;
+    master->printMessage("cuFFT strategy: batched over entire 3D field\n");
   }
   else
   {
-    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot));
-    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot));
-  }
+    cufftDestroy(iplanf);
+    cufftDestroy(jplanf);
+    cufftDestroy(iplanb);
+    cufftDestroy(jplanb);
 
-  if(jFFTPerSlice)
-  {
-    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
-    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
-  }
-  else
-  {
-    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot));
-    Pres2_g::cudaCheckFFTPlan(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot));
+    nerror = 0;
+    nerror += Pres2_g::checkCuFFT(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
+    nerror += Pres2_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
+    nerror += Pres2_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
+    nerror += Pres2_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
+
+    if(nerror == 0)
+    {
+      FFTPerSlice = true;
+      master->printMessage("cuFFT strategy: batched per 2D slice\n");
+    }
+    else
+    {
+      master->printError("cuFFT plan failed both for batch/field and batch/slice\n");
+      throw 1;
+    }
   }
 }
 
