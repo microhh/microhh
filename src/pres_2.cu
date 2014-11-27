@@ -28,13 +28,12 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "pres.h"
 #include "pres_2.h"
 #include "defines.h"
 #include "model.h"
 #include "tools.h"
 #include "constants.h"
-
-const int TILE_DIM = 16;
 
 namespace Pres2_g
 {
@@ -45,33 +44,6 @@ namespace Pres2_g
       printf("cufftPlanMany() error\n");
       throw 1;
     }
-  }
-
-  __global__ void transpose(double *fieldOut, const double *fieldIn, const int itot, const int jtot, const int ktot)
-  {
-    __shared__ double tile[TILE_DIM][TILE_DIM+1];
-    
-    int i,j,k,ijk;
-   
-    // Index in fieldIn 
-    i = blockIdx.x * TILE_DIM + threadIdx.x;
-    j = blockIdx.y * TILE_DIM + threadIdx.y;
-    k = blockIdx.z;
-    ijk = i + j*itot + k*itot*jtot;
-  
-    // Read to shared memory
-    if(i < itot && j < jtot)
-      tile[threadIdx.y][threadIdx.x] = fieldIn[ijk];
-   
-    __syncthreads();
-    
-    // Transposed index
-    i = blockIdx.y * TILE_DIM + threadIdx.x;
-    j = blockIdx.x * TILE_DIM + threadIdx.y;
-    ijk = i + j*jtot + k*itot*jtot;
-   
-    if(i < jtot && j < itot) 
-      fieldOut[ijk] = tile[threadIdx.x][threadIdx.y];
   }
 
   __global__ void presin(double * __restrict__ p,
@@ -222,72 +194,6 @@ namespace Pres2_g
     }
   }
 
-  __global__ void complex_double_x(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kki, bool forward)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-    int k = blockIdx.z;
-
-    int ij   = i + j*itot + k*kk;         // index real part in ddata
-    int ij2  = (itot-i) + j*itot + k*kk;  // index complex part in ddata
-    int imax = itot/2+1;
-    int ijc  = i + j*imax + k*kki;        // index in cdata
-
-    if((j < jtot) && (i < imax))
-    {
-      if(forward) // complex -> double
-      {
-        ddata[ij]  = cdata[ijc].x;
-        if(i>0 && i<imax-1)
-          ddata[ij2] = cdata[ijc].y;
-      }
-      else // double -> complex
-      {
-        cdata[ijc].x = ddata[ij];
-        if(i>0 && i<imax-1)
-          cdata[ijc].y = ddata[ij2];
-      }
-    }
-  }
-
-  __global__ void complex_double_y(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kkj, bool forward)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-    int k = blockIdx.z;
-
-    int ij   = i + j*itot + k*kk;        // index real part in ddata
-    int ij2  = i + (jtot-j)*itot + k*kk;    // index complex part in ddata
-    int jmax = jtot/2+1;
-    int ijc  = i + j*itot + k*kkj;
-
-    if((i < itot) && (j < jmax))
-    {
-      if(forward) // complex -> double
-      {
-        ddata[ij] = cdata[ijc].x;
-        if(j>0 && j<jmax-1)
-          ddata[ij2] = cdata[ijc].y;
-      }
-      else // double -> complex
-      {
-        cdata[ijc].x = ddata[ij];
-        if(j>0 && j<jmax-1)
-          cdata[ijc].y = ddata[ij2];
-      }
-    }
-  }
-
-   __global__ void normalize(double * const __restrict__ data, const int itot, const int jtot, const int ktot, const double in)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-    int k = blockIdx.z;
-
-    int ijk = i + j*itot + k*itot*jtot;
-    if((i < itot) && (j < jtot) && (k < ktot))
-      data[ijk] = data[ijk] * in;
-  }
 
   __global__ void calcdivergence(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
                                  double * __restrict__ div, double * __restrict__ dzi,
@@ -502,183 +408,3 @@ double Pres2::checkDivergence()
   return divmax;
 }
 #endif
-
-#ifdef USECUDA
-void Pres2::fftForward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
-{
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
-  int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-  int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-  // 3D grid
-  dim3 gridGPU (gridi,  gridj,  grid->kmax);
-  dim3 blockGPU(blocki, blockj, 1);
-
-  // Square grid for transposes 
-  const int gridiT = grid->imax/TILE_DIM + (grid->imax%TILE_DIM > 0);
-  const int gridjT = grid->jmax/TILE_DIM + (grid->jmax%TILE_DIM > 0);
-  dim3 gridGPUTf(gridiT, gridjT, grid->ktot); // Transpose ijk to jik
-  dim3 gridGPUTb(gridjT, gridiT, grid->ktot); // Transpose jik to ijk
-  dim3 blockGPUT(TILE_DIM, TILE_DIM, 1);
-
-  // Transposed grid
-  gridi = grid->jmax/blocki + (grid->jmax%blocki > 0);
-  gridj = grid->imax/blockj + (grid->imax%blockj > 0);
-  dim3 gridGPUji (gridi,  gridj,  grid->kmax);
-
-  const int kk = grid->itot*grid->jtot;
-  const int kki = (grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
-  const int kkj = (grid->jtot/2+1)*grid->itot; // Size complex slice FFT - y direction
-
-  // Forward FFT in the x-direction.
-  if(iFFTPerSlice)
-  {
-    for (int k=0; k<grid->ktot; ++k)
-    {
-      int ijk  = k*kk;
-      int ijk2 = 2*k*kki;
-      cufftExecD2Z(iplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2]);
-    }
-  }
-  else
-  {
-    // Forward FFT in the x-direction, single batch over entire 3D field
-    cufftExecD2Z(iplanf, (cufftDoubleReal*)p, (cufftDoubleComplex*)tmp1);
-    cudaThreadSynchronize();
-  }
-
-  // Transform complex to double output. Allows for creating parallel cuda version at a later stage
-  Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  true);
-  cudaCheckError();
-
-  // Forward FFT in the y-direction.
-  if(grid->jtot > 1)
-  {
-    // For small grid sizes, transposing the domain followed by a batch FFT over the 
-    // entire domain is a lot faster. Tipping point is somewhere in between 128-256 grid points
-    if(jFFTPerSlice)
-    {
-      for (int k=0; k<grid->ktot; ++k)
-      {
-        int ijk  = k*kk;
-        int ijk2 = 2*k*kkj;
-        cufftExecD2Z(jplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2]);
-      }
-
-      cudaThreadSynchronize();
-      cudaCheckError();
-
-      Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, true);
-      cudaCheckError();
-    }
-    else
-    {
-      Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
-      cudaCheckError();
-
-      cufftExecD2Z(jplanf, (cufftDoubleReal*)tmp2, (cufftDoubleComplex*)tmp1);
-      cudaThreadSynchronize();
-
-      Pres2_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->jtot, grid->itot, kk, kkj,  true);
-      cudaCheckError();
-
-      Pres2_g::transpose<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
-      cudaSafeCall(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-      cudaCheckError();
-    }
-  }
-}
-
-void Pres2::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
-{
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
-  int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-  int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
-
-  // 3D grid
-  dim3 gridGPU (gridi,  gridj,  grid->kmax);
-  dim3 blockGPU(blocki, blockj, 1);
-
-  // Square grid for transposes 
-  const int gridiT = grid->imax/TILE_DIM + (grid->imax%TILE_DIM > 0);
-  const int gridjT = grid->jmax/TILE_DIM + (grid->jmax%TILE_DIM > 0);
-  dim3 gridGPUTf(gridiT, gridjT, grid->ktot); // Transpose ijk to jik
-  dim3 gridGPUTb(gridjT, gridiT, grid->ktot); // Transpose jik to ijk
-  dim3 blockGPUT(TILE_DIM, TILE_DIM, 1);
-
-  // Transposed grid
-  gridi = grid->jmax/blocki + (grid->jmax%blocki > 0);
-  gridj = grid->imax/blockj + (grid->imax%blockj > 0);
-  dim3 gridGPUji (gridi,  gridj,  grid->kmax);
-
-  const int kk = grid->itot*grid->jtot;
-  const int kki = (grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
-  const int kkj = (grid->jtot/2+1)*grid->itot; // Size complex slice FFT - y direction
-
-  // Backward FFT in the y-direction.
-  if(grid->jtot > 1)
-  {
-    if(jFFTPerSlice)
-    {
-      Pres2_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, false);
-      cudaCheckError();
-      for (int k=0; k<grid->ktot; ++k)
-      {
-        int ijk = k*kk;
-        int ijk2 = 2*k*kkj;
-        cufftExecZ2D(jplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk]);
-      }
-      cudaThreadSynchronize();
-      cudaCheckError();
-    }
-    else
-    {
-      Pres2_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
-      cudaCheckError();
-
-      // Transform double -> complex
-      Pres2_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, tmp2, grid->jtot, grid->itot, kk, kkj, false);
-      cudaCheckError();
-
-      cufftExecZ2D(jplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p);
-      cudaThreadSynchronize();
-      cudaCheckError();
-
-      Pres2_g::transpose<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
-      cudaCheckError();
-      cudaSafeCall(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-      cudaCheckError();
-    }
- }
-
-  // Backward FFT in the x-direction
-  Pres2_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  false);
-  cudaCheckError();
-
-  if(iFFTPerSlice)
-  {
-    for (int k=0; k<grid->ktot; ++k)
-    {
-      int ijk = k*kk;
-      int ijk2 = 2*k*kki;
-      cufftExecZ2D(iplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk]);
-    }
-    cudaThreadSynchronize();
-    cudaCheckError();
-  }
-  else
-  {
-    // Batch FFT over entire domain
-    cufftExecZ2D(iplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p);
-    cudaThreadSynchronize();
-    cudaCheckError();
-  }
-
-  // Normalize output
-  Pres2_g::normalize<<<gridGPU,blockGPU>>>(p, grid->itot, grid->jtot, grid->ktot, 1./(grid->itot*grid->jtot));
-  cudaCheckError();
-}
-#endif
-

@@ -25,10 +25,6 @@
 
 #include "pres.h"
 
-#ifdef USECUDA
-#include <cufft.h>
-#endif
-
 class Model;
 
 class Pres2 : public Pres
@@ -58,13 +54,6 @@ class Pres2 : public Pres
     double *bmati_g, *bmatj_g;
     double *a_g, *c_g;
     double *work2d_g;
-
-    bool iFFTPerSlice, jFFTPerSlice;
-    void fftForward (double *, double *, double *);
-    void fftBackward(double *, double *, double *);
-
-    cufftHandle iplanf, jplanf; 
-    cufftHandle iplanb, jplanb; 
     #endif
 
     void input(double *, 
