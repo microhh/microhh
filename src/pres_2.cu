@@ -194,7 +194,6 @@ namespace Pres2_g
     }
   }
 
-
   __global__ void calcdivergence(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
                                  double * __restrict__ div, double * __restrict__ dzi,
                                  double * __restrict__ rhoref, double * __restrict__ rhorefh,
@@ -236,17 +235,6 @@ void Pres2::prepareDevice()
   cudaSafeCall(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
   cudaSafeCall(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
 
-  if(grid->jtot == 1 || grid->itot <= 128 || grid->jtot <= 128)
-  {
-    iFFTPerSlice = false;
-    jFFTPerSlice = false;
-  }
-  else
-  {
-    iFFTPerSlice = true;
-    iFFTPerSlice = true;
-  }
-
   // Make cuFFT plan
   int rank      = 1;
 
@@ -265,6 +253,20 @@ void Pres2::prepareDevice()
   int o_jstride = grid->itot;
   int o_idist   = grid->itot/2+1;
   int o_jdist   = 1;
+
+  /* For small horizontal grid dimensions, a batched FFT over the entire 3D field (with required horizontal transpose for the y-direction FFT) 
+     is much faster than batched FFTs per slice. Downside: the cuFFT plans use a lot of memory (e.g. ~2.3 GB for 512x512x384 case). 
+     Use a somewhat arbitrarily chosen switch to tune performance / memory usage: */
+  if(grid->jtot == 1 || (grid->itot <= 256 && grid->jtot <= 256))
+  {
+    iFFTPerSlice = false;
+    jFFTPerSlice = false;
+  }
+  else
+  {
+    iFFTPerSlice = true;
+    iFFTPerSlice = true;
+  }
 
   if(iFFTPerSlice)
   {

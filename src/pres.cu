@@ -145,8 +145,8 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
   // Square grid for transposes 
   const int gridiT = grid->imax/Pres_g::TILE_DIM + (grid->imax%Pres_g::TILE_DIM > 0);
   const int gridjT = grid->jmax/Pres_g::TILE_DIM + (grid->jmax%Pres_g::TILE_DIM > 0);
-  dim3 gridGPUTf(gridiT, gridjT, grid->ktot); // Transpose ijk to jik
-  dim3 gridGPUTb(gridjT, gridiT, grid->ktot); // Transpose jik to ijk
+  dim3 gridGPUTf(gridiT, gridjT, grid->ktot);
+  dim3 gridGPUTb(gridjT, gridiT, grid->ktot);
   dim3 blockGPUT(Pres_g::TILE_DIM, Pres_g::TILE_DIM, 1);
 
   // Transposed grid
@@ -155,11 +155,11 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
   dim3 gridGPUji (gridi,  gridj,  grid->kmax);
 
   const int kk = grid->itot*grid->jtot;
-  const int kki = (grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
-  const int kkj = (grid->jtot/2+1)*grid->itot; // Size complex slice FFT - y direction
+  const int kki = (grid->itot/2+1)*grid->jtot;
+  const int kkj = (grid->jtot/2+1)*grid->itot;
 
   // Forward FFT in the x-direction.
-  if(iFFTPerSlice)
+  if(iFFTPerSlice) // Batched FFT per horizontal slice
   {
     for (int k=0; k<grid->ktot; ++k)
     {
@@ -168,9 +168,9 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
       cufftExecD2Z(iplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2]);
     }
   }
-  else
+  else // Single batched FFT over entire 3D field
   {
-    // Forward FFT in the x-direction, single batch over entire 3D field
+    
     cufftExecD2Z(iplanf, (cufftDoubleReal*)p, (cufftDoubleComplex*)tmp1);
     cudaThreadSynchronize();
   }
@@ -182,9 +182,7 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
   // Forward FFT in the y-direction.
   if(grid->jtot > 1)
   {
-    // For small grid sizes, transposing the domain followed by a batch FFT over the 
-    // entire domain is a lot faster. Tipping point is somewhere in between 128-256 grid points
-    if(jFFTPerSlice)
+    if(jFFTPerSlice) // Batched FFT per horizontal slice
     {
       for (int k=0; k<grid->ktot; ++k)
       {
@@ -199,7 +197,7 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
       Pres_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, true);
       cudaCheckError();
     }
-    else
+    else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
     {
       Pres_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
       cudaCheckError();
@@ -231,8 +229,8 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
   // Square grid for transposes 
   const int gridiT = grid->imax/Pres_g::TILE_DIM + (grid->imax%Pres_g::TILE_DIM > 0);
   const int gridjT = grid->jmax/Pres_g::TILE_DIM + (grid->jmax%Pres_g::TILE_DIM > 0);
-  dim3 gridGPUTf(gridiT, gridjT, grid->ktot); // Transpose ijk to jik
-  dim3 gridGPUTb(gridjT, gridiT, grid->ktot); // Transpose jik to ijk
+  dim3 gridGPUTf(gridiT, gridjT, grid->ktot); 
+  dim3 gridGPUTb(gridjT, gridiT, grid->ktot); 
   dim3 blockGPUT(Pres_g::TILE_DIM, Pres_g::TILE_DIM, 1);
 
   // Transposed grid
@@ -241,13 +239,13 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
   dim3 gridGPUji (gridi,  gridj,  grid->kmax);
 
   const int kk = grid->itot*grid->jtot;
-  const int kki = (grid->itot/2+1)*grid->jtot; // Size complex slice FFT - x direction
-  const int kkj = (grid->jtot/2+1)*grid->itot; // Size complex slice FFT - y direction
+  const int kki = (grid->itot/2+1)*grid->jtot;
+  const int kkj = (grid->jtot/2+1)*grid->itot;
 
   // Backward FFT in the y-direction.
   if(grid->jtot > 1)
   {
-    if(jFFTPerSlice)
+    if(jFFTPerSlice) // Batched FFT per horizontal slice
     {
       Pres_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, false);
       cudaCheckError();
@@ -260,12 +258,11 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
       cudaThreadSynchronize();
       cudaCheckError();
     }
-    else
+    else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
     {
       Pres_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
       cudaCheckError();
 
-      // Transform double -> complex
       Pres_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, tmp2, grid->jtot, grid->itot, kk, kkj, false);
       cudaCheckError();
 
@@ -284,7 +281,7 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
   Pres_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  false);
   cudaCheckError();
 
-  if(iFFTPerSlice)
+  if(iFFTPerSlice) // Batched FFT per horizontal slice
   {
     for (int k=0; k<grid->ktot; ++k)
     {
@@ -295,9 +292,8 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
     cudaThreadSynchronize();
     cudaCheckError();
   }
-  else
+  else // Batch FFT over entire domain
   {
-    // Batch FFT over entire domain
     cufftExecZ2D(iplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p);
     cudaThreadSynchronize();
     cudaCheckError();
