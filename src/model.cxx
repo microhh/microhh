@@ -223,12 +223,13 @@ void Model::exec()
   master  ->printMessage("Preparing the GPU\n");
   grid    ->prepareDevice();
   fields  ->prepareDevice();
-  pres    ->prepareDevice();
   buffer  ->prepareDevice();
   thermo  ->prepareDevice();
   boundary->prepareDevice();
   diff    ->prepareDevice();
   force   ->prepareDevice();
+  // Prepare pressure last, for memory check
+  pres    ->prepareDevice(); 
   #endif
 
   master->printMessage("Starting time integration\n");

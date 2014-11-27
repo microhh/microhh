@@ -62,5 +62,10 @@ class Pres
     cufftHandle iplanf, jplanf; 
     cufftHandle iplanb, jplanb; 
     #endif
+  
+  private:
+    #ifdef USECUDA
+    void checkCufftMemory();
+    #endif
 };
 #endif

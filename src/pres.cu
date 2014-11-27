@@ -189,6 +189,8 @@ void Pres::makeCufftPlan()
   nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
   nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
 
+  //checkCufftMemory();
+
   if(nerror == 0)
   {
     FFTPerSlice = false;
@@ -196,6 +198,8 @@ void Pres::makeCufftPlan()
   }
   else
   {
+    master->printMessage("cuFFT plan batched over 3D field failed, trying batched over 2D slice\n");
+
     cufftDestroy(iplanf);
     cufftDestroy(jplanf);
     cufftDestroy(iplanb);
@@ -206,6 +210,8 @@ void Pres::makeCufftPlan()
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
+
+    //checkCufftMemory();
 
     if(nerror == 0)
     {
@@ -254,7 +260,9 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
     {
       int ijk  = k*kk;
       int ijk2 = 2*k*kki;
-      cufftExecD2Z(iplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2]);
+
+      if(Pres_g::checkCuFFT(cufftExecD2Z(iplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2])))
+        throw 1;
     }
   }
   else // Single batched FFT over entire 3D field
@@ -277,7 +285,8 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
       {
         int ijk  = k*kk;
         int ijk2 = 2*k*kkj;
-        cufftExecD2Z(jplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2]);
+        if(Pres_g::checkCuFFT(cufftExecD2Z(jplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2])))
+          throw 1;
       }
 
       cudaThreadSynchronize();
@@ -291,7 +300,8 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
       Pres_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
       cudaCheckError();
 
-      cufftExecD2Z(jplanf, (cufftDoubleReal*)tmp2, (cufftDoubleComplex*)tmp1);
+      if(Pres_g::checkCuFFT(cufftExecD2Z(jplanf, (cufftDoubleReal*)tmp2, (cufftDoubleComplex*)tmp1)))
+        throw 1;
       cudaThreadSynchronize();
 
       Pres_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->jtot, grid->itot, kk, kkj,  true);
@@ -342,7 +352,8 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
       {
         int ijk = k*kk;
         int ijk2 = 2*k*kkj;
-        cufftExecZ2D(jplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk]);
+        if(Pres_g::checkCuFFT(cufftExecZ2D(jplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk])))
+          throw 1;
       }
       cudaThreadSynchronize();
       cudaCheckError();
@@ -355,7 +366,8 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
       Pres_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, tmp2, grid->jtot, grid->itot, kk, kkj, false);
       cudaCheckError();
 
-      cufftExecZ2D(jplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p);
+      if(Pres_g::checkCuFFT(cufftExecZ2D(jplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p)))
+        throw 1;
       cudaThreadSynchronize();
       cudaCheckError();
 
@@ -376,14 +388,16 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
     {
       int ijk = k*kk;
       int ijk2 = 2*k*kki;
-      cufftExecZ2D(iplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk]);
+      if(Pres_g::checkCuFFT(cufftExecZ2D(iplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk])))
+        throw 1;
     }
     cudaThreadSynchronize();
     cudaCheckError();
   }
   else // Batch FFT over entire domain
   {
-    cufftExecZ2D(iplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p);
+    if(Pres_g::checkCuFFT(cufftExecZ2D(iplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p)))
+      throw 1;
     cudaThreadSynchronize();
     cudaCheckError();
   }
@@ -391,5 +405,26 @@ void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, doub
   // Normalize output
   Pres_g::normalize<<<gridGPU,blockGPU>>>(p, grid->itot, grid->jtot, grid->ktot, 1./(grid->itot*grid->jtot));
   cudaCheckError();
+}
+
+// For debugging: FFTs need memory during execution. Check is enough memory is available..
+void Pres::checkCufftMemory()
+{
+  size_t workSize, totalWorkSize=0;
+  size_t freeMem, totalMem;
+
+  cufftGetSize(iplanf, &workSize);
+  totalWorkSize += workSize;
+  cufftGetSize(jplanf, &workSize);
+  totalWorkSize += workSize;
+  cufftGetSize(iplanb, &workSize);
+  totalWorkSize += workSize;
+  cufftGetSize(jplanb, &workSize);
+  totalWorkSize += workSize;
+
+  // Get available memory GPU
+  cudaMemGetInfo(&freeMem, &totalMem);
+  
+  printf("Free GPU=%lu, required FFTs=%lu\n", freeMem, totalWorkSize);
 }
 #endif
