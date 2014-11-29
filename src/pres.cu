@@ -164,6 +164,7 @@ namespace Pres_g
 #ifdef USECUDA
 void Pres::makeCufftPlan()
 {
+
   int rank      = 1;
 
   // Double input
@@ -182,48 +183,44 @@ void Pres::makeCufftPlan()
   int o_idist   = grid->itot/2+1;
   int o_jdist   = 1;
 
-  // Try to make FFT plan batched over entire field. If fails, make plan per slice
+  // Get memory estimate of batched FFT over entire field.
+  size_t workSize, totalWorkSize=0;
+
+  Pres_g::checkCuFFT(cufftEstimateMany(rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot, &workSize));
+  totalWorkSize += workSize;
+  Pres_g::checkCuFFT(cufftEstimateMany(rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot, &workSize));
+  totalWorkSize += workSize;
+  Pres_g::checkCuFFT(cufftEstimateMany(rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot, &workSize));
+  totalWorkSize += workSize;
+  Pres_g::checkCuFFT(cufftEstimateMany(rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot, &workSize));
+  totalWorkSize += workSize;
+
+  // Get available memory GPU
+  size_t freeMem, totalMem;
+  cudaMemGetInfo(&freeMem, &totalMem);
+
   int nerror = 0;
-  nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot)); 
-  nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot)); 
-  nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
-  nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
-
-  //checkCufftMemory();
-
-  if(nerror == 0)
+  if(freeMem < totalWorkSize) // Put margin here?
   {
-    FFTPerSlice = false;
-    master->printMessage("cuFFT strategy: batched over entire 3D field\n");
-  }
-  else
-  {
-    master->printMessage("cuFFT plan batched over 3D field failed, trying batched over 2D slice\n");
-
-    cufftDestroy(iplanf);
-    cufftDestroy(jplanf);
-    cufftDestroy(iplanb);
-    cufftDestroy(jplanb);
-
-    nerror = 0;
+    FFTPerSlice = true;
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
-
-    //checkCufftMemory();
-
-    if(nerror == 0)
-    {
-      FFTPerSlice = true;
-      master->printMessage("cuFFT strategy: batched per 2D slice\n");
-    }
-    else
-    {
-      master->printError("cuFFT plan failed both for batch/field and batch/slice\n");
-      throw 1;
-    }
+    master->printMessage("cuFFT strategy: batched per 2D slice\n");
   }
+  else
+  {
+    FFTPerSlice = false;
+    nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot)); 
+    nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot)); 
+    nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
+    nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
+    master->printMessage("cuFFT strategy: batched over entire 3D field\n");
+  }
+
+  if(nerror > 0)
+    throw 1;
 }
 
 void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
