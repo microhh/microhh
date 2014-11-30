@@ -277,15 +277,18 @@ void Model::exec()
     // Allow only for statistics when not in substep and not directly after restart.
     if(timeloop->isStatsStep())
     {
+      #ifdef USECUDA
+      // Copy fields from device to host
+      if(stats->doStats() || cross->doCross() || dump->doDump())
+      {
+        fields  ->backwardDevice();
+        boundary->backwardDevice();
+      }
+      #endif
+
       // Do the statistics.
       if(stats->doStats())
       {
-        #ifdef USECUDA
-        // First, copy the data back from the GPU, statistics are done on CPU.
-        fields  ->backwardDevice();
-        boundary->backwardDevice();
-        #endif
-
         // Always process the default mask (the full field)
         stats->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
         calcStats("default");
@@ -312,12 +315,6 @@ void Model::exec()
       // Save the selected cross sections to disk, cross sections are handled on CPU.
       if(cross->doCross())
       {
-        #ifdef USECUDA
-        // Copy back the data from the GPU.
-        fields  ->backwardDevice();
-        boundary->backwardDevice();
-        #endif
-      
         fields  ->execCross();
         thermo  ->execCross();
         boundary->execCross();
@@ -326,11 +323,6 @@ void Model::exec()
       // Save the 3d dumps to disk
       if(dump->doDump())
       {
-        #ifdef USECUDA
-        // Copy back the data from the GPU.
-        fields  ->backwardDevice();
-        #endif
-
         fields->execDump();
         thermo->execDump();
       }
