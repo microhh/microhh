@@ -200,8 +200,8 @@ namespace Boundary_g
 #ifdef USECUDA
 void Boundary::exec()
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -325,8 +325,8 @@ void Boundary::exec()
 void Boundary::setBc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
                        BoundaryType sw, double aval, double visc, double offset)
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
   dim3 grid2dGPU (gridi, gridj);

@@ -59,12 +59,10 @@ Pres4::Pres4(Model *modelin, Input *inputin) : Pres(modelin, inputin)
   m5_g = 0;
   m6_g = 0;
   m7_g = 0;
-  ffti_complex_g = 0;
-  fftj_complex_g = 0;
-  iplanf = 0;
-  jplanf = 0;
-  iplanb = 0;
-  jplanb = 0;
+  //iplanf = 0;
+  //jplanf = 0;
+  //iplanb = 0;
+  //jplanb = 0;
   #endif
 }
 

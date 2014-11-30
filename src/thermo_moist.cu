@@ -405,8 +405,8 @@ void ThermoMoist::clearDevice()
 #ifdef USECUDA
 void ThermoMoist::exec()
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -419,15 +419,29 @@ void ThermoMoist::exec()
   double * restrict tmp2 = fields->atmp["tmp2"]->data_g;
   if(swupdatebasestate)
   {
-    if(grid->swspatialorder == "2")
-      ThermoMoist_g::calcHydrostaticPressure<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                                          fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
-                                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-    else if(grid->swspatialorder == "4")
-      ThermoMoist_g::calcHydrostaticPressure<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                                          fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
-                                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-    cudaCheckError();
+    //if(grid->swspatialorder == "2")
+    //  ThermoMoist_g::calcHydrostaticPressure<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
+    //                                                      fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
+    //                                                      grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    //else if(grid->swspatialorder == "4")
+    //  ThermoMoist_g::calcHydrostaticPressure<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
+    //                                                      fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
+    //                                                      grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    //cudaCheckError();
+
+    // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
+    //      calculate pressure there and copy back the required profiles. 
+    cudaMemcpy(fields->sp["thl"]->datamean, fields->sp["thl"]->datamean_g, grid->kcells*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(fields->sp["qt"]->datamean,  fields->sp["qt"]->datamean_g,  grid->kcells*sizeof(double), cudaMemcpyDeviceToHost);
+ 
+    int kcells = grid->kcells; 
+    double *tmp2 = fields->atmp["tmp2"]->data;
+    calcBaseState(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+                  fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
+       
+    // Only half level pressure and exner needed for BuoyancyTend()
+    cudaMemcpy(prefh_g,   prefh,   grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(exnrefh_g, exnrefh, grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
   }
 
   if(grid->swspatialorder== "2")
@@ -451,8 +465,8 @@ void ThermoMoist::exec()
 #ifdef USECUDA
 void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -469,15 +483,29 @@ void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
   double * restrict tmp2 = fields->atmp["tmp2"]->data_g;
   if(swupdatebasestate && (name == "b" || name == "ql"))
   {
-    if(grid->swspatialorder == "2")
-      ThermoMoist_g::calcHydrostaticPressure<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                                          fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
-                                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-    else if(grid->swspatialorder == "4")
-      ThermoMoist_g::calcHydrostaticPressure<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
-                                                          fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
-                                                          grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-    cudaCheckError();
+    //if(grid->swspatialorder == "2")
+    //  ThermoMoist_g::calcHydrostaticPressure<2><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
+    //                                                      fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
+    //                                                      grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    //else if(grid->swspatialorder == "4")
+    //  ThermoMoist_g::calcHydrostaticPressure<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
+    //                                                      fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
+    //                                                      grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
+    //cudaCheckError();
+
+    // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
+    //      calculate pressure there and copy back the required profiles. 
+    cudaMemcpy(fields->sp["thl"]->datamean, fields->sp["thl"]->datamean_g, grid->kcells*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(fields->sp["qt"]->datamean,  fields->sp["qt"]->datamean_g,  grid->kcells*sizeof(double), cudaMemcpyDeviceToHost);
+ 
+    int kcells = grid->kcells; 
+    double *tmp2 = fields->atmp["tmp2"]->data;
+    calcBaseState(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+                  fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
+       
+    // Only full level pressure and exner needed
+    cudaMemcpy(pref_g,   pref,   grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(exnref_g, exnref, grid->kcells*sizeof(double), cudaMemcpyHostToDevice);
   }
 
   if(name == "b")
@@ -513,8 +541,8 @@ void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #ifdef USECUDA
 void ThermoMoist::getBuoyancyFluxbot(Field3d *bfield)
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -535,8 +563,8 @@ void ThermoMoist::getBuoyancyFluxbot(Field3d *bfield)
 #ifdef USECUDA
 void ThermoMoist::getBuoyancySurf(Field3d *bfield)
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 

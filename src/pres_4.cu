@@ -23,6 +23,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "pres.h"
 #include "pres_4.h"
 #include "fd.h"
 #include "tools.h"
@@ -78,62 +79,6 @@ namespace Pres4_g
       p[ijkp] = (cg0*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1*(ut[ijk] + u[ijk]*dti) + cg2*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * cgi*dxi
               + (cg0*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1*(vt[ijk] + v[ijk]*dti) + cg2*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * cgi*dyi
               + (cg0*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1*(wt[ijk] + w[ijk]*dti) + cg2*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
-    }
-  }
-
-  __global__ void complex_double_x(cufftDoubleComplex * const __restrict__ cdata, double * const __restrict__ ddata,
-                                   const int itot, const int jtot, bool forward)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-
-    int ij   = i + j*itot;        // index real part in ddata
-    int ij2  = (itot-i) + j*itot; // index complex part in ddata
-    int imax = itot/2+1;
-    int ijc  = i + j*imax;        // index in cdata
-
-    if((j < jtot) && (i < imax))
-    {
-      if(forward) // complex -> double
-      {
-        ddata[ij]  = cdata[ijc].x;
-        if(i>0 && i<imax-1)
-          ddata[ij2] = cdata[ijc].y;
-      }
-      else // double -> complex
-      {
-        cdata[ijc].x = ddata[ij];
-        if(i>0 && i<imax-1)
-          cdata[ijc].y = ddata[ij2];
-      }
-    }
-  }
-
-  __global__ void complex_double_y(cufftDoubleComplex * const __restrict__ cdata, double * const __restrict__ ddata,
-                                   const int itot, const int jtot, bool forward)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-
-    int ij   = i + j * itot;        // index real part in ddata
-    int ij2 = i + (jtot-j)*itot;    // index complex part in ddata
-    int jmax = jtot/2+1;
-    // ijc equals ij
-
-    if((i < itot) && (j < jmax))
-    {
-      if(forward) // complex -> double
-      {
-        ddata[ij] = cdata[ij].x;
-        if(j>0 && j<jmax-1)
-          ddata[ij2] = cdata[ij].y;
-      }
-      else // double -> complex
-      {
-        cdata[ij].x = ddata[ij];
-        if(j>0 && j<jmax-1)
-          cdata[ij].y = ddata[ij2];
-      }
     }
   }
 
@@ -268,16 +213,6 @@ namespace Pres4_g
         p[ijk] = ptemp[ik+kki2];
       }
     }
-  }
-
-   __global__ void normalize(double * const __restrict__ data, const int itot, const int jtot, const double in)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-
-    int ij = i + j * itot;
-    if((i < itot) && (j < jtot))
-      data[ij] = data[ij] * in;
   }
 
   __global__ void hdma(double * const __restrict__ m1, double * const __restrict__ m2, double * const __restrict__ m3, double * const __restrict__ m4,
@@ -528,26 +463,7 @@ void Pres4::exec(double dt)
                                          grid->igc, grid->jgc, grid->kgc);
   cudaCheckError();
 
-  // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
-  int kk = grid->itot*grid->jtot;
-  for (int k=0; k<grid->ktot; ++k)
-  {
-    int ijk = k*kk;
-
-    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], ffti_complex_g);
-    cudaThreadSynchronize();
-    Pres4_g::complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
-    cudaCheckError();
-
-    // Only solve the FFTs in the j-direction in case of a 3D simulation
-    if(grid->jtot > 1)
-    {
-      cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], fftj_complex_g);
-      cudaThreadSynchronize();
-      Pres4_g::complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
-      cudaCheckError();
-    }
-  }
+  fftForward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
   double *tmp1_g = fields->atmp["tmp1"]->data_g;
   double *tmp2_g = fields->atmp["tmp2"]->data_g;
@@ -596,29 +512,10 @@ void Pres4::exec(double dt)
     cudaCheckError();
   }
 
-  // Backward FFT
-  for(int k=0; k<grid->ktot; ++k)
-  {
-    int ijk = k*kk;
-
-    // Only solve the FFTs in the j-direction in case of a 3D simulation
-    if(grid->jtot > 1)
-    {
-      Pres4_g::complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-      cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-      cudaThreadSynchronize();
-      cudaCheckError();
-    }
-
-    Pres4_g::complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-    cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-    cudaThreadSynchronize();
-
-    Pres4_g::normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
-    cudaCheckError();
-  }
+  fftBackward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
   cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+
   Pres4_g::solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
                                            grid->imax, grid->imax*grid->jmax,
                                            grid->icellsp, grid->ijcellsp,
@@ -694,37 +591,7 @@ void Pres4::prepareDevice()
   cudaSafeCall(cudaMemcpy(m6_g, m6, kmemsize, cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(m7_g, m7, kmemsize, cudaMemcpyHostToDevice));
 
-  // cuFFT
-  cudaSafeCall(cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)))); // sizeof(complex) = 16
-  cudaSafeCall(cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1))));
-
-  // Make cuFFT plan
-  int rank      = 1;
-
-  // Double input
-  int i_ni[]    = {grid->itot};
-  int i_nj[]    = {grid->jtot};
-  int i_istride = 1;
-  int i_jstride = grid->itot;
-  int i_idist   = grid->itot;
-  int i_jdist   = 1;
-
-  // Double-complex output
-  int o_ni[]    = {grid->itot/2+1};
-  int o_nj[]    = {grid->jtot/2+1};
-  int o_istride = 1;
-  int o_jstride = grid->itot;
-  int o_idist   = grid->itot/2+1;
-  int o_jdist   = 1;
-
-  // Forward FFTs
-  cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist, o_ni, o_istride, o_idist, CUFFT_D2Z, grid->jtot);
-  cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist, o_nj, o_jstride, o_jdist, CUFFT_D2Z, grid->itot);
-
-  // Backward FFTs
-  // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1
-  cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot);
-  cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist, i_nj, i_jstride, i_jdist, CUFFT_Z2D, grid->itot);
+  makeCufftPlan();
 }
 
 void Pres4::clearDevice()
@@ -739,13 +606,5 @@ void Pres4::clearDevice()
   cudaSafeCall(cudaFree(m5_g));
   cudaSafeCall(cudaFree(m6_g));
   cudaSafeCall(cudaFree(m7_g));
-
-  cudaSafeCall(cudaFree(ffti_complex_g));
-  cudaSafeCall(cudaFree(fftj_complex_g));
-
-  cufftDestroy(iplanf);
-  cufftDestroy(jplanf);
-  cufftDestroy(iplanb);
-  cufftDestroy(jplanb);
 }
 #endif

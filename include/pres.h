@@ -28,6 +28,10 @@ class Grid;
 class Fields;
 class Master;
 
+#ifdef USECUDA
+#include <cufft.h>
+#endif
+
 class Pres
 {
   public:
@@ -48,5 +52,20 @@ class Pres
     Model  *model;
     Grid   *grid;
     Fields *fields;
+
+    #ifdef USECUDA
+    void makeCufftPlan();
+    void fftForward (double *, double *, double *);
+    void fftBackward(double *, double *, double *);
+
+    bool FFTPerSlice;
+    cufftHandle iplanf, jplanf; 
+    cufftHandle iplanb, jplanb; 
+    #endif
+  
+  private:
+    #ifdef USECUDA
+    void checkCufftMemory();
+    #endif
 };
 #endif

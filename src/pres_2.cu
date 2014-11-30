@@ -28,6 +28,7 @@
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
+#include "pres.h"
 #include "pres_2.h"
 #include "defines.h"
 #include "model.h"
@@ -184,70 +185,6 @@ namespace Pres2_g
     }
   }
 
-  __global__ void complex_double_x(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, bool forward)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-
-    int ij   = i + j * itot;        // index real part in ddata
-    int ij2  = (itot-i) + j*itot;   // index complex part in ddata
-    int imax = itot/2+1;
-    int ijc  = i + j * imax;        // index in cdata
-
-    if((j < jtot) && (i < imax))
-    {
-      if(forward) // complex -> double
-      {
-        ddata[ij]  = cdata[ijc].x;
-        if(i>0 && i<imax-1)
-          ddata[ij2] = cdata[ijc].y;
-      }
-      else // double -> complex
-      {
-        cdata[ijc].x = ddata[ij];
-        if(i>0 && i<imax-1)
-          cdata[ijc].y = ddata[ij2];
-      }
-    }
-  }
-
-  __global__ void complex_double_y(cufftDoubleComplex * __restrict__ cdata, double * __restrict__ ddata, const unsigned int itot, const unsigned int jtot, bool forward)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-
-    int ij   = i + j * itot;        // index real part in ddata
-    int ij2 = i + (jtot-j)*itot;    // index complex part in ddata
-    int jmax = jtot/2+1;
-    // ijc equals ij
-
-    if((i < itot) && (j < jmax))
-    {
-      if(forward) // complex -> double
-      {
-        ddata[ij] = cdata[ij].x;
-        if(j>0 && j<jmax-1)
-          ddata[ij2] = cdata[ij].y;
-      }
-      else // double -> complex
-      {
-        cdata[ij].x = ddata[ij];
-        if(j>0 && j<jmax-1)
-          cdata[ij].y = ddata[ij2];
-      }
-    }
-  }
-
-   __global__ void normalize(double * __restrict__ data, const unsigned int itot, const unsigned int jtot, const double in)
-  {
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    int j = blockIdx.y*blockDim.y + threadIdx.y;
-
-    int ij = i + j * itot;
-    if((i < itot) && (j < jtot))
-      data[ij] = data[ij] * in;
-  }
-
   __global__ void calcdivergence(double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
                                  double * __restrict__ div, double * __restrict__ dzi,
                                  double * __restrict__ rhoref, double * __restrict__ rhorefh,
@@ -289,67 +226,32 @@ void Pres2::prepareDevice()
   cudaSafeCall(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
   cudaSafeCall(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
 
-  // cuFFT
-  cudaSafeCall(cudaMalloc((void **)&ffti_complex_g, sizeof(cufftDoubleComplex)*(grid->jtot * (grid->itot/2+1)))); // sizeof(complex) = 16
-  cudaSafeCall(cudaMalloc((void **)&fftj_complex_g, sizeof(cufftDoubleComplex)*(grid->itot * (grid->jtot/2+1))));
-
-  // Make cuFFT plan
-  int rank      = 1;
-
-  // Double input
-  int i_ni[]    = {grid->itot};
-  int i_nj[]    = {grid->jtot};
-  int i_istride = 1;
-  int i_jstride = grid->itot;
-  int i_idist   = grid->itot;
-  int i_jdist   = 1;
-
-  // Double-complex output
-  int o_ni[]    = {grid->itot/2+1};
-  int o_nj[]    = {grid->jtot/2+1};
-  int o_istride = 1;
-  int o_jstride = grid->itot;
-  int o_idist   = grid->itot/2+1;
-  int o_jdist   = 1;
-
-  // Forward FFTs
-  cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist, o_ni, o_istride, o_idist, CUFFT_D2Z, grid->jtot);
-  cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist, o_nj, o_jstride, o_jdist, CUFFT_D2Z, grid->itot);
-
-  // Backward FFTs
-  // NOTE: input size is always the 'logical' size of the FFT, so itot or jtot, not itot/2+1 or jtot/2+1
-  cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist, i_ni, i_istride, i_idist, CUFFT_Z2D, grid->jtot);
-  cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist, i_nj, i_jstride, i_jdist, CUFFT_Z2D, grid->itot);
+  makeCufftPlan();
 }
 
 void Pres2::clearDevice()
 {
-  cudaSafeCall(cudaFree(bmati_g       ));
-  cudaSafeCall(cudaFree(bmatj_g       ));
-  cudaSafeCall(cudaFree(a_g           ));
-  cudaSafeCall(cudaFree(c_g           ));
-  cudaSafeCall(cudaFree(work2d_g      ));
-  cudaSafeCall(cudaFree(ffti_complex_g));
-  cudaSafeCall(cudaFree(fftj_complex_g));
-
-  cufftDestroy(iplanf);
-  cufftDestroy(jplanf);
-  cufftDestroy(iplanb);
-  cufftDestroy(jplanb);
+  cudaSafeCall(cudaFree(bmati_g ));
+  cudaSafeCall(cudaFree(bmatj_g ));
+  cudaSafeCall(cudaFree(a_g     ));
+  cudaSafeCall(cudaFree(c_g     ));
+  cudaSafeCall(cudaFree(work2d_g));
 }
 
 #ifdef USECUDA
 void Pres2::exec(double dt)
 {
-  const int blocki  = cuda::blockSizeI;
-  const int blockj  = cuda::blockSizeJ;
-  const int gridi   = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj   = grid->jmax/blockj + (grid->jmax%blockj > 0);
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
+  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
-  dim3 gridGPU (gridi, gridj, grid->kmax);
+  // 3D grid
+  dim3 gridGPU (gridi,  gridj,  grid->kmax);
   dim3 blockGPU(blocki, blockj, 1);
 
-  dim3 grid2dGPU (gridi, gridj);
+  // 2D grid
+  dim3 grid2dGPU (gridi,  gridj);
   dim3 block2dGPU(blocki, blockj);
 
   const int offs = grid->memoffset;
@@ -369,26 +271,7 @@ void Pres2::exec(double dt)
                                          grid->igc, grid->jgc, grid->kgc);
   cudaCheckError();
 
-  // Forward FFT -> how to get rid of the loop at the host side....
-  // A massive FFT (e.g. 3D field) would require large host fields for the FFT output
-  int kk = grid->itot*grid->jtot;
-  for (int k=0; k<grid->ktot; ++k)
-  {
-    int ijk = k*kk;
-
-    cufftExecD2Z(iplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], ffti_complex_g);
-    cudaThreadSynchronize();
-    Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
-    cudaCheckError();
-
-    if (grid->jtot > 1)
-    {
-      cufftExecD2Z(jplanf, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk], fftj_complex_g);
-      cudaThreadSynchronize();
-      Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, true);
-      cudaCheckError();
-    }
-  }
+  fftForward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
   Pres2_g::solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                           fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g,
@@ -405,25 +288,7 @@ void Pres2::exec(double dt)
                                            grid->imax, grid->jmax, grid->kmax);
   cudaCheckError();
 
-  // Backward FFT
-  for (int k=0; k<grid->ktot; ++k)
-  {
-    int ijk = k*kk;
-
-    if (grid->jtot > 1)
-    {
-      Pres2_g::complex_double_y<<<grid2dGPU,block2dGPU>>>(fftj_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-      cufftExecZ2D(jplanb, fftj_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-      cudaThreadSynchronize();
-      cudaCheckError();
-    }
-
-    Pres2_g::complex_double_x<<<grid2dGPU,block2dGPU>>>(ffti_complex_g, &fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, false);
-    cufftExecZ2D(iplanb, ffti_complex_g, (cufftDoubleReal*)&fields->sd["p"]->data_g[ijk]);
-    cudaThreadSynchronize();
-    Pres2_g::normalize<<<grid2dGPU,block2dGPU>>>(&fields->sd["p"]->data_g[ijk], grid->itot, grid->jtot, 1./(grid->itot*grid->jtot));
-    cudaCheckError();
-  }
+  fftBackward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
   cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
@@ -449,8 +314,8 @@ void Pres2::exec(double dt)
 #ifdef USECUDA
 double Pres2::checkDivergence()
 {
-  const int blocki = cuda::blockSizeI;
-  const int blockj = cuda::blockSizeJ;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

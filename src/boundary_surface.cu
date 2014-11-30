@@ -483,8 +483,8 @@ void BoundarySurface::clearDevice()
 void BoundarySurface::updateBcs()
 {
   int gridi, gridj;
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
 
   // For 2D field excluding ghost cells
   gridi = grid->imax/blocki + (grid->imax%blocki > 0);
