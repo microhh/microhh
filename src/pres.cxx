@@ -41,10 +41,23 @@ Pres::Pres(Model *modelin, Input *input)
   grid   = model->grid;
   fields = model->fields;
   master = model->master;
+
+  #ifdef USECUDA
+  iplanf = 0;
+  jplanf = 0;
+  iplanb = 0;
+  jplanb = 0;
+  #endif
 }
 
 Pres::~Pres()
 {
+  #ifdef USECUDA
+  cufftDestroy(iplanf);
+  cufftDestroy(jplanf);
+  cufftDestroy(iplanb);
+  cufftDestroy(jplanb);
+  #endif
 }
 
 void Pres::init()

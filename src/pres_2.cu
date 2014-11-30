@@ -236,11 +236,6 @@ void Pres2::clearDevice()
   cudaSafeCall(cudaFree(a_g     ));
   cudaSafeCall(cudaFree(c_g     ));
   cudaSafeCall(cudaFree(work2d_g));
-
-  cufftDestroy(iplanf);
-  cufftDestroy(jplanf);
-  cufftDestroy(iplanb);
-  cufftDestroy(jplanb);
 }
 
 #ifdef USECUDA

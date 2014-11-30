@@ -606,13 +606,5 @@ void Pres4::clearDevice()
   cudaSafeCall(cudaFree(m5_g));
   cudaSafeCall(cudaFree(m6_g));
   cudaSafeCall(cudaFree(m7_g));
-
-  cudaSafeCall(cudaFree(ffti_complex_g));
-  cudaSafeCall(cudaFree(fftj_complex_g));
-
-  cufftDestroy(iplanf);
-  cufftDestroy(jplanf);
-  cufftDestroy(iplanb);
-  cufftDestroy(jplanb);
 }
 #endif
