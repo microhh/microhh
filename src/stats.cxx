@@ -181,9 +181,6 @@ bool Stats::doStats()
   if(model->timeloop->get_itime() % isampletime != 0)
     return false;
 
-  // write message in case stats is triggered
-  master->printMessage("Saving stats for time %f\n", model->timeloop->get_time());
-
   // return true such that stats are computed
   return true;
 }
@@ -195,6 +192,9 @@ void Stats::exec(int iteration, double time, unsigned long itime)
   // check if time for execution
   if(itime % isampletime != 0)
     return;
+
+  // write message in case stats is triggered
+  master->printMessage("Saving stats for time %f\n", model->timeloop->get_time());
 
   for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
