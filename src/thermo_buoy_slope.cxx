@@ -207,6 +207,7 @@ void ThermoBuoySlope::calcBuoyancyTend_b_4th(double * restrict bt, double * rest
   const double sinalpha = std::sin(this->alpha);
   const double cosalpha = std::cos(this->alpha);
   const double n2 = this->n2;
+  const double utrans = grid->utrans;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -214,7 +215,7 @@ void ThermoBuoySlope::calcBuoyancyTend_b_4th(double * restrict bt, double * rest
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
-        bt[ijk] -= n2 * ( sinalpha*interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2])
-                        + cosalpha*interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
+        bt[ijk] -= n2 * ( sinalpha * (interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]) + utrans)
+                        + cosalpha *  interp4(w[ijk-kk1], w[ijk], w[ijk+kk1], w[ijk+kk2]) );
       }
 }

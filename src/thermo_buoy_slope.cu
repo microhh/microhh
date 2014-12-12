@@ -72,7 +72,7 @@ namespace ThermoBuoySlope_g
 
   __global__ void calcBuoyancyTend_b_4th(double * const __restrict__ bt,
                                          const double * const __restrict__ u, const double * const __restrict__ w,
-                                         const double n2, const double sinalpha, const double cosalpha,
+                                         const double utrans, const double n2, const double sinalpha, const double cosalpha,
                                          const int istart, const int jstart, const int kstart,
                                          const int iend, const int jend, const int kend,
                                          const int jj, const int kk)
@@ -90,8 +90,8 @@ namespace ThermoBuoySlope_g
     if(i < iend && j < jend && k < kend)
     {
       const int ijk = i + j*jj + k*kk;
-      bt[ijk] -= n2 * ( sinalpha * (fd::o4::ci0*u[ijk-ii1] + fd::o4::ci1*u[ijk] + fd::o4::ci2*u[ijk+ii1] + fd::o4::ci3*u[ijk+ii2])
-                      + cosalpha * (fd::o4::ci0*w[ijk-kk1] + fd::o4::ci1*w[ijk] + fd::o4::ci2*w[ijk+kk1] + fd::o4::ci3*w[ijk+kk2]) );
+      bt[ijk] -= n2 * ( sinalpha * ( (fd::o4::ci0*u[ijk-ii1] + fd::o4::ci1*u[ijk] + fd::o4::ci2*u[ijk+ii1] + fd::o4::ci3*u[ijk+ii2]) + utrans )
+                      + cosalpha * (  fd::o4::ci0*w[ijk-kk1] + fd::o4::ci1*w[ijk] + fd::o4::ci2*w[ijk+kk1] + fd::o4::ci3*w[ijk+kk2]) );
     }
   }
 } // End namespace.
@@ -135,7 +135,7 @@ void ThermoBuoySlope::exec()
 
     ThermoBuoySlope_g::calcBuoyancyTend_b_4th<<<gridGPU, blockGPU>>>(&fields->st["b"]->data_g[offs],
                                                                      &fields->u->data_g[offs], &fields->w->data_g[offs],
-                                                                     n2, sinalpha, cosalpha,
+                                                                     grid->utrans, n2, sinalpha, cosalpha,
                                                                      grid->istart, grid->jstart, grid->kstart,
                                                                      grid->iend, grid->jend, grid->kend,
                                                                      grid->icellsp, grid->ijcellsp);
