@@ -88,10 +88,16 @@ Pres4::~Pres4()
 void Pres4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
-  input(fields->sd["p"]->data,
-          fields->u ->data, fields->v ->data, fields->w ->data,
-          fields->ut->data, fields->vt->data, fields->wt->data, 
-          grid->dzi4, dt);
+  if(grid->jtot == 1)
+    input<false>(fields->sd["p"]->data,
+                 fields->u ->data, fields->v ->data, fields->w ->data,
+                 fields->ut->data, fields->vt->data, fields->wt->data, 
+                 grid->dzi4, dt);
+  else
+    input<true>(fields->sd["p"]->data,
+                fields->u ->data, fields->v ->data, fields->w ->data,
+                fields->ut->data, fields->vt->data, fields->wt->data, 
+                grid->dzi4, dt);
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
 
@@ -120,8 +126,12 @@ void Pres4::exec(double dt)
         jslice);
 
   // 3. Get the pressure tendencies from the pressure field.
-  output(fields->ut->data, fields->vt->data, fields->wt->data, 
-         fields->sd["p"]->data, grid->dzhi4);
+  if(grid->jtot == 1)
+    output<false>(fields->ut->data, fields->vt->data, fields->wt->data, 
+                  fields->sd["p"]->data, grid->dzhi4);
+  else
+    output<true>(fields->ut->data, fields->vt->data, fields->wt->data, 
+                 fields->sd["p"]->data, grid->dzhi4);
 }
 
 double Pres4::checkDivergence()
@@ -220,6 +230,7 @@ void Pres4::setValues()
   m7[k] = 0.;
 }
 
+template<bool dim3>
 void Pres4::input(double * restrict p, 
                   double * restrict u , double * restrict v , double * restrict w ,
                   double * restrict ut, double * restrict vt, double * restrict wt,
@@ -251,7 +262,8 @@ void Pres4::input(double * restrict p,
 
   // Set the cyclic boundary conditions for the tendencies.
   grid->boundaryCyclic(ut, EastWestEdge  );
-  grid->boundaryCyclic(vt, NorthSouthEdge);
+  if(dim3)
+    grid->boundaryCyclic(vt, NorthSouthEdge);
 
   // Set the bc. 
   for(int j=0; j<grid->jmax; j++)
@@ -277,7 +289,8 @@ void Pres4::input(double * restrict p,
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
         p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]/dt) + cg1*(ut[ijk] + u[ijk]/dt) + cg2*(ut[ijk+ii1] + u[ijk+ii1]/dt) + cg3*(ut[ijk+ii2] + u[ijk+ii2]/dt)) * cgi*dxi;
-        p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
+        if(dim3)
+          p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
         p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
       }
 }
@@ -488,6 +501,7 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
   grid->boundaryCyclic(p);
 }
 
+template<bool dim3>
 void Pres4::output(double * restrict ut, double * restrict vt, double * restrict wt, 
                    double * restrict p , double * restrict dzhi4)
 {
@@ -513,7 +527,8 @@ void Pres4::output(double * restrict ut, double * restrict vt, double * restrict
     {
       ijk = i + j*jj1 + kstart*kk1;
       ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
-      vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+      if(dim3)
+        vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
     }
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -523,7 +538,8 @@ void Pres4::output(double * restrict ut, double * restrict vt, double * restrict
       {
         ijk = i + j*jj1 + k*kk1;
         ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
-        vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+        if(dim3)
+          vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
         wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
       }
 }

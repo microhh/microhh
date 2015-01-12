@@ -24,6 +24,7 @@
 #define PRES_4
 
 #include "pres.h"
+#include "defines.h"
 
 #ifdef USECUDA
 #include <cufft.h>
@@ -61,26 +62,28 @@ class Pres4 : public Pres
     cufftHandle iplanb, jplanb; 
     #endif
 
-    void input(double *, 
-               double *, double *, double *,
-               double *, double *, double *,
-               double *, double);
+    template<bool>
+    void input(double * restrict, 
+               double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict,
+               double * restrict, double);
 
-    void solve(double *, double *, double *,
-               double *, double *, double *, double *,
-               double *, double *, double *,
-               double *, double *, double *, double *,
-               double *, double *, double *, double *,
-               double *, double *,
+    void solve(double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict,
                int);
 
-    void output(double *, double *, double *,
-                double *, double *);
+    template<bool>
+    void output(double * restrict, double * restrict, double * restrict,
+                double * restrict, double * restrict);
 
-    void hdma(double *, double *, double *, double *,
-              double *, double *, double *, double *,
+    void hdma(double * restrict, double * restrict, double * restrict, double * restrict,
+              double * restrict, double * restrict, double * restrict, double * restrict,
               int);
 
-    double calcDivergence(double *, double *, double *, double *);
+    double calcDivergence(double * restrict, double * restrict, double * restrict, double * restrict);
 };
 #endif
