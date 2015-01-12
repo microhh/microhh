@@ -24,6 +24,7 @@
 #define ADVEC_4
 
 #include "advec.h"
+#include "defines.h"
 
 /**
  * Derived class for 4th order advection scheme.
@@ -32,19 +33,23 @@ class Advec4 : public Advec
 {
   public:
     Advec4(Model *, Input *); ///< Constructor of the advection class.
-    ~Advec4();                  ///< Destructor of the advection class.
+    ~Advec4();                ///< Destructor of the advection class.
 
     void exec(); ///< Execute the advection scheme.
 
     unsigned long getTimeLimit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-    double get_cfl(double);                                 ///< Get the CFL number.
+    double get_cfl(double); ///< Get the CFL number.
 
   private:
     double calc_cfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
 
-    void advecu(double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
-    void advecv(double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
-    void advecw(double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
-    void advecs(double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
+    template<bool>
+    void advecu(double * restrict, double * restrict, double * restrict, double * restrict, double * restrict); ///< Calculate longitudinal velocity advection.
+    template<bool>
+    void advecv(double * restrict, double * restrict, double * restrict, double * restrict, double * restrict); ///< Calculate latitudinal velocity advection.
+    template<bool>
+    void advecw(double * restrict, double * restrict, double * restrict, double * restrict, double * restrict); ///< Calculate vertical velocity advection.
+    template<bool>
+    void advecs(double * restrict, double * restrict, double * restrict, double * restrict, double * restrict, double * restrict); ///< Calculate scalar advection.
 };
 #endif
