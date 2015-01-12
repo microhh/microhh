@@ -75,6 +75,8 @@ double Diff4::get_dn(double dt)
 #ifndef USECUDA
 void Diff4::exec()
 {
+  // In case of a two-dimensional run, strip v component out of all kernels and do 
+  // not calculate v-diffusion tendency.
   if(grid->jtot == 1)
   {
     diffc<false>(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);

@@ -64,6 +64,8 @@ double Advec4::get_cfl(double dt)
 
 void Advec4::exec()
 {
+  // In case of a two-dimensional run, strip v component out of all kernels and do 
+  // not calculate v-advection tendency.
   if(grid->jtot == 1)
   {
     advecu<false>(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );

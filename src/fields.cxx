@@ -648,11 +648,14 @@ void Fields::create(Input *inputin)
 {
   int nerror = 0;
   
-  // Randomnize the momentum
-  for(FieldMap::iterator it=mp.begin(); it!=mp.end(); ++it)
-    nerror += randomize(inputin, it->first, it->second->data);
+  // Randomize the momentum
+  nerror += randomize(inputin, "u", u->data);
+  nerror += randomize(inputin, "w", w->data);
+  // Only add perturbation to v in case of a 3d run.
+  if(grid->jtot > 1)
+    nerror += randomize(inputin, "v", v->data);
   
-  // Randomnize the scalars
+  // Randomize the scalars
   for(FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
     nerror += randomize(inputin, it->first, it->second->data);
   

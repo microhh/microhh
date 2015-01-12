@@ -88,6 +88,7 @@ Pres4::~Pres4()
 void Pres4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
+  // In case of a two-dimensional run, remove calculation of v contribution.
   if(grid->jtot == 1)
     input<false>(fields->sd["p"]->data,
                  fields->u ->data, fields->v ->data, fields->w ->data,
