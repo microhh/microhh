@@ -24,6 +24,7 @@
 #define DIFF_4
 
 #include "diff.h"
+#include "defines.h"
 
 class Diff4 : public Diff
 {
@@ -40,7 +41,7 @@ class Diff4 : public Diff
   private:
     double dnmul;
 
-    void diffc(double *, double *, double *, double *, double);
-    void diffw(double *, double *, double *, double *, double);
+    template<bool> void diffc(double * restrict, double * restrict, double * restrict, double * restrict, double);
+    template<bool> void diffw(double * restrict, double * restrict, double * restrict, double * restrict, double);
 };
 #endif

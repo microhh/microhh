@@ -67,7 +67,6 @@ void Advec4::exec()
   if(grid->jtot == 1)
   {
     advecu<false>(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
-    advecv<false>(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
     advecw<false>(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi4);
 
     for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
