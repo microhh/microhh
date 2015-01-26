@@ -240,7 +240,7 @@ void Pres4::input(double * restrict p,
   int    ijk,ijkp,jjp,kkp;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
   int    igc,jgc,kgc,kmax;
-  double dxi,dyi;
+  double dxi,dyi,dti;
 
   ii1 = 1;
   ii2 = 2;
@@ -254,6 +254,7 @@ void Pres4::input(double * restrict p,
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
+  dti = 1./dt;
 
   igc = grid->igc;
   jgc = grid->jgc;
@@ -289,10 +290,10 @@ void Pres4::input(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]/dt) + cg1*(ut[ijk] + u[ijk]/dt) + cg2*(ut[ijk+ii1] + u[ijk+ii1]/dt) + cg3*(ut[ijk+ii2] + u[ijk+ii2]/dt)) * cgi*dxi;
+        p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1*(ut[ijk] + u[ijk]*dti) + cg2*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * cgi*dxi;
         if(dim3)
-          p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
-        p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
+          p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1*(vt[ijk] + v[ijk]*dti) + cg2*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * cgi*dyi;
+        p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1*(wt[ijk] + w[ijk]*dti) + cg2*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
       }
 }
 

@@ -156,7 +156,7 @@ void Pres2::input(double * restrict p,
 {
   int    ijk,ii,jj,kk,ijkp,jjp,kkp;
   int    igc,jgc,kgc;
-  double dxi,dyi;
+  double dxi,dyi,dti;
 
   ii = 1;
   jj = grid->icells;
@@ -167,6 +167,7 @@ void Pres2::input(double * restrict p,
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
+  dti = 1./dt;
 
   igc = grid->igc;
   jgc = grid->jgc;
@@ -184,10 +185,10 @@ void Pres2::input(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        p[ijkp] = rhoref[k+kgc] * ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
-                + rhoref[k+kgc] * ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
-                + ( rhorefh[k+kgc+1] * (wt[ijk+kk] + w[ijk+kk] / dt) 
-                  - rhorefh[k+kgc  ] * (wt[ijk   ] + w[ijk   ] / dt) ) * dzi[k+kgc];
+        p[ijkp] = rhoref[k+kgc] * ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
+                + rhoref[k+kgc] * ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
+                + ( rhorefh[k+kgc+1] * (wt[ijk+kk] + w[ijk+kk] * dti) 
+                  - rhorefh[k+kgc  ] * (wt[ijk   ] + w[ijk   ] * dti) ) * dzi[k+kgc];
       }
 }
 
