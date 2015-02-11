@@ -10,7 +10,7 @@ endif()
 set(GNU_SED "gsed")
 
 set(USER_CXX_FLAGS "-stdlib=libstdc++")
-set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
+set(USER_CXX_FLAGS_RELEASE "-Ofast -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wno-unknown-pragmas -Weverything") # Very strict
 #set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wno-unknown-pragmas -Weverything -Wno-padded -Wno-old-style-cast") # Slightly less strict
 

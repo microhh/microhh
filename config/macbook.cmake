@@ -3,14 +3,14 @@ if(USEMPI)
   set(ENV{CC}  mpicc ) # C compiler for parallel build
   set(ENV{CXX} mpicxx) # C++ compiler for parallel build
 else()
-  set(ENV{CC}  gcc-mp-4.8) # C compiler for serial build
-  set(ENV{CXX} g++-mp-4.8) # C++ compiler for serial build
+  set(ENV{CC}  gcc-mp-4.9) # C compiler for serial build
+  set(ENV{CXX} g++-mp-4.9) # C++ compiler for serial build
 endif()
 
 set(GNU_SED "gsed")
 
 set(USER_CXX_FLAGS "")
-set(USER_CXX_FLAGS_RELEASE "-O3 -ffast-math -mtune=native -march=native")
+set(USER_CXX_FLAGS_RELEASE "-Ofast -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 set(FFTW_INCLUDE_DIR   "/opt/local/include")
