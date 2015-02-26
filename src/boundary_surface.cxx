@@ -638,79 +638,23 @@ double BoundarySurface::calcObukNoslipFlux(const double* restrict zL, const doub
       break;
   }
 
-  // Linearly interpolate to the correct value of z/L.
-  const double zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-  return zsl/zL0;
-
-  /*
-  double L0;
-  double Lstart, Lend;
-  double fx, fxdif;
-
-  int m = 0;
-  int nlim = 10;
-
-  const double Lmax = 1.e20;
-
-  // avoid bfluxbot to be zero
-  if(bfluxbot >= 0.)
-    bfluxbot = std::max(constants::dsmall, bfluxbot);
-  else
-    bfluxbot = std::min(-constants::dsmall, bfluxbot);
-
-  // allow for one restart
-  while(m <= 1)
+  double zL0;
+  if (n == 0)
   {
-    // if L and bfluxbot are of the same sign, or the last calculation did not converge,
-    // the stability has changed and the procedure needs to be reset
-    if(L*bfluxbot >= 0.)
-    {
-      nlim = 200;
-      if(bfluxbot >= 0.)
-        L = -constants::dsmall;
-      else
-        L = constants::dsmall;
-    }
-
-    if(bfluxbot >= 0.)
-      L0 = -constants::dhuge;
-    else
-      L0 = constants::dhuge;
-
-    int n = 0;
-
-    // exit on convergence or on iteration count
-    while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
-    {
-      L0     = L;
-      // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2);
-      fx     = zsl/L + constants::kappa*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, L), 3);
-      Lstart = L - 0.001*L;
-      Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend + constants::kappa*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, Lend), 3))
-               - (zsl/Lstart + constants::kappa*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, Lstart), 3)) )
-             / (Lend - Lstart);
-      L      = L - fx/fxdif;
-      ++n;
-    }
-
-    // convergence has been reached
-    if(n < nlim && std::abs(L) < Lmax)
-      break;
-    // convergence has not been reached, procedure restarted once
-    else
-    {
-      L = constants::dsmall;
-      ++m;
-      nlim = 200;
-    }
+    zL0 = zL[n];
+    master->printWarning("z/L range too limited on unstable side\n");
   }
+  else if (n == nzL)
+  {
+    zL0 = zL[n];
+    master->printWarning("z/L range too limited on stable side\n");
+  }
+  else
+    // Linearly interpolate to the correct value of z/L.
+    zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
 
-  if(m > 1)
-    std::printf("ERROR convergence has not been reached in Obukhov length calculation\n");
-    */
-
-  return L;
+  master->printMessage("%E, %E\n", zL0, zsl/zL0);
+  return zsl/zL0;
 }
 
 double BoundarySurface::calcObukNoslipDirichlet(double L, double du, double db, double zsl)
