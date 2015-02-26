@@ -88,7 +88,7 @@ class BoundarySurface : public Boundary
                double *, double *, double *,
                double, int);
 
-    double calcObukNoslipFlux     (double, double, double, double, double);
+    double calcObukNoslipFlux     (const double* const, const double* const, double, double, double, double, double);
     double calcObukNoslipDirichlet(double, double, double, double);
 
     double ustarin;

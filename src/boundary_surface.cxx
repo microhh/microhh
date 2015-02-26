@@ -385,7 +385,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
-        obuk [ij] = calcObukNoslipFlux(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart], z0m);
+        obuk [ij] = calcObukNoslipFlux(zL_sl, f_sl, obuk[ij], dutot[ij], bfluxbot[ij], z[kstart], z0m);
         ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
@@ -622,20 +622,23 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   }
 }
 
-double BoundarySurface::calcObukNoslipFlux(const double L, const double du, const double bfluxbot, const double zsl, const double z0m)
+double BoundarySurface::calcObukNoslipFlux(const double* restrict zL, const double* restrict f, const double L, const double du, const double bfluxbot, const double zsl, const double z0m)
 {
+  // Calculate the appropriate Richardson number.
   const double Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
 
+  // Look up the correct value in the lookup table.
   const int nzL = 10000;
   int n;
   for (n=0; n<nzL; ++n)
   {
-    if ( (f_sl[n]-Ri) > 0)
+    if ( (f[n]-Ri) > 0)
       break;
   }
 
-  master->printMessage("L = %E, z/L = %E, eval[n-1] = %E, eval[n] = %E\n", n, zsl/zL_sl[n-1], zL_sl[n], f_sl[n-1]-Ri, f_sl[n]-Ri);
-  return zsl/zL_sl[n];
+  // Linearly interpolate to the correct value of z/L.
+  const double zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+  return zsl/zL0;
 
   /*
   double L0;
