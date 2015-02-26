@@ -88,12 +88,15 @@ class BoundarySurface : public Boundary
                double *, double *, double *,
                double, int);
 
-    double calcObukNoslipFlux     (double, double, double, double);
+    double calcObukNoslipFlux     (double, double, double, double, double);
     double calcObukNoslipDirichlet(double, double, double, double);
 
     double ustarin;
 
     Stats *stats;
+
+    double* zL_sl;
+    double* f_sl;
 
     // typedef std::map<std::string, int> bcbotmap;
     // int surfmbcbot;

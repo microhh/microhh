@@ -154,13 +154,13 @@ void BoundarySurface::init(Input *inputin)
 
   // initialize the obukhov length on a small number
   for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-   for(int i=0; i<grid->icells; ++i)
-   {
-     ij = i + j*jj;
-     obuk[ij] = constants::dsmall;
-   }
-
+    #pragma ivdep
+    for(int i=0; i<grid->icells; ++i)
+    {
+      ij = i + j*jj;
+      obuk[ij] = constants::dsmall;
+    }
+ 
   // Cross sections
   allowedcrossvars.push_back("ustar");
   allowedcrossvars.push_back("obuk");
@@ -272,7 +272,21 @@ void BoundarySurface::setValues()
           // limit ustar at 1e-4 to avoid zero divisions
           ustar[ij] = std::max(0.0001, ustarin);
         }
-   }
+  }
+
+  // Prepare the surface layer solver.
+  const int nzL = 10000;
+  zL_sl = new double[nzL];
+  f_sl  = new double[nzL];
+
+  const double dzL = 30./(nzL-1);
+  zL_sl[0] = -20.;
+  for (int n=1; n<nzL; ++n)
+    zL_sl[n] = -20. + n*dzL;
+
+  const double zsl = grid->z[grid->kstart];
+  for (int n=0; n<nzL; ++n)
+    f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 3);
 }
 
 #ifndef USECUDA
@@ -371,7 +385,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
-        obuk [ij] = calcObukNoslipFlux(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
+        obuk [ij] = calcObukNoslipFlux(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart], z0m);
         ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
@@ -608,8 +622,22 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   }
 }
 
-double BoundarySurface::calcObukNoslipFlux(double L, double du, double bfluxbot, double zsl)
+double BoundarySurface::calcObukNoslipFlux(const double L, const double du, const double bfluxbot, const double zsl, const double z0m)
 {
+  const double Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
+
+  const int nzL = 10000;
+  int n;
+  for (n=0; n<nzL; ++n)
+  {
+    if ( (f_sl[n]-Ri) > 0)
+      break;
+  }
+
+  master->printMessage("L = %E, z/L = %E, eval[n-1] = %E, eval[n] = %E\n", n, zsl/zL_sl[n-1], zL_sl[n], f_sl[n-1]-Ri, f_sl[n]-Ri);
+  return zsl/zL_sl[n];
+
+  /*
   double L0;
   double Lstart, Lend;
   double fx, fxdif;
@@ -675,9 +703,11 @@ double BoundarySurface::calcObukNoslipFlux(double L, double du, double bfluxbot,
 
   if(m > 1)
     std::printf("ERROR convergence has not been reached in Obukhov length calculation\n");
+    */
 
   return L;
 }
+
 double BoundarySurface::calcObukNoslipDirichlet(double L, double du, double db, double zsl)
 {
   double L0;
