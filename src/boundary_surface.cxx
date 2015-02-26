@@ -37,8 +37,12 @@
 #include "cross.h"
 #include "most.h"
 
-// a sign function
-inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
+namespace
+{
+  // Size of the lookup table.
+  const int nzL = 10000;
+  inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0); }
+}
 
 BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
 {
@@ -275,7 +279,6 @@ void BoundarySurface::setValues()
   }
 
   // Prepare the surface layer solver.
-  const int nzL = 10000;
   zL_sl = new double[nzL];
   f_sl  = new double[nzL];
 
@@ -628,7 +631,6 @@ double BoundarySurface::calcObukNoslipFlux(const double* restrict zL, const doub
   const double Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
 
   // Look up the correct value in the lookup table.
-  const int nzL = 10000;
   int n;
   for (n=0; n<nzL; ++n)
   {
