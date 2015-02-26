@@ -70,9 +70,6 @@ class DiffSmag2 : public Diff
 
     double calc_dnmul(double *, double *, double);
 
-    inline double phim(double);
-    inline double phih(double);
-
     double cs;
 };
 #endif

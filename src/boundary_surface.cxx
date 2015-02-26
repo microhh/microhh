@@ -35,6 +35,7 @@
 #include "model.h"
 #include "master.h"
 #include "cross.h"
+#include "most.h"
 
 // a sign function
 inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
@@ -371,7 +372,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
       {
         ij  = i + j*jj;
         obuk [ij] = calcObukNoslipFlux(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
-        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
   else if(mbcbot == DirichletType && thermobc == DirichletType)
@@ -384,7 +385,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
         ijk = i + j*jj + kstart*kk;
         db = b[ijk] - bbot[ij];
         obuk [ij] = calcObukNoslipDirichlet(obuk[ij], dutot[ij], db, z[kstart]);
-        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
 }
@@ -448,7 +449,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
       {
         ij  = i + j*jj;
         obuk [ij] = -constants::dbig;
-        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
   else if(mbcbot == DirichletType && thermobc == DirichletType)
@@ -460,7 +461,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         obuk [ij] = -constants::dbig;
-        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
 }
@@ -489,8 +490,8 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         // interpolate the whole stability function rather than ustar or obuk
-        ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
-        vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
+        ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+        vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
       }
 
     grid->boundaryCyclic2d(ufluxbot);
@@ -581,7 +582,7 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
-        varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
+        varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h, obuk[ij]);
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
         // use the linearly interpolated grad, rather than the MO grad,
         // to prevent giving unresolvable gradients to advection schemes
@@ -598,7 +599,7 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         // if(ij=100) std::printf("CvH: ustar,fh, var[ijk]: %E, %E, %E\n", ustar[ij], obuk[ij], var[ijk]);
-        varbot[ij] = varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
+        varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h, obuk[ij])) + var[ijk];
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
         // use the linearly interpolated grad, rather than the MO grad,
         // to prevent giving unresolvable gradients to advection schemes
@@ -650,11 +651,11 @@ double BoundarySurface::calcObukNoslipFlux(double L, double du, double bfluxbot,
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2);
-      fx     = zsl/L + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3);
+      fx     = zsl/L + constants::kappa*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, L), 3);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3))
-               - (zsl/Lstart + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3)) )
+      fxdif  = ( (zsl/Lend + constants::kappa*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, Lend), 3))
+               - (zsl/Lstart + constants::kappa*zsl*bfluxbot / std::pow(du * most::fm(zsl, z0m, Lstart), 3)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
@@ -720,11 +721,11 @@ double BoundarySurface::calcObukNoslipDirichlet(double L, double du, double db, 
     {
       L0     = L;
       // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-      fx     = zsl/L - constants::kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2);
+      fx     = zsl/L - constants::kappa*zsl*db*most::fh(zsl, z0h, L) / std::pow(du * most::fm(zsl, z0m, L), 2);
       Lstart = L - 0.001*L;
       Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend - constants::kappa*zsl*db*fh(zsl, z0h, Lend) / std::pow(du * fm(zsl, z0m, Lend), 2))
-               - (zsl/Lstart - constants::kappa*zsl*db*fh(zsl, z0h, Lstart) / std::pow(du * fm(zsl, z0m, Lstart), 2)) )
+      fxdif  = ( (zsl/Lend - constants::kappa*zsl*db*most::fh(zsl, z0h, Lend) / std::pow(du * most::fm(zsl, z0m, Lend), 2))
+               - (zsl/Lstart - constants::kappa*zsl*db*most::fh(zsl, z0h, Lstart) / std::pow(du * most::fm(zsl, z0m, Lstart), 2)) )
              / (Lend - Lstart);
       L      = L - fx/fxdif;
       ++n;
@@ -748,88 +749,4 @@ double BoundarySurface::calcObukNoslipDirichlet(double L, double du, double db, 
   return L;
 }
 
-inline double BoundarySurface::fm(double zsl, double z0m, double L)
-{
-  double fm;
-  fm = constants::kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
-  return fm;
-}
 
-inline double BoundarySurface::fh(double zsl, double z0h, double L)
-{
-  double fh;
-  fh = constants::kappa / (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L));
-  return fh;
-}
-
-inline double BoundarySurface::psim(double zeta)
-{
-  double psim;
-  double x;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // x     = (1. - 16. * zeta) ** (0.25)
-    // psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
-    // Wilson functions
-    x    = std::pow(1. + std::pow(3.6 * std::abs(zeta),2./3.), -0.5);
-    psim = 3.*std::log( (1. + 1./x) / 2.);
-  }
-  else
-  {
-    psim = -2./3.*(zeta - 5./0.35) * std::exp(-0.35 * zeta) - zeta - (10./3.) / 0.35;
-  }
-  return psim;
-}
-
-inline double BoundarySurface::psih(double zeta)
-{
-  double psih;
-  double x;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // x     = (1. - 16. * zeta) ** (0.25)
-    // psih  = 2. * log( (1. + x ** 2.) / 2. )
-    // Wilson functions
-    x    = std::pow(1. + std::pow(7.9*std::abs(zeta), (2./3.)), -0.5);
-    psih = 3. * std::log( (1. + 1. / x) / 2.);
-  }
-  else
-  {
-    psih  = (-2./3.) * (zeta-5./0.35) * std::exp(-0.35*zeta) - std::pow(1. + (2./3.) * zeta, 1.5) - (10./3.) / 0.35 + 1.;
-  }
-  return psih;
-}
-
-inline double BoundarySurface::phim(double zeta)
-{
-  double phim;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // phim  = (1. - 16. * zeta) ** (-0.25)
-    // Wilson functions
-    phim = std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
-  }
-  else
-    phim = 1. + 5.*zeta;
-
-  return phim;
-}
-
-inline double BoundarySurface::phih(double zeta)
-{
-  double phih;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // phih  = (1. - 16. * zeta) ** (-0.5)
-    // Wilson functions
-    phih = std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
-  }
-  else
-    phih = 1. + 5.*zeta;
-
-  return phih;
-}

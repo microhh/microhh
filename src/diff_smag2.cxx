@@ -32,6 +32,7 @@
 #include "constants.h"
 #include "thermo.h"
 #include "model.h"
+#include "most.h"
 
 DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
@@ -160,10 +161,10 @@ void DiffSmag2::strain2(double * restrict strain2,
       ijk = i + j*jj + kstart*kk;
       strain2[ijk] = 2.*(
         // du/dz
-        + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(constants::kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2)
+        + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
 
         // dv/dz
-        + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(constants::kappa*z[kstart]*ustar[ij])*phim(z[kstart]/obuk[ij]), 2) );
+        + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2) );
       // add a small number to avoid zero divisions
       strain2[ijk] += constants::dsmall;
     }
@@ -248,7 +249,7 @@ void DiffSmag2::evisc(double * restrict evisc,
       ijk = i + j*jj + kstart*kk;
       // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
       // Add the buoyancy production to the TKE
-      RitPrratio = -bfluxbot[ij]/(constants::kappa*z[kstart]*ustar[ij])*phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
+      RitPrratio = -bfluxbot[ij]/(constants::kappa*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
       RitPrratio = std::min(RitPrratio, 1.-constants::dsmall);
       evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
     }
@@ -638,40 +639,6 @@ double DiffSmag2::calc_dnmul(double * restrict evisc, double * restrict dzi, dou
   grid->getMax(&dnmul);
 
   return dnmul;
-}
-
-inline double DiffSmag2::phim(double zeta)
-{
-  double phim;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    //x     = (1. - 16. * zeta) ** (0.25)
-    //psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
-    // Wilson functions
-    phim = std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
-  }
-  else
-    phim = 1. + 5.*zeta;
-
-  return phim;
-}
-
-inline double DiffSmag2::phih(double zeta)
-{
-  double phih;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // x     = (1. - 16. * zeta) ** (0.25)
-    // psih  = 2. * log( (1. + x ** 2.) / 2. )
-    // Wilson functions
-    phih = std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
-  }
-  else
-    phih = 1. + 5.*zeta;
-
-  return phih;
 }
 
 #ifndef USECUDA

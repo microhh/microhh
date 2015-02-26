@@ -91,13 +91,6 @@ class BoundarySurface : public Boundary
     double calcObukNoslipFlux     (double, double, double, double);
     double calcObukNoslipDirichlet(double, double, double, double);
 
-    inline double fm(double, double, double);
-    inline double fh(double, double, double);
-    inline double psim(double);
-    inline double psih(double);
-    inline double phim(double);
-    inline double phih(double);
-
     double ustarin;
 
     Stats *stats;
