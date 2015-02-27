@@ -49,6 +49,7 @@ class BoundarySurface : public Boundary
 
     // Make these variables public for out-of-class usage.
     double *obuk;
+    int    *nobuk;
     double *ustar;
 
     double z0m;
@@ -88,8 +89,8 @@ class BoundarySurface : public Boundary
                double *, double *, double *,
                double, int);
 
-    double calcObukNoslipFlux     (const double* const, const double* const, double, double, double);
-    double calcObukNoslipDirichlet(const double* const, const double* const, double, double, double);
+    double calcObukNoslipFlux     (const double* const, const double* const, int&, double, double, double);
+    double calcObukNoslipDirichlet(const double* const, const double* const, int&, double, double, double);
 
     double ustarin;
 

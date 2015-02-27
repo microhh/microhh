@@ -48,6 +48,7 @@ BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(mode
 {
   ustar = 0;
   obuk  = 0;
+  nobuk = 0;
 
   #ifdef USECUDA
   ustar_g = 0;
@@ -59,6 +60,7 @@ BoundarySurface::~BoundarySurface()
 {
   delete[] ustar;
   delete[] obuk;
+  delete[] nobuk;
 
   #ifdef USECUDA
   clearDevice();
@@ -149,6 +151,7 @@ void BoundarySurface::init(Input *inputin)
 
   // 2. Allocate the fields
   obuk  = new double[grid->ijcells];
+  nobuk = new int   [grid->ijcells];
   ustar = new double[grid->ijcells];
 
   stats = model->stats;
@@ -162,7 +165,8 @@ void BoundarySurface::init(Input *inputin)
     for(int i=0; i<grid->icells; ++i)
     {
       ij = i + j*jj;
-      obuk[ij] = constants::dsmall;
+      obuk[ij]  = constants::dsmall;
+      nobuk[ij] = 0;
     }
  
   // Cross sections
@@ -397,7 +401,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
-        obuk [ij] = calcObukNoslipFlux(zL_sl, f_sl, dutot[ij], bfluxbot[ij], z[kstart]);
+        obuk [ij] = calcObukNoslipFlux(zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
         ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
@@ -410,7 +414,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         db = b[ijk] - bbot[ij];
-        obuk [ij] = calcObukNoslipDirichlet(zL_sl, f_sl, dutot[ij], db, z[kstart]);
+        obuk [ij] = calcObukNoslipDirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
         ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
@@ -635,17 +639,31 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
 }
 
 double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, const double* const restrict f,
+                                           int& n,
                                            const double du, const double bfluxbot, const double zsl)
 {
   // Calculate the appropriate Richardson number.
   const double Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
 
-  // Look up the correct value in the lookup table.
-  int n;
-  for (n=0; n<nzL; ++n)
+  // Determine search direction.
+  if ( (f[n]-Ri) > 0)
   {
-    if ( (f[n]-Ri) > 0)
-      break;
+    while (f[n]-Ri > 0)
+    {
+      if ( (f[n]-Ri) < 0 || n == 0 )
+        break;
+      else
+        --n;
+    }
+  }
+  else
+  {
+    while ( (f[n]-Ri) < 0)
+    {
+      ++n;
+      if ( (f[n]-Ri) > 0 || n == nzL-1 )
+        break;
+    }
   }
 
   double zL0;
@@ -660,25 +678,36 @@ double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, cons
     master->printWarning("z/L range too limited on stable side\n");
   }
   else
+  {
     // Linearly interpolate to the correct value of z/L.
     zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+    master->printMessage("%E, %E, %E\n", zL, f[n-1], f[n]);
+  }
 
-  // master->printMessage("%E, %E\n", zL0, zsl/zL0);
   return zsl/zL0;
 }
 
-double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL, const double* const restrict f, 
+double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL, const double* const restrict f,
+                                                int& n,
                                                 const double du, const double db, const double zsl)
 {
   // Calculate the appropriate Richardson number.
   const double Ri = constants::kappa * db * zsl / std::pow(du, 2);
 
-  // Look up the correct value in the lookup table.
-  int n;
-  for (n=0; n<nzL; ++n)
+  // Determine search direction.
+  if ( (f[n]-Ri) > 0)
   {
-    if ( (f[n]-Ri) > 0)
-      break;
+    while (f[n-1]-Ri > 0 && n > 0)
+    {
+      --n;
+    }
+  }
+  else
+  {
+    while ( (f[n]-Ri) < 0 && n < nzL-1)
+    {
+      ++n;
+    }
   }
 
   double zL0;
@@ -693,8 +722,11 @@ double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL,
     master->printWarning("z/L range too limited on stable side\n");
   }
   else
+  {
     // Linearly interpolate to the correct value of z/L.
     zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+    // master->printMessage("%d, %E, %E\n", n, f[n-1]-Ri, f[n]-Ri);
+  }
 
   // master->printMessage("%E, %E\n", zL0, zsl/zL0);
   return zsl/zL0;
