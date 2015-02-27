@@ -44,9 +44,6 @@ class BoundarySurface : public Boundary
     void execStats(Mask *); ///< Execute statistics of surface
     void execCross();       ///< Execute cross sections of surface
 
-    void save(int);
-    void load(int);
-
     // Make these variables public for out-of-class usage.
     double *obuk;
     int    *nobuk;

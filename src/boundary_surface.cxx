@@ -213,38 +213,6 @@ void BoundarySurface::execStats(Mask *m)
   stats->calcMean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
 }
 
-void BoundarySurface::save(int iotime)
-{
-  char filename[256];
-
-  std::sprintf(filename, "obuk.%07d", iotime);
-  master->printMessage("Saving \"%s\" ... ", filename);
-  if(grid->savexySlice(obuk, fields->atmp["tmp1"]->data, filename))
-  {
-    master->printMessage("FAILED\n");
-    throw 1;
-  }
-  else
-    master->printMessage("OK\n");
-}
-
-void BoundarySurface::load(int iotime)
-{
-  char filename[256];
-
-  std::sprintf(filename, "obuk.%07d", iotime);
-  master->printMessage("Loading \"%s\" ... ", filename);
-  if(grid->loadxySlice(obuk, fields->atmp["tmp1"]->data, filename))
-  {
-    master->printMessage("FAILED\n");
-    throw 1;
-  }
-  else
-    master->printMessage("OK\n");
-
-  grid->boundaryCyclic2d(obuk);
-}
-
 void BoundarySurface::setValues()
 {
   const double noVelocity = 0.;

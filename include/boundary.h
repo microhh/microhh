@@ -48,9 +48,6 @@ class Boundary
     virtual void updateTimeDep(); ///< Update the time dependent parameters.
     virtual void setValues();     ///< Set all 2d fields to the prober BC value.
 
-    virtual void save(int); ///< Save boundary conditions related fields for restarts.
-    virtual void load(int); ///< Load boundary conditions related fields for restarts.
-
     virtual void exec(); ///< Update the boundary conditions.
 
     virtual void execStats(Mask *); ///< Execute statistics of surface
