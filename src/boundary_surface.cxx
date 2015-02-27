@@ -647,24 +647,9 @@ double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, cons
 
   // Determine search direction.
   if ( (f[n]-Ri) > 0)
-  {
-    while (f[n]-Ri > 0)
-    {
-      if ( (f[n]-Ri) < 0 || n == 0 )
-        break;
-      else
-        --n;
-    }
-  }
+    while (f[n-1]-Ri > 0 && n > 0) { --n; }
   else
-  {
-    while ( (f[n]-Ri) < 0)
-    {
-      ++n;
-      if ( (f[n]-Ri) > 0 || n == nzL-1 )
-        break;
-    }
-  }
+    while ( (f[n]-Ri) < 0 && n < nzL-1) { ++n; }
 
   double zL0;
   if (n == 0)
@@ -681,7 +666,7 @@ double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, cons
   {
     // Linearly interpolate to the correct value of z/L.
     zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-    master->printMessage("%E, %E, %E\n", zL, f[n-1], f[n]);
+    // master->printMessage("%E, %E, %E\n", zL, f[n-1], f[n]);
   }
 
   return zsl/zL0;
@@ -696,19 +681,9 @@ double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL,
 
   // Determine search direction.
   if ( (f[n]-Ri) > 0)
-  {
-    while (f[n-1]-Ri > 0 && n > 0)
-    {
-      --n;
-    }
-  }
+    while (f[n-1]-Ri > 0 && n > 0) { --n; }
   else
-  {
-    while ( (f[n]-Ri) < 0 && n < nzL-1)
-    {
-      ++n;
-    }
-  }
+    while ( (f[n]-Ri) < 0 && n < nzL-1) { ++n; }
 
   double zL0;
   if (n == 0)
@@ -728,6 +703,5 @@ double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL,
     // master->printMessage("%d, %E, %E\n", n, f[n-1]-Ri, f[n]-Ri);
   }
 
-  // master->printMessage("%E, %E\n", zL0, zsl/zL0);
   return zsl/zL0;
 }
