@@ -40,7 +40,7 @@
 namespace
 {
   // Size of the lookup table.
-  const int nzL = 10000;
+  const int nzL = 1e5;
   inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0); }
 }
 
@@ -286,10 +286,42 @@ void BoundarySurface::setValues()
   zL_sl = new double[nzL];
   f_sl  = new double[nzL];
 
+  /*
   const double dzL = 30./(nzL-1);
   zL_sl[0] = -20.;
   for (int n=1; n<nzL; ++n)
     zL_sl[n] = -20. + n*dzL;
+    */
+
+  // Calculate the non-streched part between -10 to 10 z/L with 75% of the points.
+  double dzL = 20. / (3./4.*nzL);
+  zL_sl[0] = -10.;
+  for (int n=1; n<nzL; ++n)
+    zL_sl[n] = zL_sl[n-1] + dzL;
+
+  // Stretch the remainder of the z/L values far down for free convection.
+  const double zLend = 1.e4;// - 10.;
+
+  // Find stretching that ends up at the correct value.
+  double r  = 1.01;
+  double r0 = constants::dhuge;
+  while (std::abs( (r-r0)/r0 ) > 1.e-10)
+  {
+    r0 = r;
+	  r  = std::pow( 1. - (zLend/dzL)*(1.-r), (1./(nzL-1)) );
+  }
+  master->printMessage("r = %E\n", r);
+
+  zL_sl[0] = 0.;
+  for (int n=1; n<nzL; ++n)
+  {
+    zL_sl[n] = zL_sl[n-1] + dzL;
+    dzL *= r;
+  }
+  master->printMessage("%d, %E\n", 0    , zL_sl[0]    );
+  master->printMessage("%d, %E\n", nzL-1, zL_sl[nzL-1]);
+
+  throw 1;
 
   if(mbcbot == DirichletType && thermobc == FluxType)
   {
@@ -497,9 +529,9 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
 }
 
 void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk, 
-                             double * restrict u, double * restrict ubot, double * restrict ugradbot, double * restrict ufluxbot, 
-                             double * restrict v, double * restrict vbot, double * restrict vgradbot, double * restrict vfluxbot, 
-                             double zsl, int bcbot)
+                            double * restrict u, double * restrict ubot, double * restrict ugradbot, double * restrict ufluxbot, 
+                            double * restrict v, double * restrict vbot, double * restrict vgradbot, double * restrict vfluxbot, 
+                            double zsl, int bcbot)
 {
   int ij,ijk,ii,jj,kk,kstart;
 
@@ -647,9 +679,9 @@ double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, cons
 
   // Determine search direction.
   if ( (f[n]-Ri) > 0)
-    while (f[n-1]-Ri > 0 && n > 0) { --n; }
+    while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
   else
-    while ( (f[n]-Ri) < 0 && n < nzL-1) { ++n; }
+    while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
 
   double zL0;
   if (n == 0)
@@ -681,9 +713,9 @@ double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL,
 
   // Determine search direction.
   if ( (f[n]-Ri) > 0)
-    while (f[n-1]-Ri > 0 && n > 0) { --n; }
+    while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
   else
-    while ( (f[n]-Ri) < 0 && n < nzL-1) { ++n; }
+    while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
 
   double zL0;
   if (n == 0)
@@ -700,7 +732,6 @@ double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL,
   {
     // Linearly interpolate to the correct value of z/L.
     zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-    // master->printMessage("%d, %E, %E\n", n, f[n-1]-Ri, f[n]-Ri);
   }
 
   return zsl/zL0;
