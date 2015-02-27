@@ -286,43 +286,38 @@ void BoundarySurface::setValues()
   zL_sl = new double[nzL];
   f_sl  = new double[nzL];
 
-  /*
-  const double dzL = 30./(nzL-1);
-  zL_sl[0] = -20.;
-  for (int n=1; n<nzL; ++n)
-    zL_sl[n] = -20. + n*dzL;
-    */
+  double* zL_tmp = new double[nzL];
 
   // Calculate the non-streched part between -10 to 10 z/L with 75% of the points.
-  double dzL = 20. / (3./4.*nzL);
-  zL_sl[0] = -10.;
-  for (int n=1; n<nzL; ++n)
-    zL_sl[n] = zL_sl[n-1] + dzL;
+  double dzL = 20. / (3./4.*nzL-1);
+  zL_tmp[0] = -10.;
+  for (int n=1; n<3*nzL/4; ++n)
+    zL_tmp[n] = zL_tmp[n-1] + dzL;
 
   // Stretch the remainder of the z/L values far down for free convection.
-  const double zLend = 1.e4;// - 10.;
+  const double zLend = 1.e4 - 10.;
 
-  // Find stretching that ends up at the correct value.
+  // Find stretching that ends up at the correct value using geometric progression.
   double r  = 1.01;
   double r0 = constants::dhuge;
   while (std::abs( (r-r0)/r0 ) > 1.e-10)
   {
     r0 = r;
-	  r  = std::pow( 1. - (zLend/dzL)*(1.-r), (1./(nzL-1)) );
+	  r  = std::pow( 1. - (zLend/dzL)*(1.-r), (4./(nzL)) );
   }
-  master->printMessage("r = %E\n", r);
 
-  zL_sl[0] = 0.;
-  for (int n=1; n<nzL; ++n)
+  for (int n=3*nzL/4; n<nzL; ++n)
   {
-    zL_sl[n] = zL_sl[n-1] + dzL;
+    zL_tmp[n] = zL_tmp[n-1] + dzL;
     dzL *= r;
   }
-  master->printMessage("%d, %E\n", 0    , zL_sl[0]    );
-  master->printMessage("%d, %E\n", nzL-1, zL_sl[nzL-1]);
 
-  throw 1;
+  // Calculate the final array and delete the temporary array.
+  for (int n=0; n<nzL; ++n)
+    zL_sl[n] = -zL_tmp[nzL-n-1];
+  delete[] zL_tmp;
 
+  // Calculate the evaluation function.
   if(mbcbot == DirichletType && thermobc == FluxType)
   {
     const double zsl = grid->z[grid->kstart];
@@ -698,7 +693,7 @@ double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, cons
   {
     // Linearly interpolate to the correct value of z/L.
     zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-    // master->printMessage("%E, %E, %E\n", zL, f[n-1], f[n]);
+    // master->printMessage("%E\n", zL0);
   }
 
   return zsl/zL0;
@@ -732,6 +727,7 @@ double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL,
   {
     // Linearly interpolate to the correct value of z/L.
     zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+    // master->printMessage("%E\n", zL0);
   }
 
   return zsl/zL0;
