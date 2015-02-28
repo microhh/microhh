@@ -113,67 +113,33 @@ namespace BoundarySurface_g
   { 
     return constants::kappa / (log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)); 
   }
+
+  __device__ double findObuk(const double* const __restrict__ zL, const double* const __restrict__ f,
+                  int &n, const double Ri, const double zsl)
+  {
+    // Determine search direction.
+    if ( (f[n]-Ri) > 0 )
+      while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
+    else
+      while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
+
+    const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+
+    return zsl/zL0;
+  }
  
   __device__ double calcobuk_noslip_flux(double * __restrict__ zL, double * __restrict__ f, int& n, double du, double bfluxbot, double zsl)
   {
     // Calculate the appropriate Richardson number.
     const double Ri = -constants::kappa * bfluxbot * zsl / pow(du, 3);
- 
-    // Determine search direction.
-    if ( (f[n]-Ri) > 0)
-      while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
-    else
-      while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
-
-    double zL0;
-    if (n == 0)
-    {
-      zL0 = zL[n];
-      printf("z/L range too limited on unstable side\n");
-    }
-    else if (n == nzL)
-    {
-      zL0 = zL[n];
-      printf("z/L range too limited on stable side\n");
-    }
-    else
-    {
-      // Linearly interpolate to the correct value of z/L.
-      zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-    }
-  
-    return zsl/zL0;
+    return findObuk(zL, f, n, Ri, zsl);
   }
   
   __device__ double calcobuk_noslip_dirichlet(double * __restrict__ zL, double * __restrict__ f, int& n, double du, double db, double zsl)
   {
     // Calculate the appropriate Richardson number.
     const double Ri = constants::kappa * db * zsl / pow(du, 2);
-
-    // Determine search direction.
-    if ( (f[n]-Ri) > 0)
-      while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
-    else
-      while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
-
-    double zL0;
-    if (n == 0)
-    {
-      zL0 = zL[n];
-      printf("z/L range too limited on unstable side\n");
-    }
-    else if (n == nzL)
-    {
-      zL0 = zL[n];
-      printf("z/L range too limited on stable side\n");
-    }
-    else
-    {
-      // Linearly interpolate to the correct value of z/L.
-      zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-    }
-
-    return zsl/zL0;
+    return findObuk(zL, f, n, Ri, zsl);
   }
   
   /* Calculate absolute wind speed */
