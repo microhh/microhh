@@ -89,15 +89,15 @@ class BoundarySurface : public Boundary
                double *, double *, double *,
                double, int);
 
-    double calcObukNoslipFlux     (const double* const, const double* const, int&, double, double, double);
-    double calcObukNoslipDirichlet(const double* const, const double* const, int&, double, double, double);
+    double calcObukNoslipFlux     (const float* const, const float* const, int&, double, double, double);
+    double calcObukNoslipDirichlet(const float* const, const float* const, int&, double, double, double);
 
     double ustarin;
 
     Stats *stats;
 
-    double* zL_sl;
-    double* f_sl;
+    float* zL_sl;
+    float* f_sl;
 
     #ifdef USECUDA
     double* zL_sl_g;
