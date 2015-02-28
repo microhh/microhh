@@ -252,19 +252,19 @@ void BoundarySurface::setValues()
   }
 
   // Prepare the surface layer solver.
-  zL_sl = new double[nzL];
-  f_sl  = new double[nzL];
+  zL_sl = new float[nzL];
+  f_sl  = new float[nzL];
 
-  double* zL_tmp = new double[nzL];
+  float* zL_tmp = new float[nzL];
 
   // Calculate the non-streched part between -10 to 10 z/L with 75% of the points.
-  double dzL = 20. / (3./4.*nzL-1);
+  float dzL = 20. / (3./4.*nzL-1);
   zL_tmp[0] = -10.;
   for (int n=1; n<3*nzL/4; ++n)
     zL_tmp[n] = zL_tmp[n-1] + dzL;
 
   // Stretch the remainder of the z/L values far down for free convection.
-  const double zLend = 1.e4 - 10.;
+  const float zLend = 1.e4 - 10.;
 
   // Find stretching that ends up at the correct value using geometric progression.
   double r  = 1.01;
@@ -636,9 +636,8 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
 
 namespace
 {
-  double findObuk(const double* const restrict zL, const double* const restrict f,
-                  int &n,
-                  const double Ri, const double zsl)
+  double find_zL(const float* const restrict zL, const float* const restrict f,
+                 int &n, const float Ri)
   {
     // Determine search direction.
     if ( (f[n]-Ri) > 0 )
@@ -648,26 +647,26 @@ namespace
 
     const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
 
-    return zsl/zL0;
+    return zL0;
   }
 }
 
-double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, const double* const restrict f,
+double BoundarySurface::calcObukNoslipFlux(const float* const restrict zL, const float* const restrict f,
                                            int& n,
                                            const double du, const double bfluxbot, const double zsl)
 {
-  // Calculate the appropriate Richardson number.
-  const double Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
+  // Calculate the appropriate Richardson number and reduce precision.
+  const float Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
 
-  return findObuk(zL, f, n, Ri, zsl);
+  return zsl/find_zL(zL, f, n, Ri);
 }
 
-double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL, const double* const restrict f,
+double BoundarySurface::calcObukNoslipDirichlet(const float* const restrict zL, const float* const restrict f,
                                                 int& n,
                                                 const double du, const double db, const double zsl)
 {
-  // Calculate the appropriate Richardson number.
-  const double Ri = constants::kappa * db * zsl / std::pow(du, 2);
+  // Calculate the appropriate Richardson number and reduce precision.
+  const float Ri = constants::kappa * db * zsl / std::pow(du, 2);
   
-  return findObuk(zL, f, n, Ri, zsl);
+  return zsl/find_zL(zL, f, n, Ri);
 }
