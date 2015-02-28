@@ -634,6 +634,24 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   }
 }
 
+namespace
+{
+  double findObuk(const double* const restrict zL, const double* const restrict f,
+                  int &n,
+                  const double Ri, const double zsl)
+  {
+    // Determine search direction.
+    if ( (f[n]-Ri) > 0 )
+      while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
+    else
+      while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
+
+    const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+
+    return zsl/zL0;
+  }
+}
+
 double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, const double* const restrict f,
                                            int& n,
                                            const double du, const double bfluxbot, const double zsl)
@@ -641,31 +659,7 @@ double BoundarySurface::calcObukNoslipFlux(const double* const restrict zL, cons
   // Calculate the appropriate Richardson number.
   const double Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
 
-  // Determine search direction.
-  if ( (f[n]-Ri) > 0)
-    while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
-  else
-    while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
-
-  double zL0;
-  if (n == 0)
-  {
-    zL0 = zL[n];
-    master->printWarning("z/L range too limited on unstable side\n");
-  }
-  else if (n == nzL)
-  {
-    zL0 = zL[n];
-    master->printWarning("z/L range too limited on stable side\n");
-  }
-  else
-  {
-    // Linearly interpolate to the correct value of z/L.
-    zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-    // master->printMessage("%E\n", zL0);
-  }
-
-  return zsl/zL0;
+  return findObuk(zL, f, n, Ri, zsl);
 }
 
 double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL, const double* const restrict f,
@@ -674,30 +668,6 @@ double BoundarySurface::calcObukNoslipDirichlet(const double* const restrict zL,
 {
   // Calculate the appropriate Richardson number.
   const double Ri = constants::kappa * db * zsl / std::pow(du, 2);
-
-  // Determine search direction.
-  if ( (f[n]-Ri) > 0)
-    while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
-  else
-    while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
-
-  double zL0;
-  if (n == 0)
-  {
-    zL0 = zL[n];
-    master->printWarning("z/L range too limited on unstable side\n");
-  }
-  else if (n == nzL)
-  {
-    zL0 = zL[n];
-    master->printWarning("z/L range too limited on stable side\n");
-  }
-  else
-  {
-    // Linearly interpolate to the correct value of z/L.
-    zL0 = zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
-    // master->printMessage("%E\n", zL0);
-  }
-
-  return zsl/zL0;
+  
+  return findObuk(zL, f, n, Ri, zsl);
 }
