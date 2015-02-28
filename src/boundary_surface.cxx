@@ -40,7 +40,7 @@
 namespace
 {
   // Size of the lookup table.
-  const int nzL = 1e5;
+  //const int nzL = 1e5; // BvS moved to boundary_surface.h for cuda version
   inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0); }
 }
 
@@ -53,6 +53,7 @@ BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(mode
   #ifdef USECUDA
   ustar_g = 0;
   obuk_g  = 0;
+  nobuk_g = 0;
   #endif
 }
 

@@ -31,6 +31,8 @@ class Input;
 class Stats;
 struct Mask;
 
+const int nzL = 1e5;
+
 class BoundarySurface : public Boundary
 {
   public:
@@ -61,6 +63,7 @@ class BoundarySurface : public Boundary
 
     double *obuk_g;
     double *ustar_g;
+    int    *nobuk_g;
     #endif
 
   private:
@@ -95,6 +98,11 @@ class BoundarySurface : public Boundary
 
     double* zL_sl;
     double* f_sl;
+
+    #ifdef USECUDA
+    double* zL_sl_g;
+    double* f_sl_g;
+    #endif
 
     // typedef std::map<std::string, int> bcbotmap;
     // int surfmbcbot;

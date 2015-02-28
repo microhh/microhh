@@ -442,41 +442,69 @@ namespace BoundarySurface_g
 
 void BoundarySurface::prepareDevice()
 {
-  const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
-  const int imemsizep  = grid->icellsp * sizeof(double);
-  const int imemsize   = grid->icells  * sizeof(double);
+  const int dmemsize2d  = (grid->ijcellsp+grid->memoffset)*sizeof(double);
+  const int imemsize2d  = (grid->ijcellsp+grid->memoffset)*sizeof(int);
+  const int dimemsizep  = grid->icellsp * sizeof(double);
+  const int dimemsize   = grid->icells  * sizeof(double);
+  const int iimemsizep  = grid->icellsp * sizeof(int);
+  const int iimemsize   = grid->icells  * sizeof(int);
 
-  cudaSafeCall(cudaMalloc(&obuk_g,  nmemsize2d));
-  cudaSafeCall(cudaMalloc(&ustar_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&obuk_g,  dmemsize2d));
+  cudaSafeCall(cudaMalloc(&ustar_g, dmemsize2d));
+  cudaSafeCall(cudaMalloc(&nobuk_g, imemsize2d));
 
-  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk, imemsize, imemsize, grid->jcells,   cudaMemcpyHostToDevice));
-  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMalloc(&zL_sl_g, nzL*sizeof(double)));
+  cudaSafeCall(cudaMalloc(&f_sl_g,  nzL*sizeof(double)));
+
+  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  dimemsizep, obuk,  dimemsize, dimemsize, grid->jcells, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], dimemsizep, ustar, dimemsize, dimemsize, grid->jcells, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&nobuk_g[grid->memoffset], iimemsizep, nobuk, iimemsize, iimemsize, grid->jcells, cudaMemcpyHostToDevice));
+
+  cudaSafeCall(cudaMemcpy(zL_sl_g, zL_sl, nzL*sizeof(double), cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(f_sl_g,  f_sl,  nzL*sizeof(double), cudaMemcpyHostToDevice));
 }
 
 // TMP BVS
 void BoundarySurface::forwardDevice()
 {
-  const int imemsizep  = grid->icellsp * sizeof(double);
-  const int imemsize   = grid->icells  * sizeof(double);
+  const int dimemsizep  = grid->icellsp * sizeof(double);
+  const int dimemsize   = grid->icells  * sizeof(double);
+  const int iimemsizep  = grid->icellsp * sizeof(int);
+  const int iimemsize   = grid->icells  * sizeof(int);
 
-  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk,  imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
-  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  dimemsizep, obuk,  dimemsize, dimemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], dimemsizep, ustar, dimemsize, dimemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&nobuk_g[grid->memoffset], iimemsizep, nobuk, iimemsize, iimemsize, grid->jcells,  cudaMemcpyHostToDevice));
+
+  // For debugging
+  //cudaSafeCall(cudaMemcpy(zL_sl_g, zL_sl, nzL*sizeof(double), cudaMemcpyHostToDevice));
+  //cudaSafeCall(cudaMemcpy(f_sl_g,  f_sl,  nzL*sizeof(double), cudaMemcpyHostToDevice));
 }
 
 // TMP BVS
 void BoundarySurface::backwardDevice()
 {
-  const int imemsizep  = grid->icellsp * sizeof(double);
-  const int imemsize   = grid->icells  * sizeof(double);
+  const int dimemsizep  = grid->icellsp * sizeof(double);
+  const int dimemsize   = grid->icells  * sizeof(double);
+  const int iimemsizep  = grid->icellsp * sizeof(int);
+  const int iimemsize   = grid->icells  * sizeof(int);
 
-  cudaSafeCall(cudaMemcpy2D(obuk,  imemsize, &obuk_g[grid->memoffset],  imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
-  cudaSafeCall(cudaMemcpy2D(ustar, imemsize, &ustar_g[grid->memoffset], imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy2D(obuk,  dimemsize, &obuk_g[grid->memoffset],  dimemsizep, dimemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy2D(ustar, dimemsize, &ustar_g[grid->memoffset], dimemsizep, dimemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy2D(nobuk, iimemsize, &nobuk_g[grid->memoffset], iimemsizep, iimemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+
+  // For debugging
+  //cudaSafeCall(cudaMemcpy(zL_sl_g, zL_sl, nzL*sizeof(double), cudaMemcpyDeviceToHost));
+  //cudaSafeCall(cudaMemcpy(f_sl_g,  f_sl,  nzL*sizeof(double), cudaMemcpyDeviceToHost));
 }
 
 void BoundarySurface::clearDevice()
 {
   cudaSafeCall(cudaFree(obuk_g ));
   cudaSafeCall(cudaFree(ustar_g));
+  cudaSafeCall(cudaFree(nobuk_g));
+  cudaSafeCall(cudaFree(zL_sl_g));
+  cudaSafeCall(cudaFree(f_sl_g ));
 }
 
 #ifdef USECUDA
