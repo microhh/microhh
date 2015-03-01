@@ -31,8 +31,6 @@ class Input;
 class Stats;
 struct Mask;
 
-const int nzL = 1e4;
-
 class BoundarySurface : public Boundary
 {
   public:

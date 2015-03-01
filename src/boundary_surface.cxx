@@ -40,7 +40,7 @@
 namespace
 {
   // Size of the lookup table.
-  //const int nzL = 1e5; // BvS moved to boundary_surface.h for cuda version
+  const int nzL = 10000; // Size of the lookup table for MO iterations.
   inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0); }
 }
 
@@ -246,7 +246,7 @@ void BoundarySurface::setValues()
       for(int i=0; i<grid->icells; ++i)
         {
           ij = i + j*jj;
-          // limit ustar at 1e-4 to avoid zero divisions
+          // Limit ustar at 1e-4 to avoid zero divisions.
           ustar[ij] = std::max(0.0001, ustarin);
         }
   }
@@ -257,14 +257,14 @@ void BoundarySurface::setValues()
 
   float* zL_tmp = new float[nzL];
 
-  // Calculate the non-streched part between -10 to 10 z/L with 75% of the points.
-  float dzL = 20. / (3./4.*nzL-1);
+  // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points.
+  float dzL = 15. / (9.*nzL/10.-1.);
   zL_tmp[0] = -10.;
-  for (int n=1; n<3*nzL/4; ++n)
+  for (int n=1; n<9*nzL/10; ++n)
     zL_tmp[n] = zL_tmp[n-1] + dzL;
 
   // Stretch the remainder of the z/L values far down for free convection.
-  const float zLend = 1.e4 - 10.;
+  const float zLend = 1.e4 - 5.;
 
   // Find stretching that ends up at the correct value using geometric progression.
   double r  = 1.01;
@@ -272,10 +272,10 @@ void BoundarySurface::setValues()
   while (std::abs( (r-r0)/r0 ) > 1.e-10)
   {
     r0 = r;
-	  r  = std::pow( 1. - (zLend/dzL)*(1.-r), (4./(nzL)) );
+	  r  = std::pow( 1. - (zLend/dzL)*(1.-r), (1./ (nzL/10.) ) );
   }
 
-  for (int n=3*nzL/4; n<nzL; ++n)
+  for (int n=9*nzL/10; n<nzL; ++n)
   {
     zL_tmp[n] = zL_tmp[n-1] + dzL;
     dzL *= r;
@@ -284,6 +284,7 @@ void BoundarySurface::setValues()
   // Calculate the final array and delete the temporary array.
   for (int n=0; n<nzL; ++n)
     zL_sl[n] = -zL_tmp[nzL-n-1];
+
   delete[] zL_tmp;
 
   // Calculate the evaluation function.
@@ -304,7 +305,7 @@ void BoundarySurface::setValues()
 #ifndef USECUDA
 void BoundarySurface::updateBcs()
 {
-  // start with retrieving the stability information
+  // Start with retrieving the stability information.
   if(model->thermo->getSwitch() == "0")
   {
     stabilityNeutral(ustar, obuk,
@@ -314,7 +315,7 @@ void BoundarySurface::updateBcs()
   }
   else
   {
-    // store the buoyancy in tmp1
+    // Store the buoyancy in tmp1.
     model->thermo->getBuoyancySurf(fields->atmp["tmp1"]);
     stability(ustar, obuk, fields->atmp["tmp1"]->datafluxbot,
               fields->u->data,    fields->v->data,    fields->atmp["tmp1"]->data,
@@ -322,7 +323,7 @@ void BoundarySurface::updateBcs()
               fields->atmp["tmp2"]->data, grid->z);
   }
 
-  // calculate the surface value, gradient and flux depending on the chosen boundary condition
+  // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
   surfm(ustar, obuk,
         fields->u->data, fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
         fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
@@ -338,9 +339,9 @@ void BoundarySurface::updateBcs()
 #endif
 
 void BoundarySurface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
-                               double * restrict u    , double * restrict v   , double * restrict b       ,
-                               double * restrict ubot , double * restrict vbot, double * restrict bbot    ,
-                               double * restrict dutot, double * restrict z)
+                                double * restrict u    , double * restrict v   , double * restrict b       ,
+                                double * restrict ubot , double * restrict vbot, double * restrict bbot    ,
+                                double * restrict dutot, double * restrict z)
 {
   int ij,ijk,ii,jj,kk,kstart;
 

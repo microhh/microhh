@@ -34,7 +34,8 @@
 
 namespace BoundarySurface_g
 {
-  // a sign function
+  const int nzL = 10000; // Size of the lookup table for MO iterations.
+
   __device__ double sign(double n) 
   { 
     //return n > 0 ? 1 : (n < 0 ? -1 : 0); // Doesn't work?
