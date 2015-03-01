@@ -289,10 +289,7 @@ void BoundarySurface::setValues()
 
   // Calculate the final array and delete the temporary array.
   for (int n=0; n<nzL; ++n)
-  {
     zL_sl[n] = -zL_tmp[nzL-n-1];
-    master->printMessage("%d, %E\n", n, zL_sl[n]);
-  }
 
   delete[] zL_tmp;
 
