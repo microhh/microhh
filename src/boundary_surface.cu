@@ -32,11 +32,8 @@
 #include "master.h"
 #include "tools.h"
 
-namespace
-{
-texture<float, 1, cudaReadModeElementType> zL_tex;
-texture<float, 1, cudaReadModeElementType> f_tex;
-}
+//texture<float, 1, cudaReadModeElementType> zl_tex;
+//texture<float, 1, cudaReadModeElementType> f_tex;
 
 namespace BoundarySurface_g
 {
@@ -120,31 +117,32 @@ namespace BoundarySurface_g
     return constants::kappa / (log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)); 
   }
 
-  __device__ double findObuk(int &n, const double Ri, const double zsl)
+  __device__ double findObuk(const float* const __restrict__ zL, const float* const __restrict__ f,
+                  int &n, const double Ri, const double zsl)
   {
     // Determine search direction.
-    if ( (tex1Dfetch(f_tex, n)-Ri) > 0 )
-      while ( (tex1Dfetch(f_tex, n-1)-Ri) > 0 && n > 0) { --n; }
+    if ( (f[n]-Ri) > 0 )
+      while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
     else
-      while ( (tex1Dfetch(f_tex, n)  -Ri) < 0 && n < (nzL-1) ) { ++n; }
+      while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
 
-    const double zL0 = (n == 0 || n == nzL-1) ? tex1Dfetch(zL_tex, n) : tex1Dfetch(zL_tex, n-1) + (Ri-tex1Dfetch(f_tex, n-1)) / (tex1Dfetch(f_tex, n)-tex1Dfetch(f_tex, n-1)) * (tex1Dfetch(zL_tex, n)-tex1Dfetch(zL_tex, n-1));
+    const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
 
     return zsl/zL0;
   }
  
-  __device__ double calcobuk_noslip_flux(int& n, double du, double bfluxbot, double zsl)
+  __device__ double calcobuk_noslip_flux(float * __restrict__ zL, float * __restrict__ f, int& n, double du, double bfluxbot, double zsl)
   {
     // Calculate the appropriate Richardson number.
     const double Ri = -constants::kappa * bfluxbot * zsl / pow(du, 3);
-    return findObuk(n, Ri, zsl);
+    return findObuk(zL, f, n, Ri, zsl);
   }
   
-  __device__ double calcobuk_noslip_dirichlet(int& n, double du, double db, double zsl)
+  __device__ double calcobuk_noslip_dirichlet(float * __restrict__ zL, float * __restrict__ f, int& n, double du, double db, double zsl)
   {
     // Calculate the appropriate Richardson number.
     const double Ri = constants::kappa * db * zsl / pow(du, 2);
-    return findObuk(n, Ri, zsl);
+    return findObuk(zL, f, n, Ri, zsl);
   }
   
   /* Calculate absolute wind speed */
@@ -173,7 +171,7 @@ namespace BoundarySurface_g
   //template <int mbcbot, int thermobc>  // BvS for now normal parameter. Make template again...
   __global__ void stability(double * __restrict__ ustar, double * __restrict__ obuk,
                             double * __restrict__ b, double * __restrict__ bbot, double * __restrict__ bfluxbot,
-                            double * __restrict__ dutot, 
+                            double * __restrict__ dutot, float * __restrict__ zL_sl_g, float * __restrict__ f_sl_g, 
                             int * __restrict__ nobuk_g,
                             double z0m, double z0h, double zsl,
                             int icells, int jcells, int kstart, int jj, int kk, 
@@ -195,14 +193,14 @@ namespace BoundarySurface_g
       // case 2: fixed buoyancy flux and free ustar
       else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::FluxType)
       {
-        obuk [ij] = calcobuk_noslip_flux(nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+        obuk [ij] = calcobuk_noslip_flux(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
         ustar[ij] = dutot[ij] * fm(zsl, z0m, obuk[ij]);
       }
       // case 3: fixed buoyancy surface value and free ustar
       else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::DirichletType)
       {
         double db = b[ijk] - bbot[ij];
-        obuk [ij] = calcobuk_noslip_dirichlet(nobuk_g[ij], dutot[ij], db, zsl);
+        obuk [ij] = calcobuk_noslip_dirichlet(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
         ustar[ij] = dutot[ij] * fm(zsl, z0m, obuk[ij]);
       }
     }
@@ -358,8 +356,8 @@ void BoundarySurface::prepareDevice()
   cudaSafeCall(cudaMemcpy(zL_sl_g, zL_sl, nzL*sizeof(float), cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(f_sl_g,  f_sl,  nzL*sizeof(float), cudaMemcpyHostToDevice));
 
-  cudaBindTexture(0, zL_tex, zL_sl_g, nzL*sizeof(float)); 
-  cudaBindTexture(0, f_tex,  f_sl_g,  nzL*sizeof(float)); 
+  //cudaBindTexture(0, zL_tex, zL_sl_g, nzL*sizeof(float)); 
+  //cudaBindTexture(0, f_tex,  f_sl_g,  nzL*sizeof(float)); 
 }
 
 // TMP BVS
@@ -444,16 +442,10 @@ void BoundarySurface::updateBcs()
     model->thermo->getBuoyancySurf(fields->atmp["tmp1"]);
 
     // Calculate ustar and Obukhov length, including ghost cells
-    //BoundarySurface_g::stability<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
-    //                                              &fields->atmp["tmp1"]->data_g[offs], &fields->atmp["tmp1"]->databot_g[offs], &fields->atmp["tmp1"]->datafluxbot_g[offs],
-    //                                              &fields->atmp["tmp2"]->data_g[offs], 
-    //                                              zL_sl_g, f_sl_g, &nobuk_g[offs],
-    //                                              z0m, z0h, grid->z[grid->kstart],
-    //                                              grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
     BoundarySurface_g::stability<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
                                                   &fields->atmp["tmp1"]->data_g[offs], &fields->atmp["tmp1"]->databot_g[offs], &fields->atmp["tmp1"]->datafluxbot_g[offs],
                                                   &fields->atmp["tmp2"]->data_g[offs], 
-                                                  &nobuk_g[offs],
+                                                  zL_sl_g, f_sl_g, &nobuk_g[offs],
                                                   z0m, z0h, grid->z[grid->kstart],
                                                   grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
 
