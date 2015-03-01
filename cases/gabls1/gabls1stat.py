@@ -9,7 +9,7 @@ close('all')
 # Profiles potential temp, wind speed (u)
 # heat and momentum flux
 # Read averaged MicroHH profiles:
-g128  = read_microhh('gabls1.default.nc',  t0=28800, t1=32400, average=True)
+g128 = read_microhh('gabls1.default.0000000.nc', t0=28800, t1=32400, average=True)
 
 figure()
 
@@ -39,7 +39,7 @@ ylabel('z [m]')
 
 # Time series
 # Read all MicroHH data:
-g128  = read_microhh('gabls1.default.nc')
+g128 = read_microhh('gabls1.default.0000000.nc')
 
 figure()
     
