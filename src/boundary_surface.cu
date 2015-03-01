@@ -32,6 +32,11 @@
 #include "master.h"
 #include "tools.h"
 
+namespace
+{
+  const int nzL = 10000; // Size of the lookup table for MO iterations.
+}
+
 namespace BoundarySurface_g
 {
   __device__ double psim(double zeta)
@@ -101,145 +106,33 @@ namespace BoundarySurface_g
   { 
     return constants::kappa / (log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)); 
   }
-  
-  __device__ double calcobuk_noslip_flux(double L, double du, double bfluxbot, double zsl, double z0m)
+
+  __device__ double findObuk(const float* const __restrict__ zL, const float* const __restrict__ f,
+                  int &n, const double Ri, const double zsl)
   {
-    double L0;
-    double Lstart, Lend;
-    double fx, fxdif;
-  
-    int m = 0;
-    int nlim = 10;
-  
-    const double Lmax = 1.e20;
-  
-    // avoid bfluxbot to be zero
-    if(bfluxbot >= 0.)
-      bfluxbot = fmax(constants::dsmall, bfluxbot);
+    // Determine search direction.
+    if ( (f[n]-Ri) > 0 )
+      while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
     else
-      bfluxbot = fmin(-constants::dsmall, bfluxbot);
-  
-    // allow for one restart
-    while(m <= 1)
-    {
-      // if L and bfluxbot are of the same sign, or the last calculation did not converge,
-      // the stability has changed and the procedure needs to be reset
-      if(L*bfluxbot >= 0.)
-      {
-        nlim = 200;
-        if(bfluxbot >= 0.)
-          L = -constants::dsmall;
-        else
-          L = constants::dsmall;
-      }
-  
-      if(bfluxbot >= 0.)
-        L0 = -constants::dhuge;
-      else
-        L0 = constants::dhuge;
-  
-      int n = 0;
-  
-      // exit on convergence or on iteration count
-      while(fabs((L - L0)/L0) > 0.001 && n < nlim && fabs(L) < Lmax)
-      {
-        L0     = L;
-        fx     = zsl/L + constants::kappa*zsl*bfluxbot / pow(du * fm(zsl, z0m, L), 3);
-        Lstart = L - 0.001*L;
-        Lend   = L + 0.001*L;
-        fxdif  = ( (zsl/Lend   + constants::kappa*zsl*bfluxbot / pow(du * fm(zsl, z0m, Lend),   3))
-                 - (zsl/Lstart + constants::kappa*zsl*bfluxbot / pow(du * fm(zsl, z0m, Lstart), 3)) )
-               / (Lend - Lstart);
-        L      = L - fx/fxdif;
-        ++n;
-      }
-  
-      // convergence has been reached
-      if(n < nlim && fabs(L) < Lmax)
-        break;
-      // convergence has not been reached, procedure restarted once
-      else
-      {
-        L = constants::dsmall;
-        ++m;
-        nlim = 200;
-      }
-    }
-  
-    if(m > 1)
-      printf("ERROR convergence has not been reached in Obukhov length calculation\n");
-  
-    return L;
+      while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
+
+    const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
+
+    return zsl/zL0;
+  }
+ 
+  __device__ double calcobuk_noslip_flux(float * __restrict__ zL, float * __restrict__ f, int& n, double du, double bfluxbot, double zsl)
+  {
+    // Calculate the appropriate Richardson number.
+    const double Ri = -constants::kappa * bfluxbot * zsl / pow(du, 3);
+    return findObuk(zL, f, n, Ri, zsl);
   }
   
-  __device__ double calcobuk_noslip_dirichlet(double L, double du, double db, double zsl, double z0m, double z0h)
+  __device__ double calcobuk_noslip_dirichlet(float * __restrict__ zL, float * __restrict__ f, int& n, double du, double db, double zsl)
   {
-    double L0;
-    double Lstart, Lend;
-    double fx, fxdif;
-  
-    int m = 0;
-    int nlim = 10;
-  
-    const double Lmax = 1.e20;
-  
-    // avoid db to be zero
-    if(db >= 0.)
-      db = fmax(constants::dsmall, db);
-    else
-      db = fmin(-constants::dsmall, db);
-  
-    // allow for one restart
-    while(m <= 1)
-    {
-      // if L and db are of different sign, or the last calculation did not converge,
-      // the stability has changed and the procedure needs to be reset
-      if(L*db <= 0.)
-      {
-        nlim = 200;
-        if(db >= 0.)
-          L = constants::dsmall;
-        else
-          L = -constants::dsmall;
-      }
-  
-      if(db >= 0.)
-        L0 = constants::dhuge;
-      else
-        L0 = -constants::dhuge;
-  
-      int n = 0;
-  
-      // exit on convergence or on iteration count
-      while(fabs((L - L0)/L0) > 0.001 && n < nlim && fabs(L) < Lmax)
-      {
-        L0     = L;
-        fx     = zsl/L - constants::kappa*zsl*db*fh(zsl, z0h, L) / pow(du * fm(zsl, z0m, L), 2);
-        Lstart = L - 0.001*L;
-        Lend   = L + 0.001*L;
-        fxdif  = ( (zsl/Lend   - constants::kappa*zsl*db*fh(zsl, z0h, Lend)   / pow(du * fm(zsl, z0m, Lend),   2))
-                 - (zsl/Lstart - constants::kappa*zsl*db*fh(zsl, z0h, Lstart) / pow(du * fm(zsl, z0m, Lstart), 2)) )
-               / (Lend - Lstart);
-        L      = L - fx/fxdif;
-        ++n;
-      }
-  
-      // convergence has been reached
-      if(n < nlim && fabs(L) < Lmax)
-        break;
-      // convergence has not been reached, procedure restarted once
-      else
-      {
-        L = constants::dsmall;
-        ++m;
-        nlim = 200;
-      }
-    }
-  
-    if(m > 1)
-      printf("ERROR convergence has not been reached in Obukhov length calculation\n");
-  
-    return L;
+    // Calculate the appropriate Richardson number.
+    const double Ri = constants::kappa * db * zsl / pow(du, 2);
+    return findObuk(zL, f, n, Ri, zsl);
   }
   
   /* Calculate absolute wind speed */
@@ -268,7 +161,9 @@ namespace BoundarySurface_g
   //template <int mbcbot, int thermobc>  // BvS for now normal parameter. Make template again...
   __global__ void stability(double * __restrict__ ustar, double * __restrict__ obuk,
                             double * __restrict__ b, double * __restrict__ bbot, double * __restrict__ bfluxbot,
-                            double * __restrict__ dutot, double z0m, double z0h, double zsl,
+                            double * __restrict__ dutot, float * __restrict__ zL_sl_g, float * __restrict__ f_sl_g, 
+                            int * __restrict__ nobuk_g,
+                            double z0m, double z0h, double zsl,
                             int icells, int jcells, int kstart, int jj, int kk, 
                             Boundary::BoundaryType mbcbot, int thermobc)
   {
@@ -288,14 +183,14 @@ namespace BoundarySurface_g
       // case 2: fixed buoyancy flux and free ustar
       else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::FluxType)
       {
-        obuk [ij] = calcobuk_noslip_flux(obuk[ij], dutot[ij], bfluxbot[ij], zsl, z0m);
+        obuk [ij] = calcobuk_noslip_flux(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
         ustar[ij] = dutot[ij] * fm(zsl, z0m, obuk[ij]);
       }
       // case 3: fixed buoyancy surface value and free ustar
       else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::DirichletType)
       {
         double db = b[ijk] - bbot[ij];
-        obuk [ij] = calcobuk_noslip_dirichlet(obuk[ij], dutot[ij], db, zsl, z0m, z0h);
+        obuk [ij] = calcobuk_noslip_dirichlet(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
         ustar[ij] = dutot[ij] * fm(zsl, z0m, obuk[ij]);
       }
     }
@@ -430,41 +325,61 @@ namespace BoundarySurface_g
 
 void BoundarySurface::prepareDevice()
 {
-  const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
-  const int imemsizep  = grid->icellsp * sizeof(double);
-  const int imemsize   = grid->icells  * sizeof(double);
+  const int dmemsize2d  = (grid->ijcellsp+grid->memoffset)*sizeof(double);
+  const int imemsize2d  = (grid->ijcellsp+grid->memoffset)*sizeof(int);
+  const int dimemsizep  = grid->icellsp * sizeof(double);
+  const int dimemsize   = grid->icells  * sizeof(double);
+  const int iimemsizep  = grid->icellsp * sizeof(int);
+  const int iimemsize   = grid->icells  * sizeof(int);
 
-  cudaSafeCall(cudaMalloc(&obuk_g,  nmemsize2d));
-  cudaSafeCall(cudaMalloc(&ustar_g, nmemsize2d));
+  cudaSafeCall(cudaMalloc(&obuk_g,  dmemsize2d));
+  cudaSafeCall(cudaMalloc(&ustar_g, dmemsize2d));
+  cudaSafeCall(cudaMalloc(&nobuk_g, imemsize2d));
 
-  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk, imemsize, imemsize, grid->jcells,   cudaMemcpyHostToDevice));
-  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMalloc(&zL_sl_g, nzL*sizeof(float)));
+  cudaSafeCall(cudaMalloc(&f_sl_g,  nzL*sizeof(float)));
+
+  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  dimemsizep, obuk,  dimemsize, dimemsize, grid->jcells, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], dimemsizep, ustar, dimemsize, dimemsize, grid->jcells, cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&nobuk_g[grid->memoffset], iimemsizep, nobuk, iimemsize, iimemsize, grid->jcells, cudaMemcpyHostToDevice));
+
+  cudaSafeCall(cudaMemcpy(zL_sl_g, zL_sl, nzL*sizeof(float), cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy(f_sl_g,  f_sl,  nzL*sizeof(float), cudaMemcpyHostToDevice));
 }
 
 // TMP BVS
 void BoundarySurface::forwardDevice()
 {
-  const int imemsizep  = grid->icellsp * sizeof(double);
-  const int imemsize   = grid->icells  * sizeof(double);
+  const int dimemsizep  = grid->icellsp * sizeof(double);
+  const int dimemsize   = grid->icells  * sizeof(double);
+  const int iimemsizep  = grid->icellsp * sizeof(int);
+  const int iimemsize   = grid->icells  * sizeof(int);
 
-  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  imemsizep, obuk,  imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
-  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], imemsizep, ustar, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&obuk_g[grid->memoffset],  dimemsizep, obuk,  dimemsize, dimemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&ustar_g[grid->memoffset], dimemsizep, ustar, dimemsize, dimemsize, grid->jcells,  cudaMemcpyHostToDevice));
+  cudaSafeCall(cudaMemcpy2D(&nobuk_g[grid->memoffset], iimemsizep, nobuk, iimemsize, iimemsize, grid->jcells,  cudaMemcpyHostToDevice));
 }
 
 // TMP BVS
 void BoundarySurface::backwardDevice()
 {
-  const int imemsizep  = grid->icellsp * sizeof(double);
-  const int imemsize   = grid->icells  * sizeof(double);
+  const int dimemsizep  = grid->icellsp * sizeof(double);
+  const int dimemsize   = grid->icells  * sizeof(double);
+  const int iimemsizep  = grid->icellsp * sizeof(int);
+  const int iimemsize   = grid->icells  * sizeof(int);
 
-  cudaSafeCall(cudaMemcpy2D(obuk,  imemsize, &obuk_g[grid->memoffset],  imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
-  cudaSafeCall(cudaMemcpy2D(ustar, imemsize, &ustar_g[grid->memoffset], imemsizep, imemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy2D(obuk,  dimemsize, &obuk_g[grid->memoffset],  dimemsizep, dimemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy2D(ustar, dimemsize, &ustar_g[grid->memoffset], dimemsizep, dimemsize, grid->jcells,  cudaMemcpyDeviceToHost));
+  cudaSafeCall(cudaMemcpy2D(nobuk, iimemsize, &nobuk_g[grid->memoffset], iimemsizep, iimemsize, grid->jcells,  cudaMemcpyDeviceToHost));
 }
 
 void BoundarySurface::clearDevice()
 {
   cudaSafeCall(cudaFree(obuk_g ));
   cudaSafeCall(cudaFree(ustar_g));
+  cudaSafeCall(cudaFree(nobuk_g));
+  cudaSafeCall(cudaFree(zL_sl_g));
+  cudaSafeCall(cudaFree(f_sl_g ));
 }
 
 #ifdef USECUDA
@@ -516,8 +431,11 @@ void BoundarySurface::updateBcs()
     // Calculate ustar and Obukhov length, including ghost cells
     BoundarySurface_g::stability<<<gridGPU2, blockGPU2>>>(&ustar_g[offs], &obuk_g[offs], 
                                                   &fields->atmp["tmp1"]->data_g[offs], &fields->atmp["tmp1"]->databot_g[offs], &fields->atmp["tmp1"]->datafluxbot_g[offs],
-                                                  &fields->atmp["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
+                                                  &fields->atmp["tmp2"]->data_g[offs], 
+                                                  zL_sl_g, f_sl_g, &nobuk_g[offs],
+                                                  z0m, z0h, grid->z[grid->kstart],
                                                   grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
+
     cudaCheckError();
   }
 

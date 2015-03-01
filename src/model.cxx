@@ -186,8 +186,6 @@ void Model::load()
   fields->createStats();
 
   // Initialize data or load data from disk.
-  // \TODO call boundary load for the data and then timedep, not nice...
-  boundary->load(timeloop->get_iotime());
   boundary->create(input);
 
   buffer->create(input);
@@ -213,7 +211,6 @@ void Model::save()
   grid    ->save();
   fields  ->save(timeloop->get_iotime());
   timeloop->save(timeloop->get_iotime());
-  boundary->save(timeloop->get_iotime());
 }
 
 void Model::exec()
@@ -352,7 +349,6 @@ void Model::exec()
         // Save data to disk.
         timeloop->save(timeloop->get_iotime());
         fields  ->save(timeloop->get_iotime());
-        boundary->save(timeloop->get_iotime());
       }
     }
 
@@ -369,7 +365,6 @@ void Model::exec()
       // Load the data from disk.
       timeloop->load(timeloop->get_iotime());
       fields  ->load(timeloop->get_iotime());
-      boundary->load(timeloop->get_iotime());
     }
 
     // Update the time dependent parameters.

@@ -255,14 +255,6 @@ void Boundary::updateTimeDep()
   }
 }
 
-void Boundary::save(int iotime)
-{
-}
-
-void Boundary::load(int iotime)
-{
-}
-
 void Boundary::setValues()
 {
   const double noVelocity = 0.;

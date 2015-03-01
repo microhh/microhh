@@ -35,15 +35,24 @@
 #include "model.h"
 #include "master.h"
 #include "cross.h"
+#include "most.h"
 
+namespace
+{
+  // Size of the lookup table.
+  const int nzL = 10000; // Size of the lookup table for MO iterations.
+  inline double sign(const double n) { return (n > 0) ? 1 : ( (n < 0) ? -1 : 0); }
+}
 BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
 {
   ustar = 0;
   obuk  = 0;
+  nobuk = 0;
 
   #ifdef USECUDA
   ustar_g = 0;
   obuk_g  = 0;
+  nobuk_g = 0;
   #endif
 }
 
@@ -51,6 +60,7 @@ BoundarySurface::~BoundarySurface()
 {
   delete[] ustar;
   delete[] obuk;
+  delete[] nobuk;
 
   #ifdef USECUDA
   clearDevice();
@@ -141,6 +151,7 @@ void BoundarySurface::init(Input *inputin)
 
   // 2. Allocate the fields
   obuk  = new double[grid->ijcells];
+  nobuk = new int   [grid->ijcells];
   ustar = new double[grid->ijcells];
 
   stats = model->stats;
@@ -150,13 +161,14 @@ void BoundarySurface::init(Input *inputin)
 
   // initialize the obukhov length on a small number
   for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-   for(int i=0; i<grid->icells; ++i)
-   {
-     ij = i + j*jj;
-     obuk[ij] = constants::dsmall;
-   }
-
+    #pragma ivdep
+    for(int i=0; i<grid->icells; ++i)
+    {
+      ij = i + j*jj;
+      obuk[ij]  = constants::dsmall;
+      nobuk[ij] = 0;
+    }
+ 
   // Cross sections
   allowedcrossvars.push_back("ustar");
   allowedcrossvars.push_back("obuk");
@@ -201,38 +213,6 @@ void BoundarySurface::execStats(Mask *m)
   stats->calcMean2d(&m->tseries["ustar"].data, ustar, 0., fields->atmp["tmp4"]->databot, &stats->nmaskbot);
 }
 
-void BoundarySurface::save(int iotime)
-{
-  char filename[256];
-
-  std::sprintf(filename, "obuk.%07d", iotime);
-  master->printMessage("Saving \"%s\" ... ", filename);
-  if(grid->savexySlice(obuk, fields->atmp["tmp1"]->data, filename))
-  {
-    master->printMessage("FAILED\n");
-    throw 1;
-  }
-  else
-    master->printMessage("OK\n");
-}
-
-void BoundarySurface::load(int iotime)
-{
-  char filename[256];
-
-  std::sprintf(filename, "obuk.%07d", iotime);
-  master->printMessage("Loading \"%s\" ... ", filename);
-  if(grid->loadxySlice(obuk, fields->atmp["tmp1"]->data, filename))
-  {
-    master->printMessage("FAILED\n");
-    throw 1;
-  }
-  else
-    master->printMessage("OK\n");
-
-  grid->boundaryCyclic2d(obuk);
-}
-
 void BoundarySurface::setValues()
 {
   const double noVelocity = 0.;
@@ -261,20 +241,76 @@ void BoundarySurface::setValues()
     setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, DirichletType, noVelocity, fields->visc, grid->vtrans);
 
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
         {
           ij = i + j*jj;
-          // limit ustar at 1e-4 to avoid zero divisions
+          // Limit ustar at 1e-4 to avoid zero divisions.
           ustar[ij] = std::max(0.0001, ustarin);
         }
-   }
+  }
+
+  // Prepare the surface layer solver.
+  zL_sl = new float[nzL];
+  f_sl  = new float[nzL];
+
+  float* zL_tmp = new float[nzL];
+
+  // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
+  // and stretch up to -1e4 in the negative limit.
+  // Alter next three values in case the range need to be changed.
+  const double zL_min = -1.e4;
+  const double zLrange_min = -5.;
+  const double zLrange_max = 10.;
+
+  float dzL = (zLrange_max - zLrange_min) / (9.*nzL/10.-1.);
+  zL_tmp[0] = -zLrange_max;
+  for (int n=1; n<9*nzL/10; ++n)
+    zL_tmp[n] = zL_tmp[n-1] + dzL;
+
+  // Stretch the remainder of the z/L values far down for free convection.
+  const float zLend = -(zL_min - zLrange_min);
+
+  // Find stretching that ends up at the correct value using geometric progression.
+  double r  = 1.01;
+  double r0 = constants::dhuge;
+  while (std::abs( (r-r0)/r0 ) > 1.e-10)
+  {
+    r0 = r;
+	  r  = std::pow( 1. - (zLend/dzL)*(1.-r), (1./ (nzL/10.) ) );
+  }
+
+  for (int n=9*nzL/10; n<nzL; ++n)
+  {
+    zL_tmp[n] = zL_tmp[n-1] + dzL;
+    dzL *= r;
+  }
+
+  // Calculate the final array and delete the temporary array.
+  for (int n=0; n<nzL; ++n)
+    zL_sl[n] = -zL_tmp[nzL-n-1];
+
+  delete[] zL_tmp;
+
+  // Calculate the evaluation function.
+  if(mbcbot == DirichletType && thermobc == FluxType)
+  {
+    const double zsl = grid->z[grid->kstart];
+    for (int n=0; n<nzL; ++n)
+      f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 3);
+  }
+  else if(mbcbot == DirichletType && thermobc == DirichletType)
+  {
+    const double zsl = grid->z[grid->kstart];
+    for (int n=0; n<nzL; ++n)
+      f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 2) / most::fh(zsl, z0h, zsl/zL_sl[n]);
+  }
 }
 
 #ifndef USECUDA
 void BoundarySurface::updateBcs()
 {
-  // start with retrieving the stability information
+  // Start with retrieving the stability information.
   if(model->thermo->getSwitch() == "0")
   {
     stabilityNeutral(ustar, obuk,
@@ -284,7 +320,7 @@ void BoundarySurface::updateBcs()
   }
   else
   {
-    // store the buoyancy in tmp1
+    // Store the buoyancy in tmp1.
     model->thermo->getBuoyancySurf(fields->atmp["tmp1"]);
     stability(ustar, obuk, fields->atmp["tmp1"]->datafluxbot,
               fields->u->data,    fields->v->data,    fields->atmp["tmp1"]->data,
@@ -292,7 +328,7 @@ void BoundarySurface::updateBcs()
               fields->atmp["tmp2"]->data, grid->z);
   }
 
-  // calculate the surface value, gradient and flux depending on the chosen boundary condition
+  // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
   surfm(ustar, obuk,
         fields->u->data, fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
         fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
@@ -308,9 +344,9 @@ void BoundarySurface::updateBcs()
 #endif
 
 void BoundarySurface::stability(double * restrict ustar, double * restrict obuk, double * restrict bfluxbot,
-                               double * restrict u    , double * restrict v   , double * restrict b       ,
-                               double * restrict ubot , double * restrict vbot, double * restrict bbot    ,
-                               double * restrict dutot, double * restrict z)
+                                double * restrict u    , double * restrict v   , double * restrict b       ,
+                                double * restrict ubot , double * restrict vbot, double * restrict bbot    ,
+                                double * restrict dutot, double * restrict z)
 {
   int ij,ijk,ii,jj,kk,kstart;
 
@@ -326,7 +362,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
   const double minval = 1.e-1;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+    #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
@@ -352,7 +388,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
   if(mbcbot == UstarType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
@@ -363,25 +399,25 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
   else if(mbcbot == DirichletType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
-        obuk [ij] = calcObukNoslipFlux(obuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
-        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+        obuk [ij] = calcObukNoslipFlux(zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
+        ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
   else if(mbcbot == DirichletType && thermobc == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         db = b[ijk] - bbot[ij];
-        obuk [ij] = calcObukNoslipDirichlet(obuk[ij], dutot[ij], db, z[kstart]);
-        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+        obuk [ij] = calcObukNoslipDirichlet(zL_sl, f_sl, nobuk[ij], dutot[ij], db, z[kstart]);
+        ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
 }
@@ -405,7 +441,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
   const double minval = 1.e-1;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+    #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
@@ -429,7 +465,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
   if(mbcbot == UstarType && thermobc == FluxType)
   {
     for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
@@ -440,32 +476,32 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
   else if(mbcbot == DirichletType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         obuk [ij] = -constants::dbig;
-        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
   else if(mbcbot == DirichletType && thermobc == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         obuk [ij] = -constants::dbig;
-        ustar[ij] = dutot[ij] * fm(z[kstart], z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
       }
   }
 }
 
 void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk, 
-                             double * restrict u, double * restrict ubot, double * restrict ugradbot, double * restrict ufluxbot, 
-                             double * restrict v, double * restrict vbot, double * restrict vgradbot, double * restrict vfluxbot, 
-                             double zsl, int bcbot)
+                            double * restrict u, double * restrict ubot, double * restrict ugradbot, double * restrict ufluxbot, 
+                            double * restrict v, double * restrict vbot, double * restrict vgradbot, double * restrict vfluxbot, 
+                            double zsl, int bcbot)
 {
   int ij,ijk,ii,jj,kk,kstart;
 
@@ -480,14 +516,14 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
   {
     // first calculate the surface value
     for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         // interpolate the whole stability function rather than ustar or obuk
-        ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
-        vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
+        ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+        vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
       }
 
     grid->boundaryCyclic2d(ufluxbot);
@@ -501,7 +537,7 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
     const double minval = 1.e-2;
 
     for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
@@ -545,7 +581,7 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
   }
 
   for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+    #pragma ivdep
     for(int i=0; i<grid->icells; ++i)
     {
       ij  = i + j*jj;
@@ -573,12 +609,12 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   if(bcbot == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
-        varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
+        varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h, obuk[ij]);
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
         // use the linearly interpolated grad, rather than the MO grad,
         // to prevent giving unresolvable gradients to advection schemes
@@ -589,13 +625,13 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   {
     // the flux is known, calculate the surface value and gradient
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + kstart*kk;
         // if(ij=100) std::printf("CvH: ustar,fh, var[ijk]: %E, %E, %E\n", ustar[ij], obuk[ij], var[ijk]);
-        varbot[ij] = varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
+        varbot[ij] = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h, obuk[ij])) + var[ijk];
         // vargradbot[ij] = -varfluxbot[ij] / (kappa*z0h*ustar[ij]) * phih(zsl/obuk[ij]);
         // use the linearly interpolated grad, rather than the MO grad,
         // to prevent giving unresolvable gradients to advection schemes
@@ -604,229 +640,39 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   }
 }
 
-double BoundarySurface::calcObukNoslipFlux(double L, double du, double bfluxbot, double zsl)
+namespace
 {
-  double L0;
-  double Lstart, Lend;
-  double fx, fxdif;
-
-  int m = 0;
-  int nlim = 10;
-
-  const double Lmax = 1.e20;
-
-  // avoid bfluxbot to be zero
-  if(bfluxbot >= 0.)
-    bfluxbot = std::max(constants::dsmall, bfluxbot);
-  else
-    bfluxbot = std::min(-constants::dsmall, bfluxbot);
-
-  // allow for one restart
-  while(m <= 1)
+  double find_zL(const float* const restrict zL, const float* const restrict f,
+                 int &n, const float Ri)
   {
-    // if L and bfluxbot are of the same sign, or the last calculation did not converge,
-    // the stability has changed and the procedure needs to be reset
-    if(L*bfluxbot >= 0.)
-    {
-      nlim = 200;
-      if(bfluxbot >= 0.)
-        L = -constants::dsmall;
-      else
-        L = constants::dsmall;
-    }
-
-    if(bfluxbot >= 0.)
-      L0 = -constants::dhuge;
+    // Determine search direction.
+    if ( (f[n]-Ri) > 0 )
+      while ( (f[n-1]-Ri) > 0 && n > 0) { --n; }
     else
-      L0 = constants::dhuge;
+      while ( (f[n]-Ri) < 0 && n < (nzL-1) ) { ++n; }
 
-    int n = 0;
+    const double zL0 = (n == 0 || n == nzL-1) ? zL[n] : zL[n-1] + (Ri-f[n-1]) / (f[n]-f[n-1]) * (zL[n]-zL[n-1]);
 
-    // exit on convergence or on iteration count
-    while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
-    {
-      L0     = L;
-      // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2);
-      fx     = zsl/L + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, L), 3);
-      Lstart = L - 0.001*L;
-      Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lend), 3))
-               - (zsl/Lstart + constants::kappa*zsl*bfluxbot / std::pow(du * fm(zsl, z0m, Lstart), 3)) )
-             / (Lend - Lstart);
-      L      = L - fx/fxdif;
-      ++n;
-    }
-
-    // convergence has been reached
-    if(n < nlim && std::abs(L) < Lmax)
-      break;
-    // convergence has not been reached, procedure restarted once
-    else
-    {
-      L = constants::dsmall;
-      ++m;
-      nlim = 200;
-    }
+    return zL0;
   }
-
-  if(m > 1)
-    std::printf("ERROR convergence has not been reached in Obukhov length calculation\n");
-
-  return L;
-}
-double BoundarySurface::calcObukNoslipDirichlet(double L, double du, double db, double zsl)
-{
-  double L0;
-  double Lstart, Lend;
-  double fx, fxdif;
-
-  int m = 0;
-  int nlim = 10;
-
-  const double Lmax = 1.e20;
-
-  // avoid db to be zero
-  if(db >= 0.)
-    db = std::max(constants::dsmall, db);
-  else
-    db = std::min(-constants::dsmall, db);
-
-  // allow for one restart
-  while(m <= 1)
-  {
-    // if L and db are of different sign, or the last calculation did not converge,
-    // the stability has changed and the procedure needs to be reset
-    if(L*db <= 0.)
-    {
-      nlim = 200;
-      if(db >= 0.)
-        L = constants::dsmall;
-      else
-        L = -constants::dsmall;
-    }
-
-    if(db >= 0.)
-      L0 = constants::dhuge;
-    else
-      L0 = -constants::dhuge;
-
-    int n = 0;
-
-    // exit on convergence or on iteration count
-    while(std::abs((L - L0)/L0) > 0.001 && n < nlim && std::abs(L) < Lmax)
-    {
-      L0     = L;
-      // fx     = Rib - zsl/L * (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)) / std::pow(std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L), 2.);
-      fx     = zsl/L - constants::kappa*zsl*db*fh(zsl, z0h, L) / std::pow(du * fm(zsl, z0m, L), 2);
-      Lstart = L - 0.001*L;
-      Lend   = L + 0.001*L;
-      fxdif  = ( (zsl/Lend - constants::kappa*zsl*db*fh(zsl, z0h, Lend) / std::pow(du * fm(zsl, z0m, Lend), 2))
-               - (zsl/Lstart - constants::kappa*zsl*db*fh(zsl, z0h, Lstart) / std::pow(du * fm(zsl, z0m, Lstart), 2)) )
-             / (Lend - Lstart);
-      L      = L - fx/fxdif;
-      ++n;
-    }
-
-    // convergence has been reached
-    if(n < nlim && std::abs(L) < Lmax)
-      break;
-    // convergence has not been reached, procedure restarted once
-    else
-    {
-      L = constants::dsmall;
-      ++m;
-      nlim = 200;
-    }
-  }
-
-  if(m > 1)
-    std::printf("ERROR convergence has not been reached in Obukhov length calculation\n");
-
-  return L;
 }
 
-inline double BoundarySurface::fm(double zsl, double z0m, double L)
+double BoundarySurface::calcObukNoslipFlux(const float* const restrict zL, const float* const restrict f,
+                                           int& n,
+                                           const double du, const double bfluxbot, const double zsl)
 {
-  double fm;
-  fm = constants::kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
-  return fm;
+  // Calculate the appropriate Richardson number and reduce precision.
+  const float Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
+
+  return zsl/find_zL(zL, f, n, Ri);
 }
 
-inline double BoundarySurface::fh(double zsl, double z0h, double L)
+double BoundarySurface::calcObukNoslipDirichlet(const float* const restrict zL, const float* const restrict f,
+                                                int& n,
+                                                const double du, const double db, const double zsl)
 {
-  double fh;
-  fh = constants::kappa / (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L));
-  return fh;
-}
-
-inline double BoundarySurface::psim(double zeta)
-{
-  double psim;
-  double x;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // x     = (1. - 16. * zeta) ** (0.25)
-    // psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
-    // Wilson functions
-    x    = std::pow(1. + std::pow(3.6 * std::abs(zeta),2./3.), -0.5);
-    psim = 3.*std::log( (1. + 1./x) / 2.);
-  }
-  else
-  {
-    psim = -2./3.*(zeta - 5./0.35) * std::exp(-0.35 * zeta) - zeta - (10./3.) / 0.35;
-  }
-  return psim;
-}
-
-inline double BoundarySurface::psih(double zeta)
-{
-  double psih;
-  double x;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // x     = (1. - 16. * zeta) ** (0.25)
-    // psih  = 2. * log( (1. + x ** 2.) / 2. )
-    // Wilson functions
-    x    = std::pow(1. + std::pow(7.9*std::abs(zeta), (2./3.)), -0.5);
-    psih = 3. * std::log( (1. + 1. / x) / 2.);
-  }
-  else
-  {
-    psih  = (-2./3.) * (zeta-5./0.35) * std::exp(-0.35*zeta) - std::pow(1. + (2./3.) * zeta, 1.5) - (10./3.) / 0.35 + 1.;
-  }
-  return psih;
-}
-
-inline double BoundarySurface::phim(double zeta)
-{
-  double phim;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // phim  = (1. - 16. * zeta) ** (-0.25)
-    // Wilson functions
-    phim = std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
-  }
-  else
-    phim = 1. + 5.*zeta;
-
-  return phim;
-}
-
-inline double BoundarySurface::phih(double zeta)
-{
-  double phih;
-  if(zeta <= 0.)
-  {
-    // Businger-Dyer functions
-    // phih  = (1. - 16. * zeta) ** (-0.5)
-    // Wilson functions
-    phih = std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
-  }
-  else
-    phih = 1. + 5.*zeta;
-
-  return phih;
+  // Calculate the appropriate Richardson number and reduce precision.
+  const float Ri = constants::kappa * db * zsl / std::pow(du, 2);
+  
+  return zsl/find_zL(zL, f, n, Ri);
 }

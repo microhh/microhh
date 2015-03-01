@@ -44,11 +44,9 @@ class BoundarySurface : public Boundary
     void execStats(Mask *); ///< Execute statistics of surface
     void execCross();       ///< Execute cross sections of surface
 
-    void save(int);
-    void load(int);
-
     // Make these variables public for out-of-class usage.
     double *obuk;
+    int    *nobuk;
     double *ustar;
 
     double z0m;
@@ -63,6 +61,7 @@ class BoundarySurface : public Boundary
 
     double *obuk_g;
     double *ustar_g;
+    int    *nobuk_g;
     #endif
 
   private:
@@ -88,19 +87,20 @@ class BoundarySurface : public Boundary
                double *, double *, double *,
                double, int);
 
-    double calcObukNoslipFlux     (double, double, double, double);
-    double calcObukNoslipDirichlet(double, double, double, double);
-
-    inline double fm(double, double, double);
-    inline double fh(double, double, double);
-    inline double psim(double);
-    inline double psih(double);
-    inline double phim(double);
-    inline double phih(double);
+    double calcObukNoslipFlux     (const float* const, const float* const, int&, double, double, double);
+    double calcObukNoslipDirichlet(const float* const, const float* const, int&, double, double, double);
 
     double ustarin;
 
     Stats *stats;
+
+    float* zL_sl;
+    float* f_sl;
+
+    #ifdef USECUDA
+    float* zL_sl_g;
+    float* f_sl_g;
+    #endif
 
     // typedef std::map<std::string, int> bcbotmap;
     // int surfmbcbot;
