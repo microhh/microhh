@@ -1,8 +1,13 @@
 import numpy
 
-# set the height
-kmax  = 32
-zsize = 3000.
+# Get number of vertical levels and size from .ini file
+with open('bomex.ini') as f:
+  for line in f:
+    if(line.split('=')[0]=='ktot'):
+      kmax = int(line.split('=')[1])
+    if(line.split('=')[0]=='zsize'):
+      zsize = float(line.split('=')[1])
+
 dz = zsize / kmax
 
 # set the height
