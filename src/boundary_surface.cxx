@@ -254,7 +254,7 @@ void BoundarySurface::setValues()
   zL_sl = new float[nzL];
   f_sl  = new float[nzL];
 
-  float* zL_tmp = new float[nzL];
+  double* zL_tmp = new double[nzL];
 
   // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
   // and stretch up to -1e4 in the negative limit.
@@ -263,13 +263,13 @@ void BoundarySurface::setValues()
   const double zLrange_min = -5.;
   const double zLrange_max = 10.;
 
-  float dzL = (zLrange_max - zLrange_min) / (9.*nzL/10.-1.);
+  double dzL = (zLrange_max - zLrange_min) / (9.*nzL/10.-1.);
   zL_tmp[0] = -zLrange_max;
   for (int n=1; n<9*nzL/10; ++n)
     zL_tmp[n] = zL_tmp[n-1] + dzL;
 
   // Stretch the remainder of the z/L values far down for free convection.
-  const float zLend = -(zL_min - zLrange_min);
+  const double zLend = -(zL_min - zLrange_min);
 
   // Find stretching that ends up at the correct value using geometric progression.
   double r  = 1.01;
