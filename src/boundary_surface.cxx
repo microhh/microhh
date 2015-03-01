@@ -242,7 +242,7 @@ void BoundarySurface::setValues()
     setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, DirichletType, noVelocity, fields->visc, grid->vtrans);
 
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
         {
           ij = i + j*jj;
@@ -257,14 +257,20 @@ void BoundarySurface::setValues()
 
   float* zL_tmp = new float[nzL];
 
-  // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points.
-  float dzL = 15. / (9.*nzL/10.-1.);
-  zL_tmp[0] = -10.;
+  // Calculate the non-streched part between -5 to 10 z/L with 9/10 of the points,
+  // and stretch up to -1e4 in the negative limit.
+  // Alter next three values in case the range need to be changed.
+  const double zL_min = -1.e4;
+  const double zLrange_min = -5.;
+  const double zLrange_max = 10.;
+
+  float dzL = (zLrange_max - zLrange_min) / (9.*nzL/10.-1.);
+  zL_tmp[0] = -zLrange_max;
   for (int n=1; n<9*nzL/10; ++n)
     zL_tmp[n] = zL_tmp[n-1] + dzL;
 
   // Stretch the remainder of the z/L values far down for free convection.
-  const float zLend = 1.e4 - 5.;
+  const float zLend = -(zL_min - zLrange_min);
 
   // Find stretching that ends up at the correct value using geometric progression.
   double r  = 1.01;
@@ -283,7 +289,10 @@ void BoundarySurface::setValues()
 
   // Calculate the final array and delete the temporary array.
   for (int n=0; n<nzL; ++n)
+  {
     zL_sl[n] = -zL_tmp[nzL-n-1];
+    master->printMessage("%d, %E\n", n, zL_sl[n]);
+  }
 
   delete[] zL_tmp;
 
@@ -357,7 +366,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
   const double minval = 1.e-1;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+    #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
@@ -383,7 +392,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
   if(mbcbot == UstarType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
@@ -394,7 +403,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
   else if(mbcbot == DirichletType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
@@ -405,7 +414,7 @@ void BoundarySurface::stability(double * restrict ustar, double * restrict obuk,
   else if(mbcbot == DirichletType && thermobc == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
@@ -436,7 +445,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
   const double minval = 1.e-1;
   // first, interpolate the wind to the scalar location
   for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+    #pragma ivdep
     for(int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
@@ -460,7 +469,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
   if(mbcbot == UstarType && thermobc == FluxType)
   {
     for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
@@ -471,7 +480,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
   else if(mbcbot == DirichletType && thermobc == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
@@ -482,7 +491,7 @@ void BoundarySurface::stabilityNeutral(double * restrict ustar, double * restric
   else if(mbcbot == DirichletType && thermobc == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
@@ -511,7 +520,7 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
   {
     // first calculate the surface value
     for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
@@ -532,7 +541,7 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
     const double minval = 1.e-2;
 
     for(int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ij  = i + j*jj;
@@ -576,7 +585,7 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
   }
 
   for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+    #pragma ivdep
     for(int i=0; i<grid->icells; ++i)
     {
       ij  = i + j*jj;
@@ -604,7 +613,7 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   if(bcbot == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
@@ -620,7 +629,7 @@ void BoundarySurface::surfs(double * restrict ustar, double * restrict obuk, dou
   {
     // the flux is known, calculate the surface value and gradient
     for(int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+      #pragma ivdep
       for(int i=0; i<grid->icells; ++i)
       {
         ij  = i + j*jj;
