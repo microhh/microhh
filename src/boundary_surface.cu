@@ -34,18 +34,6 @@
 
 namespace BoundarySurface_g
 {
-  // a sign function
-  __device__ double sign(double n) 
-  { 
-    //return n > 0 ? 1 : (n < 0 ? -1 : 0); // Doesn't work?
-    if(n > 0)
-      return 1.;
-    else if(n < 0)
-      return -1.;
-    else
-      return 0.;
-  }
-  
   __device__ double psim(double zeta)
   {
     double psim;
@@ -386,9 +374,9 @@ namespace BoundarySurface_g
   
         ustaronu4 = 0.5*(pow(ustar[ij-ii], 4) + pow(ustar[ij], 4));
         ustaronv4 = 0.5*(pow(ustar[ij-jj], 4) + pow(ustar[ij], 4));
-  
-        ufluxbot[ij] = -sign(u[ijk]-ubot[ij]) * pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
-        vfluxbot[ij] = -sign(v[ijk]-vbot[ij]) * pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
+
+        ufluxbot[ij] = -copysign(1., u[ijk]-ubot[ij]) * pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
+        vfluxbot[ij] = -copysign(1., v[ijk]-vbot[ij]) * pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
       }
     }
   }

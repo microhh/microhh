@@ -36,9 +36,6 @@
 #include "master.h"
 #include "cross.h"
 
-// a sign function
-inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0);}
-
 BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
 {
   ustar = 0;
@@ -518,8 +515,8 @@ void BoundarySurface::surfm(double * restrict ustar, double * restrict obuk,
         v2 = std::max(minval, std::pow(v[ijk]-vbot[ij], 2) );
         ustaronu4 = 0.5*(std::pow(ustar[ij-ii], 4) + std::pow(ustar[ij], 4));
         ustaronv4 = 0.5*(std::pow(ustar[ij-jj], 4) + std::pow(ustar[ij], 4));
-        ufluxbot[ij] = -sign(u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
-        vfluxbot[ij] = -sign(v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
+        ufluxbot[ij] = -copysign(1., u[ijk]-ubot[ij]) * std::pow(ustaronu4 / (1. + vonu2 / u2), 0.5);
+        vfluxbot[ij] = -copysign(1., v[ijk]-vbot[ij]) * std::pow(ustaronv4 / (1. + uonv2 / v2), 0.5);
       }
 
     grid->boundaryCyclic2d(ufluxbot);
