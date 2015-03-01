@@ -48,10 +48,7 @@ qt /= 1000.  # g to kg
 # set the time series
 t  = numpy.array([  0.,   4.,  6.5,  7.5,  10., 12.5, 14.5])
 
-H  = numpy.array([-30.,  90., 140., 140., 100., -10.,  -10]) # Original 
-#H  = numpy.array([  0.,  90., 140., 140., 100., -10.,    0]) # No negative fluxes
-#print('Negative sensible heat flux set to zero to prevent problems with Obuk. iteration!!')
-
+H  = numpy.array([-30.,  90., 140., 140., 100., -10.,  -10])
 LE = numpy.array([  5., 250., 450., 500., 420., 180.,    0])
 
 advthl = numpy.array([ 0.   , 0.  ,  0.  , -0.08, -0.16, -0.16])
