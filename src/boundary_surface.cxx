@@ -41,7 +41,7 @@ namespace
 {
   // Size of the lookup table.
   const int nzL = 10000; // Size of the lookup table for MO iterations.
-  inline double sign(double n) { return n > 0 ? 1 : (n < 0 ? -1 : 0); }
+  inline double sign(const double n) { return (n > 0) ? 1 : ( (n < 0) ? -1 : 0); }
 }
 
 BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
