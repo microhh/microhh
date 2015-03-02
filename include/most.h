@@ -1,76 +1,80 @@
 namespace most
 {
-  inline double psim(const double zeta)
+  //
+  // GRADIENT FUNCTIONS
+  //
+  inline double phim_unstable(const double zeta)
   {
-    double psim;
-    if(zeta <= 0.)
-    {
-      // Wilson, 2001 functions, see Wyngaard, page 222.
-      const double x = std::pow(1. + std::pow(3.6 * std::abs(zeta),2./3.), -0.5);
-      psim = 3.*std::log( (1. + 1./x) / 2.);
-    }
-    else
-    {
-      // Hogstrom, 1988
-      psim = -4.8*zeta;
-    }
-    return psim;
+    // Wilson, 2001 functions, see Wyngaard, page 222.
+    return std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
   }
-  
-  inline double psih(const double zeta)
+
+  inline double phim_stable(const double zeta)
   {
-    double psih;
-    if(zeta <= 0.)
-    {
-      // Wilson, 2001 functions, see Wyngaard, page 222.
-      const double x = std::pow(1. + std::pow(7.9*std::abs(zeta), (2./3.)), -0.5);
-      psih = 3. * std::log( (1. + 1. / x) / 2.);
-    }
-    else
-    {
-      // Hogstrom, 1988
-      psih  = -7.8*zeta;
-    }
-    return psih;
+    // Hogstrom, 1988
+    return 1. + 4.8*zeta;
   }
-  
+
   inline double phim(const double zeta)
   {
-    double phim;
-    if(zeta <= 0.)
-    {
-      // Wilson, 2001 functions, see Wyngaard, page 222.
-      phim = std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
-    }
-    else
-      // Hogstrom, 1988
-      phim = 1. + 4.8*zeta;
-  
-    return phim;
+    return (zeta <= 0.) ? phim_unstable(zeta) : phim_stable(zeta);
   }
-  
+
+  inline double phih_unstable(const double zeta)
+  {
+    // Wilson, 2001 functions, see Wyngaard, page 222.
+    return std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
+  }
+
+  inline double phih_stable(const double zeta)
+  {
+    // Hogstrom, 1988
+    return 1. + 7.8*zeta;
+  }
+
   inline double phih(const double zeta)
   {
-    double phih;
-    if(zeta <= 0.)
-    {
-      // Wilson, 2001 functions, see Wyngaard, page 222.
-      phih = std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
-    }
-    else
-      // Hogstrom, 1988
-      phih = 1. + 7.8*zeta;
-  
-    return phih;
+    return (zeta <= 0.) ? phih_unstable(zeta) : phih_stable(zeta);
+  }
+
+  //
+  // INTEGRATED FUNCTIONS
+  //
+  inline double psim_unstable(const double zeta)
+  {
+    // Wilson, 2001 functions, see Wyngaard, page 222.
+    return 3.*std::log( ( 1. + 1./phim_unstable(zeta) ) / 2.);
+  }
+
+  inline double psim_stable(const double zeta)
+  {
+    // Hogstrom, 1988
+    return -4.8*zeta;
+  }
+
+  inline double psih_unstable(const double zeta)
+  {
+    // Wilson, 2001 functions, see Wyngaard, page 222.
+    return 3. * std::log( ( 1. + 1. / phih_unstable(zeta) ) / 2.);
+  }
+
+  inline double psih_stable(const double zeta)
+  {
+    // Hogstrom, 1988
+    return -7.8*zeta;
   }
 
   inline double fm(const double zsl, const double z0m, const double L)
   {
-    return constants::kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
+    return (L <= 0.)
+      ? constants::kappa / (std::log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
+      : constants::kappa / (std::log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
   }
-  
+
   inline double fh(const double zsl, const double z0h, const double L)
   {
-    return constants::kappa / (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L));
+    return (L <= 0.)
+      ? constants::kappa / (std::log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
+      : constants::kappa / (std::log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
   }
-} 
+}
