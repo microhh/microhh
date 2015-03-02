@@ -5,16 +5,14 @@ namespace most
     double psim;
     if(zeta <= 0.)
     {
-      // Businger-Dyer functions
-      // const double x     = (1. - 16. * zeta) ** (0.25)
-      // psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
-      // Wilson functions
+      // Wilson, 2001 functions, see Wyngaard, page 222.
       const double x = std::pow(1. + std::pow(3.6 * std::abs(zeta),2./3.), -0.5);
       psim = 3.*std::log( (1. + 1./x) / 2.);
     }
     else
     {
-      psim = -2./3.*(zeta - 5./0.35) * std::exp(-0.35 * zeta) - zeta - (10./3.) / 0.35;
+      // Hogstrom, 1988
+      psim = -4.8*zeta;
     }
     return psim;
   }
@@ -24,16 +22,14 @@ namespace most
     double psih;
     if(zeta <= 0.)
     {
-      // Businger-Dyer functions
-      // const double x     = (1. - 16. * zeta) ** (0.25)
-      // psih  = 2. * log( (1. + x ** 2.) / 2. )
-      // Wilson functions
+      // Wilson, 2001 functions, see Wyngaard, page 222.
       const double x = std::pow(1. + std::pow(7.9*std::abs(zeta), (2./3.)), -0.5);
       psih = 3. * std::log( (1. + 1. / x) / 2.);
     }
     else
     {
-      psih  = (-2./3.) * (zeta-5./0.35) * std::exp(-0.35*zeta) - std::pow(1. + (2./3.) * zeta, 1.5) - (10./3.) / 0.35 + 1.;
+      // Hogstrom, 1988
+      psih  = -7.8*zeta;
     }
     return psih;
   }
@@ -43,13 +39,12 @@ namespace most
     double phim;
     if(zeta <= 0.)
     {
-      // Businger-Dyer functions
-      // phim  = (1. - 16. * zeta) ** (-0.25)
-      // Wilson functions
+      // Wilson, 2001 functions, see Wyngaard, page 222.
       phim = std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
     }
     else
-      phim = 1. + 5.*zeta;
+      // Hogstrom, 1988
+      phim = 1. + 4.8*zeta;
   
     return phim;
   }
@@ -59,13 +54,12 @@ namespace most
     double phih;
     if(zeta <= 0.)
     {
-      // Businger-Dyer functions
-      // phih  = (1. - 16. * zeta) ** (-0.5)
-      // Wilson functions
+      // Wilson, 2001 functions, see Wyngaard, page 222.
       phih = std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
     }
     else
-      phih = 1. + 5.*zeta;
+      // Hogstrom, 1988
+      phih = 1. + 7.8*zeta;
   
     return phih;
   }
