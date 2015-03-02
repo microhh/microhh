@@ -33,29 +33,10 @@
 #include "thermo.h"
 #include "model.h"
 #include "tools.h"
+#include "most.h"
 
 namespace DiffSmag2_g
 {
-  __device__ double phim(double zeta)
-  {
-    double phim;
-    if(zeta <= 0.)
-      phim = pow(1. + 3.6*pow(fabs(zeta), 2./3.), -1./2.);
-    else
-      phim = 1. + 5.*zeta;
-    return phim;
-  }
-  
-  __device__ double phih(double zeta)
-  {
-    double phih;
-    if(zeta <= 0.)
-      phih = pow(1. + 7.9*pow(fabs(zeta), 2./3.), -1./2.);
-    else
-      phih = 1. + 5.*zeta;
-    return phih;
-  }
-  
   __global__ void strain2(double * __restrict__ strain2,
                           double * __restrict__ u,  double * __restrict__ v,  double * __restrict__ w,
                           double * __restrict__ ufluxbot, double * __restrict__ vfluxbot,
@@ -79,9 +60,9 @@ namespace DiffSmag2_g
       {
         strain2[ijk] = 2.*(
           // du/dz
-          + 0.5*pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(constants::kappa*z[k]*ustar[ij])*phim(z[k]/obuk[ij]), 2)
+          + 0.5*pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2)
           // dv/dz
-          + 0.5*pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(constants::kappa*z[k]*ustar[ij])*phim(z[k]/obuk[ij]), 2) );
+          + 0.5*pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2) );
          // add a small number to avoid zero divisions
          strain2[ijk] += constants::dsmall;  
       }
@@ -137,7 +118,7 @@ namespace DiffSmag2_g
       if(k == kstart)
       {
         // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-        double RitPrratio = -bfluxbot[ij]/(constants::kappa*zsl*ustar[ij])*phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
+        double RitPrratio = -bfluxbot[ij]/(constants::kappa*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
         RitPrratio        = fmin(RitPrratio, 1.-constants::dsmall);
         evisc[ijk]        = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
       }
