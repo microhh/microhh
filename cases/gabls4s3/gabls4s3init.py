@@ -24,27 +24,63 @@ class read_driver:
         self.advq = nc.variables["hadvQ"][0,:][::-1] # = zero
         self.Ts   = nc.variables["Tg"][:]
 
-        self.ps  = nc.variables["psurf"][0]
-        self.z0m = nc.variables["z0m"][0]
+        self.ps  = nc.variables["psurf"].getValue()
+        self.z0m = nc.variables["z0m"].getValue()
 
         # Calculate theta_s
         self.ths = self.Ts / (self.ps / 1.e5)**(287.04/1005.)
 
 s3 = read_driver()
 
+# ----------------
+# non-stretched grid
+# ----------------
 # Get number of vertical levels and size from .ini file
-with open('gabls4s3.ini') as f:
-    for line in f:
-        if(line.split('=')[0]=='ktot'):
-            kmax = int(line.split('=')[1])
-        if(line.split('=')[0]=='zsize'):
-            zsize = float(line.split('=')[1])
+#with open('gabls4s3.ini') as f:
+#    for line in f:
+#        if(line.split('=')[0]=='ktot'):
+#            kmax = int(line.split('=')[1])
+#        if(line.split('=')[0]=='zsize'):
+#            zsize = float(line.split('=')[1])
 
-print('kmax = %i, zsize = %.1f m'%(kmax, zsize))
-
+#print('kmax = %i, zsize = %.1f m'%(kmax, zsize))
 # set the height
-dz = zsize / kmax
-z  = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
+# Non-stretched
+#dz = zsize / kmax
+#z  = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
+
+# ----------------
+# non-stretched grid
+# ----------------
+kmax  = 500
+zsize = 1000
+dz1   = 2.
+dz2   = 5.
+z1    = 200
+z2    = 400
+z3    = 500
+fac   = (z3 - z1) / 10.
+
+dz0   = zsize / kmax
+z0    = np.linspace(0.5 * dz0, zsize - 0.5*dz0, kmax)
+dz    = dz1 + (dz2 - dz1) / (1. + np.exp(-(z0 - z2) / fac))
+
+z = [0.5 * dz1]
+for k in range(kmax):
+    if(z[-1] + dz[k] >= zsize):
+        break
+    z.append(z[-1] + dz[k])
+
+zsize = z[-1] + 0.5*(z[-1] - z[-2])
+kmax  = np.size(z) 
+
+print('kmax = %i, zsize = %f'%(kmax, zsize))
+
+#pl.figure()
+#pl.plot(dz[:kmax], z, 'k-o', mfc='none')
+#pl.xlabel('dz [m]')
+#pl.ylabel('z [m]')
+
 th = np.zeros(np.size(z))
 u  = np.zeros(np.size(z))
 ug = np.zeros(np.size(z))
@@ -71,7 +107,6 @@ for t in range(s3.t.size):
     timefile.write('{0:1.14E} {1:1.14E} \n'.format(s3.t[t], s3.ths[t]))
 timefile.close()
 
-"""
 # Plot
 pl.close('all')
 
@@ -104,4 +139,3 @@ pl.legend(frameon=False, loc=2)
 pl.subplot(224)
 pl.plot(s3.t, s3.ths, 'k-', label='s3')
 pl.legend(frameon=False, loc=2)
-"""
