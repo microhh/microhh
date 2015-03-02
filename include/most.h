@@ -1,82 +1,112 @@
+/*
+ * MicroHH
+ * Copyright (c) 2011-2014 Chiel van Heerwaarden
+ * Copyright (c) 2011-2014 Thijs Heus
+ * Copyright (c)      2014 Bart van Stratum
+ *
+ * This file is part of MicroHH
+ *
+ * MicroHH is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * MicroHH is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef MOST
+
+// In case the code is compiled with NVCC, add the macros for CUDA
+#ifdef __CUDACC__
+#  define CUDA_MACRO __host__ __device__
+#else
+#  define CUDA_MACRO
+#endif
+
 namespace most
 {
-  inline double psim(const double zeta)
+  //
+  // GRADIENT FUNCTIONS
+  //
+  CUDA_MACRO inline double phim_unstable(const double zeta)
   {
-    double psim;
-    if(zeta <= 0.)
-    {
-      // Businger-Dyer functions
-      // const double x     = (1. - 16. * zeta) ** (0.25)
-      // psim  = 3.14159265 / 2. - 2. * arctan(x) + log( (1.+x) ** 2. * (1. + x ** 2.) / 8.)
-      // Wilson functions
-      const double x = std::pow(1. + std::pow(3.6 * std::abs(zeta),2./3.), -0.5);
-      psim = 3.*std::log( (1. + 1./x) / 2.);
-    }
-    else
-    {
-      psim = -2./3.*(zeta - 5./0.35) * std::exp(-0.35 * zeta) - zeta - (10./3.) / 0.35;
-    }
-    return psim;
-  }
-  
-  inline double psih(const double zeta)
-  {
-    double psih;
-    if(zeta <= 0.)
-    {
-      // Businger-Dyer functions
-      // const double x     = (1. - 16. * zeta) ** (0.25)
-      // psih  = 2. * log( (1. + x ** 2.) / 2. )
-      // Wilson functions
-      const double x = std::pow(1. + std::pow(7.9*std::abs(zeta), (2./3.)), -0.5);
-      psih = 3. * std::log( (1. + 1. / x) / 2.);
-    }
-    else
-    {
-      psih  = (-2./3.) * (zeta-5./0.35) * std::exp(-0.35*zeta) - std::pow(1. + (2./3.) * zeta, 1.5) - (10./3.) / 0.35 + 1.;
-    }
-    return psih;
-  }
-  
-  inline double phim(const double zeta)
-  {
-    double phim;
-    if(zeta <= 0.)
-    {
-      // Businger-Dyer functions
-      // phim  = (1. - 16. * zeta) ** (-0.25)
-      // Wilson functions
-      phim = std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
-    }
-    else
-      phim = 1. + 5.*zeta;
-  
-    return phim;
-  }
-  
-  inline double phih(const double zeta)
-  {
-    double phih;
-    if(zeta <= 0.)
-    {
-      // Businger-Dyer functions
-      // phih  = (1. - 16. * zeta) ** (-0.5)
-      // Wilson functions
-      phih = std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
-    }
-    else
-      phih = 1. + 5.*zeta;
-  
-    return phih;
+    // Wilson, 2001 functions, see Wyngaard, page 222.
+    return std::pow(1. + 3.6*std::pow(std::abs(zeta), 2./3.), -1./2.);
   }
 
-  inline double fm(const double zsl, const double z0m, const double L)
+  CUDA_MACRO inline double phim_stable(const double zeta)
   {
-    return constants::kappa / (std::log(zsl/z0m) - psim(zsl/L) + psim(z0m/L));
+    // Hogstrom, 1988
+    return 1. + 4.8*zeta;
   }
-  
-  inline double fh(const double zsl, const double z0h, const double L)
+
+  CUDA_MACRO inline double phim(const double zeta)
   {
-    return constants::kappa / (std::log(zsl/z0h) - psih(zsl/L) + psih(z0h/L));
+    return (zeta <= 0.) ? phim_unstable(zeta) : phim_stable(zeta);
   }
-} 
+
+  CUDA_MACRO inline double phih_unstable(const double zeta)
+  {
+    // Wilson, 2001 functions, see Wyngaard, page 222.
+    return std::pow(1. + 7.9*std::pow(std::abs(zeta), 2./3.), -1./2.);
+  }
+
+  CUDA_MACRO inline double phih_stable(const double zeta)
+  {
+    // Hogstrom, 1988
+    return 1. + 7.8*zeta;
+  }
+
+  CUDA_MACRO inline double phih(const double zeta)
+  {
+    return (zeta <= 0.) ? phih_unstable(zeta) : phih_stable(zeta);
+  }
+
+  //
+  // INTEGRATED FUNCTIONS
+  //
+  CUDA_MACRO inline double psim_unstable(const double zeta)
+  {
+    // Wilson, 2001 functions, see Wyngaard, page 222.
+    return 3.*std::log( ( 1. + 1./phim_unstable(zeta) ) / 2.);
+  }
+
+  CUDA_MACRO inline double psim_stable(const double zeta)
+  {
+    // Hogstrom, 1988
+    return -4.8*zeta;
+  }
+
+  CUDA_MACRO inline double psih_unstable(const double zeta)
+  {
+    // Wilson, 2001 functions, see Wyngaard, page 222.
+    return 3. * std::log( ( 1. + 1. / phih_unstable(zeta) ) / 2.);
+  }
+
+  CUDA_MACRO inline double psih_stable(const double zeta)
+  {
+    // Hogstrom, 1988
+    return -7.8*zeta;
+  }
+
+  CUDA_MACRO inline double fm(const double zsl, const double z0m, const double L)
+  {
+    return (L <= 0.)
+      ? constants::kappa / (std::log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
+      : constants::kappa / (std::log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
+  }
+
+  CUDA_MACRO inline double fh(const double zsl, const double z0h, const double L)
+  {
+    return (L <= 0.)
+      ? constants::kappa / (std::log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
+      : constants::kappa / (std::log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
+  }
+}
+#endif

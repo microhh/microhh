@@ -31,6 +31,7 @@
 #include "model.h"
 #include "master.h"
 #include "tools.h"
+#include "most.h"
 
 namespace
 {
@@ -39,74 +40,6 @@ namespace
 
 namespace BoundarySurface_g
 {
-  __device__ double psim(double zeta)
-  {
-    double psim;
-    double x;
-    if(zeta <= 0.)
-    {
-      x    = pow(1. + pow(3.6 * fabs(zeta),2./3.), -0.5);
-      psim = 3.*log( (1. + 1./x) / 2.);
-    }
-    else
-    {
-      psim = -2./3.*(zeta - 5./0.35) * exp(-0.35 * zeta) - zeta - (10./3.) / 0.35;
-    }
-    return psim;
-  }
-  
-  __device__ double psih(double zeta)
-  {
-    double psih;
-    double x;
-    if(zeta <= 0.)
-    {
-      x    = pow(1. + pow(7.9*fabs(zeta), (2./3.)), -0.5);
-      psih = 3. * log( (1. + 1. / x) / 2.);
-    }
-    else
-    {
-      psih  = (-2./3.) * (zeta-5./0.35) * exp(-0.35*zeta) - pow(1. + (2./3.) * zeta, 1.5) - (10./3.) / 0.35 + 1.;
-    }
-    return psih;
-  }
-  
-  __device__ double phim(double zeta)
-  {
-    double phim;
-    if(zeta <= 0.)
-    {
-      phim = pow(1. + 3.6*pow(fabs(zeta), 2./3.), -1./2.);
-    }
-    else
-      phim = 1. + 5.*zeta;
-  
-    return phim;
-  }
-  
-  __device__ double phih(double zeta)
-  {
-    double phih;
-    if(zeta <= 0.)
-    {
-      phih = pow(1. + 7.9*pow(fabs(zeta), 2./3.), -1./2.);
-    }
-    else
-      phih = 1. + 5.*zeta;
-  
-    return phih;
-  }
-  
-  __device__ double fm(double zsl, double z0m, double L) 
-  { 
-    return constants::kappa / (log(zsl/z0m) - psim(zsl/L) + psim(z0m/L)); 
-  }
-  
-  __device__ double fh(double zsl, double z0h, double L) 
-  { 
-    return constants::kappa / (log(zsl/z0h) - psih(zsl/L) + psih(z0h/L)); 
-  }
-
   __device__ double findObuk(const float* const __restrict__ zL, const float* const __restrict__ f,
                   int &n, const double Ri, const double zsl)
   {
@@ -184,14 +117,14 @@ namespace BoundarySurface_g
       else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::FluxType)
       {
         obuk [ij] = calcobuk_noslip_flux(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
-        ustar[ij] = dutot[ij] * fm(zsl, z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
       }
       // case 3: fixed buoyancy surface value and free ustar
       else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::DirichletType)
       {
         double db = b[ijk] - bbot[ij];
         obuk [ij] = calcobuk_noslip_dirichlet(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
-        ustar[ij] = dutot[ij] * fm(zsl, z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
       }
     }
   }
@@ -218,13 +151,13 @@ namespace BoundarySurface_g
       else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::FluxType)
       {
         obuk [ij] = -constants::dbig;
-        ustar[ij] = dutot[ij] * fm(zsl, z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
       }
       // case 3: fixed buoyancy surface value and free ustar
       else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::DirichletType)
       {
         obuk [ij] = -constants::dbig;
-        ustar[ij] = dutot[ij] * fm(zsl, z0m, obuk[ij]);
+        ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
       }
     }
   }
@@ -250,8 +183,8 @@ namespace BoundarySurface_g
       if(bcbot == Boundary::DirichletType)
       {
         // interpolate the whole stability function rather than ustar or obuk
-        ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
-        vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*fm(zsl, z0m, obuk[ij]));
+        ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
+        vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
       }
       else if(bcbot == Boundary::UstarType)
       {
@@ -311,12 +244,12 @@ namespace BoundarySurface_g
   
       if(bcbot == Boundary::DirichletType)
       {
-        varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*fh(zsl, z0h, obuk[ij]);
+        varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h, obuk[ij]);
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
       else if(bcbot == Boundary::FluxType)
       {
-        varbot[ij]     = varfluxbot[ij] / (ustar[ij]*fh(zsl, z0h, obuk[ij])) + var[ijk];
+        varbot[ij]     = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h, obuk[ij])) + var[ijk];
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
     }
