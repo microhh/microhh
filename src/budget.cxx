@@ -211,10 +211,10 @@ void Budget::exec_stats(Mask *m)
     }
 }
 
-void Budget::calc_ke(double * restrict u, double * restrict v, double * restrict w, 
-                     double * restrict umodel, double * restrict vmodel,
+void Budget::calc_ke(double* restrict u, double* restrict v, double* restrict w, 
+                     double* restrict umodel, double* restrict vmodel,
                      double utrans, double vtrans,
-                     double * restrict ke, double * restrict tke)
+                     double* restrict ke, double* restrict tke)
 {
     double u2,v2,w2;
 
@@ -267,16 +267,16 @@ void Budget::calc_ke(double * restrict u, double * restrict v, double * restrict
     }
 }
 
-void Budget::calc_tke_budget(double * restrict u, double * restrict v, double * restrict w, double * restrict p,
-                             double * restrict wx, double * restrict wy,
-                             double * restrict umean, double * restrict vmean,
-                             double * restrict u2_shear, double * restrict v2_shear, double * restrict tke_shear,
-                             double * restrict u2_turb, double * restrict v2_turb, double * restrict w2_turb, double * restrict tke_turb,
-                             double * restrict u2_visc, double * restrict v2_visc, double * restrict w2_visc, double * restrict tke_visc,
-                             double * restrict u2_diss, double * restrict v2_diss, double * restrict w2_diss, double * restrict tke_diss,
-                             double * restrict w2_pres, double * restrict tke_pres,
-                             double * restrict u2_rdstr, double * restrict v2_rdstr, double * restrict w2_rdstr,
-                             double * restrict dzi4, double * restrict dzhi4, double visc)
+void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* restrict w, double* restrict p,
+                             double* restrict wx, double* restrict wy,
+                             double* restrict umean, double* restrict vmean,
+                             double* restrict u2_shear, double* restrict v2_shear, double* restrict tke_shear,
+                             double* restrict u2_turb, double* restrict v2_turb, double* restrict w2_turb, double* restrict tke_turb,
+                             double* restrict u2_visc, double* restrict v2_visc, double* restrict w2_visc, double* restrict tke_visc,
+                             double* restrict u2_diss, double* restrict v2_diss, double* restrict w2_diss, double* restrict tke_diss,
+                             double* restrict w2_pres, double* restrict tke_pres,
+                             double* restrict u2_rdstr, double* restrict v2_rdstr, double* restrict w2_rdstr,
+                             double* restrict dzi4, double* restrict dzhi4, double visc)
 {
     // 1. INTERPOLATE THE VERTICAL VELOCITY TO U AND V LOCATION
     const int wloc [3] = {0,0,1};
@@ -1093,8 +1093,8 @@ void Budget::calc_tke_budget(double * restrict u, double * restrict v, double * 
     }
 }
 
-void Budget::calc_tke_budget_buoy(double * restrict w, double * restrict b,
-                                  double * restrict w2_buoy, double * restrict tke_buoy)
+void Budget::calc_tke_budget_buoy(double* restrict w, double* restrict b,
+                                  double* restrict w2_buoy, double* restrict tke_buoy)
 {
     const int jj1 = 1*grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -1135,11 +1135,11 @@ void Budget::calc_tke_budget_buoy(double * restrict w, double * restrict b,
     grid->getProf(tke_buoy, grid->kcells);
 }
 
-void Budget::calc_pe(double * restrict b, double * restrict zsort, double * restrict zsortbot, double * restrict zsorttop,
-                     double * restrict z,
-                     double * restrict bsort,
-                     double * restrict pe_total, double * restrict pe_avail, double * restrict pe_bg,
-                     double * restrict zsortprof)
+void Budget::calc_pe(double* restrict b, double* restrict zsort, double* restrict zsortbot, double* restrict zsorttop,
+                     double* restrict z,
+                     double* restrict bsort,
+                     double* restrict pe_total, double* restrict pe_avail, double* restrict pe_bg,
+                     double* restrict zsortprof)
 {
     const int jj = grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -1264,7 +1264,7 @@ void Budget::calc_pe(double * restrict b, double * restrict zsort, double * rest
         }
 }
 
-double Budget::calc_zsort(double b, double * restrict bsort, double * restrict z, int k)
+double Budget::calc_zsort(double b, double* restrict bsort, double* restrict z, int k)
 {
     double zsortval;
     int ks = k;
@@ -1292,7 +1292,7 @@ double Budget::calc_zsort(double b, double * restrict bsort, double * restrict z
     return zsortval;
 }
 
-double Budget::calc_dzstardb(double b, double * restrict bsort, double * restrict z)
+double Budget::calc_dzstardb(double b, double* restrict bsort, double* restrict z)
 {
     // start the iteration below the grid to make sure not to miss values below the first full level
     int k = grid->kstart-1;
@@ -1327,9 +1327,9 @@ double Budget::calc_dzstardb(double b, double * restrict bsort, double * restric
 }
 
 
-void Budget::calc_pe_budget(double * restrict w, double * restrict b, double * restrict bz, double * restrict bztop,
-                            double * restrict pe_turb, double * restrict pe_visc, double * restrict pe_bous,
-                            double * restrict z, double * restrict zh, double * restrict dzi4, double * restrict dzhi4,
+void Budget::calc_pe_budget(double* restrict w, double* restrict b, double* restrict bz, double* restrict bztop,
+                            double* restrict pe_turb, double* restrict pe_visc, double* restrict pe_bous,
+                            double* restrict z, double* restrict zh, double* restrict dzi4, double* restrict dzhi4,
                             double visc)
 {
     const int jj1 = 1*grid->icells;
@@ -1531,11 +1531,11 @@ void Budget::calc_pe_budget(double * restrict w, double * restrict b, double * r
     }
 }
 
-// void Budget::calcBpeBudget(double * restrict w, double * restrict b, 
-//                            double * restrict bz, double * restrict bzbot, double * restrict bztop,
-//                            double * restrict bpe_turb, double * restrict bpe_visc, double * restrict bpe_diss,
-//                            double * restrict bsort,
-//                            double * restrict z, double * restrict dzi4, double * restrict dzhi4,
+// void Budget::calcBpeBudget(double* restrict w, double* restrict b, 
+//                            double* restrict bz, double* restrict bzbot, double* restrict bztop,
+//                            double* restrict bpe_turb, double* restrict bpe_visc, double* restrict bpe_diss,
+//                            double* restrict bsort,
+//                            double* restrict z, double* restrict dzi4, double* restrict dzhi4,
 //                            double visc)
 // {
 //   int ijk,ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
