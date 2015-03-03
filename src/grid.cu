@@ -106,9 +106,9 @@ void Grid::prepareDevice()
   ncellsp   = ijcellsp * kcells + memoffset;
 
   // Calculate optimal size thread blocks based on grid
-  iThreadBlock = max(16,min(256,(int)ceil(itot/16)*16)); 
+  iThreadBlock = min(256, 16 * ((itot / 16) + (itot % 16 > 0)));
   jThreadBlock = 256 / iThreadBlock;
- 
+
   const int kmemsize = kcells*sizeof(double);
 
   cudaSafeCall(cudaMalloc((void**)&z_g    , kmemsize));
