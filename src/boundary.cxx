@@ -75,7 +75,7 @@ void Boundary::process_bcs(Input* inputin)
         mbcbot = Ustar_type;
     else
     {
-        master->printError("%s is illegal value for mbcbot\n", swbot.c_str());
+        master->print_error("%s is illegal value for mbcbot\n", swbot.c_str());
         nerror++;
     }
 
@@ -88,7 +88,7 @@ void Boundary::process_bcs(Input* inputin)
         mbctop = Ustar_type;
     else
     {
-        master->printError("%s is illegal value for mbctop\n", swtop.c_str());
+        master->print_error("%s is illegal value for mbctop\n", swtop.c_str());
         nerror++;
     }
 
@@ -110,7 +110,7 @@ void Boundary::process_bcs(Input* inputin)
             sbc[it->first]->bcbot = Flux_type;
         else
         {
-            master->printError("%s is illegal value for sbcbot\n", swbot.c_str());
+            master->print_error("%s is illegal value for sbcbot\n", swbot.c_str());
             nerror++;
         }
 
@@ -123,7 +123,7 @@ void Boundary::process_bcs(Input* inputin)
             sbc[it->first]->bctop = Flux_type;
         else
         {
-            master->printError("%s is illegal value for sbctop\n", swtop.c_str());
+            master->print_error("%s is illegal value for sbctop\n", swtop.c_str());
             nerror++;
         }
     }
@@ -146,7 +146,7 @@ void Boundary::init(Input *inputin)
     // there is no option (yet) for prescribing ustar without surface model
     if (mbcbot == Ustar_type || mbctop == Ustar_type)
     {
-        master->printError("ustar bc is not supported for default boundary\n");
+        master->print_error("ustar bc is not supported for default boundary\n");
         ++nerror;
     }
 
@@ -185,7 +185,7 @@ void Boundary::process_time_dep(Input* inputin)
 
         // display a warning for the non-supported 
         for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
-            master->printWarning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
+            master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
 
     if (nerror)
@@ -347,7 +347,7 @@ Boundary* Boundary::factory(Master* masterin, Input* inputin, Model* modelin)
         return new Boundary(modelin, inputin);
     else
     {
-        masterin->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
+        masterin->print_error("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
         return 0;
     }
 }

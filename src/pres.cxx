@@ -92,11 +92,11 @@ Pres* Pres::factory(Master *masterin, Input *inputin, Model *modelin, const std:
     return new Pres4(modelin, inputin);
   else
   {
-    masterin->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());
+    masterin->print_error("\"%s\" is an illegal value for swpres\n", swpres.c_str());
     throw 1;
   }
 }
 
-void Pres::prepareDevice()
+void Pres::prepare_device()
 {
 }

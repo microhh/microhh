@@ -69,13 +69,13 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 
   if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
   {
-    master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
+    master->print_error("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
     throw 1;
   }
    
   if(grid->swspatialorder == "4" && swbasestate == "anelastic")
   {
-    master->printError("Anelastic mode is not supported for swspatialorder=4\n");
+    master->print_error("Anelastic mode is not supported for swspatialorder=4\n");
     throw 1;
   }
 
@@ -100,7 +100,7 @@ ThermoDry::~ThermoDry()
   delete[] this->exnerh;
 
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 }
 
@@ -161,7 +161,7 @@ void ThermoDry::exec()
 }
 #endif
 
-void ThermoDry::execStats(Mask *m)
+void ThermoDry::exec_stats(Mask *m)
 {
   const double NoOffset = 0.;
 
@@ -231,7 +231,7 @@ void ThermoDry::execStats(Mask *m)
   //stats->calcSortedProf(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 }
 
-void ThermoDry::execCross()
+void ThermoDry::exec_cross()
 {
   int nerror = 0;
 
@@ -273,7 +273,7 @@ void ThermoDry::execCross()
     throw 1;
 }
 
-void ThermoDry::execDump()
+void ThermoDry::exec_dump()
 {
   for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
   {

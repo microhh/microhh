@@ -60,15 +60,15 @@ void Thermo::exec()
 {
 }
 
-void Thermo::execStats(Mask *f)
+void Thermo::exec_stats(Mask *f)
 {
 }
 
-void Thermo::execCross()
+void Thermo::exec_cross()
 {
 }
 
-void Thermo::execDump()
+void Thermo::exec_dump()
 {
 }
 
@@ -98,7 +98,7 @@ void Thermo::getProgVars(std::vector<std::string> *list)
 {
 }
 
-void Thermo::getMask(Field3d *mfield, Field3d *mfieldh, Mask *f)
+void Thermo::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *f)
 {
 }
 
@@ -120,15 +120,15 @@ Thermo* Thermo::factory(Master *masterin, Input *inputin, Model *modelin)
     return new Thermo(modelin, inputin);
   else
   {
-    masterin->printError("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+    masterin->print_error("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
     return 0;
   }
 }
 
-void Thermo::prepareDevice()
+void Thermo::prepare_device()
 {
 }
 
-void Thermo::clearDevice()
+void Thermo::clear_device()
 {
 }

@@ -34,7 +34,7 @@ Master::Master()
 
 Master::~Master()
 {
-  printMessage("Finished run on %d processes\n", nprocs);
+  print_message("Finished run on %d processes\n", nprocs);
 }
 
 void Master::start(int argc, char *argv[])
@@ -49,12 +49,12 @@ void Master::start(int argc, char *argv[])
   // Set the wall clock time at start.
   wallClockStart = getWallClockTime();
 
-  printMessage("Starting run on %d processes\n", nprocs);
+  print_message("Starting run on %d processes\n", nprocs);
 
   // Process the command line options.
   if(argc <= 1)
   {
-    printError("Specify init, run or post mode\n");
+    print_error("Specify init, run or post mode\n");
     throw 1;
   }
   else
@@ -63,7 +63,7 @@ void Master::start(int argc, char *argv[])
     mode = argv[1];
     if(mode != "init" && mode != "run" && mode != "post")
     {
-      printError("Specify init, run or post mode\n");
+      print_error("Specify init, run or post mode\n");
       throw 1;
     }
     // Set the name of the simulation.
@@ -91,7 +91,7 @@ void Master::init(Input *inputin)
 
   if(nprocs != npx*npy)
   {
-    printError("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
+    print_error("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
     throw 1;
   }
 

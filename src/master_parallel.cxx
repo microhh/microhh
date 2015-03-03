@@ -46,7 +46,7 @@ Master::~Master()
     MPI_Comm_free(&commy);
   }
 
-  printMessage("Finished run on %d processes\n", nprocs);
+  print_message("Finished run on %d processes\n", nprocs);
 
   if(initialized)
     MPI_Finalize();
@@ -80,12 +80,12 @@ void Master::start(int argc, char *argv[])
   if(checkError(n))
     throw 1;
 
-  printMessage("Starting run on %d processes\n", nprocs);
+  print_message("Starting run on %d processes\n", nprocs);
 
   // process the command line options
   if(argc <= 1)
   {
-    printError("Specify init, run or post mode\n");
+    print_error("Specify init, run or post mode\n");
     throw 1;
   }
   else
@@ -94,7 +94,7 @@ void Master::start(int argc, char *argv[])
     mode = argv[1];
     if(mode != "init" && mode != "run" && mode != "post")
     {
-      printError("Specify init, run or post mode\n");
+      print_error("Specify init, run or post mode\n");
       throw 1;
     }
     // set the name of the simulation
@@ -122,7 +122,7 @@ void Master::init(Input *inputin)
 
   if(nprocs != npx*npy)
   {
-    printError("nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
+    print_error("nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
     throw 1;
   }
 
@@ -204,7 +204,7 @@ int Master::checkError(int n)
   if(n != MPI_SUCCESS)
   {
     MPI_Error_string(n, errbuffer, &errlen);
-    printError("MPI: %s\n", errbuffer);
+    print_error("MPI: %s\n", errbuffer);
     return 1;
   }
 

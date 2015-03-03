@@ -46,7 +46,7 @@ ThermoBuoySlope::ThermoBuoySlope(Model *modelin, Input *inputin) : Thermo(modeli
 
   if(grid->swspatialorder == "2")
   {
-    master->printError("swthermo = buoy_slope is incompatible with swspatialorder = 2\n");
+    master->print_error("swthermo = buoy_slope is incompatible with swspatialorder = 2\n");
     ++nerror;
   }
 
@@ -63,7 +63,7 @@ void ThermoBuoySlope::exec()
 {
   if(grid->swspatialorder == "2")
   {
-    master->printError("Second order not implemented for slope flow thermodynamics\n");
+    master->print_error("Second order not implemented for slope flow thermodynamics\n");
     throw 1;
   }
   else if(grid->swspatialorder == "4")

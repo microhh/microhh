@@ -58,7 +58,7 @@ Cross::Cross(Model *modelin, Input *inputin)
     // Crash on empty list.
     if(crosslist.empty())
     {
-      master->printError("empty cross section list\n");
+      master->print_error("empty cross section list\n");
       throw 1;
     }
 
@@ -78,15 +78,15 @@ Cross::~Cross()
 // check whether saving the slice was successful and print appropriate message
 int Cross::checkSave(int error, char * filename)
 {
-  master->printMessage("Saving \"%s\" ... ", filename);
+  master->print_message("Saving \"%s\" ... ", filename);
   if(error == 0)
   {
-    master->printMessage("OK\n");
+    master->print_message("OK\n");
     return 0;
   }
   else
   {
-    master->printMessage("FAILED\n");
+    master->print_message("FAILED\n");
     return 1;
   }
 }
@@ -112,7 +112,7 @@ void Cross::create()
 
     if(*it < 0 || *it > grid->ysize) // Check if cross location is inside domain
     {
-      master->printError("ERROR %f in [cross][xz] is outside domain\n", *it);
+      master->print_error("ERROR %f in [cross][xz] is outside domain\n", *it);
       ++nerror;
     }
     else
@@ -121,19 +121,19 @@ void Cross::create()
         --temploc;
 
       if(std::find(jxz.begin(), jxz.end(), temploc) != jxz.end()) // Check for duplicate entries
-        master->printWarning("removed duplicate entry y=%f for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],*it);
+        master->print_warning("removed duplicate entry y=%f for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],*it);
       else // Add to cross-list
       {
         jxz.push_back(temploc);
-        master->printMessage("Addex XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],temploc,*it);
+        master->print_message("Addex XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],temploc,*it);
       } 
 
       if(std::find(jxzh.begin(), jxzh.end(), temploch) != jxzh.end()) // Check for duplicate entries
-        master->printWarning("removed duplicate entry yh=%f for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],*it);
+        master->print_warning("removed duplicate entry yh=%f for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],*it);
       else // Add to cross-list
       {
         jxzh.push_back(temploch);
-        master->printMessage("Addex XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],temploch,*it);
+        master->print_message("Addex XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],temploch,*it);
       } 
     }
   }
@@ -144,7 +144,7 @@ void Cross::create()
     hoffset = 0;
     if(*it < 0 || *it > grid->zsize) // Check if cross location is inside domain
     {
-      master->printError("ERROR %f in [cross][xy] is outside domain\n", *it);
+      master->print_error("ERROR %f in [cross][xy] is outside domain\n", *it);
       ++nerror;
     }
     else
@@ -169,19 +169,19 @@ void Cross::create()
       }
 
       if(std::find(kxy.begin(), kxy.end(), temploc) != kxy.end()) // Check for duplicate entries
-        master->printWarning("removed duplicate entry z=%f for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],*it);
+        master->print_warning("removed duplicate entry z=%f for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],*it);
       else // Add to cross-list
       {
         kxy.push_back(temploc);
-        master->printMessage("Addex XY cross at z=%f (k=%i) for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],temploc,*it);
+        master->print_message("Addex XY cross at z=%f (k=%i) for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],temploc,*it);
       } 
  
       if(std::find(kxyh.begin(), kxyh.end(), temploc+hoffset) != kxyh.end()) // Check for duplicate entries
-        master->printWarning("removed duplicate entry zh=%f for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],*it);
+        master->print_warning("removed duplicate entry zh=%f for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],*it);
       else // Add to cross-list
       {
         kxyh.push_back(temploc+hoffset);
-        master->printMessage("Addex XY cross at zh=%f (k=%i) for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],temploc+hoffset,*it);
+        master->print_message("Addex XY cross at zh=%f (k=%i) for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],temploc+hoffset,*it);
       }  
     }
   }
@@ -191,14 +191,14 @@ void Cross::create()
   if(crosslist.size() > 0)
   {
     for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
-      master->printWarning("field %s in [cross][crosslist] is illegal\n", it->c_str());
+      master->print_warning("field %s in [cross][crosslist] is illegal\n", it->c_str());
   } 
 
   if(nerror)
     throw 1;
 }
 
-unsigned long Cross::getTimeLimit(unsigned long itime)
+unsigned long Cross::get_time_limit(unsigned long itime)
 {
   if(swcross == "0")
     return constants::ulhuge;

@@ -80,7 +80,7 @@ Pres4::~Pres4()
   delete[] bmatj;
 
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 }
 

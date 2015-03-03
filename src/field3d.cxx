@@ -92,7 +92,7 @@ int Field3d::init()
   }
   catch (std::exception &e)
   {
-    master->printError("Field %s cannot be allocated, total fields memsize %lu is too large\n", name.c_str(), totalMemorySize);
+    master->print_error("Field %s cannot be allocated, total fields memsize %lu is too large\n", name.c_str(), totalMemorySize);
     throw;
   }
 

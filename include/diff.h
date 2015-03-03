@@ -41,13 +41,13 @@ class Diff
     virtual void exec();
 
     std::string getName();
-    virtual unsigned long getTimeLimit(unsigned long, double);
+    virtual unsigned long get_time_limit(unsigned long, double);
     virtual double get_dn(double);
 
     double dnmax;
 
     // GPU functions and variables
-    virtual void prepareDevice();
+    virtual void prepare_device();
 
   protected:
     Model  *model;

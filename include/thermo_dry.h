@@ -45,9 +45,9 @@ class ThermoDry : public Thermo
     virtual void init();
     virtual void create(Input *);
     virtual void exec();                ///< Add the tendencies belonging to the buoyancy.
-    virtual void execStats(Mask *);
-    virtual void execCross();
-    virtual void execDump();
+    virtual void exec_stats(Mask *);
+    virtual void exec_cross();
+    virtual void exec_dump();
 
     virtual bool checkThermoField(std::string name);
     virtual void getThermoField(Field3d *, Field3d *, std::string name);
@@ -57,8 +57,8 @@ class ThermoDry : public Thermo
 
     #ifdef USECUDA
     // GPU functions and variables
-    virtual void prepareDevice();
-    virtual void clearDevice();
+    virtual void prepare_device();
+    virtual void clear_device();
     #endif
 
   private:

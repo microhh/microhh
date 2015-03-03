@@ -85,7 +85,7 @@ Advec* Advec::factory(Master* masterin, Input* inputin, Model* modelin, const st
         return new Advec_4m(modelin, inputin);
     else
     {
-        masterin->printError("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
+        masterin->print_error("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
         throw 1;
     }
 }

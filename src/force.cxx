@@ -60,7 +60,7 @@ Force::Force(Model *modelin, Input *inputin)
     else
     {
       ++nerror;
-      master->printError("\"%s\" is an illegal option for swlspres\n", swlspres.c_str());
+      master->print_error("\"%s\" is an illegal option for swlspres\n", swlspres.c_str());
     }
   }
 
@@ -69,7 +69,7 @@ Force::Force(Model *modelin, Input *inputin)
   else if(swls != "0")
   {
     ++nerror;
-    master->printError("\"%s\" is an illegal option for swls\n", swls.c_str());
+    master->print_error("\"%s\" is an illegal option for swls\n", swls.c_str());
   }
 
   if(swwls == "1")
@@ -77,7 +77,7 @@ Force::Force(Model *modelin, Input *inputin)
   else if(swwls != "0")
   {
     ++nerror;
-    master->printError("\"%s\" is an illegal option for swwls\n", swwls.c_str());
+    master->print_error("\"%s\" is an illegal option for swwls\n", swwls.c_str());
   }
 
   // get the list of time varying variables
@@ -105,7 +105,7 @@ Force::~Force()
     delete[] it->second;
 
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 }
 
@@ -143,7 +143,7 @@ void Force::create(Input *inputin)
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
       if(!fields->ap.count(*it))
       {
-        master->printError("field %s in [force][lslist] is illegal\n", it->c_str());
+        master->print_error("field %s in [force][lslist] is illegal\n", it->c_str());
         ++nerror;
       }
 
@@ -180,7 +180,7 @@ void Force::create(Input *inputin)
 
     // display a warning for the non-supported 
     for(std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
-      master->printWarning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
+      master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
   if(nerror)
@@ -215,7 +215,7 @@ void Force::exec(double dt)
 }
 #endif
 
-void Force::updateTimeDep()
+void Force::update_time_dep()
 {
   if(swtimedep == "0")
     return;
@@ -257,11 +257,11 @@ void Force::updateTimeDep()
     fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
   }
 
-  updateTimeDepProfs(fac0, fac1, index0, index1);
+  update_time_depProfs(fac0, fac1, index0, index1);
 }
 
 #ifndef USECUDA
-void Force::updateTimeDepProfs(const double fac0, const double fac1, const int index0, const int index1)
+void Force::update_time_depProfs(const double fac0, const double fac1, const int index0, const int index1)
 {
   // process time dependent bcs for the large scale forcings
   int kk = grid->kmax;

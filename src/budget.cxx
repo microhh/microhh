@@ -140,7 +140,7 @@ void Budget::create()
   }
 }
 
-void Budget::execStats(Mask *m)
+void Budget::exec_stats(Mask *m)
 {
   if(swbudget == "0")
     return;

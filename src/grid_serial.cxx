@@ -297,15 +297,15 @@ void Grid::save()
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "wbx");
-  master->printMessage("Saving \"%s\" ... ", filename);
+  master->print_message("Saving \"%s\" ... ", filename);
 
   if(pFile == NULL)
   {
-    master->printMessage("FAILED\n");
+    master->print_message("FAILED\n");
     throw 1;
   }
   else
-    master->printMessage("OK\n");
+    master->print_message("OK\n");
 
   fwrite(&x [istart], sizeof(double), itot, pFile);
   fwrite(&xh[istart], sizeof(double), itot, pFile);
@@ -342,16 +342,16 @@ void Grid::save()
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-    master->printMessage("Saving \"%s\" ... ", filename);
+    master->print_message("Saving \"%s\" ... ", filename);
 
     int n = fftw_export_wisdom_to_filename(filename);
     if(n == 0)
     {
-      master->printMessage("FAILED\n");
+      master->print_message("FAILED\n");
       throw 1;
     }
     else
-      master->printMessage("OK\n");
+      master->print_message("OK\n");
   }
 }
 
@@ -362,15 +362,15 @@ void Grid::load()
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
   pFile = fopen(filename, "rb");
-  master->printMessage("Loading \"%s\" ... ", filename);
+  master->print_message("Loading \"%s\" ... ", filename);
 
   if(pFile == NULL)
   {
-    master->printMessage("FAILED\n");
+    master->print_message("FAILED\n");
     throw 1;
   }
   else
-    master->printMessage("OK\n");
+    master->print_message("OK\n");
 
   fread(&x [istart], sizeof(double), itot, pFile);
   fread(&xh[istart], sizeof(double), itot, pFile);
@@ -386,16 +386,16 @@ void Grid::load()
   // LOAD THE FFTW PLAN
   std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
-  master->printMessage("Loading \"%s\" ... ", filename);
+  master->print_message("Loading \"%s\" ... ", filename);
 
   int n = fftw_import_wisdom_from_filename(filename);
   if(n == 0)
   {
-    master->printMessage("FAILED\n");
+    master->print_message("FAILED\n");
     throw 1;
   }
   else
-    master->printMessage("OK\n");
+    master->print_message("OK\n");
 
   // use the FFTW3 many interface in order to reduce function call overhead
   int rank = 1;

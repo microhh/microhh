@@ -34,14 +34,14 @@ class DiffSmag2 : public Diff
     void exec();
     void execViscosity();
 
-    unsigned long getTimeLimit(unsigned long, double);
+    unsigned long get_time_limit(unsigned long, double);
     double get_dn(double);
 
     double tPr;
 
     // GPU functions and variables
-    void prepareDevice();
-    void clearDevice();
+    void prepare_device();
+    void clear_device();
 
     double *mlen_g; 
 

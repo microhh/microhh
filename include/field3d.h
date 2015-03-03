@@ -54,7 +54,7 @@ class Field3d
 
     // Device functions and variables
     void initDevice();  ///< Allocate Field3D fields at device 
-    void clearDevice(); ///< Deallocate Field3D fields at device 
+    void clear_device(); ///< Deallocate Field3D fields at device 
 
     double *data_g;
     double *databot_g;

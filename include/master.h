@@ -61,9 +61,9 @@ class Master
     // overload the min function
     void min(double *, int);
 
-    void printMessage(const char *format, ...);
-    void printWarning(const char *format, ...);
-    void printError  (const char *format, ...);
+    void print_message(const char *format, ...);
+    void print_warning(const char *format, ...);
+    void print_error  (const char *format, ...);
 
     std::string mode;
     std::string simname;

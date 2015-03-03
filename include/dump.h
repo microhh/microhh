@@ -37,7 +37,7 @@ class Dump
     void init(double);
     void create();
 
-    unsigned long getTimeLimit(unsigned long);
+    unsigned long get_time_limit(unsigned long);
     std::string getSwitch();
     std::vector<std::string> * getDumpList();
 

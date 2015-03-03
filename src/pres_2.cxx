@@ -58,7 +58,7 @@ Pres2::~Pres2()
   delete[] bmatj;
 
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 }
 

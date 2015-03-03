@@ -165,8 +165,8 @@ class Grid
     double *dzi4_g;
     double *dzhi4_g;
 
-    void prepareDevice();                          ///< Load the arrays onto the GPU
-    void clearDevice();                            ///< Deallocate the arrays onto the GPU
+    void prepare_device();                          ///< Load the arrays onto the GPU
+    void clear_device();                            ///< Deallocate the arrays onto the GPU
     void boundaryCyclic_g(double *);               ///< Fills the ghost cells in the periodic directions.
     void boundaryCyclic2d_g(double *);             ///< Fills the ghost cells of one slice in the periodic directions.
     double getMax_g(double *, double *);           ///< Get maximum value from field at GPU

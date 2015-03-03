@@ -41,7 +41,7 @@ class Cross
     std::string getSwitch();
     std::vector<std::string> * getCrossList();
 
-    unsigned long getTimeLimit(unsigned long);
+    unsigned long get_time_limit(unsigned long);
     //int exec(double, unsigned long, int);
 
     std::string swcross;

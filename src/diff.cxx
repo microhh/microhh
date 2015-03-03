@@ -56,7 +56,7 @@ Diff::~Diff()
 {
 }
 
-unsigned long Diff::getTimeLimit(unsigned long idtlim, double dt)
+unsigned long Diff::get_time_limit(unsigned long idtlim, double dt)
 {
   idtlim = (unsigned long) constants::dbig;
 
@@ -112,18 +112,18 @@ Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std:
     // the subgrid model requires a surface model because of the MO matching at first level
     if(swboundary != "surface")
     {
-      masterin->printError("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
+      masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
       return 0;
     }
     return new DiffSmag2(modelin, inputin);
   }
   else
   {
-    masterin->printError("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
+    masterin->print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
     return 0;
   }
 }
 
-void Diff::prepareDevice()
+void Diff::prepare_device()
 {
 }

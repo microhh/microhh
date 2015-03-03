@@ -44,8 +44,8 @@ class Buffer
     void exec();            ///< Add the tendencies created by the damping.
 
     // GPU functions and variables
-    void prepareDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
-    void clearDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
+    void prepare_device(); ///< Allocate and copy buffer profiles at/to GPU                             
+    void clear_device(); ///< Allocate and copy buffer profiles at/to GPU                             
 
   private:
     Master *master; ///< Pointer to master class.

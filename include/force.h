@@ -49,14 +49,14 @@ class Force
     void init();          ///< Initialize the arrays that contain the profiles.
     void create(Input *); ///< Read the profiles of the forces from the input.
     void exec(double);    ///< Add the tendencies belonging to the large-scale processes.
-    void updateTimeDep(); ///< Update the time dependent parameters.
+    void update_time_dep(); ///< Update the time dependent parameters.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
 
     // GPU functions and variables
-    void prepareDevice();
-    void clearDevice();
+    void prepare_device();
+    void clear_device();
 
     std::map<std::string, double *> lsprofs_g; ///< Map of profiles with forcings stored by its name.
 
@@ -83,7 +83,7 @@ class Force
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
-    void updateTimeDepProfs(double, double, int, int); ///< Set the time dependent profiles.
+    void update_time_depProfs(double, double, int, int); ///< Set the time dependent profiles.
 
     void calcFlux(double * const, const double * const,
                   const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.

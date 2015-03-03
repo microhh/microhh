@@ -54,12 +54,12 @@ DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 DiffSmag2::~DiffSmag2()
 {
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 }
 
 #ifndef USECUDA
-unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
+unsigned long DiffSmag2::get_time_limit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
   double dnmul;
@@ -642,7 +642,7 @@ double DiffSmag2::calc_dnmul(double * restrict evisc, double * restrict dzi, dou
 }
 
 #ifndef USECUDA
-void DiffSmag2::prepareDevice()
+void DiffSmag2::prepare_device()
 {
 }
 #endif

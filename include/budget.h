@@ -42,7 +42,7 @@ class Budget
     void init();
     void create();
 
-    void execStats(Mask *);
+    void exec_stats(Mask *);
 
   private:
     Model  *model;

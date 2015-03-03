@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     master.start(argc, argv);
 
     // Print the current version of the model.
-    master.printMessage("Microhh git-hash: " GITHASH "\n");
+    master.print_message("Microhh git-hash: " GITHASH "\n");
 
     // Initialize the input class and read the input data from disk.
     Input input(&master);
@@ -79,4 +79,3 @@ int main(int argc, char *argv[])
   // Return 0 in case of normal exit.
   return 0;
 }
-

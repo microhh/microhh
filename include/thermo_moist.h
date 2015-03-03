@@ -40,10 +40,10 @@ class ThermoMoist : public Thermo
     virtual void init();
     virtual void create(Input *);
     virtual void exec();
-    virtual void getMask(Field3d *, Field3d *, Mask *);
-    virtual void execStats(Mask *);
-    virtual void execCross();
-    virtual void execDump();
+    virtual void get_mask(Field3d *, Field3d *, Mask *);
+    virtual void exec_stats(Mask *);
+    virtual void exec_cross();
+    virtual void exec_dump();
 
     // functions to retrieve buoyancy properties, to be called from other classes
     virtual bool checkThermoField(std::string name);
@@ -54,8 +54,8 @@ class ThermoMoist : public Thermo
 
     #ifdef USECUDA
     // GPU functions and variables
-    void prepareDevice();
-    void clearDevice();
+    void prepare_device();
+    void clear_device();
     #endif
 
   private:

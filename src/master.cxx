@@ -24,7 +24,7 @@
 #include <cstdio>
 #include "master.h"
 
-void Master::printMessage(const char *format, ...)
+void Master::print_message(const char *format, ...)
 {
   if(mpiid == 0)
   {
@@ -35,7 +35,7 @@ void Master::printMessage(const char *format, ...)
   }
 }
 
-void Master::printWarning(const char *format, ...)
+void Master::print_warning(const char *format, ...)
 {
   std::string warningstr("WARNING: ");
   warningstr += std::string(format);
@@ -51,7 +51,7 @@ void Master::printWarning(const char *format, ...)
   }
 }
 
-void Master::printError(const char *format, ...)
+void Master::print_error(const char *format, ...)
 {
   std::string errorstr("ERROR: ");
   errorstr += std::string(format);

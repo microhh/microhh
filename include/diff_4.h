@@ -35,7 +35,7 @@ class Diff4 : public Diff
     void setValues();
     void exec();
 
-    unsigned long getTimeLimit(unsigned long, double);
+    unsigned long get_time_limit(unsigned long, double);
     double get_dn(double);
 
   private:

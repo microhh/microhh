@@ -58,7 +58,7 @@ Buffer::~Buffer()
     delete[] it->second;
 
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 }
 
@@ -117,7 +117,7 @@ void Buffer::create(Input *inputin)
     if(bufferkstarth == grid->kend)
     {
       ++nerror;
-      master->printError("buffer is too close to the model top\n");
+      master->print_error("buffer is too close to the model top\n");
     }
   }
 

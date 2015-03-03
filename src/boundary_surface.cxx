@@ -100,7 +100,7 @@ void Boundary_surface::init(Input *inputin)
     // crash in case fixed gradient is prescribed
     if(mbcbot == Neumann_type)
     {
-        master->printError("Neumann bc is not supported in surface model\n");
+        master->print_error("Neumann bc is not supported in surface model\n");
         ++nerror;
     }
     // read the ustar value only if fixed fluxes are prescribed
@@ -113,14 +113,14 @@ void Boundary_surface::init(Input *inputin)
         // crash in case fixed gradient is prescribed
         if(it->second->bcbot == Neumann_type)
         {
-            master->printError("fixed gradient bc is not supported in surface model\n");
+            master->print_error("fixed gradient bc is not supported in surface model\n");
             ++nerror;
         }
 
         // crash in case of fixed momentum flux and dirichlet bc for scalar
         if(it->second->bcbot == Dirichlet_type && mbcbot == Ustar_type)
         {
-            master->printError("fixed Ustar bc in combination with Dirichlet bc for scalars is not supported\n");
+            master->print_error("fixed Ustar bc in combination with Dirichlet bc for scalars is not supported\n");
             ++nerror;
         }
     }
@@ -140,7 +140,7 @@ void Boundary_surface::init(Input *inputin)
         if(sbc[*it]->bcbot != thermobc)
         {
             ++nerror;
-            master->printError("all thermo variables need to have the same bc type\n");
+            master->print_error("all thermo variables need to have the same bc type\n");
         }
         ++it;
     }

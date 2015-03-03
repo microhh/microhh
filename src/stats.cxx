@@ -52,7 +52,7 @@ Stats::Stats(Model *modelin, Input *inputin)
   if(!(swstats == "0" || swstats == "1" ))
   {
     ++nerror;
-    master->printError("\"%s\" is an illegal value for swstats\n", swstats.c_str());
+    master->print_error("\"%s\" is an illegal value for swstats\n", swstats.c_str());
   }
 
   if(nerror)
@@ -113,7 +113,7 @@ void Stats::create(int n)
       m->dataFile = new NcFile(filename, NcFile::New);
       if(!m->dataFile->is_valid())
       {
-        master->printError("cannot write statistics file\n");
+        master->print_error("cannot write statistics file\n");
         ++nerror;
       }
     }
@@ -162,7 +162,7 @@ void Stats::create(int n)
   addProf("areah", "Fractional area contained in mask", "-", "zh");
 }
 
-unsigned long Stats::getTimeLimit(unsigned long itime)
+unsigned long Stats::get_time_limit(unsigned long itime)
 {
   if(swstats == "0")
     return constants::ulhuge;
@@ -194,7 +194,7 @@ void Stats::exec(int iteration, double time, unsigned long itime)
     return;
 
   // write message in case stats is triggered
-  master->printMessage("Saving stats for time %f\n", model->timeloop->get_time());
+  master->print_message("Saving stats for time %f\n", model->timeloop->get_time());
 
   for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
@@ -330,7 +330,7 @@ void Stats::addTimeSeries(std::string name, std::string longname, std::string un
     throw 1;
 }
 
-void Stats::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
+void Stats::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   calcMask(mfield->data, mfieldh->data, mfieldh->databot,
            nmask, nmaskh, &nmaskbot);

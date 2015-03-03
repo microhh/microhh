@@ -39,12 +39,12 @@ class Thermo
     virtual void init();
     virtual void create(Input *);
     virtual void exec();
-    virtual void execStats(Mask *);
+    virtual void exec_stats(Mask *);
 
-    virtual void execCross();
-    virtual void execDump();
+    virtual void exec_cross();
+    virtual void exec_dump();
 
-    virtual void getMask(Field3d *, Field3d *, Mask *);
+    virtual void get_mask(Field3d *, Field3d *, Mask *);
 
     // interfacing functions to get buoyancy properties from other classes
     virtual bool checkThermoField(std::string name);
@@ -56,8 +56,8 @@ class Thermo
     std::string getSwitch();
 
     // GPU functions and variables
-    virtual void prepareDevice();
-    virtual void clearDevice();
+    virtual void prepare_device();
+    virtual void clear_device();
 
   protected:
     Grid   *grid;

@@ -91,7 +91,7 @@ Grid::Grid(Model *modelin, Input *inputin)
 
   if(!(swspatialorder == "2" || swspatialorder == "4"))
   {
-    master->printError("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+    master->print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
     throw 1;
   }
  
@@ -145,7 +145,7 @@ Grid::~Grid()
   fftw_cleanup();
 
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 
   exitMpi();
@@ -160,28 +160,28 @@ void Grid::init()
   // Check whether the grid fits the processor configuration.
   if(itot % master->npx != 0)
   {
-    master->printError("itot = %d is not a multiple of npx = %d\n", itot, master->npx);
+    master->print_error("itot = %d is not a multiple of npx = %d\n", itot, master->npx);
     throw 1;
   }
   if(itot % master->npy != 0)
   {
-    master->printError("itot = %d is not a multiple of npy = %d\n", itot, master->npy);
+    master->print_error("itot = %d is not a multiple of npy = %d\n", itot, master->npy);
     throw 1;
   }
   // Check this one only when npy > 1, since the transpose in that direction only happens then.
   if(jtot % master->npx != 0)
   {
-    master->printError("jtot = %d is not a multiple of npx = %d\n", jtot, master->npx);
+    master->print_error("jtot = %d is not a multiple of npx = %d\n", jtot, master->npx);
     throw 1;
   }
   if(jtot % master->npy != 0)
   {
-    master->printError("jtot = %d is not a multiple of npy = %d\n", jtot, master->npy);
+    master->print_error("jtot = %d is not a multiple of npy = %d\n", jtot, master->npy);
     throw 1;
   }
   if(ktot % master->npx != 0)
   {
-    master->printError("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, master->npx);
+    master->print_error("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, master->npx);
     throw 1;
   }
 
@@ -252,7 +252,7 @@ void Grid::create(Input *inputin)
 
   if(z[kend-1] > zsize)
   {
-    master->printError("Highest grid point is above prescribed zsize\n");
+    master->print_error("Highest grid point is above prescribed zsize\n");
     throw 1;
   }
 

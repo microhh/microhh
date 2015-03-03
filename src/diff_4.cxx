@@ -54,7 +54,7 @@ void Diff4::setValues()
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
-unsigned long Diff4::getTimeLimit(unsigned long idt, double dt)
+unsigned long Diff4::get_time_limit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 

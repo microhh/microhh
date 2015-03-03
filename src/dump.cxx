@@ -70,11 +70,11 @@ void Dump::create()
   if(dumplist.size() > 0)
   {
     for(std::vector<std::string>::const_iterator it=dumplist.begin(); it!=dumplist.end(); ++it)
-      master->printWarning("field %s in [dump][dumplist] is illegal\n", it->c_str());
+      master->print_warning("field %s in [dump][dumplist] is illegal\n", it->c_str());
   } 
 }
 
-unsigned long Dump::getTimeLimit(unsigned long itime)
+unsigned long Dump::get_time_limit(unsigned long itime)
 {
   if(swdump == "0")
     return constants::ulhuge;
@@ -111,15 +111,15 @@ void Dump::saveDump(double * restrict data, double * restrict tmp, std::string v
   char filename[256];
 
   std::sprintf(filename, "%s.%07d", varname.c_str(), model->timeloop->get_iotime());
-  master->printMessage("Saving \"%s\" ... ", filename);
+  master->print_message("Saving \"%s\" ... ", filename);
 
   if(grid->saveField3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))
   {
-    master->printMessage("FAILED\n");
+    master->print_message("FAILED\n");
     throw 1;
   }  
   else
   {
-    master->printMessage("OK\n");
+    master->print_message("OK\n");
   }
 }

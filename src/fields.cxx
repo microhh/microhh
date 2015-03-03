@@ -131,7 +131,7 @@ Fields::~Fields()
   delete[] vmodel;
 
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 }
 
@@ -259,7 +259,7 @@ void Fields::exec()
 }
 #endif
 
-void Fields::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
+void Fields::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if(m->name == "wplus")
     calcMask_wplus(mfield->data, mfieldh->data, mfieldh->databot, 
@@ -389,7 +389,7 @@ void Fields::calcMask_wmin(double * restrict mask, double * restrict maskh, doub
   *nmaskbot = nmaskh[grid->kstart];
 }
 
-void Fields::execStats(Mask *m)
+void Fields::exec_stats(Mask *m)
 {
   // define locations
   const int uloc[] = {1,0,0};
@@ -573,7 +573,7 @@ void Fields::initMomentumField(Field3d *&fld, Field3d *&fldt, std::string fldnam
 {
   if(mp.find(fldname)!=mp.end())
   {
-    master->printError("\"%s\" already exists\n", fldname.c_str());
+    master->print_error("\"%s\" already exists\n", fldname.c_str());
     throw 1;
   }
 
@@ -601,7 +601,7 @@ void Fields::initPrognosticField(std::string fldname, std::string longname, std:
 {
   if(sp.find(fldname)!=sp.end())
   {
-    master->printError("\"%s\" already exists\n", fldname.c_str());
+    master->print_error("\"%s\" already exists\n", fldname.c_str());
     throw 1;
   }
   
@@ -625,7 +625,7 @@ void Fields::initDiagnosticField(std::string fldname,std::string longname, std::
 {
   if(sd.find(fldname)!=sd.end())
   {
-    master->printError("\"%s\" already exists\n", fldname.c_str());
+    master->print_error("\"%s\" already exists\n", fldname.c_str());
     throw 1;
   }
 
@@ -637,7 +637,7 @@ void Fields::initTmpField(std::string fldname,std::string longname, std::string 
 {
   if(atmp.find(fldname)!=atmp.end())
   {
-    master->printError("\"%s\" already exists\n", fldname.c_str());
+    master->print_error("\"%s\" already exists\n", fldname.c_str());
     throw 1;
   }
 
@@ -715,7 +715,7 @@ int Fields::randomize(Input *inputin, std::string fld, double * restrict data)
 
   if(kendrnd > grid->kend)
   {
-    master->printError("randomizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
+    master->print_error("randomizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
     return 1;
   }
   
@@ -810,15 +810,15 @@ void Fields::load(int n)
     // the offset is kept at zero, otherwise bitwise identical restarts is not possible
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-    master->printMessage("Loading \"%s\" ... ", filename);
+    master->print_message("Loading \"%s\" ... ", filename);
     if(grid->loadField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
     {
-      master->printMessage("FAILED\n");
+      master->print_message("FAILED\n");
       ++nerror;
     }
     else
     {
-      master->printMessage("OK\n");
+      master->print_message("OK\n");
     }  
   }
 
@@ -901,17 +901,17 @@ void Fields::save(int n)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
-    master->printMessage("Saving \"%s\" ... ", filename);
+    master->print_message("Saving \"%s\" ... ", filename);
 
     // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
     if(grid->saveField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
     {
-      master->printMessage("FAILED\n");
+      master->print_message("FAILED\n");
       ++nerror;
     }  
     else
     {
-      master->printMessage("OK\n");
+      master->print_message("OK\n");
     }
   }
 
@@ -1030,7 +1030,7 @@ double Fields::calcTke_2nd(double * restrict u, double * restrict v, double * re
   return tke;
 }
 
-void Fields::execCross()
+void Fields::exec_cross()
 {
   int nerror = 0;
 
@@ -1058,7 +1058,7 @@ void Fields::execCross()
     throw 1;
 }
 
-void Fields::execDump()
+void Fields::exec_dump()
 {
   for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
     model->dump->saveDump(sd[*it]->data, atmp["tmp1"]->data, *it);

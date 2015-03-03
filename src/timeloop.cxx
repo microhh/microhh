@@ -71,7 +71,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   // 3 and 4 are the only valid values for the rkorder
   if(!(rkorder == 3 || rkorder == 4))
   {
-    master->printError("\"%d\" is an illegal value for rkorder\n", rkorder);
+    master->print_error("\"%d\" is an illegal value for rkorder\n", rkorder);
     throw 1;
   }
 
@@ -100,7 +100,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   // check whether starttime and savetime are an exact multiple of iotimeprec
   if((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
   {
-    master->printError("starttime or savetime is not an exact multiple of iotimeprec\n");
+    master->print_error("starttime or savetime is not an exact multiple of iotimeprec\n");
     throw 1;
   }
 
@@ -165,7 +165,7 @@ bool Timeloop::doSave()
   // but only at a time step where actual saves can be made.
   if(itime % iiotimeprec == 0 && !inSubStep() && master->atWallClockLimit())
   {
-    master->printWarning("Simulation will be stopped after saving the restart files due to wall clock limit\n");
+    master->print_warning("Simulation will be stopped after saving the restart files due to wall clock limit\n");
 
     // Stop looping
     loop = false;
@@ -205,7 +205,7 @@ void Timeloop::setTimeStep()
   {
     if(idt == 0)
     {
-      master->printError("Required time step less than precision %E of the time stepping\n", 1./ifactor);
+      master->print_error("Required time step less than precision %E of the time stepping\n", 1./ifactor);
       throw 1;
     }
     idt = idtlim;
@@ -366,14 +366,14 @@ void Timeloop::save(int starttime)
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
 
-    master->printMessage("Saving \"%s\" ... ", filename);
+    master->print_message("Saving \"%s\" ... ", filename);
 
     FILE *pFile;
     pFile = fopen(filename, "wbx");
 
     if(pFile == NULL)
     {
-      master->printMessage("FAILED\n", filename);
+      master->print_message("FAILED\n", filename);
       ++nerror;
     }
     else
@@ -383,7 +383,7 @@ void Timeloop::save(int starttime)
       fwrite(&iteration, sizeof(int), 1, pFile);
 
       fclose(pFile);
-      master->printMessage("OK\n");
+      master->print_message("OK\n");
     }
   }
 
@@ -402,14 +402,14 @@ void Timeloop::load(int starttime)
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
 
-    master->printMessage("Loading \"%s\" ... ", filename);
+    master->print_message("Loading \"%s\" ... ", filename);
 
     FILE *pFile;
     pFile = fopen(filename, "rb");
 
     if(pFile == NULL)
     {
-      master->printError("\"%s\" does not exist\n", filename);
+      master->print_error("\"%s\" does not exist\n", filename);
       ++nerror;
     }
     else
@@ -420,7 +420,7 @@ void Timeloop::load(int starttime)
 
       fclose(pFile);
     }
-    master->printMessage("OK\n");
+    master->print_message("OK\n");
   }
 
   master->broadcast(&nerror, 1);

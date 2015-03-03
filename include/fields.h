@@ -47,8 +47,8 @@ class Fields
     void createStats();   ///< Initialization of the fields statistics.
 
     void exec();
-    void getMask(Field3d *, Field3d *, Mask *);
-    void execStats(Mask *);
+    void get_mask(Field3d *, Field3d *, Mask *);
+    void exec_stats(Mask *);
 
     void initMomentumField  (Field3d*&, Field3d*&, std::string, std::string, std::string);
     void initPrognosticField(std::string, std::string, std::string);
@@ -64,8 +64,8 @@ class Fields
 
     void set_calcMeanProfs(bool);
 
-    void execCross();
-    void execDump();
+    void exec_cross();
+    void exec_dump();
 
     Field3d *u; ///< Field3d instance of x velocity component
     Field3d *v; ///< Field3d instance of y velocity component
@@ -99,10 +99,10 @@ class Fields
      */
     enum OffsetType {Offset, NoOffset};
 
-    void prepareDevice();  ///< Allocation of all fields at device 
+    void prepare_device();  ///< Allocation of all fields at device 
     void forwardDevice();  ///< Copy of all fields from host to device
-    void backwardDevice(); ///< Copy of all fields required for statistics and output from device to host
-    void clearDevice();    ///< Deallocation of all fields at device
+    void backward_device(); ///< Copy of all fields required for statistics and output from device to host
+    void clear_device();    ///< Deallocation of all fields at device
 
     void forwardFieldDevice_3d (double *, double *, OffsetType); ///< Copy of a single 3d field from host to device
     void forwardFieldDevice_2d (double *, double *, OffsetType); ///< Copy of a single 2d field from host to device

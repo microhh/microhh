@@ -81,13 +81,13 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
 
   if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
   {
-    master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
+    master->print_error("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
     throw 1;
   }
    
   if(grid->swspatialorder == "4" && swbasestate == "anelastic")
   {
-    master->printError("Anelastic mode is not supported for swspatialorder=4\n");
+    master->print_error("Anelastic mode is not supported for swspatialorder=4\n");
     throw 1;
   }
 
@@ -119,7 +119,7 @@ ThermoMoist::~ThermoMoist()
   delete[] prefh;
 
   #ifdef USECUDA
-  clearDevice();
+  clear_device();
   #endif
 }
 
@@ -230,7 +230,7 @@ void ThermoMoist::exec()
 }
 #endif
 
-void ThermoMoist::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
+void ThermoMoist::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if(m->name == "ql")
   {
@@ -378,7 +378,7 @@ void ThermoMoist::calcMask_qlcore(double * restrict mask, double * restrict mask
   *nmaskbot = nmaskh[grid->kstart];
 }
 
-void ThermoMoist::execStats(Mask *m)
+void ThermoMoist::exec_stats(Mask *m)
 {
   const double NoOffset = 0.;
 
@@ -475,7 +475,7 @@ void ThermoMoist::execStats(Mask *m)
   }
 }
 
-void ThermoMoist::execCross()
+void ThermoMoist::exec_cross()
 {
   int nerror = 0;
 
@@ -525,7 +525,7 @@ void ThermoMoist::execCross()
     throw 1;
 }
 
-void ThermoMoist::execDump()
+void ThermoMoist::exec_dump()
 {
   for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
   {

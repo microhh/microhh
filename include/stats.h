@@ -70,8 +70,8 @@ class Stats
     void init(double);
     void create(int);
 
-    unsigned long getTimeLimit(unsigned long);
-    void getMask(Field3d *, Field3d *, Mask *);
+    unsigned long get_time_limit(unsigned long);
+    void get_mask(Field3d *, Field3d *, Mask *);
     void exec(int, double, unsigned long);
     bool doStats();
     std::string getSwitch();

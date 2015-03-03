@@ -102,10 +102,10 @@ Model::Model(Master *masterin, Input *inputin)
          *it != "ql"    &&
          *it != "qlcore")
       {
-        master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
+        master->print_warning("%s is an undefined mask for conditional statistics\n", it->c_str());
       }
       else if((*it == "ql" || *it == "qlcore") && thermo->getSwitch() != "moist")
-        master->printWarning("%s mask only works for swthermo=moist \n", it->c_str());
+        master->print_warning("%s mask only works for swthermo=moist \n", it->c_str());
       else
         stats->addMask(*it);
     }
@@ -217,23 +217,23 @@ void Model::exec()
 {
   #ifdef USECUDA
   // Load all the necessary data to the GPU.
-  master  ->printMessage("Preparing the GPU\n");
-  grid    ->prepareDevice();
-  fields  ->prepareDevice();
-  buffer  ->prepareDevice();
-  thermo  ->prepareDevice();
-  boundary->prepareDevice();
-  diff    ->prepareDevice();
-  force   ->prepareDevice();
+  master  ->print_message("Preparing the GPU\n");
+  grid    ->prepare_device();
+  fields  ->prepare_device();
+  buffer  ->prepare_device();
+  thermo  ->prepare_device();
+  boundary->prepare_device();
+  diff    ->prepare_device();
+  force   ->prepare_device();
   // Prepare pressure last, for memory check
-  pres    ->prepareDevice(); 
+  pres    ->prepare_device(); 
   #endif
 
-  master->printMessage("Starting time integration\n");
+  master->print_message("Starting time integration\n");
 
   // Update the time dependent parameters.
   boundary->update_time_dep();
-  force   ->updateTimeDep();
+  force   ->update_time_dep();
 
   // Set the boundary conditions.
   boundary->exec();
@@ -278,8 +278,8 @@ void Model::exec()
       // Copy fields from device to host
       if(stats->doStats() || cross->doCross() || dump->doDump())
       {
-        fields  ->backwardDevice();
-        boundary->backwardDevice();
+        fields  ->backward_device();
+        boundary->backward_device();
       }
       #endif
 
@@ -287,7 +287,7 @@ void Model::exec()
       if(stats->doStats())
       {
         // Always process the default mask (the full field)
-        stats->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
+        stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
         calcStats("default");
 
         // Work through the potential masks for the statistics.
@@ -295,12 +295,12 @@ void Model::exec()
         {
           if(*it == "wplus" || *it == "wmin")
           {
-            fields->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            fields->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
             calcStats(*it);
           }
           else if(*it == "ql" || *it == "qlcore")
           {
-            thermo->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            thermo->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
             calcStats(*it);
           }
         }
@@ -312,16 +312,16 @@ void Model::exec()
       // Save the selected cross sections to disk, cross sections are handled on CPU.
       if(cross->doCross())
       {
-        fields  ->execCross();
-        thermo  ->execCross();
+        fields  ->exec_cross();
+        thermo  ->exec_cross();
         boundary->exec_cross();
       }
 
       // Save the 3d dumps to disk
       if(dump->doDump())
       {
-        fields->execDump();
-        thermo->execDump();
+        fields->exec_dump();
+        thermo->exec_dump();
       }
     }
 
@@ -342,7 +342,7 @@ void Model::exec()
       if(timeloop->doSave())
       {
         #ifdef USECUDA
-        fields  ->backwardDevice();
+        fields  ->backward_device();
         boundary->backward_device();
         #endif
 
@@ -369,7 +369,7 @@ void Model::exec()
 
     // Update the time dependent parameters.
     boundary->update_time_dep();
-    force   ->updateTimeDep();
+    force   ->update_time_dep();
 
     // Set the boundary conditions.
     boundary->exec();
@@ -387,7 +387,7 @@ void Model::exec()
 
   #ifdef USECUDA
   // At the end of the run, copy the data back from the GPU.
-  fields  ->backwardDevice();
+  fields  ->backward_device();
   boundary->backward_device();
   #endif
 }
@@ -401,10 +401,10 @@ void Model::setTimeStep()
   // Retrieve the maximum allowed time step per class.
   timeloop->setTimeStepLimit();
   timeloop->setTimeStepLimit(advec->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-  timeloop->setTimeStepLimit(diff ->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
-  timeloop->setTimeStepLimit(stats->getTimeLimit(timeloop->get_itime()));
-  timeloop->setTimeStepLimit(cross->getTimeLimit(timeloop->get_itime()));
-  timeloop->setTimeStepLimit(dump ->getTimeLimit(timeloop->get_itime()));
+  timeloop->setTimeStepLimit(diff ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->setTimeStepLimit(stats->get_time_limit(timeloop->get_itime()));
+  timeloop->setTimeStepLimit(cross->get_time_limit(timeloop->get_itime()));
+  timeloop->setTimeStepLimit(dump ->get_time_limit(timeloop->get_itime()));
 
   // Set the time step.
   timeloop->setTimeStep();
@@ -413,9 +413,9 @@ void Model::setTimeStep()
 // Calculate the statistics for all classes that have a statistics function.
 void Model::calcStats(std::string maskname)
 {
-  fields  ->execStats(&stats->masks[maskname]);
-  thermo  ->execStats(&stats->masks[maskname]);
-  budget  ->execStats(&stats->masks[maskname]);
+  fields  ->exec_stats(&stats->masks[maskname]);
+  thermo  ->exec_stats(&stats->masks[maskname]);
+  budget  ->exec_stats(&stats->masks[maskname]);
   boundary->exec_stats(&stats->masks[maskname]);
 }
 
