@@ -34,20 +34,21 @@ class Input;
 class Advec_2 : public Advec
 {
     public:
-        Advec_2(Model *, Input *); ///< Constructor of the advection class.
-        ~Advec_2();                ///< Destructor of the advection class.
+        Advec_2(Model*, Input*); ///< Constructor of the advection class.
+        ~Advec_2();              ///< Destructor of the advection class.
 
         void exec(); ///< Execute the advection scheme.
 
         unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-        double get_cfl(double);                                 ///< Get the CFL number.
+
+        double get_cfl(double); ///< Get the CFL number.
 
     private:
-        double calc_cfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
+        double calc_cfl(double*, double*, double*, double*, double); ///< Calculate the CFL number.
 
-        void advec_u(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
-        void advec_v(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
-        void advec_w(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
-        void advec_s(double *, double *, double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
+        void advec_u(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate longitudinal velocity advection.
+        void advec_v(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate latitudinal velocity advection.
+        void advec_w(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate vertical velocity advection.
+        void advec_s(double*, double*, double*, double*, double*, double*, double*, double*); ///< Calculate scalar advection.
 };
 #endif

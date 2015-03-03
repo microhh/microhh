@@ -400,7 +400,7 @@ void Model::setTimeStep()
 
   // Retrieve the maximum allowed time step per class.
   timeloop->setTimeStepLimit();
-  timeloop->setTimeStepLimit(advec->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->setTimeStepLimit(advec->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
   timeloop->setTimeStepLimit(diff ->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
   timeloop->setTimeStepLimit(stats->getTimeLimit(timeloop->get_itime()));
   timeloop->setTimeStepLimit(cross->getTimeLimit(timeloop->get_itime()));

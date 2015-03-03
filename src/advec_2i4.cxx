@@ -40,7 +40,7 @@ Advec_2i4::Advec_2i4(Model* modelin, Input* inputin) : Advec(modelin, inputin)
     const int jgc = 2;
     const int kgc = 2;
 
-    grid->setGhostCellsMin(igc, jgc, kgc);
+    grid->set_minimum_ghost_cells(igc, jgc, kgc);
 }
 
 Advec_2i4::~Advec_2i4()
@@ -50,15 +50,10 @@ Advec_2i4::~Advec_2i4()
 #ifndef USECUDA
 unsigned long Advec_2i4::get_time_limit(unsigned long idt, double dt)
 {
-    unsigned long idtlim;
-    double cfl;
-
-    cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+    double cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
     // Avoid zero divisons.
     cfl = std::max(cflmin, cfl);
-    idtlim = idt * cflmax / cfl;
-
-    return idtlim;
+    return idt * cflmax / cfl;
 }
 #endif
 

@@ -403,7 +403,7 @@ void Grid::calculate()
  * @param jgc Ghost cells in the y-direction.
  * @param kgc Ghost cells in the z-direction.
  */
-void Grid::setGhostCellsMin(const int igcin, const int jgcin, const int kgcin)
+void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int kgcin)
 {
   igc = std::max(igc, igcin);
   jgc = std::max(jgc, jgcin);

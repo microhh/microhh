@@ -34,10 +34,12 @@
 using namespace fd::o2;
 
 Advec_2::Advec_2(Model* modelin, Input* inputin) : Advec(modelin, inputin)
-{}
+{
+}
 
 Advec_2::~Advec_2()
-{}
+{
+}
 
 #ifndef USECUDA
 double Advec_2::get_cfl(double dt)
@@ -45,18 +47,12 @@ double Advec_2::get_cfl(double dt)
     return calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
 }
 
-unsigned long Advec_2::getTimeLimit(unsigned long idt, double dt)
+unsigned long Advec_2::get_time_limit(unsigned long idt, double dt)
 {
-    unsigned long idtlim;
-    double cfl;
-
     // Calculate cfl and prevent zero divisons.
-    cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+    double cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
     cfl = std::max(cflmin, cfl);
-
-    idtlim = idt * cflmax / cfl;
-
-    return idtlim;
+    return idt * cflmax / cfl;
 }
 
 void Advec_2::exec()
@@ -129,8 +125,8 @@ void Advec_2::advec_u(double* restrict ut, double* restrict u, double* restrict 
             }
 }
 
-void Advec_2::advecv(double* restrict vt, double* restrict u, double* restrict v, double* restrict w,
-                     double* restrict dzi, double* restrict rhoref, double* restrict rhorefh)
+void Advec_2::advec_v(double* restrict vt, double* restrict u, double* restrict v, double* restrict w,
+                      double* restrict dzi, double* restrict rhoref, double* restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;

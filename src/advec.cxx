@@ -35,63 +35,59 @@
 #include "advec_4.h"
 #include "advec_4m.h"
 
-Advec::Advec(Model *modelin, Input *inputin)
+Advec::Advec(Model* modelin, Input* inputin)
 {
-  model  = modelin;
-  grid   = model->grid;
-  fields = model->fields;
-  master = model->master;
+    model  = modelin;
+    grid   = model->grid;
+    fields = model->fields;
+    master = model->master;
 
-  int nerror = 0;
-  nerror += inputin->getItem(&cflmax, "advec", "cflmax", "", 1.);
+    int nerror = 0;
+    nerror += inputin->getItem(&cflmax, "advec", "cflmax", "", 1.);
 
-  if(nerror)
-    throw 1;
+    if(nerror)
+        throw 1;
 }
 
 Advec::~Advec()
 {
 }
 
-unsigned long Advec::getTimeLimit(unsigned long idt, double dt)
+unsigned long Advec::get_time_limit(unsigned long idt, const double dt)
 {
-  unsigned long idtlim = (unsigned long) constants::dbig;
-
-  return idtlim;
+    unsigned long idtlim = (unsigned long) constants::dbig;
+    return idtlim;
 }
 
-double Advec::get_cfl(double dt)
+double Advec::get_cfl(const double dt)
 {
-  double cfl;
-  cfl = cflmin;
-  return cfl;
+    return cflmin;
 }
 
 void Advec::exec()
-{
-}
+{}
 
-Advec* Advec::factory(Master *masterin, Input *inputin, Model *modelin, const std::string swspatialorder)
+Advec* Advec::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
 {
-  std::string swadvec;
-  if(inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
-    throw 1;
+    std::string swadvec;
+    if(inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
+        throw 1;
 
-  if(swadvec == "0")
-    return new Advec(modelin, inputin);
-  else if(swadvec == "2")
-    return new Advec2(modelin, inputin);
-  else if(swadvec == "2i4")
-    return new Advec2i4(modelin, inputin);
-  else if(swadvec == "4")
-    return new Advec4(modelin, inputin);
-  else if(swadvec == "4m")
-    return new Advec4m(modelin, inputin);
-  else
-  {
-    masterin->printError("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
-    throw 1;
-  }
+    if(swadvec == "0")
+        return new Advec(modelin, inputin);
+    else if(swadvec == "2")
+        return new Advec_2(modelin, inputin);
+    else if(swadvec == "2i4")
+        return new Advec_2i4(modelin, inputin);
+    else if(swadvec == "4")
+        return new Advec_4(modelin, inputin);
+    else if(swadvec == "4m")
+        return new Advec_4m(modelin, inputin);
+    else
+    {
+        masterin->printError("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
+        throw 1;
+    }
 }
 
 const double Advec::cflmin = 1.E-5;
