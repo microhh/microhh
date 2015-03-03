@@ -29,27 +29,28 @@
 /**
  * Derived class for 4th order advection scheme.
  */
-class Advec4 : public Advec
+class Advec_4 : public Advec
 {
-  public:
-    Advec4(Model *, Input *); ///< Constructor of the advection class.
-    ~Advec4();                ///< Destructor of the advection class.
+    public:
+        Advec_4(Model*, Input*); ///< Constructor of the advection class.
+        ~Advec_4();              ///< Destructor of the advection class.
 
-    void exec(); ///< Execute the advection scheme.
+        void exec(); ///< Execute the advection scheme.
 
-    unsigned long getTimeLimit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-    double get_cfl(double); ///< Get the CFL number.
+        unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
 
-  private:
-    double calc_cfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
+        double get_cfl(double); ///< Get the CFL number.
 
-    template<bool>
-    void advecu(double * restrict, double * restrict, double * restrict, double * restrict, double * restrict); ///< Calculate longitudinal velocity advection.
-    template<bool>
-    void advecv(double * restrict, double * restrict, double * restrict, double * restrict, double * restrict); ///< Calculate latitudinal velocity advection.
-    template<bool>
-    void advecw(double * restrict, double * restrict, double * restrict, double * restrict, double * restrict); ///< Calculate vertical velocity advection.
-    template<bool>
-    void advecs(double * restrict, double * restrict, double * restrict, double * restrict, double * restrict, double * restrict); ///< Calculate scalar advection.
+    private:
+        double calc_cfl(double*, double*, double*, double*, double); ///< Calculate the CFL number.
+
+        template<bool>
+        void advec_u(double* restrict, double* restrict, double* restrict, double* restrict, double* restrict); ///< Calculate longitudinal velocity advection.
+        template<bool>
+        void advec_v(double* restrict, double* restrict, double* restrict, double* restrict, double* restrict); ///< Calculate latitudinal velocity advection.
+        template<bool>
+        void advec_w(double* restrict, double* restrict, double* restrict, double* restrict, double* restrict); ///< Calculate vertical velocity advection.
+        template<bool>
+        void advec_s(double* restrict, double* restrict, double* restrict, double* restrict, double* restrict, double* restrict); ///< Calculate scalar advection.
 };
 #endif

@@ -39,24 +39,25 @@ class Input;
  */
 class Advec
 {
-  public:
-    Advec(Model *, Input *); ///< Constructor of the advection class.
-    virtual ~Advec();        ///< Destructor of the advection class.
+    public:
+        Advec(Model*, Input*); ///< Constructor of the advection class.
+        virtual ~Advec();      ///< Destructor of the advection class.
 
-    static Advec* factory(Master *, Input *, Model *, const std::string); ///< Factory function for advection class generation.
+        static Advec* factory(Master*, Input*, Model*, const std::string); ///< Factory function for advection class generation.
 
-    virtual void exec(); ///< Execute the advection scheme.
+        virtual void exec(); ///< Execute the advection scheme.
 
-    virtual unsigned long getTimeLimit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-    virtual double get_cfl(double);                            ///< Retrieve the CFL number.
+        virtual unsigned long get_time_limit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
 
-  protected:
-    Master *master; ///< Pointer to master class.
-    Model  *model;  ///< Pointer to model class.
-    Grid   *grid;   ///< Pointer to grid class.
-    Fields *fields; ///< Pointer to fields class.
+        virtual double get_cfl(double); ///< Retrieve the CFL number.
 
-    double cflmax; ///< Maximum allowed value for the CFL criterion.
-    static const double cflmin; ///< Minimum value for CFL used to avoid overflows.
+    protected:
+        Master* master; ///< Pointer to master class.
+        Model*  model;  ///< Pointer to model class.
+        Grid*   grid;   ///< Pointer to grid class.
+        Fields* fields; ///< Pointer to fields class.
+
+        double cflmax; ///< Maximum allowed value for the CFL criterion.
+        static const double cflmin; ///< Minimum value for CFL used to avoid overflows.
 };
 #endif
