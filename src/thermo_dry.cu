@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -29,94 +29,97 @@
 #include "master.h"
 #include "tools.h"
 
-__global__ void thermo_dry_calcbuoyancytend_2nd(double * __restrict__ wt, double * __restrict__ th,
-                                                double * __restrict__ threfh, double grav, 
-                                                int istart, int jstart, int kstart,
-                                                int iend,   int jend,   int kend,
-                                                int jj, int kk)
+namespace ThermoDry_g
 {
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-  int k = blockIdx.z + kstart; 
-
-  if(i < iend && j < jend && k < kend)
+  __global__ void calcBuoyancyTend_2nd(double * __restrict__ wt, double * __restrict__ th,
+                                       double * __restrict__ threfh, 
+                                       int istart, int jstart, int kstart,
+                                       int iend,   int jend,   int kend,
+                                       int jj, int kk)
   {
-    int ijk = i + j*jj + k*kk;
-
-    wt[ijk] += grav/threfh[k] * (0.5*(th[ijk-kk]+th[ijk]) - threfh[k]);
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+    int k = blockIdx.z + kstart; 
+  
+    if(i < iend && j < jend && k < kend)
+    {
+      int ijk = i + j*jj + k*kk;
+  
+      wt[ijk] += constants::grav/threfh[k] * (0.5*(th[ijk-kk]+th[ijk]) - threfh[k]);
+    }
   }
-}
-
-
-__global__ void thermo_dry_calcbuoyancy(double * __restrict__ b, double * __restrict__ th,
-                                        double * __restrict__ thref, 
-                                        int istart, int jstart,
-                                        int iend,   int jend,   int kcells,
-                                        int jj, int kk)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-  int k = blockIdx.z; 
-
-  if(i < iend && j < jend && k < kcells)
+  
+  
+  __global__ void calcBuoyancy(double * __restrict__ b, double * __restrict__ th,
+                               double * __restrict__ thref, 
+                               int istart, int jstart,
+                               int iend,   int jend,   int kcells,
+                               int jj, int kk)
   {
-    int ijk = i + j*jj + k*kk;
-    b[ijk] = constants::grav/thref[k] * (th[ijk] - thref[k]);
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+    int k = blockIdx.z; 
+  
+    if(i < iend && j < jend && k < kcells)
+    {
+      int ijk = i + j*jj + k*kk;
+      b[ijk] = constants::grav/thref[k] * (th[ijk] - thref[k]);
+    }
   }
-}
-
-__global__ void thermo_dry_calcbuoyancybot(double * __restrict__ b,     double * __restrict__ bbot,
-                                           double * __restrict__ th,    double * __restrict__ thbot, 
-                                           double * __restrict__ thref, double * __restrict__ threfh,
-                                           double grav, int kstart, int icells, int jcells,  
-                                           int jj, int kk)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y; 
-
-  if(i < icells && j < jcells)
-  {
-    const int ij  = i + j*jj;
-    const int ijk = i + j*jj + kstart*kk;
-
-    bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
-    b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
-  }
-}
-
-__global__ void thermo_dry_calcbuoyancyfluxbot(double * __restrict__ bfluxbot, double * __restrict__ thfluxbot,
-                                               double * __restrict__ threfh, 
-                                               double grav, int kstart, int icells, int jcells,  
-                                               int jj, int kk)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y; 
-
-  if(i < icells && j < jcells)
-  {
-    const int ij  = i + j*jj;
-    bfluxbot[ij] = grav/threfh[kstart]*thfluxbot[ij];
-  }
-}
-
-__global__ void thermo_dry_calcN2(double * __restrict__ N2, double * __restrict__ th,
-                                  double * __restrict__ thref, double * __restrict__ dzi, 
-                                  int istart, int jstart, int kstart,
-                                  int iend,   int jend,   int kend,
+  
+  __global__ void calcBuoyancyBot(double * __restrict__ b,     double * __restrict__ bbot,
+                                  double * __restrict__ th,    double * __restrict__ thbot, 
+                                  double * __restrict__ thref, double * __restrict__ threfh,
+                                  double grav, int kstart, int icells, int jcells,  
                                   int jj, int kk)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
-  int k = blockIdx.z + kstart; 
-
-  if(i < iend && j < jend && k < kend)
   {
-    int ijk = i + j*jj + k*kk;
-    N2[ijk] = constants::grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+    int i = blockIdx.x*blockDim.x + threadIdx.x; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y; 
+  
+    if(i < icells && j < jcells)
+    {
+      const int ij  = i + j*jj;
+      const int ijk = i + j*jj + kstart*kk;
+  
+      bbot[ij] = grav/threfh[kstart] * (thbot[ij] - threfh[kstart]);
+      b[ijk]   = grav/thref [kstart] * (th[ijk]   - thref [kstart]);
+    }
   }
-}
+  
+  __global__ void calcBuoyancyFluxBot(double * __restrict__ bfluxbot, double * __restrict__ thfluxbot,
+                                      double * __restrict__ threfh, 
+                                      double grav, int kstart, int icells, int jcells,  
+                                      int jj, int kk)
+  {
+    int i = blockIdx.x*blockDim.x + threadIdx.x; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y; 
+  
+    if(i < icells && j < jcells)
+    {
+      const int ij  = i + j*jj;
+      bfluxbot[ij] = grav/threfh[kstart]*thfluxbot[ij];
+    }
+  }
+  
+  __global__ void calcN2(double * __restrict__ N2, double * __restrict__ th,
+                         double * __restrict__ thref, double * __restrict__ dzi, 
+                         int istart, int jstart, int kstart,
+                         int iend,   int jend,   int kend,
+                         int jj, int kk)
+  {
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
+    int k = blockIdx.z + kstart; 
+  
+    if(i < iend && j < jend && k < kend)
+    {
+      int ijk = i + j*jj + k*kk;
+      N2[ijk] = constants::grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+    }
+  }
+} // end namespace
 
-int cthermo_dry::prepareDevice()
+void ThermoDry::prepareDevice()
 {
   const int nmemsize = grid->kcells*sizeof(double);
 
@@ -136,11 +139,9 @@ int cthermo_dry::prepareDevice()
   cudaSafeCall(cudaMemcpy(exner_g,  exner,  nmemsize, cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(exnerh_g, exnerh, nmemsize, cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
-
-  return 0;
 }
 
-int cthermo_dry::clearDevice()
+void ThermoDry::clearDevice()
 {
   cudaSafeCall(cudaFree(thref_g ));
   cudaSafeCall(cudaFree(threfh_g));
@@ -148,15 +149,13 @@ int cthermo_dry::clearDevice()
   cudaSafeCall(cudaFree(prefh_g ));
   cudaSafeCall(cudaFree(exner_g ));
   cudaSafeCall(cudaFree(exnerh_g));
-
-  return 0;
 }
 
 #ifdef USECUDA
-int cthermo_dry::exec()
+void ThermoDry::exec()
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -167,10 +166,10 @@ int cthermo_dry::exec()
 
   if(grid->swspatialorder== "2")
   {
-    thermo_dry_calcbuoyancytend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->s["th"]->data_g[offs], threfh_g, constants::grav, 
-                                                           grid->istart, grid->jstart, grid->kstart+1,
-                                                           grid->iend,   grid->jend, grid->kend,
-                                                           grid->icellsp, grid->ijcellsp);
+    ThermoDry_g::calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["th"]->data_g[offs], threfh_g, 
+                                                             grid->istart, grid->jstart, grid->kstart+1,
+                                                             grid->iend,   grid->jend, grid->kend,
+                                                             grid->icellsp, grid->ijcellsp);
     
     cudaCheckError();
   }
@@ -178,18 +177,15 @@ int cthermo_dry::exec()
   {
     master->printMessage("4th order thermo_dry not (yet) implemented\n");  
     throw 1;
-    //calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
   }
-
-  return 0;
 }
 #endif
 
 #ifdef USECUDA
-int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
+void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -203,31 +199,29 @@ int cthermo_dry::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
 
   if(name == "b")
   {
-    thermo_dry_calcbuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->s["th"]->data_g[offs], 
-                                                   thref_g, grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
-                                                   grid->icellsp, grid->ijcellsp);
+    ThermoDry_g::calcBuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->sp["th"]->data_g[offs], 
+                                                     thref_g, grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
+                                                     grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
   else if(name == "N2")
   {
-    thermo_dry_calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->s["th"]->data_g[offs], thref_g, grid->dzi_g, 
-                                               grid->istart, grid->jstart, grid->kstart, 
-                                               grid->iend,   grid->jend,   grid->kend,
-                                               grid->icellsp, grid->ijcellsp);
+    ThermoDry_g::calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["th"]->data_g[offs], thref_g, grid->dzi_g, 
+                                                 grid->istart, grid->jstart, grid->kstart, 
+                                                 grid->iend,   grid->jend,   grid->kend,
+                                                 grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
   else
-    return 1;
-
-  return 0;
+    throw 1;
 }
 #endif
 
 #ifdef USECUDA
-int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
+void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -236,20 +230,18 @@ int cthermo_dry::getbuoyancyfluxbot(cfield3d *bfield)
   
   const int offs = grid->memoffset;
 
-  thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->s["th"]->datafluxbot_g[offs], 
-                                                        threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
-                                                        grid->icellsp, grid->ijcellsp);
+  ThermoDry_g::calcBuoyancyFluxBot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
+                                                          threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
+                                                          grid->icellsp, grid->ijcellsp);
   cudaCheckError();
-
-  return 0;
 }
 #endif
 
 #ifdef USECUDA
-int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
+void ThermoDry::getBuoyancySurf(Field3d *bfield)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -258,17 +250,15 @@ int cthermo_dry::getbuoyancysurf(cfield3d *bfield)
   
   const int offs = grid->memoffset;
 
-  thermo_dry_calcbuoyancybot<<<gridGPU, blockGPU>>>(&bfield->data_g[offs], &bfield->databot_g[offs], 
-                                                    &fields->s["th"]->data_g[offs], &fields->s["th"]->databot_g[offs],
-                                                    thref_g, threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
-                                                    grid->icellsp, grid->ijcellsp);
+  ThermoDry_g::calcBuoyancyBot<<<gridGPU, blockGPU>>>(&bfield->data_g[offs], &bfield->databot_g[offs], 
+                                                      &fields->sp["th"]->data_g[offs], &fields->sp["th"]->databot_g[offs],
+                                                      thref_g, threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
+                                                      grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
-  thermo_dry_calcbuoyancyfluxbot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->s["th"]->datafluxbot_g[offs], 
-                                                        threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
-                                                        grid->icellsp, grid->ijcellsp);
+  ThermoDry_g::calcBuoyancyFluxBot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
+                                                          threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
+                                                          grid->icellsp, grid->ijcellsp);
   cudaCheckError();
-
-  return 0;
 }
 #endif

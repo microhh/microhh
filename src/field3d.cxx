@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -28,7 +28,7 @@
 #include "field3d.h"
 #include "defines.h"
 
-cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein, std::string longnamein, std::string unitin)
+Field3d::Field3d(Grid *gridin, Master *masterin, std::string namein, std::string longnamein, std::string unitin)
 {
   grid     = gridin;
   name     = namein;
@@ -58,7 +58,7 @@ cfield3d::cfield3d(cgrid *gridin, cmaster *masterin, std::string namein, std::st
 }
 
 #ifndef USECUDA
-cfield3d::~cfield3d()
+Field3d::~Field3d()
 {
   delete[] data;
   delete[] databot;
@@ -70,20 +70,31 @@ cfield3d::~cfield3d()
   delete[] datafluxtop;
 }
 
-int cfield3d::init()
+int Field3d::init()
 {
-  // allocate the memory
-  master->printMessage("Allocating %d bytes of memory for %s\n", grid->ncells*(int)sizeof(double), name.c_str());
-  data = new double[grid->ncells];
+  // Calculate the total field memory size
+  const long fieldMemorySize = (grid->ncells + 6*grid->ijcells + grid->kcells)*sizeof(double);
 
-  // allocate the boundary cells
-  databot = new double[grid->icells*grid->jcells];
-  datatop = new double[grid->icells*grid->jcells];
-  datamean = new double[grid->kcells];
-  datagradbot = new double[grid->icells*grid->jcells];
-  datagradtop = new double[grid->icells*grid->jcells];
-  datafluxbot = new double[grid->icells*grid->jcells];
-  datafluxtop = new double[grid->icells*grid->jcells];
+  // Keep track of the total memory in fields
+  static long totalMemorySize = 0;
+  try
+  {
+    totalMemorySize += fieldMemorySize;
+    // Allocate all fields belonging to the 3d field
+    data = new double[grid->ncells];
+    databot = new double[grid->ijcells];
+    datatop = new double[grid->ijcells];
+    datamean = new double[grid->kcells];
+    datagradbot = new double[grid->ijcells];
+    datagradtop = new double[grid->ijcells];
+    datafluxbot = new double[grid->ijcells];
+    datafluxtop = new double[grid->ijcells];
+  }
+  catch (std::exception &e)
+  {
+    master->printError("Field %s cannot be allocated, total fields memsize %lu is too large\n", name.c_str(), totalMemorySize);
+    throw;
+  }
 
   // set all values to zero
   for(int n=0; n<grid->ncells; n++)
@@ -92,7 +103,7 @@ int cfield3d::init()
   for(int n=0; n<grid->kcells; n++)
     datamean[n] = 0.;
 
-  for(int n=0; n<grid->icells*grid->jcells; n++)
+  for(int n=0; n<grid->ijcells; n++)
   {
     databot    [n] = 0.;
     datatop    [n] = 0.;
@@ -107,7 +118,7 @@ int cfield3d::init()
 #endif
 
 /*
-int cfield3d::checkfornan()
+int Field3d::checkfornan()
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -115,7 +126,7 @@ int cfield3d::checkfornan()
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;

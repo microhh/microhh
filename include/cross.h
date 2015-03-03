@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,40 +25,43 @@
 
 #include <netcdfcpp.h>
 
-// forward declarations to reduce compilation time
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
+class Master;
+class Model;
+class Grid;
+class Fields;
 
-class ccross
+class Cross
 {
   public:
-    ccross(cmodel *, cinput *);
-    ~ccross();
+    Cross(Model *, Input *);
+    ~Cross();
 
     void init(double);
     void create();
+    std::string getSwitch();
+    std::vector<std::string> * getCrossList();
 
-    unsigned long gettimelim(unsigned long);
+    unsigned long getTimeLimit(unsigned long);
     //int exec(double, unsigned long, int);
 
     std::string swcross;
-    int docross();
+    bool doCross();
 
-    int crosssimple (double *, double *, std::string);
-    int crosslngrad (double *, double *, double *, double *, std::string);
-    int crossplane  (double *, double *, std::string);
-    int crosspath   (double *, double *, double *, std::string);
+    int crossSimple(double *, double *, std::string);
+    int crossLngrad(double *, double *, double *, double *, std::string);
+    int crossPlane (double *, double *, std::string);
+    int crossPath  (double *, double *, double *, std::string);
 
   private:
-    cmaster *master;
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
+    Master *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
 
     double sampletime;
     unsigned long isampletime;
+
+    std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
 
     std::vector<int> jxz;   ///< Index of nearest full y position of xz input
     std::vector<int> kxy;   ///< Index of nearest full height level of xy input
@@ -73,7 +76,7 @@ class ccross
     std::vector<std::string> lngrad;
     std::vector<std::string> path;
 
-    int checkList(std::vector<std::string> *, fieldmap *, std::string crossname);
+    int checkList(std::vector<std::string> *, FieldMap *, std::string crossname);
     int checkSave(int, char *);
 };
 #endif

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -30,20 +30,20 @@
 #include "defines.h"
 #include "model.h"
 
-cdiff_2::cdiff_2(cmodel *modelin, cinput *inputin) : cdiff(modelin, inputin)
+Diff2::Diff2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
   swdiff = "2";
 }
 
-cdiff_2::~cdiff_2()
+Diff2::~Diff2()
 {
 }
 
-void cdiff_2::setvalues()
+void Diff2::setValues()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
-  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+  for(FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
     viscmax = std::max(it->second->visc, viscmax);
 
   dnmul = 0;
@@ -51,7 +51,7 @@ void cdiff_2::setvalues()
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
-unsigned long cdiff_2::gettimelim(unsigned long idt, double dt)
+unsigned long Diff2::getTimeLimit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
@@ -60,7 +60,7 @@ unsigned long cdiff_2::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-double cdiff_2::getdn(double dt)
+double Diff2::get_dn(double dt)
 {
   double dn;
 
@@ -70,27 +70,25 @@ double cdiff_2::getdn(double dt)
 }
 
 #ifndef USECUDA
-int cdiff_2::exec()
+void Diff2::exec()
 {
   diffc(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
   diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
   diffw(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc(it->second->data, fields->s[it->first]->data, grid->dzi, grid->dzhi, fields->s[it->first]->visc);
-  
-  return 0;
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sp[it->first]->visc);
 }
 #endif
 
-int cdiff_2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
+void Diff2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxidxi = 1./(grid->dx * grid->dx);
   dyidyi = 1./(grid->dy * grid->dy);
@@ -109,18 +107,16 @@ int cdiff_2::diffc(double * restrict at, double * restrict a, double * restrict 
               + (  (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
                  - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k] );
       }
-
-  return 0;
 }
 
-int cdiff_2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
+void Diff2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxidxi = 1./(grid->dx*grid->dx);
   dyidyi = 1./(grid->dy*grid->dy);
@@ -139,6 +135,4 @@ int cdiff_2::diffw(double * restrict wt, double * restrict w, double * restrict 
               + (  (w[ijk+kk] - w[ijk   ]) * dzi[k]
                  - (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
       }
-
-  return 0;
 }

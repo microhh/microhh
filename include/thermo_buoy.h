@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,10 +25,9 @@
 
 #include "thermo.h"
 
-// forward declarations to speed up build time
-class cmaster;
-class cgrid;
-class cfields;
+class Master;
+class Grid;
+class Fields;
 
 /**
  * Class for the dry thermodynamics.
@@ -36,32 +35,27 @@ class cfields;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-class cthermo_buoy : public cthermo
+class ThermoBuoy : public Thermo
 {
   public:
-    cthermo_buoy(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_buoy();                  ///< Destructor of the dry thermodynamics class.
+    ThermoBuoy(Model *, Input *); ///< Constructor of the dry thermodynamics class.
+    virtual ~ThermoBuoy();                ///< Destructor of the dry thermodynamics class.
 
-    int exec();                ///< Add the tendencies belonging to the buoyancy.
+    virtual void exec();                ///< Add the tendencies belonging to the buoyancy.
 
-    int getbuoyancy(cfield3d *, cfield3d *);     ///< Compute the buoyancy for usage in another routine.
-    int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(cfield3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
-    int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
-    int checkthermofield(std::string name);
-    int getthermofield(cfield3d *, cfield3d *, std::string name);
-
-#ifdef USECUDA
-    // GPU functions and variables
-    int prepareDevice();
-#endif
+    virtual bool checkThermoField(std::string name);
+    virtual void getBuoyancy(Field3d *, Field3d *);       ///< Compute the buoyancy for usage in another routine.
+    virtual void getBuoyancySurf(Field3d *);              ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    virtual void getBuoyancyFluxbot(Field3d *);           ///< Compute the bottom buoyancy flux for usage in another routine.
+    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
+    virtual void getThermoField(Field3d *, Field3d *, std::string name);
 
   private:
-    int calcbuoyancy(double *, double *);         ///< Calculation of the buoyancy.
-    int calcbuoyancybot(double *, double *,
-                        double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
-    int calcbuoyancyfluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-    int calcbuoyancytend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-    int calcbuoyancytend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+    void calcBuoyancy(double *, double *);         ///< Calculation of the buoyancy.
+    void calcBuoyancyBot(double *, double *,
+                         double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
+    void calcBuoyancyFluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
+    void calcBuoyancyTend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+    void calcBuoyancyTend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 };
 #endif

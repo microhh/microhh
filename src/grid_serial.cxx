@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,7 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARALLEL
+#ifndef USEMPI
 #include <fftw3.h>
 #include <cstdio>
 #include "master.h"
@@ -28,96 +28,94 @@
 #include "defines.h"
 
 // MPI functions
-int cgrid::initmpi()
+void Grid::initMpi()
 {
   mpitypes = true;
-  return 0;
 } 
 
-int cgrid::exitmpi()
+void Grid::exitMpi()
 {
-  return 0;
 }
 
-int cgrid::boundary_cyclic(double * restrict data)
+void Grid::boundaryCyclic(double * restrict data, Edge edge)
 {
-  int ncount = 1;
   int ijk0,ijk1,jj,kk;
 
   jj = icells;
   kk = icells*jcells;
 
-  // first, east west boundaries
-  for(int k=0; k<kcells; k++)
-    for(int j=0; j<jcells; j++)
-#pragma ivdep
-      for(int i=0; i<igc; i++)
-      {
-        ijk0 = i          + j*jj + k*kk;
-        ijk1 = iend-igc+i + j*jj + k*kk;
-        data[ijk0] = data[ijk1];
-      }
-
-  for(int k=0; k<kcells; k++)
-    for(int j=0; j<jcells; j++)
-#pragma ivdep
-      for(int i=0; i<igc; i++)
-      {
-        ijk0 = i+iend   + j*jj + k*kk;
-        ijk1 = i+istart + j*jj + k*kk;
-        data[ijk0] = data[ijk1];
-      }
-
-  // if the run is 3D, apply the BCs
-  if(jtot > 1)
+  if(edge == EastWestEdge || edge == BothEdges)
   {
-    // second, send and receive the ghost cells in the north-south direction
+    // first, east west boundaries
     for(int k=0; k<kcells; k++)
-      for(int j=0; j<jgc; j++)
-#pragma ivdep
-        for(int i=0; i<icells; i++)
+      for(int j=0; j<jcells; j++)
+  #pragma ivdep
+        for(int i=0; i<igc; i++)
         {
-          ijk0 = i + j           *jj + k*kk;
-          ijk1 = i + (jend-jgc+j)*jj + k*kk;
+          ijk0 = i          + j*jj + k*kk;
+          ijk1 = iend-igc+i + j*jj + k*kk;
           data[ijk0] = data[ijk1];
         }
 
     for(int k=0; k<kcells; k++)
-      for(int j=0; j<jgc; j++)
+      for(int j=0; j<jcells; j++)
 #pragma ivdep
-        for(int i=0; i<icells; i++)
+        for(int i=0; i<igc; i++)
         {
-          ijk0 = i + (j+jend  )*jj + k*kk;
-          ijk1 = i + (j+jstart)*jj + k*kk;
+          ijk0 = i+iend   + j*jj + k*kk;
+          ijk1 = i+istart + j*jj + k*kk;
           data[ijk0] = data[ijk1];
         }
   }
-  // in case of 2D, fill all the ghost cells with the current value
-  else
+
+  if(edge == NorthSouthEdge || edge == BothEdges)
   {
-    // 2d essential variables
-    int ijkref,ijknorth,ijksouth,jj,kk;
+    // if the run is 3D, apply the BCs
+    if(jtot > 1)
+    {
+      // second, send and receive the ghost cells in the north-south direction
+      for(int k=0; k<kcells; k++)
+        for(int j=0; j<jgc; j++)
+  #pragma ivdep
+          for(int i=0; i<icells; i++)
+          {
+            ijk0 = i + j           *jj + k*kk;
+            ijk1 = i + (jend-jgc+j)*jj + k*kk;
+            data[ijk0] = data[ijk1];
+          }
 
-    jj = icells;
-    kk = icells*jcells;
+      for(int k=0; k<kcells; k++)
+        for(int j=0; j<jgc; j++)
+  #pragma ivdep
+          for(int i=0; i<icells; i++)
+          {
+            ijk0 = i + (j+jend  )*jj + k*kk;
+            ijk1 = i + (j+jstart)*jj + k*kk;
+            data[ijk0] = data[ijk1];
+          }
+    }
+    // in case of 2D, fill all the ghost cells with the current value
+    else
+    {
+      // 2d essential variables
+      int ijkref,ijknorth,ijksouth;
 
-    for(int k=kstart; k<kend; k++)
-      for(int j=0; j<jgc; j++)
+      for(int k=kstart; k<kend; k++)
+        for(int j=0; j<jgc; j++)
 #pragma ivdep
-        for(int i=0; i<icells; i++)
-        {
-          ijkref   = i + jstart*jj   + k*kk;
-          ijknorth = i + j*jj        + k*kk;
-          ijksouth = i + (jend+j)*jj + k*kk;
-          data[ijknorth] = data[ijkref];
-          data[ijksouth] = data[ijkref];
-        }
+          for(int i=0; i<icells; i++)
+          {
+            ijkref   = i + jstart*jj   + k*kk;
+            ijknorth = i + j*jj        + k*kk;
+            ijksouth = i + (jend+j)*jj + k*kk;
+            data[ijknorth] = data[ijkref];
+            data[ijksouth] = data[ijkref];
+          }
+    }
   }
-
-  return 0;
 }
 
-int cgrid::boundary_cyclic2d(double * restrict data)
+void Grid::boundaryCyclic2d(double * restrict data)
 {
   int ij0,ij1,jj;
 
@@ -168,9 +166,7 @@ int cgrid::boundary_cyclic2d(double * restrict data)
   else
   {
     // 2d essential variables
-    int ijref,ijnorth,ijsouth,jj;
-
-    jj = icells;
+    int ijref,ijnorth,ijsouth;
 
     for(int j=0; j<jgc; j++)
 #pragma ivdep
@@ -183,11 +179,9 @@ int cgrid::boundary_cyclic2d(double * restrict data)
         data[ijsouth] = data[ijref];
       }
   }
-
-  return 0;
 }
 
-int cgrid::transposezx(double * restrict ar, double * restrict as)
+void Grid::transposezx(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -201,11 +195,9 @@ int cgrid::transposezx(double * restrict ar, double * restrict as)
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
       }
-
-  return 0;
 }
 
-int cgrid::transposexz(double * restrict ar, double * restrict as)
+void Grid::transposexz(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -219,11 +211,9 @@ int cgrid::transposexz(double * restrict ar, double * restrict as)
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
       }
-
-  return 0;
 }
 
-int cgrid::transposexy(double * restrict ar, double * restrict as)
+void Grid::transposexy(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -237,11 +227,9 @@ int cgrid::transposexy(double * restrict ar, double * restrict as)
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
       }
-
-  return 0;
 }
 
-int cgrid::transposeyx(double * restrict ar, double * restrict as)
+void Grid::transposeyx(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -255,11 +243,9 @@ int cgrid::transposeyx(double * restrict ar, double * restrict as)
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
       }
-
-  return 0;
 }
 
-int cgrid::transposeyz(double * restrict ar, double * restrict as)
+void Grid::transposeyz(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -273,11 +259,9 @@ int cgrid::transposeyz(double * restrict ar, double * restrict as)
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
       }
-
-  return 0;
 }
 
-int cgrid::transposezy(double * restrict ar, double * restrict as)
+void Grid::transposezy(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -291,33 +275,28 @@ int cgrid::transposezy(double * restrict ar, double * restrict as)
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
       }
-
-  return 0;
 }
 
-int cgrid::getmax(double *var)
+void Grid::getMax(double *var)
 {
-  return 0;
 }
 
-int cgrid::getsum(double *var)
+void Grid::getSum(double *var)
 {
-  return 0;
 }
 
-int cgrid::getprof(double *prof, int kcellsin)
+void Grid::getProf(double *prof, int kcellsin)
 {
-  return 0;
 }
 
 // IO functions
-void cgrid::save()
+void Grid::save()
 {
   // SAVE THE GRID
   FILE *pFile;
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  pFile = fopen(filename, "wb");
+  pFile = fopen(filename, "wbx");
   master->printMessage("Saving \"%s\" ... ", filename);
 
   if(pFile == NULL)
@@ -347,13 +326,13 @@ void cgrid::save()
   int jdist = 1;
   fftw_r2r_kind kindf[] = {FFTW_R2HC};
   fftw_r2r_kind kindb[] = {FFTW_HC2R};
-  iplanf = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanf = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanb = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanf = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanb = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
   fftwplan = true;
@@ -376,7 +355,7 @@ void cgrid::save()
   }
 }
 
-void cgrid::load()
+void Grid::load()
 {
   // LOAD THE GRID
   FILE *pFile;
@@ -428,13 +407,13 @@ void cgrid::load()
   int jdist = 1;
   fftw_r2r_kind kindf[] = {FFTW_R2HC};
   fftw_r2r_kind kindb[] = {FFTW_HC2R};
-  iplanf = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanf = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindf, FFTW_EXHAUSTIVE);
-  iplanb = fftw_plan_many_r2r(1, ni, jmax, fftini, ni, istride, idist,
+  iplanb = fftw_plan_many_r2r(rank, ni, jmax, fftini, ni, istride, idist,
                               fftouti, ni, istride, idist, kindb, FFTW_EXHAUSTIVE);
-  jplanf = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanf = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindf, FFTW_EXHAUSTIVE);
-  jplanb = fftw_plan_many_r2r(1, nj, iblock, fftinj, nj, jstride, jdist,
+  jplanb = fftw_plan_many_r2r(rank, nj, iblock, fftinj, nj, jstride, jdist,
                               fftoutj, nj, jstride, jdist, kindb, FFTW_EXHAUSTIVE);
 
   fftwplan = true;
@@ -442,10 +421,10 @@ void cgrid::load()
   fftw_forget_wisdom();
 }
 
-int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
-  pFile = fopen(filename, "wb");
+  pFile = fopen(filename, "wbx");
 
   if(pFile == NULL)
     return 1;
@@ -477,7 +456,7 @@ int cgrid::savefield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "rb");
@@ -512,13 +491,12 @@ int cgrid::loadfield3d(double * restrict data, double * restrict tmp1, double * 
   return 0;
 }
 
-int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
+void Grid::fftForward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
-  int ij,ijk,jj,kk;
+  int ij,ijk,kk;
 
-  jj = itot;
   kk = itot*jmax;
 
   // process the fourier transforms slice by slice
@@ -543,7 +521,6 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
     }
   }
 
-  jj = iblock;
   kk = iblock*jtot;
 
   // do the second fourier transform
@@ -568,17 +545,14 @@ int cgrid::fftforward(double * restrict data,   double * restrict tmp1,
       data[ijk] = fftoutj[ij];
     }
   }
-
-  return 0;
 }
 
-int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
+void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
-  int ij,ijk,jj,kk;
+  int ij,ijk,kk;
 
-  jj = iblock;
   kk = iblock*jtot;
 
   // transform the second transform back
@@ -603,7 +577,6 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
     }
   }
 
-  jj = itot;
   kk = itot*jmax;
 
   // transform the first transform back
@@ -628,18 +601,16 @@ int cgrid::fftbackward(double * restrict data,   double * restrict tmp1,
       tmp1[ijk] = fftouti[ij] / itot;
     }
   }
-
-  return 0;
 }
-int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *filename, int jslice)
+
+int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
+  int ijkb,kkb;
 
   jj  = icells;
   kk  = icells*jcells;
-  jjb = imax;
   kkb = imax;
 
   int count = imax*kmax;
@@ -655,7 +626,7 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *file
     }
 
   FILE *pFile;
-  pFile = fopen(filename, "wb");
+  pFile = fopen(filename, "wbx");
   if(pFile == NULL)
     return 1;
 
@@ -665,11 +636,11 @@ int cgrid::savexzslice(double * restrict data, double * restrict tmp, char *file
   return 0;
 }
 
-int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
+  int ijkb,jjb;
 
   jj  = icells;
   kk  = icells*jcells;
@@ -688,7 +659,7 @@ int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *file
     }
 
   FILE *pFile;
-  pFile = fopen(filename, "wb");
+  pFile = fopen(filename, "wbx");
   if(pFile == NULL)
     return 1;
 
@@ -698,7 +669,7 @@ int cgrid::savexyslice(double * restrict data, double * restrict tmp, char *file
   return 0;
 }
 
-int cgrid::loadxyslice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::loadxySlice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   int count = imax*jmax;
 
@@ -712,7 +683,7 @@ int cgrid::loadxyslice(double * restrict data, double * restrict tmp, char *file
 
   // put the data back into a field with ghost cells
   int ijk,jj,kk;
-  int ijkb,jjb,kkb;
+  int ijkb,jjb;
 
   jj  = icells;
   kk  = icells*jcells;

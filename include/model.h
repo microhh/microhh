@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,28 +25,28 @@
 
 #include <string>
 
-// forward declaration to prevent very long building times
-class cmaster;
-class cinput;
-class cgrid;
-class cfields;
-class cboundary;
-class ctimeloop;
-class cadvec;
-class cdiff;
-class cpres;
-class cforce;
-class cthermo;
-class cbuffer;
-class cstats;
-class ccross;
-class cbudget;
+class Master;
+class Input;
+class Grid;
+class Fields;
+class Boundary;
+class Timeloop;
+class Advec;
+class Diff;
+class Pres;
+class Force;
+class Thermo;
+class Buffer;
+class Stats;
+class Cross;
+class Dump;
+class Budget;
 
-class cmodel
+class Model
 {
   public:
-    cmodel(cmaster *, cinput *);
-    ~cmodel();
+    Model(Master *, Input *);
+    ~Model();
 
     void init();
     void load();
@@ -55,28 +55,26 @@ class cmodel
 
     // make the pointers public for use in other classes
     // TODO maybe it is safer to create get functions
-    cmaster *master;
-    cinput  *input;
-    cgrid   *grid;
-    cfields *fields;
+    Master *master;
+    Input  *input;
+    Grid   *grid;
+    Fields *fields;
 
     // model operators
-    cboundary *boundary;
-    ctimeloop *timeloop;
-    cadvec    *advec;
-    cdiff     *diff;
-    cpres     *pres;  
-    cforce    *force;   
-    cthermo   *thermo;
-    cbuffer   *buffer;
+    Boundary *boundary;
+    Timeloop *timeloop;
+    Advec    *advec;
+    Diff     *diff;
+    Pres     *pres;  
+    Force    *force;   
+    Thermo   *thermo;
+    Buffer   *buffer;
 
-    // postprocessing modules
-    cstats  *stats;
-    ccross  *cross;
-    cbudget *budget;
-
-    // BvS where to best put this..?
-    std::string swbasestate;
+    // postprocessing and output modules
+    Stats  *stats;
+    Cross  *cross;
+    Dump   *dump;
+    Budget *budget;
 
   private:
 
@@ -85,8 +83,8 @@ class cmodel
 
     void deleteObjects();
 
-    void printOutputFile(bool);
-    void calcstats(std::string);
-    void settimestep();
+    void printStatus();
+    void calcStats(std::string);
+    void setTimeStep();
 };
 #endif

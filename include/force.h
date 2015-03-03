@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -27,12 +27,11 @@
 #include <string>
 #include <map>
 
-// forward declaration
-class cmodel;
-class cgrid;
-class cfields;
-class cmaster;
-class cinput;
+class Model;
+class Grid;
+class Fields;
+class Master;
+class Input;
 
 /**
  * Class for the right-hand side terms that contain large-scale forcings
@@ -41,30 +40,31 @@ class cinput;
  * be imposed that advects the scalars through the domain. Profiles of sources/sinks can be
  * assigned to all scalars.
  */
-class cforce
+class Force
 {
   public:
-    cforce(cmodel *, cinput *); ///< Constructor of the force class.
-    ~cforce();                  ///< Destructor of the force class.
-    void init();                ///< Initialize the arrays that contain the profiles.
-    void create(cinput *);      ///< Read the profiles of the forces from the input.
-    int exec(double);           ///< Add the tendencies belonging to the large-scale processes.
-    int settimedep();           ///< Set the time dependent parameters.
+    Force(Model *, Input *); ///< Constructor of the force class.
+    ~Force();                ///< Destructor of the force class.
+
+    void init();          ///< Initialize the arrays that contain the profiles.
+    void create(Input *); ///< Read the profiles of the forces from the input.
+    void exec(double);    ///< Add the tendencies belonging to the large-scale processes.
+    void updateTimeDep(); ///< Update the time dependent parameters.
 
     std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
     std::map<std::string, double *> lsprofs; ///< Map of profiles with forcings stored by its name.
 
     // GPU functions and variables
-    int prepareDevice();
-    int clearDevice();
+    void prepareDevice();
+    void clearDevice();
 
     std::map<std::string, double *> lsprofs_g; ///< Map of profiles with forcings stored by its name.
 
   private:
-    cmaster *master; ///< Pointer to master class.
-    cmodel  *model;  ///< Pointer to model class.
-    cgrid   *grid;   ///< Pointer to grid class.
-    cfields *fields; ///< Pointer to fields class.
+    Master *master; ///< Pointer to master class.
+    Model  *model;  ///< Pointer to model class.
+    Grid   *grid;   ///< Pointer to grid class.
+    Fields *fields; ///< Pointer to fields class.
 
     std::string swlspres; ///< Switch for the large scale pressure force.
     std::string swls;     ///< Switch for large scale scalar tendencies.
@@ -83,22 +83,23 @@ class cforce
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
-    int settimedepprofiles(double, double, int, int); ///< Set the time dependent profiles.
+    void updateTimeDepProfs(double, double, int, int); ///< Set the time dependent profiles.
 
-    int flux(double * const, const double * const,
-             const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
+    void calcFlux(double * const, const double * const,
+                  const double * const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
 
-    int coriolis_2nd(double * const, double * const,
-                     const double * const, const double * const,
-                     const double * const, const double * const); ///< Calculates Coriolis force with 2nd-order accuracy.
-    int coriolis_4th(double * const, double * const,
-                     const double * const, const double * const,
-                     const double * const, const double * const); ///< Calculates Coriolis force with 4th-order accuracy.
+    void calcCoriolis_2nd(double * const, double * const,
+                          const double * const, const double * const,
+                          const double * const, const double * const); ///< Calculates Coriolis force with 2nd-order accuracy.
 
-    int lssource(double * const, const double * const); ///< Applies the large scale scalar tendency.
+    void calcCoriolis_4th(double * const, double * const,
+                          const double * const, const double * const,
+                          const double * const, const double * const); ///< Calculates Coriolis force with 4th-order accuracy.
 
-    int advecwls_2nd(double * const, const double * const,
-                     const double * const, const double * const); ///< Calculates the large-scale vertical transport.
+    void calcLargeScaleSource(double * const, const double * const); ///< Applies the large scale scalar tendency.
+
+    void advec_wls_2nd(double * const, const double * const,
+                       const double * const, const double * const); ///< Calculates the large-scale vertical transport.
 
     // GPU functions and variables
     double *ug_g;  ///< Pointer to GPU array u-component geostrophic wind.

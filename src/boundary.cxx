@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -36,7 +36,7 @@
 #include "boundary_surface.h"
 #include "boundary_user.h"
 
-cboundary::cboundary(cmodel *modelin, cinput *inputin)
+Boundary::Boundary(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -44,9 +44,9 @@ cboundary::cboundary(cmodel *modelin, cinput *inputin)
   master = model->master;
 }
 
-cboundary::~cboundary()
+Boundary::~Boundary()
 {
-  for(bcmap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
+  for(BcMap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
     delete it->second;
 
   // empty the map
@@ -57,7 +57,7 @@ cboundary::~cboundary()
     delete[] it->second;
 }
 
-int cboundary::processbcs(cinput *inputin)
+void Boundary::processBcs(Input *inputin)
 {
   int nerror = 0;
 
@@ -93,9 +93,9 @@ int cboundary::processbcs(cinput *inputin)
   }
 
   // read the boundaries per field
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    sbc[it->first] = new field3dbc;
+    sbc[it->first] = new Field3dBc;
     nerror += inputin->getItem(&swbot, "boundary", "sbcbot", it->first);
     nerror += inputin->getItem(&swtop, "boundary", "sbctop", it->first);
     nerror += inputin->getItem(&sbc[it->first]->bot, "boundary", "sbot", it->first);
@@ -132,13 +132,16 @@ int cboundary::processbcs(cinput *inputin)
   nerror += inputin->getItem(&swtimedep  , "boundary", "swtimedep"  , "", "0");
   nerror += inputin->getList(&timedeplist, "boundary", "timedeplist", "");
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-void cboundary::init(cinput *inputin)
+void Boundary::init(Input *inputin)
 {
+  // Read the boundary information from the ini files, it throws at error.
+  processBcs(inputin);
+
   int nerror = 0;
-  nerror += processbcs(inputin);
 
   // there is no option (yet) for prescribing ustar without surface model
   if(mbcbot == UstarType || mbctop == UstarType)
@@ -151,15 +154,12 @@ void cboundary::init(cinput *inputin)
     throw 1;
 }
 
-void cboundary::create(cinput *inputin)
+void Boundary::create(Input *inputin)
 {
-  int nerror = 0;
-  nerror += processtimedep(inputin);
-  if(nerror)
-    throw 1;
+  processTimeDep(inputin);
 }
 
-int cboundary::processtimedep(cinput *inputin)
+void Boundary::processTimeDep(Input *inputin)
 {
   int nerror = 0;
 
@@ -169,7 +169,7 @@ int cboundary::processtimedep(cinput *inputin)
     std::vector<std::string> tmplist = timedeplist;
 
     // see if there is data available for the surface boundary conditions
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
       std::string name = "sbot[" + it->first + "]";
       if(std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end()) 
@@ -188,20 +188,21 @@ int cboundary::processtimedep(cinput *inputin)
       master->printWarning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int cboundary::settimedep()
+void Boundary::updateTimeDep()
 {
   if(swtimedep == "0")
-    return 0;
+    return;
 
   // first find the index for the time entries
   unsigned int index0 = 0;
   unsigned int index1 = 0;
   for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
   {
-    if(model->timeloop->time < *it)
+    if(model->timeloop->get_time() < *it)
       break;
     else
       ++index1;
@@ -229,12 +230,12 @@ int cboundary::settimedep()
     index0 = index1-1;
     double timestep;
     timestep = timedeptime[index1] - timedeptime[index0];
-    fac0 = (timedeptime[index1] - model->timeloop->time) / timestep;
-    fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
+    fac0 = (timedeptime[index1] - model->timeloop->get_time()) / timestep;
+    fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
   }
 
   // process time dependent bcs for the surface fluxes
-  for(fieldmap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
+  for(FieldMap::const_iterator it1=fields->sp.begin(); it1!=fields->sp.end(); ++it1)
   {
     std::string name = "sbot[" + it1->first + "]";
     std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
@@ -243,116 +244,107 @@ int cboundary::settimedep()
       sbc[it1->first]->bot = fac0*it2->second[index0] + fac1*it2->second[index1];
 
       // BvS: for now branched here; seems a bit wasteful to copy the entire settimedep to boundary.cu?
+      const double noOffset = 0.;
+
       #ifndef USECUDA
-      setbc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
+      setBc(it1->second->databot, it1->second->datagradbot, it1->second->datafluxbot, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
       #else
-      setbc_g(it1->second->databot_g, it1->second->datagradbot_g, it1->second->datafluxbot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
+      setBc_g(it1->second->databot_g, it1->second->datagradbot_g, it1->second->datafluxbot_g, sbc[it1->first]->bcbot, sbc[it1->first]->bot, it1->second->visc, noOffset);
       #endif
     }
   }
-
-  return 0;
 }
 
-void cboundary::save(int iotime)
+void Boundary::setValues()
 {
-}
+  const double noVelocity = 0.;
+  const double noOffset = 0.;
 
-void cboundary::load(int iotime)
-{
-}
+  setBc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
-void cboundary::setvalues()
-{
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
+  setBc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
-
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
-    setbc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
+    setBc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset);
+    setBc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
   }
 }
 
 #ifndef USECUDA
-int cboundary::exec()
+void Boundary::exec()
 {
-  // cyclic boundary conditions, do this before the bottom BC's
-  grid->boundary_cyclic(fields->u->data);
-  grid->boundary_cyclic(fields->v->data);
-  grid->boundary_cyclic(fields->w->data);
+  // Cyclic boundary conditions, do this before the bottom BC's
+  grid->boundaryCyclic(fields->u->data);
+  grid->boundaryCyclic(fields->v->data);
+  grid->boundaryCyclic(fields->w->data);
 
-  for(fieldmap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
-    grid->boundary_cyclic(it->second->data);
+  for(FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
+    grid->boundaryCyclic(it->second->data);
 
-  // calculate boundary values
-  bcvalues();
+  // Update the boundary values.
+  updateBcs();
 
   if(grid->swspatialorder == "2")
   {
-    setgcbot_2nd(fields->u->data, grid->dzh, mbcbot, fields->u->databot, fields->u->datagradbot);
-    setgctop_2nd(fields->u->data, grid->dzh, mbctop, fields->u->datatop, fields->u->datagradtop);
+    calcGhostCellsBot_2nd(fields->u->data, grid->dzh, mbcbot, fields->u->databot, fields->u->datagradbot);
+    calcGhostCellsTop_2nd(fields->u->data, grid->dzh, mbctop, fields->u->datatop, fields->u->datagradtop);
 
-    setgcbot_2nd(fields->v->data, grid->dzh, mbcbot, fields->v->databot, fields->v->datagradbot);
-    setgctop_2nd(fields->v->data, grid->dzh, mbctop, fields->v->datatop, fields->v->datagradtop);
+    calcGhostCellsBot_2nd(fields->v->data, grid->dzh, mbcbot, fields->v->databot, fields->v->datagradbot);
+    calcGhostCellsTop_2nd(fields->v->data, grid->dzh, mbctop, fields->v->datatop, fields->v->datagradtop);
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-      setgcbot_2nd(it->second->data, grid->dzh, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
-      setgctop_2nd(it->second->data, grid->dzh, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
+      calcGhostCellsBot_2nd(it->second->data, grid->dzh, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
+      calcGhostCellsTop_2nd(it->second->data, grid->dzh, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
     }
   }
   else if(grid->swspatialorder == "4")
   {
-    setgcbot_4th(fields->u->data, grid->z, mbcbot, fields->u->databot, fields->u->datagradbot);
-    setgctop_4th(fields->u->data, grid->z, mbctop, fields->u->datatop, fields->u->datagradtop);
+    calcGhostCellsBot_4th(fields->u->data, grid->z, mbcbot, fields->u->databot, fields->u->datagradbot);
+    calcGhostCellsTop_4th(fields->u->data, grid->z, mbctop, fields->u->datatop, fields->u->datagradtop);
 
-    setgcbot_4th(fields->v->data, grid->z, mbcbot, fields->v->databot, fields->v->datagradbot);
-    setgctop_4th(fields->v->data, grid->z, mbctop, fields->v->datatop, fields->v->datagradtop);
+    calcGhostCellsBot_4th(fields->v->data, grid->z, mbcbot, fields->v->databot, fields->v->datagradbot);
+    calcGhostCellsTop_4th(fields->v->data, grid->z, mbctop, fields->v->datatop, fields->v->datagradtop);
 
-    setgcbotw_4th(fields->w->data);
-    setgctopw_4th(fields->w->data);
+    calcGhostCellsBotw_4th(fields->w->data);
+    calcGhostCellsTopw_4th(fields->w->data);
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-      setgcbot_4th(it->second->data, grid->z, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
-      setgctop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
+      calcGhostCellsBot_4th(it->second->data, grid->z, sbc[it->first]->bcbot, it->second->databot, it->second->datagradbot);
+      calcGhostCellsTop_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
     }
   }
-
-  return 0;
 }
 #endif
 
-void cboundary::execcross()
+void Boundary::execCross()
 {
 }
 
-int cboundary::execstats(mask *m)
+void Boundary::execStats(Mask *m)
 {
-  return 0;
 }
 
-int cboundary::bcvalues()
+void Boundary::updateBcs()
 {
-  return 0;
 }
 
-cboundary* cboundary::factory(cmaster *masterin, cinput *inputin, cmodel *modelin)
+Boundary* Boundary::factory(Master *masterin, Input *inputin, Model *modelin)
 {
   std::string swboundary;
   if(inputin->getItem(&swboundary, "boundary", "swboundary", "", "default"))
     return 0;
 
   if(swboundary == "surface")
-    return new cboundary_surface(modelin, inputin);
+    return new BoundarySurface(modelin, inputin);
   else if(swboundary == "user")
-    return new cboundary_user(modelin, inputin);
+    return new BoundaryUser(modelin, inputin);
   else if(swboundary == "default")
-    return new cboundary(modelin, inputin);
+    return new Boundary(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swboundary\n", swboundary.c_str());
@@ -360,7 +352,7 @@ cboundary* cboundary::factory(cmaster *masterin, cinput *inputin, cmodel *modeli
   }
 }
 
-int cboundary::setbc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
+void Boundary::setBc(double * restrict a, double * restrict agrad, double * restrict aflux, BoundaryType sw, double aval, double visc, double offset)
 {
   int ij,jj;
   jj = grid->icells;
@@ -397,21 +389,20 @@ int cboundary::setbc(double * restrict a, double * restrict agrad, double * rest
         agrad[ij] = -aval/visc;
       }
   }
-
-  return 0;
 }
 
 // BOUNDARY CONDITIONS THAT CONTAIN A 2D PATTERN
-int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict abot, double * restrict agradbot)
+void Boundary::calcGhostCellsBot_2nd(double * restrict a, double * restrict dzh, BoundaryType boundaryType,
+                                     double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk,kstart;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   kstart = grid->kstart;
 
-  if(sw == DirichletType)
+  if(boundaryType == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -422,7 +413,7 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, Boundary
         a[ijk-kk] = 2.*abot[ij] - a[ijk];
       }
   }
-  else if(sw == NeumannType || sw == FluxType)
+  else if(boundaryType == NeumannType || boundaryType == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -433,20 +424,19 @@ int cboundary::setgcbot_2nd(double * restrict a, double * restrict dzh, Boundary
         a[ijk-kk] = -agradbot[ij]*dzh[kstart] + a[ijk];
       }
   }
-
-  return 0;
 }
 
-int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, BoundaryType sw, double * restrict atop, double * restrict agradtop)
+void Boundary::calcGhostCellsTop_2nd(double * restrict a, double * restrict dzh, BoundaryType boundaryType,
+                                     double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kk,kend;
 
   kend = grid->kend;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
-  if(sw == DirichletType)
+  if(boundaryType == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -457,7 +447,7 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, Boundary
         a[ijk+kk] = 2.*atop[ij] - a[ijk];
       }
   }
-  else if(sw == NeumannType || sw == FluxType)
+  else if(boundaryType == NeumannType || boundaryType == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -468,21 +458,20 @@ int cboundary::setgctop_2nd(double * restrict a, double * restrict dzh, Boundary
         a[ijk+kk] = agradtop[ij]*dzh[kend] + a[ijk];
       }
   }
-
-  return 0;
 }
 
-int cboundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict abot, double * restrict agradbot)
+void Boundary::calcGhostCellsBot_4th(double * restrict a, double * restrict z, BoundaryType boundaryType,
+                                     double * restrict abot, double * restrict agradbot)
 {
   int ij,ijk,jj,kk1,kk2,kstart;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kstart = grid->kstart;
 
-  if(sw == DirichletType)
+  if(boundaryType == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -494,7 +483,7 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryTy
         a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
       }
   }
-  else if(sw == NeumannType || sw == FluxType)
+  else if(boundaryType == NeumannType || boundaryType == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -506,21 +495,20 @@ int cboundary::setgcbot_4th(double * restrict a, double * restrict z, BoundaryTy
         a[ijk-kk2] = -(1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
       }
   }
-
-  return 0;
 }
 
-int cboundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryType sw, double * restrict atop, double * restrict agradtop)
+void Boundary::calcGhostCellsTop_4th(double * restrict a, double * restrict z, BoundaryType boundaryType,
+                                     double * restrict atop, double * restrict agradtop)
 {
   int ij,ijk,jj,kend,kk1,kk2;
 
   kend = grid->kend;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
-  if(sw == DirichletType)
+  if(boundaryType == DirichletType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -532,7 +520,7 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryTy
         a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
       }
   }
-  else if(sw == NeumannType || sw == FluxType)
+  else if(boundaryType == NeumannType || boundaryType == FluxType)
   {
     for(int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -544,18 +532,16 @@ int cboundary::setgctop_4th(double * restrict a, double * restrict z, BoundaryTy
         a[ijk+kk2] = (1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
       }
   }
-
-  return 0;
 }
 
 // BOUNDARY CONDITIONS FOR THE VERTICAL VELOCITY (NO PENETRATION)
-int cboundary::setgcbotw_4th(double * restrict w)
+void Boundary::calcGhostCellsBotw_4th(double * restrict w)
 {
   int ijk,jj,kk1,kk2,kstart;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kstart = grid->kstart;
 
@@ -567,17 +553,15 @@ int cboundary::setgcbotw_4th(double * restrict w)
       w[ijk-kk1] = -w[ijk+kk1];
       w[ijk-kk2] = -w[ijk+kk2];
     }
-
-  return 0;
 }
 
-int cboundary::setgctopw_4th(double * restrict w)
+void Boundary::calcGhostCellsTopw_4th(double * restrict w)
 {
   int ijk,jj,kk1,kk2,kend;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   kend = grid->kend;
 
@@ -589,27 +573,22 @@ int cboundary::setgctopw_4th(double * restrict w)
       w[ijk+kk1] = -w[ijk-kk1];
       w[ijk+kk2] = -w[ijk-kk2];
     }
-
-  return 0;
 }
 
-int cboundary::prepareDevice()
+void Boundary::prepareDevice()
 {
-  return 0;
 }
 
-int cboundary::forwardDevice()
+void Boundary::forwardDevice()
 {
-  return 0;
 }
 
-int cboundary::backwardDevice()
+void Boundary::backwardDevice()
 {
-  return 0;
 }
 
 
-inline double cboundary::grad4x(const double a, const double b, const double c, const double d)
+inline double Boundary::grad4x(const double a, const double b, const double c, const double d)
 {
   return (-(d-a) + 27.*(c-b));
 }

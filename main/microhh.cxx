@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -27,7 +27,7 @@
 int main(int argc, char *argv[])
 {
   // Initialize the master class, it cannot fail.
-  cmaster master;
+  Master master;
   try
   {
     // Start up the master class and the Message Passing Interface.
@@ -37,10 +37,10 @@ int main(int argc, char *argv[])
     master.printMessage("Microhh git-hash: " GITHASH "\n");
 
     // Initialize the input class and read the input data from disk.
-    cinput input(&master);
+    Input input(&master);
 
     // Initialize the model class.
-    cmodel model(&master, &input);
+    Model model(&master, &input);
 
     // Initialize the master class.
     master.init(&input);

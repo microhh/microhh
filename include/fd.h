@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,13 +20,22 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef FD
+
+// In case the code is compiled with NVCC, add the macros for CUDA
+#ifdef __CUDACC__
+#  define CUDA_MACRO __host__ __device__
+#else
+#  define CUDA_MACRO
+#endif
+
 namespace fd
 {
   namespace o2
   {
-    inline double interp2(const double a, const double b) 
+    CUDA_MACRO inline double interp2(const double a, const double b)
     {
-      return 0.5 * (a + b); 
+      return 0.5 * (a + b);
     }
   }
 
@@ -42,7 +51,7 @@ namespace fd
     const double bi1  = 15./16.;
     const double bi2  = -5./16.;
     const double bi3  =  1./16.;
-                               ;
+
     const double ti0  =  1./16.;
     const double ti1  = -5./16.;
     const double ti2  = 15./16.;
@@ -71,19 +80,30 @@ namespace fd
     const double cdg2 =   -54./576.;
     const double cdg3 =     1./576.;
 
-    inline double interp4(const double a, const double b, const double c, const double d) 
+    CUDA_MACRO inline double interp4(const double a, const double b, const double c, const double d) 
     {
       return ci0*a + ci1*b + ci2*c + ci3*d;
     }
 
-    inline double interp4bot(const double a, const double b, const double c, const double d)
+    CUDA_MACRO inline double interp4bot(const double a, const double b, const double c, const double d)
     {
       return bi0*a + bi1*b - bi2*c + bi3*d;
     }
 
-    inline double interp4top(const double a, const double b, const double c, const double d)
+    CUDA_MACRO inline double interp4top(const double a, const double b, const double c, const double d)
     {
       return ti0*a + ti1*b + ti2*c + ti3*d;
     }
+
+    CUDA_MACRO inline double grad4(double a, double b, double c, double d, double dxi)
+    {
+      return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
+    }
+    
+    CUDA_MACRO inline double grad4x(double a, double b, double c, double d)
+    {
+      return (-(d-a) + 27.*(c-b)); 
+    }
   }
 }
+#endif

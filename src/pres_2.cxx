@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,16 +31,24 @@
 #include "defines.h"
 #include "model.h"
 
-cpres_2::cpres_2(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
+Pres2::Pres2(Model *modelin, Input *inputin) : Pres(modelin, inputin)
 {
   a = 0;
   c = 0;
   work2d = 0;
-  bmati = 0;
-  bmatj = 0;
+  bmati  = 0;
+  bmatj  = 0;
+
+  #ifdef USECUDA
+  a_g = 0;
+  c_g = 0;
+  work2d_g = 0;
+  bmati_g  = 0;
+  bmatj_g  = 0;
+  #endif
 }
 
-cpres_2::~cpres_2()
+Pres2::~Pres2()
 {
   delete[] a;
   delete[] c;
@@ -49,43 +57,45 @@ cpres_2::~cpres_2()
   delete[] bmati;
   delete[] bmatj;
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
 #ifndef USECUDA
-void cpres_2::exec(double dt)
+void Pres2::exec(double dt)
 {
   // create the input for the pressure solver
-  pres_in(fields->sd["p"]->data,
-          fields->u ->data, fields->v ->data, fields->w ->data,
-          fields->ut->data, fields->vt->data, fields->wt->data,
-          grid->dzi, fields->rhoref, fields->rhorefh,
-          dt);
+  input(fields->sd["p"]->data,
+        fields->u ->data, fields->v ->data, fields->w ->data,
+        fields->ut->data, fields->vt->data, fields->wt->data,
+        grid->dzi, fields->rhoref, fields->rhorefh,
+        dt);
 
   // solve the system
-  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, fields->sd["tmp2"]->data,
-             grid->dz, fields->rhoref,
-             grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data,
+        grid->dz, fields->rhoref,
+        grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   // get the pressure tendencies from the pressure field
-  pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
-           fields->sd["p"]->data, grid->dzhi);
+  output(fields->ut->data, fields->vt->data, fields->wt->data, 
+         fields->sd["p"]->data, grid->dzhi);
 }
 #endif
 
-double cpres_2::check()
+#ifndef USECUDA
+double Pres2::checkDivergence()
 {
   double divmax = 0.;
 
-  divmax = calcdivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi,
+  divmax = calcDivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi,
                           fields->rhoref, fields->rhorefh);
 
   return divmax;
 }
+#endif
 
-void cpres_2::init()
+void Pres2::init()
 {
   int imax, jmax, kmax;
   int itot, jtot;
@@ -105,21 +115,16 @@ void cpres_2::init()
   work2d = new double[imax*jmax];
 }
 
-void cpres_2::setvalues()
+void Pres2::setValues()
 {
-  int imax, jmax, kmax;
-  int itot, jtot, kgc;
-
-  itot = grid->itot;
-  jtot = grid->jtot;
-  imax = grid->imax;
-  jmax = grid->jmax;
-  kmax = grid->kmax;
-  kgc  = grid->kgc;
+  const int itot = grid->itot;
+  const int jtot = grid->jtot;
+  const int kmax = grid->kmax;
+  const int kgc  = grid->kgc;
 
   // compute the modified wave numbers of the 2nd order scheme
-  double dxidxi = 1./(grid->dx*grid->dx);
-  double dyidyi = 1./(grid->dy*grid->dy);
+  const double dxidxi = 1./(grid->dx*grid->dx);
+  const double dyidyi = 1./(grid->dy*grid->dy);
 
   const double pi = std::acos(-1.);
 
@@ -143,35 +148,34 @@ void cpres_2::setvalues()
   }
 }
 
-void cpres_2::pres_in(double * restrict p, 
-                     double * restrict u , double * restrict v , double * restrict w ,
-                     double * restrict ut, double * restrict vt, double * restrict wt,
-                     double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
-                     double dt)
+void Pres2::input(double * restrict p, 
+                  double * restrict u , double * restrict v , double * restrict w ,
+                  double * restrict ut, double * restrict vt, double * restrict wt,
+                  double * restrict dzi, double * restrict rhoref, double * restrict rhorefh,
+                  double dt)
 {
   int    ijk,ii,jj,kk,ijkp,jjp,kkp;
   int    igc,jgc,kgc;
-  double dxi,dyi;
+  double dxi,dyi,dti;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   jjp = grid->imax;
   kkp = grid->imax*grid->jmax;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
+  dti = 1./dt;
 
   igc = grid->igc;
   jgc = grid->jgc;
   kgc = grid->kgc;
 
   // set the cyclic boundary conditions for the tendencies
-  grid->boundary_cyclic(ut);
-  grid->boundary_cyclic(vt);
-  grid->boundary_cyclic(wt);
-
+  grid->boundaryCyclic(ut, EastWestEdge  );
+  grid->boundaryCyclic(vt, NorthSouthEdge);
 
   // write pressure as a 3d array without ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -181,38 +185,31 @@ void cpres_2::pres_in(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-        p[ijkp] = rhoref[k+kgc] * ( (ut[ijk+ii] + u[ijk+ii] / dt) - (ut[ijk] + u[ijk] / dt) ) * dxi
-                + rhoref[k+kgc] * ( (vt[ijk+jj] + v[ijk+jj] / dt) - (vt[ijk] + v[ijk] / dt) ) * dyi
-                + ( rhorefh[k+kgc+1] * (wt[ijk+kk] + w[ijk+kk] / dt) 
-                  - rhorefh[k+kgc  ] * (wt[ijk   ] + w[ijk   ] / dt) ) * dzi[k+kgc];
+        p[ijkp] = rhoref[k+kgc] * ( (ut[ijk+ii] + u[ijk+ii] * dti) - (ut[ijk] + u[ijk] * dti) ) * dxi
+                + rhoref[k+kgc] * ( (vt[ijk+jj] + v[ijk+jj] * dti) - (vt[ijk] + v[ijk] * dti) ) * dyi
+                + ( rhorefh[k+kgc+1] * (wt[ijk+kk] + w[ijk+kk] * dti) 
+                  - rhorefh[k+kgc  ] * (wt[ijk   ] + w[ijk   ] * dti) ) * dzi[k+kgc];
       }
 }
 
-void cpres_2::pres_solve(double * restrict p, double * restrict work3d, double * restrict b,
-                         double * restrict dz, double * restrict rhoref,
-                         double * restrict fftini, double * restrict fftouti, 
-                         double * restrict fftinj, double * restrict fftoutj)
+void Pres2::solve(double * restrict p, double * restrict work3d, double * restrict b,
+                  double * restrict dz, double * restrict rhoref,
+                  double * restrict fftini, double * restrict fftouti, 
+                  double * restrict fftinj, double * restrict fftoutj)
 {
+  const int imax   = grid->imax;
+  const int jmax   = grid->jmax;
+  const int kmax   = grid->kmax;
+  const int iblock = grid->iblock;
+  const int jblock = grid->jblock;
+  const int igc    = grid->igc;
+  const int jgc    = grid->jgc;
+  const int kgc    = grid->kgc;
+
   int i,j,k,jj,kk,ijk;
-  int imax,jmax,kmax;
-  int itot,jtot;
-  int iblock,jblock,kblock;
-  int igc,jgc,kgc;
   int iindex,jindex;
 
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  iblock = grid->iblock;
-  jblock = grid->jblock;
-  kblock = grid->kblock;
-  igc    = grid->igc;
-  jgc    = grid->jgc;
-  kgc    = grid->kgc;
-
-  grid->fftforward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+  grid->fftForward(p, work3d, fftini, fftouti, fftinj, fftoutj);
 
   jj = iblock;
   kk = iblock*jblock;
@@ -260,14 +257,14 @@ void cpres_2::pres_solve(double * restrict p, double * restrict work3d, double *
   // call tdma solver
   tdma(a, b, c, p, work2d, work3d);
 
-  grid->fftbackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
+  grid->fftBackward(p, work3d, fftini, fftouti, fftinj, fftoutj);
         
   jj = imax;
   kk = imax*jmax;
 
   int ijkp,jjp,kkp;
   jjp = grid->icells;
-  kkp = grid->icells*grid->jcells;
+  kkp = grid->ijcells;
 
   // put the pressure back onto the original grid including ghost cells
   for(int k=0; k<grid->kmax; k++)
@@ -291,18 +288,18 @@ void cpres_2::pres_solve(double * restrict p, double * restrict work3d, double *
     }
 
   // set the cyclic boundary conditions
-  grid->boundary_cyclic(p);
+  grid->boundaryCyclic(p);
 }
 
-void cpres_2::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                       double * restrict p , double * restrict dzhi)
+void Pres2::output(double * restrict ut, double * restrict vt, double * restrict wt, 
+                   double * restrict p , double * restrict dzhi)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -320,8 +317,8 @@ void cpres_2::pres_out(double * restrict ut, double * restrict vt, double * rest
 }
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
-void cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c, 
-                   double * restrict p, double * restrict work2d, double * restrict work3d)
+void Pres2::tdma(double * restrict a, double * restrict b, double * restrict c, 
+                 double * restrict p, double * restrict work2d, double * restrict work3d)
                 
 {
   int i,j,k,jj,kk,ijk,ij;
@@ -390,15 +387,15 @@ void cpres_2::tdma(double * restrict a, double * restrict b, double * restrict c
 }
 
 #ifndef USECUDA
-double cpres_2::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
-                               double * restrict rhoref, double * restrict rhorefh)
+double Pres2::calcDivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi,
+                             double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -419,7 +416,7 @@ double cpres_2::calcdivergence(double * restrict u, double * restrict v, double 
         divmax = std::max(divmax, std::abs(div));
       }
 
-  grid->getmax(&divmax);
+  grid->getMax(&divmax);
 
   return divmax;
 }

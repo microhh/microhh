@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,18 +25,17 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
-#include "advec.h"
 #include "defines.h"
 #include "constants.h"
 #include "master.h"
 #include "model.h"
 
 #include "advec_2.h"
-#include "advec_2int4.h"
+#include "advec_2i4.h"
 #include "advec_4.h"
 #include "advec_4m.h"
 
-cadvec::cadvec(cmodel *modelin, cinput *inputin)
+Advec::Advec(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -50,49 +49,49 @@ cadvec::cadvec(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cadvec::~cadvec()
+Advec::~Advec()
 {
 }
 
-unsigned long cadvec::gettimelim(unsigned long idt, double dt)
+unsigned long Advec::getTimeLimit(unsigned long idt, double dt)
 {
   unsigned long idtlim = (unsigned long) constants::dbig;
 
   return idtlim;
 }
 
-double cadvec::getcfl(double dt)
+double Advec::get_cfl(double dt)
 {
   double cfl;
-
-  cfl = constants::dsmall;
-
+  cfl = cflmin;
   return cfl;
 }
 
-void cadvec::exec()
+void Advec::exec()
 {
 }
 
-cadvec* cadvec::factory(cmaster *masterin, cinput *inputin, cmodel *modelin, const std::string swspatialorder)
+Advec* Advec::factory(Master *masterin, Input *inputin, Model *modelin, const std::string swspatialorder)
 {
   std::string swadvec;
   if(inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
     throw 1;
 
   if(swadvec == "0")
-    return new cadvec(modelin, inputin);
+    return new Advec(modelin, inputin);
   else if(swadvec == "2")
-    return new cadvec_2(modelin, inputin);
-  else if(swadvec == "2int4")
-    return new cadvec_2int4(modelin, inputin);
+    return new Advec2(modelin, inputin);
+  else if(swadvec == "2i4")
+    return new Advec2i4(modelin, inputin);
   else if(swadvec == "4")
-    return new cadvec_4(modelin, inputin);
+    return new Advec4(modelin, inputin);
   else if(swadvec == "4m")
-    return new cadvec_4m(modelin, inputin);
+    return new Advec4m(modelin, inputin);
   else
   {
     masterin->printError("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
     throw 1;
   }
 }
+
+const double Advec::cflmin = 1.E-5;

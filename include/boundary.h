@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,49 +23,48 @@
 #ifndef BOUNDARY
 #define BOUNDARY
 
-// forward declarations to speed up build time
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
-struct mask;
+class Master;
+class Model;
+class Input;
+class Grid;
+class Fields;
+struct Mask;
 
 /**
  * Base class for the advection scheme.
  * This class handles the case when advection is turned off. Derived classes are
  * implemented that handle different advection schemes.
  */
-class cboundary
+class Boundary
 {
   public:
-    cboundary(cmodel *, cinput *); ///< Constuctor of the boundary class.
-    virtual ~cboundary();          ///< Destructor of the boundary class.
-    static cboundary* factory(cmaster *, cinput *, cmodel *); ///< Factory function for boundary class generation.
+    Boundary(Model *, Input *); ///< Constuctor of the boundary class.
+    virtual ~Boundary();        ///< Destructor of the boundary class.
 
-    virtual void init(cinput *);   ///< Initialize the fields.
-    virtual void create(cinput *); ///< Create the fields.
-    virtual int settimedep();
-    virtual void setvalues();      ///< Set all 2d fields to the prober BC value.
+    static Boundary* factory(Master *, Input *, Model *); ///< Factory function for boundary class generation.
 
-    virtual void save(int); ///< Save boundary conditions related fields for restarts.
-    virtual void load(int); ///< Load boundary conditions related fields for restarts.
+    virtual void init(Input *);   ///< Initialize the fields.
+    virtual void create(Input *); ///< Create the fields.
+    virtual void updateTimeDep(); ///< Update the time dependent parameters.
+    virtual void setValues();     ///< Set all 2d fields to the prober BC value.
 
-    int exec();              ///< Update the boundary conditions.
-    virtual void execcross(); ///< Execute cross sections of surface
-    virtual int execstats(mask *); ///< Execute statistics of surface
+    virtual void exec(); ///< Update the boundary conditions.
+
+    virtual void execStats(Mask *); ///< Execute statistics of surface
+    virtual void execCross();       ///< Execute cross sections of surface
 
     enum BoundaryType {DirichletType, NeumannType, FluxType, UstarType};
 
     // GPU functions and variables
-    virtual int prepareDevice(); 
-    virtual int forwardDevice(); 
-    virtual int backwardDevice(); 
+    virtual void prepareDevice(); 
+    virtual void forwardDevice(); 
+    virtual void backwardDevice(); 
 
   protected:
-    cmaster *master; ///< Pointer to master class.
-    cmodel  *model;  ///< Pointer to model class.
-    cgrid   *grid;   ///< Pointer to grid class.
-    cfields *fields; ///< Pointer to fields class.
+    Master *master; ///< Pointer to master class.
+    Model  *model;  ///< Pointer to model class.
+    Grid   *grid;   ///< Pointer to grid class.
+    Fields *fields; ///< Pointer to fields class.
 
     BoundaryType mbcbot;
     BoundaryType mbctop;
@@ -73,7 +72,7 @@ class cboundary
     /**
      * Structure containing the boundary options and values per 3d field.
      */
-    struct field3dbc
+    struct Field3dBc
     {
       double bot; ///< Value of the bottom boundary.
       double top; ///< Value of the top boundary.
@@ -81,8 +80,8 @@ class cboundary
       BoundaryType bctop; ///< Switch for the top boundary.
     };
 
-    typedef std::map<std::string, field3dbc *> bcmap;
-    bcmap sbc;
+    typedef std::map<std::string, Field3dBc *> BcMap;
+    BcMap sbc;
 
     // time dependent variables
     std::string swtimedep;
@@ -90,28 +89,31 @@ class cboundary
     std::vector<std::string> timedeplist;
     std::map<std::string, double *> timedepdata;
 
-    int processbcs(cinput *); ///< Process the boundary condition settings from the ini file.
-    int processtimedep(cinput *); ///< Process the time dependent settings from the ini file.
-    int setbc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
+    void processBcs(Input *);     ///< Process the boundary condition settings from the ini file.
+    void processTimeDep(Input *); ///< Process the time dependent settings from the ini file.
+
+    void setBc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
     // GPU functions and variables
-    int setbc_g(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
+    void setBc_g(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
 
   private:
-    virtual int bcvalues(); ///< Update the boundary values.
+    virtual void updateBcs(); ///< Update the boundary values.
 
-    int setgcbot_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 2nd-order accuracy.
-    int setgctop_2nd(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 2nd-order accuracy.
-    int setgcbot_4th(double *, double *, BoundaryType, double *, double *); ///< Set the bottom ghost cells with 4th-order accuracy.
-    int setgctop_4th(double *, double *, BoundaryType, double *, double *); ///< Set the top ghost cells with 4th-order accuracy.
+    void calcGhostCellsBot_2nd(double *, double *, BoundaryType, double *, double *); ///< Calculate the bottom ghost cells with 2nd-order accuracy.
+    void calcGhostCellsTop_2nd(double *, double *, BoundaryType, double *, double *); ///< Calculate the top ghost cells with 2nd-order accuracy.
+    void calcGhostCellsBot_4th(double *, double *, BoundaryType, double *, double *); ///< Calculate the bottom ghost cells with 4th-order accuracy.
+    void calcGhostCellsTop_4th(double *, double *, BoundaryType, double *, double *); ///< Calculate the top ghost cells with 4th-order accuracy.
 
-    int setgcbotw_4th(double *); ///< Set the bottom ghost cells for the vertical velocity with 4th order accuracy.
-    int setgctopw_4th(double *); ///< Set the top ghost cells for the vertical velocity with 4th order accuracy.
+    void calcGhostCellsBotw_4th(double *); ///< Calculate the bottom ghost cells for the vertical velocity with 4th order accuracy.
+    void calcGhostCellsTopw_4th(double *); ///< Calculate the top ghost cells for the vertical velocity with 4th order accuracy.
 
     inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
 
+    /*
   protected:
     static const double noVelocity = 0.;
     static const double noOffset = 0.;
+    */
 };
 #endif

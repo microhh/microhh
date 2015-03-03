@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -36,7 +36,7 @@
  * @param modelin Pointer to the model class.
  * @param inputin Pointer to the input class.
  */
-cgrid::cgrid(cmodel *modelin, cinput *inputin)
+Grid::Grid(Model *modelin, Input *inputin)
 {
   master = modelin->master;
 
@@ -57,6 +57,15 @@ cgrid::cgrid(cmodel *modelin, cinput *inputin)
   dzhi  = 0;
   dzi4  = 0;
   dzhi4 = 0;
+
+  z_g     = 0;
+  zh_g    = 0;
+  dz_g    = 0;
+  dzh_g   = 0;
+  dzi_g   = 0;
+  dzhi_g  = 0;
+  dzi4_g  = 0;
+  dzhi4_g = 0;
 
   fftini  = 0;
   fftouti = 0;
@@ -82,7 +91,7 @@ cgrid::cgrid(cmodel *modelin, cinput *inputin)
 
   if(!(swspatialorder == "2" || swspatialorder == "4"))
   {
-    if(master->mpiid == 0) std::printf("ERROR \"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
+    master->printError("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
     throw 1;
   }
  
@@ -105,7 +114,7 @@ cgrid::cgrid(cmodel *modelin, cinput *inputin)
 /**
  * This function destructs the grid class.
  */
-cgrid::~cgrid()
+Grid::~Grid()
 {
   if(fftwplan)
   {
@@ -135,18 +144,18 @@ cgrid::~cgrid()
 
   fftw_cleanup();
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 
-  exitmpi();
+  exitMpi();
 }
 
 /**
  * This function allocates the dynamic arrays in the field class
  * variables and calculates the derived grid indices and dimensions.
  */
-void cgrid::init()
+void Grid::init()
 {
   // Check whether the grid fits the processor configuration.
   if(itot % master->npx != 0)
@@ -227,7 +236,7 @@ void cgrid::init()
   fftoutj = fftw_alloc_real(jtot*iblock);
 
   // initialize the communication functions
-  initmpi();
+  initMpi();
 }
 
 /**
@@ -235,11 +244,17 @@ void cgrid::init()
  * on the profiles in the input file.
  * @param inputin Pointer to the input class.
  */
-void cgrid::create(cinput *inputin)
+void Grid::create(Input *inputin)
 {
   // get the grid coordinates from the input
   if(inputin->getProf(&z[kstart], "z", kmax))
     throw 1;
+
+  if(z[kend-1] > zsize)
+  {
+    master->printError("Highest grid point is above prescribed zsize\n");
+    throw 1;
+  }
 
   // calculate the grid
   calculate();
@@ -249,7 +264,7 @@ void cgrid::create(cinput *inputin)
  * This function calculates the scalars and arrays that contain the information
  * on the grid spacing.
  */
-void cgrid::calculate()
+void Grid::calculate()
 {
   int i,j,k;
 
@@ -370,6 +385,10 @@ void cgrid::calculate()
     dzi4 [kend  ] = 1./(tg0*zh[kend-2] + tg1*zh[kend-1] + tg2*zh[kend] + tg3*zh[kend+1]);
     dzhi4[kend+1] = 1./(tg0*z [kend-2] + tg1*z [kend-1] + tg2*z [kend] + tg3*z [kend+1]);
 
+    // Define gradients at the boundary for the divgrad calculations.
+    dzhi4biasbot = 1./(bg0*z[kstart-1] + bg1*z[kstart] + bg2*z[kstart+1] + bg3*z[kstart+2]);
+    dzhi4biastop = 1./(tg0*z[kend-3  ] + tg1*z[kend-2] + tg2*z[kend-1  ] + tg3*z[kend    ]);
+
     // Initialize the unused values at a huge value to allow for easier error tracing.
     dzi4[kstart-2] = constants::dhuge;
     dzi4[kstart-3] = constants::dhuge;
@@ -379,15 +398,27 @@ void cgrid::calculate()
 }
 
 /**
+ * This function increases the number of ghost cells in case necessary.
+ * @param igc Ghost cells in the x-direction.
+ * @param jgc Ghost cells in the y-direction.
+ * @param kgc Ghost cells in the z-direction.
+ */
+void Grid::setGhostCellsMin(const int igcin, const int jgcin, const int kgcin)
+{
+  igc = std::max(igc, igcin);
+  jgc = std::max(jgc, jgcin);
+  kgc = std::max(kgc, kgcin);
+}
+
+/**
  * This function does a second order horizontal interpolation in the x-direction
  * to the selected location on the grid.
  * @param out Pointer to the output field.
  * @param in Pointer to the input field.
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
- * @return Returns 0.
  */
-int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   int ijk,ii,jj,kk,iih,jjh;
 
@@ -409,8 +440,6 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
         out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
                  + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
       }
-
-  return 0;
 }
 
 /**
@@ -420,9 +449,8 @@ int cgrid::interpolate_2nd(double * restrict out, double * restrict in, const in
  * @param in Pointer to the input field.
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
- * @return Returns 0.
  */
-int cgrid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
 {
   using namespace fd::o4;
 
@@ -451,8 +479,6 @@ int cgrid::interpolate_4th(double * restrict out, double * restrict in, const in
                  + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
                  + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
       }
-
-  return 0;
 }
 
 /**
@@ -463,7 +489,7 @@ int cgrid::interpolate_4th(double * restrict out, double * restrict in, const in
  * @param krange Number of vertical levels over which the profile is to be calculated.
  * @return Returns 0.
  */
-int cgrid::calcmean(double * restrict prof, const double * restrict data, const int krange)
+void Grid::calcMean(double * restrict prof, const double * restrict data, const int krange)
 {
   int ijk,jj,kk;
 
@@ -487,13 +513,11 @@ int cgrid::calcmean(double * restrict prof, const double * restrict data, const 
   for(int k=0; k<krange; ++k)
     prof[k] /= n;
 
-  getprof(prof, krange);
-
-  return 0;
+  getProf(prof, krange);
 }
 
 /*
-int cgrid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
+void Grid::interpolatez_4th(double * restrict out, double * restrict in, int locz)
 {
   // interpolation function, locz = 1 indicates that the reference is at the half level
   int ijk,ii1,ii2,jj1,jj2,kk1,kk2,khlf;
@@ -516,8 +540,6 @@ int cgrid::interpolatez_4th(double * restrict out, double * restrict in, int loc
         ijk = i + j*jj1 + k*kk1;
         out[ijk] = ci0*in[ijk-kk2+khlf] + ci1*in[ijk-kk1+khlf] + ci2*in[ijk+khlf] + ci3*in[ijk+kk1+khlf];
       }
-
-  return 0;
 }
 */
 // end of interpolation functions

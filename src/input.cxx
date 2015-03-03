@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,7 +33,7 @@
 #include <sstream>
 
 // Public functions
-cinput::cinput(cmaster *masterin)
+Input::Input(Master *masterin)
 {
   master = masterin;
 
@@ -41,32 +41,32 @@ cinput::cinput(cmaster *masterin)
   const bool optional = true;
 
   int nerror = 0;
-  nerror += readinifile();
-  nerror += readdatafile(&proflist, master->simname + ".prof", required);
-  nerror += readdatafile(&timelist, master->simname + ".time", optional);
+  nerror += readIniFile();
+  nerror += readDataFile(&proflist, master->simname + ".prof", required);
+  nerror += readDataFile(&timelist, master->simname + ".time", optional);
 
   if(nerror)
     throw 1;
 }
 
-cinput::~cinput()
+Input::~Input()
 {
 }
 
-void cinput::clear()
+void Input::clear()
 {
   inputlist.clear();
   proflist.clear();
 }
 
 // Private functions
-int cinput::readinifile()
+int Input::readIniFile()
 {
   int nerror = 0;
   char inputline[256], temp1[256], block[256], lhs[256], rhs[256], dummy[256], element[256];
 
   // read the input file
-  FILE *inputfile;
+  FILE *inputfile = 0;
   std::string inputfilename = master->simname + ".ini";
 
   if(master->mpiid == 0)
@@ -92,10 +92,9 @@ int cinput::readinifile()
 
   if(master->mpiid == 0)
   {
-    std::printf("Processing inifile \"%s\"\n", inputfilename.c_str());
+    std::printf("Processing ini file \"%s\"\n", inputfilename.c_str());
     while(std::fgets(inputline, 256, inputfile) != NULL)
       nlines++;
-    std::printf("Inifile contains %d lines\n", nlines);
     rewind(inputfile);
   }
   master->broadcast(&nlines, 1);
@@ -196,15 +195,12 @@ int cinput::readinifile()
   }
 
   if(master->mpiid == 0)
-  {
-    std::printf("Inifile has been processed with %d errors\n", nerrors);
     fclose(inputfile);
-  }
 
   return nerrors;
 }
 
-int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
+int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
 {
   int nerror = 0;
   char inputline[256], temp1[256];
@@ -212,7 +208,7 @@ int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
   int n;
 
   // read the input file
-  FILE *inputfile;
+  FILE *inputfile = 0;
   std::string inputfilename = inputname;
 
   int doreturn = 0;
@@ -246,10 +242,9 @@ int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
 
   if(master->mpiid == 0)
   {
-    std::printf("Processing proffile \"%s\"\n", inputfilename.c_str());
+    std::printf("Processing data file \"%s\"\n", inputfilename.c_str());
     while(std::fgets(inputline, 256, inputfile) != NULL)
       nlines++;
-    std::printf("Inifile contains %d lines\n", nlines);
     rewind(inputfile);
   }
   master->broadcast(&nlines, 1);
@@ -296,8 +291,6 @@ int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
         return 1;
       }
       */
-
-      if(master->mpiid == 0) std::printf("Found header item \"%s\"\n", substring);
 
       // temporarily store the variable name
       varnames.push_back(std::string(substring));
@@ -398,19 +391,19 @@ int cinput::readdatafile(datamap *series, std::string inputname, bool optional)
   return 0;
 }
 
-int cinput::checkItemExists(std::string cat, std::string item, std::string el)
+int Input::checkItemExists(std::string cat, std::string item, std::string el)
 {
-  inputmap::const_iterator it1 = inputlist.find(cat);
+  InputMap::const_iterator it1 = inputlist.find(cat);
 
   bool readerror = false;
 
   if(it1 != inputlist.end())
   {
-    inputmap2d::const_iterator it2 = it1->second.find(item);
+    InputMap2d::const_iterator it2 = it1->second.find(item);
 
     if(it2 != it1->second.end())
     {
-      inputmap1d::const_iterator it3 = it2->second.find(el);
+      InputMap1d::const_iterator it3 = it2->second.find(el);
       if(it3 == it2->second.end())
         readerror = true;
     }
@@ -428,7 +421,7 @@ int cinput::checkItemExists(std::string cat, std::string item, std::string el)
 
 // overloaded return functions
 // int functions
-int cinput::getItem(int *value, std::string cat, std::string item, std::string el)
+int Input::getItem(int *value, std::string cat, std::string item, std::string el)
 {
   bool optional = false;
   int dummy = 0;
@@ -439,7 +432,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
   return 0;
 }
 
-int cinput::getItem(int *value, std::string cat, std::string item, std::string el, int def)
+int Input::getItem(int *value, std::string cat, std::string item, std::string el, int def)
 {
   bool optional = true;
 
@@ -450,7 +443,7 @@ int cinput::getItem(int *value, std::string cat, std::string item, std::string e
 }
 
 template <class valuetype>
-int cinput::parseItem(valuetype *value, std::string cat, std::string item, std::string el, bool optional, valuetype def)
+int Input::parseItem(valuetype *value, std::string cat, std::string item, std::string el, bool optional, valuetype def)
 {
   std::string itemout, itemtype;
   itemout = "[" + cat + "][" + item + "]";
@@ -495,7 +488,7 @@ int cinput::parseItem(valuetype *value, std::string cat, std::string item, std::
   return 0;
 }
 
-int cinput::checkItem(int *value, std::string cat, std::string item, std::string el)
+int Input::checkItem(int *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -526,7 +519,7 @@ int cinput::checkItem(int *value, std::string cat, std::string item, std::string
 }
 
 // double functions
-int cinput::getItem(double *value, std::string cat, std::string item, std::string el)
+int Input::getItem(double *value, std::string cat, std::string item, std::string el)
 {
   bool optional = false;
   double dummy = 0.;
@@ -537,7 +530,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
   return 0;
 }
 
-int cinput::getItem(double *value, std::string cat, std::string item, std::string el, double def)
+int Input::getItem(double *value, std::string cat, std::string item, std::string el, double def)
 {
   bool optional = true;
 
@@ -547,7 +540,7 @@ int cinput::getItem(double *value, std::string cat, std::string item, std::strin
   return 0;
 }
 
-int cinput::checkItem(double *value, std::string cat, std::string item, std::string el)
+int Input::checkItem(double *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -578,7 +571,7 @@ int cinput::checkItem(double *value, std::string cat, std::string item, std::str
 }
 
 // booleans
-int cinput::getItem(bool *value, std::string cat, std::string item, std::string el)
+int Input::getItem(bool *value, std::string cat, std::string item, std::string el)
 {
   bool optional = false;
   bool dummy = false;
@@ -588,7 +581,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
   return 0;
 }
 
-int cinput::getItem(bool *value, std::string cat, std::string item, std::string el, bool def)
+int Input::getItem(bool *value, std::string cat, std::string item, std::string el, bool def)
 {
   bool optional = true;
 
@@ -598,7 +591,7 @@ int cinput::getItem(bool *value, std::string cat, std::string item, std::string 
   return 0;
 }
 
-int cinput::checkItem(bool *value, std::string cat, std::string item, std::string el)
+int Input::checkItem(bool *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], inputbool[256], temp[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -640,7 +633,7 @@ int cinput::checkItem(bool *value, std::string cat, std::string item, std::strin
 }
 
 // strings
-int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el)
+int Input::getItem(std::string *value, std::string cat, std::string item, std::string el)
 {
   bool optional = false;
   std::string dummy = "";
@@ -651,7 +644,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
   return 0;
 }
 
-int cinput::getItem(std::string *value, std::string cat, std::string item, std::string el, std::string def)
+int Input::getItem(std::string *value, std::string cat, std::string item, std::string el, std::string def)
 {
   bool optional = true;
 
@@ -661,7 +654,7 @@ int cinput::getItem(std::string *value, std::string cat, std::string item, std::
   return 0;
 }
 
-int cinput::checkItem(std::string *value, std::string cat, std::string item, std::string el)
+int Input::checkItem(std::string *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], stringval[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -691,7 +684,7 @@ int cinput::checkItem(std::string *value, std::string cat, std::string item, std
 }
 
 // list retrieval function
-int cinput::getList(std::vector<int> *value, std::string cat, std::string item, std::string el)
+int Input::getList(std::vector<int> *value, std::string cat, std::string item, std::string el)
 {
   if(parseList(value, cat, item, el))
     return 1;
@@ -699,7 +692,7 @@ int cinput::getList(std::vector<int> *value, std::string cat, std::string item, 
   return 0;
 }
 
-int cinput::getList(std::vector<double> *value, std::string cat, std::string item, std::string el)
+int Input::getList(std::vector<double> *value, std::string cat, std::string item, std::string el)
 {
   if(parseList(value, cat, item, el))
     return 1;
@@ -707,7 +700,7 @@ int cinput::getList(std::vector<double> *value, std::string cat, std::string ite
   return 0;
 }
 
-int cinput::getList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
+int Input::getList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
   if(parseList(value, cat, item, el))
     return 1;
@@ -716,7 +709,7 @@ int cinput::getList(std::vector<std::string> *value, std::string cat, std::strin
 }
 
 template <class valuetype>
-int cinput::parseList(std::vector<valuetype> *value, std::string cat, std::string item, std::string el)
+int Input::parseList(std::vector<valuetype> *value, std::string cat, std::string item, std::string el)
 {
   std::string itemout, listout;
   std::stringstream liststream;
@@ -746,7 +739,7 @@ int cinput::parseList(std::vector<valuetype> *value, std::string cat, std::strin
   return 0;
 }
 
-int cinput::checkList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
+int Input::checkList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -792,7 +785,7 @@ int cinput::checkList(std::vector<std::string> *value, std::string cat, std::str
   return 0;
 }
 
-int cinput::checkList(std::vector<int> *value, std::string cat, std::string item, std::string el)
+int Input::checkList(std::vector<int> *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -840,7 +833,7 @@ int cinput::checkList(std::vector<int> *value, std::string cat, std::string item
   return 0;
 }
 
-int cinput::checkList(std::vector<double> *value, std::string cat, std::string item, std::string el)
+int Input::checkList(std::vector<double> *value, std::string cat, std::string item, std::string el)
 {
   char inputstring[256], dummy[256];
   std::strcpy(inputstring, inputlist[cat][item][el].data.c_str());
@@ -890,35 +883,9 @@ int cinput::checkList(std::vector<double> *value, std::string cat, std::string i
   return 0;
 }
 
-
-int cinput::printUnused()
+int Input::getProf(double *data, std::string varname, int kmaxin)
 {
-  for(inputmap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
-  {
-    for(inputmap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
-    {
-      for(inputmap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
-      {
-        if(!it3->second.isused)
-        {
-          if(it3->first == "default")
-          {
-            if(master->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
-          }
-          else
-          {
-            if(master->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
-          }
-        }
-      }
-    }
-  }
-  return 0;
-}
-
-int cinput::getProf(double *data, std::string varname, int kmaxin)
-{
-  datamap::const_iterator it = proflist.find(varname);
+  DataMap::const_iterator it = proflist.find(varname);
 
   if(it != proflist.end())
   {
@@ -933,8 +900,6 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
 
     for(int k=0; k<kmaxin; k++)
       data[k] = proflist[varname][k];
-
-    if(master->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
   }
   else
   {
@@ -946,10 +911,10 @@ int cinput::getProf(double *data, std::string varname, int kmaxin)
   return 0;
 }
 
-int cinput::getTime(double **data, std::vector<double> *time, std::string varname)
+int Input::getTime(double **data, std::vector<double> *time, std::string varname)
 {
   // first get the time list
-  datamap::const_iterator it = timelist.find("t");
+  DataMap::const_iterator it = timelist.find("t");
   if(it != timelist.end())
     *time = it->second;
   else
@@ -962,7 +927,7 @@ int cinput::getTime(double **data, std::vector<double> *time, std::string varnam
   it = timelist.find(varname);
   if(it != timelist.end())
   {
-    int timesize = timelist[varname].size();
+    unsigned int timesize = timelist[varname].size();
     if(timesize != time->size())
     {
       if(master->mpiid == 0) std::printf("ERROR number of values does not match number of time entries\n");
@@ -970,10 +935,8 @@ int cinput::getTime(double **data, std::vector<double> *time, std::string varnam
     }
     // allocate the data
     *data = new double[timesize];
-    for(int n=0; n<timesize; ++n)
+    for(unsigned int n=0; n<timesize; ++n)
       (*data)[n] = (it->second)[n];
-
-    if(master->mpiid == 0) std::printf("Variable \"%s\" has been read from the input\n", varname.c_str());
   }
   else
   {
@@ -984,17 +947,17 @@ int cinput::getTime(double **data, std::vector<double> *time, std::string varnam
   return 0;
 }
 
-int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::string varname, int kmaxin)
+int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::string varname, int kmaxin)
 {
   // container for the raw data
-  datamap rawdata;
+  DataMap rawdata;
 
   // create a typedef to store the time in string and double to allow sorting
-  typedef std::map<double, std::string> timemap;
-  timemap rawtimemap;
+  typedef std::map<double, std::string> TimeMap;
+  TimeMap rawtimemap;
 
   // read the file that contains the time varying data
-  if(readdatafile(&rawdata, varname + ".timeprof", false))
+  if(readDataFile(&rawdata, varname + ".timeprof", false))
     return 1;
 
   // delete the column with the profile data
@@ -1005,7 +968,7 @@ int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::s
 
   // first process the headers in order to get the time series
   int timecount = 0;
-  for(datamap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
+  for(DataMap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
   {
     // check whether the item name is of type double
     char inputstring[256], temp[256];
@@ -1022,7 +985,7 @@ int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::s
   }
   
   // now loop over the new time list in the correct order (sort on double rather than string)
-  for(timemap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
+  for(TimeMap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
   {
     int profsize = rawdata[it->second].size();
     if(profsize < kmaxin)
@@ -1041,10 +1004,43 @@ int cinput::getTimeProf(double **timeprof, std::vector<double> *timelist, std::s
     for(int k=0; k<kmaxin; k++)
       (*timeprof)[timecount*kmaxin + k] = rawdata[it->second][k];
 
-    if(master->mpiid == 0) std::printf("Header item \"%s\" has been read from the input\n", it->second.c_str());
     ++timecount;
   }
 
   return 0;
 }
 
+void Input::printUnused()
+{
+  for(InputMap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
+    for(InputMap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
+      for(InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
+      {
+        if(!it3->second.isused)
+        {
+          if(it3->first == "default")
+          {
+            if(master->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
+          }
+          else
+          {
+            if(master->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
+          }
+        }
+      }
+}
+
+void Input::flagUsed(std::string cat, std::string item)
+{
+  // Loop over the entire map to flag the chosen option as used.
+  InputMap::iterator it1 = inputlist.find(cat);
+  if(it1 != inputlist.end())
+  {
+    InputMap2d::iterator it2 = it1->second.find(item);
+    if(it2 != it1->second.end())
+    {
+      for(InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
+        it3->second.isused = true;
+    }
+  }
+}

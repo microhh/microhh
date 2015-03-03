@@ -1,6 +1,11 @@
 # JUQUEEN
-# set(ENV{CXX} bgxlC) # compiler for serial build
-set(ENV{CXX} mpixlcxx) # compiler for parallel build
+if(USEMPI)
+  set(ENV{CC} mpixlc)
+  set(ENV{CXX} mpixlcxx)
+else()
+  set(ENV{CC} bgxlc)
+  set(ENV{CXX} bgxlC)
+endif()
 
 set(USER_CXX_FLAGS "")
 set(USER_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -qarch=qp -qtune=qp -qhot")

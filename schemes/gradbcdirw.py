@@ -3,8 +3,8 @@ from pylab import *
 xsize = 0.5
 igc   = 3
 
-def geterror(u, uref, n=2):
-  error = sqrt(sum((uref - u)**2.) / u.size)
+def geterror(u, uref):
+  error = sqrt(sum((uref - u)**2) / u.size)
   return error
 
 def refdata(n):
@@ -19,10 +19,6 @@ def gx2nd(x, u):
   gu     = zeros(u.size)
   ucalc  = zeros(u.size + 2*igc)
   ucalc[istart:iend] = u[:]
-
-  # # periodic bcs
-  # ucalc[0   :igc     ] = u[u.size-igc:u.size]
-  # ucalc[iend:iend+igc] = u[0:igc]
 
   # non-periodic bc
   ucalc[istart-1] = - ucalc[istart+1]
@@ -45,13 +41,11 @@ def gx4th(x, u):
   ucalc  = zeros(u.size + 2*igc)
   ucalc[istart:iend] = u[:]
 
-  # periodic bcs
-  #ucalc[0   :igc     ] = u[u.size-igc:u.size]
-  #ucalc[iend:iend+igc] = u[0:igc]
-
   # ghost cell
-  ucalc[istart-1] = (-15.*ucalc[istart] + 5.*ucalc[istart+1] - ucalc[istart+2]) / 5.
-  ucalc[iend    ] = (-15.*ucalc[iend-1] + 5.*ucalc[iend-2  ] - ucalc[iend-3  ]) / 5.
+  #ucalc[istart-1] = -3.*ucalc[istart+1] + ucalc[istart+2]
+  #ucalc[iend    ] = -3.*ucalc[iend-2  ] + ucalc[iend-3  ]
+  ucalc[istart-1] = -ucalc[istart+1]
+  ucalc[iend    ] = -ucalc[iend-2  ]
 
   i = istart
   gu[i-igc] = (-136.*ucalc[i-1] - 159.*ucalc[i] + 332.*ucalc[i+1] - 26.*ucalc[i+2] - 12.*ucalc[i+3] + ucalc[i+4]) / (384.*dx)
@@ -112,14 +106,29 @@ slope4 = off4*(dxs[:] / dxs[0])**4.
 
 close('all')
 figure()
-plot(x8 , g8_2nd , 'b-',  label="8_2nd" )
-plot(x16, g16_2nd, 'g-',  label="16_2nd")
-plot(x32, g32_2nd, 'r-',  label="32_2nd")
-plot(x8 , g8_4th , 'b--', label="8_4th" )
-plot(x16, g16_4th, 'g--', label="16_4th")
-plot(x32, g32_4th, 'r--', label="32_4th")
-#plot(x64, g64_4th, 'c-', label="64_4th")
-#plot(x128, g128_4th, 'm-', label="128_4th")
+plot(x8  , g8_2nd  , 'b-',  label="8_2nd" )
+plot(x16 , g16_2nd , 'g-',  label="16_2nd")
+plot(x32 , g32_2nd , 'r-',  label="32_2nd")
+plot(x64 , g64_2nd , 'c-',  label="64_2nd")
+plot(x128, g128_2nd, 'm-',  label="128_2nd")
+plot(x8  , g8_4th  , 'b--', label="8_4th" )
+plot(x16 , g16_4th , 'g--', label="16_4th")
+plot(x32 , g32_4th , 'r--', label="32_4th")
+plot(x64 , g64_4th , 'c--', label="64_4th")
+plot(x128, g128_4th, 'm--', label="128_4th")
+legend(loc=4, frameon=False)
+
+figure()
+plot(x8  , g8_2nd   - gref8_2nd  , 'b-',  label="8_2nd" )
+plot(x16 , g16_2nd  - gref16_2nd , 'g-',  label="16_2nd")
+plot(x32 , g32_2nd  - gref32_2nd , 'r-',  label="32_2nd")
+plot(x64 , g64_2nd  - gref64_2nd , 'c-',  label="64_2nd")
+plot(x128, g128_2nd - gref128_2nd, 'm-',  label="128_2nd")
+plot(x8  , g8_4th   - gref8_4th  , 'b--', label="8_4th" )
+plot(x16 , g16_4th  - gref16_4th , 'g--', label="16_4th")
+plot(x32 , g32_4th  - gref32_4th , 'r--', label="32_4th")
+plot(x64 , g64_4th  - gref64_4th , 'c--', label="64_4th")
+plot(x128, g128_4th - gref128_4th, 'm--', label="128_4th")
 legend(loc=4, frameon=False)
 
 figure()

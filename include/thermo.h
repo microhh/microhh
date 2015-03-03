@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,47 +23,47 @@
 #ifndef THERMO
 #define THERMO
 
-// forward declarations to speed up build time
-class cmaster;
-class cinput;
-class cgrid;
-class cfields;
-struct mask;
+class Master;
+class Input;
+class Grid;
+class Fields;
+struct Mask;
 
-class cthermo
+class Thermo
 {
   public:
-    cthermo(cmodel *, cinput *);
-    virtual ~cthermo();
-    static cthermo* factory(cmaster *, cinput *, cmodel *); ///< Factory function for thermo class generation.
+    Thermo(Model *, Input *);
+    virtual ~Thermo();
+    static Thermo* factory(Master *, Input *, Model *); ///< Factory function for thermo class generation.
 
     virtual void init();
-    virtual void create(cinput *);
-    virtual int exec();
-    virtual int execstats(mask *);
+    virtual void create(Input *);
+    virtual void exec();
+    virtual void execStats(Mask *);
 
-    virtual void execcross();
+    virtual void execCross();
+    virtual void execDump();
 
-    virtual int getmask(cfield3d *, cfield3d *, mask *);
+    virtual void getMask(Field3d *, Field3d *, Mask *);
 
     // interfacing functions to get buoyancy properties from other classes
-    virtual int checkthermofield(std::string name);
-    virtual int getthermofield(cfield3d *, cfield3d *, std::string name);
-    virtual int getbuoyancysurf(cfield3d *);
-    virtual int getbuoyancyfluxbot(cfield3d *);
-    virtual int getprogvars(std::vector<std::string> *);
+    virtual bool checkThermoField(std::string name);
+    virtual void getThermoField(Field3d *, Field3d *, std::string name);
+    virtual void getBuoyancySurf(Field3d *);
+    virtual void getBuoyancyFluxbot(Field3d *);
+    virtual void getProgVars(std::vector<std::string> *);
 
-    std::string getsw();
+    std::string getSwitch();
 
     // GPU functions and variables
-    virtual int prepareDevice();
-    virtual int clearDevice();
+    virtual void prepareDevice();
+    virtual void clearDevice();
 
   protected:
-    cgrid   *grid;
-    cfields *fields;
-    cmaster *master;
-    cmodel  *model;
+    Grid   *grid;
+    Fields *fields;
+    Master *master;
+    Model  *model;
 
     std::string swthermo;
 };

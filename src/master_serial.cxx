@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,35 +20,38 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PARALLEL
+#ifndef USEMPI
 #include <sys/time.h>
 #include "grid.h"
 #include "defines.h"
 #include "master.h"
 
-cmaster::cmaster()
+Master::Master()
 {
   initialized = false;
   allocated   = false;
 }
 
-cmaster::~cmaster()
+Master::~Master()
 {
   printMessage("Finished run on %d processes\n", nprocs);
 }
 
-void cmaster::start(int argc, char *argv[])
+void Master::start(int argc, char *argv[])
 {
   initialized = true;
 
-  // set the rank of the only process to 0
+  // Set the rank of the only process to 0.
   mpiid = 0;
-  // set the number of processes to 1
+  // Set the number of processes to 1.
   nprocs = 1;
+
+  // Set the wall clock time at start.
+  wallClockStart = getWallClockTime();
 
   printMessage("Starting run on %d processes\n", nprocs);
 
-  // process the command line options
+  // Process the command line options.
   if(argc <= 1)
   {
     printError("Specify init, run or post mode\n");
@@ -56,14 +59,14 @@ void cmaster::start(int argc, char *argv[])
   }
   else
   {
-    // check the execution mode
+    // Check the execution mode.
     mode = argv[1];
     if(mode != "init" && mode != "run" && mode != "post")
     {
       printError("Specify init, run or post mode\n");
       throw 1;
     }
-    // set the name of the simulation
+    // Set the name of the simulation.
     if(argc > 2)
       simname = argv[2];
     else
@@ -71,13 +74,20 @@ void cmaster::start(int argc, char *argv[])
   }
 }
 
-void cmaster::init(cinput *inputin)
+void Master::init(Input *inputin)
 {
   int nerror = 0;
-  nerror += inputin->getItem(&npx, "mpi", "npx", "", 1);
-  nerror += inputin->getItem(&npy, "mpi", "npy", "", 1);
+  nerror += inputin->getItem(&npx, "master", "npx", "", 1);
+  nerror += inputin->getItem(&npy, "master", "npy", "", 1);
+
+  // Get the wall clock limit with a default value of 1E8 hours, which will be never hit
+  double wallClockLimit;
+  nerror += inputin->getItem(&wallClockLimit, "master", "wallclocklimit", "", 1E8);
+
   if(nerror)
     throw 1;
+
+  wallClockEnd = wallClockStart + 3600.*wallClockLimit;
 
   if(nprocs != npx*npy)
   {
@@ -92,7 +102,7 @@ void cmaster::init(cinput *inputin)
   allocated = true;
 }
 
-double cmaster::gettime()
+double Master::getWallClockTime()
 {
   timeval timestruct;
   gettimeofday(&timestruct, NULL);
@@ -101,50 +111,41 @@ double cmaster::gettime()
   return time;
 }
 
-int cmaster::waitall()
+void  Master::waitAll()
 {
-  return 0;
 }
 
 // all broadcasts return directly, because there is nothing to broadcast
-int cmaster::broadcast(char *data, int datasize)
+void Master::broadcast(char *data, int datasize)
 {
-  return 0;
 }
 
 // overloaded broadcast functions
-int cmaster::broadcast(int *data, int datasize)
+void Master::broadcast(int *data, int datasize)
 {
-  return 0;
 }
 
-int cmaster::broadcast(unsigned long *data, int datasize)
+void Master::broadcast(unsigned long *data, int datasize)
 {
-  return 0;
 }
 
-int cmaster::broadcast(double *data, int datasize)
+void Master::broadcast(double *data, int datasize)
 {
-  return 0;
 }
 
-int cmaster::sum(int *var, int datasize)
+void Master::sum(int *var, int datasize)
 {
-  return 0;
 }
 
-int cmaster::sum(double *var, int datasize)
+void Master::sum(double *var, int datasize)
 {
-  return 0;
 }
 
-int cmaster::max(double *var, int datasize)
+void Master::max(double *var, int datasize)
 {
-  return 0;
 }
 
-int cmaster::min(double *var, int datasize)
+void Master::min(double *var, int datasize)
 {
-  return 0;
 }
 #endif

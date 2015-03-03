@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,29 +25,24 @@
 
 #include "pres.h"
 
-#ifdef USECUDA
-#include <cufft.h>
-#endif
+class Model;
 
-// forward declaration
-class cmodel;
-
-class cpres_2 : public cpres
+class Pres2 : public Pres
 {
   public:
-    cpres_2(cmodel *, cinput *);
-    ~cpres_2();
+    Pres2(Model *, Input *);
+    ~Pres2();
 
     void init();
-    void setvalues();
+    void setValues();
 
     void exec(double);
-    double check();
+    double checkDivergence();
 
-#ifdef USECUDA
-    int prepareDevice();
-    int clearDevice();
-#endif
+    #ifdef USECUDA
+    void prepareDevice();
+    void clearDevice();
+    #endif
 
   private:
     double *bmati, *bmatj;
@@ -55,29 +50,28 @@ class cpres_2 : public cpres
     double *work2d;
 
     // GPU
-#ifdef USECUDA
+    #ifdef USECUDA
     double *bmati_g, *bmatj_g;
     double *a_g, *c_g;
     double *work2d_g;
+    #endif
 
-    cufftDoubleComplex *ffti_complex_g, *fftj_complex_g; 
-    cufftHandle iplanf, jplanf; 
-    cufftHandle iplanb, jplanb; 
-#endif
+    void input(double *, 
+               double *, double *, double *,
+               double *, double *, double *,
+               double *, double *, double *,
+               double);
 
-    void pres_in(double *, 
-                 double *, double *, double *,
-                 double *, double *, double *,
-                 double *, double *, double *,
-                 double);
-    void pres_solve(double *, double *, double *,
-                    double *, double *,
-                    double *, double *, double *, double *);
-    void pres_out(double *, double *, double *,
-                  double *, double *);
-    double calcdivergence(double *, double *, double *, double *, double *, double *);
+    void solve(double *, double *, double *,
+               double *, double *,
+               double *, double *, double *, double *);
+
+    void output(double *, double *, double *,
+                double *, double *);
 
     void tdma(double *, double *, double *, double *, 
               double *, double *);
+
+    double calcDivergence(double *, double *, double *, double *, double *, double *);
 };
 #endif

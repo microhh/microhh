@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -24,7 +24,7 @@
 #include <cstdio>
 #include "master.h"
 
-void cmaster::printMessage(const char *format, ...)
+void Master::printMessage(const char *format, ...)
 {
   if(mpiid == 0)
   {
@@ -35,7 +35,7 @@ void cmaster::printMessage(const char *format, ...)
   }
 }
 
-void cmaster::printWarning(const char *format, ...)
+void Master::printWarning(const char *format, ...)
 {
   std::string warningstr("WARNING: ");
   warningstr += std::string(format);
@@ -51,7 +51,7 @@ void cmaster::printWarning(const char *format, ...)
   }
 }
 
-void cmaster::printError(const char *format, ...)
+void Master::printError(const char *format, ...)
 {
   std::string errorstr("ERROR: ");
   errorstr += std::string(format);
@@ -65,4 +65,15 @@ void cmaster::printError(const char *format, ...)
     std::vfprintf(stdout, errorformat, args);
     va_end(args);
   }
+}
+
+bool Master::atWallClockLimit()
+{
+  const double wallClockTimeLeft = wallClockEnd - getWallClockTime();
+  const double tenMinutes = 10.*60.;
+
+  if(wallClockTimeLeft < tenMinutes)
+    return true;
+  else
+    return false;
 }

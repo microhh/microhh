@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -24,61 +24,66 @@
 #define PRES_4
 
 #include "pres.h"
+#include "defines.h"
 
 #ifdef USECUDA
 #include <cufft.h>
 #endif
 
-// forward declaration
-class cmodel;
+class Model;
 
-class cpres_4 : public cpres
+class Pres4 : public Pres
 {
   public:
-    cpres_4(cmodel *, cinput *);
-    ~cpres_4();
+    Pres4(Model *, Input *);
+    ~Pres4();
 
     void init();
-    void setvalues();
+    void setValues();
 
     void exec(double);
-    double check();
+    double checkDivergence();
 
-#ifdef USECUDA
-    int prepareDevice();
-    int clearDevice();
-#endif
+    #ifdef USECUDA
+    void prepareDevice();
+    void clearDevice();
+    #endif
 
   private:
     double *bmati, *bmatj;
     double *m1,*m2,*m3,*m4,*m5,*m6,*m7;
 
-#ifdef USECUDA
+    #ifdef USECUDA
     double *bmati_g, *bmatj_g;
     double *m1_g,*m2_g,*m3_g,*m4_g,*m5_g,*m6_g,*m7_g;
 
     cufftDoubleComplex *ffti_complex_g, *fftj_complex_g; 
     cufftHandle iplanf, jplanf; 
     cufftHandle iplanb, jplanb; 
-#endif
+    #endif
 
-    void pres_in(double *, 
-                 double *, double *, double *,
-                 double *, double *, double *,
-                 double *, double);
-    void pres_solve(double *, double *, double *,
-                    double *, double *, double *, double *,
-                    double *, double *, double *,
-                    double *, double *, double *, double *,
-                    double *, double *, double *, double *,
-                    double *, double *,
-                    int);
-    void pres_out(double *, double *, double *,
-                  double *, double *);
-    double calcdivergence(double *, double *, double *, double *);
+    template<bool>
+    void input(double * restrict, 
+               double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict,
+               double * restrict, double);
 
-    void hdma(double *, double *, double *, double *,
-              double *, double *, double *, double *,
+    void solve(double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict, double * restrict, double * restrict,
+               double * restrict, double * restrict,
+               int);
+
+    template<bool>
+    void output(double * restrict, double * restrict, double * restrict,
+                double * restrict, double * restrict);
+
+    void hdma(double * restrict, double * restrict, double * restrict, double * restrict,
+              double * restrict, double * restrict, double * restrict, double * restrict,
               int);
+
+    double calcDivergence(double * restrict, double * restrict, double * restrict, double * restrict);
 };
 #endif

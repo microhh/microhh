@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -27,11 +27,11 @@
 #include "field3d.h"
 #include "master.h"
 
-class cmpicheck
+class Mpicheck
 {
   public:
-    cmpicheck(cgrid *, cmpi *);
-    ~cmpicheck();
+    Mpicheck(Grid *, cmpi *);
+    ~Mpicheck();
     
     int create();
     int checkLayout();
@@ -39,11 +39,11 @@ class cmpicheck
     int checkTranspose();
 
   private:
-    cgrid   *grid;
+    Grid   *grid;
     cmpi    *mpi;
 
-    cfield3d *s;
-    cfield3d *temp1;
-    cfield3d *temp2;
+    Field3d *s;
+    Field3d *temp1;
+    Field3d *temp2;
 };
 #endif

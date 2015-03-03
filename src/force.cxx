@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,7 +31,7 @@
 #include "model.h"
 #include "timeloop.h"
 
-cforce::cforce(cmodel *modelin, cinput *inputin)
+Force::Force(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -41,6 +41,10 @@ cforce::cforce(cmodel *modelin, cinput *inputin)
   ug = 0;
   vg = 0;
   wls = 0;
+
+  ug_g = 0;
+  vg_g = 0;
+  wls_g = 0;
 
   int nerror = 0;
   nerror += inputin->getItem(&swlspres, "force", "swlspres", "", "0");
@@ -69,7 +73,7 @@ cforce::cforce(cmodel *modelin, cinput *inputin)
   }
 
   if(swwls == "1")
-    fields->setcalcprofs(true);
+    fields->set_calcMeanProfs(true);
   else if(swwls != "0")
   {
     ++nerror;
@@ -84,7 +88,7 @@ cforce::cforce(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cforce::~cforce()
+Force::~Force()
 {
   delete[] ug;
   delete[] vg;
@@ -100,12 +104,12 @@ cforce::~cforce()
   for(std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
-void cforce::init()
+void Force::init()
 {
   if(swlspres == "geo")
   {
@@ -123,7 +127,7 @@ void cforce::init()
     wls = new double[grid->kcells];
 }
 
-void cforce::create(cinput *inputin)
+void Force::create(Input *inputin)
 {
   int nerror = 0;
 
@@ -176,7 +180,7 @@ void cforce::create(cinput *inputin)
 
     // display a warning for the non-supported 
     for(std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
-      if(master->mpiid == 0) std::printf("WARNING %s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
+      master->printWarning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
   }
 
   if(nerror)
@@ -184,46 +188,44 @@ void cforce::create(cinput *inputin)
 }
 
 #ifndef USECUDA
-int cforce::exec(double dt)
+void Force::exec(double dt)
 {
   if(swlspres == "uflux")
-    flux(fields->ut->data, fields->u->data, grid->dz, dt);
+    calcFlux(fields->ut->data, fields->u->data, grid->dz, dt);
 
   else if(swlspres == "geo")
   {
     if(grid->swspatialorder == "2")
-      coriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
+      calcCoriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
     else if(grid->swspatialorder == "4")
-      coriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
+      calcCoriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
   }
 
   if(swls == "1")
   {
     for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-      lssource(fields->st[*it]->data, lsprofs[*it]);
+      calcLargeScaleSource(fields->st[*it]->data, lsprofs[*it]);
   }
 
   if(swwls == "1")
   {
-    for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-      advecwls_2nd(it->second->data, fields->s[it->first]->datamean, wls, grid->dzhi);
+    for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+      advec_wls_2nd(it->second->data, fields->sp[it->first]->datamean, wls, grid->dzhi);
   }
-
-  return 0;
 }
 #endif
 
-int cforce::settimedep()
+void Force::updateTimeDep()
 {
   if(swtimedep == "0")
-    return 0;
+    return;
 
   // first find the index for the time entries
   unsigned int index0 = 0;
   unsigned int index1 = 0;
   for(std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
   {
-    if(model->timeloop->time < *it)
+    if(model->timeloop->get_time() < *it)
       break;
     else
       ++index1;
@@ -251,17 +253,15 @@ int cforce::settimedep()
     index0 = index1-1;
     double timestep;
     timestep = timedeptime[index1] - timedeptime[index0];
-    fac0 = (timedeptime[index1] - model->timeloop->time) / timestep;
-    fac1 = (model->timeloop->time - timedeptime[index0]) / timestep;
+    fac0 = (timedeptime[index1] - model->timeloop->get_time()) / timestep;
+    fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
   }
 
-  settimedepprofiles(fac0, fac1, index0, index1);
-
-  return 0;
+  updateTimeDepProfs(fac0, fac1, index0, index1);
 }
 
 #ifndef USECUDA
-int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
+void Force::updateTimeDepProfs(const double fac0, const double fac1, const int index0, const int index1)
 {
   // process time dependent bcs for the large scale forcings
   int kk = grid->kmax;
@@ -277,13 +277,11 @@ int cforce::settimedepprofiles(double fac0, double fac1, int index0, int index1)
       for(int k=0; k<grid->kmax; ++k)
         lsprofs[*it1][k+kgc] = fac0*it2->second[index0*kk+k] + fac1*it2->second[index1*kk+k];
   }
-
-  return 0;
 }
 #endif
 
-int cforce::flux(double * const restrict ut, const double * const restrict u, 
-                 const double * const restrict dz, const double dt)
+void Force::calcFlux(double * const restrict ut, const double * const restrict u, 
+                     const double * const restrict dz, const double dt)
 {
   int ijk,jj,kk;
 
@@ -306,8 +304,8 @@ int cforce::flux(double * const restrict ut, const double * const restrict u,
         utavg = utavg + ut[ijk]*dz[k];
       }
 
-  grid->getsum(&uavg);
-  grid->getsum(&utavg);
+  grid->getSum(&uavg);
+  grid->getSum(&utavg);
 
   uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
   utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
@@ -317,20 +315,18 @@ int cforce::flux(double * const restrict ut, const double * const restrict u,
 
   for(int n=0; n<grid->ncells; n++)
     ut[n] += fbody;
-
-  return 0;
 }
 
-int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
-                         const double * const restrict u , const double * const restrict v ,
-                         const double * const restrict ug, const double * const restrict vg)
+void Force::calcCoriolis_2nd(double * const restrict ut, double * const restrict vt,
+                             const double * const restrict u , const double * const restrict v ,
+                             const double * const restrict ug, const double * const restrict vg)
 {
   int ijk,ii,jj,kk;
   double ugrid, vgrid;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   ugrid = grid->utrans;
   vgrid = grid->vtrans;
@@ -352,13 +348,11 @@ int cforce::coriolis_2nd(double * const restrict ut, double * const restrict vt,
         ijk = i + j*jj + k*kk;
         vt[ijk] -= fc * (0.25*(u[ijk-jj] + u[ijk] + u[ijk+ii-jj] + u[ijk+ii]) + ugrid - ug[k]);
       }
-
-  return 0;
 }
 
-int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
-                         const double * const restrict u , const double * const restrict v ,
-                         const double * const restrict ug, const double * const restrict vg)
+void Force::calcCoriolis_4th(double * const restrict ut, double * const restrict vt,
+                             const double * const restrict u , const double * const restrict v ,
+                             const double * const restrict ug, const double * const restrict vg)
 {
   using namespace fd::o4;
 
@@ -369,7 +363,7 @@ int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
   ii2 = 2;
   jj1 = 1*grid->icells;
   jj2 = 2*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
 
   ugrid = grid->utrans;
   vgrid = grid->vtrans;
@@ -399,11 +393,9 @@ int cforce::coriolis_4th(double * const restrict ut, double * const restrict vt,
                           + ci3*(ci0*u[ijk-ii1+jj1] + ci1*u[ijk+jj1] + ci2*u[ijk+ii1+jj1] + ci3*u[ijk+ii2+jj1]) )
                         + ugrid - ug[k]);
       }
-
-  return 0;
 }
 
-int cforce::lssource(double * const restrict st, const double * const restrict sls)
+void Force::calcLargeScaleSource(double * const restrict st, const double * const restrict sls)
 {
   int ijk,jj,kk;
 
@@ -417,12 +409,10 @@ int cforce::lssource(double * const restrict st, const double * const restrict s
         ijk = i + j*jj + k*kk;
         st[ijk] += sls[k];
       }
-
-  return 0;
 }
 
-int cforce::advecwls_2nd(double * const restrict st, const double * const restrict s,
-                         const double * const restrict wls, const double * const dzhi)
+void Force::advec_wls_2nd(double * const restrict st, const double * const restrict s,
+                          const double * const restrict wls, const double * const dzhi)
 {
   int ijk,jj,kk;
 
@@ -451,6 +441,4 @@ int cforce::advecwls_2nd(double * const restrict st, const double * const restri
         }
     }
   }
-
-  return 0;
 }

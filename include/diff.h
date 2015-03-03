@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -24,36 +24,36 @@
 #define DIFF
 
 // forward declaration to speed up build time
-class cmodel;
-class cgrid;
-class cfields;
-class cmaster;
+class Model;
+class Grid;
+class Fields;
+class Master;
 
-class cdiff
+class Diff
 {
   public:
-    cdiff(cmodel *, cinput *);
-    virtual ~cdiff();
-    static cdiff* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for diff class generation.
+    Diff(Model *, Input *);
+    virtual ~Diff();
+    static Diff* factory(Master *, Input *, Model *, const std::string); ///< Factory function for diff class generation.
 
-    virtual void setvalues();
-    virtual int execvisc();
-    virtual int exec();
+    virtual void setValues();
+    virtual void execViscosity();
+    virtual void exec();
 
-    std::string getname();
-    virtual unsigned long gettimelim(unsigned long, double);
-    virtual double getdn(double);
+    std::string getName();
+    virtual unsigned long getTimeLimit(unsigned long, double);
+    virtual double get_dn(double);
 
     double dnmax;
 
     // GPU functions and variables
-    virtual int prepareDevice(); 
+    virtual void prepareDevice();
 
   protected:
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
-    cmaster *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
+    Master *master;
 
     std::string swdiff;
 };

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,16 +25,15 @@
 
 #include <string>
 
-// forward declarations to reduce compilation time
-class cmaster;
-class cgrid;
+class Master;
+class Grid;
 
-class cfield3d
+class Field3d
 {
   public:
     // functions
-    cfield3d(cgrid *, cmaster *, std::string, std::string, std::string);
-    ~cfield3d();
+    Field3d(Grid *, Master *, std::string, std::string, std::string);
+    ~Field3d();
 
     int init();
     // int checkfornan();
@@ -53,7 +52,10 @@ class cfield3d
     std::string longname;
     double visc;
 
-    // variables at GPU
+    // Device functions and variables
+    void initDevice();  ///< Allocate Field3D fields at device 
+    void clearDevice(); ///< Deallocate Field3D fields at device 
+
     double *data_g;
     double *databot_g;
     double *datatop_g;
@@ -64,8 +66,8 @@ class cfield3d
     double *datafluxtop_g;
 
   private:
-    cgrid   *grid;
-    cmaster *master;
+    Grid   *grid;
+    Master *master;
 };
 #endif
 

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -26,46 +26,71 @@
 #include <sys/time.h>
 #include <string>
 
-// forward declarations to reduce compilation time
-class cinput;
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
+class Input;
+class Master;
+class Model;
+class Grid;
+class Fields;
 
-class ctimeloop
+class Timeloop
 {
   public:
-    ctimeloop(cmodel *, cinput *);
-    ~ctimeloop();
+    Timeloop(Model *, Input *);
+    ~Timeloop();
 
     void stepTime();
-    int postprocstep();
+    void stepPostProcTime();
     void setTimeStep();
+    void setTimeStepLimit();
+    void setTimeStepLimit(unsigned long);
+    double getSubTimeStep();
 
-    int exec();
+    void exec();
 
-    // Query functions for main loop
-    bool inSubStep();
-    bool inStatsStep();
-    bool doCheck();
-    bool doSave();
-
-    double getsubdt();
-
-    int settimelim();
-
-    unsigned long settimelim(unsigned long);
+    double check();
 
     void save(int);
     void load(int);
 
-    double check();
+    // Query functions for main loop
+    bool inSubStep();
+    bool isStatsStep();
+    bool doCheck();
+    bool doSave();
+    bool isFinished();
 
+    // Accessors for other classes
+    double get_time()   { return time;    }
+    double get_dt()     { return dt;      }
+    double get_ifactor(){ return ifactor; }
+    unsigned long get_itime() { return itime; }
+    unsigned long get_idt()   { return idt;   }
+    int get_iotime()    { return iotime;    }
+    int get_iteration() { return iteration; }
 
-    // variables
-    int substep;
+  private:
+    Master *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
+
+    timeval start;
+    timeval end;
+
+    int rkorder;
+
+    int outputiter;
+
+    void rk3(double *, double *, double);
+    void rk4(double *, double *, double);
+
+    double rk3subdt(double);
+    double rk4subdt(double);
+
+    // Variables
     bool loop;
+
+    int substep;
     bool adaptivestep;
 
     double time;
@@ -75,7 +100,6 @@ class ctimeloop
     double postproctime;
     double savetime;
     double starttime;
-    double dtlim;
 
     int iteration;
     int iotime;
@@ -92,26 +116,5 @@ class ctimeloop
     unsigned long iiotimeprec;
 
     double ifactor;
-
-  private:
-    cmaster *master;
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
-
-    timeval start;
-    timeval end;
-
-    int rkorder;
-
-    int outputiter;
-
-    int rk3(double *, double *, double);
-    int rk4(double *, double *, double);
-    double rk3subdt(double);
-    double rk4subdt(double);
-
-    int rk3_GPU(double *, double *, double);
-    int rk4_GPU(double *, double *, double);
 };
 #endif

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,7 +31,7 @@
 #include "defines.h"
 #include "model.h"
 
-cbuffer::cbuffer(cmodel *modelin, cinput *inputin)
+Buffer::Buffer(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -52,30 +52,30 @@ cbuffer::cbuffer(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cbuffer::~cbuffer()
+Buffer::~Buffer()
 {
   for(std::map<std::string, double *>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
     delete[] it->second;
 
-#ifdef USECUDA
+  #ifdef USECUDA
   clearDevice();
-#endif
+  #endif
 }
 
-void cbuffer::init()
+void Buffer::init()
 {
   if(swbuffer == "1")
   {
     // allocate the buffer arrays
-    for(fieldmap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
       bufferprofs[it->first] = new double[grid->kcells];
 
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       bufferprofs[it->first] = new double[grid->kcells];
   }
 }
 
-void cbuffer::create(cinput *inputin)
+void Buffer::create(Input *inputin)
 {
   int nerror = 0;
 
@@ -96,7 +96,7 @@ void cbuffer::create(cinput *inputin)
     for(int k=0; k<grid->kcells; ++k)
       bufferprofs["w"][k] = 0.;
  
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       nerror += inputin->getProf(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
 
     // find the starting points
@@ -117,7 +117,7 @@ void cbuffer::create(cinput *inputin)
     if(bufferkstarth == grid->kend)
     {
       ++nerror;
-      if(master->mpiid == 0) std::printf("ERROR buffer is too close to the model top\n");
+      master->printError("buffer is too close to the model top\n");
     }
   }
 
@@ -126,7 +126,7 @@ void cbuffer::create(cinput *inputin)
 }
 
 #ifndef USECUDA
-int cbuffer::exec()
+void Buffer::exec()
 {
   if(swbuffer == "1")
   {
@@ -135,21 +135,19 @@ int cbuffer::exec()
     buffer(fields->mt["v"]->data, fields->mp["v"]->data, bufferprofs["v"], grid->z );
     buffer(fields->mt["w"]->data, fields->mp["w"]->data, bufferprofs["w"], grid->zh);
  
-    for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
       buffer(fields->st[it->first]->data, it->second->data, bufferprofs[it->first], grid->z);
   }
-
-  return 0;
 }
 #endif
 
-int cbuffer::buffer(double * const restrict at, const double * const restrict a, 
+void Buffer::buffer(double * const restrict at, const double * const restrict a, 
                     const double * const restrict abuf, const double * const restrict z)
 { 
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   double sigmaz;
   double zsizebuf;
@@ -167,7 +165,4 @@ int cbuffer::buffer(double * const restrict at, const double * const restrict a,
         at[ijk] -= sigmaz*(a[ijk]-abuf[k]);
       }
   }
-
-  return 0;
 }
-

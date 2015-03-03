@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,73 +25,72 @@
 
 #include <string>
 
-// forward declarations to reduce compilation time
-class cmodel;
-class cmaster;
-class cinput;
-class cstats;
-class cgrid;
-class cfields;
-struct mask;
+class Model;
+class Master;
+class Input;
+class Stats;
+class Grid;
+class Fields;
+struct Mask;
 
-class cbudget
+class Budget
 {
   public:
-    cbudget(cmodel *, cinput *);
-    ~cbudget();
+    Budget(Model *, Input *);
+    ~Budget();
 
     void init();
     void create();
 
-    int execstats(mask *);
+    void execStats(Mask *);
 
   private:
-    cmodel  *model;
-    cmaster *master;
-    cstats  *stats;
-    cgrid   *grid;
-    cfields *fields;
+    Model  *model;
+    Master *master;
+    Stats  *stats;
+    Grid   *grid;
+    Fields *fields;
 
     std::string swbudget;
 
     double *umodel, *vmodel;
 
-    int calcke(double *, double *, double *,
-               double *, double *,
-               double, double,
-               double *, double *);
+    void calcKe(double *, double *, double *,
+                double *, double *,
+                double, double,
+                double *, double *);
 
-    int calctkebudget(double *, double *, double *, double *,
-                      double *, double *,
-                      double *, double *,
+    void calcTkeBudget(double *, double *, double *, double *,
+                       double *, double *,
+                       double *, double *,
+                       double *, double *, double *,
+                       double *, double *, double *, double *,
+                       double *, double *, double *, double *,
+                       double *, double *, double *, double *,
+                       double *, double *,
+                       double *, double *, double *,
+                       double *, double *, double);
+
+    void calcTkeBudgetBuoy(double *, double *, double *, double *);
+
+    void calcPe(double *, double *, double *, double *,
+                double *,
+                double *,
+                double *, double *, double *,
+                double *);
+
+    void calcPeBudget(double *, double *, double *, double *,
                       double *, double *, double *,
                       double *, double *, double *, double *,
-                      double *, double *, double *, double *,
-                      double *, double *, double *, double *,
-                      double *, double *,
-                      double *, double *, double *,
-                      double *, double *, double);
-
-    int calctkebudget_buoy(double *, double *, double *, double *);
-
-    int calcpe(double *, double *, double *, double *,
-               double *,
-               double *,
-               double *, double *, double *,
-               double *);
-
-    int calcpebudget(double *, double *, double *, double *,
-                     double *, double *, double *,
-                     double *, double *, double *, double *,
-                     double);
-
-    int calcbpebudget(double *, double *, double *, double *, double *,
-                      double *, double *, double *,
-                      double *,
-                      double *, double *, double *,
                       double);
 
-    double calczsort   (double, double *, double *, int);
-    double calcdzstardb(double, double *, double *);
+    void calcBpeBudget(double *, double *, double *, double *, double *,
+                       double *, double *, double *,
+                       double *,
+                       double *, double *, double *,
+                       double);
+
+    double calc_zsort   (double, double *, double *, int);
+    double calc_dzstardb(double, double *, double *);
 };
 #endif

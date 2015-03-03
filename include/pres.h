@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,31 +23,49 @@
 #ifndef PRES
 #define PRES
 
-// forward declarations to speed up build time
-class cmodel;
-class cgrid;
-class cfields;
-class cmaster;
+class Model;
+class Grid;
+class Fields;
+class Master;
 
-class cpres
+#ifdef USECUDA
+#include <cufft.h>
+#endif
+
+class Pres
 {
   public:
-    cpres(cmodel *, cinput *);
-    virtual ~cpres();
-    static cpres* factory(cmaster *, cinput *, cmodel *, const std::string); ///< Factory function for pres class generation.
+    Pres(Model *, Input *);
+    virtual ~Pres();
+    static Pres* factory(Master *, Input *, Model *, const std::string); ///< Factory function for pres class generation.
 
     virtual void init();
-    virtual void setvalues();
+    virtual void setValues();
 
     virtual void exec(double);
-    virtual double check();
+    virtual double checkDivergence();
 
-    virtual int prepareDevice();
+    virtual void prepareDevice();
 
   protected:
-    cmaster *master;
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
+    Master *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
+
+    #ifdef USECUDA
+    void makeCufftPlan();
+    void fftForward (double *, double *, double *);
+    void fftBackward(double *, double *, double *);
+
+    bool FFTPerSlice;
+    cufftHandle iplanf, jplanf; 
+    cufftHandle iplanb, jplanb; 
+    #endif
+  
+  private:
+    #ifdef USECUDA
+    void checkCufftMemory();
+    #endif
 };
 #endif

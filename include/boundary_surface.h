@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -26,46 +26,43 @@
 #include "boundary.h"
 #include "stats.h"
 
-// forward declaration
-class cmodel;
-class cstats;
-struct mask;
+class Model;
+class Input;
+class Stats;
+struct Mask;
 
-class cboundary_surface : public cboundary
+class BoundarySurface : public Boundary
 {
   public:
-    cboundary_surface(cmodel *, cinput *);
-    ~cboundary_surface();
+    BoundarySurface(Model *, Input *);
+    ~BoundarySurface();
 
-    void init(cinput *);
-    void create(cinput *);
-    void setvalues();
+    void init(Input *);
+    void create(Input *);
+    void setValues();
 
-    int exec();
+    void execStats(Mask *); ///< Execute statistics of surface
+    void execCross();       ///< Execute cross sections of surface
 
-    void execcross(); ///< Execute cross sections of surface
-    int execstats(mask *); ///< Execute statistics of surface
-
-    void save(int);
-    void load(int);
-
-    // make these variables public for out-of-class usage
+    // Make these variables public for out-of-class usage.
     double *obuk;
+    int    *nobuk;
     double *ustar;
 
     double z0m;
     double z0h;
 
-#ifdef USECUDA
+    #ifdef USECUDA
     // GPU functions and variables
-    int prepareDevice();
-    int clearDevice();
-    int forwardDevice();  // TMP BVS
-    int backwardDevice(); // TMP BVS 
+    void prepareDevice();
+    void clearDevice();
+    void forwardDevice();  // TMP BVS
+    void backwardDevice(); // TMP BVS 
 
     double *obuk_g;
     double *ustar_g;
-#endif
+    int    *nobuk_g;
+    #endif
 
   private:
     // cross sections
@@ -73,35 +70,39 @@ class cboundary_surface : public cboundary
     std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
     // surface scheme
-    int bcvalues();
-    int stability(double *, double *, double *,
-                  double *, double *, double *,
-                  double *, double *, double *,
-                  double *, double *);
-    int stability_neutral(double *, double *,
+    void updateBcs();
+    void stability(double *, double *, double *,
+                   double *, double *, double *,
+                   double *, double *, double *,
+                   double *, double *);
+    void stabilityNeutral(double *, double *,
                           double *, double *,
                           double *, double *,
                           double *, double *);
-    int surfm(double *, double *,
-              double *, double *, double *, double *,
-              double *, double *, double *, double *,
-              double, int);
-    int surfs(double *, double *, double *,
-              double *, double *, double *,
-              double, int);
-    double calcobuk_noslip_flux     (double, double, double, double);
-    double calcobuk_noslip_dirichlet(double, double, double, double);
-    inline double fm(double, double, double);
-    inline double fh(double, double, double);
-    inline double psim(double);
-    inline double psih(double);
-    inline double phim(double);
-    inline double phih(double);
+    void surfm(double *, double *,
+               double *, double *, double *, double *,
+               double *, double *, double *, double *,
+               double, int);
+    void surfs(double *, double *, double *,
+               double *, double *, double *,
+               double, int);
+
+    double calcObukNoslipFlux     (const float* const, const float* const, int&, double, double, double);
+    double calcObukNoslipDirichlet(const float* const, const float* const, int&, double, double, double);
+
     double ustarin;
 
-    cstats *stats;
+    Stats *stats;
 
-    typedef std::map<std::string, int> bcbotmap;
+    float* zL_sl;
+    float* f_sl;
+
+    #ifdef USECUDA
+    float* zL_sl_g;
+    float* f_sl_g;
+    #endif
+
+    // typedef std::map<std::string, int> bcbotmap;
     // int surfmbcbot;
     // bcbotmap surfsbcbot;
 

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,39 +33,37 @@
 
 using namespace fd::o2;
 
-cadvec_2::cadvec_2(cmodel *modelin, cinput *inputin) : cadvec(modelin, inputin)
+Advec2::Advec2(Model *modelin, Input *inputin) : Advec(modelin, inputin)
 {
 }
 
-cadvec_2::~cadvec_2()
+Advec2::~Advec2()
 {
 }
 
-double cadvec_2::getcfl(double dt)
+#ifndef USECUDA
+double Advec2::get_cfl(double dt)
 {
   double cfl;
-
-  cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
-
+  cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
   return cfl;
 }
 
-unsigned long cadvec_2::gettimelim(unsigned long idt, double dt)
+unsigned long Advec2::getTimeLimit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
   double cfl;
 
-  cfl = calccfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
-  // avoid zero divisons
-  cfl = std::max(constants::dsmall, cfl);
+  // Calculate cfl and prevent zero divisons.
+  cfl = calc_cfl(fields->u->data, fields->v->data, fields->w->data, grid->dzi, dt);
+  cfl = std::max(cflmin, cfl);
 
   idtlim = idt * cflmax / cfl;
 
   return idtlim;
 }
 
-#ifndef USECUDA
-void cadvec_2::exec()
+void Advec2::exec()
 {
   advecu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi,
          fields->rhoref, fields->rhorefh);
@@ -74,21 +72,20 @@ void cadvec_2::exec()
   advecw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi,
          fields->rhoref, fields->rhorefh);
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advecs(it->second->data, fields->s[it->first]->data, fields->u->data, fields->v->data, fields->w->data,
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    advecs(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data,
            grid->dzi, fields->rhoref, fields->rhorefh);
 }
 #endif
 
-#ifndef USECUDA
-double cadvec_2::calccfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+double Advec2::calc_cfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -104,15 +101,14 @@ double cadvec_2::calccfl(double * restrict u, double * restrict v, double * rest
         cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
       }
 
-  grid->getmax(&cfl);
+  grid->getMax(&cfl);
 
   cfl = cfl*dt;
 
   return cfl;
 }
-#endif
 
-void cadvec_2::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
+void Advec2::advecu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
@@ -120,7 +116,7 @@ void cadvec_2::advecu(double * restrict ut, double * restrict u, double * restri
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -143,7 +139,7 @@ void cadvec_2::advecu(double * restrict ut, double * restrict u, double * restri
       }
 }
 
-void cadvec_2::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w,
+void Advec2::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
@@ -151,7 +147,7 @@ void cadvec_2::advecv(double * restrict vt, double * restrict u, double * restri
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -174,7 +170,7 @@ void cadvec_2::advecv(double * restrict vt, double * restrict u, double * restri
       }
 }
 
-void cadvec_2::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w,
+void Advec2::advecw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w,
                       double * restrict dzhi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
@@ -182,7 +178,7 @@ void cadvec_2::advecw(double * restrict wt, double * restrict u, double * restri
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
@@ -205,15 +201,15 @@ void cadvec_2::advecw(double * restrict wt, double * restrict u, double * restri
       }
 }
 
-void cadvec_2::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w,
-                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
+void Advec2::advecs(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w,
+                    double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
 
   ii = 1;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;

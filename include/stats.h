@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,120 +25,114 @@
 
 #include <netcdfcpp.h>
 
-// forward declarations to reduce compilation time
-class cmaster;
-class cmodel;
-class cgrid;
-class cfields;
+class Master;
+class Model;
+class Grid;
+class Fields;
 
 // struct for profiles
-struct profvar
+struct ProfVar
 {
   NcVar *ncvar;
   double *data;
 };
 
 // struct for time series
-struct tseriesvar
+struct TimeSeriesVar
 {
   NcVar *ncvar;
   double data;
 };
 
 // typedefs for containers of profiles and time series
-typedef std::map<std::string, profvar> profmap;
-typedef std::map<std::string, tseriesvar> tseriesmap;
+typedef std::map<std::string, ProfVar> ProfMap;
+typedef std::map<std::string, TimeSeriesVar> TimeSeriesMap;
 
 // structure
-struct mask
+struct Mask
 {
   std::string name;
   NcFile *dataFile;
   NcDim  *z_dim, *zh_dim, *t_dim;
   NcVar  *t_var, *iter_var;
-  profmap profs;
-  tseriesmap tseries;
+  ProfMap profs;
+  TimeSeriesMap tseries;
 };
 
-typedef std::map<std::string, mask> maskmap;
+typedef std::map<std::string, Mask> MaskMap;
 
-class cstats
+class Stats
 {
   public:
-    cstats(cmodel *, cinput *);
-    ~cstats();
+    Stats(Model *, Input *);
+    ~Stats();
 
     void init(double);
     void create(int);
 
-    unsigned long gettimelim(unsigned long);
-    int getmask(cfield3d *, cfield3d *, mask *);
-    int exec(int, double, unsigned long);
-    int dostats();
-    std::string getsw();
+    unsigned long getTimeLimit(unsigned long);
+    void getMask(Field3d *, Field3d *, Mask *);
+    void exec(int, double, unsigned long);
+    bool doStats();
+    std::string getSwitch();
 
-    // container for all stats, masks as uppermost in hierarchy
-    maskmap masks;
+    // Container for all stats, masks as uppermost in hierarchy
+    MaskMap masks;
     int *nmask;
     int *nmaskh;
     int nmaskbot;
 
-    // interface functions
-    // profmap profs;
-    // tseriesmap tseries;
+    // Interface functions.
+    void addMask(const std::string);
+    void addProf(std::string, std::string, std::string, std::string);
+    void addFixedProf(std::string, std::string, std::string, std::string, double *);
+    void addTimeSeries(std::string, std::string, std::string);
 
-    void addmask(const std::string);
-    int addprof(std::string, std::string, std::string, std::string);
-    int addfixedprof(std::string, std::string, std::string, std::string, double *);
-    int addtseries(std::string, std::string, std::string);
+    void calcArea   (double *, const int[3], int *);
 
-    int calcarea   (double *, const int[3], int *);
-
-    void calcmean  (double * const, const double * const,
+    void calcMean  (double * const, const double * const,
                     const double, const int[3],
                     const double * const, const int * const);
-    void calcmean2d(double * const, const double * const,
+    void calcMean2d(double * const, const double * const,
                     const double,
                     const double * const, const int * const);
 
-    int calcmoment  (double *, double *, double *, double, const int[3], double *, int *);
+    void calcMoment  (double *, double *, double *, double, const int[3], double *, int *);
 
-    int calcdiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
-    int calcdiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
-    int calcdiff_4th(double *, double *, double *, double, const int[3], double *, int *);
+    void calcDiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
+    void calcDiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
+    void calcDiff_4th(double *, double *, double *, double, const int[3], double *, int *);
 
-    int calcgrad_2nd(double *, double *, double *, const int[3], double *, int *);
-    int calcgrad_4th(double *, double *, double *, const int[3], double *, int *);
+    void calcGrad_2nd(double *, double *, double *, const int[3], double *, int *);
+    void calcGrad_4th(double *, double *, double *, const int[3], double *, int *);
 
-    int calcflux_2nd(double *, double *, double *, double *, double *, double *, const int[3], double *, int *);
-    int calcflux_4th(double *, double *, double *, double *, const int[3], double *, int *);
+    void calcFlux_2nd(double *, double *, double *, double *, double *, double *, const int[3], double *, int *);
+    void calcFlux_4th(double *, double *, double *, double *, const int[3], double *, int *);
 
-    int addfluxes   (double *, double *, double *);
-    int calccount   (double *, double *, double, double *, int *);
-    int calcpath    (double *, double *, int *, double *);
-    int calccover   (double *, double *, int *, double *, double);
+    void addFluxes   (double *, double *, double *);
+    void calcCount   (double *, double *, double, double *, int *);
+    void calcPath    (double *, double *, int *, double *);
+    void calcCover   (double *, double *, int *, double *, double);
 
-    int calcsortprof(double *, double *, double *);
+    void calcSortedProf(double *, double *, double *);
 
   private:
-    // NcFile *dataFile;
-    // NcDim  *z_dim, *zh_dim, *t_dim;
-    // NcVar  *t_var, *iter_var;
-
     int nstats;
 
     // mask calculations
-    int calcmask(double *, double *, double *, int *, int *, int *);
+    void calcMask(double *, double *, double *, int *, int *, int *);
 
   protected:
-    cmodel  *model;
-    cgrid   *grid;
-    cfields *fields;
-    cmaster *master;
+    Model  *model;
+    Grid   *grid;
+    Fields *fields;
+    Master *master;
 
     double sampletime;
     unsigned long isampletime;
 
     std::string swstats;
+
+    static const int nthres = 0;
 };
 #endif

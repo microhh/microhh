@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,13 +31,11 @@
 #include "constants.h"
 #include "fd.h"
 #include "model.h"
-#include "diff_les2s.h"
+#include "diff_smag2.h"
 #include "timeloop.h"
 #include <netcdfcpp.h>
 
-#define NTHRES 0
-
-cstats::cstats(cmodel *modelin, cinput *inputin)
+Stats::Stats(Model *modelin, Input *inputin)
 {
   model = modelin;
 
@@ -61,21 +59,21 @@ cstats::cstats(cmodel *modelin, cinput *inputin)
     throw 1;
 }
 
-cstats::~cstats()
+Stats::~Stats()
 {
   delete[] nmask;
   delete[] nmaskh;
 
   // delete the profiles
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     delete it->second.dataFile;
-    for(profmap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
+    for(ProfMap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
       delete[] it2->second.data;
   }
 }
 
-void cstats::init(double ifactor)
+void Stats::init(double ifactor)
 {
   // convenience pointers for short notation in class
   grid   = model->grid;
@@ -83,7 +81,7 @@ void cstats::init(double ifactor)
   master = model->master;
 
   // add the default mask
-  addmask("default");
+  addMask("default");
 
   isampletime = (unsigned long)(ifactor * sampletime);
 
@@ -94,7 +92,7 @@ void cstats::init(double ifactor)
   nstats = 0;
 }
 
-void cstats::create(int n)
+void Stats::create(int n)
 {
   // do not create file if stats is disabled
   if(swstats == "0")
@@ -102,10 +100,10 @@ void cstats::create(int n)
 
   int nerror = 0;
 
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create a NetCDF file for the statistics
     if(master->mpiid == 0)
@@ -160,11 +158,11 @@ void cstats::create(int n)
   }
 
   // for each mask add the area as a variable
-  addprof("area" , "Fractional area contained in mask", "-", "z");
-  addprof("areah", "Fractional area contained in mask", "-", "zh");
+  addProf("area" , "Fractional area contained in mask", "-", "z");
+  addProf("areah", "Fractional area contained in mask", "-", "zh");
 }
 
-unsigned long cstats::gettimelim(unsigned long itime)
+unsigned long Stats::getTimeLimit(unsigned long itime)
 {
   if(swstats == "0")
     return constants::ulhuge;
@@ -173,35 +171,35 @@ unsigned long cstats::gettimelim(unsigned long itime)
   return idtlim;
 }
 
-int cstats::dostats()
+bool Stats::doStats()
 {
   // check if stats are enabled
   if(swstats == "0")
-    return 0;
+    return false;
 
   // check if time for execution
-  if(model->timeloop->itime % isampletime != 0)
-    return 0;
-
-  // write message in case stats is triggered
-  if(master->mpiid == 0) std::printf("Saving stats for time %f\n", model->timeloop->time);
+  if(model->timeloop->get_itime() % isampletime != 0)
+    return false;
 
   // return true such that stats are computed
-  return 1;
+  return true;
 }
 
-int cstats::exec(int iteration, double time, unsigned long itime)
+void Stats::exec(int iteration, double time, unsigned long itime)
 {
-  // this function is only called when stats are enabled no need for swstats check
+  // This function is only called when stats are enabled no need for swstats check.
 
   // check if time for execution
   if(itime % isampletime != 0)
-    return 0;
+    return;
 
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  // write message in case stats is triggered
+  master->printMessage("Saving stats for time %f\n", model->timeloop->get_time());
+
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // put the data into the NetCDF file
     if(master->mpiid == 0)
@@ -209,10 +207,10 @@ int cstats::exec(int iteration, double time, unsigned long itime)
       m->t_var   ->put_rec(&time     , nstats);
       m->iter_var->put_rec(&iteration, nstats);
 
-      for(profmap::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
+      for(ProfMap::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
         m->profs[it->first].ncvar->put_rec(&m->profs[it->first].data[grid->kstart], nstats);
 
-      for(tseriesmap::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
+      for(TimeSeriesMap::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
         m->tseries[it->first].ncvar->put_rec(&m->tseries[it->first].data, nstats);
 
       // sync the data
@@ -221,30 +219,28 @@ int cstats::exec(int iteration, double time, unsigned long itime)
   }
 
   ++nstats;
-
-  return 0;
 }
 
-std::string cstats::getsw()
+std::string Stats::getSwitch()
 {
   return swstats;
 }
 
-void cstats::addmask(const std::string maskname)
+void Stats::addMask(const std::string maskname)
 {
   masks[maskname].name = maskname;
   masks[maskname].dataFile = 0;
 }
 
-int cstats::addprof(std::string name, std::string longname, std::string unit, std::string zloc)
+void Stats::addProf(std::string name, std::string longname, std::string unit, std::string zloc)
 {
   int nerror = 0;
 
   // add the profile to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
@@ -270,21 +266,22 @@ int cstats::addprof(std::string name, std::string longname, std::string unit, st
       m->profs[name].data[k] = 0.;
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int cstats::addfixedprof(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
+void Stats::addFixedProf(std::string name, std::string longname, std::string unit, std::string zloc, double * restrict prof)
 {
   int nerror = 0;
 
   // add the profile to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
-    NcVar *var;
+    NcVar *var = 0;
     if(master->mpiid == 0)
     {
       if(zloc == "z")
@@ -302,18 +299,19 @@ int cstats::addfixedprof(std::string name, std::string longname, std::string uni
     }
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int cstats::addtseries(std::string name, std::string longname, std::string unit)
+void Stats::addTimeSeries(std::string name, std::string longname, std::string unit)
 {
   int nerror = 0;
 
   // add the series to all files
-  for(maskmap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
-    mask *m = &it->second;
+    Mask *m = &it->second;
 
     // create the NetCDF variable
     if(master->mpiid == 0)
@@ -328,18 +326,18 @@ int cstats::addtseries(std::string name, std::string longname, std::string unit)
     m->tseries[name].data = 0.;
   }
 
-  return nerror;
+  if(nerror)
+    throw 1;
 }
 
-int cstats::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
+void Stats::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
-  calcmask(mfield->data, mfieldh->data, mfieldh->databot,
+  calcMask(mfield->data, mfieldh->data, mfieldh->databot,
            nmask, nmaskh, &nmaskbot);
-  return 0;
 }
 
 // COMPUTATIONAL KERNELS BELOW
-int cstats::calcmask(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+void Stats::calcMask(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                      int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot)
 {
   int ijtot = grid->itot*grid->jtot;
@@ -360,12 +358,10 @@ int cstats::calcmask(double * restrict mask, double * restrict maskh, double * r
     nmaskh[k] = ijtot;
   }
   *nmaskbot = ijtot;
-
-  return 0;
 }
 
 /*
-void cstats::calcmean(double * const restrict prof, const double * const restrict data,
+void Stats::calcMean(double * const restrict prof, const double * const restrict data,
                       const double offset)
 {
   int ijk,jj,kk;
@@ -390,26 +386,24 @@ void cstats::calcmean(double * const restrict prof, const double * const restric
   for(int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 }
 */
 
-int cstats::calcarea(double * restrict area, const int loc[3], int * restrict nmask)
+void Stats::calcArea(double * restrict area, const int loc[3], int * restrict nmask)
 {
   int ijtot = grid->itot*grid->jtot;
 
   for(int k=grid->kstart; k<grid->kend+loc[2]; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       area[k] = (double)(nmask[k]) / (double)ijtot;
     else
       area[k] = 0.;
   }
-
-  return 0;
 }
 
-void cstats::calcmean(double * const restrict prof, const double * const restrict data,
+void Stats::calcMean(double * const restrict prof, const double * const restrict data,
                       const double offset, const int loc[3],
                       const double * const restrict mask, const int * const restrict nmask)
 {
@@ -434,21 +428,21 @@ void cstats::calcmean(double * const restrict prof, const double * const restric
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
 }
 
-void cstats::calcmean2d(double * const restrict mean, const double * const restrict data,
+void Stats::calcMean2d(double * const restrict mean, const double * const restrict data,
                         const double offset,
                         const double * const restrict mask, const int * const restrict nmask)
 {
   int ij,jj;
   jj = grid->icells;
 
-  if(*nmask > NTHRES)
+  if(*nmask > nthres)
   {
     *mean = 0.;
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -465,7 +459,7 @@ void cstats::calcmean2d(double * const restrict mean, const double * const restr
     *mean = NC_FILL_DOUBLE; 
 }
 
-int cstats::calcsortprof(double * restrict data, double * restrict bin, double * restrict prof)
+void Stats::calcSortedProf(double * restrict data, double * restrict bin, double * restrict prof)
 {
   int ijk,jj,kk,index,kstart,kend;
   double minval,maxval,range;
@@ -571,17 +565,15 @@ int cstats::calcsortprof(double * restrict data, double * restrict bin, double *
     prof[kend]     = (8./3.)*proftop - 2.*prof[kend-1] + (1./3.)*prof[kend-2];
     prof[kend+1]   = 8.*proftop      - 9.*prof[kend-1] + 2.*prof[kend-2];
   }
-
-  return 0;
 }
 
 /*
-int cstats::calccount(double * restrict data, double * restrict prof, double threshold)
+int Stats::calccount(double * restrict data, double * restrict prof, double threshold)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; ++k)
   {
@@ -603,14 +595,14 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
   for(int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 
   return 0;
 }
 */
 
 // \TODO the count function assumes that the variable to count is at the mask location
-int cstats::calccount(double * restrict data, double * restrict prof, double threshold,
+void Stats::calcCount(double * restrict data, double * restrict prof, double threshold,
                       double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -635,22 +627,20 @@ int cstats::calccount(double * restrict data, double * restrict prof, double thr
 
   for(int k=0; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
 /*
-int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
+void Stats::calcMoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, int a)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   for(int k=grid->kstart; k<grid->kend+a; ++k)
   {
@@ -669,13 +659,11 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
   for(int k=grid->kstart; k<grid->kend+a; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
-
-  return 0;
+  grid->getProf(prof, grid->kcells);
 }
 */
 
-int cstats::calcmoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
+void Stats::calcMoment(double * restrict data, double * restrict datamean, double * restrict prof, double power, const int loc[3],
                        double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -699,22 +687,20 @@ int cstats::calcmoment(double * restrict data, double * restrict datamean, doubl
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
 /*
-int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
+int Stats::calcFlux_2nd(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, int locx, int locy)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
@@ -746,15 +732,15 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict w, double * r
   for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 
   return 0;
 }
 */
 
-int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
-                         double * restrict prof, double * restrict tmp1, const int loc[3],
-                         double * restrict mask, int * restrict nmask)
+void Stats::calcFlux_2nd(double * restrict data, double * restrict datamean, double * restrict w, double * restrict wmean,
+                        double * restrict prof, double * restrict tmp1, const int loc[3],
+                        double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
 
@@ -797,16 +783,14 @@ int cstats::calcflux_2nd(double * restrict data, double * restrict datamean, dou
 
   for(int k=1; k<grid->kcells; ++k)
   {
-    if(nmask[k] > NTHRES && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
+    if(nmask[k] > nthres && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int cstats::calcflux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
+void Stats::calcFlux_4th(double * restrict data, double * restrict w, double * restrict prof, double * restrict tmp1, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -852,22 +836,20 @@ int cstats::calcflux_4th(double * restrict data, double * restrict w, double * r
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
 /*
-int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
+int Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi)
 {
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -886,13 +868,13 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
   for(int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
-  grid->getprof(prof, grid->kcells);
+  grid->getProf(prof, grid->kcells);
 
   return 0;
 }
 */
 
-int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
+void Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -916,16 +898,14 @@ int cstats::calcgrad_2nd(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
+void Stats::calcGrad_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -952,16 +932,14 @@ int cstats::calcgrad_4th(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
+void Stats::calcDiff_4th(double * restrict data, double * restrict prof, double * restrict dzhi4, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   using namespace fd::o4;
@@ -988,16 +966,14 @@ int cstats::calcdiff_4th(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int cstats::calcdiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
+void Stats::calcDiff_2nd(double * restrict data, double * restrict prof, double * restrict dzhi, double visc, const int loc[3],
                          double * restrict mask, int * restrict nmask)
 {
   int ijk,jj,kk;
@@ -1021,17 +997,15 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict prof, double 
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
 
-int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
+void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * restrict evisc,
                          double * restrict prof, double * restrict dzhi,
                          double * restrict fluxbot, double * restrict fluxtop, double tPr, const int loc[3],
                          double * restrict mask, int * restrict nmask)
@@ -1124,16 +1098,14 @@ int cstats::calcdiff_2nd(double * restrict data, double * restrict w, double * r
 
   for(int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > NTHRES)
+    if(nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
   }
-
-  return 0;
 }
 
-int cstats::addfluxes(double * restrict flux, double * restrict turb, double * restrict diff)
+void Stats::addFluxes(double * restrict flux, double * restrict turb, double * restrict diff)
 {
   for(int k=grid->kstart; k<grid->kend+1; ++k)
   {
@@ -1142,23 +1114,21 @@ int cstats::addfluxes(double * restrict flux, double * restrict turb, double * r
     else
       flux[k] = turb[k] + diff[k];
   }
-
-  return 0;
 }
 
 /**
  * This function calculates the total domain integrated path of variable data over maskbot
  */
-int cstats::calcpath(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict path)
+void Stats::calcPath(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict path)
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   int kstart = grid->kstart;
 
   *path = 0.;
 
-  if(*nmaskbot > NTHRES)
+  if(*nmaskbot > nthres)
   {
     // Integrate liquid water
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -1173,27 +1143,25 @@ int cstats::calcpath(double * restrict data, double * restrict maskbot, int * re
           }
       }
     *path /= (double)*nmaskbot;
-    grid->getprof(path,1);
+    grid->getProf(path,1);
   }
   else
     *path = NC_FILL_DOUBLE;
-
-  return 0;
 }
 
 /**
  * This function calculates the vertical projected cover of variable data over maskbot
  */
-int cstats::calccover(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict cover, double threshold)
+void Stats::calcCover(double * restrict data, double * restrict maskbot, int * restrict nmaskbot, double * restrict cover, double threshold)
 {
   int ijk,ij,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   int kstart = grid->kstart;
 
   *cover = 0.;
 
-  if(*nmaskbot > NTHRES)
+  if(*nmaskbot > nthres)
   {
     // Per column, check if cloud present
     for(int j=grid->jstart; j<grid->jend; j++)
@@ -1212,11 +1180,8 @@ int cstats::calccover(double * restrict data, double * restrict maskbot, int * r
           }
       }
     *cover /= (double)*nmaskbot;
-    grid->getprof(cover,1);
+    grid->getProf(cover,1);
   }
   else
     *cover = NC_FILL_DOUBLE;
-
-  return 0;
 }
-

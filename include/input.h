@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -27,16 +27,16 @@
 #include <string>
 #include <vector>
 
-// forward declaration to avoid circular dependency
-class cmaster;
+// Forward declaration to avoid circular dependency.
+class Master;
 
-typedef std::map<std::string, std::vector<double> > datamap;
+typedef std::map<std::string, std::vector<double> > DataMap;
 
-class cinput
+class Input
 {
   public:
-    cinput(cmaster *);
-    ~cinput();
+    Input(Master *);
+    ~Input();
 
     void clear();
 
@@ -58,13 +58,15 @@ class cinput
     int getProf(double *, std::string, int size);
     int getTime(double **, std::vector<double> *, std::string);
     int getTimeProf(double **, std::vector<double> *, std::string, int);
-    int printUnused();
+
+    void printUnused();
+    void flagUsed(std::string, std::string);
 
   private:
-    cmaster *master;
+    Master *master;
 
-    int readinifile();
-    int readdatafile(datamap *, std::string, bool);
+    int readIniFile();
+    int readDataFile(DataMap *, std::string, bool);
 
     template <class valuetype>
     int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);
@@ -83,17 +85,17 @@ class cinput
     int checkList(std::vector<double> *     , std::string, std::string, std::string el="default");
     int checkList(std::vector<std::string> *, std::string, std::string, std::string el="default");
 
-    struct inputtype
+    struct InputType
     {
       std::string data;
       bool isused;
     };
-    typedef std::map<std::string, inputtype> inputmap1d;
-    typedef std::map<std::string, inputmap1d> inputmap2d;
-    typedef std::map<std::string, inputmap2d> inputmap;
-    inputmap inputlist;
-    datamap proflist;
-    datamap timelist;
+    typedef std::map<std::string, InputType > InputMap1d;
+    typedef std::map<std::string, InputMap1d> InputMap2d;
+    typedef std::map<std::string, InputMap2d> InputMap;
+    InputMap inputlist;
+    DataMap proflist;
+    DataMap timelist;
     // std::vector<std::string> varnames;
     // std::vector<double> varvalues;
     std::string isused;

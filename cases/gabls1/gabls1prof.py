@@ -1,6 +1,6 @@
 import numpy
 
-# Get number of vertical levels from .ini file
+# Get number of vertical levels and size from .ini file
 with open('gabls1.ini') as f:
   for line in f:
     if(line.split('=')[0]=='ktot'):

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -24,23 +24,24 @@
 #define DIFF_4
 
 #include "diff.h"
+#include "defines.h"
 
-class cdiff_4 : public cdiff
+class Diff4 : public Diff
 {
   public:
-    cdiff_4(cmodel *, cinput *);
-    ~cdiff_4();
+    Diff4(Model *, Input *);
+    ~Diff4();
 
-    void setvalues();
-    int exec();
+    void setValues();
+    void exec();
 
-    unsigned long gettimelim(unsigned long, double);
-    double getdn(double);
+    unsigned long getTimeLimit(unsigned long, double);
+    double get_dn(double);
 
   private:
     double dnmul;
 
-    int diffc(double *, double *, double *, double *, double);
-    int diffw(double *, double *, double *, double *, double);
+    template<bool> void diffc(double * restrict, double * restrict, double * restrict, double * restrict, double);
+    template<bool> void diffw(double * restrict, double * restrict, double * restrict, double * restrict, double);
 };
 #endif

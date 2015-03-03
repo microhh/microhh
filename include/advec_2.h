@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,24 +25,25 @@
 
 #include "advec.h"
 
-// forward declaration
-class cmodel;
+class Model;
+class Input;
 
 /**
  * Derived class for 2nd order advection scheme.
  */
-class cadvec_2 : public cadvec
+class Advec2 : public Advec
 {
   public:
-    cadvec_2(cmodel *, cinput *); ///< Constructor of the advection class.
-    ~cadvec_2();                  ///< Destructor of the advection class.
+    Advec2(Model *, Input *); ///< Constructor of the advection class.
+    ~Advec2();                ///< Destructor of the advection class.
 
-    unsigned long gettimelim(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-    double getcfl(double);                               ///< Get the CFL number.
-    void exec();                                         ///< Execute the advection scheme.
+    void exec(); ///< Execute the advection scheme.
+
+    unsigned long getTimeLimit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
+    double get_cfl(double);                                 ///< Get the CFL number.
 
   private:
-    double calccfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
+    double calc_cfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
 
     void advecu(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
     void advecv(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.

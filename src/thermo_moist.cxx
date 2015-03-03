@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -28,7 +28,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
-#include "diff_les2s.h"
+#include "diff_smag2.h"
 #include "defines.h"
 #include "constants.h"
 #include "fd.h"
@@ -36,14 +36,13 @@
 #include "stats.h"
 #include "master.h"
 #include "cross.h"
-
-#define NO_OFFSET 0.
+#include "dump.h"
 
 using fd::o2::interp2;
 using fd::o4::interp4;
 using namespace constants;
 
-cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin, inputin)
+ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 {
   swthermo = "moist";
 
@@ -57,27 +56,58 @@ cthermo_moist::cthermo_moist(cmodel *modelin, cinput *inputin) : cthermo(modelin
   pref    = 0;
   prefh   = 0;
 
+  thvref_g  = 0;
+  thvrefh_g = 0;
+  exnref_g  = 0;
+  exnrefh_g = 0;
+  pref_g    = 0;
+  prefh_g   = 0;
+
   int nerror = 0;
-  nerror += inputin->getItem(&pbot    , "thermo", "pbot"    , "");
 
-  nerror += fields->initpfld("s", "Liquid water potential temperature", "K");
-  nerror += inputin->getItem(&fields->sp["s"]->visc, "fields", "svisc", "s");
-  nerror += fields->initpfld("qt", "Total water mixing ratio", "kg kg-1");
+  // Option to overrule the prognostic variable 
+  nerror += inputin->getItem(&thvar, "thermo", "progvar", "", "thl");  // defaults to thl
+
+  // Initialize the prognostic fields
+  fields->initPrognosticField(thvar, "Liquid water potential temperature", "K");
+  fields->initPrognosticField("qt", "Total water mixing ratio", "kg kg-1");
+
+  nerror += inputin->getItem(&fields->sp[thvar]->visc, "fields", "svisc", thvar );
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
+  nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
 
-  // Read list of cross sections
-  nerror += inputin->getList(&crosslist , "thermo", "crosslist" , "");
-  
+  // Get base state option (boussinesq or anelastic)
+  nerror += inputin->getItem(&swbasestate, "thermo", "swbasestate", "", "");
+
+  if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
+  {
+    master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
+    throw 1;
+  }
+   
+  if(grid->swspatialorder == "4" && swbasestate == "anelastic")
+  {
+    master->printError("Anelastic mode is not supported for swspatialorder=4\n");
+    throw 1;
+  }
+
   // BvS test for updating hydrostatic prssure during run
-  // swupdate..=0 -> initial base state pressure used in saturation calc
-  // swupdate..=1 -> base state pressure updated before saturation calc
-  nerror += inputin->getItem(&swupdatebasestate,"thermo","swupdatebasestate",""); 
+  // swupdate..=0 -> initial base state pressure used in saturation calculation
+  // swupdate..=1 -> base state pressure updated before saturation calculation
+  nerror += inputin->getItem(&swupdatebasestate, "thermo", "swupdatebasestate", ""); 
+
+  // Remove the data from the input that is not used, to avoid warnings.
+  if(master->mode == "init")
+  {
+    inputin->flagUsed("thermo", "thvref0");
+    inputin->flagUsed("thermo", "pbot");
+  }
 
   if(nerror)
     throw 1;
 }
 
-cthermo_moist::~cthermo_moist()
+ThermoMoist::~ThermoMoist()
 {
   delete[] thl0;
   delete[] qt0;
@@ -93,7 +123,7 @@ cthermo_moist::~cthermo_moist()
   #endif
 }
 
-void cthermo_moist::init()
+void ThermoMoist::init()
 {
   stats = model->stats;
 
@@ -117,181 +147,120 @@ void cthermo_moist::init()
     pref   [k] = 0.;
     prefh  [k] = 0.;
   }
+
+  initCross();
+  initDump();
 }
 
-void cthermo_moist::create(cinput *inputin)
+void ThermoMoist::create(Input *inputin)
 {
-  // Only in case of Boussinesq, read in reference potential temperature
-  if(model->swbasestate == "boussinesq")
-  {
-    if(inputin->getItem(&thvref0, "thermo", "thvref0", ""))
-      throw 1;
-  }
-
   int kstart = grid->kstart;
   int kend   = grid->kend;
 
   // Enable automated calculation of horizontally averaged fields
-  fields->setcalcprofs(true);
+  if(swupdatebasestate)
+    fields->set_calcMeanProfs(true);
 
-  if(model->swbasestate == "anelastic")
+  // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration. 
+  // 1. Take the initial profile as the reference
+  if(inputin->getProf(&thl0[grid->kstart], thvar, grid->kmax))
+    throw 1;
+  if(inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
+    throw 1;
+
+  // 2. Calculate surface and model top values thl and qt
+  double thl0s, qt0s, thl0t, qt0t;
+  thl0s = thl0[kstart] - grid->z[kstart]*(thl0[kstart+1]-thl0[kstart])*grid->dzhi[kstart+1];
+  qt0s  = qt0[kstart]  - grid->z[kstart]*(qt0[kstart+1] -qt0[kstart] )*grid->dzhi[kstart+1];
+  thl0t = thl0[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thl0[kend-1]-thl0[kend-2])*grid->dzhi[kend-1];
+  qt0t  = qt0[kend-1]  + (grid->zh[kend]-grid->z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*grid->dzhi[kend-1];
+
+  // 3. Set the ghost cells for the reference temperature and moisture
+  thl0[kstart-1]  = 2.*thl0s - thl0[kstart];
+  thl0[kend]      = 2.*thl0t - thl0[kend-1];
+  qt0[kstart-1]   = 2.*qt0s  - qt0[kstart];
+  qt0[kend]       = 2.*qt0t  - qt0[kend-1];
+
+  // 4. Calculate the initial/reference base state
+  calcBaseState(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, thl0, qt0);
+
+  // 5. In Boussinesq mode, overwrite reference temperature and density
+  if(swbasestate == "boussinesq")
   {
-    // Calculate the base state profiles. With swupdatebasestate=1, these profiles 
-    // are updated on every tstep. First take the initial profile as the reference
-    if(inputin->getProf(&thl0[grid->kstart], "s", grid->kmax))
-      throw 1;
-    if(inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
+    if(inputin->getItem(&thvref0, "thermo", "thvref0", ""))
       throw 1;
 
-    // Calculate surface and model top values thl and qt
-    double thl0s, qt0s, thl0t, qt0t;
-    thl0s = thl0[kstart] - grid->z[kstart]*(thl0[kstart+1]-thl0[kstart])*grid->dzhi[kstart+1];
-    qt0s  = qt0[kstart]  - grid->z[kstart]*(qt0[kstart+1] -qt0[kstart] )*grid->dzhi[kstart+1];
-    thl0t = thl0[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thl0[kend-1]-thl0[kend-2])*grid->dzhi[kend-1];
-    qt0t  = qt0[kend-1]  + (grid->zh[kend]-grid->z[kend-1])*(qt0[kend-1]- qt0[kend-2] )*grid->dzhi[kend-1];
-
-    // Set the ghost cells for the reference temperature and moisture
-    thl0[kstart-1]  = 2.*thl0s - thl0[kstart];
-    thl0[kend]      = 2.*thl0t - thl0[kend-1];
-    qt0[kstart-1]   = 2.*qt0s  - qt0[kstart];
-    qt0[kend]       = 2.*qt0t  - qt0[kend-1];
-
-    // Calculate the initial/reference base state
-    calcbasestate(pref, prefh, fields->rhoref, fields->rhorefh, thvref, thvrefh, exnref, exnrefh, thl0, qt0);
-  }
-  else
-  {
     for(int k=0; k<grid->kcells; ++k)
     {
-      thvref[k]  = thvref0;
-      thvrefh[k] = thvref0;
+      fields->rhoref[k]  = 1.;
+      fields->rhorefh[k] = 1.;
+      thvref[k]          = thvref0;
+      thvrefh[k]         = thvref0;
     }
   }
 
-  // add variables to the statistics
-  if(stats->getsw() == "1")
-  {
-    // Add base state profiles to statistics -> needed/wanted for Boussinesq? Or write as 0D var?
-    stats->addfixedprof("pref",    "Full level basic state pressure", "Pa",     "z",  pref);
-    stats->addfixedprof("prefh",   "Half level basic state pressure", "Pa",     "zh", prefh);
-    stats->addfixedprof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
-    stats->addfixedprof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
-    stats->addfixedprof("thvref",  "Full level reference virtual potential temperature", "K", "z",thvref);
-    stats->addfixedprof("thvrefh", "Half level reference virtual potential temperature", "K", "zh",thvref);
-
-    stats->addprof("b", "Buoyancy", "m s-2", "z");
-    for(int n=2; n<5; ++n)
-    {
-      std::stringstream ss;
-      ss << n;
-      std::string sn = ss.str();
-      stats->addprof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
-    }
-
-    stats->addprof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-    stats->addprof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-    stats->addprof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-    stats->addprof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
-
-    stats->addprof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
-    stats->addprof("cfrac", "Cloud fraction", "-","z");
-
-    stats->addtseries("lwp", "Liquid water path", "kg m-2");
-    stats->addtseries("ccover", "Projected cloud cover", "-");
-  }
-
-  // Cross sections (isn't there an easier way to populate this list?)
-  allowedcrossvars.push_back("b");
-  allowedcrossvars.push_back("bbot");
-  allowedcrossvars.push_back("bfluxbot");
-  if(grid->swspatialorder == "4")
-    allowedcrossvars.push_back("blngrad");
-  allowedcrossvars.push_back("ql");
-  allowedcrossvars.push_back("qlpath");
-
-  // Check input list of cross variables (crosslist)
-  std::vector<std::string>::iterator it=crosslist.begin();
-  while(it != crosslist.end())
-  {
-    if(!std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
-    {
-      if(master->mpiid == 0) std::printf("WARNING field %s in [thermo][crosslist] is illegal\n", it->c_str());
-      it = crosslist.erase(it);  // erase() returns iterator of next element..
-    }
-    else
-      ++it;
-  }
-
-  // Sort crosslist to group ql and b variables
-  std::sort(crosslist.begin(),crosslist.end());
+  initStat();
 }
 
 #ifndef USECUDA
-int cthermo_moist::exec()
+void ThermoMoist::exec()
 {
-  int kk,nerror;
-  kk = grid->icells*grid->jcells;
-  int kcells = grid->kcells;
-  nerror = 0;
+  const int kk = grid->ijcells;
+  const int kcells = grid->kcells;
 
   // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
-  double * restrict tmp2 = fields->s["tmp2"]->data;
+  double *tmp2 = fields->atmp["tmp2"]->data;
   if(swupdatebasestate)
-    calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
-                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
+    calcBaseState(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+                  fields->sp[thvar]->datamean, fields->sp["qt"]->datamean);
   
   // extend later for gravity vector not normal to surface
   if(grid->swspatialorder == "2")
   {
-    calcbuoyancytend_2nd(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, prefh,
-                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk],
+    calcBuoyancyTend_2nd(fields->wt->data, fields->sp[thvar]->data, fields->sp["qt"]->data, prefh,
+                         &fields->atmp["tmp2"]->data[0*kk], &fields->atmp["tmp2"]->data[1*kk], &fields->atmp["tmp2"]->data[2*kk],
                          thvrefh);
   }
   else if(grid->swspatialorder == "4")
   {
-    calcbuoyancytend_4th(fields->wt->data, fields->s["s"]->data, fields->s["qt"]->data, prefh,
-                         &fields->s["tmp2"]->data[0*kk], &fields->s["tmp2"]->data[1*kk], &fields->s["tmp2"]->data[2*kk],
+    calcBuoyancyTend_4th(fields->wt->data, fields->sp[thvar]->data, fields->sp["qt"]->data, prefh,
+                         &fields->atmp["tmp2"]->data[0*kk], &fields->atmp["tmp2"]->data[1*kk], &fields->atmp["tmp2"]->data[2*kk],
                          thvrefh);
   }
-
-  return (nerror>0);
 }
 #endif
 
-int cthermo_moist::getmask(cfield3d *mfield, cfield3d *mfieldh, mask *m)
+void ThermoMoist::getMask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if(m->name == "ql")
   {
-    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcmaskql(mfield->data, mfieldh->data, mfieldh->databot,
-               stats->nmask, stats->nmaskh, &stats->nmaskbot,
-               fields->s["tmp1"]->data);
+    calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
+    calcMask_ql(mfield->data, mfieldh->data, mfieldh->databot,
+                stats->nmask, stats->nmaskh, &stats->nmaskbot,
+                fields->atmp["tmp1"]->data);
   }
   else if(m->name == "qlcore")
   {
-    calcbuoyancy(fields->s["tmp2"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp1"]->data,thvref);
+    calcBuoyancy(fields->atmp["tmp2"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp1"]->data,thvref);
     // calculate the mean buoyancy to determine positive buoyancy
-    grid->calcmean(fields->s["tmp2"]->datamean, fields->s["tmp2"]->data, grid->kcells);
-    calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-    calcmaskqlcore(mfield->data, mfieldh->data, mfieldh->databot,
-                   stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                   fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp2"]->datamean);
+    grid->calcMean(fields->atmp["tmp2"]->datamean, fields->atmp["tmp2"]->data, grid->kcells);
+    calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
+    calcMask_qlcore(mfield->data, mfieldh->data, mfieldh->databot,
+                    stats->nmask, stats->nmaskh, &stats->nmaskbot,
+                    fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp2"]->datamean);
   }
- 
-  return 0;
 }
 
-int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+void ThermoMoist::calcMask_ql(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                               int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                               double * restrict ql)
 {
   int ijk,ij,jj,kk;
-  int kstart,kend;
+  int kstart;
 
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
-  kend   = grid->kend;
 
   int ntmp;
 
@@ -335,9 +304,9 @@ int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, d
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundary_cyclic(mask);
-  grid->boundary_cyclic(maskh);
-  grid->boundary_cyclic2d(maskbot);
+  grid->boundaryCyclic(mask);
+  grid->boundaryCyclic(maskh);
+  grid->boundaryCyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
@@ -346,21 +315,18 @@ int cthermo_moist::calcmaskql(double * restrict mask, double * restrict maskh, d
   // BvS: should no longer be necessary now that the ql ghost cells are set to zero
   //nmaskh[kstart] = 0;
   //nmaskh[kend  ] = 0;
-
-  return 0;
 }
 
-int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+void ThermoMoist::calcMask_qlcore(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                                   int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                                   double * restrict ql, double * restrict b, double * restrict bmean)
 {
   int ijk,ij,jj,kk;
-  int kstart,kend;
+  int kstart;
 
   jj = grid->icells;
   kk = grid->ijcells;
   kstart = grid->kstart;
-  kend   = grid->kend;
 
   int ntmp;
 
@@ -403,33 +369,29 @@ int cthermo_moist::calcmaskqlcore(double * restrict mask, double * restrict mask
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundary_cyclic(mask);
-  grid->boundary_cyclic(maskh);
-  grid->boundary_cyclic2d(maskbot);
+  grid->boundaryCyclic(mask);
+  grid->boundaryCyclic(maskh);
+  grid->boundaryCyclic2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
   *nmaskbot = nmaskh[grid->kstart];
-
-  // BvS: should no longer be necessary now that the ql ghost cells are set to zero
-  //nmaskh[kstart] = 0;
-  //nmaskh[kend  ] = 0;
-
-  return 0;
 }
 
-int cthermo_moist::execstats(mask *m)
+void ThermoMoist::execStats(Mask *m)
 {
+  const double NoOffset = 0.;
+
   // calc the buoyancy and its surface flux for the profiles
-  calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
-  calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
+  calcBuoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
+  calcBuoyancyFluxBot(fields->atmp["tmp1"]->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 
   // define location
   const int sloc[] = {0,0,0};
 
   // mean
-  stats->calcmean(m->profs["b"].data, fields->s["tmp1"]->data, NO_OFFSET, sloc,
-                  fields->s["tmp3"]->data, stats->nmask);
+  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset, sloc,
+                  fields->atmp["tmp3"]->data, stats->nmask);
 
   // moments
   for(int n=2; n<5; ++n)
@@ -437,107 +399,125 @@ int cthermo_moist::execstats(mask *m)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcmoment(fields->s["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
-                      fields->s["tmp3"]->data, stats->nmask);
+    stats->calcMoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+                      fields->atmp["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if(grid->swspatialorder == "2")
-    stats->calcgrad_2nd(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcGrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcgrad_4th(fields->s["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcGrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if(grid->swspatialorder == "2")
-    stats->calcflux_2nd(fields->s["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
-                        m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcFlux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+                        m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   else if(grid->swspatialorder == "4")
-    stats->calcflux_4th(fields->s["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->s["tmp2"]->data, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcFlux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
   if(grid->swspatialorder == "2")
   {
-    if(model->diff->getname() == "les2s")
+    if(model->diff->getName() == "smag2")
     {
-      cdiff_les2s *diffptr = static_cast<cdiff_les2s *>(model->diff);
-      stats->calcdiff_2nd(fields->s["tmp1"]->data, fields->w->data, fields->s["evisc"]->data,
+      DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
+      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
-                          fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->datafluxtop, diffptr->tPr, sloc,
-                          fields->s["tmp4"]->data, stats->nmaskh);
+                          fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,
+                          fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
     {
-      stats->calcdiff_2nd(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->s["th"]->visc, sloc,
-                          fields->s["tmp4"]->data, stats->nmaskh);
+      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+                          fields->atmp["tmp4"]->data, stats->nmaskh);
     }
   }
   else if(grid->swspatialorder == "4")
   {
     // take the diffusivity of temperature for that of buoyancy
-    stats->calcdiff_4th(fields->s["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->s["th"]->visc, sloc,
-                        fields->s["tmp4"]->data, stats->nmaskh);
+    stats->calcDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+                        fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
-  stats->addfluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
+  stats->addFluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the liquid water stats
-  calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-  stats->calcmean(m->profs["ql"].data, fields->s["tmp1"]->data, NO_OFFSET, sloc, fields->s["tmp3"]->data, stats->nmask);
-  stats->calccount(fields->s["tmp1"]->data, m->profs["cfrac"].data, 0.,
-                   fields->s["tmp3"]->data, stats->nmask);
+  calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
+  stats->calcMean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+  stats->calcCount(fields->atmp["tmp1"]->data, m->profs["cfrac"].data, 0.,
+                   fields->atmp["tmp3"]->data, stats->nmask);
 
-  stats->calccover(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
-  stats->calcpath(fields->s["tmp1"]->data, fields->s["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
+  stats->calcCover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
+  stats->calcPath (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
-  return 0;
+  // Calculate base state in tmp array
+  if(swupdatebasestate == 1)
+  {
+    const int kcells = grid->kcells;
+    double * restrict tmp2 = fields->atmp["tmp2"]->data;
+    calcBaseState(&tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], 
+                  &tmp2[4*kcells], &tmp2[5*kcells], &tmp2[6*kcells], &tmp2[7*kcells], 
+                  fields->sp[thvar]->datamean, fields->sp["qt"]->datamean);
+
+    for(int k=0; k<kcells; ++k)
+    {
+      m->profs["ph"  ].data[k] = tmp2[0*kcells+k];
+      m->profs["phh" ].data[k] = tmp2[1*kcells+k];
+      m->profs["rho" ].data[k] = tmp2[2*kcells+k];
+      m->profs["rhoh"].data[k] = tmp2[3*kcells+k];
+    } 
+  }
 }
 
-void cthermo_moist::execcross()
+void ThermoMoist::execCross()
 {
   int nerror = 0;
+
+  Cross *cross = model->cross;
 
   // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
   for(std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
   {
-    /* BvS: for now, don't call getthermofield() or getbuoyancysurf(), but directly the function itself. With CUDA enabled, 
-       statistics etc. is done on the host, while getthermofield() is executed on the GPU */ 
+    /* BvS: for now, don't call getThermoField() or getBuoyancySurf(), but directly the function itself. With CUDA enabled, 
+       statistics etc. is done on the host, while getThermoField() is executed on the GPU */ 
 
     if(*it == "b")
     {
-      calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
-      nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
+      calcBuoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
+      nerror += cross->crossSimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if(*it == "ql")
     {
-      calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
-      nerror += model->cross->crosssimple(fields->s["tmp1"]->data, fields->s["tmp2"]->data, *it);
+      calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
+      nerror += cross->crossSimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if(*it == "blngrad")
     {
-      calcbuoyancy(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref, fields->s["tmp2"]->data, thvref);
+      calcBuoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += model->cross->crosslngrad(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, grid->dzi4, *it);
+      nerror += cross->crossLngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
     }
     else if(*it == "qlpath")
     {
-      calcqlfield(fields->s["tmp1"]->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
+      calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += model->cross->crosspath(fields->s["tmp1"]->data, fields->s["tmp2"]->data, fields->s["tmp1"]->data, "qlpath");
+      nerror += cross->crossPath(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qlpath");
     }
     else if(*it == "bbot" or *it == "bfluxbot")
     {
-      calcbuoyancybot(fields->s["tmp1"]->data, fields->s["tmp1"]->databot, fields->s["s" ]->data, fields->s["s"]->databot, fields->s["qt"]->data, fields->s["qt"]->databot, thvref, thvrefh);
-      calcbuoyancyfluxbot(fields->s["tmp1"]->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
+      calcBuoyancyBot(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->sp[thvar ]->data, fields->sp[thvar]->databot, fields->sp["qt"]->data, fields->sp["qt"]->databot, thvref, thvrefh);
+      calcBuoyancyFluxBot(fields->atmp["tmp1"]->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 
       if(*it == "bbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->databot, fields->s["tmp1"]->data, "bbot");
+        nerror += cross->crossPlane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
       else if(*it == "bfluxbot")
-        nerror += model->cross->crossplane(fields->s["tmp1"]->datafluxbot, fields->s["tmp1"]->data, "bfluxbot");
+        nerror += cross->crossPlane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
     }
   }
 
@@ -545,66 +525,75 @@ void cthermo_moist::execcross()
     throw 1;
 }
 
-int cthermo_moist::checkthermofield(std::string name)
+void ThermoMoist::execDump()
+{
+  for(std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
+  {
+    // TODO BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant... 
+    if(*it == "b")
+      calcBuoyancy(fields->atmp["tmp2"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp1"]->data, thvref);
+    else if(*it == "ql")
+      calcLiquidWater(fields->atmp["tmp2"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
+    else
+      throw 1;
+
+    model->dump->saveDump(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, *it);
+  }
+}
+
+bool ThermoMoist::checkThermoField(std::string name)
 {
   if(name == "b" || name == "ql")
-    return 0;
+    return false;
   else
-    return 1;
+    return true;
 }
 
 #ifndef USECUDA
-int cthermo_moist::getthermofield(cfield3d *fld, cfield3d *tmp, std::string name)
+void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
-  int kk = grid->icells*grid->jcells;
-  int kcells = grid->kcells;
+  const int kcells = grid->kcells;
 
-  // BvS: getthermofield() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
+  // BvS: getThermoField() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
   // Pass dummy as rhoref,thvref to prevent overwriting base state 
-  double * restrict tmp2 = fields->s["tmp2"]->data;
+  double * restrict tmp2 = fields->atmp["tmp2"]->data;
   if(swupdatebasestate)
-    calcbasestate(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
-                  fields->s["s"]->datamean, fields->s["qt"]->datamean);
+    calcBaseState(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+                  fields->sp[thvar]->datamean, fields->sp["qt"]->datamean);
 
   if(name == "b")
-    calcbuoyancy(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pref, tmp->data, thvref);
+    calcBuoyancy(fld->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, tmp->data, thvref);
   else if(name == "ql")
-    calcqlfield(fld->data, fields->s["s"]->data, fields->s["qt"]->data, pref);
+    calcLiquidWater(fld->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
   else if(name == "N2")
-    calcN2(fld->data, fields->s["s"]->data, grid->dzi, thvref);
+    calcN2(fld->data, fields->sp[thvar]->data, grid->dzi, thvref);
   else
-    return 1;
-
-  return 0;
+    throw 1;
 }
 #endif
 
 #ifndef USECUDA
-int cthermo_moist::getbuoyancysurf(cfield3d *bfield)
+void ThermoMoist::getBuoyancySurf(Field3d *bfield)
 {
-  calcbuoyancybot(bfield->data         , bfield->databot,
-                  fields->s["s" ]->data, fields->s["s" ]->databot,
-                  fields->s["qt"]->data, fields->s["qt"]->databot,
+  calcBuoyancyBot(bfield->data         , bfield->databot,
+                  fields->sp[thvar]->data, fields->sp[thvar]->databot,
+                  fields->sp["qt"]->data, fields->sp["qt"]->databot,
                   thvref, thvrefh);
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
-  return 0;
+  calcBuoyancyFluxBot(bfield->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 }
 #endif
 
 #ifndef USECUDA
-int cthermo_moist::getbuoyancyfluxbot(cfield3d *bfield)
+void ThermoMoist::getBuoyancyFluxbot(Field3d *bfield)
 {
-  calcbuoyancyfluxbot(bfield->datafluxbot, fields->s["s"]->databot, fields->s["s"]->datafluxbot, fields->s["qt"]->databot, fields->s["qt"]->datafluxbot, thvrefh);
-  return 0;
+  calcBuoyancyFluxBot(bfield->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 }
 #endif
 
-int cthermo_moist::getprogvars(std::vector<std::string> *list)
+void ThermoMoist::getProgVars(std::vector<std::string> *list)
 {
-  list->push_back("s");
+  list->push_back(thvar);
   list->push_back("qt");
-
-  return 0;
 }
 
 /**
@@ -613,48 +602,46 @@ int cthermo_moist::getprogvars(std::vector<std::string> *list)
  * Solves: dpi/dz=-g/thv with pi=cp*(p/p0)**(rd/cp)
  * @param pref Pointer to output hydrostatic pressure array (full level) 
  * @param prefh Pointer to output hydrostatic pressure array (half level) 
- * @param dn Pointer to output density array (full level) 
- * @param dnh Pointer to output density array (half level) 
+ * @param rho Pointer to output density array (full level) 
+ * @param rhoh Pointer to output density array (half level) 
  * @param thv Pointer to output virtual potential temperature array (full level) 
  * @param thvh Pointer to output virtual potential temperature array (half level) 
  * @param ex Pointer to output exner array (full level) 
  * @param exh Pointer to output exner array (half level) 
  * @param thlmean Pointer to input liq. water potential temperature array (horizontal mean, full level) 
  * @param qtmean Pointer to input tot. moisture mix. ratio  array (horizontal mean, full level) 
- * @return Returns 1 on error, 0 otherwise.
  */
-int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict prefh,
+void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict prefh,
                                  double * restrict rho,      double * restrict rhoh,
                                  double * restrict thv,      double * restrict thvh,
                                  double * restrict ex,       double * restrict exh,
                                  double * restrict thlmean,  double * restrict qtmean)
 {
-  int kstart,kend;
-  double ssurf,qtsurf,stop,qttop,ptop,ql,si,qti,qli,thvt;
-  double rdcp = Rd/cp;
+  const double rdcp = Rd/cp;
 
-  kstart = grid->kstart;
-  kend = grid->kend;
+  const int kstart = grid->kstart;
+  const int kend = grid->kend;
+
+  double thlsurf = constants::dhuge;
+  double qtsurf = constants::dhuge;
 
   if(grid->swspatialorder == "2")
   {
-    ssurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
-    stop   = interp2(thlmean[kend-1],   thlmean[kend]);
-    qtsurf = interp2(qtmean[kstart-1],  qtmean[kstart]);
-    qttop  = interp2(qtmean[kend-1],    qtmean[kend]);
+    thlsurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
+    qtsurf   = interp2(qtmean[kstart-1],  qtmean[kstart]);
   }
   else if(grid->swspatialorder == "4")
   {
-    ssurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
-    stop   = interp4(thlmean[kend-2],   thlmean[kend-1],   thlmean[kend],   thlmean[kend+1]);
-    qtsurf = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
-    qttop  = interp4(qtmean[kend-2],    qtmean[kend-1],    qtmean[kend],    qtmean[kend+1]);
+    thlsurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
+    qtsurf   = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
   }
 
+  double ql,thli=0,qti=0,qli;
+
   // Calculate surface (half=kstart) values
-  exh[kstart]   = exn(pbot);
-  ql            = calcql(ssurf,qtsurf,pbot,exh[kstart]); 
-  thvh[kstart]  = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
+  exh[kstart]   = exner(pbot);
+  ql            = satAdjust(thlsurf,qtsurf,pbot,exh[kstart]); 
+  thvh[kstart]  = (thlsurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
   prefh[kstart] = pbot;
   rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
 
@@ -664,8 +651,8 @@ int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict p
   for(int k=kstart+1; k<kend+1; k++)
   {
     // 1. Calculate values at full level below zh[k] 
-    ex[k-1]  = exn(pref[k-1]);
-    ql       = calcql(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
+    ex[k-1]  = exner(pref[k-1]);
+    ql       = satAdjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
     thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
     rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
  
@@ -675,18 +662,18 @@ int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict p
     // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
     if(grid->swspatialorder == "2")
     {
-      si     = interp2(thlmean[k-1],thlmean[k]);
+      thli   = interp2(thlmean[k-1],thlmean[k]);
       qti    = interp2(qtmean[k-1],qtmean[k]);
     }
     else if(grid->swspatialorder == "4")
     {
-      si     = interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
+      thli   = interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
       qti    = interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
     }
 
-    exh[k]   = exn(prefh[k]);
-    qli      = calcql(si,qti,prefh[k],exh[k]);
-    thvh[k]  = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
+    exh[k]   = exner(prefh[k]);
+    qli      = satAdjust(thli,qti,prefh[k],exh[k]);
+    thvh[k]  = (thli + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
     rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]); 
 
     // 4. Calculate full level pressure at z[k]
@@ -706,44 +693,43 @@ int cthermo_moist::calcbasestate(double * restrict pref,     double * restrict p
     pref[kend]     = (8./3.)*prefh[kend]   - 2.*pref[kend-1] + (1./3.)*pref[kend-2];
     pref[kend+1]   = 8.*prefh[kend]        - 9.*pref[kend-1] + 2.*pref[kend-2];
   }
-
-  return 0;
 }
 
-int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict s, double * restrict qt, 
-                                        double * restrict ph, double * restrict sh, double * restrict qth, double * restrict ql,
-                                        double * restrict thvrefh)
+void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict thl, double * restrict qt, 
+                                       double * restrict ph, double * restrict thlh, double * restrict qth, double * restrict ql,
+                                       double * restrict thvrefh)
 {
   int ijk,jj,kk,ij;
   double tl, exnh;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   // CvH check the usage of the gravity term here, in case of scaled DNS we use one. But thermal expansion coeff??
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
-    //ph   = interp2(p[k-1],p[k]);   // BvS To-do: calculate pressure at full and half levels
-    exnh = exn(ph[k]);
+    exnh = exner(ph[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        sh[ij]  = interp2(s[ijk-kk], s[ijk]);
-        qth[ij] = interp2(qt[ijk-kk], qt[ijk]);
-        tl      = sh[ij] * exnh;
+        thlh[ij] = interp2(thl[ijk-kk], thl[ijk]);
+        qth[ij]  = interp2(qt[ijk-kk], qt[ijk]);
+        tl       = thlh[ij] * exnh;
         // Calculate first estimate of ql using Tl
         // if ql(Tl)>0, saturation adjustment routine needed
-        ql[ij]  = qth[ij]-rslf(ph[k],tl);
+        ql[ij]  = qth[ij]-qsat(ph[k],tl);
       }
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
-        if(ql[ij]>0)   // already doesn't vectorize because of iteration in calcql()
-          ql[ij] = calcql(sh[ij], qth[ij], ph[k], exnh);
+        if(ql[ij]>0)   // already doesn't vectorize because of iteration in satAdjust()
+        {
+          ql[ij] = satAdjust(thlh[ij], qth[ij], ph[k], exnh);
+        }
         else
           ql[ij] = 0.;
       }
@@ -753,47 +739,46 @@ int cthermo_moist::calcbuoyancytend_2nd(double * restrict wt, double * restrict 
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        wt[ijk] += bu(ph[k], sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
-  return 0;
 }
 
-int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict s, double * restrict qt, 
-                                        double * restrict ph, double * restrict sh, double * restrict qth, double * restrict ql,
-                                        double * restrict thvrefh)
+void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict thl,  double * restrict qt, 
+                                       double * restrict ph, double * restrict thlh, double * restrict qth, double * restrict ql,
+                                       double * restrict thvrefh)
 {
   int ijk,jj,ij;
   int kk1,kk2;
   double tl, exnh;
 
   jj  = grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
+  kk1 = 1*grid->ijcells;
+  kk2 = 2*grid->ijcells;
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
   {
-    exnh = exn(ph[k]);
+    exnh = exner(ph[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk1;
         ij  = i + j*jj;
-        sh[ij]  = interp4(s[ijk-kk2] , s[ijk-kk1] , s[ijk] , s[ijk+kk1]);
-        qth[ij] = interp4(qt[ijk-kk2], qt[ijk-kk1], qt[ijk], qt[ijk+kk1]);
-        tl      = sh[ij] * exnh;
+        thlh[ij] = interp4(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
+        qth[ij]  = interp4(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
+        tl       = thlh[ij] * exnh;
         // Calculate first estimate of ql using Tl
         // if ql(Tl)>0, saturation adjustment routine needed
-        ql[ij]  = qth[ij]-rslf(ph[k],tl);   
+        ql[ij]  = qth[ij]-qsat(ph[k],tl);   
       }
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
-        if(ql[ij]>0)   // already doesn't vectorize because of iteration in calcql()
-          ql[ij] = calcql(sh[ij], qth[ij], ph[k], exnh);
+        if(ql[ij]>0)   // already doesn't vectorize because of iteration in satAdjust()
+          ql[ij] = satAdjust(thlh[ij], qth[ij], ph[k], exnh);
         else
           ql[ij] = 0.;
       }
@@ -803,32 +788,32 @@ int cthermo_moist::calcbuoyancytend_4th(double * restrict wt, double * restrict 
       {
         ijk = i + j*jj + k*kk1;
         ij  = i + j*jj;
-        wt[ijk] += bu(ph[k], sh[ij], qth[ij], ql[ij], thvrefh[k]);
+        wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
       }
   }
-  return 0;
 }
 
-int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double * restrict qt, double * restrict p, double * restrict ql,
-                                double * restrict thvref)
+void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict thl, double * restrict qt, double * restrict p, double * restrict ql,
+                               double * restrict thvref)
 {
   int ijk,jj,kk,ij;
   double tl, ex;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=0; k<grid->kcells; k++)
   {
-    ex = exn(p[k]);
+    ex = exner(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        tl  = s[ijk] * ex;
-        ql[ij]  = qt[ijk]-rslf(p[k],tl);   // not real ql, just estimate
+        tl  = thl[ijk] * ex;
+        ql[ij]  = qt[ijk]-qsat(p[k],tl);   // not real ql, just estimate
       }
+
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
@@ -836,30 +821,29 @@ int cthermo_moist::calcbuoyancy(double * restrict b, double * restrict s, double
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
         if(ql[ij] > 0)
-          ql[ij] = calcql(s[ijk], qt[ijk], p[k], ex);
+          ql[ij] = satAdjust(thl[ijk], qt[ijk], p[k], ex);
         else
           ql[ij] = 0.;
       }
+
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
-        b[ijk] = bu(p[k], s[ijk], qt[ijk], ql[ij], thvref[k]);
+        b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ij], thvref[k]);
       }
   }
-
-  return 0;
 }
 
-int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double * restrict qt, double * restrict p)
+void ThermoMoist::calcLiquidWater(double * restrict ql, double * restrict thl, double * restrict qt, double * restrict p)
 {
   int ijk,jj,kk;
   double ex;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   // Fill ghost cells with zeros to prevent problems in calculating ql or qlcore masks 
   for(int k=0; k<grid->kstart; k++)
@@ -887,23 +871,22 @@ int cthermo_moist::calcqlfield(double * restrict ql, double * restrict s, double
   // Calculate the ql field
   for(int k=grid->kstart; k<grid->kend; k++)
   {
-    ex = exn(p[k]);
+    ex = exner(p[k]);
     for(int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        ql[ijk] = calcql(s[ijk], qt[ijk], p[k], ex);
+        ql[ijk] = satAdjust(thl[ijk], qt[ijk], p[k], ex);
       }
   }
-  return 0;
 }
 
-int cthermo_moist::calcN2(double * restrict N2, double * restrict s, double * restrict dzi, double * restrict thvref)
+void ThermoMoist::calcN2(double * restrict N2, double * restrict thl, double * restrict dzi, double * restrict thvref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(int k=grid->kstart; k<grid->kend; ++k)
     for(int j=grid->jstart; j<grid->jend; ++j)
@@ -911,23 +894,19 @@ int cthermo_moist::calcN2(double * restrict N2, double * restrict s, double * re
       for(int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
-        N2[ijk] = grav/thvref[k]*0.5*(s[ijk+kk] - s[ijk-kk])*dzi[k];
+        N2[ijk] = grav/thvref[k]*0.5*(thl[ijk+kk] - thl[ijk-kk])*dzi[k];
       }
-
-  return 0;
 }
 
-int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
-                                   double * restrict s , double * restrict sbot,
-                                   double * restrict qt, double * restrict qtbot,
-                                   double * restrict thvref, double * restrict thvrefh)
+void ThermoMoist::calcBuoyancyBot(double * restrict b,   double * restrict bbot,
+                                  double * restrict thl, double * restrict thlbot,
+                                  double * restrict qt,  double * restrict qtbot,
+                                  double * restrict thvref, double * restrict thvrefh)
 {
   int ij,ijk,jj,kk,kstart;
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
   kstart = grid->kstart;
-
-  // double thvref = thvs;
 
   // assume no liquid water at the lowest model level
   for(int j=0; j<grid->jcells; j++)
@@ -936,21 +915,17 @@ int cthermo_moist::calcbuoyancybot(double * restrict b , double * restrict bbot,
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij ] = bunoql(sbot[ij], qtbot[ij], thvrefh[kstart]);
-      b   [ijk] = bunoql(s[ijk], qt[ijk], thvref[kstart]);
+      bbot[ij ] = buoyancyNoql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
+      b   [ijk] = buoyancyNoql(thl[ijk], qt[ijk], thvref[kstart]);
     }
-
-  return 0;
 }
 
-int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict sbot, double * restrict sfluxbot, double * restrict qtbot, double * restrict qtfluxbot,
-                                       double * restrict thvrefh)
+void ThermoMoist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restrict thlbot, double * restrict thlfluxbot, double * restrict qtbot, double * restrict qtfluxbot,
+                                      double * restrict thvrefh)
 {
   int ij,jj,kstart;
   jj = grid->icells;
   kstart = grid->kstart;
-
-  // double thvref = thvs;
 
   // assume no liquid water at the lowest model level
   for(int j=0; j<grid->jcells; j++)
@@ -958,62 +933,172 @@ int cthermo_moist::calcbuoyancyfluxbot(double * restrict bfluxbot, double * rest
     for(int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
-      bfluxbot[ij] = bufluxnoql(sbot[ij], sfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+      bfluxbot[ij] = buoyancyFluxNoql(thlbot[ij], thlfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+    }
+}
+
+void ThermoMoist::initStat()
+{
+  // Add variables to the statistics
+  if(stats->getSwitch() == "1")
+  {
+    /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
+       there the statistics are initialized before thermo->create() is called */
+    stats->addFixedProf("rhoref",  "Full level basic state density", "kg m-3", "z",  fields->rhoref );
+    stats->addFixedProf("rhorefh", "Half level basic state density", "kg m-3", "zh", fields->rhorefh);
+    stats->addFixedProf("thvref",  "Full level basic state virtual potential temperature", "K", "z", thvref );
+    stats->addFixedProf("thvrefh", "Half level basic state virtual potential temperature", "K", "zh",thvrefh);
+
+    if(swupdatebasestate == 1)
+    {
+      stats->addProf("ph",   "Full level hydrostatic pressure", "Pa",     "z" );
+      stats->addProf("phh",  "Half level hydrostatic pressure", "Pa",     "zh");
+      stats->addProf("rho",  "Full level density",  "kg m-3", "z" );
+      stats->addProf("rhoh", "Half level density",  "kg m-3", "zh");
+    }
+    else
+    {
+      stats->addFixedProf("ph",  "Full level hydrostatic pressure", "Pa", "z",  pref );
+      stats->addFixedProf("phh", "Half level hydrostatic pressure", "Pa", "zh", prefh);
     }
 
-  return 0;
+    stats->addProf("b", "Buoyancy", "m s-2", "z");
+    for(int n=2; n<5; ++n)
+    {
+      std::stringstream ss;
+      ss << n;
+      std::string sn = ss.str();
+      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+    }
+
+    stats->addProf("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
+    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+
+    stats->addProf("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+    stats->addProf("cfrac", "Cloud fraction", "-","z");
+
+    stats->addTimeSeries("lwp", "Liquid water path", "kg m-2");
+    stats->addTimeSeries("ccover", "Projected cloud cover", "-");
+  }
+}
+
+void ThermoMoist::initCross()
+{
+  if(model->cross->getSwitch() == "1")
+  {
+
+    allowedcrossvars.push_back("b");
+    allowedcrossvars.push_back("bbot");
+    allowedcrossvars.push_back("bfluxbot");
+    if(grid->swspatialorder == "4")
+      allowedcrossvars.push_back("blngrad");
+    allowedcrossvars.push_back("ql");
+    allowedcrossvars.push_back("qlpath");
+
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+
+    // Check input list of cross variables (crosslist)
+    std::vector<std::string>::iterator it=crosslist_global->begin();
+    while(it != crosslist_global->end())
+    {
+      if(std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it))
+      {
+        // Remove variable from global list, put in local list
+        crosslist.push_back(*it);
+        crosslist_global->erase(it); // erase() returns iterator of next element..
+      }
+      else
+        ++it;
+    }
+
+    // Sort crosslist to group ql and b variables
+    std::sort(crosslist.begin(),crosslist.end());
+  }
+}
+
+void ThermoMoist::initDump()
+{
+  if(model->dump->getSwitch() == "1")
+  {
+    // Get global cross-list from cross.cxx
+    std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
+
+    // Check if fields in dumplist are retrievable thermo fields
+    std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
+    while(dumpvar != dumplist_global->end())
+    {
+      if(!checkThermoField(*dumpvar))
+      {
+        // Remove variable from global list, put in local list
+        dumplist.push_back(*dumpvar);
+        dumplist_global->erase(dumpvar); // erase() returns iterator of next element..
+      }
+      else
+        ++dumpvar;
+    }
+  }
 }
 
 // INLINE FUNCTIONS
-inline double cthermo_moist::bu(const double p, const double s, const double qt, const double ql, const double thvref)
+inline double ThermoMoist::buoyancy(const double exn, const double thl, const double qt, const double ql, const double thvref)
 {
-  return grav * ((s + Lv*ql/(cp*exn(p))) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
+  return grav * ((thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
 }
 
-inline double cthermo_moist::bunoql(const double s, const double qt, const double thvref)
+inline double ThermoMoist::buoyancyNoql(const double thl, const double qt, const double thvref)
 {
-  return grav * (s * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
+  return grav * (thl * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
 }
 
-inline double cthermo_moist::bufluxnoql(const double s, const double sflux, const double qt, const double qtflux, const double thvref)
+inline double ThermoMoist::buoyancyFluxNoql(const double thl, const double thlflux, const double qt, const double qtflux, const double thvref)
 {
-  return grav/thvref * (sflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*s*qtflux);
+  return grav/thvref * (thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux);
 }
 
-inline double cthermo_moist::calcql(const double s, const double qt, const double p, const double exn)
+inline double ThermoMoist::satAdjust(const double thl, const double qt, const double p, const double exn)
 {
-  int niter = 0; //, nitermax = 5;
-  double ql, tl, tnr_old = 1.e9, tnr, qs;
-  tl = s * exn;
+  int niter = 0, nitermax = 30;
+  double ql, tl, tnr_old = 1.e9, tnr, qs=0;
+  tl = thl * exn;
   tnr = tl;
-  while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5)// && niter < nitermax)
+  while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
   {
     ++niter;
     tnr_old = tnr;
-    qs = rslf(p,tnr);
+    qs = qsat(p,tnr);
     tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(std::pow(Lv,2)*qs)/ (Rv*cp*std::pow(tnr,2)));
   }
+
+  if(niter == nitermax)
+  {  
+    printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",thl,qt,p);
+    throw 1;
+  }  
+
   ql = std::max(0.,qt - qs);
   return ql;
 }
 
-inline double cthermo_moist::exn(const double p)
+inline double ThermoMoist::exner(const double p)
 {
   return pow((p/p0),(Rd/cp));
 }
 
-inline double cthermo_moist::exn2(const double p)
+inline double ThermoMoist::exn2(const double p)
 {
   double dp=p-p0;
   return (1+(dp*(ex1+dp*(ex2+dp*(ex3+dp*(ex4+dp*(ex5+dp*(ex6+ex7*dp)))))))); 
 }
 
-inline double cthermo_moist::rslf(const double p, const double T)
+inline double ThermoMoist::qsat(const double p, const double T)
 {
-  return ep*esl(T)/(p-(1-ep)*esl(T));
+  return ep*esat(T)/(p-(1-ep)*esat(T));
 }
 
-inline double cthermo_moist::esl(const double T)
+inline double ThermoMoist::esat(const double T)
 {
   const double x=std::max(-80.,T-T0);
   return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));

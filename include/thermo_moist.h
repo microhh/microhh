@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,77 +25,82 @@
 
 #include "thermo.h"
 
-// forward declarations to speed up build time
-class cmaster;
-class cgrid;
-class cfields;
-class cstats;
-struct mask;
+class Master;
+class Grid;
+class Fields;
+class Stats;
+struct Mask;
 
-class cthermo_moist : public cthermo
+class ThermoMoist : public Thermo
 {
   public:
-    cthermo_moist(cmodel *, cinput *);
-    ~cthermo_moist();
+    ThermoMoist(Model *, Input *);
+    virtual ~ThermoMoist();
 
-    void init();
-    void create(cinput *);
-    int exec();
-    int getmask(cfield3d *, cfield3d *, mask *);
-    int execstats(mask *);
-
-    void execcross();
+    virtual void init();
+    virtual void create(Input *);
+    virtual void exec();
+    virtual void getMask(Field3d *, Field3d *, Mask *);
+    virtual void execStats(Mask *);
+    virtual void execCross();
+    virtual void execDump();
 
     // functions to retrieve buoyancy properties, to be called from other classes
-    int checkthermofield(std::string name);
-    int getthermofield(cfield3d *, cfield3d *, std::string name);
-    int getbuoyancysurf(cfield3d *);
-    int getbuoyancyfluxbot(cfield3d *);
-    int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
+    virtual bool checkThermoField(std::string name);
+    virtual void getThermoField(Field3d *, Field3d *, std::string name);
+    virtual void getBuoyancySurf(Field3d *);
+    virtual void getBuoyancyFluxbot(Field3d *);
+    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
-#ifdef USECUDA
+    #ifdef USECUDA
     // GPU functions and variables
-    int prepareDevice();
-    int clearDevice();
-#endif
+    void prepareDevice();
+    void clearDevice();
+    #endif
 
   private:
+    void initStat();  ///< Initialize the thermo statistics
+    void initCross(); ///< Initialize the thermo cross-sections
+    void initDump();  ///< Initialize the thermo field dumps
 
     int swupdatebasestate;
+    std::string thvar; ///< Name of prognostic potential temperature variable
 
     // cross sections
-    std::vector<std::string> crosslist;        // List with all crosses from ini file
-    std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+    std::vector<std::string> crosslist;        ///< List with all crosses from ini file
+    std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
+    std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
-    cstats *stats;
+    Stats *stats;
 
     // masks
-    int calcmaskql    (double *, double *, double *, int *, int *, int *, double *);
-    int calcmaskqlcore(double *, double *, double *, int *, int *, int *, double *, double *, double *);
+    void calcMask_ql    (double *, double *, double *, int *, int *, int *, double *);
+    void calcMask_qlcore(double *, double *, double *, int *, int *, int *, double *, double *, double *);
 
-    int calcbuoyancytend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
-    int calcbuoyancytend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
+    void calcBuoyancyTend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
+    void calcBuoyancyTend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
 
-    int calcbuoyancy(double *, double *, double *, double *, double *, double *);
-    int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
-    int calcbasestate(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+    void calcBuoyancy(double *, double *, double *, double *, double *, double *);
+    void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
+    void calcBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
 
-    int calcqlfield(double *, double *, double *, double *);
-    int calcbuoyancybot(double *, double *,
-                        double *, double *,
-                        double *, double *,
-                        double *, double *);
-    int calcbuoyancyfluxbot(double *, double *, double *, double *, double *, double *);
+    void calcLiquidWater(double *, double *, double *, double *);
+    void calcBuoyancyBot(double *, double *,
+                         double *, double *,
+                         double *, double *,
+                         double *, double *);
+    void calcBuoyancyFluxBot(double *, double *, double *, double *, double *, double *);
 
-    inline double calcql(const double, const double, const double ,const double);
-    inline double bu(const double, const double, const double, const double, const double);
-    inline double bunoql(const double, const double, const double);
-    inline double bufluxnoql(const double, const double, const double, const double, const double);
-    inline double exn(const double);
+    inline double satAdjust(const double, const double, const double ,const double);
+    inline double buoyancy(const double, const double, const double, const double, const double);
+    inline double buoyancyNoql(const double, const double, const double);
+    inline double buoyancyFluxNoql(const double, const double, const double, const double, const double);
+    inline double exner(const double);
     inline double exn2(const double);
-    inline double rslf(const double, const double);
-    inline double esl(const double);
+    inline double qsat(const double, const double);
+    inline double esat(const double);
 
+    std::string swbasestate;
     double pbot;
     double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
 
@@ -116,6 +121,5 @@ class cthermo_moist : public cthermo
     double *exnrefh_g;
     double *pref_g;
     double *prefh_g;
-
 };
 #endif

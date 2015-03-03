@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,23 +25,23 @@
 
 #include "boundary.h"
 
-// forward declaration to reduce compilation time
-class cmodel;
+class Model;
+class Input;
 
-class cboundary_user : public cboundary
+class BoundaryUser : public Boundary
 {
   public:
-    cboundary_user(cmodel *, cinput *);
+    BoundaryUser(Model *, Input *);
 
-    void init(cinput *);
+    void init(Input *);
 
-    void setvalues();
+    void setValues();
 
   private:
-    int setbc_patch(double *, double *, double *, int, double, double, double,
+    void setBcPatch(double *, double *, double *, int, double, double, double,
                     double *, double, double); ///< Set the values for the boundary fields.
 
-    // patch type
+    // Patch properties.
     int    patch_dim;
     double patch_xh;
     double patch_xr;

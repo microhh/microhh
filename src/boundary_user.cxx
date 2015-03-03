@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -29,15 +29,15 @@
 #include "defines.h"
 #include "model.h"
 
-cboundary_user::cboundary_user(cmodel *modelin, cinput *inputin) : cboundary(modelin, inputin)
+BoundaryUser::BoundaryUser(Model *modelin, Input *inputin) : Boundary(modelin, inputin)
 {
 }
 
-void cboundary_user::init(cinput *inputin)
+void BoundaryUser::init(Input *inputin)
 {
   int nerror = 0;
 
-  processbcs(inputin);
+  processBcs(inputin);
 
   // patch type
   nerror += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , "", 2 );
@@ -51,25 +51,28 @@ void cboundary_user::init(cinput *inputin)
     throw 1;
 }
 
-void cboundary_user::setvalues()
+void BoundaryUser::setValues()
 {
-  setbc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
+  const double noVelocity = 0.;
+  const double noOffset = 0.;
 
-  setbc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
-  setbc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
+  setBc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
 
-  for(fieldmap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+  setBc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
+  setBc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
+
+  for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
   {
-    setbc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
-                sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset, fields->s["tmp1"]->data, patch_facl, patch_facr);
-    setbc      (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
-                sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
+    setBcPatch(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
+               sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, noOffset, fields->atmp["tmp1"]->data, patch_facl, patch_facr);
+    setBc     (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
+               sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, noOffset);
   }
 }
 
-int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
-                                double * restrict tmp, double facl, double facr)
+void BoundaryUser::setBcPatch(double * restrict a, double * restrict agrad, double * restrict aflux, int sw, double aval, double visc, double offset,
+                              double * restrict tmp, double facl, double facr)
 {
   double avall, avalr;
   double xmod, ymod;
@@ -132,6 +135,4 @@ int cboundary_user::setbc_patch(double * restrict a, double * restrict agrad, do
         agrad[ij] = -aflux[ij]/visc;
       }
   }
-
-  return 0;
 }

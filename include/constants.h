@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -65,6 +65,6 @@ namespace constants
 
 namespace cuda
 {
-  const int blockSizeI = 128;  ///< Threads per threadblock in x-direction
-  const int blockSizeJ = 1;    ///< Threads per threadblock in y-direction
+  //const int blockSizeI = 128;  ///< Threads per threadblock in x-direction
+  //const int blockSizeJ = 1;    ///< Threads per threadblock in y-direction
 }

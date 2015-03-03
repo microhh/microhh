@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,20 +33,20 @@
 
 using namespace fd::o4;
 
-cdiff_4::cdiff_4(cmodel *modelin, cinput *inputin) : cdiff(modelin, inputin)
+Diff4::Diff4(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
   swdiff = "4";
 }
 
-cdiff_4::~cdiff_4()
+Diff4::~Diff4()
 {
 }
 
-void cdiff_4::setvalues()
+void Diff4::setValues()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
-  for(fieldmap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+  for(FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
     viscmax = std::max(it->second->visc, viscmax);
 
   dnmul = 0;
@@ -54,7 +54,7 @@ void cdiff_4::setvalues()
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
-unsigned long cdiff_4::gettimelim(unsigned long idt, double dt)
+unsigned long Diff4::getTimeLimit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
@@ -63,7 +63,7 @@ unsigned long cdiff_4::gettimelim(unsigned long idt, double dt)
   return idtlim;
 }
 
-double cdiff_4::getdn(double dt)
+double Diff4::get_dn(double dt)
 {
   double dn;
 
@@ -73,40 +73,50 @@ double cdiff_4::getdn(double dt)
 }
 
 #ifndef USECUDA
-int cdiff_4::exec()
+void Diff4::exec()
 {
-  diffc(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
-  diffc(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
-  diffw(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
+  // In case of a two-dimensional run, strip v component out of all kernels and do 
+  // not calculate v-diffusion tendency.
+  if(grid->jtot == 1)
+  {
+    diffc<false>(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
+    diffw<false>(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc(it->second->data, fields->s[it->first]->data, grid->dzi4, grid->dzhi4, fields->s[it->first]->visc);
+    for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+      diffc<false>(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
+  }
+  else
+  {
+    diffc<true>(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
+    diffc<true>(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
+    diffw<true>(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
-  return 0;
+    for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+      diffc<true>(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
+  }
 }
 #endif
 
-int cdiff_4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+template<bool dim3>
+void Diff4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, const double visc)
 {
-  int    ijk,kstart,kend;
-  int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
-  double dxidxi,dyidyi;
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int ii3 = 3;
+  const int jj1 = 1*grid->icells;
+  const int jj2 = 2*grid->icells;
+  const int jj3 = 3*grid->icells;
+  const int kk1 = 1*grid->ijcells;
+  const int kk2 = 2*grid->ijcells;
+  const int kk3 = 3*grid->ijcells;
 
-  ii1 = 1;
-  ii2 = 2;
-  ii3 = 3;
-  jj1 = 1*grid->icells;
-  jj2 = 2*grid->icells;
-  jj3 = 3*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
+  const int kstart = grid->kstart;
+  const int kend   = grid->kend;
 
-  kstart = grid->kstart;
-  kend   = grid->kend;
+  const double dxidxi = 1./(grid->dx * grid->dx);
+  const double dyidyi = 1./(grid->dy * grid->dy);
 
-  dxidxi = 1./(grid->dx * grid->dx);
-  dyidyi = 1./(grid->dy * grid->dy);
+  int ijk;
 
   // bottom boundary
   for(int j=grid->jstart; j<grid->jend; j++)
@@ -115,7 +125,8 @@ int cdiff_4::diffc(double * restrict at, double * restrict a, double * restrict 
     {
       ijk = i + j*jj1 + kstart*kk1;
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
+      if(dim3)
+        at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
       at[ijk] += visc * ( cg0*(bg0*a[ijk-kk2] + bg1*a[ijk-kk1] + bg2*a[ijk    ] + bg3*a[ijk+kk1]) * dzhi4[kstart-1]
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[kstart  ]
                         + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzhi4[kstart+1]
@@ -130,7 +141,8 @@ int cdiff_4::diffc(double * restrict at, double * restrict a, double * restrict 
       {
         ijk = i + j*jj1 + k*kk1;
         at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-        at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
+        if(dim3)
+          at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
         at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzhi4[k-1]
                           + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[k  ]
                           + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzhi4[k+1]
@@ -145,38 +157,36 @@ int cdiff_4::diffc(double * restrict at, double * restrict a, double * restrict 
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
+      if(dim3)
+        at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
       at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzhi4[kend-2]
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[kend-1]
                         + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzhi4[kend  ]
                         + cg3*(tg0*a[ijk-kk1] + tg1*a[ijk    ] + tg2*a[ijk+kk1] + tg3*a[ijk+kk2]) * dzhi4[kend+1] )
                         * dzi4[kend-1];
     }
-
-  return 0;
 }
 
-int cdiff_4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+template<bool dim3>
+void Diff4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
 {
-  int    ijk,kstart,kend;
-  int    ii1,ii2,ii3,jj1,jj2,jj3,kk1,kk2,kk3;
-  double dxidxi,dyidyi;
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int ii3 = 3;
+  const int jj1 = 1*grid->icells;
+  const int jj2 = 2*grid->icells;
+  const int jj3 = 3*grid->icells;
+  const int kk1 = 1*grid->ijcells;
+  const int kk2 = 2*grid->ijcells;
+  const int kk3 = 3*grid->ijcells;
 
-  ii1 = 1;
-  ii2 = 2;
-  ii3 = 3;
-  jj1 = 1*grid->icells;
-  jj2 = 2*grid->icells;
-  jj3 = 3*grid->icells;
-  kk1 = 1*grid->icells*grid->jcells;
-  kk2 = 2*grid->icells*grid->jcells;
-  kk3 = 3*grid->icells*grid->jcells;
+  const int kstart = grid->kstart;
+  const int kend   = grid->kend;
 
-  kstart = grid->kstart;
-  kend   = grid->kend;
+  const double dxidxi = 1./(grid->dx * grid->dx);
+  const double dyidyi = 1./(grid->dy * grid->dy);
 
-  dxidxi = 1./(grid->dx * grid->dx);
-  dyidyi = 1./(grid->dy * grid->dy);
+  int ijk;
 
   // bottom boundary
   for(int j=grid->jstart; j<grid->jend; j++)
@@ -185,7 +195,8 @@ int cdiff_4::diffw(double * restrict at, double * restrict a, double * restrict 
     {
       ijk = i + j*jj1 + (kstart+1)*kk1;
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
+      if(dim3)
+        at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
       at[ijk] += visc * ( cg0*(bg0*a[ijk-kk2] + bg1*a[ijk-kk1] + bg2*a[ijk    ] + bg3*a[ijk+kk1]) * dzi4[kstart-1]
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[kstart  ]
                         + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[kstart+1]
@@ -200,7 +211,8 @@ int cdiff_4::diffw(double * restrict at, double * restrict a, double * restrict 
       {
         ijk = i + j*jj1 + k*kk1;
         at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-        at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
+        if(dim3)
+          at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
         at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzi4[k-2]
                           + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[k-1]
                           + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[k  ]
@@ -215,13 +227,12 @@ int cdiff_4::diffw(double * restrict at, double * restrict a, double * restrict 
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
+      if(dim3)
+        at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
       at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzi4[kend-3]
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[kend-2]
                         + cg2*(cg0*a[ijk-kk1] + cg1*a[ijk    ] + cg2*a[ijk+kk1] + cg3*a[ijk+kk2]) * dzi4[kend-1]
                         + cg3*(tg0*a[ijk-kk1] + tg1*a[ijk    ] + tg2*a[ijk+kk1] + tg3*a[ijk+kk2]) * dzi4[kend  ] )
                         * dzhi4[kend-1];
     }
-
-  return 0;
 }

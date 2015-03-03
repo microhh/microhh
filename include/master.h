@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,41 +23,43 @@
 #ifndef MASTER
 #define MASTER
 
-#ifdef PARALLEL
+#ifdef USEMPI
 #include <mpi.h>
 #endif
 #include <string>
 #include "input.h"
 
-class cinput;
+class Input;
 
-class cmaster
+class Master
 {
   public:
-    cmaster();
-    ~cmaster();
+    Master();
+    ~Master();
 
     void start(int, char**);
-    void init(cinput *);
+    void init(Input *);
 
-    double gettime();
-    int waitall();
+    double getWallClockTime();
+    bool atWallClockLimit();
+
+    void waitAll();
 
     // overload the broadcast function
-    int broadcast(char *, int);
-    int broadcast(int *, int);
-    int broadcast(double *, int);
-    int broadcast(unsigned long *, int);
+    void broadcast(char *, int);
+    void broadcast(int *, int);
+    void broadcast(double *, int);
+    void broadcast(unsigned long *, int);
 
     // overload the sum function
-    int sum(int *, int);
-    int sum(double *, int);
+    void sum(int *, int);
+    void sum(double *, int);
 
     // overload the max function
-    int max(double *, int);
+    void max(double *, int);
 
     // overload the min function
-    int min(double *, int);
+    void min(double *, int);
 
     void printMessage(const char *format, ...);
     void printWarning(const char *format, ...);
@@ -73,7 +75,7 @@ class cmaster
     int mpicoordx;
     int mpicoordy;
 
-#ifdef PARALLEL
+    #ifdef USEMPI
     int nnorth;
     int nsouth;
     int neast;
@@ -85,14 +87,17 @@ class cmaster
 
     MPI_Request *reqs;
     int reqsn;
-#endif
+    #endif
 
   private:
     bool initialized;
     bool allocated;
 
-#ifdef PARALLEL
-    int checkerror(int);
-#endif
+    double wallClockStart;
+    double wallClockEnd;
+
+    #ifdef USEMPI
+    int checkError(int);
+    #endif
 };
 #endif

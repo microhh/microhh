@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,11 +25,10 @@
 
 #include "thermo.h"
 
-// forward declarations to speed up build time
-class cmaster;
-class cgrid;
-class cfields;
-class cstats;
+class Master;
+class Grid;
+class Fields;
+class Stats;
 
 /**
  * Class for the dry thermodynamics.
@@ -37,47 +36,56 @@ class cstats;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-class cthermo_dry : public cthermo
+class ThermoDry : public Thermo
 {
   public:
-    cthermo_dry(cmodel *, cinput *); ///< Constructor of the dry thermodynamics class.
-    ~cthermo_dry();                  ///< Destructor of the dry thermodynamics class.
+    ThermoDry(Model *, Input *); ///< Constructor of the dry thermodynamics class.
+    virtual ~ThermoDry();                  ///< Destructor of the dry thermodynamics class.
 
-    void init();
-    void create(cinput *);
-    int exec();                ///< Add the tendencies belonging to the buoyancy.
-    int execstats(mask *);
+    virtual void init();
+    virtual void create(Input *);
+    virtual void exec();                ///< Add the tendencies belonging to the buoyancy.
+    virtual void execStats(Mask *);
+    virtual void execCross();
+    virtual void execDump();
 
-    void execcross();
+    virtual bool checkThermoField(std::string name);
+    virtual void getThermoField(Field3d *, Field3d *, std::string name);
+    virtual void getBuoyancySurf(Field3d *);              ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    virtual void getBuoyancyFluxbot(Field3d *);           ///< Compute the bottom buoyancy flux for usage in another routine.
+    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
 
-    int checkthermofield(std::string name);
-    int getthermofield(cfield3d *, cfield3d *, std::string name);
-    int getbuoyancysurf(cfield3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    int getbuoyancyfluxbot(cfield3d *);          ///< Compute the bottom buoyancy flux for usage in another routine.
-    int getprogvars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
-
-#ifdef USECUDA
+    #ifdef USECUDA
     // GPU functions and variables
-    int prepareDevice();
-    int clearDevice();
-#endif
+    virtual void prepareDevice();
+    virtual void clearDevice();
+    #endif
 
   private:
-    int calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
-    int calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
-    
+    void initStat();  ///< Initialize the thermo statistics
+    void initCross(); ///< Initialize the thermo cross-sections
+    void initDump();  ///< Initialize the thermo field dumps
+
+    void calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
+    void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
+   
     // cross sections
     std::vector<std::string> crosslist;        ///< List with all crosses from ini file
     std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
+    std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
-    int calcbuoyancybot(double *, double *,
-                        double *, double *,
-                        double *, double *);                ///< Calculation of the near-surface and surface buoyancy.
-    int calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-    int calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-    int calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+    void calcbuoyancybot(double *, double *,
+                         double *, double *,
+                         double *, double *);                ///< Calculation of the near-surface and surface buoyancy.
+    void calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
+    void calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+    void calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
-    cstats *stats;
+    void initBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double); ///< For anelastic setup, calculate base state from initial input profiles
+
+    Stats *stats;
+
+    std::string swbasestate;
 
     double pbot;   ///< Surface pressure.
     double thref0; ///< Reference potential temperature in case of Boussinesq

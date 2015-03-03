@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,7 +31,7 @@
 #include "constants.h"
 #include "model.h"
 
-ctimeloop::ctimeloop(cmodel *modelin, cinput *inputin)
+Timeloop::Timeloop(Model *modelin, Input *inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -39,7 +39,7 @@ ctimeloop::ctimeloop(cmodel *modelin, cinput *inputin)
   master = model->master;
 
   substep = 0;
-  ifactor = 1e6;
+  ifactor = 1e9;
 
   // input parameters
   int n = 0;
@@ -107,21 +107,35 @@ ctimeloop::ctimeloop(cmodel *modelin, cinput *inputin)
   iotime = (int)(istarttime / iiotimeprec);
 
   gettimeofday(&start, NULL);
+
+  if(master->mode == "init")
+    inputin->flagUsed("time", "starttime");
 }
 
-ctimeloop::~ctimeloop()
+Timeloop::~Timeloop()
 {
 }
 
-int ctimeloop::settimelim()
+void Timeloop::setTimeStepLimit()
 {
   idtlim = idtmax;
-  idtlim = std::min(idtlim, isavetime - itime % isavetime);
 
-  return 0;
+  // Check whether the run should be stopped because of the wall clock limit
+  if(master->atWallClockLimit())
+  {
+    // Set the time step to the nearest multiple of iotimeprec
+    idtlim = std::min(idtlim, iiotimeprec - itime % iiotimeprec);
+  }
+
+  idtlim = std::min(idtlim, isavetime - itime % isavetime);
 }
 
-void ctimeloop::stepTime()
+void Timeloop::setTimeStepLimit(unsigned long idtlimin)
+{
+  idtlim = std::min(idtlim, idtlimin);
+}
+
+void Timeloop::stepTime()
 {
   // Only step forward in time if we are not in a substep
   if(inSubStep())
@@ -137,7 +151,7 @@ void ctimeloop::stepTime()
     loop = false;
 }
 
-bool ctimeloop::doCheck()
+bool Timeloop::doCheck()
 {
   if(iteration % outputiter == 0 && !inSubStep())
     return true;
@@ -145,16 +159,33 @@ bool ctimeloop::doCheck()
   return false;
 }
 
-bool ctimeloop::doSave()
+bool Timeloop::doSave()
 {
-  // do not save directly after the start of the simulation and not in a substep
+  // Check whether the simulation has to stop due to the wallclock limit,
+  // but only at a time step where actual saves can be made.
+  if(itime % iiotimeprec == 0 && !inSubStep() && master->atWallClockLimit())
+  {
+    master->printWarning("Simulation will be stopped after saving the restart files due to wall clock limit\n");
+
+    // Stop looping
+    loop = false;
+    return true;
+  }
+
+  // Do not save directly after the start of the simulation and not in a substep
   if(itime % isavetime == 0 && iteration != 0 && !inSubStep())
     return true;
 
   return false;
 }
 
-double ctimeloop::check()
+bool Timeloop::isFinished()
+{
+  // Return true if loop is false and vice versa.
+  return !loop;
+}
+
+double Timeloop::check()
 {
   gettimeofday(&end, NULL);
 
@@ -164,7 +195,7 @@ double ctimeloop::check()
   return timeelapsed;
 }
 
-void ctimeloop::setTimeStep()
+void Timeloop::setTimeStep()
 {
   // Only set the time step if we are not in a substep
   if(inSubStep())
@@ -172,37 +203,22 @@ void ctimeloop::setTimeStep()
 
   if(adaptivestep)
   {
+    if(idt == 0)
+    {
+      master->printError("Required time step less than precision %E of the time stepping\n", 1./ifactor);
+      throw 1;
+    }
     idt = idtlim;
     dt  = (double)idt / ifactor;
   }
 }
 
-#ifdef USECUDA
-int ctimeloop::exec()
+#ifndef USECUDA
+void Timeloop::exec()
 {
   if(rkorder == 3)
   {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
-      rk3_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
-
-    substep = (substep+1) % 3;
-  }
-
-  if(rkorder == 4)
-  {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
-      rk4_GPU(fields->ap[it->first]->data_g, it->second->data_g, dt);
-
-    substep = (substep+1) % 5;
-  }
-  return substep;
-}
-#else
-int ctimeloop::exec()
-{
-  if(rkorder == 3)
-  {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
       rk3(fields->ap[it->first]->data, it->second->data, dt);
 
     substep = (substep+1) % 3;
@@ -210,17 +226,15 @@ int ctimeloop::exec()
 
   if(rkorder == 4)
   {
-    for(fieldmap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
       rk4(fields->ap[it->first]->data, it->second->data, dt);
 
     substep = (substep+1) % 5;
   }
-
-  return substep;
 }
 #endif
 
-double ctimeloop::getsubdt()
+double Timeloop::getSubTimeStep()
 {
   double subdt = 0.;
   if(rkorder == 3)
@@ -231,13 +245,13 @@ double ctimeloop::getsubdt()
   return subdt;
 }
 
-double ctimeloop::rk3subdt(double dt)
+inline double Timeloop::rk3subdt(const double dt)
 {
   const double cB [] = {1./3., 15./16., 8./15.};
   return cB[substep]*dt;
 }
 
-double ctimeloop::rk4subdt(double dt)
+inline double Timeloop::rk4subdt(const double dt)
 {
   const double cB [] = {
     1432997174477./ 9575080441755.,
@@ -245,11 +259,10 @@ double ctimeloop::rk4subdt(double dt)
     1720146321549./ 2090206949498.,
     3134564353537./ 4481467310338.,
     2277821191437./14882151754819.};
-
   return cB[substep]*dt;
 }
 
-int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
+void Timeloop::rk3(double * restrict a, double * restrict at, double dt)
 {
   const double cA [] = {0., -5./9., -153./128.};
   const double cB [] = {1./3., 15./16., 8./15.};
@@ -258,7 +271,7 @@ int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
@@ -280,11 +293,9 @@ int ctimeloop::rk3(double * restrict a, double * restrict at, double dt)
         ijk = i + j*jj + k*kk;
         at[ijk] = cA[substepn]*at[ijk];
       }
-
-  return 0;
 }
 
-int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
+void Timeloop::rk4(double * restrict a, double * restrict at, double dt)
 {
   const double cA [] = {
       0.,
@@ -304,7 +315,7 @@ int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
   int ijk,jj,kk;
 
   jj = grid->icells;
-  kk = grid->icells*grid->jcells;
+  kk = grid->ijcells;
 
   for(k=grid->kstart; k<grid->kend; k++)
     for(j=grid->jstart; j<grid->jend; j++)
@@ -326,11 +337,9 @@ int ctimeloop::rk4(double * restrict a, double * restrict at, double dt)
         ijk = i + j*jj + k*kk;
         at[ijk] = cA[substepn]*at[ijk];
       }
-
-  return 0;
 }
 
-bool ctimeloop::inSubStep()
+bool Timeloop::inSubStep()
 {
   if(substep > 0)
     return true;
@@ -338,16 +347,20 @@ bool ctimeloop::inSubStep()
     return false;
 }
 
-bool ctimeloop::inStatsStep()
+bool Timeloop::isStatsStep()
 {
+  // In case we are not in a substep and not at the first iteration
+  // after a restart, we can could do statistics.
   if(!inSubStep() && !((iteration > 0) && (itime == istarttime)))
     return true;
   else
     return false;
 }
 
-void ctimeloop::save(int starttime)
+void Timeloop::save(int starttime)
 {
+  int nerror = 0;
+
   if(master->mpiid == 0)
   {
     char filename[256];
@@ -356,24 +369,31 @@ void ctimeloop::save(int starttime)
     master->printMessage("Saving \"%s\" ... ", filename);
 
     FILE *pFile;
-    pFile = fopen(filename, "wb");
+    pFile = fopen(filename, "wbx");
 
     if(pFile == NULL)
     {
-      master->printError("\"%s\" cannot be written", filename);
-      throw 1;
+      master->printMessage("FAILED\n", filename);
+      ++nerror;
     }
+    else
+    {
+      fwrite(&itime    , sizeof(unsigned long), 1, pFile);
+      fwrite(&idt      , sizeof(unsigned long), 1, pFile);
+      fwrite(&iteration, sizeof(int), 1, pFile);
 
-    fwrite(&itime    , sizeof(long), 1, pFile);
-    fwrite(&idt      , sizeof(long), 1, pFile);
-    fwrite(&iteration, sizeof(long), 1, pFile);
-
-    fclose(pFile);
-    master->printMessage("OK\n");
+      fclose(pFile);
+      master->printMessage("OK\n");
+    }
   }
+
+  // Broadcast the error code to prevent deadlocks in case of error.
+  master->broadcast(&nerror, 1);
+  if(nerror)
+    throw 1;
 }
 
-void ctimeloop::load(int starttime)
+void Timeloop::load(int starttime)
 {
   int nerror = 0;
 
@@ -394,9 +414,9 @@ void ctimeloop::load(int starttime)
     }
     else
     {
-      fread(&itime    , sizeof(long), 1, pFile);
-      fread(&idt      , sizeof(long), 1, pFile);
-      fread(&iteration, sizeof(long), 1, pFile);
+      fread(&itime    , sizeof(unsigned long), 1, pFile);
+      fread(&idt      , sizeof(unsigned long), 1, pFile);
+      fread(&iteration, sizeof(int), 1, pFile);
 
       fclose(pFile);
     }
@@ -416,13 +436,11 @@ void ctimeloop::load(int starttime)
   dt   = (double)idt   / ifactor;
 }
 
-int ctimeloop::postprocstep()
+void Timeloop::stepPostProcTime()
 {
   itime += ipostproctime;
   iotime = (int)(itime/iiotimeprec);
 
   if(itime > iendtime)
     loop = false;
-
-  return 0;
 }

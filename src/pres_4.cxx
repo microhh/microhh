@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * The heptadiagonal matrix solver is
  * Copyright (c) 2014 Juan Pedro Mellado
@@ -37,7 +37,7 @@
 
 using namespace fd::o4;
 
-cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
+Pres4::Pres4(Model *modelin, Input *inputin) : Pres(modelin, inputin)
 {
   m1 = 0;
   m2 = 0;
@@ -46,12 +46,27 @@ cpres_4::cpres_4(cmodel *modelin, cinput *inputin) : cpres(modelin, inputin)
   m5 = 0;
   m6 = 0;
   m7 = 0;
-
   bmati = 0;
   bmatj = 0;
+
+  #ifdef USECUDA
+  bmati_g = 0;
+  bmatj_g = 0;
+  m1_g = 0;
+  m2_g = 0;
+  m3_g = 0;
+  m4_g = 0;
+  m5_g = 0;
+  m6_g = 0;
+  m7_g = 0;
+  //iplanf = 0;
+  //jplanf = 0;
+  //iplanb = 0;
+  //jplanb = 0;
+  #endif
 }
 
-cpres_4::~cpres_4()
+Pres4::~Pres4()
 {
   delete[] m1;
   delete[] m2;
@@ -70,13 +85,20 @@ cpres_4::~cpres_4()
 }
 
 #ifndef USECUDA
-void cpres_4::exec(double dt)
+void Pres4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
-  pres_in(fields->sd["p"]->data,
-          fields->u ->data, fields->v ->data, fields->w ->data,
-          fields->ut->data, fields->vt->data, fields->wt->data, 
-          grid->dzi4, dt);
+  // In case of a two-dimensional run, remove calculation of v contribution.
+  if(grid->jtot == 1)
+    input<false>(fields->sd["p"]->data,
+                 fields->u ->data, fields->v ->data, fields->w ->data,
+                 fields->ut->data, fields->vt->data, fields->wt->data, 
+                 grid->dzi4, dt);
+  else
+    input<true>(fields->sd["p"]->data,
+                fields->u ->data, fields->v ->data, fields->w ->data,
+                fields->ut->data, fields->vt->data, fields->wt->data, 
+                grid->dzi4, dt);
 
   // 2. Solve the Poisson equation using FFTs and a heptadiagonal solver
 
@@ -91,69 +113,58 @@ void cpres_4::exec(double dt)
      reads in case jblock does not divide by 4. */
   const int jslice = 1;
 
-  double *tmp2 = fields->sd["tmp2"]->data;
-  double *tmp3 = fields->sd["tmp3"]->data;
+  double *tmp2 = fields->atmp["tmp2"]->data;
+  double *tmp3 = fields->atmp["tmp3"]->data;
 
   const int ns = grid->iblock*jslice*(grid->kmax+4);
 
-  pres_solve(fields->sd["p"]->data, fields->sd["tmp1"]->data, grid->dz,
-             m1, m2, m3, m4,
-             m5, m6, m7,
-             &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
-             &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
-             bmati, bmatj,
-             jslice);
+  solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, grid->dz,
+        m1, m2, m3, m4,
+        m5, m6, m7,
+        &tmp2[0*ns], &tmp2[1*ns], &tmp2[2*ns], &tmp2[3*ns], 
+        &tmp3[0*ns], &tmp3[1*ns], &tmp3[2*ns], &tmp3[3*ns], 
+        bmati, bmatj,
+        jslice);
 
   // 3. Get the pressure tendencies from the pressure field.
-  pres_out(fields->ut->data, fields->vt->data, fields->wt->data, 
-           fields->sd["p"]->data, grid->dzhi4);
+  if(grid->jtot == 1)
+    output<false>(fields->ut->data, fields->vt->data, fields->wt->data, 
+                  fields->sd["p"]->data, grid->dzhi4);
+  else
+    output<true>(fields->ut->data, fields->vt->data, fields->wt->data, 
+                 fields->sd["p"]->data, grid->dzhi4);
 }
 
-double cpres_4::check()
+double Pres4::checkDivergence()
 {
   double divmax = 0.;
 
-  divmax = calcdivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
+  divmax = calcDivergence(fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
 
   return divmax;
 }
 #endif
 
-void cpres_4::init()
+void Pres4::init()
 {
-  int imax, jmax, kmax;
-  int itot, jtot, kstart;
+  bmati = new double[grid->itot];
+  bmatj = new double[grid->jtot];
 
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  kstart = grid->kstart;
-
-  bmati = new double[itot];
-  bmatj = new double[jtot];
-
-  m1 = new double[kmax];
-  m2 = new double[kmax];
-  m3 = new double[kmax];
-  m4 = new double[kmax];
-  m5 = new double[kmax];
-  m6 = new double[kmax];
-  m7 = new double[kmax];
+  m1 = new double[grid->kmax];
+  m2 = new double[grid->kmax];
+  m3 = new double[grid->kmax];
+  m4 = new double[grid->kmax];
+  m5 = new double[grid->kmax];
+  m6 = new double[grid->kmax];
+  m7 = new double[grid->kmax];
 }
 
-void cpres_4::setvalues()
+void Pres4::setValues()
 {
-  int imax, jmax, kmax;
-  int itot, jtot, kstart;
-
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  kstart = grid->kstart;
+  const int itot   = grid->itot;
+  const int jtot   = grid->jtot;
+  const int kmax   = grid->kmax;
+  const int kstart = grid->kstart;
 
   // compute the modified wave numbers of the 4th order scheme
   double dxidxi = 1./(grid->dx*grid->dx);
@@ -220,15 +231,16 @@ void cpres_4::setvalues()
   m7[k] = 0.;
 }
 
-void cpres_4::pres_in(double * restrict p, 
-                      double * restrict u , double * restrict v , double * restrict w ,
-                      double * restrict ut, double * restrict vt, double * restrict wt,
-                      double * restrict dzi4, double dt)
+template<bool dim3>
+void Pres4::input(double * restrict p, 
+                  double * restrict u , double * restrict v , double * restrict w ,
+                  double * restrict ut, double * restrict vt, double * restrict wt,
+                  double * restrict dzi4, double dt)
 {
   int    ijk,ijkp,jjp,kkp;
   int    ii1,ii2,jj1,jj2,kk1,kk2;
   int    igc,jgc,kgc,kmax;
-  double dxi,dyi;
+  double dxi,dyi,dti;
 
   ii1 = 1;
   ii2 = 2;
@@ -242,6 +254,7 @@ void cpres_4::pres_in(double * restrict p,
 
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
+  dti = 1./dt;
 
   igc = grid->igc;
   jgc = grid->jgc;
@@ -250,9 +263,9 @@ void cpres_4::pres_in(double * restrict p,
   kmax = grid->kmax;
 
   // Set the cyclic boundary conditions for the tendencies.
-  grid->boundary_cyclic(ut);
-  grid->boundary_cyclic(vt);
-  grid->boundary_cyclic(wt);
+  grid->boundaryCyclic(ut, EastWestEdge  );
+  if(dim3)
+    grid->boundaryCyclic(vt, NorthSouthEdge);
 
   // Set the bc. 
   for(int j=0; j<grid->jmax; j++)
@@ -277,45 +290,37 @@ void cpres_4::pres_in(double * restrict p,
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
-        p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]/dt) + cg1*(ut[ijk] + u[ijk]/dt) + cg2*(ut[ijk+ii1] + u[ijk+ii1]/dt) + cg3*(ut[ijk+ii2] + u[ijk+ii2]/dt)) * cgi*dxi;
-        p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]/dt) + cg1*(vt[ijk] + v[ijk]/dt) + cg2*(vt[ijk+jj1] + v[ijk+jj1]/dt) + cg3*(vt[ijk+jj2] + v[ijk+jj2]/dt)) * cgi*dyi;
-        p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]/dt) + cg1*(wt[ijk] + w[ijk]/dt) + cg2*(wt[ijk+kk1] + w[ijk+kk1]/dt) + cg3*(wt[ijk+kk2] + w[ijk+kk2]/dt)) * dzi4[k+kgc];
+        p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1*(ut[ijk] + u[ijk]*dti) + cg2*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * cgi*dxi;
+        if(dim3)
+          p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1*(vt[ijk] + v[ijk]*dti) + cg2*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * cgi*dyi;
+        p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1*(wt[ijk] + w[ijk]*dti) + cg2*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
       }
 }
 
-void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double * restrict dz,
-                         double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                         double * restrict m5, double * restrict m6, double * restrict m7,
-                         double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
-                         double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
-                         double * restrict bmati, double * restrict bmatj,
-                         const int jslice)
+void Pres4::solve(double * restrict p, double * restrict work3d, double * restrict dz,
+                  double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                  double * restrict m5, double * restrict m6, double * restrict m7,
+                  double * restrict m1temp, double * restrict m2temp, double * restrict m3temp, double * restrict m4temp,
+                  double * restrict m5temp, double * restrict m6temp, double * restrict m7temp, double * restrict ptemp,
+                  double * restrict bmati, double * restrict bmatj,
+                  const int jslice)
 {
-  int jj,kk,ijk;
-  int imax,jmax,kmax;
-  int itot,jtot;
-  int iblock,jblock,kblock;
-  int igc,jgc,kgc;
+  const int imax   = grid->imax;
+  const int jmax   = grid->jmax;
+  const int kmax   = grid->kmax;
+  const int iblock = grid->iblock;
+  const int jblock = grid->jblock;
+  const int igc    = grid->igc;
+  const int jgc    = grid->jgc;
+  const int kgc    = grid->kgc;
+
+  grid->fftForward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+
+  int jj,kk,ik,ijk;
   int iindex,jindex;
-
-  imax   = grid->imax;
-  jmax   = grid->jmax;
-  kmax   = grid->kmax;
-  itot   = grid->itot;
-  jtot   = grid->jtot;
-  iblock = grid->iblock;
-  jblock = grid->jblock;
-  kblock = grid->kblock;
-  igc    = grid->igc;
-  jgc    = grid->jgc;
-  kgc    = grid->kgc;
-
-  grid->fftforward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   jj = iblock;
   kk = iblock*jblock;
-
-  int ik;
 
   const int mpicoordx = master->mpicoordx;
   const int mpicoordy = master->mpicoordy;
@@ -453,7 +458,7 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
         }
   }
 
-  grid->fftbackward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
+  grid->fftBackward(p, work3d, grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
   // Put the pressure back onto the original grid including ghost cells.
   jj = imax;
@@ -495,11 +500,12 @@ void cpres_4::pres_solve(double * restrict p, double * restrict work3d, double *
     }
 
   // Set the cyclic boundary conditions.
-  grid->boundary_cyclic(p);
+  grid->boundaryCyclic(p);
 }
 
-void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * restrict wt, 
-                       double * restrict p , double * restrict dzhi4)
+template<bool dim3>
+void Pres4::output(double * restrict ut, double * restrict vt, double * restrict wt, 
+                   double * restrict p , double * restrict dzhi4)
 {
   int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
   int    kstart;
@@ -523,7 +529,8 @@ void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * rest
     {
       ijk = i + j*jj1 + kstart*kk1;
       ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
-      vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+      if(dim3)
+        vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
     }
 
   for(int k=grid->kstart+1; k<grid->kend; k++)
@@ -533,14 +540,15 @@ void cpres_4::pres_out(double * restrict ut, double * restrict vt, double * rest
       {
         ijk = i + j*jj1 + k*kk1;
         ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
-        vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
+        if(dim3)
+          vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
         wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
       }
 }
 
-void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
-                   double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p,
-                   const int jslice)
+void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m3, double * restrict m4,
+                 double * restrict m5, double * restrict m6, double * restrict m7, double * restrict p,
+                 const int jslice)
 {
   const int kmax   = grid->kmax;
   const int iblock = grid->iblock;
@@ -693,24 +701,17 @@ void cpres_4::hdma(double * restrict m1, double * restrict m2, double * restrict
       }
 }
 
-double cpres_4::calcdivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
+double Pres4::calcDivergence(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi4)
 {
-  int    ijk,ii1,ii2,jj1,jj2,kk1,kk2;
-  int    kstart,kend;
-  double dxi,dyi;
+  const int ii1 = 1;
+  const int ii2 = 2;
+  const int jj1 = 1*grid->icells;
+  const int jj2 = 2*grid->icells;
+  const int kk1 = 1*grid->ijcells;
+  const int kk2 = 2*grid->ijcells;
 
-  ii1 = 1;
-  ii2 = 2;
-  jj1 = 1*grid->icells;
-  jj2 = 2*grid->icells;
-  kk1 = 1*grid->ijcells;
-  kk2 = 2*grid->ijcells;
-
-  kstart = grid->kstart;
-  kend   = grid->kend;
-
-  dxi = 1./grid->dx;
-  dyi = 1./grid->dy;
+  const double dxi = 1./grid->dx;
+  const double dyi = 1./grid->dy;
 
   double div, divmax;
   divmax = 0;
@@ -720,7 +721,7 @@ double cpres_4::calcdivergence(double * restrict u, double * restrict v, double 
 #pragma ivdep
       for(int i=grid->istart; i<grid->iend; i++)
       {
-        ijk = i + j*jj1 + k*kk1;
+        const int ijk = i + j*jj1 + k*kk1;
         div = (cg0*u[ijk-ii1] + cg1*u[ijk] + cg2*u[ijk+ii1] + cg3*u[ijk+ii2]) * cgi*dxi
             + (cg0*v[ijk-jj1] + cg1*v[ijk] + cg2*v[ijk+jj1] + cg3*v[ijk+jj2]) * cgi*dyi
             + (cg0*w[ijk-kk1] + cg1*w[ijk] + cg2*w[ijk+kk1] + cg3*w[ijk+kk2]) * dzi4[k];
@@ -728,7 +729,7 @@ double cpres_4::calcdivergence(double * restrict u, double * restrict v, double 
         divmax = std::max(divmax, std::abs(div));
       }
 
-  grid->getmax(&divmax);
+  grid->getMax(&divmax);
 
   return divmax;
 }

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,402 +20,353 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cmath>
 #include "advec_4m.h"
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
 #include "fd.h"
 #include "tools.h"
+#include "constants.h"
 
+using namespace fd::o2;
 using namespace fd::o4;
 
-__device__ double cadvec_4m_grad4(double a, double b, double c, double d, double dxi)
+namespace Advec4m_g
 {
-  return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
-}
-
-__device__ double cadvec_4m_grad4x(double a, double b, double c, double d)
-{
-  return (-(d-a) + 27.*(c-b)); 
-}
-
-__device__ double cadvec_4m_interp4(double a, double b, double c, double d) 
-{
-  return ci0*a + ci1*b + ci2*c + ci3*d;
-}
-
-__device__ double cadvec_4m_interp2(double a, double b)
-{
-  return 0.5*(a + b);
-}
-
-__global__ void advec_4m_advecu(double * __restrict__ ut, double * __restrict__ u, 
-                                double * __restrict__ v, double * __restrict__ w,
-                                double * __restrict__ dzi4, double dxi, double dyi, 
-                                int jj, int kk,
-                                int istart, int jstart, int kstart,
-                                int iend,   int jend,   int kend)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart;
-
-  int ii1 = 1;
-  int ii2 = 2;
-  int ii3 = 3;
-  int jj1 = 1*jj;
-  int jj2 = 2*jj;
-  int jj3 = 3*jj;
-  int kk1 = 1*kk;
-  int kk2 = 2*kk;
-  int kk3 = 3*kk;
-
-  if(i < iend && j < jend && k < kend)
+  __global__ void advecu(double * __restrict__ ut, double * __restrict__ u, 
+                         double * __restrict__ v, double * __restrict__ w,
+                         double * __restrict__ dzi4, double dxi, double dyi, 
+                         int jj, int kk,
+                         int istart, int jstart, int kstart,
+                         int iend,   int jend,   int kend)
   {
-    int ijk = i + j*jj + k*kk;
-
-    if(k == kstart)
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+    int k = blockIdx.z + kstart;
+  
+    int ii1 = 1;
+    int ii2 = 2;
+    int ii3 = 3;
+    int jj1 = 1*jj;
+    int jj2 = 2*jj;
+    int jj3 = 3*jj;
+    int kk1 = 1*kk;
+    int kk2 = 2*kk;
+    int kk3 = 3*kk;
+  
+    if(i < iend && j < jend && k < kend)
     {
-      ut[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * cadvec_4m_interp2(u[ijk-ii3], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * cadvec_4m_interp2(u[ijk-ii1], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * cadvec_4m_interp2(u[ijk-jj3], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-jj1], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
-
-       // boundary condition
-     - cadvec_4m_grad4x(-cadvec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * cadvec_4m_interp2(u[ijk-kk1], u[ijk+kk2]),
-                         cadvec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-kk1], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk1]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk2], w[ijk-ii1+kk2], w[ijk+kk2], w[ijk+ii1+kk2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk3])) * dzi4[kstart];
-    }
-    else if(k == kend-1)
-    {
-      ut[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * cadvec_4m_interp2(u[ijk-ii3], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * cadvec_4m_interp2(u[ijk-ii1], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * cadvec_4m_interp2(u[ijk-jj3], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-jj1], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
-
-     - cadvec_4m_grad4x( cadvec_4m_interp4(w[ijk-ii2-kk1], w[ijk-ii1-kk1], w[ijk-kk1], w[ijk+ii1-kk1]) * cadvec_4m_interp2(u[ijk-kk3], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-kk1], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk1]),
-                        -cadvec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-kk2], u[ijk+kk1])) * dzi4[kend-1];
-    }
-    else
-    {
-      ut[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * cadvec_4m_interp2(u[ijk-ii3], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * cadvec_4m_interp2(u[ijk-ii1], u[ijk    ]),
-                         cadvec_4m_interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * cadvec_4m_interp2(u[ijk    ], u[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * cadvec_4m_interp2(u[ijk-jj3], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-jj1], u[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+jj3]), dyi)
-
-      - cadvec_4m_grad4x(cadvec_4m_interp4(w[ijk-ii2-kk1], w[ijk-ii1-kk1], w[ijk-kk1], w[ijk+ii1-kk1]) * cadvec_4m_interp2(u[ijk-kk3], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * cadvec_4m_interp2(u[ijk-kk1], u[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk1]),
-                         cadvec_4m_interp4(w[ijk-ii2+kk2], w[ijk-ii1+kk2], w[ijk+kk2], w[ijk+ii1+kk2]) * cadvec_4m_interp2(u[ijk    ], u[ijk+kk3])) * dzi4[k];
+      int ijk = i + j*jj + k*kk;
+  
+      if(k == kstart)
+      {
+        ut[ijk] +=
+         - grad4(interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * interp2(u[ijk-ii3], u[ijk    ]),
+                 interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * interp2(u[ijk-ii1], u[ijk    ]),
+                 interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * interp2(u[ijk    ], u[ijk+ii1]),
+                 interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * interp2(u[ijk    ], u[ijk+ii3]), dxi)
+  
+         - grad4(interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * interp2(u[ijk-jj3], u[ijk    ]),
+                 interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * interp2(u[ijk-jj1], u[ijk    ]),
+                 interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * interp2(u[ijk    ], u[ijk+jj1]),
+                 interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * interp2(u[ijk    ], u[ijk+jj3]), dyi)
+  
+         // boundary condition
+       - grad4x(-interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * interp2(u[ijk-kk1], u[ijk+kk2]),
+                 interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * interp2(u[ijk-kk1], u[ijk    ]),
+                 interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * interp2(u[ijk    ], u[ijk+kk1]),
+                 interp4(w[ijk-ii2+kk2], w[ijk-ii1+kk2], w[ijk+kk2], w[ijk+ii1+kk2]) * interp2(u[ijk    ], u[ijk+kk3])) * dzi4[kstart];
+      }
+      else if(k == kend-1)
+      {
+        ut[ijk] +=
+         - grad4(interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * interp2(u[ijk-ii3], u[ijk    ]),
+                 interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * interp2(u[ijk-ii1], u[ijk    ]),
+                 interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * interp2(u[ijk    ], u[ijk+ii1]),
+                 interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * interp2(u[ijk    ], u[ijk+ii3]), dxi)
+  
+         - grad4(interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * interp2(u[ijk-jj3], u[ijk    ]),
+                 interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * interp2(u[ijk-jj1], u[ijk    ]),
+                 interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * interp2(u[ijk    ], u[ijk+jj1]),
+                 interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * interp2(u[ijk    ], u[ijk+jj3]), dyi)
+  
+       - grad4x( interp4(w[ijk-ii2-kk1], w[ijk-ii1-kk1], w[ijk-kk1], w[ijk+ii1-kk1]) * interp2(u[ijk-kk3], u[ijk    ]),
+                 interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * interp2(u[ijk-kk1], u[ijk    ]),
+                 interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * interp2(u[ijk    ], u[ijk+kk1]),
+                -interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * interp2(u[ijk-kk2], u[ijk+kk1])) * dzi4[kend-1];
+      }
+      else
+      {
+        ut[ijk] +=
+         - grad4(interp4(u[ijk-ii3],     u[ijk-ii2],     u[ijk-ii1], u[ijk    ])     * interp2(u[ijk-ii3], u[ijk    ]),
+                 interp4(u[ijk-ii2],     u[ijk-ii1],     u[ijk    ], u[ijk+ii1])     * interp2(u[ijk-ii1], u[ijk    ]),
+                 interp4(u[ijk-ii1],     u[ijk    ],     u[ijk+ii1], u[ijk+ii2])     * interp2(u[ijk    ], u[ijk+ii1]),
+                 interp4(u[ijk    ],     u[ijk+ii1],     u[ijk+ii2], u[ijk+ii3])     * interp2(u[ijk    ], u[ijk+ii3]), dxi)
+  
+         - grad4(interp4(v[ijk-ii2-jj1], v[ijk-ii1-jj1], v[ijk-jj1], v[ijk+ii1-jj1]) * interp2(u[ijk-jj3], u[ijk    ]),
+                 interp4(v[ijk-ii2    ], v[ijk-ii1    ], v[ijk    ], v[ijk+ii1    ]) * interp2(u[ijk-jj1], u[ijk    ]),
+                 interp4(v[ijk-ii2+jj1], v[ijk-ii1+jj1], v[ijk+jj1], v[ijk+ii1+jj1]) * interp2(u[ijk    ], u[ijk+jj1]),
+                 interp4(v[ijk-ii2+jj2], v[ijk-ii1+jj2], v[ijk+jj2], v[ijk+ii1+jj2]) * interp2(u[ijk    ], u[ijk+jj3]), dyi)
+  
+        - grad4x(interp4(w[ijk-ii2-kk1], w[ijk-ii1-kk1], w[ijk-kk1], w[ijk+ii1-kk1]) * interp2(u[ijk-kk3], u[ijk    ]),
+                 interp4(w[ijk-ii2    ], w[ijk-ii1    ], w[ijk    ], w[ijk+ii1    ]) * interp2(u[ijk-kk1], u[ijk    ]),
+                 interp4(w[ijk-ii2+kk1], w[ijk-ii1+kk1], w[ijk+kk1], w[ijk+ii1+kk1]) * interp2(u[ijk    ], u[ijk+kk1]),
+                 interp4(w[ijk-ii2+kk2], w[ijk-ii1+kk2], w[ijk+kk2], w[ijk+ii1+kk2]) * interp2(u[ijk    ], u[ijk+kk3])) * dzi4[k];
+      }
     }
   }
-}
-
-__global__ void advec_4m_advecv(double * __restrict__ vt, double * __restrict__ u, 
-                                double * __restrict__ v, double * __restrict__ w,
-                                double * __restrict__ dzi4, double dxi, double dyi, 
-                                int jj, int kk,
-                                int istart, int jstart, int kstart,
-                                int iend,   int jend,   int kend)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart;
-
-  int ii1 = 1;
-  int ii2 = 2;
-  int ii3 = 3;
-  int jj1 = 1*jj;
-  int jj2 = 2*jj;
-  int jj3 = 3*jj;
-  int kk1 = 1*kk;
-  int kk2 = 2*kk;
-  int kk3 = 3*kk;
-
-  if(i < iend && j < jend && k < kend)
+  
+  __global__ void advecv(double * __restrict__ vt, double * __restrict__ u, 
+                         double * __restrict__ v, double * __restrict__ w,
+                         double * __restrict__ dzi4, double dxi, double dyi, 
+                         int jj, int kk,
+                         int istart, int jstart, int kstart,
+                         int iend,   int jend,   int kend)
   {
-    int ijk = i + j*jj + k*kk;
-    if(k == kstart)
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+    int k = blockIdx.z + kstart;
+  
+    int ii1 = 1;
+    int ii2 = 2;
+    int ii3 = 3;
+    int jj1 = 1*jj;
+    int jj2 = 2*jj;
+    int jj3 = 3*jj;
+    int kk1 = 1*kk;
+    int kk2 = 2*kk;
+    int kk3 = 3*kk;
+  
+    if(i < iend && j < jend && k < kend)
     {
-      vt[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * cadvec_4m_interp2(v[ijk-ii3], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * cadvec_4m_interp2(v[ijk-ii1], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * cadvec_4m_interp2(v[ijk-jj3], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * cadvec_4m_interp2(v[ijk-jj1], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
-
-     - cadvec_4m_grad4x(-cadvec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * cadvec_4m_interp2(v[ijk-kk1], v[ijk+kk2]),
-                         cadvec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * cadvec_4m_interp2(v[ijk-kk1], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk1]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk3])) * dzi4[kstart];
-    }
-    else if(k == kend-1)
-    {
-      vt[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * cadvec_4m_interp2(v[ijk-ii3], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * cadvec_4m_interp2(v[ijk-ii1], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * cadvec_4m_interp2(v[ijk-jj3], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * cadvec_4m_interp2(v[ijk-jj1], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
-
-     - cadvec_4m_grad4x( cadvec_4m_interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * cadvec_4m_interp2(v[ijk-kk3], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * cadvec_4m_interp2(v[ijk-kk1], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk1]),
-                        -cadvec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * cadvec_4m_interp2(v[ijk-kk2], v[ijk+kk1])) * dzi4[kend-1];
-    }
-    else
-    {
-      vt[ijk] +=
-       - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * cadvec_4m_interp2(v[ijk-ii3], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * cadvec_4m_interp2(v[ijk-ii1], v[ijk    ]),
-                         cadvec_4m_interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii1]),
-                         cadvec_4m_interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * cadvec_4m_interp2(v[ijk-jj3], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * cadvec_4m_interp2(v[ijk-jj1], v[ijk    ]),
-                         cadvec_4m_interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj1]),
-                         cadvec_4m_interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * cadvec_4m_interp2(v[ijk    ], v[ijk+jj3]), dyi)
-
-      - cadvec_4m_grad4x(cadvec_4m_interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * cadvec_4m_interp2(v[ijk-kk3], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * cadvec_4m_interp2(v[ijk-kk1], v[ijk    ]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk1]),
-                         cadvec_4m_interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * cadvec_4m_interp2(v[ijk    ], v[ijk+kk3])) * dzi4[k];
+      int ijk = i + j*jj + k*kk;
+      if(k == kstart)
+      {
+        vt[ijk] +=
+         - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp2(v[ijk-ii3], v[ijk    ]),
+                 interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp2(v[ijk-ii1], v[ijk    ]),
+                 interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp2(v[ijk    ], v[ijk+ii1]),
+                 interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp2(v[ijk    ], v[ijk+ii3]), dxi)
+  
+         - grad4(interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * interp2(v[ijk-jj3], v[ijk    ]),
+                 interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * interp2(v[ijk-jj1], v[ijk    ]),
+                 interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * interp2(v[ijk    ], v[ijk+jj1]),
+                 interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * interp2(v[ijk    ], v[ijk+jj3]), dyi)
+  
+       - grad4x(-interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp2(v[ijk-kk1], v[ijk+kk2]),
+                 interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp2(v[ijk-kk1], v[ijk    ]),
+                 interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp2(v[ijk    ], v[ijk+kk1]),
+                 interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * interp2(v[ijk    ], v[ijk+kk3])) * dzi4[kstart];
+      }
+      else if(k == kend-1)
+      {
+        vt[ijk] +=
+         - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp2(v[ijk-ii3], v[ijk    ]),
+                 interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp2(v[ijk-ii1], v[ijk    ]),
+                 interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp2(v[ijk    ], v[ijk+ii1]),
+                 interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp2(v[ijk    ], v[ijk+ii3]), dxi)
+  
+         - grad4(interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * interp2(v[ijk-jj3], v[ijk    ]),
+                 interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * interp2(v[ijk-jj1], v[ijk    ]),
+                 interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * interp2(v[ijk    ], v[ijk+jj1]),
+                 interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * interp2(v[ijk    ], v[ijk+jj3]), dyi)
+  
+       - grad4x( interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * interp2(v[ijk-kk3], v[ijk    ]),
+                 interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp2(v[ijk-kk1], v[ijk    ]),
+                 interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp2(v[ijk    ], v[ijk+kk1]),
+                -interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp2(v[ijk-kk2], v[ijk+kk1])) * dzi4[kend-1];
+      }
+      else
+      {
+        vt[ijk] +=
+         - grad4(interp4(u[ijk-ii1-jj2], u[ijk-ii1-jj1], u[ijk-ii1], u[ijk-ii1+jj1]) * interp2(v[ijk-ii3], v[ijk    ]),
+                 interp4(u[ijk    -jj2], u[ijk    -jj1], u[ijk    ], u[ijk    +jj1]) * interp2(v[ijk-ii1], v[ijk    ]),
+                 interp4(u[ijk+ii1-jj2], u[ijk+ii1-jj1], u[ijk+ii1], u[ijk+ii1+jj1]) * interp2(v[ijk    ], v[ijk+ii1]),
+                 interp4(u[ijk+ii2-jj2], u[ijk+ii2-jj1], u[ijk+ii2], u[ijk+ii2+jj1]) * interp2(v[ijk    ], v[ijk+ii3]), dxi)
+  
+         - grad4(interp4(v[ijk-jj3],     v[ijk-jj2],     v[ijk-jj1], v[ijk    ])     * interp2(v[ijk-jj3], v[ijk    ]),
+                 interp4(v[ijk-jj2],     v[ijk-jj1],     v[ijk    ], v[ijk+jj1])     * interp2(v[ijk-jj1], v[ijk    ]),
+                 interp4(v[ijk-jj1],     v[ijk    ],     v[ijk+jj1], v[ijk+jj2])     * interp2(v[ijk    ], v[ijk+jj1]),
+                 interp4(v[ijk    ],     v[ijk+jj1],     v[ijk+jj2], v[ijk+jj3])     * interp2(v[ijk    ], v[ijk+jj3]), dyi)
+  
+        - grad4x(interp4(w[ijk-jj2-kk1], w[ijk-jj1-kk1], w[ijk-kk1], w[ijk+jj1-kk1]) * interp2(v[ijk-kk3], v[ijk    ]),
+                 interp4(w[ijk-jj2    ], w[ijk-jj1    ], w[ijk    ], w[ijk+jj1    ]) * interp2(v[ijk-kk1], v[ijk    ]),
+                 interp4(w[ijk-jj2+kk1], w[ijk-jj1+kk1], w[ijk+kk1], w[ijk+jj1+kk1]) * interp2(v[ijk    ], v[ijk+kk1]),
+                 interp4(w[ijk-jj2+kk2], w[ijk-jj1+kk2], w[ijk+kk2], w[ijk+jj1+kk2]) * interp2(v[ijk    ], v[ijk+kk3])) * dzi4[k];
+      }
     }
   }
-}
-
-__global__ void advec_4m_advecw(double * __restrict__ wt, double * __restrict__ u, 
-                                double * __restrict__ v, double * __restrict__ w,
-                                double * __restrict__ dzhi4, double dxi, double dyi, 
-                                int jj, int kk, int istart,
-                                int jstart, int kstart,
-                                int iend,   int jend,   int kend)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart + 1;
-
-  int ii1 = 1;
-  int ii2 = 2;
-  int ii3 = 3;
-  int jj1 = 1*jj;
-  int jj2 = 2*jj;
-  int jj3 = 3*jj;
-  int kk1 = 1*kk;
-  int kk2 = 2*kk;
-  int kk3 = 3*kk;
-
-  if(i < iend && j < jend && k < kend)
+  
+  __global__ void advecw(double * __restrict__ wt, double * __restrict__ u, 
+                         double * __restrict__ v, double * __restrict__ w,
+                         double * __restrict__ dzhi4, double dxi, double dyi, 
+                         int jj, int kk, int istart,
+                         int jstart, int kstart,
+                         int iend,   int jend,   int kend)
   {
-    int ijk = i + j*jj + k*kk;
-
-    wt[ijk] +=
-     - cadvec_4m_grad4(cadvec_4m_interp4(u[ijk-ii1-kk2], u[ijk-ii1-kk1], u[ijk-ii1], u[ijk-ii1+kk1]) * cadvec_4m_interp2(w[ijk-ii3], w[ijk    ]),
-                       cadvec_4m_interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * cadvec_4m_interp2(w[ijk-ii1], w[ijk    ]),
-                       cadvec_4m_interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * cadvec_4m_interp2(w[ijk    ], w[ijk+ii1]),
-                       cadvec_4m_interp4(u[ijk+ii2-kk2], u[ijk+ii2-kk1], u[ijk+ii2], u[ijk+ii2+kk1]) * cadvec_4m_interp2(w[ijk    ], w[ijk+ii3]), dxi)
-
-     - cadvec_4m_grad4(cadvec_4m_interp4(v[ijk-jj1-kk2], v[ijk-jj1-kk1], v[ijk-jj1], v[ijk-jj1+kk1]) * cadvec_4m_interp2(w[ijk-jj3], w[ijk    ]),
-                       cadvec_4m_interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * cadvec_4m_interp2(w[ijk-jj1], w[ijk    ]),
-                       cadvec_4m_interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * cadvec_4m_interp2(w[ijk    ], w[ijk+jj1]),
-                       cadvec_4m_interp4(v[ijk+jj2-kk2], v[ijk+jj2-kk1], v[ijk+jj2], v[ijk+jj2+kk1]) * cadvec_4m_interp2(w[ijk    ], w[ijk+jj3]), dyi)
-
-    - cadvec_4m_grad4x(cadvec_4m_interp4(w[ijk-kk3],     w[ijk-kk2],     w[ijk-kk1], w[ijk    ])     * cadvec_4m_interp2(w[ijk-kk3], w[ijk    ]),
-                       cadvec_4m_interp4(w[ijk-kk2],     w[ijk-kk1],     w[ijk    ], w[ijk+kk1])     * cadvec_4m_interp2(w[ijk-kk1], w[ijk    ]),
-                       cadvec_4m_interp4(w[ijk-kk1],     w[ijk    ],     w[ijk+kk1], w[ijk+kk2])     * cadvec_4m_interp2(w[ijk    ], w[ijk+kk1]),
-                       cadvec_4m_interp4(w[ijk    ],     w[ijk+kk1],     w[ijk+kk2], w[ijk+kk3])     * cadvec_4m_interp2(w[ijk    ], w[ijk+kk3])) * dzhi4[k];
-  }
-}
-
-__global__ void advec_4m_advecs(double * __restrict__ st, double * __restrict__ s, 
-                                double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
-                                double * __restrict__ dzi4, double dxi, double dyi, 
-                                int jj, int kk,
-                                int istart, int jstart, int kstart,
-                                int iend,   int jend,   int kend)
-{
-  int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-  int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-  int k = blockIdx.z + kstart;
-
-  int ii1 = 1;
-  int ii2 = 2;
-  int ii3 = 3;
-  int jj1 = 1*jj;
-  int jj2 = 2*jj;
-  int jj3 = 3*jj;
-  int kk1 = 1*kk;
-  int kk2 = 2*kk;
-  int kk3 = 3*kk;
-
-  if(i < iend && j < jend && k < kend)
-  {
-    int ijk = i + j*jj + k*kk;
-    if(k == kstart)
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+    int k = blockIdx.z + kstart + 1;
+  
+    int ii1 = 1;
+    int ii2 = 2;
+    int ii3 = 3;
+    int jj1 = 1*jj;
+    int jj2 = 2*jj;
+    int jj3 = 3*jj;
+    int kk1 = 1*kk;
+    int kk2 = 2*kk;
+    int kk3 = 3*kk;
+  
+    if(i < iend && j < jend && k < kend)
     {
-      st[ijk] +=
-       - cadvec_4m_grad4(u[ijk-ii1] * cadvec_4m_interp2(s[ijk-ii3], s[ijk    ]),
-                         u[ijk    ] * cadvec_4m_interp2(s[ijk-ii1], s[ijk    ]),
-                         u[ijk+ii1] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii1]),
-                         u[ijk+ii2] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(v[ijk-jj1] * cadvec_4m_interp2(s[ijk-jj3], s[ijk    ]),
-                         v[ijk    ] * cadvec_4m_interp2(s[ijk-jj1], s[ijk    ]),
-                         v[ijk+jj1] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj1]),
-                         v[ijk+jj2] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
-
-      - cadvec_4m_grad4x(-w[ijk+kk1] * cadvec_4m_interp2(s[ijk-kk1], s[ijk+kk2]),
-                          w[ijk    ] * cadvec_4m_interp2(s[ijk-kk1], s[ijk    ]),
-                          w[ijk+kk1] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk1]),
-                          w[ijk+kk2] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk3])) * dzi4[kstart];
-    }
-    else if(k == kend-1)
-    {
-      st[ijk] +=
-       - cadvec_4m_grad4(u[ijk-ii1] * cadvec_4m_interp2(s[ijk-ii3], s[ijk    ]),
-                         u[ijk    ] * cadvec_4m_interp2(s[ijk-ii1], s[ijk    ]),
-                         u[ijk+ii1] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii1]),
-                         u[ijk+ii2] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(v[ijk-jj1] * cadvec_4m_interp2(s[ijk-jj3], s[ijk    ]),
-                         v[ijk    ] * cadvec_4m_interp2(s[ijk-jj1], s[ijk    ]),
-                         v[ijk+jj1] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj1]),
-                         v[ijk+jj2] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
-
-     - cadvec_4m_grad4x( w[ijk-kk1] * cadvec_4m_interp2(s[ijk-kk3], s[ijk    ]),
-                         w[ijk    ] * cadvec_4m_interp2(s[ijk-kk1], s[ijk    ]),
-                         w[ijk+kk1] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk1]),
-                        -w[ijk    ] * cadvec_4m_interp2(s[ijk-kk2], s[ijk+kk1])) * dzi4[kend-1];
-    }
-    else
-    {
-      st[ijk] +=
-       - cadvec_4m_grad4(u[ijk-ii1] * cadvec_4m_interp2(s[ijk-ii3], s[ijk    ]),
-                         u[ijk    ] * cadvec_4m_interp2(s[ijk-ii1], s[ijk    ]),
-                         u[ijk+ii1] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii1]),
-                         u[ijk+ii2] * cadvec_4m_interp2(s[ijk    ], s[ijk+ii3]), dxi)
-
-       - cadvec_4m_grad4(v[ijk-jj1] * cadvec_4m_interp2(s[ijk-jj3], s[ijk    ]),
-                         v[ijk    ] * cadvec_4m_interp2(s[ijk-jj1], s[ijk    ]),
-                         v[ijk+jj1] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj1]),
-                         v[ijk+jj2] * cadvec_4m_interp2(s[ijk    ], s[ijk+jj3]), dyi)
-
-      - cadvec_4m_grad4x(w[ijk-kk1] * cadvec_4m_interp2(s[ijk-kk3], s[ijk    ]),
-                         w[ijk    ] * cadvec_4m_interp2(s[ijk-kk1], s[ijk    ]),
-                         w[ijk+kk1] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk1]),
-                         w[ijk+kk2] * cadvec_4m_interp2(s[ijk    ], s[ijk+kk3])) * dzi4[k];
+      int ijk = i + j*jj + k*kk;
+  
+      wt[ijk] +=
+       - grad4(interp4(u[ijk-ii1-kk2], u[ijk-ii1-kk1], u[ijk-ii1], u[ijk-ii1+kk1]) * interp2(w[ijk-ii3], w[ijk    ]),
+               interp4(u[ijk    -kk2], u[ijk    -kk1], u[ijk    ], u[ijk    +kk1]) * interp2(w[ijk-ii1], w[ijk    ]),
+               interp4(u[ijk+ii1-kk2], u[ijk+ii1-kk1], u[ijk+ii1], u[ijk+ii1+kk1]) * interp2(w[ijk    ], w[ijk+ii1]),
+               interp4(u[ijk+ii2-kk2], u[ijk+ii2-kk1], u[ijk+ii2], u[ijk+ii2+kk1]) * interp2(w[ijk    ], w[ijk+ii3]), dxi)
+  
+       - grad4(interp4(v[ijk-jj1-kk2], v[ijk-jj1-kk1], v[ijk-jj1], v[ijk-jj1+kk1]) * interp2(w[ijk-jj3], w[ijk    ]),
+               interp4(v[ijk    -kk2], v[ijk    -kk1], v[ijk    ], v[ijk    +kk1]) * interp2(w[ijk-jj1], w[ijk    ]),
+               interp4(v[ijk+jj1-kk2], v[ijk+jj1-kk1], v[ijk+jj1], v[ijk+jj1+kk1]) * interp2(w[ijk    ], w[ijk+jj1]),
+               interp4(v[ijk+jj2-kk2], v[ijk+jj2-kk1], v[ijk+jj2], v[ijk+jj2+kk1]) * interp2(w[ijk    ], w[ijk+jj3]), dyi)
+  
+      - grad4x(interp4(w[ijk-kk3],     w[ijk-kk2],     w[ijk-kk1], w[ijk    ])     * interp2(w[ijk-kk3], w[ijk    ]),
+               interp4(w[ijk-kk2],     w[ijk-kk1],     w[ijk    ], w[ijk+kk1])     * interp2(w[ijk-kk1], w[ijk    ]),
+               interp4(w[ijk-kk1],     w[ijk    ],     w[ijk+kk1], w[ijk+kk2])     * interp2(w[ijk    ], w[ijk+kk1]),
+               interp4(w[ijk    ],     w[ijk+kk1],     w[ijk+kk2], w[ijk+kk3])     * interp2(w[ijk    ], w[ijk+kk3])) * dzhi4[k];
     }
   }
-}
-
-__global__ void advec_4m_calccfl(double * const __restrict__ tmp1,
-                                 const double * const __restrict__ u, const double * const __restrict__ v, const double * const __restrict__ w, 
-                                 const double * const __restrict__ dzi, const double dxi, const double dyi,
-                                 const int jj, const int kk,
-                                 const int istart, const int jstart, const int kstart,
-                                 const int iend, const int jend, const int kend)
-{
-  const int i = blockIdx.x*blockDim.x + threadIdx.x; 
-  const int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  const int k = blockIdx.z; 
-
-  const int ii1 = 1;
-  const int ii2 = 2;
-  const int jj1 = 1*jj;
-  const int jj2 = 2*jj;
-  const int kk1 = 1*kk;
-  const int kk2 = 2*kk;
-
-  const int ijk = i + j*jj + k*kk;
-
-  if(i < iend && j < jend && k < kend)
-    tmp1[ijk] = std::abs(ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2])*dxi + 
-                std::abs(ci0*v[ijk-jj1] + ci1*v[ijk] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2])*dyi + 
-                std::abs(ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*dzi[k];
+  
+  __global__ void advecs(double * __restrict__ st, double * __restrict__ s, 
+                         double * __restrict__ u, double * __restrict__ v, double * __restrict__ w,
+                         double * __restrict__ dzi4, double dxi, double dyi, 
+                         int jj, int kk,
+                         int istart, int jstart, int kstart,
+                         int iend,   int jend,   int kend)
+  {
+    int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+    int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+    int k = blockIdx.z + kstart;
+  
+    int ii1 = 1;
+    int ii2 = 2;
+    int ii3 = 3;
+    int jj1 = 1*jj;
+    int jj2 = 2*jj;
+    int jj3 = 3*jj;
+    int kk1 = 1*kk;
+    int kk2 = 2*kk;
+    int kk3 = 3*kk;
+  
+    if(i < iend && j < jend && k < kend)
+    {
+      int ijk = i + j*jj + k*kk;
+      if(k == kstart)
+      {
+        st[ijk] +=
+         - grad4(u[ijk-ii1] * interp2(s[ijk-ii3], s[ijk    ]),
+                 u[ijk    ] * interp2(s[ijk-ii1], s[ijk    ]),
+                 u[ijk+ii1] * interp2(s[ijk    ], s[ijk+ii1]),
+                 u[ijk+ii2] * interp2(s[ijk    ], s[ijk+ii3]), dxi)
+  
+         - grad4(v[ijk-jj1] * interp2(s[ijk-jj3], s[ijk    ]),
+                 v[ijk    ] * interp2(s[ijk-jj1], s[ijk    ]),
+                 v[ijk+jj1] * interp2(s[ijk    ], s[ijk+jj1]),
+                 v[ijk+jj2] * interp2(s[ijk    ], s[ijk+jj3]), dyi)
+  
+        -grad4x(-w[ijk+kk1] * interp2(s[ijk-kk1], s[ijk+kk2]),
+                 w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]),
+                 w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]),
+                 w[ijk+kk2] * interp2(s[ijk    ], s[ijk+kk3])) * dzi4[kstart];
+      }
+      else if(k == kend-1)
+      {
+        st[ijk] +=
+         - grad4(u[ijk-ii1] * interp2(s[ijk-ii3], s[ijk    ]),
+                 u[ijk    ] * interp2(s[ijk-ii1], s[ijk    ]),
+                 u[ijk+ii1] * interp2(s[ijk    ], s[ijk+ii1]),
+                 u[ijk+ii2] * interp2(s[ijk    ], s[ijk+ii3]), dxi)
+  
+         - grad4(v[ijk-jj1] * interp2(s[ijk-jj3], s[ijk    ]),
+                 v[ijk    ] * interp2(s[ijk-jj1], s[ijk    ]),
+                 v[ijk+jj1] * interp2(s[ijk    ], s[ijk+jj1]),
+                 v[ijk+jj2] * interp2(s[ijk    ], s[ijk+jj3]), dyi)
+  
+       - grad4x( w[ijk-kk1] * interp2(s[ijk-kk3], s[ijk    ]),
+                 w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]),
+                 w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]),
+                -w[ijk    ] * interp2(s[ijk-kk2], s[ijk+kk1])) * dzi4[kend-1];
+      }
+      else
+      {
+        st[ijk] +=
+         - grad4(u[ijk-ii1] * interp2(s[ijk-ii3], s[ijk    ]),
+                 u[ijk    ] * interp2(s[ijk-ii1], s[ijk    ]),
+                 u[ijk+ii1] * interp2(s[ijk    ], s[ijk+ii1]),
+                 u[ijk+ii2] * interp2(s[ijk    ], s[ijk+ii3]), dxi)
+  
+         - grad4(v[ijk-jj1] * interp2(s[ijk-jj3], s[ijk    ]),
+                 v[ijk    ] * interp2(s[ijk-jj1], s[ijk    ]),
+                 v[ijk+jj1] * interp2(s[ijk    ], s[ijk+jj1]),
+                 v[ijk+jj2] * interp2(s[ijk    ], s[ijk+jj3]), dyi)
+  
+        - grad4x(w[ijk-kk1] * interp2(s[ijk-kk3], s[ijk    ]),
+                 w[ijk    ] * interp2(s[ijk-kk1], s[ijk    ]),
+                 w[ijk+kk1] * interp2(s[ijk    ], s[ijk+kk1]),
+                 w[ijk+kk2] * interp2(s[ijk    ], s[ijk+kk3])) * dzi4[k];
+      }
+    }
+  }
+  
+  __global__ void calc_cfl(double * const __restrict__ tmp1,
+                           const double * const __restrict__ u, const double * const __restrict__ v, const double * const __restrict__ w, 
+                           const double * const __restrict__ dzi, const double dxi, const double dyi,
+                           const int jj, const int kk,
+                           const int istart, const int jstart, const int kstart,
+                           const int iend, const int jend, const int kend)
+  {
+    const int i = blockIdx.x*blockDim.x + threadIdx.x; 
+    const int j = blockIdx.y*blockDim.y + threadIdx.y; 
+    const int k = blockIdx.z; 
+  
+    const int ii1 = 1;
+    const int ii2 = 2;
+    const int jj1 = 1*jj;
+    const int jj2 = 2*jj;
+    const int kk1 = 1*kk;
+    const int kk2 = 2*kk;
+  
+    const int ijk = i + j*jj + k*kk;
+  
+    if(i < iend && j < jend && k < kend)
+      tmp1[ijk] = std::abs(ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2])*dxi + 
+                  std::abs(ci0*v[ijk-jj1] + ci1*v[ijk] + ci2*v[ijk+jj1] + ci3*v[ijk+jj2])*dyi + 
+                  std::abs(ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*dzi[k];
+  }
 }
 
 #ifdef USECUDA
-void cadvec_4m::exec()
+unsigned long Advec4m::getTimeLimit(unsigned long idt, double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
-  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+  unsigned long idtlim;
+  double cfl;
 
-  dim3 gridGPU (gridi, gridj, grid->kmax);
-  dim3 blockGPU(blocki, blockj, 1);
+  // Calculate cfl and prevent zero divisons.
+  cfl = get_cfl(dt);
+  cfl = std::max(cflmin, cfl);
 
-  const double dxi = 1./grid->dx;
-  const double dyi = 1./grid->dy;
-
-  const int offs = grid->memoffset;
-
-  advec_4m_advecu<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-                                         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
-                                         grid->icellsp, grid->ijcellsp,
-                                         grid->istart, grid->jstart, grid->kstart,
-                                         grid->iend,   grid->jend, grid->kend);
-  cudaCheckError(); 
-
-  advec_4m_advecv<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-                                         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
-                                         grid->icellsp, grid->ijcellsp,
-                                         grid->istart, grid->jstart, grid->kstart,
-                                         grid->iend,   grid->jend, grid->kend);
-  cudaCheckError(); 
-
-  advec_4m_advecw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
-                                         &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
-                                         grid->icellsp, grid->ijcellsp,
-                                         grid->istart, grid->jstart, grid->kstart,
-                                         grid->iend,   grid->jend, grid->kend);
-  cudaCheckError(); 
-
-  for(fieldmap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    advec_4m_advecs<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->s[it->first]->data_g[offs], 
-                                           &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-                                           grid->dzi4_g, dxi, dyi,
-                                           grid->icellsp, grid->ijcellsp,
-                                           grid->istart, grid->jstart, grid->kstart,
-                                           grid->iend,   grid->jend, grid->kend);
-  cudaCheckError(); 
+  idtlim = idt * cflmax / cfl;
+  return idtlim;
 }
-#endif
 
-#ifdef USECUDA
-double cadvec_4m::calccfl(double * u, double * v, double * w, double * dzi, double dt)
+double Advec4m::get_cfl(const double dt)
 {
-  const int blocki = 128;
-  const int blockj = 2;
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
   double cfl = 0;
@@ -428,18 +379,64 @@ double cadvec_4m::calccfl(double * u, double * v, double * w, double * dzi, doub
 
   const int offs = grid->memoffset;
 
-  advec_4m_calccfl<<<gridGPU, blockGPU>>>(&fields->a["tmp1"]->data_g[offs],
-                                          &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
-                                          grid->dzi_g, dxi, dyi,
-                                          grid->icellsp, grid->ijcellsp,
-                                          grid->istart, grid->jstart, grid->kstart,
-                                          grid->iend,   grid->jend,   grid->kend);
+  Advec4m_g::calc_cfl<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs],
+                                             &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
+                                             grid->dzi_g, dxi, dyi,
+                                             grid->icellsp, grid->ijcellsp,
+                                             grid->istart, grid->jstart, grid->kstart,
+                                             grid->iend,   grid->jend,   grid->kend);
   cudaCheckError(); 
 
-  cfl = grid->getmax_g(&fields->a["tmp1"]->data_g[offs], fields->a["tmp2"]->data_g); 
-  grid->getmax(&cfl); 
+  cfl = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+  grid->getMax(&cfl); 
   cfl = cfl*dt;
 
   return cfl;
+}
+
+void Advec4m::exec()
+{
+  const int blocki = grid->iThreadBlock;
+  const int blockj = grid->jThreadBlock;
+  const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
+  const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
+
+  dim3 gridGPU (gridi, gridj, grid->kmax);
+  dim3 blockGPU(blocki, blockj, 1);
+
+  const double dxi = 1./grid->dx;
+  const double dyi = 1./grid->dy;
+
+  const int offs = grid->memoffset;
+
+  Advec4m_g::advecu<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                           &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
+                                           grid->icellsp, grid->ijcellsp,
+                                           grid->istart, grid->jstart, grid->kstart,
+                                           grid->iend,   grid->jend, grid->kend);
+  cudaCheckError(); 
+
+  Advec4m_g::advecv<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                           &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
+                                           grid->icellsp, grid->ijcellsp,
+                                           grid->istart, grid->jstart, grid->kstart,
+                                           grid->iend,   grid->jend, grid->kend);
+  cudaCheckError(); 
+
+  Advec4m_g::advecw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
+                                           &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
+                                           grid->icellsp, grid->ijcellsp,
+                                           grid->istart, grid->jstart, grid->kstart,
+                                           grid->iend,   grid->jend, grid->kend);
+  cudaCheckError(); 
+
+  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    Advec4m_g::advecs<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
+                                             &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
+                                             grid->dzi4_g, dxi, dyi,
+                                             grid->icellsp, grid->ijcellsp,
+                                             grid->istart, grid->jstart, grid->kstart,
+                                             grid->iend,   grid->jend, grid->kend);
+  cudaCheckError(); 
 }
 #endif

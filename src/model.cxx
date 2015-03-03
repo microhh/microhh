@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -38,18 +38,20 @@
 #include "force.h"
 #include "stats.h"
 #include "cross.h"
+#include "dump.h"
 #include "budget.h"
 
 #ifdef USECUDA
-#include <cuda_runtime_api.h> // Needed for cudaDeviceReset(), to check mem leaks 
+#include <cuda_runtime_api.h>
 #endif
 
-cmodel::cmodel(cmaster *masterin, cinput *inputin)
+// In the constructor all classes are initialized and their input is read.
+Model::Model(Master *masterin, Input *inputin)
 {
   master = masterin;
   input  = inputin;
 
-  // initialize the pointers at zero
+  // Initialize the pointers as zero
   grid     = 0;
   fields   = 0;
   diff     = 0;
@@ -61,34 +63,36 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
 
   stats  = 0;
   cross  = 0;
+  dump   = 0;
   budget = 0;
 
   try
   {
-    // create the grid class
-    grid = new cgrid(this, input);
+    // Create an instance of the Grid class.
+    grid = new Grid(this, input);
 
-    // create the fields class
-    fields = new cfields(this, input);
+    // Create an instance of the Fields class.
+    fields = new Fields(this, input);
 
-    // create the model components
-    boundary = cboundary::factory(master, input, this);
-    advec    = cadvec   ::factory(master, input, this, grid->swspatialorder);
-    diff     = cdiff    ::factory(master, input, this, grid->swspatialorder);
-    pres     = cpres    ::factory(master, input, this, grid->swspatialorder);
-    thermo   = cthermo  ::factory(master, input, this);
+    // Create instances of the other model classes.
+    boundary = Boundary::factory(master, input, this);
+    advec    = Advec   ::factory(master, input, this, grid->swspatialorder);
+    diff     = Diff    ::factory(master, input, this, grid->swspatialorder);
+    pres     = Pres    ::factory(master, input, this, grid->swspatialorder);
+    thermo   = Thermo  ::factory(master, input, this);
 
-    timeloop = new ctimeloop(this, input);
-    force    = new cforce   (this, input);
-    buffer   = new cbuffer  (this, input);
+    timeloop = new Timeloop(this, input);
+    force    = new Force   (this, input);
+    buffer   = new Buffer  (this, input);
 
-    // load the postprocessing modules
-    stats  = new cstats (this, input);
-    cross  = new ccross (this, input);
-    budget = new cbudget(this, input);
+    // Create instances of the statistics classes.
+    stats  = new Stats (this, input);
+    cross  = new Cross (this, input);
+    dump   = new Dump  (this, input);
+    budget = new Budget(this, input);
 
-    // get the list of masks
-    // TODO This is really UGLY: make an interface that takes this out of the main loops
+    // Get the list of masks.
+    // TODO Make an interface that takes this out of the main loop.
     int nerror = 0;
     nerror += input->getList(&masklist, "stats", "masklist", "");
     for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -100,24 +104,11 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
       {
         master->printWarning("%s is an undefined mask for conditional statistics\n", it->c_str());
       }
+      else if((*it == "ql" || *it == "qlcore") && thermo->getSwitch() != "moist")
+        master->printWarning("%s mask only works for swthermo=moist \n", it->c_str());
       else
-        stats->addmask(*it);
+        stats->addMask(*it);
     }
-
-    // Get base state option (boussinesq or anelastic)
-    nerror += input->getItem(&swbasestate , "grid"  , "swbasestate" , "", "");  // BvS: where to put switch??
-
-    if(!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
-    {
-      master->printError("\"%s\" is an illegal value for swbasestate\n", swbasestate.c_str());
-      throw 1;
-    }
-    // 2nd order with LES diffusion is only option supporting anelastic (for now) 
-    //if(swdiff != "les2s" and swbasestate != "boussinesq")
-    //{
-    //  std::printf("ERROR swdiff=%s is not allowed with swbasestate=%s \n", swdiff.c_str(),swbasestate.c_str());
-    //  return 1;
-    //}
 
     // if one or more arguments fails, then crash
     if(nerror > 0)
@@ -131,10 +122,12 @@ cmodel::cmodel(cmaster *masterin, cinput *inputin)
   }
 }
 
-void cmodel::deleteObjects()
+// In this function all instances of objects are deleted and the memory is freed.
+void Model::deleteObjects()
 {
-  // delete the components in reversed order
+  // Delete the components in reversed order.
   delete budget;
+  delete dump;
   delete cross;
   delete stats;
   delete buffer;
@@ -150,15 +143,17 @@ void cmodel::deleteObjects()
   delete grid;
 }
 
-cmodel::~cmodel()
+// In the destructor the deletion of all class instances is triggered.
+Model::~Model()
 {
   deleteObjects();
-#ifdef USECUDA
+  #ifdef USECUDA
   cudaDeviceReset();
-#endif
+  #endif
 }
 
-void cmodel::init()
+// In the init stage all class individual settings are known and the dynamic arrays are allocated.
+void Model::init()
 {
   grid  ->init();
   fields->init();
@@ -169,25 +164,28 @@ void cmodel::init()
   pres    ->init();
   thermo  ->init();
 
-  stats ->init(timeloop->ifactor);
-  cross ->init(timeloop->ifactor);
+  stats ->init(timeloop->get_ifactor());
+  cross ->init(timeloop->get_ifactor());
+  dump  ->init(timeloop->get_ifactor());
   budget->init();
 }
 
-void cmodel::load()
+// In these functions data necessary to start the model is loaded from disk.
+void Model::load()
 {
-  // first load the grid and time to make their information available
+  // First load the grid and time to make their information available.
   grid    ->load();
-  timeloop->load(timeloop->iotime);
+  timeloop->load(timeloop->get_iotime());
 
-  // initialize the statistics file to open the possiblity to add profiles
-  stats->create(timeloop->iotime);
+  // Initialize the statistics file to open the possiblity to add profiles.
+  stats->create(timeloop->get_iotime());
   cross->create();
+  dump ->create();
 
-  fields->load(timeloop->iotime);
+  fields->load(timeloop->get_iotime());
+  fields->createStats();
 
-  // \TODO call boundary load for the data and then timedep, not nice...
-  boundary->load(timeloop->iotime);
+  // Initialize data or load data from disk.
   boundary->create(input);
 
   buffer->create(input);
@@ -196,13 +194,14 @@ void cmodel::load()
 
   budget->create();
 
-  // end with modules that require all fields to be present
-  boundary->setvalues();
-  diff    ->setvalues();
-  pres    ->setvalues();
+  // End with those modules that require all fields to be loaded.
+  boundary->setValues();
+  diff    ->setValues();
+  pres    ->setValues();
 }
 
-void cmodel::save()
+// In these functions data necessary to start the model is saved to disk.
+void Model::save()
 {
   // Initialize the grid and the fields from the input data.
   grid  ->create(input);
@@ -210,186 +209,220 @@ void cmodel::save()
 
   // Save the initialized data to disk for the run mode.
   grid    ->save();
-  fields  ->save(timeloop->iotime);
-  timeloop->save(timeloop->iotime);
-  boundary->save(timeloop->iotime);
+  fields  ->save(timeloop->get_iotime());
+  timeloop->save(timeloop->get_iotime());
 }
 
-void cmodel::exec()
+void Model::exec()
 {
-#ifdef USECUDA
+  #ifdef USECUDA
+  // Load all the necessary data to the GPU.
   master  ->printMessage("Preparing the GPU\n");
   grid    ->prepareDevice();
   fields  ->prepareDevice();
-  pres    ->prepareDevice();
   buffer  ->prepareDevice();
   thermo  ->prepareDevice();
   boundary->prepareDevice();
   diff    ->prepareDevice();
   force   ->prepareDevice();
-#endif
+  // Prepare pressure last, for memory check
+  pres    ->prepareDevice(); 
+  #endif
 
   master->printMessage("Starting time integration\n");
 
-  // update the time dependent values
-  boundary->settimedep();
-  force->settimedep();
+  // Update the time dependent parameters.
+  boundary->updateTimeDep();
+  force   ->updateTimeDep();
 
-  // set the boundary conditions
+  // Set the boundary conditions.
   boundary->exec();
 
-  // get the field means, in case needed
+  // Calculate the field means, in case needed.
   fields->exec();
-  // get the viscosity to be used in diffusion
-  diff->execvisc();
 
-  settimestep();
+  // Get the viscosity to be used in diffusion.
+  diff->execViscosity();
 
-  // print the initial information
-  printOutputFile(!timeloop->loop);
+  // Set the time step.
+  setTimeStep();
+
+  // Print the initial status information.
+  printStatus();
 
   // start the time loop
   while(true)
   {
-    // determine the time step
-    settimestep();
+    // Determine the time step.
+    setTimeStep();
 
-    // advection
+    // Calculate the advection tendency.
     advec->exec();
-    // diffusion
+    // Calculate the diffusion tendency.
     diff->exec();
-    // thermo
+    // Calculate the thermodynamics and the buoyancy tendency.
     thermo->exec();
-    // buffer
+    // Calculate the tendency due to damping in the buffer layer.
     buffer->exec();
-    // large scale forcings
-    force->exec(timeloop->getsubdt());
 
-    // pressure
-    pres->exec(timeloop->getsubdt());
+    // Apply the large scale forcings. Keep this one always right before the pressure.
+    force->exec(timeloop->getSubTimeStep());
 
-    // Do only data analysis statistics when not in substep and not directly after restart
-    if(timeloop->inStatsStep())
+    // Solve the poisson equation for pressure.
+    pres->exec(timeloop->getSubTimeStep());
+
+    // Allow only for statistics when not in substep and not directly after restart.
+    if(timeloop->isStatsStep())
     {
-      if(stats->dostats())
+      #ifdef USECUDA
+      // Copy fields from device to host
+      if(stats->doStats() || cross->doCross() || dump->doDump())
       {
-#ifdef USECUDA
-        fields->backwardDevice();
+        fields  ->backwardDevice();
         boundary->backwardDevice();
-#endif
+      }
+      #endif
 
-        // always process the default mask
-        stats->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks["default"]);
-        calcstats("default");
+      // Do the statistics.
+      if(stats->doStats())
+      {
+        // Always process the default mask (the full field)
+        stats->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
+        calcStats("default");
 
-        // work through the potential masks for the statistics
+        // Work through the potential masks for the statistics.
         for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
         {
           if(*it == "wplus" || *it == "wmin")
           {
-            fields->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
-            calcstats(*it);
+            fields->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            calcStats(*it);
           }
           else if(*it == "ql" || *it == "qlcore")
           {
-            thermo->getmask(fields->sd["tmp3"], fields->sd["tmp4"], &stats->masks[*it]);
-            calcstats(*it);
+            thermo->getMask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+            calcStats(*it);
           }
         }
 
-        // store the stats data
-        stats->exec(timeloop->iteration, timeloop->time, timeloop->itime);
+        // Store the stats data.
+        stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
       }
 
-      if(cross->docross())
+      // Save the selected cross sections to disk, cross sections are handled on CPU.
+      if(cross->doCross())
       {
-#ifdef USECUDA
-        fields->backwardDevice();
-        boundary->backwardDevice();
-#endif      
-      
-        fields  ->execcross();
-        thermo  ->execcross();
-        boundary->execcross();
+        fields  ->execCross();
+        thermo  ->execCross();
+        boundary->execCross();
+      }
+
+      // Save the 3d dumps to disk
+      if(dump->doDump())
+      {
+        fields->execDump();
+        thermo->execDump();
       }
     }
 
-    // exit the simulation when the runtime has been hit after the pressure calculation
-    if(!timeloop->loop)
+    // Exit the simulation when the runtime has been hit.
+    if(timeloop->isFinished())
       break;
 
-    // RUN MODE
+    // RUN MODE: In case of run mode do the time stepping.
     if(master->mode == "run")
     {
-      // integrate in time
+      // Integrate in time.
       timeloop->exec();
 
-      // step the time step
+      // Increase the time with the time step.
       timeloop->stepTime();
 
-      // save the data for a restart
+      // Save the data for restarts.
       if(timeloop->doSave())
       {
-#ifdef USECUDA
-        fields->backwardDevice();
+        #ifdef USECUDA
+        fields  ->backwardDevice();
         boundary->backwardDevice();
-#endif
+        #endif
 
-        // save the time data
-        timeloop->save(timeloop->iotime);
-        // save the fields
-        fields->save(timeloop->iotime);
-        // save the boundary data
-        boundary->save(timeloop->iotime);
+        // Save data to disk.
+        timeloop->save(timeloop->get_iotime());
+        fields  ->save(timeloop->get_iotime());
       }
     }
 
-    // POST PROCESS MODE
+    // POST PROCESS MODE: In case of post-process mode, load a new set of files.
     else if(master->mode == "post")
     {
-      // step to the next time step
-      timeloop->postprocstep();
+      // Step to the next time step.
+      timeloop->stepPostProcTime();
 
-      // if simulation is done break
-      if(!timeloop->loop)
+      // In case the simulation is done, step out of the loop.
+      if(timeloop->isFinished())
         break;
 
-      // load the data
-      timeloop->load(timeloop->iotime);
-      fields  ->load(timeloop->iotime);
-      boundary->load(timeloop->iotime);
+      // Load the data from disk.
+      timeloop->load(timeloop->get_iotime());
+      fields  ->load(timeloop->get_iotime());
     }
-    // update the time dependent values
-    boundary->settimedep();
-    force->settimedep();
 
-    // set the boundary conditions
+    // Update the time dependent parameters.
+    boundary->updateTimeDep();
+    force   ->updateTimeDep();
+
+    // Set the boundary conditions.
     boundary->exec();
-    // get the field means, in case needed
+
+    // Calculate the field means, in case needed.
     fields->exec();
-    // get the viscosity to be used in diffusion
-    diff->execvisc();
 
-    printOutputFile(!timeloop->loop);
-  } // end time loop
+    // Get the viscosity to be used in diffusion.
+    diff->execViscosity();
 
-#ifdef USECUDA
-  fields->backwardDevice();
+    // Write status information to disk.
+    printStatus();
+
+  } // End time loop.
+
+  #ifdef USECUDA
+  // At the end of the run, copy the data back from the GPU.
+  fields  ->backwardDevice();
   boundary->backwardDevice();
-#endif
+  #endif
 }
 
-void cmodel::calcstats(std::string maskname)
+void Model::setTimeStep()
 {
-  fields  ->execstats(&stats->masks[maskname]);
-  thermo  ->execstats(&stats->masks[maskname]);
-  budget  ->execstats(&stats->masks[maskname]);
-  boundary->execstats(&stats->masks[maskname]);
+  // Only set the time step if the model is not in a substep.
+  if(timeloop->inSubStep())
+    return;
+
+  // Retrieve the maximum allowed time step per class.
+  timeloop->setTimeStepLimit();
+  timeloop->setTimeStepLimit(advec->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->setTimeStepLimit(diff ->getTimeLimit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->setTimeStepLimit(stats->getTimeLimit(timeloop->get_itime()));
+  timeloop->setTimeStepLimit(cross->getTimeLimit(timeloop->get_itime()));
+  timeloop->setTimeStepLimit(dump ->getTimeLimit(timeloop->get_itime()));
+
+  // Set the time step.
+  timeloop->setTimeStep();
 }
 
-void cmodel::printOutputFile(bool doclose)
+// Calculate the statistics for all classes that have a statistics function.
+void Model::calcStats(std::string maskname)
 {
-  // initialize the check variables
+  fields  ->execStats(&stats->masks[maskname]);
+  thermo  ->execStats(&stats->masks[maskname]);
+  budget  ->execStats(&stats->masks[maskname]);
+  boundary->execStats(&stats->masks[maskname]);
+}
+
+// Print the status information to the .out file.
+void Model::printStatus()
+{
+  // Initialize the check variables
   int    iter;
   double time, dt;
   double mom, tke, mass;
@@ -399,7 +432,7 @@ void cmodel::printOutputFile(bool doclose)
   static double start;
   static FILE *dnsout = NULL;
 
-  // write output file header to the main processor and set the time
+  // Write output file header on the main process and set the time of writing.
   if(master->mpiid == 0 && dnsout == NULL)
   {
     std::string outputname = master->simname + ".out";
@@ -407,52 +440,38 @@ void cmodel::printOutputFile(bool doclose)
     std::setvbuf(dnsout, NULL, _IOLBF, 1024);
     std::fprintf(dnsout, "%8s %11s %10s %11s %8s %8s %11s %16s %16s %16s\n",
       "ITER", "TIME", "CPUDT", "DT", "CFL", "DNUM", "DIV", "MOM", "TKE", "MASS");
-    start = master->gettime();
+    start = master->getWallClockTime();
   }
 
+  // Retrieve all the status information.
   if(timeloop->doCheck())
   {
-    iter    = timeloop->iteration;
-    time    = timeloop->time;
-    dt      = timeloop->dt;
-    div     = pres->check();
-    mom     = fields->checkmom();
-    tke     = fields->checktke();
-    mass    = fields->checkmass();
-    cfl     = advec->getcfl(timeloop->dt);
-    dn      = diff->getdn(timeloop->dt);
+    // Get status variables.
+    iter = timeloop->get_iteration();
+    time = timeloop->get_time();
+    dt   = timeloop->get_dt();
+    div  = pres->checkDivergence();
+    mom  = fields->checkMomentum();
+    tke  = fields->checkTke();
+    mass = fields->checkMass();
+    cfl  = advec->get_cfl(timeloop->get_dt());
+    dn   = diff->get_dn(timeloop->get_dt());
 
-    end     = master->gettime();
+    // Store time interval in betwteen two writes.
+    end     = master->getWallClockTime();
     cputime = end - start;
     start   = end;
 
-    // write the output to file
+    // Write the status information to disk.
     if(master->mpiid == 0)
-    {
       std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
         iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
-    }
   }
 
-  if(doclose)
+  if(timeloop->isFinished())
   {
-    // close the output file
+    // Close the output file when the run is done.
     if(master->mpiid == 0)
       std::fclose(dnsout);
   }
-}
-
-void cmodel::settimestep()
-{
-  // Only set the time step if the model is not in a substep
-  if(timeloop->inSubStep())
-    return;
-
-  timeloop->settimelim();
-
-  timeloop->idtlim = std::min(timeloop->idtlim, advec->gettimelim(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim, diff ->gettimelim(timeloop->idt, timeloop->dt));
-  timeloop->idtlim = std::min(timeloop->idtlim, stats->gettimelim(timeloop->itime));
-  timeloop->idtlim = std::min(timeloop->idtlim, cross->gettimelim(timeloop->itime));
-  timeloop->setTimeStep();
 }
