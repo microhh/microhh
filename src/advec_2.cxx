@@ -74,7 +74,7 @@ void Advec_2::exec()
 }
 #endif
 
-double Advec_2::calc_cfl(double * restrict u, double * restrict v, double * restrict w, double * restrict dzi, double dt)
+double Advec_2::calc_cfl(double* restrict u, double* restrict v, double* restrict w, double* restrict dzi, double dt)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -101,8 +101,8 @@ double Advec_2::calc_cfl(double * restrict u, double * restrict v, double * rest
     return cfl;
 }
 
-void Advec_2::advec_u(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
-                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
+void Advec_2::advec_u(double* restrict ut, double* restrict u, double* restrict v, double* restrict w,
+                      double* restrict dzi, double* restrict rhoref, double* restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -129,8 +129,8 @@ void Advec_2::advec_u(double * restrict ut, double * restrict u, double * restri
             }
 }
 
-void Advec_2::advecv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w,
-                     double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
+void Advec_2::advecv(double* restrict vt, double* restrict u, double* restrict v, double* restrict w,
+                     double* restrict dzi, double* restrict rhoref, double* restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -157,8 +157,8 @@ void Advec_2::advecv(double * restrict vt, double * restrict u, double * restric
             }
 }
 
-void Advec_2::advec_w(double * restrict wt, double * restrict u, double * restrict v, double * restrict w,
-                      double * restrict dzhi, double * restrict rhoref, double * restrict rhorefh)
+void Advec_2::advec_w(double* restrict wt, double* restrict u, double* restrict v, double* restrict w,
+                      double* restrict dzhi, double* restrict rhoref, double* restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -185,8 +185,8 @@ void Advec_2::advec_w(double * restrict wt, double * restrict u, double * restri
             }
 }
 
-void Advec_2::advec_s(double * restrict st, double * restrict s, double * restrict u, double * restrict v, double * restrict w,
-                      double * restrict dzi, double * restrict rhoref, double * restrict rhorefh)
+void Advec_2::advec_s(double* restrict st, double* restrict s, double* restrict u, double* restrict v, double* restrict w,
+                      double* restrict dzi, double* restrict rhoref, double* restrict rhorefh)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -200,7 +200,7 @@ void Advec_2::advec_s(double * restrict st, double * restrict s, double * restri
 #pragma ivdep
             for(int i=grid->istart; i<grid->iend; i++)
             {
-                ijk = i + j*jj + k*kk;
+                const int ijk = i + j*jj + k*kk;
                 st[ijk] +=
                          - ( u[ijk+ii] * interp2(s[ijk   ], s[ijk+ii])
                            - u[ijk   ] * interp2(s[ijk-ii], s[ijk   ]) ) * dxi
