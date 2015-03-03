@@ -9,10 +9,10 @@ fileread = open(filename, "r")
 lines = fileread.readlines()
 fileread.close()
 
-# Find the line number where the copyright info starts
+# Find the line number where the copyright info starts.
 nline = 0
 for n in lines:
-  # Store the commenting style, to make sure C++, Python and Cmake work
+  # Store the commenting style, to make sure C++, Python and Cmake work.
   npos = n.find('Copyright')
   if (npos != -1):
     left_of_copyright = n[0:npos]
@@ -26,10 +26,10 @@ newlines = ['{0}Copyright (c) 2011-2015 Chiel van Heerwaarden\n'.format(left_of_
             '{0}Copyright (c) 2011-2015 Thijs Heus\n'.format(left_of_copyright),
             '{0}Copyright (c) 2014-2015 Bart van Stratum\n'.format(left_of_copyright)]
 
+# Insert the new header.
 lines[nline:nline] = newlines[:]
 
-print(lines)
-
+# Save the output.
 filewrite = open(filename, "w")
 filewrite.writelines(lines)
 filewrite.close()
