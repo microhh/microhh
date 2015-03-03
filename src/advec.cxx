@@ -45,7 +45,7 @@ Advec::Advec(Model* modelin, Input* inputin)
     int nerror = 0;
     nerror += inputin->getItem(&cflmax, "advec", "cflmax", "", 1.);
 
-    if(nerror)
+    if (nerror)
         throw 1;
 }
 
@@ -70,18 +70,18 @@ void Advec::exec()
 Advec* Advec::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
 {
     std::string swadvec;
-    if(inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
+    if (inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
         throw 1;
 
-    if(swadvec == "0")
+    if (swadvec == "0")
         return new Advec(modelin, inputin);
-    else if(swadvec == "2")
+    else if (swadvec == "2")
         return new Advec_2(modelin, inputin);
-    else if(swadvec == "2i4")
+    else if (swadvec == "2i4")
         return new Advec_2i4(modelin, inputin);
-    else if(swadvec == "4")
+    else if (swadvec == "4")
         return new Advec_4(modelin, inputin);
-    else if(swadvec == "4m")
+    else if (swadvec == "4m")
         return new Advec_4m(modelin, inputin);
     else
     {

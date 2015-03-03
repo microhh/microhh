@@ -195,7 +195,7 @@ void Model::load()
   budget->create();
 
   // End with those modules that require all fields to be loaded.
-  boundary->setValues();
+  boundary->set_values();
   diff    ->setValues();
   pres    ->setValues();
 }
@@ -232,7 +232,7 @@ void Model::exec()
   master->printMessage("Starting time integration\n");
 
   // Update the time dependent parameters.
-  boundary->updateTimeDep();
+  boundary->update_time_dep();
   force   ->updateTimeDep();
 
   // Set the boundary conditions.
@@ -314,7 +314,7 @@ void Model::exec()
       {
         fields  ->execCross();
         thermo  ->execCross();
-        boundary->execCross();
+        boundary->exec_cross();
       }
 
       // Save the 3d dumps to disk
@@ -343,7 +343,7 @@ void Model::exec()
       {
         #ifdef USECUDA
         fields  ->backwardDevice();
-        boundary->backwardDevice();
+        boundary->backward_device();
         #endif
 
         // Save data to disk.
@@ -368,7 +368,7 @@ void Model::exec()
     }
 
     // Update the time dependent parameters.
-    boundary->updateTimeDep();
+    boundary->update_time_dep();
     force   ->updateTimeDep();
 
     // Set the boundary conditions.
@@ -388,7 +388,7 @@ void Model::exec()
   #ifdef USECUDA
   // At the end of the run, copy the data back from the GPU.
   fields  ->backwardDevice();
-  boundary->backwardDevice();
+  boundary->backward_device();
   #endif
 }
 
@@ -416,7 +416,7 @@ void Model::calcStats(std::string maskname)
   fields  ->execStats(&stats->masks[maskname]);
   thermo  ->execStats(&stats->masks[maskname]);
   budget  ->execStats(&stats->masks[maskname]);
-  boundary->execStats(&stats->masks[maskname]);
+  boundary->exec_stats(&stats->masks[maskname]);
 }
 
 // Print the status information to the .out file.

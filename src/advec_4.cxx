@@ -59,12 +59,12 @@ void Advec_4::exec()
 {
     // In case of a two-dimensional run, strip v component out of all kernels and do 
     // not calculate v-advection tendency.
-    if(grid->jtot == 1)
+    if (grid->jtot == 1)
     {
         advec_u<false>(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
         advec_w<false>(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi4);
 
-        for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+        for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
             advec_s<false>(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
     }
     else
@@ -73,7 +73,7 @@ void Advec_4::exec()
         advec_v<true>(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4 );
         advec_w<true>(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi4);
 
-        for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+        for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
             advec_s<true>(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi4);
     }
 }
@@ -93,10 +93,10 @@ double Advec_4::calc_cfl(double * restrict u, double * restrict v, double * rest
 
     double cfl = 0;
 
-    for(int k=grid->kstart; k<grid->kend; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 cfl = std::max(cfl, std::abs(ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2])*dxi 
@@ -131,9 +131,9 @@ void Advec_4::advec_u(double * restrict ut, double * restrict u, double * restri
     const double dyi = 1./grid->dy;
 
     // bottom boundary
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + kstart*kk1;
             ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
@@ -141,7 +141,7 @@ void Advec_4::advec_u(double * restrict ut, double * restrict u, double * restri
                        + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
                        + cg3*((ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3]) * (ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3])) ) * cgi*dxi;
 
-            if(dim3)
+            if (dim3)
             {
                 ut[ijk] -= ( cg0*((ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1]) * (ci0*u[ijk-jj3] + ci1*u[ijk-jj2] + ci2*u[ijk-jj1] + ci3*u[ijk    ]))
                            + cg1*((ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ]) * (ci0*u[ijk-jj2] + ci1*u[ijk-jj1] + ci2*u[ijk    ] + ci3*u[ijk+jj1]))
@@ -156,10 +156,10 @@ void Advec_4::advec_u(double * restrict ut, double * restrict u, double * restri
                      * dzi4[kstart];
         }
 
-    for(int k=grid->kstart+1; k<grid->kend-1; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart+1; k<grid->kend-1; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
@@ -167,7 +167,7 @@ void Advec_4::advec_u(double * restrict ut, double * restrict u, double * restri
                            + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
                            + cg3*((ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3]) * (ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3])) ) * cgi*dxi;
 
-                if(dim3)
+                if (dim3)
                 {
                     ut[ijk] -= ( cg0*((ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1]) * (ci0*u[ijk-jj3] + ci1*u[ijk-jj2] + ci2*u[ijk-jj1] + ci3*u[ijk    ]))
                                + cg1*((ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ]) * (ci0*u[ijk-jj2] + ci1*u[ijk-jj1] + ci2*u[ijk    ] + ci3*u[ijk+jj1]))
@@ -183,9 +183,9 @@ void Advec_4::advec_u(double * restrict ut, double * restrict u, double * restri
             }
 
     // top boundary
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + (kend-1)*kk1;
             ut[ijk] -= ( cg0*((ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]) * (ci0*u[ijk-ii3] + ci1*u[ijk-ii2] + ci2*u[ijk-ii1] + ci3*u[ijk    ]))
@@ -193,7 +193,7 @@ void Advec_4::advec_u(double * restrict ut, double * restrict u, double * restri
                        + cg2*((ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) * (ci0*u[ijk-ii1] + ci1*u[ijk    ] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]))
                        + cg3*((ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3]) * (ci0*u[ijk    ] + ci1*u[ijk+ii1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii3])) ) * cgi*dxi;
 
-            if(dim3)
+            if (dim3)
             {
                 ut[ijk] -= ( cg0*((ci0*v[ijk-ii2-jj1] + ci1*v[ijk-ii1-jj1] + ci2*v[ijk-jj1] + ci3*v[ijk+ii1-jj1]) * (ci0*u[ijk-jj3] + ci1*u[ijk-jj2] + ci2*u[ijk-jj1] + ci3*u[ijk    ]))
                            + cg1*((ci0*v[ijk-ii2    ] + ci1*v[ijk-ii1    ] + ci2*v[ijk    ] + ci3*v[ijk+ii1    ]) * (ci0*u[ijk-jj2] + ci1*u[ijk-jj1] + ci2*u[ijk    ] + ci3*u[ijk+jj1]))
@@ -229,9 +229,9 @@ void Advec_4::advec_v(double * restrict vt, double * restrict u, double * restri
     const double dyi = 1./grid->dy;
 
     // bottom boundary
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + kstart*kk1;
             vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
@@ -239,7 +239,7 @@ void Advec_4::advec_v(double * restrict vt, double * restrict u, double * restri
                        + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
                        + cg3*((ci0*u[ijk+ii2-jj2] + ci1*u[ijk+ii2-jj1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+jj1]) * (ci0*v[ijk    ] + ci1*v[ijk+ii1] + ci2*v[ijk+ii2] + ci3*v[ijk+ii3])) ) * cgi*dxi;
 
-            if(dim3)
+            if (dim3)
             {
                 vt[ijk] -= ( cg0*((ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]) * (ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]))
                            + cg1*((ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]) * (ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]))
@@ -254,10 +254,10 @@ void Advec_4::advec_v(double * restrict vt, double * restrict u, double * restri
                      * dzi4[kstart];
         }
 
-    for(int k=grid->kstart+1; k<grid->kend-1; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart+1; k<grid->kend-1; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
@@ -265,7 +265,7 @@ void Advec_4::advec_v(double * restrict vt, double * restrict u, double * restri
                            + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
                            + cg3*((ci0*u[ijk+ii2-jj2] + ci1*u[ijk+ii2-jj1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+jj1]) * (ci0*v[ijk    ] + ci1*v[ijk+ii1] + ci2*v[ijk+ii2] + ci3*v[ijk+ii3])) ) * cgi*dxi;
 
-                if(dim3)
+                if (dim3)
                 {
                     vt[ijk] -= ( cg0*((ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]) * (ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]))
                                + cg1*((ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]) * (ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]))
@@ -281,9 +281,9 @@ void Advec_4::advec_v(double * restrict vt, double * restrict u, double * restri
             }
 
     // top boundary
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + (kend-1)*kk1;
             vt[ijk] -= ( cg0*((ci0*u[ijk-ii1-jj2] + ci1*u[ijk-ii1-jj1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+jj1]) * (ci0*v[ijk-ii3] + ci1*v[ijk-ii2] + ci2*v[ijk-ii1] + ci3*v[ijk    ]))
@@ -291,7 +291,7 @@ void Advec_4::advec_v(double * restrict vt, double * restrict u, double * restri
                        + cg2*((ci0*u[ijk+ii1-jj2] + ci1*u[ijk+ii1-jj1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+jj1]) * (ci0*v[ijk-ii1] + ci1*v[ijk    ] + ci2*v[ijk+ii1] + ci3*v[ijk+ii2]))
                        + cg3*((ci0*u[ijk+ii2-jj2] + ci1*u[ijk+ii2-jj1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+jj1]) * (ci0*v[ijk    ] + ci1*v[ijk+ii1] + ci2*v[ijk+ii2] + ci3*v[ijk+ii3])) ) * cgi*dxi;
 
-            if(dim3)
+            if (dim3)
             {
                 vt[ijk] -= ( cg0*((ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]) * (ci0*v[ijk-jj3] + ci1*v[ijk-jj2] + ci2*v[ijk-jj1] + ci3*v[ijk    ]))
                            + cg1*((ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]) * (ci0*v[ijk-jj2] + ci1*v[ijk-jj1] + ci2*v[ijk    ] + ci3*v[ijk+jj1]))
@@ -327,9 +327,9 @@ void Advec_4::advec_w(double * restrict wt, double * restrict u, double * restri
     const double dyi = 1./grid->dy;
 
     // bottom boundary
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + (kstart+1)*kk1;
             wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
@@ -337,7 +337,7 @@ void Advec_4::advec_w(double * restrict wt, double * restrict u, double * restri
                     + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
                     + cg3*((ci0*u[ijk+ii2-kk2] + ci1*u[ijk+ii2-kk1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3])) ) * cgi*dxi;
 
-            if(dim3)
+            if (dim3)
             {
                 wt[ijk] -= ( cg0*((ci0*v[ijk-jj1-kk2] + ci1*v[ijk-jj1-kk1] + ci2*v[ijk-jj1] + ci3*v[ijk-jj1+kk1]) * (ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ]))
                         + cg1*((ci0*v[ijk    -kk2] + ci1*v[ijk    -kk1] + ci2*v[ijk    ] + ci3*v[ijk    +kk1]) * (ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1]))
@@ -352,10 +352,10 @@ void Advec_4::advec_w(double * restrict wt, double * restrict u, double * restri
                 * dzhi4[kstart+1];
         }
 
-    for(int k=grid->kstart+2; k<grid->kend-1; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart+2; k<grid->kend-1; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
@@ -363,7 +363,7 @@ void Advec_4::advec_w(double * restrict wt, double * restrict u, double * restri
                         + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
                         + cg3*((ci0*u[ijk+ii2-kk2] + ci1*u[ijk+ii2-kk1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3])) ) * cgi*dxi;
 
-                if(dim3)
+                if (dim3)
                 {
                     wt[ijk] -= ( cg0*((ci0*v[ijk-jj1-kk2] + ci1*v[ijk-jj1-kk1] + ci2*v[ijk-jj1] + ci3*v[ijk-jj1+kk1]) * (ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ]))
                             + cg1*((ci0*v[ijk    -kk2] + ci1*v[ijk    -kk1] + ci2*v[ijk    ] + ci3*v[ijk    +kk1]) * (ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1]))
@@ -379,9 +379,9 @@ void Advec_4::advec_w(double * restrict wt, double * restrict u, double * restri
             }
 
     // top boundary
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + (kend-1)*kk1;
             wt[ijk] -= ( cg0*((ci0*u[ijk-ii1-kk2] + ci1*u[ijk-ii1-kk1] + ci2*u[ijk-ii1] + ci3*u[ijk-ii1+kk1]) * (ci0*w[ijk-ii3] + ci1*w[ijk-ii2] + ci2*w[ijk-ii1] + ci3*w[ijk    ]))
@@ -389,7 +389,7 @@ void Advec_4::advec_w(double * restrict wt, double * restrict u, double * restri
                     + cg2*((ci0*u[ijk+ii1-kk2] + ci1*u[ijk+ii1-kk1] + ci2*u[ijk+ii1] + ci3*u[ijk+ii1+kk1]) * (ci0*w[ijk-ii1] + ci1*w[ijk    ] + ci2*w[ijk+ii1] + ci3*w[ijk+ii2]))
                     + cg3*((ci0*u[ijk+ii2-kk2] + ci1*u[ijk+ii2-kk1] + ci2*u[ijk+ii2] + ci3*u[ijk+ii2+kk1]) * (ci0*w[ijk    ] + ci1*w[ijk+ii1] + ci2*w[ijk+ii2] + ci3*w[ijk+ii3])) ) * cgi*dxi;
 
-            if(dim3)
+            if (dim3)
             {
                 wt[ijk] -= ( cg0*((ci0*v[ijk-jj1-kk2] + ci1*v[ijk-jj1-kk1] + ci2*v[ijk-jj1] + ci3*v[ijk-jj1+kk1]) * (ci0*w[ijk-jj3] + ci1*w[ijk-jj2] + ci2*w[ijk-jj1] + ci3*w[ijk    ]))
                         + cg1*((ci0*v[ijk    -kk2] + ci1*v[ijk    -kk1] + ci2*v[ijk    ] + ci3*v[ijk    +kk1]) * (ci0*w[ijk-jj2] + ci1*w[ijk-jj1] + ci2*w[ijk    ] + ci3*w[ijk+jj1]))
@@ -425,9 +425,9 @@ void Advec_4::advec_s(double * restrict st, double * restrict s, double * restri
     const int kend   = grid->kend;
 
     // bottom boundary
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + kstart*kk1;
             st[ijk] -= ( cg0*(u[ijk-ii1] * (ci0*s[ijk-ii3] + ci1*s[ijk-ii2] + ci2*s[ijk-ii1] + ci3*s[ijk    ]))
@@ -435,7 +435,7 @@ void Advec_4::advec_s(double * restrict st, double * restrict s, double * restri
                        + cg2*(u[ijk+ii1] * (ci0*s[ijk-ii1] + ci1*s[ijk    ] + ci2*s[ijk+ii1] + ci3*s[ijk+ii2]))
                        + cg3*(u[ijk+ii2] * (ci0*s[ijk    ] + ci1*s[ijk+ii1] + ci2*s[ijk+ii2] + ci3*s[ijk+ii3])) ) * cgi*dxi;
 
-            if(dim3)
+            if (dim3)
             {
                 st[ijk] -= ( cg0*(v[ijk-jj1] * (ci0*s[ijk-jj3] + ci1*s[ijk-jj2] + ci2*s[ijk-jj1] + ci3*s[ijk    ]))
                            + cg1*(v[ijk    ] * (ci0*s[ijk-jj2] + ci1*s[ijk-jj1] + ci2*s[ijk    ] + ci3*s[ijk+jj1]))
@@ -450,10 +450,10 @@ void Advec_4::advec_s(double * restrict st, double * restrict s, double * restri
                      * dzi4[kstart];
         }
 
-    for(int k=grid->kstart+1; k<grid->kend-1; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart+1; k<grid->kend-1; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 st[ijk] -= ( cg0*(u[ijk-ii1] * (ci0*s[ijk-ii3] + ci1*s[ijk-ii2] + ci2*s[ijk-ii1] + ci3*s[ijk    ]))
@@ -461,7 +461,7 @@ void Advec_4::advec_s(double * restrict st, double * restrict s, double * restri
                            + cg2*(u[ijk+ii1] * (ci0*s[ijk-ii1] + ci1*s[ijk    ] + ci2*s[ijk+ii1] + ci3*s[ijk+ii2]))
                            + cg3*(u[ijk+ii2] * (ci0*s[ijk    ] + ci1*s[ijk+ii1] + ci2*s[ijk+ii2] + ci3*s[ijk+ii3])) ) * cgi*dxi;
 
-                if(dim3)
+                if (dim3)
                 {
                     st[ijk] -= ( cg0*(v[ijk-jj1] * (ci0*s[ijk-jj3] + ci1*s[ijk-jj2] + ci2*s[ijk-jj1] + ci3*s[ijk    ]))
                                + cg1*(v[ijk    ] * (ci0*s[ijk-jj2] + ci1*s[ijk-jj1] + ci2*s[ijk    ] + ci3*s[ijk+jj1]))
@@ -477,9 +477,9 @@ void Advec_4::advec_s(double * restrict st, double * restrict s, double * restri
             }
 
     // top boundary
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; i++)
+        for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + (kend-1)*kk1;
             st[ijk] -= ( cg0*(u[ijk-ii1] * (ci0*s[ijk-ii3] + ci1*s[ijk-ii2] + ci2*s[ijk-ii1] + ci3*s[ijk    ]))
@@ -487,7 +487,7 @@ void Advec_4::advec_s(double * restrict st, double * restrict s, double * restri
                        + cg2*(u[ijk+ii1] * (ci0*s[ijk-ii1] + ci1*s[ijk    ] + ci2*s[ijk+ii1] + ci3*s[ijk+ii2]))
                        + cg3*(u[ijk+ii2] * (ci0*s[ijk    ] + ci1*s[ijk+ii1] + ci2*s[ijk+ii2] + ci3*s[ijk+ii3])) ) * cgi*dxi;
 
-            if(dim3)
+            if (dim3)
             {
                 st[ijk] -= ( cg0*(v[ijk-jj1] * (ci0*s[ijk-jj3] + ci1*s[ijk-jj2] + ci2*s[ijk-jj1] + ci3*s[ijk    ]))
                            + cg1*(v[ijk    ] * (ci0*s[ijk-jj2] + ci1*s[ijk-jj1] + ci2*s[ijk    ] + ci3*s[ijk+jj1]))

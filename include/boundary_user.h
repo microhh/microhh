@@ -28,18 +28,18 @@
 class Model;
 class Input;
 
-class BoundaryUser : public Boundary
+class Boundary_user : public Boundary
 {
   public:
-    BoundaryUser(Model *, Input *);
+    Boundary_user(Model*, Input*);
 
-    void init(Input *);
+    void init(Input*);
 
-    void setValues();
+    void set_values();
 
   private:
-    void setBcPatch(double *, double *, double *, int, double, double, double,
-                    double *, double, double); ///< Set the values for the boundary fields.
+    void set_bc_patch(double*, double*, double*, int, double, double, double,
+                      double*, double, double); ///< Set the values for the boundary fields.
 
     // Patch properties.
     int    patch_dim;

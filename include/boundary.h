@@ -37,83 +37,77 @@ struct Mask;
  */
 class Boundary
 {
-  public:
-    Boundary(Model *, Input *); ///< Constuctor of the boundary class.
-    virtual ~Boundary();        ///< Destructor of the boundary class.
+    public:
+        Boundary(Model*, Input*); ///< Constuctor of the boundary class.
+        virtual ~Boundary();        ///< Destructor of the boundary class.
 
-    static Boundary* factory(Master *, Input *, Model *); ///< Factory function for boundary class generation.
+        static Boundary* factory(Master*, Input*, Model*); ///< Factory function for boundary class generation.
 
-    virtual void init(Input *);   ///< Initialize the fields.
-    virtual void create(Input *); ///< Create the fields.
-    virtual void updateTimeDep(); ///< Update the time dependent parameters.
-    virtual void setValues();     ///< Set all 2d fields to the prober BC value.
+        virtual void init(Input*);     ///< Initialize the fields.
+        virtual void create(Input*);   ///< Create the fields.
+        virtual void update_time_dep(); ///< Update the time dependent parameters.
+        virtual void set_values();      ///< Set all 2d fields to the prober BC value.
 
-    virtual void exec(); ///< Update the boundary conditions.
+        virtual void exec(); ///< Update the boundary conditions.
 
-    virtual void execStats(Mask *); ///< Execute statistics of surface
-    virtual void execCross();       ///< Execute cross sections of surface
+        virtual void exec_stats(Mask*); ///< Execute statistics of surface
+        virtual void exec_cross();       ///< Execute cross sections of surface
 
-    enum BoundaryType {DirichletType, NeumannType, FluxType, UstarType};
+        enum Boundary_type {Dirichlet_type, Neumann_type, Flux_type, Ustar_type};
 
-    // GPU functions and variables
-    virtual void prepareDevice(); 
-    virtual void forwardDevice(); 
-    virtual void backwardDevice(); 
+        // GPU functions and variables
+        virtual void prepare_device();
+        virtual void forward_device();
+        virtual void backward_device();
 
-  protected:
-    Master *master; ///< Pointer to master class.
-    Model  *model;  ///< Pointer to model class.
-    Grid   *grid;   ///< Pointer to grid class.
-    Fields *fields; ///< Pointer to fields class.
+    protected:
+        Master* master; ///< Pointer to master class.
+        Model*  model;  ///< Pointer to model class.
+        Grid*   grid;   ///< Pointer to grid class.
+        Fields* fields; ///< Pointer to fields class.
 
-    BoundaryType mbcbot;
-    BoundaryType mbctop;
+        Boundary_type mbcbot;
+        Boundary_type mbctop;
 
-    /**
-     * Structure containing the boundary options and values per 3d field.
-     */
-    struct Field3dBc
-    {
-      double bot; ///< Value of the bottom boundary.
-      double top; ///< Value of the top boundary.
-      BoundaryType bcbot; ///< Switch for the bottom boundary.
-      BoundaryType bctop; ///< Switch for the top boundary.
-    };
+        /**
+         * Structure containing the boundary options and values per 3d field.
+         */
+        struct Field3dBc
+        {
+            double bot; ///< Value of the bottom boundary.
+            double top; ///< Value of the top boundary.
+            Boundary_type bcbot; ///< Switch for the bottom boundary.
+            Boundary_type bctop; ///< Switch for the top boundary.
+        };
 
-    typedef std::map<std::string, Field3dBc *> BcMap;
-    BcMap sbc;
+        typedef std::map<std::string, Field3dBc*> BcMap;
+        BcMap sbc;
 
-    // time dependent variables
-    std::string swtimedep;
-    std::vector<double> timedeptime;
-    std::vector<std::string> timedeplist;
-    std::map<std::string, double *> timedepdata;
+        // time dependent variables
+        std::string swtimedep;
+        std::vector<double> timedeptime;
+        std::vector<std::string> timedeplist;
+        std::map<std::string, double*> timedepdata;
 
-    void processBcs(Input *);     ///< Process the boundary condition settings from the ini file.
-    void processTimeDep(Input *); ///< Process the time dependent settings from the ini file.
+        void process_bcs(Input *);     ///< Process the boundary condition settings from the ini file.
+        void process_time_dep(Input *); ///< Process the time dependent settings from the ini file.
 
-    void setBc(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
+        void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
-    // GPU functions and variables
-    void setBc_g(double *, double *, double *, BoundaryType, double, double, double); ///< Set the values for the boundary fields.
+        // GPU functions and variables
+        void set_bc_g(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
-  private:
-    virtual void updateBcs(); ///< Update the boundary values.
+    private:
+        virtual void update_bcs(); ///< Update the boundary values.
 
-    void calcGhostCellsBot_2nd(double *, double *, BoundaryType, double *, double *); ///< Calculate the bottom ghost cells with 2nd-order accuracy.
-    void calcGhostCellsTop_2nd(double *, double *, BoundaryType, double *, double *); ///< Calculate the top ghost cells with 2nd-order accuracy.
-    void calcGhostCellsBot_4th(double *, double *, BoundaryType, double *, double *); ///< Calculate the bottom ghost cells with 4th-order accuracy.
-    void calcGhostCellsTop_4th(double *, double *, BoundaryType, double *, double *); ///< Calculate the top ghost cells with 4th-order accuracy.
+        void calc_ghost_cells_bot_2nd(double*, double*, Boundary_type, double*, double*); ///< Calculate the bottom ghost cells with 2nd-order accuracy.
+        void calc_ghost_cells_top_2nd(double*, double*, Boundary_type, double*, double*); ///< Calculate the top ghost cells with 2nd-order accuracy.
+        void calc_ghost_cells_bot_4th(double*, double*, Boundary_type, double*, double*); ///< Calculate the bottom ghost cells with 4th-order accuracy.
+        void calc_ghost_cells_top_4th(double*, double*, Boundary_type, double*, double*); ///< Calculate the top ghost cells with 4th-order accuracy.
 
-    void calcGhostCellsBotw_4th(double *); ///< Calculate the bottom ghost cells for the vertical velocity with 4th order accuracy.
-    void calcGhostCellsTopw_4th(double *); ///< Calculate the top ghost cells for the vertical velocity with 4th order accuracy.
+        void calc_ghost_cells_botw_4th(double*); ///< Calculate the bottom ghost cells for the vertical velocity with 4th order accuracy.
+        void calc_ghost_cells_topw_4th(double*); ///< Calculate the top ghost cells for the vertical velocity with 4th order accuracy.
 
-    inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
-
-    /*
-  protected:
-    static const double noVelocity = 0.;
-    static const double noOffset = 0.;
-    */
+        inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
 };
 #endif

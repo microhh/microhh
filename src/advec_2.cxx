@@ -64,7 +64,7 @@ void Advec_2::exec()
     advec_w(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzhi,
             fields->rhoref, fields->rhorefh);
 
-    for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
         advec_s(it->second->data, fields->sp[it->first]->data, fields->u->data, fields->v->data, fields->w->data,
                 grid->dzi, fields->rhoref, fields->rhorefh);
 }
@@ -81,10 +81,10 @@ double Advec_2::calc_cfl(double* restrict u, double* restrict v, double* restric
 
     double cfl = 0;
 
-    for(int k=grid->kstart; k<grid->kend; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 cfl = std::max(cfl, std::abs(interp2(u[ijk], u[ijk+ii]))*dxi + std::abs(interp2(v[ijk], v[ijk+jj]))*dyi + std::abs(interp2(w[ijk], w[ijk+kk]))*dzi[k]);
@@ -107,10 +107,10 @@ void Advec_2::advec_u(double* restrict ut, double* restrict u, double* restrict 
     const double dxi = 1./grid->dx;
     const double dyi = 1./grid->dy;
 
-    for(int k=grid->kstart; k<grid->kend; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 ut[ijk] +=
@@ -135,10 +135,10 @@ void Advec_2::advec_v(double* restrict vt, double* restrict u, double* restrict 
     const double dxi = 1./grid->dx;
     const double dyi = 1./grid->dy;
 
-    for(int k=grid->kstart; k<grid->kend; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 vt[ijk] +=
@@ -163,10 +163,10 @@ void Advec_2::advec_w(double* restrict wt, double* restrict u, double* restrict 
     const double dxi = 1./grid->dx;
     const double dyi = 1./grid->dy;
 
-    for(int k=grid->kstart+1; k<grid->kend; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart+1; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 wt[ijk] +=
@@ -191,10 +191,10 @@ void Advec_2::advec_s(double* restrict st, double* restrict s, double* restrict 
     const double dxi = 1./grid->dx;
     const double dyi = 1./grid->dy;
 
-    for(int k=grid->kstart; k<grid->kend; k++)
-        for(int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 st[ijk] +=

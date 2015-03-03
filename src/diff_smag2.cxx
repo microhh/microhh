@@ -89,7 +89,7 @@ double DiffSmag2::get_dn(double dt)
 void DiffSmag2::execViscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
-  BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
+  Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
 
   strain2(fields->sd["evisc"]->data,
           fields->u->data, fields->v->data, fields->w->data,
