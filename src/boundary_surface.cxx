@@ -48,11 +48,15 @@ BoundarySurface::BoundarySurface(Model *modelin, Input *inputin) : Boundary(mode
   ustar = 0;
   obuk  = 0;
   nobuk = 0;
+  zL_sl = 0;
+  f_sl  = 0;
 
   #ifdef USECUDA
   ustar_g = 0;
   obuk_g  = 0;
   nobuk_g = 0;
+  zL_sl_g = 0;
+  f_sl_g  = 0;
   #endif
 }
 
@@ -61,6 +65,8 @@ BoundarySurface::~BoundarySurface()
   delete[] ustar;
   delete[] obuk;
   delete[] nobuk;
+  delete[] zL_sl;
+  delete[] f_sl;
 
   #ifdef USECUDA
   clearDevice();
