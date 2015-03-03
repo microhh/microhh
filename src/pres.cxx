@@ -64,7 +64,7 @@ void Pres::init()
 {
 }
 
-void Pres::setValues()
+void Pres::set_values()
 {
 }
 

@@ -31,7 +31,7 @@ class Diff2 : public Diff
     Diff2(Model *, Input *);
     ~Diff2();
 
-    void setValues();
+    void set_values();
     void exec();
 
     unsigned long get_time_limit(unsigned long, double);

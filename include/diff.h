@@ -36,7 +36,7 @@ class Diff
     virtual ~Diff();
     static Diff* factory(Master *, Input *, Model *, const std::string); ///< Factory function for diff class generation.
 
-    virtual void setValues();
+    virtual void set_values();
     virtual void execViscosity();
     virtual void exec();
 

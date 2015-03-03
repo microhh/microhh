@@ -115,7 +115,7 @@ void Pres2::init()
   work2d = new double[imax*jmax];
 }
 
-void Pres2::setValues()
+void Pres2::set_values()
 {
   const int itot = grid->itot;
   const int jtot = grid->jtot;

@@ -63,7 +63,7 @@ unsigned long Diff::get_time_limit(unsigned long idtlim, double dt)
   return idtlim;
 }
 
-void Diff::setValues()
+void Diff::set_values()
 {
 }
 

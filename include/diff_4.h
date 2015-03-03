@@ -32,7 +32,7 @@ class Diff4 : public Diff
     Diff4(Model *, Input *);
     ~Diff4();
 
-    void setValues();
+    void set_values();
     void exec();
 
     unsigned long get_time_limit(unsigned long, double);

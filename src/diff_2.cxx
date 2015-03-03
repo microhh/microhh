@@ -39,7 +39,7 @@ Diff2::~Diff2()
 {
 }
 
-void Diff2::setValues()
+void Diff2::set_values()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;

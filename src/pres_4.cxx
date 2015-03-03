@@ -159,7 +159,7 @@ void Pres4::init()
   m7 = new double[grid->kmax];
 }
 
-void Pres4::setValues()
+void Pres4::set_values()
 {
   const int itot   = grid->itot;
   const int jtot   = grid->jtot;

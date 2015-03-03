@@ -117,13 +117,13 @@ Model::Model(Master *masterin, Input *inputin)
   catch (int &e)
   {
     // In case of a failing constructor, delete the class objects and rethrow.
-    deleteObjects();
+    delete_objects();
     throw;
   }
 }
 
 // In this function all instances of objects are deleted and the memory is freed.
-void Model::deleteObjects()
+void Model::delete_objects()
 {
   // Delete the components in reversed order.
   delete budget;
@@ -146,7 +146,7 @@ void Model::deleteObjects()
 // In the destructor the deletion of all class instances is triggered.
 Model::~Model()
 {
-  deleteObjects();
+  delete_objects();
   #ifdef USECUDA
   cudaDeviceReset();
   #endif
@@ -196,8 +196,8 @@ void Model::load()
 
   // End with those modules that require all fields to be loaded.
   boundary->set_values();
-  diff    ->setValues();
-  pres    ->setValues();
+  diff    ->set_values();
+  pres    ->set_values();
 }
 
 // In these functions data necessary to start the model is saved to disk.
@@ -245,16 +245,16 @@ void Model::exec()
   diff->execViscosity();
 
   // Set the time step.
-  setTimeStep();
+  set_time_step();
 
   // Print the initial status information.
-  printStatus();
+  print_status();
 
   // start the time loop
   while(true)
   {
     // Determine the time step.
-    setTimeStep();
+    set_time_step();
 
     // Calculate the advection tendency.
     advec->exec();
@@ -288,7 +288,7 @@ void Model::exec()
       {
         // Always process the default mask (the full field)
         stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
-        calcStats("default");
+        calc_stats("default");
 
         // Work through the potential masks for the statistics.
         for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
@@ -296,12 +296,12 @@ void Model::exec()
           if(*it == "wplus" || *it == "wmin")
           {
             fields->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            calcStats(*it);
+            calc_stats(*it);
           }
           else if(*it == "ql" || *it == "qlcore")
           {
             thermo->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
-            calcStats(*it);
+            calc_stats(*it);
           }
         }
 
@@ -381,7 +381,7 @@ void Model::exec()
     diff->execViscosity();
 
     // Write status information to disk.
-    printStatus();
+    print_status();
 
   } // End time loop.
 
@@ -392,7 +392,7 @@ void Model::exec()
   #endif
 }
 
-void Model::setTimeStep()
+void Model::set_time_step()
 {
   // Only set the time step if the model is not in a substep.
   if(timeloop->inSubStep())
@@ -411,7 +411,7 @@ void Model::setTimeStep()
 }
 
 // Calculate the statistics for all classes that have a statistics function.
-void Model::calcStats(std::string maskname)
+void Model::calc_stats(std::string maskname)
 {
   fields  ->exec_stats(&stats->masks[maskname]);
   thermo  ->exec_stats(&stats->masks[maskname]);
@@ -420,7 +420,7 @@ void Model::calcStats(std::string maskname)
 }
 
 // Print the status information to the .out file.
-void Model::printStatus()
+void Model::print_status()
 {
   // Initialize the check variables
   int    iter;

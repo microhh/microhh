@@ -39,7 +39,7 @@ class Pres4 : public Pres
     ~Pres4();
 
     void init();
-    void setValues();
+    void set_values();
 
     void exec(double);
     double checkDivergence();

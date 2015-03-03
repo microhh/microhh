@@ -45,7 +45,7 @@ class Budget;
 class Model
 {
   public:
-    Model(Master *, Input *);
+    Model(Master*, Input*);
     ~Model();
 
     void init();
@@ -53,38 +53,38 @@ class Model
     void save();
     void exec();
 
-    // make the pointers public for use in other classes
+    // Make the pointers public for use in other classes.
     // TODO maybe it is safer to create get functions
-    Master *master;
-    Input  *input;
-    Grid   *grid;
-    Fields *fields;
+    Master* master;
+    Input*  input;
+    Grid*   grid;
+    Fields* fields;
 
-    // model operators
-    Boundary *boundary;
-    Timeloop *timeloop;
-    Advec    *advec;
-    Diff     *diff;
-    Pres     *pres;  
-    Force    *force;   
-    Thermo   *thermo;
-    Buffer   *buffer;
+    // Model operators.
+    Boundary* boundary;
+    Timeloop* timeloop;
+    Advec*    advec;
+    Diff*     diff;
+    Pres*     pres;  
+    Force*    force;   
+    Thermo*   thermo;
+    Buffer*   buffer;
 
-    // postprocessing and output modules
-    Stats  *stats;
-    Cross  *cross;
-    Dump   *dump;
-    Budget *budget;
+    // Postprocessing and output modules.
+    Stats*  stats;
+    Cross*  cross;
+    Dump*   dump;
+    Budget* budget;
 
   private:
 
     // list of masks for statistics
     std::vector<std::string> masklist;
 
-    void deleteObjects();
+    void delete_objects();
 
-    void printStatus();
-    void calcStats(std::string);
-    void setTimeStep();
+    void print_status();
+    void calc_stats(std::string);
+    void set_time_step();
 };
 #endif
