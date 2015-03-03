@@ -89,7 +89,7 @@ void Pres4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
   // In case of a two-dimensional run, remove calculation of v contribution.
-  if(grid->jtot == 1)
+  if (grid->jtot == 1)
     input<false>(fields->sd["p"]->data,
                  fields->u ->data, fields->v ->data, fields->w ->data,
                  fields->ut->data, fields->vt->data, fields->wt->data, 
@@ -127,7 +127,7 @@ void Pres4::exec(double dt)
         jslice);
 
   // 3. Get the pressure tendencies from the pressure field.
-  if(grid->jtot == 1)
+  if (grid->jtot == 1)
     output<false>(fields->ut->data, fields->vt->data, fields->wt->data, 
                   fields->sd["p"]->data, grid->dzhi4);
   else
@@ -172,22 +172,22 @@ void Pres4::set_values()
 
   const double pi = std::acos(-1.);
 
-  for(int j=0; j<jtot/2+1; j++)
+  for (int j=0; j<jtot/2+1; j++)
     bmatj[j] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)j/(double)jtot)
                - 2.* (54./576.)   * std::cos(4.*pi*(double)j/(double)jtot)
                + 2.* (783./576.)  * std::cos(2.*pi*(double)j/(double)jtot)
                -     (1460./576.) ) * dyidyi;
 
-  for(int j=jtot/2+1; j<jtot; j++)
+  for (int j=jtot/2+1; j<jtot; j++)
     bmatj[j] = bmatj[jtot-j];
 
-  for(int i=0; i<itot/2+1; i++)
+  for (int i=0; i<itot/2+1; i++)
     bmati[i] = ( 2.* (1./576.)    * std::cos(6.*pi*(double)i/(double)itot)
                - 2.* (54./576.)   * std::cos(4.*pi*(double)i/(double)itot)
                + 2.* (783./576.)  * std::cos(2.*pi*(double)i/(double)itot)
                -     (1460./576.) ) * dxidxi;
 
-  for(int i=itot/2+1; i<itot; i++)
+  for (int i=itot/2+1; i<itot; i++)
     bmati[i] = bmati[itot-i];
 
   double *dzi4, *dzhi4;
@@ -207,7 +207,7 @@ void Pres4::set_values()
   m6[k] = (  1.*dzhi4[kc+1]                  -  27.*dzhi4[kc+1] - 27.*dzhi4[kc+2] ) * dzi4[kc];
   m7[k] = (                                                     +  1.*dzhi4[kc+2] ) * dzi4[kc];
   
-  for(int k=1; k<kmax-1; k++)
+  for (int k=1; k<kmax-1; k++)
   {
     kc = kstart+k;
     m1[k] = (   1.*dzhi4[kc-1]                                                       ) * dzi4[kc];
@@ -264,34 +264,34 @@ void Pres4::input(double * restrict p,
 
   // Set the cyclic boundary conditions for the tendencies.
   grid->boundaryCyclic(ut, EastWestEdge  );
-  if(dim3)
+  if (dim3)
     grid->boundaryCyclic(vt, NorthSouthEdge);
 
   // Set the bc. 
-  for(int j=0; j<grid->jmax; j++)
+  for (int j=0; j<grid->jmax; j++)
 #pragma ivdep
-    for(int i=0; i<grid->imax; i++)
+    for (int i=0; i<grid->imax; i++)
     {
       ijk  = i+igc + (j+jgc)*jj1 + kgc*kk1;
       wt[ijk-kk1] = -wt[ijk+kk1];
     }
-  for(int j=0; j<grid->jmax; j++)
+  for (int j=0; j<grid->jmax; j++)
 #pragma ivdep
-    for(int i=0; i<grid->imax; i++)
+    for (int i=0; i<grid->imax; i++)
     {
       ijk  = i+igc + (j+jgc)*jj1 + (kmax+kgc)*kk1;
       wt[ijk+kk1] = -wt[ijk-kk1];
     }
 
-  for(int k=0; k<grid->kmax; k++)
-    for(int j=0; j<grid->jmax; j++)
+  for (int k=0; k<grid->kmax; k++)
+    for (int j=0; j<grid->jmax; j++)
 #pragma ivdep
-      for(int i=0; i<grid->imax; i++)
+      for (int i=0; i<grid->imax; i++)
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj1 + (k+kgc)*kk1;
         p[ijkp]  = (cg0*(ut[ijk-ii1] + u[ijk-ii1]*dti) + cg1*(ut[ijk] + u[ijk]*dti) + cg2*(ut[ijk+ii1] + u[ijk+ii1]*dti) + cg3*(ut[ijk+ii2] + u[ijk+ii2]*dti)) * cgi*dxi;
-        if(dim3)
+        if (dim3)
           p[ijkp] += (cg0*(vt[ijk-jj1] + v[ijk-jj1]*dti) + cg1*(vt[ijk] + v[ijk]*dti) + cg2*(vt[ijk+jj1] + v[ijk+jj1]*dti) + cg3*(vt[ijk+jj2] + v[ijk+jj2]*dti)) * cgi*dyi;
         p[ijkp] += (cg0*(wt[ijk-kk1] + w[ijk-kk1]*dti) + cg1*(wt[ijk] + w[ijk]*dti) + cg2*(wt[ijk+kk1] + w[ijk+kk1]*dti) + cg3*(wt[ijk+kk2] + w[ijk+kk2]*dti)) * dzi4[k+kgc];
       }
@@ -332,11 +332,11 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
   const int kki2 = 2*iblock*jslice;
   const int kki3 = 3*iblock*jslice;
 
-  for(int n=0; n<nj; ++n)
+  for (int n=0; n<nj; ++n)
   {
-    for(int j=0; j<jslice; ++j)
+    for (int j=0; j<jslice; ++j)
 #pragma ivdep
-      for(int i=0; i<iblock; ++i)
+      for (int i=0; i<iblock; ++i)
       {
         // Set a zero gradient bc at the bottom.
         ik = i + j*jj;
@@ -350,9 +350,9 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
         ptemp [ik] =  0.;
       }
 
-    for(int j=0; j<jslice; ++j)
+    for (int j=0; j<jslice; ++j)
 #pragma ivdep
-      for(int i=0; i<iblock; ++i)
+      for (int i=0; i<iblock; ++i)
       {
         ik = i + j*jj;
         m1temp[ik+kki1] =  0.;
@@ -365,12 +365,12 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
         ptemp [ik+kki1] =  0.;
       }
 
-    for(int k=0; k<kmax; ++k)
-      for(int j=0; j<jslice; ++j)
+    for (int k=0; k<kmax; ++k)
+      for (int j=0; j<jslice; ++j)
       {
         jindex = mpicoordx*jblock + n*jslice + j;
 #pragma ivdep
-        for(int i=0; i<iblock; ++i)
+        for (int i=0; i<iblock; ++i)
         {
           // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
           iindex = mpicoordy*iblock + i;
@@ -388,18 +388,18 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
         }
       }
 
-    for(int j=0; j<jslice; ++j)
+    for (int j=0; j<jslice; ++j)
     {
       jindex = mpicoordx*jblock + n*jslice + j;
 #pragma ivdep
-      for(int i=0; i<iblock; ++i)
+      for (int i=0; i<iblock; ++i)
       {
         // Swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes.
         iindex = mpicoordy*iblock + i;
 
         // Set the top boundary.
         ik = i + j*jj + kmax*kki1;
-        if(iindex == 0 && jindex == 0)
+        if (iindex == 0 && jindex == 0)
         {
           m1temp[ik+kki2] =    0.;
           m2temp[ik+kki2] = -1/3.;
@@ -427,9 +427,9 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
       }
     }
 
-    for(int j=0; j<jslice; ++j)
+    for (int j=0; j<jslice; ++j)
 #pragma ivdep
-      for(int i=0; i<iblock; ++i)
+      for (int i=0; i<iblock; ++i)
       {
         // Set the top boundary.
         ik = i + j*jj + kmax*kki1;
@@ -447,10 +447,10 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
     hdma(m1temp, m2temp, m3temp, m4temp, m5temp, m6temp, m7temp, ptemp, jslice);
 
     // Put back the solution.
-    for(int k=0; k<kmax; ++k)
-      for(int j=0; j<jslice; ++j)
+    for (int k=0; k<kmax; ++k)
+      for (int j=0; j<jslice; ++j)
 #pragma ivdep
-        for(int i=0; i<iblock; ++i)
+        for (int i=0; i<iblock; ++i)
         {
           ik  = i + j*jj + k*kki1;
           ijk = i + (j + n*jslice)*jj + k*kk;
@@ -469,10 +469,10 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
   kkp1 = 1*grid->ijcells;
   kkp2 = 2*grid->ijcells;
 
-  for(int k=0; k<grid->kmax; k++)
-    for(int j=0; j<grid->jmax; j++)
+  for (int k=0; k<grid->kmax; k++)
+    for (int j=0; j<grid->jmax; j++)
 #pragma ivdep
-      for(int i=0; i<grid->imax; i++)
+      for (int i=0; i<grid->imax; i++)
       {
         ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp1;
         ijk  = i + j*jj + k*kk;
@@ -480,9 +480,9 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
       }
 
   // Set a zero gradient boundary at the bottom.
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jjp + grid->kstart*kkp1;
       p[ijk-kkp1] = p[ijk     ];
@@ -490,9 +490,9 @@ void Pres4::solve(double * restrict p, double * restrict work3d, double * restri
     }
 
   // Set a zero gradient boundary at the top.
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jjp + (grid->kend-1)*kkp1;
       p[ijk+kkp1] = p[ijk     ];
@@ -523,24 +523,24 @@ void Pres4::output(double * restrict ut, double * restrict vt, double * restrict
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + kstart*kk1;
       ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
-      if(dim3)
+      if (dim3)
         vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
     }
 
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart+1; k<grid->kend; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
         ut[ijk] -= (cg0*p[ijk-ii2] + cg1*p[ijk-ii1] + cg2*p[ijk] + cg3*p[ijk+ii1]) * cgi*dxi;
-        if(dim3)
+        if (dim3)
           vt[ijk] -= (cg0*p[ijk-jj2] + cg1*p[ijk-jj1] + cg2*p[ijk] + cg3*p[ijk+jj1]) * cgi*dyi;
         wt[ijk] -= (cg0*p[ijk-kk2] + cg1*p[ijk-kk1] + cg2*p[ijk] + cg3*p[ijk+kk1]) * dzhi4[k];
       }
@@ -563,9 +563,9 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
 
   // Use LU factorization.
   k = 0;
-  for(int j=0; j<jslice; ++j)
+  for (int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(int i=0; i<iblock; ++i)
+    for (int i=0; i<iblock; ++i)
     {
       ik = i + j*jj;
       m1[ik] = 1.;
@@ -578,9 +578,9 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
     }
 
   k = 1;
-  for(int j=0; j<jslice; ++j)
+  for (int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(int i=0; i<iblock; ++i)
+    for (int i=0; i<iblock; ++i)
     {
       ik = i + j*jj + k*kk1;
       m1[ik] = 1.;
@@ -592,9 +592,9 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
     }
 
   k = 2;
-  for(int j=0; j<jslice; ++j)
+  for (int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(int i=0; i<iblock; ++i)
+    for (int i=0; i<iblock; ++i)
     {
       ik = i + j*jj + k*kk1;
       m1[ik] = 1.;
@@ -605,10 +605,10 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
       m6[ik] =   m6[ik] - m3[ik]*m7[ik-kk1];
     }
 
-  for(k=3; k<kmax+2; ++k)
-    for(int j=0; j<jslice; ++j)
+  for (k=3; k<kmax+2; ++k)
+    for (int j=0; j<jslice; ++j)
 #pragma ivdep
-      for(int i=0; i<iblock; ++i)
+      for (int i=0; i<iblock; ++i)
       {
         ik = i + j*jj + k*kk1;
         m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
@@ -620,18 +620,18 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
       }
 
   k = kmax+1;
-  for(int j=0; j<jslice; ++j)
+  for (int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(int i=0; i<iblock; ++i)
+    for (int i=0; i<iblock; ++i)
     {
       ik = i + j*jj + k*kk1;
       m7[ik] = 1.;
     }
 
   k = kmax+2;
-  for(int j=0; j<jslice; ++j)
+  for (int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(int i=0; i<iblock; ++i)
+    for (int i=0; i<iblock; ++i)
     {
       ik = i + j*jj + k*kk1;
       m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
@@ -644,9 +644,9 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
     }
 
   k = kmax+3;
-  for(int j=0; j<jslice; ++j)
+  for (int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(int i=0; i<iblock; ++i)
+    for (int i=0; i<iblock; ++i)
     {
       ik = i + j*jj + k*kk1;
       m1[ik] = ( m1[ik]                                                            ) / m4[ik-kk3];
@@ -660,9 +660,9 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
 
   // Do the backward substitution.
   // First, solve Ly = p, forward.
-  for(int j=0; j<jslice; ++j)
+  for (int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(int i=0; i<iblock; ++i)
+    for (int i=0; i<iblock; ++i)
     {
       ik = i + j*jj;
       p[ik    ] =             p[ik    ]*m3[ik    ];
@@ -670,10 +670,10 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
       p[ik+kk2] = p[ik+kk2] - p[ik+kk1]*m3[ik+kk2] - p[ik]*m2[ik+kk2];
     }
 
-  for(k=3; k<kmax+4; ++k)
-    for(int j=0; j<jslice; ++j)
+  for (k=3; k<kmax+4; ++k)
+    for (int j=0; j<jslice; ++j)
 #pragma ivdep
-      for(int i=0; i<iblock; ++i)
+      for (int i=0; i<iblock; ++i)
       {
         ik = i + j*jj + k*kk1;
         p[ik] = p[ik] - p[ik-kk1]*m3[ik] - p[ik-kk2]*m2[ik] - p[ik-kk3]*m1[ik];
@@ -681,9 +681,9 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
 
   // Second, solve Ux=y, backward.
   k = kmax+3;
-  for(int j=0; j<jslice; ++j)
+  for (int j=0; j<jslice; ++j)
 #pragma ivdep
-    for(int i=0; i<iblock; ++i)
+    for (int i=0; i<iblock; ++i)
     {
       ik = i + j*jj + k*kk1;
       p[ik    ] =   p[ik    ]                                             / m4[ik    ];
@@ -691,10 +691,10 @@ void Pres4::hdma(double * restrict m1, double * restrict m2, double * restrict m
       p[ik-kk2] = ( p[ik-kk2] - p[ik-kk1]*m5[ik-kk2] - p[ik]*m6[ik-kk2] ) / m4[ik-kk2];
     }
 
-  for(k=kmax; k>=0; --k)
-    for(int j=0; j<jslice; ++j)
+  for (k=kmax; k>=0; --k)
+    for (int j=0; j<jslice; ++j)
 #pragma ivdep
-      for(int i=0; i<iblock; ++i)
+      for (int i=0; i<iblock; ++i)
       {
         ik = i + j*jj + k*kk1;
         p[ik] = ( p[ik] - p[ik+kk1]*m5[ik] - p[ik+kk2]*m6[ik] - p[ik+kk3]*m7[ik] ) / m4[ik];
@@ -716,10 +716,10 @@ double Pres4::calcDivergence(double * restrict u, double * restrict v, double * 
   double div, divmax;
   divmax = 0;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart; k<grid->kend; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         const int ijk = i + j*jj1 + k*kk1;
         div = (cg0*u[ijk-ii1] + cg1*u[ijk] + cg2*u[ijk+ii1] + cg3*u[ijk+ii2]) * cgi*dxi

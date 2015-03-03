@@ -46,16 +46,16 @@ Stats::Stats(Model *modelin, Input *inputin)
   int nerror = 0;
   nerror += inputin->getItem(&swstats, "stats", "swstats", "", "0");
 
-  if(swstats == "1")
+  if (swstats == "1")
     nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
 
-  if(!(swstats == "0" || swstats == "1" ))
+  if (!(swstats == "0" || swstats == "1" ))
   {
     ++nerror;
     master->print_error("\"%s\" is an illegal value for swstats\n", swstats.c_str());
   }
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -65,10 +65,10 @@ Stats::~Stats()
   delete[] nmaskh;
 
   // delete the profiles
-  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for (MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     delete it->second.dataFile;
-    for(ProfMap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
+    for (ProfMap::const_iterator it2=it->second.profs.begin(); it2!=it->second.profs.end(); ++it2)
       delete[] it2->second.data;
   }
 }
@@ -95,23 +95,23 @@ void Stats::init(double ifactor)
 void Stats::create(int n)
 {
   // do not create file if stats is disabled
-  if(swstats == "0")
+  if (swstats == "0")
     return;
 
   int nerror = 0;
 
-  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for (MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
     Mask *m = &it->second;
 
     // create a NetCDF file for the statistics
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
       char filename[256];
       std::sprintf(filename, "%s.%s.%07d.nc", master->simname.c_str(), m->name.c_str(), n);
       m->dataFile = new NcFile(filename, NcFile::New);
-      if(!m->dataFile->is_valid())
+      if (!m->dataFile->is_valid())
       {
         master->print_error("cannot write statistics file\n");
         ++nerror;
@@ -119,11 +119,11 @@ void Stats::create(int n)
     }
     // crash on all processes in case the file could not be written
     master->broadcast(&nerror, 1);
-    if(nerror)
+    if (nerror)
       throw 1;
 
     // create dimensions
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
       m->z_dim  = m->dataFile->add_dim("z" , grid->kmax);
       m->zh_dim = m->dataFile->add_dim("zh", grid->kmax+1);
@@ -164,7 +164,7 @@ void Stats::create(int n)
 
 unsigned long Stats::get_time_limit(unsigned long itime)
 {
-  if(swstats == "0")
+  if (swstats == "0")
     return constants::ulhuge;
 
   unsigned long idtlim = isampletime - itime % isampletime;
@@ -174,11 +174,11 @@ unsigned long Stats::get_time_limit(unsigned long itime)
 bool Stats::doStats()
 {
   // check if stats are enabled
-  if(swstats == "0")
+  if (swstats == "0")
     return false;
 
   // check if time for execution
-  if(model->timeloop->get_itime() % isampletime != 0)
+  if (model->timeloop->get_itime() % isampletime != 0)
     return false;
 
   // return true such that stats are computed
@@ -190,27 +190,27 @@ void Stats::exec(int iteration, double time, unsigned long itime)
   // This function is only called when stats are enabled no need for swstats check.
 
   // check if time for execution
-  if(itime % isampletime != 0)
+  if (itime % isampletime != 0)
     return;
 
   // write message in case stats is triggered
   master->print_message("Saving stats for time %f\n", model->timeloop->get_time());
 
-  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for (MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
     Mask *m = &it->second;
 
     // put the data into the NetCDF file
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
       m->t_var   ->put_rec(&time     , nstats);
       m->iter_var->put_rec(&iteration, nstats);
 
-      for(ProfMap::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
+      for (ProfMap::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
         m->profs[it->first].ncvar->put_rec(&m->profs[it->first].data[grid->kstart], nstats);
 
-      for(TimeSeriesMap::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
+      for (TimeSeriesMap::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
         m->tseries[it->first].ncvar->put_rec(&m->tseries[it->first].data, nstats);
 
       // sync the data
@@ -237,20 +237,20 @@ void Stats::addProf(std::string name, std::string longname, std::string unit, st
   int nerror = 0;
 
   // add the profile to all files
-  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for (MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
     Mask *m = &it->second;
 
     // create the NetCDF variable
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
-      if(zloc == "z")
+      if (zloc == "z")
       {
         m->profs[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim, m->z_dim);
         m->profs[name].data = NULL;
       }
-      else if(zloc == "zh")
+      else if (zloc == "zh")
       {
         m->profs[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim, m->zh_dim);
         m->profs[name].data = NULL;
@@ -262,11 +262,11 @@ void Stats::addProf(std::string name, std::string longname, std::string unit, st
 
     // and allocate the memory and initialize at zero
     m->profs[name].data = new double[grid->kcells];
-    for(int k=0; k<grid->kcells; ++k)
+    for (int k=0; k<grid->kcells; ++k)
       m->profs[name].data[k] = 0.;
   }
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -275,31 +275,31 @@ void Stats::addFixedProf(std::string name, std::string longname, std::string uni
   int nerror = 0;
 
   // add the profile to all files
-  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for (MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
     Mask *m = &it->second;
 
     // create the NetCDF variable
     NcVar *var = 0;
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
-      if(zloc == "z")
+      if (zloc == "z")
         var = m->dataFile->add_var(name.c_str(), ncDouble, m->z_dim);
-      else if(zloc == "zh")
+      else if (zloc == "zh")
         var = m->dataFile->add_var(name.c_str(), ncDouble, m->zh_dim);
       var->add_att("units", unit.c_str());
       var->add_att("long_name", longname.c_str());
       var->add_att("_FillValue", NC_FILL_DOUBLE);
 
-      if(zloc == "z")
+      if (zloc == "z")
         var->put(&prof[grid->kstart], grid->kmax);
-      else if(zloc == "zh")
+      else if (zloc == "zh")
         var->put(&prof[grid->kstart], grid->kmax+1);
     }
   }
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -308,13 +308,13 @@ void Stats::addTimeSeries(std::string name, std::string longname, std::string un
   int nerror = 0;
 
   // add the series to all files
-  for(MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
+  for (MaskMap::iterator it=masks.begin(); it!=masks.end(); ++it)
   {
     // shortcut
     Mask *m = &it->second;
 
     // create the NetCDF variable
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
       m->tseries[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim);
       m->tseries[name].ncvar->add_att("units", unit.c_str());
@@ -326,7 +326,7 @@ void Stats::addTimeSeries(std::string name, std::string longname, std::string un
     m->tseries[name].data = 0.;
   }
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -343,16 +343,16 @@ void Stats::calcMask(double * restrict mask, double * restrict maskh, double * r
   int ijtot = grid->itot*grid->jtot;
 
   // set all the mask values to 1
-  for(int n=0; n<grid->ncells; ++n)
+  for (int n=0; n<grid->ncells; ++n)
     mask[n] = 1.;
 
-  for(int n=0; n<grid->ncells; ++n)
+  for (int n=0; n<grid->ncells; ++n)
     maskh[n] = 1.;
 
-  for(int n=0; n<grid->ijcells; ++n)
+  for (int n=0; n<grid->ijcells; ++n)
     maskbot[n] = 1.;
 
-  for(int k=0; k<grid->kcells; ++k)
+  for (int k=0; k<grid->kcells; ++k)
   {
     nmask [k] = ijtot;
     nmaskh[k] = ijtot;
@@ -369,12 +369,12 @@ void Stats::calcMean(double * const restrict prof, const double * const restrict
   jj = grid->icells;
   kk = grid->ijcells;
 
-  for(int k=0; k<grid->kcells; ++k)
+  for (int k=0; k<grid->kcells; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += data[ijk] + offset;
@@ -383,7 +383,7 @@ void Stats::calcMean(double * const restrict prof, const double * const restrict
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=0; k<grid->kcells; ++k)
+  for (int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
   grid->getProf(prof, grid->kcells);
@@ -394,9 +394,9 @@ void Stats::calcArea(double * restrict area, const int loc[3], int * restrict nm
 {
   int ijtot = grid->itot*grid->jtot;
 
-  for(int k=grid->kstart; k<grid->kend+loc[2]; k++)
+  for (int k=grid->kstart; k<grid->kend+loc[2]; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       area[k] = (double)(nmask[k]) / (double)ijtot;
     else
       area[k] = 0.;
@@ -412,12 +412,12 @@ void Stats::calcMean(double * const restrict prof, const double * const restrict
   jj = grid->icells;
   kk = grid->ijcells;
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += mask[ijk]*(data[ijk] + offset);
@@ -426,9 +426,9 @@ void Stats::calcMean(double * const restrict prof, const double * const restrict
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -442,12 +442,12 @@ void Stats::calcMean2d(double * const restrict mean, const double * const restri
   int ij,jj;
   jj = grid->icells;
 
-  if(*nmask > nthres)
+  if (*nmask > nthres)
   {
     *mean = 0.;
-    for(int j=grid->jstart; j<grid->jend; j++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
         *mean += mask[ij]*(data[ij] + offset);
@@ -473,15 +473,15 @@ void Stats::calcSortedProf(double * restrict data, double * restrict bin, double
   maxval = -constants::dhuge;
 
   // first, get min and max
-  for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
-        if(data[ijk] < minval)
+        if (data[ijk] < minval)
           minval = data[ijk];
-        if(data[ijk] > maxval)
+        if (data[ijk] > maxval)
           maxval = data[ijk];
       }
 
@@ -505,7 +505,7 @@ void Stats::calcSortedProf(double * restrict data, double * restrict bin, double
   maxval += 0.5*dbin;
 
   // set the bin array to zero
-  for(int n=0; n<bins; ++n)
+  for (int n=0; n<bins; ++n)
     bin[n] = 0;
 
   // calculate the division factor of one equivalent height unit
@@ -513,10 +513,10 @@ void Stats::calcSortedProf(double * restrict data, double * restrict bin, double
   double nslice = (double)(grid->itot*grid->jtot);
 
   // check in which bin each value falls and increment the bin count
-  for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
       // do not add a ivdep pragma here, because multiple instances could write the same bin[index]
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         index = (int)((data[ijk] - minval) / dbin);
@@ -531,12 +531,12 @@ void Stats::calcSortedProf(double * restrict data, double * restrict bin, double
   double zbin = 0.5*bin[index];
   double profval = minval + 0.5*dbin;
   double dzfrac;
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     // Integrate the profile up to the bin count.
     // Escape the while loop when the integrated profile 
     // exceeds the next grid point.
-    while(zbin < grid->z[k])
+    while (zbin < grid->z[k])
     {
       zbin += 0.5*(bin[index]+bin[index+1]);
       profval += dbin;
@@ -553,12 +553,12 @@ void Stats::calcSortedProf(double * restrict data, double * restrict bin, double
   double profbot = minval;
   double proftop = maxval;
 
-  if(grid->swspatialorder == "2")
+  if (grid->swspatialorder == "2")
   {
     prof[kstart-1] = 2.*profbot - prof[kstart];
     prof[kend]     = 2.*proftop - prof[kend-1];
   }
-  else if(grid->swspatialorder == "4")
+  else if (grid->swspatialorder == "4")
   {
     prof[kstart-1] = (8./3.)*profbot - 2.*prof[kstart] + (1./3.)*prof[kstart+1];
     prof[kstart-2] = 8.*profbot      - 9.*prof[kstart] + 2.*prof[kstart+1];
@@ -575,15 +575,15 @@ int Stats::calccount(double * restrict data, double * restrict prof, double thre
   jj = grid->icells;
   kk = grid->ijcells;
 
-  for(int k=0; k<grid->kcells; ++k)
+  for (int k=0; k<grid->kcells; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        if(data[ijk]>threshold)
+        if (data[ijk]>threshold)
         {
           prof[k] += 1.;
         }
@@ -592,7 +592,7 @@ int Stats::calccount(double * restrict data, double * restrict prof, double thre
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=0; k<grid->kcells; ++k)
+  for (int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
   grid->getProf(prof, grid->kcells);
@@ -610,24 +610,24 @@ void Stats::calcCount(double * restrict data, double * restrict prof, double thr
   jj = grid->icells;
   kk = grid->ijcells;
 
-  for(int k=0; k<grid->kcells; ++k)
+  for (int k=0; k<grid->kcells; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
-        if(data[ijk] > threshold)
+        if (data[ijk] > threshold)
           prof[k] += mask[ijk]*1.;
       }
   }
 
   master->sum(prof, grid->kcells);
 
-  for(int k=0; k<grid->kcells; k++)
+  for (int k=0; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -642,12 +642,12 @@ void Stats::calcMoment(double * restrict data, double * restrict datamean, doubl
   jj = grid->icells;
   kk = grid->ijcells;
   
-  for(int k=grid->kstart; k<grid->kend+a; ++k)
+  for (int k=grid->kstart; k<grid->kend+a; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += std::pow(data[ijk]-datamean[k], power);
@@ -656,7 +656,7 @@ void Stats::calcMoment(double * restrict data, double * restrict datamean, doubl
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+a; ++k)
+  for (int k=grid->kstart; k<grid->kend+a; ++k)
     prof[k] /= n;
 
   grid->getProf(prof, grid->kcells);
@@ -671,12 +671,12 @@ void Stats::calcMoment(double * restrict data, double * restrict datamean, doubl
   jj = grid->icells;
   kk = grid->ijcells;
  
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         prof[k] += mask[ijk]*std::pow(data[ijk]-datamean[k], power);
@@ -685,9 +685,9 @@ void Stats::calcMoment(double * restrict data, double * restrict datamean, doubl
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -704,23 +704,23 @@ int Stats::calcFlux_2nd(double * restrict data, double * restrict w, double * re
 
   // set a pointer to the field that contains w, either interpolated or the original
   double * restrict calcw = w;
-  if(locx == 1)
+  if (locx == 1)
   {
     grid->interpolatex_2nd(tmp1, w, 0);
     calcw = tmp1;
   }
-  else if(locy == 1)
+  else if (locy == 1)
   {
     grid->interpolatey_2nd(tmp1, w, 0);
     calcw = tmp1;
   }
   
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += 0.5*(data[ijk-kk]+data[ijk])*calcw[ijk];
@@ -729,7 +729,7 @@ int Stats::calcFlux_2nd(double * restrict data, double * restrict w, double * re
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
   grid->getProf(prof, grid->kcells);
@@ -755,23 +755,23 @@ void Stats::calcFlux_2nd(double * restrict data, double * restrict datamean, dou
   const int uwloc[3] = {1,0,1};
   const int vwloc[3] = {0,1,1};
 
-  if(loc[0] == 1)
+  if (loc[0] == 1)
   {
     grid->interpolate_2nd(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
-  else if(loc[1] == 1)
+  else if (loc[1] == 1)
   {
     grid->interpolate_2nd(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += mask[ijk]*(0.5*(data[ijk-kk]+data[ijk])-0.5*(datamean[k-1]+datamean[k]))*(calcw[ijk]-wmean[k]);
@@ -781,9 +781,9 @@ void Stats::calcFlux_2nd(double * restrict data, double * restrict datamean, dou
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; ++k)
+  for (int k=1; k<grid->kcells; ++k)
   {
-    if(nmask[k] > nthres && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
+    if (nmask[k] > nthres && datamean[k-1] != NC_FILL_DOUBLE && datamean[k] != NC_FILL_DOUBLE)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -809,23 +809,23 @@ void Stats::calcFlux_4th(double * restrict data, double * restrict w, double * r
   const int uwloc[3] = {1,0,1};
   const int vwloc[3] = {0,1,1};
 
-  if(loc[0] == 1)
+  if (loc[0] == 1)
   {
     grid->interpolate_4th(tmp1, w, wloc, uwloc);
     calcw = tmp1;
   }
-  else if(loc[1] == 1)
+  else if (loc[1] == 1)
   {
     grid->interpolate_4th(tmp1, w, wloc, vwloc);
     calcw = tmp1;
   }
  
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
         prof[k] += mask[ijk]*(ci0*data[ijk-kk2] + ci1*data[ijk-kk1] + ci2*data[ijk] + ci3*data[ijk+kk1])*calcw[ijk];
@@ -834,9 +834,9 @@ void Stats::calcFlux_4th(double * restrict data, double * restrict w, double * r
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -851,12 +851,12 @@ int Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double *
   jj = grid->icells;
   kk = grid->ijcells;
   
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += (data[ijk]-data[ijk-kk])*dzhi[k];
@@ -865,7 +865,7 @@ int Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double *
 
   double n = grid->imax*grid->jmax;
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
   grid->getProf(prof, grid->kcells);
@@ -882,12 +882,12 @@ void Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double 
   jj = grid->icells;
   kk = grid->ijcells;
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += mask[ijk]*(data[ijk]-data[ijk-kk])*dzhi[k];
@@ -896,9 +896,9 @@ void Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double 
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -916,12 +916,12 @@ void Stats::calcGrad_4th(double * restrict data, double * restrict prof, double 
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
         prof[k] += mask[ijk]*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
@@ -930,9 +930,9 @@ void Stats::calcGrad_4th(double * restrict data, double * restrict prof, double 
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -950,12 +950,12 @@ void Stats::calcDiff_4th(double * restrict data, double * restrict prof, double 
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
  
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk1;
         prof[k] -= mask[ijk]*visc*(cg0*data[ijk-kk2] + cg1*data[ijk-kk1] + cg2*data[ijk] + cg3*data[ijk+kk1])*dzhi4[k];
@@ -964,9 +964,9 @@ void Stats::calcDiff_4th(double * restrict data, double * restrict prof, double 
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -981,12 +981,12 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict prof, double 
   jj = 1*grid->icells;
   kk = 1*grid->ijcells;
  
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
     prof[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] -= mask[ijk]*visc*(data[ijk] - data[ijk-kk])*dzhi[k];
@@ -995,9 +995,9 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict prof, double 
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -1025,9 +1025,9 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * r
 
   // bottom boundary
   prof[kstart] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -1035,14 +1035,14 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * r
     }
 
   // calculate the interior
-  if(loc[0] == 1)
+  if (loc[0] == 1)
   {
-    for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int k=grid->kstart+1; k<grid->kend; ++k)
     {
       prof[k] = 0.;
-      for(int j=grid->jstart; j<grid->jend; ++j)
+      for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; ++i)
+        for (int i=grid->istart; i<grid->iend; ++i)
         {
           ijk  = i + j*jj + k*kk;
           // evisc * (du/dz + dw/dx)
@@ -1051,14 +1051,14 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * r
         }
     }
   }
-  else if(loc[1] == 1)
+  else if (loc[1] == 1)
   {
-    for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int k=grid->kstart+1; k<grid->kend; ++k)
     {
       prof[k] = 0.;
-      for(int j=grid->jstart; j<grid->jend; ++j)
+      for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; ++i)
+        for (int i=grid->istart; i<grid->iend; ++i)
         {
           ijk  = i + j*jj + k*kk;
           // evisc * (dv/dz + dw/dy)
@@ -1069,12 +1069,12 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * r
   }
   else
   {
-    for(int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int k=grid->kstart+1; k<grid->kend; ++k)
     {
       prof[k] = 0.;
-      for(int j=grid->jstart; j<grid->jend; ++j)
+      for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; ++i)
+        for (int i=grid->istart; i<grid->iend; ++i)
         {
           ijk  = i + j*jj + k*kk;
           eviscs = 0.5*(evisc[ijk-kk]+evisc[ijk])/tPr;
@@ -1085,9 +1085,9 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * r
 
   // top boundary
   prof[kend] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kend*kk;
@@ -1096,9 +1096,9 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * r
 
   master->sum(prof, grid->kcells);
 
-  for(int k=1; k<grid->kcells; k++)
+  for (int k=1; k<grid->kcells; k++)
   {
-    if(nmask[k] > nthres)
+    if (nmask[k] > nthres)
       prof[k] /= (double)(nmask[k]);
     else
       prof[k] = NC_FILL_DOUBLE;
@@ -1107,9 +1107,9 @@ void Stats::calcDiff_2nd(double * restrict data, double * restrict w, double * r
 
 void Stats::addFluxes(double * restrict flux, double * restrict turb, double * restrict diff)
 {
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
   {
-    if(turb[k] == NC_FILL_DOUBLE || diff[k] == NC_FILL_DOUBLE)
+    if (turb[k] == NC_FILL_DOUBLE || diff[k] == NC_FILL_DOUBLE)
       flux[k] = NC_FILL_DOUBLE;
     else
       flux[k] = turb[k] + diff[k];
@@ -1128,15 +1128,15 @@ void Stats::calcPath(double * restrict data, double * restrict maskbot, int * re
 
   *path = 0.;
 
-  if(*nmaskbot > nthres)
+  if (*nmaskbot > nthres)
   {
     // Integrate liquid water
-    for(int j=grid->jstart; j<grid->jend; j++)
-      for(int i=grid->istart; i<grid->iend; i++)
+    for (int j=grid->jstart; j<grid->jend; j++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
-        if(maskbot[ij] == 1)
-          for(int k=kstart; k<grid->kend; k++)
+        if (maskbot[ij] == 1)
+          for (int k=kstart; k<grid->kend; k++)
           {
             ijk = i + j*jj + k*kk;
             *path += fields->rhoref[k] * data[ijk] * grid->dz[k];
@@ -1161,18 +1161,18 @@ void Stats::calcCover(double * restrict data, double * restrict maskbot, int * r
 
   *cover = 0.;
 
-  if(*nmaskbot > nthres)
+  if (*nmaskbot > nthres)
   {
     // Per column, check if cloud present
-    for(int j=grid->jstart; j<grid->jend; j++)
-      for(int i=grid->istart; i<grid->iend; i++)
+    for (int j=grid->jstart; j<grid->jend; j++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
-        if(maskbot[ij] == 1)
-          for(int k=kstart; k<grid->kend; k++)
+        if (maskbot[ij] == 1)
+          for (int k=kstart; k<grid->kend; k++)
           {
             ijk = i + j*jj + k*kk;
-            if(data[ijk]>threshold)
+            if (data[ijk]>threshold)
             {
               *cover += 1.;
               break;

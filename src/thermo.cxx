@@ -105,18 +105,18 @@ void Thermo::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *f)
 Thermo* Thermo::factory(Master *masterin, Input *inputin, Model *modelin)
 {
   std::string swthermo;
-  if(inputin->getItem(&swthermo, "thermo", "swthermo", "", "0"))
+  if (inputin->getItem(&swthermo, "thermo", "swthermo", "", "0"))
     return 0;
 
-  if(swthermo== "moist")
+  if (swthermo== "moist")
     return new ThermoMoist(modelin, inputin);
-  else if(swthermo == "buoy")
+  else if (swthermo == "buoy")
     return new ThermoBuoy(modelin, inputin);
-  else if(swthermo == "dry")
+  else if (swthermo == "dry")
     return new ThermoDry(modelin, inputin);
-  else if(swthermo == "buoy_slope")
+  else if (swthermo == "buoy_slope")
     return new ThermoBuoySlope(modelin, inputin);
-  else if(swthermo == "0")
+  else if (swthermo == "0")
     return new Thermo(modelin, inputin);
   else
   {

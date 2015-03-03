@@ -43,11 +43,11 @@ void Diff2::set_values()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
-  for(FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+  for (FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
     viscmax = std::max(it->second->visc, viscmax);
 
   dnmul = 0;
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for (int k=grid->kstart; k<grid->kend; k++)
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
@@ -76,7 +76,7 @@ void Diff2::exec()
   diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
   diffw(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
 
-  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+  for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sp[it->first]->visc);
 }
 #endif
@@ -93,10 +93,10 @@ void Diff2::diffc(double * restrict at, double * restrict a, double * restrict d
   dxidxi = 1./(grid->dx * grid->dx);
   dyidyi = 1./(grid->dy * grid->dy);
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart; k<grid->kend; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         at[ijk] += visc * (
@@ -121,10 +121,10 @@ void Diff2::diffw(double * restrict wt, double * restrict w, double * restrict d
   dxidxi = 1./(grid->dx*grid->dx);
   dyidyi = 1./(grid->dy*grid->dy);
 
-  for(int k=grid->kstart+1; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart+1; k<grid->kend; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         wt[ijk] += visc * (

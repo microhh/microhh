@@ -144,7 +144,7 @@ void Grid::initMpi()
 
 void Grid::exitMpi()
 {
-  if(mpitypes)
+  if (mpitypes)
   {
     MPI_Type_free(&eastwestedge);
     MPI_Type_free(&northsouthedge);
@@ -170,7 +170,7 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
 {
   const int ncount = 1;
 
-  if(edge == EastWestEdge || edge == BothEdges)
+  if (edge == EastWestEdge || edge == BothEdges)
   {
     // Communicate east-west edges.
     const int eastout = iend-igc;
@@ -191,10 +191,10 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
     master->waitAll();
   }
 
-  if(edge == NorthSouthEdge || edge == BothEdges)
+  if (edge == NorthSouthEdge || edge == BothEdges)
   {
     // If the run is 3D, perform the cyclic boundary routine for the north-south direction.
-    if(jtot > 1)
+    if (jtot > 1)
     {
       // Communicate north-south edges.
       const int northout = (jend-jgc)*icells;
@@ -221,10 +221,10 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
       jj = icells;
       kk = icells*jcells;
 
-      for(int k=kstart; k<kend; k++)
-        for(int j=0; j<jgc; j++)
+      for (int k=kstart; k<kend; k++)
+        for (int j=0; j<jgc; j++)
 #pragma ivdep
-          for(int i=0; i<icells; i++)
+          for (int i=0; i<icells; i++)
           {
             ijkref   = i + jstart*jj   + k*kk;
             ijknorth = i + j*jj        + k*kk;
@@ -265,7 +265,7 @@ void Grid::boundaryCyclic2d(double * restrict data)
   master->waitAll();
 
   // if the run is 3D, apply the BCs
-  if(jtot > 1)
+  if (jtot > 1)
   {
     // second, send and receive the ghost cells in the north-south direction
     MPI_Isend(&data[northout], ncount, northsouthedge2d, master->nnorth, 1, master->commxy, &master->reqs[master->reqsn]);
@@ -286,9 +286,9 @@ void Grid::boundaryCyclic2d(double * restrict data)
 
     jj = icells;
 
-    for(int j=0; j<jgc; j++)
+    for (int j=0; j<jgc; j++)
 #pragma ivdep
-      for(int i=0; i<icells; i++)
+      for (int i=0; i<icells; i++)
       {
         ijref   = i + jstart*jj;
         ijnorth = i + j*jj;
@@ -308,7 +308,7 @@ void Grid::transposezx(double * restrict ar, double * restrict as)
   int jj = imax;
   int kk = imax*jmax;
 
-  for(int n=0; n<master->npx; n++)
+  for (int n=0; n<master->npx; n++)
   {
     // determine where to fetch the data and where to store it
     ijks = n*kblock*kk;
@@ -332,7 +332,7 @@ void Grid::transposexz(double * restrict ar, double * restrict as)
   int jj = imax;
   int kk = imax*jmax;
 
-  for(int n=0; n<master->npx; n++)
+  for (int n=0; n<master->npx; n++)
   {
     // determine where to fetch the data and where to store it
     ijks = n*jj;
@@ -356,7 +356,7 @@ void Grid::transposexy(double * restrict ar, double * restrict as)
   int jj = iblock;
   int kk = iblock*jmax;
 
-  for(int n=0; n<master->npy; n++)
+  for (int n=0; n<master->npy; n++)
   {
     // determine where to fetch the data and where to store it
     ijks = n*jj;
@@ -380,7 +380,7 @@ void Grid::transposeyx(double * restrict ar, double * restrict as)
   int jj = iblock;
   int kk = iblock*jmax;
 
-  for(int n=0; n<master->npy; n++)
+  for (int n=0; n<master->npy; n++)
   {
     // determine where to fetch the data and where to store it
     ijks = n*kk;
@@ -404,7 +404,7 @@ void Grid::transposeyz(double * restrict ar, double * restrict as)
   int jj = iblock;
   int kk = iblock*jblock;
 
-  for(int n=0; n<master->npx; n++)
+  for (int n=0; n<master->npx; n++)
   {
     // determine where to fetch the data and where to store it
     ijks = n*jblock*jj;
@@ -428,7 +428,7 @@ void Grid::transposezy(double * restrict ar, double * restrict as)
   int jj = iblock;
   int kk = iblock*jblock;
 
-  for(int n=0; n<master->npx; n++)
+  for (int n=0; n<master->npx; n++)
   {
     // determine where to fetch the data and where to store it
     ijks = n*kblock*kk;
@@ -457,7 +457,7 @@ void Grid::getSum(double *var)
 
 void Grid::getProf(double *prof, int kcellsin)
 {
-  for(int k=0; k<kcellsin; k++)
+  for (int k=0; k<kcellsin; k++)
     profl[k] = prof[k] / master->nprocs;
 
   MPI_Allreduce(profl, prof, kcellsin, MPI_DOUBLE, MPI_SUM, master->commxy);
@@ -471,7 +471,7 @@ void Grid::save()
   master->print_message("Saving \"%s\" ... ", filename);
 
   MPI_File fh;
-  if(MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  if (MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
   {
     master->print_message("FAILED\n");
     throw 1;
@@ -482,33 +482,33 @@ void Grid::save()
   char name[] = "native";
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(master->mpicoordy == 0)
+  if (master->mpicoordy == 0)
     MPI_File_write(fh, &x[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
   MPI_Barrier(master->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subi, name, MPI_INFO_NULL);
-  if(master->mpicoordy == 0)
+  if (master->mpicoordy == 0)
     MPI_File_write(fh, &xh[istart], imax, MPI_DOUBLE, MPI_STATUS_IGNORE);
   MPI_Barrier(master->commxy);
   fileoff += itot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(master->mpicoordx == 0)
+  if (master->mpicoordx == 0)
     MPI_File_write(fh, &y[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
   MPI_Barrier(master->commxy);
   fileoff += jtot*sizeof(double);
 
   MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subj, name, MPI_INFO_NULL);
-  if(master->mpicoordx == 0)
+  if (master->mpicoordx == 0)
     MPI_File_write(fh, &yh[jstart], jmax, MPI_DOUBLE, MPI_STATUS_IGNORE);
   MPI_Barrier(master->commxy);
 
   MPI_File_sync(fh);
-  if(MPI_File_close(&fh))
+  if (MPI_File_close(&fh))
     throw 1;
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     FILE *pFile;
     pFile = fopen(filename, "ab");
@@ -544,7 +544,7 @@ void Grid::save()
 
   fftwplan = true;
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
@@ -552,7 +552,7 @@ void Grid::save()
     master->print_message("Saving \"%s\" ... ", filename);
 
     int n = fftw_export_wisdom_to_filename(filename);
-    if(n == 0)
+    if (n == 0)
     {
       master->print_error("\"%s\" cannot be saved\n", filename);
       throw 1;
@@ -569,13 +569,13 @@ void Grid::load()
   // LOAD THE GRID
   char filename[256];
   std::sprintf(filename, "%s.%07d", "grid", 0);
-  if(master->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
+  if (master->mpiid == 0) std::printf("Loading \"%s\" ... ", filename);
 
   FILE *pFile;
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     pFile = fopen(filename, "rb");
-    if(pFile == NULL)
+    if (pFile == NULL)
     {
       ++nerror;
     }
@@ -591,7 +591,7 @@ void Grid::load()
 
   // communicate the file read error over all procs
   master->broadcast(&nerror, 1);
-  if(nerror)
+  if (nerror)
   {
     master->print_message("FAILED\n");
     throw 1;
@@ -611,7 +611,7 @@ void Grid::load()
   master->print_message("Loading \"%s\" ... ", filename);
 
   int n = fftw_import_wisdom_from_filename(filename);
-  if(n == 0)
+  if (n == 0)
   {
     master->print_message("FAILED\n");
     throw 1;
@@ -659,10 +659,10 @@ int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * r
 
   int count = imax*jmax*kmax;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
+  for (int k=0; k<kmax; k++)
+    for (int j=0; j<jmax; j++)
 #pragma ivdep
-      for(int i=0; i<imax; i++)
+      for (int i=0; i<imax; i++)
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
@@ -672,20 +672,20 @@ int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * r
   transposezx(tmp2, tmp1);
 
   MPI_File fh;
-  if(MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  if (MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data
   MPI_Offset fileoff = 0; // the offset within the file (header size)
   char name[] = "native";
 
-  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
+  if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
     return 1;
 
-  if(MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  if (MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
     return 1;
 
-  if(MPI_File_close(&fh))
+  if (MPI_File_close(&fh))
     return 1;
 
   return 0;
@@ -698,7 +698,7 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
 
   // read the file
   MPI_File fh;
-  if(MPI_File_open(master->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  if (MPI_File_open(master->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data
@@ -709,10 +709,10 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
   // extract the data from the 3d field without the ghost cells
   int count = imax*jmax*kmax;
 
-  if(MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  if (MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
     return 1;
 
-  if(MPI_File_close(&fh))
+  if (MPI_File_close(&fh))
     return 1;
 
   // transpose the data back
@@ -726,10 +726,10 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
   jjb = imax;
   kkb = imax*jmax;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
+  for (int k=0; k<kmax; k++)
+    for (int j=0; j<jmax; j++)
 #pragma ivdep
-      for(int i=0; i<imax; i++)
+      for (int i=0; i<imax; i++)
       {
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
         ijkb = i + j*jjb + k*kkb;
@@ -751,10 +751,10 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
   kk = itot*jmax;
 
   // process the fourier transforms slice by slice
-  for(int k=0; k<kblock; k++)
+  for (int k=0; k<kblock; k++)
   {
 #pragma ivdep
-    for(int n=0; n<itot*jmax; n++)
+    for (int n=0; n<itot*jmax; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -764,7 +764,7 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
     fftw_execute(iplanf);
 
 #pragma ivdep
-    for(int n=0; n<itot*jmax; n++)
+    for (int n=0; n<itot*jmax; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -778,10 +778,10 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
   kk = iblock*jtot;
 
   // do the second fourier transform
-  for(int k=0; k<kblock; k++)
+  for (int k=0; k<kblock; k++)
   {
 #pragma ivdep
-    for(int n=0; n<iblock*jtot; n++)
+    for (int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -791,7 +791,7 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
     fftw_execute(jplanf);
 
 #pragma ivdep
-    for(int n=0; n<iblock*jtot; n++)
+    for (int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -816,10 +816,10 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
   kk = iblock*jtot;
 
   // transform the second transform back
-  for(int k=0; k<kblock; k++)
+  for (int k=0; k<kblock; k++)
   {
 #pragma ivdep
-    for(int n=0; n<iblock*jtot; n++)
+    for (int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -829,7 +829,7 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
     fftw_execute(jplanb);
 
 #pragma ivdep
-    for(int n=0; n<iblock*jtot; n++)
+    for (int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -843,10 +843,10 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
   kk = itot*jmax;
 
   // transform the first transform back
-  for(int k=0; k<kblock; k++)
+  for (int k=0; k<kblock; k++)
   {
 #pragma ivdep
-    for(int n=0; n<itot*jmax; n++)
+    for (int n=0; n<itot*jmax; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -856,7 +856,7 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
     fftw_execute(iplanb);
 
 #pragma ivdep
-    for(int n=0; n<itot*jmax; n++)
+    for (int n=0; n<itot*jmax; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -882,9 +882,9 @@ int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filen
 
   int count = imax*kmax;
 
-  for(int k=0; k<kmax; k++)
+  for (int k=0; k<kmax; k++)
 #pragma ivdep
-    for(int i=0; i<imax; i++)
+    for (int i=0; i<imax; i++)
     {
       // take the modulus of jslice and jmax to have the right offset within proc
       ijk  = i+igc + ((jslice%jmax)+jgc)*jj + (k+kgc)*kk;
@@ -892,30 +892,30 @@ int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filen
       tmp[ijkb] = data[ijk];
     }
 
-  if(master->mpicoordy == jslice/jmax)
+  if (master->mpicoordy == jslice/jmax)
   {
     MPI_File fh;
-    if(MPI_File_open(master->commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+    if (MPI_File_open(master->commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
       ++nerror;
 
     // select noncontiguous part of 3d array to store the selected data
     MPI_Offset fileoff = 0; // the offset within the file (header size)
     char name[] = "native";
 
-    if(!nerror)
-      if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
+    if (!nerror)
+      if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
         ++nerror;
 
     // only write at the procs that contain the slice
-    if(!nerror)
-      if(MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+    if (!nerror)
+      if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
         ++nerror;
 
-    if(!nerror)
+    if (!nerror)
       MPI_File_sync(fh);
 
-    if(!nerror)
-      if(MPI_File_close(&fh))
+    if (!nerror)
+      if (MPI_File_close(&fh))
         ++nerror;
   }
 
@@ -938,14 +938,14 @@ int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filen
   jjb = imax;
 
   // in case the field to save is 2d, then the ghostcells need to be subtracted
-  if(kslice == -1)
+  if (kslice == -1)
     kslice = -kgc;
 
   int count = imax*jmax;
 
-  for(int j=0; j<jmax; j++)
+  for (int j=0; j<jmax; j++)
 #pragma ivdep
-    for(int i=0; i<imax; i++)
+    for (int i=0; i<imax; i++)
     {
       // take the modulus of jslice and jmax to have the right offset within proc
       ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
@@ -954,23 +954,23 @@ int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filen
     }
 
   MPI_File fh;
-  if(MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+  if (MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data
   MPI_Offset fileoff = 0; // the offset within the file (header size)
   char name[] = "native";
 
-  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+  if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
     return 1;
 
   // only write at the procs that contain the slice
-  if(MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
     return 1;
 
   MPI_File_sync(fh);
 
-  if(MPI_File_close(&fh))
+  if (MPI_File_close(&fh))
     return 1;
 
   MPI_Barrier(master->commxy);
@@ -989,34 +989,34 @@ int Grid::loadxySlice(double * restrict data, double * restrict tmp, char *filen
   jjb = imax;
 
   // in case the field to save is 2d, then the ghostcells need to be subtracted
-  if(kslice == -1)
+  if (kslice == -1)
     kslice = -kgc;
 
   int count = imax*jmax;
 
   MPI_File fh;
-  if(MPI_File_open(master->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+  if (MPI_File_open(master->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
     return 1;
 
   // select noncontiguous part of 3d array to store the selected data
   MPI_Offset fileoff = 0; // the offset within the file (header size)
   char name[] = "native";
 
-  if(MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+  if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
     return 1;
 
   // only write at the procs that contain the slice
-  if(MPI_File_read_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+  if (MPI_File_read_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
     return 1;
 
-  if(MPI_File_close(&fh))
+  if (MPI_File_close(&fh))
     return 1;
 
   MPI_Barrier(master->commxy);
 
-  for(int j=0; j<jmax; j++)
+  for (int j=0; j<jmax; j++)
 #pragma ivdep
-    for(int i=0; i<imax; i++)
+    for (int i=0; i<imax; i++)
     {
       // take the modulus of jslice and jmax to have the right offset within proc
       ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;

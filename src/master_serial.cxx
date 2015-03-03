@@ -52,7 +52,7 @@ void Master::start(int argc, char *argv[])
   print_message("Starting run on %d processes\n", nprocs);
 
   // Process the command line options.
-  if(argc <= 1)
+  if (argc <= 1)
   {
     print_error("Specify init, run or post mode\n");
     throw 1;
@@ -61,13 +61,13 @@ void Master::start(int argc, char *argv[])
   {
     // Check the execution mode.
     mode = argv[1];
-    if(mode != "init" && mode != "run" && mode != "post")
+    if (mode != "init" && mode != "run" && mode != "post")
     {
       print_error("Specify init, run or post mode\n");
       throw 1;
     }
     // Set the name of the simulation.
-    if(argc > 2)
+    if (argc > 2)
       simname = argv[2];
     else
       simname = "microhh";
@@ -84,12 +84,12 @@ void Master::init(Input *inputin)
   double wallClockLimit;
   nerror += inputin->getItem(&wallClockLimit, "master", "wallclocklimit", "", 1E8);
 
-  if(nerror)
+  if (nerror)
     throw 1;
 
   wallClockEnd = wallClockStart + 3600.*wallClockLimit;
 
-  if(nprocs != npx*npy)
+  if (nprocs != npx*npy)
   {
     print_error("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
     throw 1;

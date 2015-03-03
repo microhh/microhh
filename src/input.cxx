@@ -45,7 +45,7 @@ Input::Input(Master *masterin)
   nerror += readDataFile(&proflist, master->simname + ".prof", required);
   nerror += readDataFile(&timelist, master->simname + ".time", optional);
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -69,10 +69,10 @@ int Input::readIniFile()
   FILE *inputfile = 0;
   std::string inputfilename = master->simname + ".ini";
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     inputfile = fopen(inputfilename.c_str(), "r");
-    if(inputfile == NULL)
+    if (inputfile == NULL)
     {
       std::printf("ERROR \"%s\" does not exist\n", inputfilename.c_str());
       ++nerror;
@@ -81,7 +81,7 @@ int Input::readIniFile()
 
   // broadcast the error count
   master->broadcast(&nerror, 1);
-  if(nerror)
+  if (nerror)
     return 1;
 
   int n;
@@ -90,72 +90,72 @@ int Input::readIniFile()
   int nlines  = 0;
   int nline;
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     std::printf("Processing ini file \"%s\"\n", inputfilename.c_str());
-    while(std::fgets(inputline, 256, inputfile) != NULL)
+    while (std::fgets(inputline, 256, inputfile) != NULL)
       nlines++;
     rewind(inputfile);
   }
   master->broadcast(&nlines, 1);
 
   // check the cases: comments, empty line, block, value, rubbish
-  for(int nn=0; nn<nlines; nn++)
+  for (int nn=0; nn<nlines; nn++)
   {
     nline = nn+1;
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
     }
     master->broadcast(inputline, 256);
 
-    for(int i = 0; inputline[i] != '\0'; i++)
+    for (int i = 0; inputline[i] != '\0'; i++)
     {
       inputline[i] = tolower(inputline[i]);
     }
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
-    if(n == 0)
+    if (n == 0)
       continue;
 
     // check for comments
     n = std::sscanf(inputline, " #%[^\n]", temp1);
-    if(n > 0)
+    if (n > 0)
       continue;
 
     n = std::sscanf(inputline, " [%[^]]] ", temp1);
-    if(n == 1)
+    if (n == 1)
     {
       n = std::sscanf(temp1, "%s %s", block, dummy);
-      if(n == 1)
+      if (n == 1)
       {
         blockset = true;
       }
       else
       {
-        if(master->mpiid == 0) std::printf("ERROR line %d: illegal block specification [%s]\n", nline, temp1);
+        if (master->mpiid == 0) std::printf("ERROR line %d: illegal block specification [%s]\n", nline, temp1);
         return 1;
       }
       continue;
     }
     // read items
     n = std::sscanf(inputline, "%[^=] = %[^\n]", temp1, rhs);
-    if(n == 2)
+    if (n == 2)
     {
 
       n = std::sscanf(temp1, " %[a-zA-Z0-9_()][%[^]]] %s", lhs, element, dummy);
-      if(n <= 2)
+      if (n <= 2)
       {
-        if(!blockset)
+        if (!blockset)
         {
-          if(master->mpiid == 0) std::printf("ERROR line %d: illegal item [?][%s] = \"%s\"\n", nline, lhs, rhs);
+          if (master->mpiid == 0) std::printf("ERROR line %d: illegal item [?][%s] = \"%s\"\n", nline, lhs, rhs);
           nerrors++;
           return 1;
         }
 
-        if(n ==1)
+        if (n ==1)
         {
           std::strcpy(element,"default");
         }
@@ -163,21 +163,21 @@ int Input::readIniFile()
         std::string itemstring(lhs);
         std::string elementstring(element);
         std::string valuestring(rhs);
-        if(checkItemExists(blockstring, itemstring, elementstring))
+        if (checkItemExists(blockstring, itemstring, elementstring))
         {
           inputlist[blockstring][itemstring][elementstring].data   = valuestring;
           inputlist[blockstring][itemstring][elementstring].isused = false;
         }
         else
         {
-          if(master->mpiid == 0) std::printf("ERROR line %d: Item [%s][%s][%s] defined for the second time\n", nline, block, lhs, element);
+          if (master->mpiid == 0) std::printf("ERROR line %d: Item [%s][%s][%s] defined for the second time\n", nline, block, lhs, element);
           return 1;
         }
       }
       else
       {
         n = std::sscanf(inputline, "%[^=]", temp1);
-        if(master->mpiid == 0) std::printf("ERROR line %d: illegal item  [%s][%s]\n", nline, block, temp1);
+        if (master->mpiid == 0) std::printf("ERROR line %d: illegal item  [%s][%s]\n", nline, block, temp1);
         nerrors++;
       }
     }
@@ -186,15 +186,15 @@ int Input::readIniFile()
     else
     {
       n = std::sscanf(inputline, "%[^\n]", temp1);
-      if(n > 0)
+      if (n > 0)
       {
-        if(master->mpiid == 0) std::printf("ERROR line %d: \"%s\" is illegal input\n", nline, temp1);
+        if (master->mpiid == 0) std::printf("ERROR line %d: \"%s\" is illegal input\n", nline, temp1);
         nerrors++;
       }
     }
   }
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
     fclose(inputfile);
 
   return nerrors;
@@ -212,12 +212,12 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
   std::string inputfilename = inputname;
 
   int doreturn = 0;
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     inputfile = fopen(inputfilename.c_str(), "r");
-    if(inputfile == NULL)
+    if (inputfile == NULL)
     {
-      if(optional)
+      if (optional)
         doreturn = true;
       else
       {
@@ -230,9 +230,9 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
   // broadcast the error count
   master->broadcast(&nerror  , 1);
   master->broadcast(&doreturn, 1);
-  if(nerror)
+  if (nerror)
     return 1;
-  if(doreturn)
+  if (doreturn)
     return 0;
 
   int nlines = 0;
@@ -240,10 +240,10 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
   int nvar = 0;
   std::vector<std::string> varnames;
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     std::printf("Processing data file \"%s\"\n", inputfilename.c_str());
-    while(std::fgets(inputline, 256, inputfile) != NULL)
+    while (std::fgets(inputline, 256, inputfile) != NULL)
       nlines++;
     rewind(inputfile);
   }
@@ -252,10 +252,10 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
   int nn;
 
   // first find the header
-  for(nn=0; nn<nlines; nn++)
+  for (nn=0; nn<nlines; nn++)
   {
     nline = nn+1;
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
@@ -264,26 +264,26 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
-    if(n == 0)
+    if (n == 0)
       continue;
 
     // check for comments
     n = std::sscanf(inputline, " #%[^\n]", temp1);
-    if(n > 0)
+    if (n > 0)
       continue;
 
     // read the header
     // read the first substring
     substring = std::strtok(inputline, " ,;\t\n");
-    while(substring != NULL)
+    while (substring != NULL)
     {
       nvar++;
 
       // CvH remove in order to make time step reading possible
       /*
-      if(!std::isalpha(substring[0]))
+      if (!std::isalpha(substring[0]))
       {
-        if(master->mpiid == 0)
+        if (master->mpiid == 0)
         {
           std::printf("ERROR at line %d: \"%s\" is not a variable name\n", nline, substring);
           fclose(inputfile);
@@ -299,9 +299,9 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
       substring = std::strtok(NULL, " ,;\t\n");
     }
 
-    if(nvar == 0)
+    if (nvar == 0)
     {
-      if(master->mpiid == 0)
+      if (master->mpiid == 0)
       {
         std::printf("ERROR no variable names in header\n");
         fclose(inputfile);
@@ -321,10 +321,10 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
   std::vector<double> varvalues;
 
   // continue the loop from the exit value of nn
-  for(nn++; nn<nlines; nn++)
+  for (nn++; nn<nlines; nn++)
   {
     nline = nn+1;
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
     {
       // fetch a line and broadcast it
       std::fgets(inputline, 256, inputfile);
@@ -333,12 +333,12 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
 
     // check for empty line
     n = std::sscanf(inputline, " %s ", temp1);
-    if(n == 0)
+    if (n == 0)
       continue;
 
     // check for comments
     n = std::sscanf(inputline, " #%[^\n]", temp1);
-    if(n > 0)
+    if (n > 0)
       continue;
 
     // read the data
@@ -346,16 +346,16 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
     varvalues.clear();
     // read the first substring
     substring = std::strtok(inputline, " ,;\t\n");
-    while(substring != NULL)
+    while (substring != NULL)
     {
       ncols++;
 
       // scan the line, while checking that the whole string has been read
       n = std::sscanf(substring, " %lf %[^\n]", &datavalue, temp1);
 
-      if(n != 1)
+      if (n != 1)
       {
-        if(master->mpiid == 0)
+        if (master->mpiid == 0)
         {
           std::printf("ERROR line %d: \"%s\" is not a correct data value\n", nline, substring);
           fclose(inputfile);
@@ -370,9 +370,9 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
       substring = std::strtok(NULL, " ,;\t\n");
     }
 
-    if(ncols != nvar)
+    if (ncols != nvar)
     {
-      if(master->mpiid == 0)
+      if (master->mpiid == 0)
       {
         std::printf("ERROR line %d: %d data columns, but %d defined variables\n", nline, ncols, nvar);
         fclose(inputfile);
@@ -381,11 +381,11 @@ int Input::readDataFile(DataMap *series, std::string inputname, bool optional)
     }
 
     // store the data
-    for(n=0; n<nvar; n++)
+    for (n=0; n<nvar; n++)
       (*series)[varnames[n]].push_back(varvalues[n]);
   }
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
     fclose(inputfile);
 
   return 0;
@@ -397,14 +397,14 @@ int Input::checkItemExists(std::string cat, std::string item, std::string el)
 
   bool readerror = false;
 
-  if(it1 != inputlist.end())
+  if (it1 != inputlist.end())
   {
     InputMap2d::const_iterator it2 = it1->second.find(item);
 
-    if(it2 != it1->second.end())
+    if (it2 != it1->second.end())
     {
       InputMap1d::const_iterator it3 = it2->second.find(el);
-      if(it3 == it2->second.end())
+      if (it3 == it2->second.end())
         readerror = true;
     }
     else
@@ -413,7 +413,7 @@ int Input::checkItemExists(std::string cat, std::string item, std::string el)
   else
     readerror = true;
 
-  if(readerror)
+  if (readerror)
     return 1;
 
   return 0;
@@ -426,7 +426,7 @@ int Input::getItem(int *value, std::string cat, std::string item, std::string el
   bool optional = false;
   int dummy = 0;
 
-  if(parseItem(value, cat, item, el, optional, dummy))
+  if (parseItem(value, cat, item, el, optional, dummy))
     return 1;
 
   return 0;
@@ -436,7 +436,7 @@ int Input::getItem(int *value, std::string cat, std::string item, std::string el
 {
   bool optional = true;
 
-  if(parseItem(value, cat, item, el, optional, def))
+  if (parseItem(value, cat, item, el, optional, def))
     return 1;
 
   return 0;
@@ -448,39 +448,39 @@ int Input::parseItem(valuetype *value, std::string cat, std::string item, std::s
   std::string itemout, itemtype;
   itemout = "[" + cat + "][" + item + "]";
 
-  if(!el.empty())
+  if (!el.empty())
   {
     itemout += "[" + el + "]";
-    if(!checkItemExists(cat, item, el))
+    if (!checkItemExists(cat, item, el))
     {
-      if(checkItem(value, cat, item, el))
+      if (checkItem(value, cat, item, el))
         return 1;
       itemtype = "(element specific)";
     }
   }
-  if(itemtype.empty())
+  if (itemtype.empty())
   {
-    if(checkItemExists(cat, item))
+    if (checkItemExists(cat, item))
     {
-      if(optional)
+      if (optional)
       {
         *value = def;
         itemtype = "(default)";
       }
       else
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s] does not exist\n", cat.c_str(), item.c_str());
         return 1;
       }
     }
     else
     {
-      if(checkItem(value, cat, item))
+      if (checkItem(value, cat, item))
         return 1;
       itemtype = "(global)";
     }
   }
-  if(master->mpiid == 0) 
+  if (master->mpiid == 0) 
     std::cout << std::left  << std::setw(30) << itemout << "= " 
               << std::right << std::setw(11) << std::setprecision(5) << std::boolalpha << *value 
               << "   " << itemtype << std::endl;
@@ -496,19 +496,19 @@ int Input::checkItem(int *value, std::string cat, std::string item, std::string 
   int inputint;
   int n = std::sscanf(inputstring, " %d %[^\n] ", &inputint, temp);
 
-  if(n == 1)
+  if (n == 1)
     *value = inputint;
   else
   {
-    if(std::strcmp(inputstring,""))
+    if (std::strcmp(inputstring,""))
     {
       if (el == "default")
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -524,7 +524,7 @@ int Input::getItem(double *value, std::string cat, std::string item, std::string
   bool optional = false;
   double dummy = 0.;
 
-  if(parseItem(value, cat, item, el, optional, dummy))
+  if (parseItem(value, cat, item, el, optional, dummy))
     return 1;
 
   return 0;
@@ -534,7 +534,7 @@ int Input::getItem(double *value, std::string cat, std::string item, std::string
 {
   bool optional = true;
 
-  if(parseItem(value, cat, item, el, optional, def))
+  if (parseItem(value, cat, item, el, optional, def))
     return 1;
 
   return 0;
@@ -548,19 +548,19 @@ int Input::checkItem(double *value, std::string cat, std::string item, std::stri
   double inputdouble;
   int n = std::sscanf(inputstring, " %lf %[^\n] ", &inputdouble, temp);
   // catch the situation where a double is closed with a ".", which is not read by sscanf's %f
-  if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
+  if (n == 1 || (n == 2 && !std::strcmp(".", temp)))
     *value = inputdouble;
   else
   {
-    if(std::strcmp(inputstring,""))
+    if (std::strcmp(inputstring,""))
     {
-      if(el == "default")
+      if (el == "default")
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -576,7 +576,7 @@ int Input::getItem(bool *value, std::string cat, std::string item, std::string e
   bool optional = false;
   bool dummy = false;
 
-  if(parseItem(value, cat, item, el, optional, dummy))
+  if (parseItem(value, cat, item, el, optional, dummy))
     return 1;
   return 0;
 }
@@ -585,7 +585,7 @@ int Input::getItem(bool *value, std::string cat, std::string item, std::string e
 {
   bool optional = true;
 
-  if(parseItem(value, cat, item, el, optional, def))
+  if (parseItem(value, cat, item, el, optional, def))
     return 1;
 
   return 0;
@@ -600,29 +600,29 @@ int Input::checkItem(bool *value, std::string cat, std::string item, std::string
 
   bool boolerror = false;
 
-  if(n == 1)
+  if (n == 1)
   {
-    if(std::strcmp("true", inputbool) == 0 ||
+    if (std::strcmp("true", inputbool) == 0 ||
        std::strcmp("1"   , inputbool) == 0 )
       *value = true;
-    else if(std::strcmp("false", inputbool) == 0 ||
+    else if (std::strcmp("false", inputbool) == 0 ||
             std::strcmp("0    ", inputbool) == 0 )
       *value = false;
     else
       boolerror = true;
   }
 
-  if(n != 1 || boolerror)
+  if (n != 1 || boolerror)
   {
-    if(std::strcmp(inputstring,""))
+    if (std::strcmp(inputstring,""))
     {
       if (el == "default")
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type BOOL\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -638,7 +638,7 @@ int Input::getItem(std::string *value, std::string cat, std::string item, std::s
   bool optional = false;
   std::string dummy = "";
 
-  if(parseItem(value, cat, item, el, optional, dummy))
+  if (parseItem(value, cat, item, el, optional, dummy))
     return 1;
 
   return 0;
@@ -648,7 +648,7 @@ int Input::getItem(std::string *value, std::string cat, std::string item, std::s
 {
   bool optional = true;
 
-  if(parseItem(value, cat, item, el, optional, def))
+  if (parseItem(value, cat, item, el, optional, def))
     return 1;
 
   return 0;
@@ -661,19 +661,19 @@ int Input::checkItem(std::string *value, std::string cat, std::string item, std:
 
   int n = std::sscanf(inputstring, " %s %[^\n] ", stringval, dummy);
 
-  if(n == 1)
+  if (n == 1)
     *value = stringval;
   else
   {
-    if(std::strcmp(inputstring,""))
+    if (std::strcmp(inputstring,""))
     {
-      if(el == "default")
+      if (el == "default")
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), inputstring);
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), inputstring);
       }
       else
       {
-        if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+        if (master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
       }
       return 1;
     }
@@ -686,7 +686,7 @@ int Input::checkItem(std::string *value, std::string cat, std::string item, std:
 // list retrieval function
 int Input::getList(std::vector<int> *value, std::string cat, std::string item, std::string el)
 {
-  if(parseList(value, cat, item, el))
+  if (parseList(value, cat, item, el))
     return 1;
 
   return 0;
@@ -694,7 +694,7 @@ int Input::getList(std::vector<int> *value, std::string cat, std::string item, s
 
 int Input::getList(std::vector<double> *value, std::string cat, std::string item, std::string el)
 {
-  if(parseList(value, cat, item, el))
+  if (parseList(value, cat, item, el))
     return 1;
 
   return 0;
@@ -702,7 +702,7 @@ int Input::getList(std::vector<double> *value, std::string cat, std::string item
 
 int Input::getList(std::vector<std::string> *value, std::string cat, std::string item, std::string el)
 {
-  if(parseList(value, cat, item, el))
+  if (parseList(value, cat, item, el))
     return 1;
 
   return 0;
@@ -715,23 +715,23 @@ int Input::parseList(std::vector<valuetype> *value, std::string cat, std::string
   std::stringstream liststream;
 
   itemout = "[" + cat + "][" + item + "]";
-  if(checkItemExists(cat, item))
+  if (checkItemExists(cat, item))
   {
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
       std::cout << std::left  << std::setw(30) << itemout << "= "
                 << std::right << std::setw(11) << "EMPTY LIST" << std::endl;
   }
   else
   {
-    if(checkList(value, cat, item))
+    if (checkList(value, cat, item))
       return 1;
     typedef typename std::vector<valuetype>::iterator itertype;
-    for(itertype it = value->begin(); it !=value->end()-1; ++it)
+    for (itertype it = value->begin(); it !=value->end()-1; ++it)
     {
       liststream << *it << ", ";
     }
     liststream << *(value->end()-1);
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
       std::cout << std::left  << std::setw(30) << itemout << "= "
                 << std::right << std::setw(11) << liststream.str() << std::endl;
   }
@@ -751,25 +751,25 @@ int Input::checkList(std::vector<std::string> *value, std::string cat, std::stri
   // first, split string on the delimiter
   temp2 = std::strtok(temp1, ",");
 
-  while(temp2 != NULL)
+  while (temp2 != NULL)
   {
     // read in the string part in temp1
     int n = std::sscanf(temp2, "%s %s", temp1, dummy);
 
     // store the contents in the vector, or throw exception
-    if(n == 1)
+    if (n == 1)
       value->push_back(temp1);
     else
     {
-      if(std::strcmp(inputstring,""))
+      if (std::strcmp(inputstring,""))
       {
         if (el == "default")
         {
-          if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), inputstring);
+          if (master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), inputstring);
         }
         else
         {
-          if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+          if (master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type STRING\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
         }
         // empty the vector
         value->clear();
@@ -799,25 +799,25 @@ int Input::checkList(std::vector<int> *value, std::string cat, std::string item,
   // first, split string on the delimiter
   temp2 = std::strtok(temp1, ",");
 
-  while(temp2 != NULL)
+  while (temp2 != NULL)
   {
     // read in the string part in temp1
     int n = std::sscanf(temp2, " %d %[^\n] ", &listval, dummy);
 
     // store the contents in the vector, or throw exception
-    if(n == 1)
+    if (n == 1)
       value->push_back(listval);
     else
     {
-      if(std::strcmp(inputstring,""))
+      if (std::strcmp(inputstring,""))
       {
         if (el == "default")
         {
-          if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type INT\n", cat.c_str(), item.c_str(), inputstring);
+          if (master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type INT\n", cat.c_str(), item.c_str(), inputstring);
         }
         else
         {
-          if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+          if (master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type INT\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
         }
         // empty the vector
         value->clear();
@@ -847,27 +847,27 @@ int Input::checkList(std::vector<double> *value, std::string cat, std::string it
   // first, split string on the delimiter
   temp2 = std::strtok(temp1, ",");
 
-  while(temp2 != NULL)
+  while (temp2 != NULL)
   {
     // read in the string part in temp1
     int n = std::sscanf(temp2, " %lf %[^\n] ", &listval, dummy);
 
     // store the contents in the vector, or throw exception
-    if(n == 1)
+    if (n == 1)
     {
       value->push_back(listval);
     }
     else
     {
-      if(std::strcmp(inputstring,""))
+      if (std::strcmp(inputstring,""))
       {
         if (el == "default")
         {
-          if(master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
+          if (master->mpiid == 0) std::printf("ERROR [%s][%s] = \"%s\" is not a list of type DOUBLE\n", cat.c_str(), item.c_str(), inputstring);
         }
         else
         {
-          if(master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
+          if (master->mpiid == 0) std::printf("ERROR [%s][%s][%s] = \"%s\" is not a list of type DOUBLE\n", cat.c_str(), item.c_str(), el.c_str(), inputstring);
         }
         // empty the vector
         value->clear();
@@ -887,24 +887,24 @@ int Input::getProf(double *data, std::string varname, int kmaxin)
 {
   DataMap::const_iterator it = proflist.find(varname);
 
-  if(it != proflist.end())
+  if (it != proflist.end())
   {
     int profsize = proflist[varname].size();
-    if(profsize < kmaxin)
+    if (profsize < kmaxin)
     {
-      if(master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
+      if (master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
       return 1;
     }
-    if(profsize > kmaxin)
-      if(master->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
+    if (profsize > kmaxin)
+      if (master->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for variable \"%s\"\n", profsize, kmaxin, varname.c_str());
 
-    for(int k=0; k<kmaxin; k++)
+    for (int k=0; k<kmaxin; k++)
       data[k] = proflist[varname][k];
   }
   else
   {
-    if(master->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
-    for(int k=0; k<kmaxin; k++)
+    if (master->mpiid == 0) std::printf("WARNING no profile data for variable \"%s\", values set to zero\n", varname.c_str());
+    for (int k=0; k<kmaxin; k++)
       data[k] = 0.;
   }
 
@@ -915,32 +915,32 @@ int Input::getTime(double **data, std::vector<double> *time, std::string varname
 {
   // first get the time list
   DataMap::const_iterator it = timelist.find("t");
-  if(it != timelist.end())
+  if (it != timelist.end())
     *time = it->second;
   else
   {
-    if(master->mpiid == 0) std::printf("ERROR no header \"t\" found\n");
+    if (master->mpiid == 0) std::printf("ERROR no header \"t\" found\n");
     return 1;
   }
 
   // next, find the data
   it = timelist.find(varname);
-  if(it != timelist.end())
+  if (it != timelist.end())
   {
     unsigned int timesize = timelist[varname].size();
-    if(timesize != time->size())
+    if (timesize != time->size())
     {
-      if(master->mpiid == 0) std::printf("ERROR number of values does not match number of time entries\n");
+      if (master->mpiid == 0) std::printf("ERROR number of values does not match number of time entries\n");
       return 1;
     }
     // allocate the data
     *data = new double[timesize];
-    for(unsigned int n=0; n<timesize; ++n)
+    for (unsigned int n=0; n<timesize; ++n)
       (*data)[n] = (it->second)[n];
   }
   else
   {
-    if(master->mpiid == 0) std::printf("ERROR no time data found for variable \"%s\"\n", varname.c_str());
+    if (master->mpiid == 0) std::printf("ERROR no time data found for variable \"%s\"\n", varname.c_str());
     return 1;
   }
 
@@ -957,7 +957,7 @@ int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::st
   TimeMap rawtimemap;
 
   // read the file that contains the time varying data
-  if(readDataFile(&rawdata, varname + ".timeprof", false))
+  if (readDataFile(&rawdata, varname + ".timeprof", false))
     return 1;
 
   // delete the column with the profile data
@@ -968,40 +968,40 @@ int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::st
 
   // first process the headers in order to get the time series
   int timecount = 0;
-  for(DataMap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
+  for (DataMap::const_iterator it=rawdata.begin(); it!=rawdata.end(); ++it)
   {
     // check whether the item name is of type double
     char inputstring[256], temp[256];
     std::strcpy(inputstring, it->first.c_str());
     double timedouble;
     int n = std::sscanf(inputstring, " %lf %[^\n] ", &timedouble, temp);
-    if(n == 1 || (n == 2 && !std::strcmp(".", temp)))
+    if (n == 1 || (n == 2 && !std::strcmp(".", temp)))
       rawtimemap[timedouble] = it->first;
     else
     {
-      if(master->mpiid == 0) std::printf("ERROR header item \"%s\" is not of type DOUBLE\n", it->first.c_str());
+      if (master->mpiid == 0) std::printf("ERROR header item \"%s\" is not of type DOUBLE\n", it->first.c_str());
       return 1;
     }
   }
   
   // now loop over the new time list in the correct order (sort on double rather than string)
-  for(TimeMap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
+  for (TimeMap::const_iterator it=rawtimemap.begin(); it!=rawtimemap.end(); ++it)
   {
     int profsize = rawdata[it->second].size();
-    if(profsize < kmaxin)
+    if (profsize < kmaxin)
     {
-      if(master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
+      if (master->mpiid == 0) std::printf("ERROR only %d of %d levels can be read for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
       return 1;
     }
-    if(profsize > kmaxin)
-      if(master->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
+    if (profsize > kmaxin)
+      if (master->mpiid == 0) std::printf("WARNING %d is larger than the number of grid points %d for header item \"%s\"\n", profsize, kmaxin, varname.c_str());
 
     // all checks passed, save the data now
     // save the time data
     timelist->push_back(it->first);
 
     // save the profile
-    for(int k=0; k<kmaxin; k++)
+    for (int k=0; k<kmaxin; k++)
       (*timeprof)[timecount*kmaxin + k] = rawdata[it->second][k];
 
     ++timecount;
@@ -1012,19 +1012,19 @@ int Input::getTimeProf(double **timeprof, std::vector<double> *timelist, std::st
 
 void Input::printUnused()
 {
-  for(InputMap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
-    for(InputMap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
-      for(InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
+  for (InputMap::iterator it1=inputlist.begin(); it1!=inputlist.end(); ++it1)
+    for (InputMap2d::iterator it2=it1->second.begin(); it2!=it1->second.end(); ++it2)
+      for (InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
       {
-        if(!it3->second.isused)
+        if (!it3->second.isused)
         {
-          if(it3->first == "default")
+          if (it3->first == "default")
           {
-            if(master->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
+            if (master->mpiid == 0) std::printf("WARNING [%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->second.data.c_str());
           }
           else
           {
-            if(master->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
+            if (master->mpiid == 0) std::printf("WARNING [%s][%s][%s] = \"%s\" is not used\n", it1->first.c_str(), it2->first.c_str(), it3->first.c_str(), it3->second.data.c_str());
           }
         }
       }
@@ -1034,12 +1034,12 @@ void Input::flagUsed(std::string cat, std::string item)
 {
   // Loop over the entire map to flag the chosen option as used.
   InputMap::iterator it1 = inputlist.find(cat);
-  if(it1 != inputlist.end())
+  if (it1 != inputlist.end())
   {
     InputMap2d::iterator it2 = it1->second.find(item);
-    if(it2 != it1->second.end())
+    if (it2 != it1->second.end())
     {
-      for(InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
+      for (InputMap1d::iterator it3=it2->second.begin(); it3!=it2->second.end(); ++it3)
         it3->second.isused = true;
     }
   }

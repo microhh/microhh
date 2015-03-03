@@ -39,7 +39,7 @@ ThermoBuoy::ThermoBuoy(Model *modelin, Input *inputin) : Thermo(modelin, inputin
   int nerror = 0;
   nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -51,9 +51,9 @@ ThermoBuoy::~ThermoBuoy()
 void ThermoBuoy::exec()
 {
   // extend later for gravity vector not normal to surface
-  if(grid->swspatialorder== "2")
+  if (grid->swspatialorder== "2")
     calcBuoyancyTend_2nd(fields->wt->data, fields->sp["b"]->data);
-  else if(grid->swspatialorder == "4")
+  else if (grid->swspatialorder == "4")
     calcBuoyancyTend_4th(fields->wt->data, fields->sp["b"]->data);
 }
 #endif
@@ -77,7 +77,7 @@ void ThermoBuoy::getBuoyancySurf(Field3d *bfield)
 
 bool ThermoBuoy::checkThermoField(std::string name)
 {
-  if(name == "b")
+  if (name == "b")
     return false;
   else
     return true;
@@ -95,7 +95,7 @@ void ThermoBuoy::getProgVars(std::vector<std::string> *list)
 
 void ThermoBuoy::calcBuoyancy(double * restrict b, double * restrict bin)
 {
-  for(int n=0; n<grid->ncells; ++n)
+  for (int n=0; n<grid->ncells; ++n)
     b[n] = bin[n];
 }
 
@@ -107,9 +107,9 @@ void ThermoBuoy::calcBuoyancyBot(double * restrict b  , double * restrict bbot,
   kk = grid->ijcells;
   kstart = grid->kstart;
 
-  for(int j=0; j<grid->jcells; ++j)
+  for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-    for(int i=0; i<grid->icells; ++i)
+    for (int i=0; i<grid->icells; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -123,9 +123,9 @@ void ThermoBuoy::calcBuoyancyFluxbot(double * restrict bfluxbot, double * restri
   int ij,jj;
   jj = grid->icells;
 
-  for(int j=0; j<grid->jcells; ++j)
+  for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-    for(int i=0; i<grid->icells; ++i)
+    for (int i=0; i<grid->icells; ++i)
     {
       ij  = i + j*jj;
       bfluxbot[ij] = binfluxbot[ij];
@@ -139,10 +139,10 @@ void ThermoBuoy::calcBuoyancyTend_2nd(double * restrict wt, double * restrict b)
   jj = grid->icells;
   kk = grid->ijcells;
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         wt[ijk] += interp2(b[ijk-kk], b[ijk]);
@@ -158,10 +158,10 @@ void ThermoBuoy::calcBuoyancyTend_4th(double * restrict wt, double * restrict b)
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
         wt[ijk] += interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);

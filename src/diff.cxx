@@ -48,7 +48,7 @@ Diff::Diff(Model *modelin, Input *inputin)
   int nerror = 0;
   nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.4);
  
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -98,19 +98,19 @@ Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std:
   nerror += inputin->getItem(&swdiff, "diff", "swdiff", "", swspatialorder);
   // load the boundary switch as well in order to be able to check whether the surface model is used
   nerror += inputin->getItem(&swboundary, "boundary", "swboundary", "", "default");
-  if(nerror)
+  if (nerror)
     return 0;
 
-  if(swdiff == "0")
+  if (swdiff == "0")
     return new Diff(modelin, inputin);
-  else if(swdiff == "2")
+  else if (swdiff == "2")
     return new Diff2(modelin, inputin);
-  else if(swdiff == "4")
+  else if (swdiff == "4")
     return new Diff4(modelin, inputin);
-  else if(swdiff == "smag2")
+  else if (swdiff == "smag2")
   {
     // the subgrid model requires a surface model because of the MO matching at first level
-    if(swboundary != "surface")
+    if (swboundary != "surface")
     {
       masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
       return 0;

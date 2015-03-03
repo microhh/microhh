@@ -26,7 +26,7 @@
 
 void Master::print_message(const char *format, ...)
 {
-  if(mpiid == 0)
+  if (mpiid == 0)
   {
     va_list args;
     va_start(args, format);
@@ -42,7 +42,7 @@ void Master::print_warning(const char *format, ...)
 
   const char *warningformat = warningstr.c_str();
 
-  if(mpiid == 0)
+  if (mpiid == 0)
   {
     va_list args;
     va_start(args, format);
@@ -58,7 +58,7 @@ void Master::print_error(const char *format, ...)
 
   const char *errorformat = errorstr.c_str();
 
-  if(mpiid == 0)
+  if (mpiid == 0)
   {
     va_list args;
     va_start(args, format);
@@ -72,7 +72,7 @@ bool Master::atWallClockLimit()
   const double wallClockTimeLeft = wallClockEnd - getWallClockTime();
   const double tenMinutes = 10.*60.;
 
-  if(wallClockTimeLeft < tenMinutes)
+  if (wallClockTimeLeft < tenMinutes)
     return true;
   else
     return false;

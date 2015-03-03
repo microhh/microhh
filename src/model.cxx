@@ -95,23 +95,23 @@ Model::Model(Master *masterin, Input *inputin)
     // TODO Make an interface that takes this out of the main loop.
     int nerror = 0;
     nerror += input->getList(&masklist, "stats", "masklist", "");
-    for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+    for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
     {
-      if(*it != "wplus" &&
+      if (*it != "wplus" &&
          *it != "wmin"  &&
          *it != "ql"    &&
          *it != "qlcore")
       {
         master->print_warning("%s is an undefined mask for conditional statistics\n", it->c_str());
       }
-      else if((*it == "ql" || *it == "qlcore") && thermo->getSwitch() != "moist")
+      else if ((*it == "ql" || *it == "qlcore") && thermo->getSwitch() != "moist")
         master->print_warning("%s mask only works for swthermo=moist \n", it->c_str());
       else
         stats->addMask(*it);
     }
 
     // if one or more arguments fails, then crash
-    if(nerror > 0)
+    if (nerror > 0)
       throw 1;
   }
   catch (int &e)
@@ -251,7 +251,7 @@ void Model::exec()
   print_status();
 
   // start the time loop
-  while(true)
+  while (true)
   {
     // Determine the time step.
     set_time_step();
@@ -272,11 +272,11 @@ void Model::exec()
     pres->exec(timeloop->getSubTimeStep());
 
     // Allow only for statistics when not in substep and not directly after restart.
-    if(timeloop->isStatsStep())
+    if (timeloop->isStatsStep())
     {
       #ifdef USECUDA
       // Copy fields from device to host
-      if(stats->doStats() || cross->doCross() || dump->doDump())
+      if (stats->doStats() || cross->doCross() || dump->doDump())
       {
         fields  ->backward_device();
         boundary->backward_device();
@@ -284,21 +284,21 @@ void Model::exec()
       #endif
 
       // Do the statistics.
-      if(stats->doStats())
+      if (stats->doStats())
       {
         // Always process the default mask (the full field)
         stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
         calc_stats("default");
 
         // Work through the potential masks for the statistics.
-        for(std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
+        for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
         {
-          if(*it == "wplus" || *it == "wmin")
+          if (*it == "wplus" || *it == "wmin")
           {
             fields->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
             calc_stats(*it);
           }
-          else if(*it == "ql" || *it == "qlcore")
+          else if (*it == "ql" || *it == "qlcore")
           {
             thermo->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
             calc_stats(*it);
@@ -310,7 +310,7 @@ void Model::exec()
       }
 
       // Save the selected cross sections to disk, cross sections are handled on CPU.
-      if(cross->doCross())
+      if (cross->doCross())
       {
         fields  ->exec_cross();
         thermo  ->exec_cross();
@@ -318,7 +318,7 @@ void Model::exec()
       }
 
       // Save the 3d dumps to disk
-      if(dump->doDump())
+      if (dump->doDump())
       {
         fields->exec_dump();
         thermo->exec_dump();
@@ -326,11 +326,11 @@ void Model::exec()
     }
 
     // Exit the simulation when the runtime has been hit.
-    if(timeloop->isFinished())
+    if (timeloop->isFinished())
       break;
 
     // RUN MODE: In case of run mode do the time stepping.
-    if(master->mode == "run")
+    if (master->mode == "run")
     {
       // Integrate in time.
       timeloop->exec();
@@ -339,7 +339,7 @@ void Model::exec()
       timeloop->stepTime();
 
       // Save the data for restarts.
-      if(timeloop->doSave())
+      if (timeloop->doSave())
       {
         #ifdef USECUDA
         fields  ->backward_device();
@@ -353,13 +353,13 @@ void Model::exec()
     }
 
     // POST PROCESS MODE: In case of post-process mode, load a new set of files.
-    else if(master->mode == "post")
+    else if (master->mode == "post")
     {
       // Step to the next time step.
       timeloop->stepPostProcTime();
 
       // In case the simulation is done, step out of the loop.
-      if(timeloop->isFinished())
+      if (timeloop->isFinished())
         break;
 
       // Load the data from disk.
@@ -395,7 +395,7 @@ void Model::exec()
 void Model::set_time_step()
 {
   // Only set the time step if the model is not in a substep.
-  if(timeloop->inSubStep())
+  if (timeloop->inSubStep())
     return;
 
   // Retrieve the maximum allowed time step per class.
@@ -433,7 +433,7 @@ void Model::print_status()
   static FILE *dnsout = NULL;
 
   // Write output file header on the main process and set the time of writing.
-  if(master->mpiid == 0 && dnsout == NULL)
+  if (master->mpiid == 0 && dnsout == NULL)
   {
     std::string outputname = master->simname + ".out";
     dnsout = std::fopen(outputname.c_str(), "a");
@@ -444,7 +444,7 @@ void Model::print_status()
   }
 
   // Retrieve all the status information.
-  if(timeloop->doCheck())
+  if (timeloop->doCheck())
   {
     // Get status variables.
     iter = timeloop->get_iteration();
@@ -463,15 +463,15 @@ void Model::print_status()
     start   = end;
 
     // Write the status information to disk.
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
       std::fprintf(dnsout, "%8d %11.3E %10.4f %11.3E %8.4f %8.4f %11.3E %16.8E %16.8E %16.8E\n",
         iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
   }
 
-  if(timeloop->isFinished())
+  if (timeloop->isFinished())
   {
     // Close the output file when the run is done.
-    if(master->mpiid == 0)
+    if (master->mpiid == 0)
       std::fclose(dnsout);
   }
 }

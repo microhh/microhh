@@ -86,24 +86,24 @@ Grid::Grid(Model *modelin, Input *inputin)
 
   nerror += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
 
-  if(nerror)
+  if (nerror)
     throw 1;
 
-  if(!(swspatialorder == "2" || swspatialorder == "4"))
+  if (!(swspatialorder == "2" || swspatialorder == "4"))
   {
     master->print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
     throw 1;
   }
  
   // 2nd order scheme requires only 1 ghost cell
-  if(swspatialorder == "2")
+  if (swspatialorder == "2")
   {
     igc = 1;
     jgc = 1;
     kgc = 1;
   }
   // 4th order scheme requires 3 ghost cells
-  else if(swspatialorder == "4")
+  else if (swspatialorder == "4")
   {
     igc = 3;
     jgc = 3;
@@ -116,7 +116,7 @@ Grid::Grid(Model *modelin, Input *inputin)
  */
 Grid::~Grid()
 {
-  if(fftwplan)
+  if (fftwplan)
   {
     fftw_destroy_plan(iplanf);
     fftw_destroy_plan(iplanb);
@@ -158,28 +158,28 @@ Grid::~Grid()
 void Grid::init()
 {
   // Check whether the grid fits the processor configuration.
-  if(itot % master->npx != 0)
+  if (itot % master->npx != 0)
   {
     master->print_error("itot = %d is not a multiple of npx = %d\n", itot, master->npx);
     throw 1;
   }
-  if(itot % master->npy != 0)
+  if (itot % master->npy != 0)
   {
     master->print_error("itot = %d is not a multiple of npy = %d\n", itot, master->npy);
     throw 1;
   }
   // Check this one only when npy > 1, since the transpose in that direction only happens then.
-  if(jtot % master->npx != 0)
+  if (jtot % master->npx != 0)
   {
     master->print_error("jtot = %d is not a multiple of npx = %d\n", jtot, master->npx);
     throw 1;
   }
-  if(jtot % master->npy != 0)
+  if (jtot % master->npy != 0)
   {
     master->print_error("jtot = %d is not a multiple of npy = %d\n", jtot, master->npy);
     throw 1;
   }
-  if(ktot % master->npx != 0)
+  if (ktot % master->npx != 0)
   {
     master->print_error("ERROR ktot = %d is not a multiple of npx = %d\n", ktot, master->npx);
     throw 1;
@@ -247,10 +247,10 @@ void Grid::init()
 void Grid::create(Input *inputin)
 {
   // get the grid coordinates from the input
-  if(inputin->getProf(&z[kstart], "z", kmax))
+  if (inputin->getProf(&z[kstart], "z", kmax))
     throw 1;
 
-  if(z[kend-1] > zsize)
+  if (z[kend-1] > zsize)
   {
     master->print_error("Highest grid point is above prescribed zsize\n");
     throw 1;
@@ -279,32 +279,32 @@ void Grid::calculate()
   double yoff = master->mpicoordy * ysize / master->npy;
 
   // calculate the x and y coordinates
-  for(i=0; i<icells; ++i)
+  for (i=0; i<icells; ++i)
   {
     x [i] = 0.5*dx + (i-igc)*dx + xoff;
     xh[i] = (i-igc)*dx + xoff;
   }
 
-  for(j=0; j<jcells; ++j)
+  for (j=0; j<jcells; ++j)
   {
     y [j] = 0.5*dy + (j-jgc)*dy + yoff;
     yh[j] = (j-jgc)*dy + yoff;
   }
 
   // the calculation of ghost cells and flux levels has to go according to numerical scheme
-  if(swspatialorder == "2")
+  if (swspatialorder == "2")
   {
     z[kstart-1] = -z[kstart];
     z[kend]     = 2.*zsize - z[kend-1];
 
-    for(k=kstart+1; k<kend; ++k)
+    for (k=kstart+1; k<kend; ++k)
       zh[k] = 0.5*(z[k-1]+z[k]);
     zh[kstart] = 0.;
     zh[kend]   = zsize;
 
     // calculate the half levels according to the numerical scheme
     // compute the height of the grid cells
-    for(k=1; k<kcells; ++k)
+    for (k=1; k<kcells; ++k)
     {
       dzh [k] = z[k] - z[k-1];
       dzhi[k] = 1./dzh[k];
@@ -313,7 +313,7 @@ void Grid::calculate()
     dzhi[kstart-1] = dzhi[kstart+1];
 
     // compute the height of the grid cells
-    for(k=1; k<kcells-1; ++k)
+    for (k=1; k<kcells-1; ++k)
     {
       dz [k] = zh[k+1] - zh[k];
       dzi[k] = 1./dz[k];
@@ -326,7 +326,7 @@ void Grid::calculate()
     // do not calculate 4th order gradients for 2nd order
   }
 
-  if(swspatialorder == "4")
+  if (swspatialorder == "4")
   {
     using namespace fd::o4;
 
@@ -342,7 +342,7 @@ void Grid::calculate()
     z[kend+2  ] = constants::dhuge;
 
     zh[kstart] = 0.;
-    for(k=kstart+1; k<kend; ++k)
+    for (k=kstart+1; k<kend; ++k)
       zh[k] = ci0*z[k-2] + ci1*z[k-1] + ci2*z[k] + ci3*z[k+1];
     zh[kend] = zsize;
 
@@ -351,7 +351,7 @@ void Grid::calculate()
 
     // calculate the half levels according to the numerical scheme
     // compute the height of the grid cells
-    for(k=1; k<kcells; ++k)
+    for (k=1; k<kcells; ++k)
     {
       dzh [k] = z[k] - z[k-1];
       dzhi[k] = 1./dzh[k];
@@ -360,7 +360,7 @@ void Grid::calculate()
     dzhi[kstart-3] = dzhi[kstart+3];
 
     // compute the height of the grid cells
-    for(k=1; k<kcells-1; ++k)
+    for (k=1; k<kcells-1; ++k)
     {
       dz [k] = zh[k+1] - zh[k];
       dzi[k] = 1./dz[k];
@@ -371,7 +371,7 @@ void Grid::calculate()
     dzi[kend+2] = dzi[kend-3];
 
     // calculate the fourth order gradients
-    for(k=kstart; k<kend; ++k)
+    for (k=kstart; k<kend; ++k)
     {
       dzi4 [k] = 1./(cg0*zh[k-1] + cg1*zh[k  ] + cg2*zh[k+1] + cg3*zh[k+2]);
       dzhi4[k] = 1./(cg0*z [k-2] + cg1*z [k-1] + cg2*z [k  ] + cg3*z [k+1]);
@@ -431,10 +431,10 @@ void Grid::interpolate_2nd(double * restrict out, double * restrict in, const in
 
   // interpolate the field
   // \TODO add the vertical component
-  for(int k=0; k<kcells; ++k)
-    for(int j=jstart; j<jend; ++j)
+  for (int k=0; k<kcells; ++k)
+    for (int j=jstart; j<jend; ++j)
 #pragma ivdep
-      for(int i=istart; i<iend; ++i)
+      for (int i=istart; i<iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
@@ -468,10 +468,10 @@ void Grid::interpolate_4th(double * restrict out, double * restrict in, const in
   jjh2 = 2*(locin[1]-locout[1])*jj;
 
   // \TODO add the vertical component
-  for(int k=0; k<kcells; ++k)
-    for(int j=jstart; j<jend; ++j)
+  for (int k=0; k<kcells; ++k)
+    for (int j=jstart; j<jend; ++j)
 #pragma ivdep
-      for(int i=istart; i<iend; ++i)
+      for (int i=istart; i<iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         out[ijk] = ci0*(ci0*in[ijk-iih1-jjh1] + ci1*in[ijk-jjh1] + ci2*in[ijk+iih1-jjh1] + ci3*in[ijk+iih2-jjh1])
@@ -496,12 +496,12 @@ void Grid::calcMean(double * restrict prof, const double * restrict data, const 
   jj = icells;
   kk = ijcells;
   
-  for(int k=0; k<krange; ++k)
+  for (int k=0; k<krange; ++k)
   {
     prof[k] = 0.;
-    for(int j=jstart; j<jend; ++j)
+    for (int j=jstart; j<jend; ++j)
 #pragma ivdep
-      for(int i=istart; i<iend; ++i)
+      for (int i=istart; i<iend; ++i)
       {
         ijk  = i + j*jj + k*kk;
         prof[k] += data[ijk];
@@ -510,7 +510,7 @@ void Grid::calcMean(double * restrict prof, const double * restrict data, const 
 
   double n = imax*jmax;
 
-  for(int k=0; k<krange; ++k)
+  for (int k=0; k<krange; ++k)
     prof[k] /= n;
 
   getProf(prof, krange);
@@ -532,10 +532,10 @@ void Grid::interpolatez_4th(double * restrict out, double * restrict in, int loc
   khlf = locz*kk1;
 
   // interpolate in x, add aditional level when interpolation goes to half levels to have values at wall
-  for(int k=kstart; k<kend+(1-locz); ++k)
-    for(int j=jstart; j<jend; ++j)
+  for (int k=kstart; k<kend+(1-locz); ++k)
+    for (int j=jstart; j<jend; ++j)
 #pragma ivdep
-      for(int i=istart; i<iend; ++i)
+      for (int i=istart; i<iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         out[ijk] = ci0*in[ijk-kk2+khlf] + ci1*in[ijk-kk1+khlf] + ci2*in[ijk+khlf] + ci3*in[ijk+kk1+khlf];

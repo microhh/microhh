@@ -78,7 +78,7 @@ void Boundary_surface::create(Input *inputin)
     process_time_dep(inputin);
 
     // add variables to the statistics
-    if(stats->getSwitch() == "1")
+    if (stats->getSwitch() == "1")
     {
         stats->addTimeSeries("ustar", "Surface friction velocity", "m s-1");
         stats->addTimeSeries("obuk", "Obukhov length", "m");
@@ -98,27 +98,27 @@ void Boundary_surface::init(Input *inputin)
     nerror += inputin->getList(&crosslist , "boundary", "crosslist" , "");
 
     // crash in case fixed gradient is prescribed
-    if(mbcbot == Neumann_type)
+    if (mbcbot == Neumann_type)
     {
         master->print_error("Neumann bc is not supported in surface model\n");
         ++nerror;
     }
     // read the ustar value only if fixed fluxes are prescribed
-    else if(mbcbot == Ustar_type)
+    else if (mbcbot == Ustar_type)
         nerror += inputin->getItem(&ustarin, "boundary", "ustar", "");
 
     // process the scalars
-    for(BcMap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
+    for (BcMap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
     {
         // crash in case fixed gradient is prescribed
-        if(it->second->bcbot == Neumann_type)
+        if (it->second->bcbot == Neumann_type)
         {
             master->print_error("fixed gradient bc is not supported in surface model\n");
             ++nerror;
         }
 
         // crash in case of fixed momentum flux and dirichlet bc for scalar
-        if(it->second->bcbot == Dirichlet_type && mbcbot == Ustar_type)
+        if (it->second->bcbot == Dirichlet_type && mbcbot == Ustar_type)
         {
             master->print_error("fixed Ustar bc in combination with Dirichlet bc for scalars is not supported\n");
             ++nerror;
@@ -132,12 +132,12 @@ void Boundary_surface::init(Input *inputin)
     std::vector<std::string>::const_iterator it = thermolist.begin();
 
     // save the bc of the first thermo field in case thermo is enabled
-    if(it != thermolist.end())
+    if (it != thermolist.end())
         thermobc = sbc[*it]->bcbot;
 
-    while(it != thermolist.end())
+    while (it != thermolist.end())
     {
-        if(sbc[*it]->bcbot != thermobc)
+        if (sbc[*it]->bcbot != thermobc)
         {
             ++nerror;
             master->print_error("all thermo variables need to have the same bc type\n");
@@ -145,7 +145,7 @@ void Boundary_surface::init(Input *inputin)
         ++it;
     }
 
-    if(nerror)
+    if (nerror)
         throw 1;
 
     // 2. Allocate the fields
@@ -158,9 +158,9 @@ void Boundary_surface::init(Input *inputin)
     const int jj = grid->icells;
 
     // initialize the obukhov length on a small number
-    for(int j=0; j<grid->jcells; ++j)
+    for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-        for(int i=0; i<grid->icells; ++i)
+        for (int i=0; i<grid->icells; ++i)
         {
             const int ij = i + j*jj;
             obuk[ij]  = constants::dsmall;
@@ -176,9 +176,9 @@ void Boundary_surface::init(Input *inputin)
 
     // Check input list of cross variables (crosslist)
     std::vector<std::string>::iterator it2=crosslist_global->begin();
-    while(it2 != crosslist_global->end())
+    while (it2 != crosslist_global->end())
     {
-        if(std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
+        if (std::count(allowedcrossvars.begin(),allowedcrossvars.end(),*it2))
         {
             // Remove variable from global list, put in local list
             crosslist.push_back(*it2);
@@ -193,15 +193,15 @@ void Boundary_surface::exec_cross()
 {
     int nerror = 0;
 
-    for(std::vector<std::string>::const_iterator it=crosslist.begin(); it<crosslist.end(); ++it)
+    for (std::vector<std::string>::const_iterator it=crosslist.begin(); it<crosslist.end(); ++it)
     {
-        if(*it == "ustar")
+        if (*it == "ustar")
             nerror += model->cross->crossPlane(ustar, fields->atmp["tmp1"]->data, "ustar");
-        else if(*it == "obuk")
+        else if (*it == "obuk")
             nerror += model->cross->crossPlane(obuk,  fields->atmp["tmp1"]->data, "obuk");
     }  
 
-    if(nerror)
+    if (nerror)
         throw 1;
 }
 
@@ -223,23 +223,23 @@ void Boundary_surface::set_values()
     set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, no_velocity, fields->visc, grid->utrans);
     set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, no_velocity, fields->visc, grid->vtrans);
 
-    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
         set_bc(it->second->databot, it->second->datagradbot, it->second->datafluxbot, sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, no_offset);
         set_bc(it->second->datatop, it->second->datagradtop, it->second->datafluxtop, sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, no_offset);
     }
 
     // in case the momentum has a fixed ustar, set the value to that of the input
-    if(mbcbot == Ustar_type)
+    if (mbcbot == Ustar_type)
     {
         const int jj = grid->icells;
 
         set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Dirichlet_type, no_velocity, fields->visc, grid->utrans);
         set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Dirichlet_type, no_velocity, fields->visc, grid->vtrans);
 
-        for(int j=0; j<grid->jcells; ++j)
+        for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-            for(int i=0; i<grid->icells; ++i)
+            for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
                 // Limit ustar at 1e-4 to avoid zero divisions.
@@ -290,13 +290,13 @@ void Boundary_surface::set_values()
     delete[] zL_tmp;
 
     // Calculate the evaluation function.
-    if(mbcbot == Dirichlet_type && thermobc == Flux_type)
+    if (mbcbot == Dirichlet_type && thermobc == Flux_type)
     {
         const double zsl = grid->z[grid->kstart];
         for (int n=0; n<nzL; ++n)
             f_sl[n] = zL_sl[n] * std::pow(most::fm(zsl, z0m, zsl/zL_sl[n]), 3);
     }
-    else if(mbcbot == Dirichlet_type && thermobc == Dirichlet_type)
+    else if (mbcbot == Dirichlet_type && thermobc == Dirichlet_type)
     {
         const double zsl = grid->z[grid->kstart];
         for (int n=0; n<nzL; ++n)
@@ -308,7 +308,7 @@ void Boundary_surface::set_values()
 void Boundary_surface::update_bcs()
 {
     // Start with retrieving the stability information.
-    if(model->thermo->getSwitch() == "0")
+    if (model->thermo->getSwitch() == "0")
     {
         stability_neutral(ustar, obuk,
                 fields->u->data, fields->v->data,
@@ -331,7 +331,7 @@ void Boundary_surface::update_bcs()
             fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
             grid->z[grid->kstart], mbcbot);
 
-    for(FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
         surfs(ustar, obuk, it->second->data,
                 it->second->databot, it->second->datagradbot, it->second->datafluxbot,
@@ -356,9 +356,9 @@ void Boundary_surface::stability(double* restrict ustar, double* restrict obuk, 
     //double utot, ubottot, du2;
     const double minval = 1.e-1;
     // first, interpolate the wind to the scalar location
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; ++i)
+        for (int i=grid->istart; i<grid->iend; ++i)
         {
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + kstart*kk;
@@ -373,33 +373,33 @@ void Boundary_surface::stability(double* restrict ustar, double* restrict obuk, 
 
     // calculate Obukhov length
     // case 1: fixed buoyancy flux and fixed ustar
-    if(mbcbot == Ustar_type && thermobc == Flux_type)
+    if (mbcbot == Ustar_type && thermobc == Flux_type)
     {
-        for(int j=0; j<grid->jcells; ++j)
+        for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-            for(int i=0; i<grid->icells; ++i)
+            for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
                 obuk[ij] = -std::pow(ustar[ij], 3) / (constants::kappa*bfluxbot[ij]);
             }
     }
     // case 2: fixed buoyancy surface value and free ustar
-    else if(mbcbot == Dirichlet_type && thermobc == Flux_type)
+    else if (mbcbot == Dirichlet_type && thermobc == Flux_type)
     {
-        for(int j=0; j<grid->jcells; ++j)
+        for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-            for(int i=0; i<grid->icells; ++i)
+            for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
                 obuk [ij] = calc_obuk_noslip_flux(zL_sl, f_sl, nobuk[ij], dutot[ij], bfluxbot[ij], z[kstart]);
                 ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
             }
     }
-    else if(mbcbot == Dirichlet_type && thermobc == Dirichlet_type)
+    else if (mbcbot == Dirichlet_type && thermobc == Dirichlet_type)
     {
-        for(int j=0; j<grid->jcells; ++j)
+        for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-            for(int i=0; i<grid->icells; ++i)
+            for (int i=0; i<grid->icells; ++i)
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
@@ -426,9 +426,9 @@ void Boundary_surface::stability_neutral(double* restrict ustar, double* restric
     const double minval = 1.e-1;
 
     // first, interpolate the wind to the scalar location
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-        for(int i=grid->istart; i<grid->iend; ++i)
+        for (int i=grid->istart; i<grid->iend; ++i)
         {
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + kstart*kk;
@@ -443,33 +443,33 @@ void Boundary_surface::stability_neutral(double* restrict ustar, double* restric
 
     // set the Obukhov length to a very large negative number
     // case 1: fixed buoyancy flux and fixed ustar
-    if(mbcbot == Ustar_type && thermobc == Flux_type)
+    if (mbcbot == Ustar_type && thermobc == Flux_type)
     {
-        for(int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; ++i)
+            for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ij = i + j*jj;
                 obuk[ij] = -constants::dbig;
             }
     }
     // case 2: fixed buoyancy surface value and free ustar
-    else if(mbcbot == Dirichlet_type && thermobc == Flux_type)
+    else if (mbcbot == Dirichlet_type && thermobc == Flux_type)
     {
-        for(int j=0; j<grid->jcells; ++j)
+        for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-            for(int i=0; i<grid->icells; ++i)
+            for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
                 obuk [ij] = -constants::dbig;
                 ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
             }
     }
-    else if(mbcbot == Dirichlet_type && thermobc == Dirichlet_type)
+    else if (mbcbot == Dirichlet_type && thermobc == Dirichlet_type)
     {
-        for(int j=0; j<grid->jcells; ++j)
+        for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-            for(int i=0; i<grid->icells; ++i)
+            for (int i=0; i<grid->icells; ++i)
             {
                 const int ij  = i + j*jj;
                 obuk [ij] = -constants::dbig;
@@ -490,12 +490,12 @@ void Boundary_surface::surfm(double* restrict ustar, double* restrict obuk,
     const int kstart = grid->kstart;
 
     // the surface value is known, calculate the flux and gradient
-    if(bcbot == Dirichlet_type)
+    if (bcbot == Dirichlet_type)
     {
         // first calculate the surface value
-        for(int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; ++i)
+            for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
@@ -509,15 +509,15 @@ void Boundary_surface::surfm(double* restrict ustar, double* restrict obuk,
         grid->boundaryCyclic2d(vfluxbot);
     }
     // the flux is known, calculate the surface value and gradient
-    else if(bcbot == Ustar_type)
+    else if (bcbot == Ustar_type)
     {
         // first redistribute ustar over the two flux components
         double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
         const double minval = 1.e-2;
 
-        for(int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-            for(int i=grid->istart; i<grid->iend; ++i)
+            for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
@@ -543,9 +543,9 @@ void Boundary_surface::surfm(double* restrict ustar, double* restrict obuk,
         // to be checked more carefully.
         /*
         // calculate the surface values
-        for(int j=grid->jstart; j<grid->jend; ++j)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-for(int i=grid->istart; i<grid->iend; ++i)
+for (int i=grid->istart; i<grid->iend; ++i)
 {
 ij  = i + j*jj;
 ijk = i + j*jj + kstart*kk;
@@ -559,9 +559,9 @@ ijk = i + j*jj + kstart*kk;
         */
     }
 
-    for(int j=0; j<grid->jcells; ++j)
+    for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-        for(int i=0; i<grid->icells; ++i)
+        for (int i=0; i<grid->icells; ++i)
         {
             const int ij  = i + j*jj;
             const int ijk = i + j*jj + kstart*kk;
@@ -583,11 +583,11 @@ void Boundary_surface::surfs(double* restrict ustar, double* restrict obuk, doub
     const int kstart = grid->kstart;
 
     // the surface value is known, calculate the flux and gradient
-    if(bcbot == Dirichlet_type)
+    if (bcbot == Dirichlet_type)
     {
-        for(int j=0; j<grid->jcells; ++j)
+        for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-            for(int i=0; i<grid->icells; ++i)
+            for (int i=0; i<grid->icells; ++i)
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;
@@ -598,12 +598,12 @@ void Boundary_surface::surfs(double* restrict ustar, double* restrict obuk, doub
                 vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
             }
     }
-    else if(bcbot == Flux_type)
+    else if (bcbot == Flux_type)
     {
         // the flux is known, calculate the surface value and gradient
-        for(int j=0; j<grid->jcells; ++j)
+        for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-            for(int i=0; i<grid->icells; ++i)
+            for (int i=0; i<grid->icells; ++i)
             {
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + kstart*kk;

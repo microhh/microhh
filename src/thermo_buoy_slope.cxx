@@ -44,13 +44,13 @@ ThermoBuoySlope::ThermoBuoySlope(Model *modelin, Input *inputin) : Thermo(modeli
   nerror += inputin->getItem(&n2   , "thermo", "n2"   , "");
   nerror += inputin->getItem(&fields->sp["b"]->visc, "fields", "svisc", "b");
 
-  if(grid->swspatialorder == "2")
+  if (grid->swspatialorder == "2")
   {
     master->print_error("swthermo = buoy_slope is incompatible with swspatialorder = 2\n");
     ++nerror;
   }
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -61,12 +61,12 @@ ThermoBuoySlope::~ThermoBuoySlope()
 #ifndef USECUDA
 void ThermoBuoySlope::exec()
 {
-  if(grid->swspatialorder == "2")
+  if (grid->swspatialorder == "2")
   {
     master->print_error("Second order not implemented for slope flow thermodynamics\n");
     throw 1;
   }
-  else if(grid->swspatialorder == "4")
+  else if (grid->swspatialorder == "4")
   {
     calcBuoyancyTend_u_4th(fields->ut->data, fields->sp["b"]->data);
     calcBuoyancyTend_w_4th(fields->wt->data, fields->sp["b"]->data);
@@ -77,7 +77,7 @@ void ThermoBuoySlope::exec()
 
 bool ThermoBuoySlope::checkThermoField(std::string name)
 {
-  if(name == "b")
+  if (name == "b")
     return false;
   else
     return true;
@@ -110,10 +110,10 @@ void ThermoBuoySlope::calcBuoyancy(double * restrict b, double * restrict s)
   const int jj = grid->icells;
   const int kk = grid->ijcells;
 
-  for(int k=0; k<grid->kcells; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=0; k<grid->kcells; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         const int ijk = i + j*jj + k*kk;
         b[ijk] = s[ijk];
@@ -128,9 +128,9 @@ void ThermoBuoySlope::calcBuoyancyBot(double * restrict b, double * restrict bbo
   kk = grid->ijcells;
   kstart = grid->kstart;
 
-  for(int j=0; j<grid->jcells; ++j)
+  for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-    for(int i=0; i<grid->icells; ++i)
+    for (int i=0; i<grid->icells; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -143,9 +143,9 @@ void ThermoBuoySlope::calcBuoyancyFluxbot(double * restrict bfluxbot, double * r
 {
   const int jj = grid->icells;
 
-  for(int j=0; j<grid->jcells; ++j)
+  for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-    for(int i=0; i<grid->icells; ++i)
+    for (int i=0; i<grid->icells; ++i)
     {
       const int ij  = i + j*jj;
       bfluxbot[ij] = sfluxbot[ij];
@@ -163,10 +163,10 @@ void ThermoBuoySlope::calcBuoyancyTend_u_4th(double * restrict ut, double * rest
 
   const double sinalpha = std::sin(this->alpha);
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         ut[ijk] += sinalpha * interp4(b[ijk-ii2], b[ijk-ii1], b[ijk], b[ijk+ii1]);
@@ -184,10 +184,10 @@ void ThermoBuoySlope::calcBuoyancyTend_w_4th(double * restrict wt, double * rest
 
   const double cosalpha = std::cos(this->alpha);
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
         wt[ijk] += cosalpha * interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
@@ -209,10 +209,10 @@ void ThermoBuoySlope::calcBuoyancyTend_b_4th(double * restrict bt, double * rest
   const double n2 = this->n2;
   const double utrans = grid->utrans;
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
         bt[ijk] -= n2 * ( sinalpha * (interp4(u[ijk-ii1], u[ijk], u[ijk+ii1], u[ijk+ii2]) + utrans)

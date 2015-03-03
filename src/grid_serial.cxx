@@ -44,23 +44,23 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
   jj = icells;
   kk = icells*jcells;
 
-  if(edge == EastWestEdge || edge == BothEdges)
+  if (edge == EastWestEdge || edge == BothEdges)
   {
     // first, east west boundaries
-    for(int k=0; k<kcells; k++)
-      for(int j=0; j<jcells; j++)
+    for (int k=0; k<kcells; k++)
+      for (int j=0; j<jcells; j++)
   #pragma ivdep
-        for(int i=0; i<igc; i++)
+        for (int i=0; i<igc; i++)
         {
           ijk0 = i          + j*jj + k*kk;
           ijk1 = iend-igc+i + j*jj + k*kk;
           data[ijk0] = data[ijk1];
         }
 
-    for(int k=0; k<kcells; k++)
-      for(int j=0; j<jcells; j++)
+    for (int k=0; k<kcells; k++)
+      for (int j=0; j<jcells; j++)
 #pragma ivdep
-        for(int i=0; i<igc; i++)
+        for (int i=0; i<igc; i++)
         {
           ijk0 = i+iend   + j*jj + k*kk;
           ijk1 = i+istart + j*jj + k*kk;
@@ -68,26 +68,26 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
         }
   }
 
-  if(edge == NorthSouthEdge || edge == BothEdges)
+  if (edge == NorthSouthEdge || edge == BothEdges)
   {
     // if the run is 3D, apply the BCs
-    if(jtot > 1)
+    if (jtot > 1)
     {
       // second, send and receive the ghost cells in the north-south direction
-      for(int k=0; k<kcells; k++)
-        for(int j=0; j<jgc; j++)
+      for (int k=0; k<kcells; k++)
+        for (int j=0; j<jgc; j++)
   #pragma ivdep
-          for(int i=0; i<icells; i++)
+          for (int i=0; i<icells; i++)
           {
             ijk0 = i + j           *jj + k*kk;
             ijk1 = i + (jend-jgc+j)*jj + k*kk;
             data[ijk0] = data[ijk1];
           }
 
-      for(int k=0; k<kcells; k++)
-        for(int j=0; j<jgc; j++)
+      for (int k=0; k<kcells; k++)
+        for (int j=0; j<jgc; j++)
   #pragma ivdep
-          for(int i=0; i<icells; i++)
+          for (int i=0; i<icells; i++)
           {
             ijk0 = i + (j+jend  )*jj + k*kk;
             ijk1 = i + (j+jstart)*jj + k*kk;
@@ -100,10 +100,10 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
       // 2d essential variables
       int ijkref,ijknorth,ijksouth;
 
-      for(int k=kstart; k<kend; k++)
-        for(int j=0; j<jgc; j++)
+      for (int k=kstart; k<kend; k++)
+        for (int j=0; j<jgc; j++)
 #pragma ivdep
-          for(int i=0; i<icells; i++)
+          for (int i=0; i<icells; i++)
           {
             ijkref   = i + jstart*jj   + k*kk;
             ijknorth = i + j*jj        + k*kk;
@@ -122,18 +122,18 @@ void Grid::boundaryCyclic2d(double * restrict data)
   jj = icells;
 
   // first, east west boundaries
-  for(int j=0; j<jcells; j++)
+  for (int j=0; j<jcells; j++)
 #pragma ivdep
-    for(int i=0; i<igc; i++)
+    for (int i=0; i<igc; i++)
     {
       ij0 = i          + j*jj;
       ij1 = iend-igc+i + j*jj;
       data[ij0] = data[ij1];
     }
 
-  for(int j=0; j<jcells; j++)
+  for (int j=0; j<jcells; j++)
 #pragma ivdep
-    for(int i=0; i<igc; i++)
+    for (int i=0; i<igc; i++)
     {
       ij0 = i+iend   + j*jj;
       ij1 = i+istart + j*jj;
@@ -141,21 +141,21 @@ void Grid::boundaryCyclic2d(double * restrict data)
     }
 
   // if the run is 3D, apply the BCs
-  if(jtot > 1)
+  if (jtot > 1)
   {
     // second, send and receive the ghost cells in the north-south direction
-    for(int j=0; j<jgc; j++)
+    for (int j=0; j<jgc; j++)
 #pragma ivdep
-      for(int i=0; i<icells; i++)
+      for (int i=0; i<icells; i++)
       {
         ij0 = i + j           *jj;
         ij1 = i + (jend-jgc+j)*jj;
         data[ij0] = data[ij1];
       }
 
-    for(int j=0; j<jgc; j++)
+    for (int j=0; j<jgc; j++)
 #pragma ivdep
-      for(int i=0; i<icells; i++)
+      for (int i=0; i<icells; i++)
       {
         ij0 = i + (j+jend  )*jj;
         ij1 = i + (j+jstart)*jj;
@@ -168,9 +168,9 @@ void Grid::boundaryCyclic2d(double * restrict data)
     // 2d essential variables
     int ijref,ijnorth,ijsouth;
 
-    for(int j=0; j<jgc; j++)
+    for (int j=0; j<jgc; j++)
 #pragma ivdep
-      for(int i=0; i<icells; i++)
+      for (int i=0; i<icells; i++)
       {
         ijref   = i + jstart*jj;
         ijnorth = i + j*jj;
@@ -187,10 +187,10 @@ void Grid::transposezx(double * restrict ar, double * restrict as)
   jj = imax;
   kk = imax*jmax;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
+  for (int k=0; k<kmax; k++)
+    for (int j=0; j<jmax; j++)
 #pragma ivdep
-      for(int i=0; i<imax; i++)
+      for (int i=0; i<imax; i++)
       {
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
@@ -203,10 +203,10 @@ void Grid::transposexz(double * restrict ar, double * restrict as)
   jj = imax;
   kk = imax*jmax;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
+  for (int k=0; k<kmax; k++)
+    for (int j=0; j<jmax; j++)
 #pragma ivdep
-      for(int i=0; i<imax; i++)
+      for (int i=0; i<imax; i++)
       {
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
@@ -219,10 +219,10 @@ void Grid::transposexy(double * restrict ar, double * restrict as)
   jj = imax;
   kk = imax*jmax;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
+  for (int k=0; k<kmax; k++)
+    for (int j=0; j<jmax; j++)
 #pragma ivdep
-      for(int i=0; i<imax; i++)
+      for (int i=0; i<imax; i++)
       {
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
@@ -235,10 +235,10 @@ void Grid::transposeyx(double * restrict ar, double * restrict as)
   jj = imax;
   kk = imax*jmax;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
+  for (int k=0; k<kmax; k++)
+    for (int j=0; j<jmax; j++)
 #pragma ivdep
-      for(int i=0; i<imax; i++)
+      for (int i=0; i<imax; i++)
       {
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
@@ -251,10 +251,10 @@ void Grid::transposeyz(double * restrict ar, double * restrict as)
   jj = imax;
   kk = imax*jmax;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
+  for (int k=0; k<kmax; k++)
+    for (int j=0; j<jmax; j++)
 #pragma ivdep
-      for(int i=0; i<imax; i++)
+      for (int i=0; i<imax; i++)
       {
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
@@ -267,10 +267,10 @@ void Grid::transposezy(double * restrict ar, double * restrict as)
   jj = imax;
   kk = imax*jmax;
 
-  for(int k=0; k<kmax; k++)
-    for(int j=0; j<jmax; j++)
+  for (int k=0; k<kmax; k++)
+    for (int j=0; j<jmax; j++)
 #pragma ivdep
-      for(int i=0; i<imax; i++)
+      for (int i=0; i<imax; i++)
       {
         ijk = i + j*jj + k*kk;
         ar[ijk] = as[ijk];
@@ -299,7 +299,7 @@ void Grid::save()
   pFile = fopen(filename, "wbx");
   master->print_message("Saving \"%s\" ... ", filename);
 
-  if(pFile == NULL)
+  if (pFile == NULL)
   {
     master->print_message("FAILED\n");
     throw 1;
@@ -337,7 +337,7 @@ void Grid::save()
 
   fftwplan = true;
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
@@ -345,7 +345,7 @@ void Grid::save()
     master->print_message("Saving \"%s\" ... ", filename);
 
     int n = fftw_export_wisdom_to_filename(filename);
-    if(n == 0)
+    if (n == 0)
     {
       master->print_message("FAILED\n");
       throw 1;
@@ -364,7 +364,7 @@ void Grid::load()
   pFile = fopen(filename, "rb");
   master->print_message("Loading \"%s\" ... ", filename);
 
-  if(pFile == NULL)
+  if (pFile == NULL)
   {
     master->print_message("FAILED\n");
     throw 1;
@@ -389,7 +389,7 @@ void Grid::load()
   master->print_message("Loading \"%s\" ... ", filename);
 
   int n = fftw_import_wisdom_from_filename(filename);
-  if(n == 0)
+  if (n == 0)
   {
     master->print_message("FAILED\n");
     throw 1;
@@ -426,7 +426,7 @@ int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * r
   FILE *pFile;
   pFile = fopen(filename, "wbx");
 
-  if(pFile == NULL)
+  if (pFile == NULL)
     return 1;
 
   int ijk,jj,kk;
@@ -435,17 +435,17 @@ int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * r
   kk = icells*jcells;
 
   // first, add the offset to the data
-  for(int k=kstart; k<kend; k++)
-    for(int j=jstart; j<jend; j++)
-      for(int i=istart; i<iend; i++)
+  for (int k=kstart; k<kend; k++)
+    for (int j=jstart; j<jend; j++)
+      for (int i=istart; i<iend; i++)
       {
         ijk = i + j*jj + k*kk;
         tmp1[ijk] = data[ijk] + offset;
       }
 
   // second, save the data to disk
-  for(int k=kstart; k<kend; k++)
-    for(int j=jstart; j<jend; j++)
+  for (int k=kstart; k<kend; k++)
+    for (int j=jstart; j<jend; j++)
       {
         ijk = istart + j*jj + k*kk;
         fwrite(&tmp1[ijk], sizeof(double), imax, pFile);
@@ -461,7 +461,7 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
   FILE *pFile;
   pFile = fopen(filename, "rb");
 
-  if(pFile == NULL)
+  if (pFile == NULL)
     return 1;
 
   int ijk,jj,kk;
@@ -470,8 +470,8 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
   kk = icells*jcells;
 
   // first, load the data from disk
-  for(int k=kstart; k<kend; k++)
-    for(int j=jstart; j<jend; j++)
+  for (int k=kstart; k<kend; k++)
+    for (int j=jstart; j<jend; j++)
       {
         ijk = istart + j*jj + k*kk;
         fread(&tmp1[ijk], sizeof(double), imax, pFile);
@@ -480,9 +480,9 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
   fclose(pFile);
 
   // second, remove the offset
-  for(int k=kstart; k<kend; k++)
-    for(int j=jstart; j<jend; j++)
-      for(int i=istart; i<iend; i++)
+  for (int k=kstart; k<kend; k++)
+    for (int j=jstart; j<jend; j++)
+      for (int i=istart; i<iend; i++)
       {
         ijk = i + j*jj + k*kk;
         data[ijk] = tmp1[ijk] - offset;
@@ -500,10 +500,10 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
   kk = itot*jmax;
 
   // process the fourier transforms slice by slice
-  for(int k=0; k<kblock; k++)
+  for (int k=0; k<kblock; k++)
   {
 #pragma ivdep
-    for(int n=0; n<itot*jmax; n++)
+    for (int n=0; n<itot*jmax; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -513,7 +513,7 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
     fftw_execute(iplanf);
 
 #pragma ivdep
-    for(int n=0; n<itot*jmax; n++)
+    for (int n=0; n<itot*jmax; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -524,10 +524,10 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
   kk = iblock*jtot;
 
   // do the second fourier transform
-  for(int k=0; k<kblock; k++)
+  for (int k=0; k<kblock; k++)
   {
 #pragma ivdep
-    for(int n=0; n<iblock*jtot; n++)
+    for (int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -537,7 +537,7 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
     fftw_execute(jplanf);
 
 #pragma ivdep
-    for(int n=0; n<iblock*jtot; n++)
+    for (int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -556,10 +556,10 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
   kk = iblock*jtot;
 
   // transform the second transform back
-  for(int k=0; k<kblock; k++)
+  for (int k=0; k<kblock; k++)
   {
 #pragma ivdep
-    for(int n=0; n<iblock*jtot; n++)
+    for (int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -569,7 +569,7 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
     fftw_execute(jplanb);
 
 #pragma ivdep
-    for(int n=0; n<iblock*jtot; n++)
+    for (int n=0; n<iblock*jtot; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -580,10 +580,10 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
   kk = itot*jmax;
 
   // transform the first transform back
-  for(int k=0; k<kblock; k++)
+  for (int k=0; k<kblock; k++)
   {
 #pragma ivdep
-    for(int n=0; n<itot*jmax; n++)
+    for (int n=0; n<itot*jmax; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -593,7 +593,7 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
     fftw_execute(iplanb);
 
 #pragma ivdep
-    for(int n=0; n<itot*jmax; n++)
+    for (int n=0; n<itot*jmax; n++)
     {
       ij  = n;
       ijk = n + k*kk;
@@ -615,9 +615,9 @@ int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filen
 
   int count = imax*kmax;
 
-  for(int k=0; k<kmax; k++)
+  for (int k=0; k<kmax; k++)
 #pragma ivdep
-    for(int i=0; i<imax; i++)
+    for (int i=0; i<imax; i++)
     {
       // take the modulus of jslice and jmax to have the right offset within proc
       ijk  = i+igc + (jslice+jgc)*jj + (k+kgc)*kk;
@@ -627,7 +627,7 @@ int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filen
 
   FILE *pFile;
   pFile = fopen(filename, "wbx");
-  if(pFile == NULL)
+  if (pFile == NULL)
     return 1;
 
   fwrite(tmp, sizeof(double), count, pFile);
@@ -648,9 +648,9 @@ int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filen
 
   int count = imax*jmax;
 
-  for(int j=0; j<jmax; j++)
+  for (int j=0; j<jmax; j++)
 #pragma ivdep
-    for(int i=0; i<imax; i++)
+    for (int i=0; i<imax; i++)
     {
       // take the modulus of jslice and jmax to have the right offset within proc
       ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
@@ -660,7 +660,7 @@ int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filen
 
   FILE *pFile;
   pFile = fopen(filename, "wbx");
-  if(pFile == NULL)
+  if (pFile == NULL)
     return 1;
 
   fwrite(tmp, sizeof(double), count, pFile);
@@ -675,7 +675,7 @@ int Grid::loadxySlice(double * restrict data, double * restrict tmp, char *filen
 
   FILE *pFile;
   pFile = fopen(filename, "rb");
-  if(pFile == NULL)
+  if (pFile == NULL)
     return 1;
 
   fread(tmp, sizeof(double), count, pFile);
@@ -689,9 +689,9 @@ int Grid::loadxySlice(double * restrict data, double * restrict tmp, char *filen
   kk  = icells*jcells;
   jjb = imax;
 
-  for(int j=0; j<jmax; j++)
+  for (int j=0; j<jmax; j++)
 #pragma ivdep
-    for(int i=0; i<imax; i++)
+    for (int i=0; i<imax; i++)
     {
       ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
       ijkb = i + j*jjb;

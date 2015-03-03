@@ -46,11 +46,11 @@ void Diff4::set_values()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
-  for(FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+  for (FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
     viscmax = std::max(it->second->visc, viscmax);
 
   dnmul = 0;
-  for(int k=grid->kstart; k<grid->kend; k++)
+  for (int k=grid->kstart; k<grid->kend; k++)
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
@@ -77,12 +77,12 @@ void Diff4::exec()
 {
   // In case of a two-dimensional run, strip v component out of all kernels and do 
   // not calculate v-diffusion tendency.
-  if(grid->jtot == 1)
+  if (grid->jtot == 1)
   {
     diffc<false>(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
     diffw<false>(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
-    for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       diffc<false>(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
   }
   else
@@ -91,7 +91,7 @@ void Diff4::exec()
     diffc<true>(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
     diffw<true>(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
-    for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
       diffc<true>(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
   }
 }
@@ -119,13 +119,13 @@ void Diff4::diffc(double * restrict at, double * restrict a, double * restrict d
   int ijk;
 
   // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + kstart*kk1;
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      if(dim3)
+      if (dim3)
         at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
       at[ijk] += visc * ( cg0*(bg0*a[ijk-kk2] + bg1*a[ijk-kk1] + bg2*a[ijk    ] + bg3*a[ijk+kk1]) * dzhi4[kstart-1]
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[kstart  ]
@@ -134,14 +134,14 @@ void Diff4::diffc(double * restrict at, double * restrict a, double * restrict d
                         * dzi4[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart+1; k<grid->kend-1; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
         at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-        if(dim3)
+        if (dim3)
           at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
         at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzhi4[k-1]
                           + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[k  ]
@@ -151,13 +151,13 @@ void Diff4::diffc(double * restrict at, double * restrict a, double * restrict d
       }
 
   // top boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      if(dim3)
+      if (dim3)
         at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
       at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzhi4[kend-2]
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzhi4[kend-1]
@@ -189,13 +189,13 @@ void Diff4::diffw(double * restrict at, double * restrict a, double * restrict d
   int ijk;
 
   // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + (kstart+1)*kk1;
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      if(dim3)
+      if (dim3)
         at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
       at[ijk] += visc * ( cg0*(bg0*a[ijk-kk2] + bg1*a[ijk-kk1] + bg2*a[ijk    ] + bg3*a[ijk+kk1]) * dzi4[kstart-1]
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[kstart  ]
@@ -204,14 +204,14 @@ void Diff4::diffw(double * restrict at, double * restrict a, double * restrict d
                         * dzhi4[kstart+1];
     }
 
-  for(int k=grid->kstart+2; k<grid->kend-1; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart+2; k<grid->kend-1; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj1 + k*kk1;
         at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-        if(dim3)
+        if (dim3)
           at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
         at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzi4[k-2]
                           + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[k-1]
@@ -221,13 +221,13 @@ void Diff4::diffw(double * restrict at, double * restrict a, double * restrict d
       }
 
   // top boundary
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
       at[ijk] += visc * (cdg3*a[ijk-ii3] + cdg2*a[ijk-ii2] + cdg1*a[ijk-ii1] + cdg0*a[ijk] + cdg1*a[ijk+ii1] + cdg2*a[ijk+ii2] + cdg3*a[ijk+ii3])*dxidxi;
-      if(dim3)
+      if (dim3)
         at[ijk] += visc * (cdg3*a[ijk-jj3] + cdg2*a[ijk-jj2] + cdg1*a[ijk-jj1] + cdg0*a[ijk] + cdg1*a[ijk+jj1] + cdg2*a[ijk+jj2] + cdg3*a[ijk+jj3])*dyidyi;
       at[ijk] += visc * ( cg0*(cg0*a[ijk-kk3] + cg1*a[ijk-kk2] + cg2*a[ijk-kk1] + cg3*a[ijk    ]) * dzi4[kend-3]
                         + cg1*(cg0*a[ijk-kk2] + cg1*a[ijk-kk1] + cg2*a[ijk    ] + cg3*a[ijk+kk1]) * dzi4[kend-2]

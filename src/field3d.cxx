@@ -97,13 +97,13 @@ int Field3d::init()
   }
 
   // set all values to zero
-  for(int n=0; n<grid->ncells; n++)
+  for (int n=0; n<grid->ncells; n++)
     data[n] = 0.;
 
-  for(int n=0; n<grid->kcells; n++)
+  for (int n=0; n<grid->kcells; n++)
     datamean[n] = 0.;
 
-  for(int n=0; n<grid->ijcells; n++)
+  for (int n=0; n<grid->ijcells; n++)
   {
     databot    [n] = 0.;
     datatop    [n] = 0.;
@@ -133,10 +133,10 @@ int Field3d::checkfornan()
 
   double cfl = 0.;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart; k<grid->kend; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj + k*kk;
         if (data[ijk]!=data[ijk])

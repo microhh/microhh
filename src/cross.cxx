@@ -47,7 +47,7 @@ Cross::Cross(Model *modelin, Input *inputin)
   int nerror = 0;
   nerror += inputin->getItem(&swcross, "cross", "swcross", "", "0");
 
-  if(swcross == "1")
+  if (swcross == "1")
   {
     // Get the time at which the cross sections are triggered.
     nerror += inputin->getItem(&sampletime, "cross", "sampletime", "");
@@ -56,7 +56,7 @@ Cross::Cross(Model *modelin, Input *inputin)
     nerror += inputin->getList(&crosslist , "cross", "crosslist" , "");
 
     // Crash on empty list.
-    if(crosslist.empty())
+    if (crosslist.empty())
     {
       master->print_error("empty cross section list\n");
       throw 1;
@@ -67,7 +67,7 @@ Cross::Cross(Model *modelin, Input *inputin)
     nerror += inputin->getList(&xy, "cross", "xy", "");
   }
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -79,7 +79,7 @@ Cross::~Cross()
 int Cross::checkSave(int error, char * filename)
 {
   master->print_message("Saving \"%s\" ... ", filename);
-  if(error == 0)
+  if (error == 0)
   {
     master->print_message("OK\n");
     return 0;
@@ -93,7 +93,7 @@ int Cross::checkSave(int error, char * filename)
 
 void Cross::init(double ifactor)
 {
-  if(swcross == "0")
+  if (swcross == "0")
     return;
 
   isampletime = (unsigned long)(ifactor * sampletime);
@@ -105,22 +105,22 @@ void Cross::create()
   int temploc, temploch, hoffset;
 
   // Find nearest full and half grid locations of xz cross-sections.
-  for(std::vector<double>::iterator it=xz.begin(); it<xz.end(); ++it)
+  for (std::vector<double>::iterator it=xz.begin(); it<xz.end(); ++it)
   {
     temploc  = (int) floor(*it/(grid->dy));
     temploch = (int) floor((*it+(grid->dy/2.))/(grid->dy));
 
-    if(*it < 0 || *it > grid->ysize) // Check if cross location is inside domain
+    if (*it < 0 || *it > grid->ysize) // Check if cross location is inside domain
     {
       master->print_error("ERROR %f in [cross][xz] is outside domain\n", *it);
       ++nerror;
     }
     else
     {
-      if(*it == grid->ysize) // Exception for full level when requesting domain size
+      if (*it == grid->ysize) // Exception for full level when requesting domain size
         --temploc;
 
-      if(std::find(jxz.begin(), jxz.end(), temploc) != jxz.end()) // Check for duplicate entries
+      if (std::find(jxz.begin(), jxz.end(), temploc) != jxz.end()) // Check for duplicate entries
         master->print_warning("removed duplicate entry y=%f for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],*it);
       else // Add to cross-list
       {
@@ -128,7 +128,7 @@ void Cross::create()
         master->print_message("Addex XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],temploc,*it);
       } 
 
-      if(std::find(jxzh.begin(), jxzh.end(), temploch) != jxzh.end()) // Check for duplicate entries
+      if (std::find(jxzh.begin(), jxzh.end(), temploch) != jxzh.end()) // Check for duplicate entries
         master->print_warning("removed duplicate entry yh=%f for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],*it);
       else // Add to cross-list
       {
@@ -139,36 +139,36 @@ void Cross::create()
   }
 
   // Find nearest full and half grid locations of xy cross-sections.
-  for(std::vector<double>::iterator it=xy.begin(); it<xy.end(); ++it)
+  for (std::vector<double>::iterator it=xy.begin(); it<xy.end(); ++it)
   {
     hoffset = 0;
-    if(*it < 0 || *it > grid->zsize) // Check if cross location is inside domain
+    if (*it < 0 || *it > grid->zsize) // Check if cross location is inside domain
     {
       master->print_error("ERROR %f in [cross][xy] is outside domain\n", *it);
       ++nerror;
     }
     else
     {
-      if(*it == grid->zsize) // Exception for domain top: use half level at domain top, full level below
+      if (*it == grid->zsize) // Exception for domain top: use half level at domain top, full level below
       {
           temploc = grid->kmax-1;
           hoffset = 1;
       }
       else
       {
-        for(int k=grid->kstart; k<grid->kend; k++) // Loop over height to find the nearest full level
+        for (int k=grid->kstart; k<grid->kend; k++) // Loop over height to find the nearest full level
         {
-          if((*it >= grid->zh[k]) && (*it < grid->zh[k+1]))
+          if ((*it >= grid->zh[k]) && (*it < grid->zh[k+1]))
           {
             temploc = k - grid->kgc;
-            if(*it >= grid->z[k]) // Add offset for half level
+            if (*it >= grid->z[k]) // Add offset for half level
               hoffset = 1;
             break;
           }
         }
       }
 
-      if(std::find(kxy.begin(), kxy.end(), temploc) != kxy.end()) // Check for duplicate entries
+      if (std::find(kxy.begin(), kxy.end(), temploc) != kxy.end()) // Check for duplicate entries
         master->print_warning("removed duplicate entry z=%f for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],*it);
       else // Add to cross-list
       {
@@ -176,7 +176,7 @@ void Cross::create()
         master->print_message("Addex XY cross at z=%f (k=%i) for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],temploc,*it);
       } 
  
-      if(std::find(kxyh.begin(), kxyh.end(), temploc+hoffset) != kxyh.end()) // Check for duplicate entries
+      if (std::find(kxyh.begin(), kxyh.end(), temploc+hoffset) != kxyh.end()) // Check for duplicate entries
         master->print_warning("removed duplicate entry zh=%f for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],*it);
       else // Add to cross-list
       {
@@ -188,19 +188,19 @@ void Cross::create()
 
   /* All classes (fields, thermo, boundary) have removed their cross-variables from
      crosslist by now. If it isnt empty, print warnings for invalid variables */
-  if(crosslist.size() > 0)
+  if (crosslist.size() > 0)
   {
-    for(std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
+    for (std::vector<std::string>::const_iterator it=crosslist.begin(); it!=crosslist.end(); ++it)
       master->print_warning("field %s in [cross][crosslist] is illegal\n", it->c_str());
   } 
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
 unsigned long Cross::get_time_limit(unsigned long itime)
 {
-  if(swcross == "0")
+  if (swcross == "0")
     return constants::ulhuge;
 
   unsigned long idtlim = isampletime - itime % isampletime;
@@ -220,10 +220,10 @@ std::vector<std::string>* Cross::getCrossList()
 
 bool Cross::doCross()
 {
-  if(swcross == "0")
+  if (swcross == "0")
     return false;
 
-  if(model->timeloop->get_itime() % isampletime == 0)
+  if (model->timeloop->get_itime() % isampletime == 0)
     return true;
   else
     return false;
@@ -235,9 +235,9 @@ int Cross::crossSimple(double * restrict data, double * restrict tmp, std::strin
   char filename[256];
 
   // loop over the index arrays to save all xz cross sections
-  if(name == "v")
+  if (name == "v")
   {
-    for(std::vector<int>::iterator it=jxzh.begin(); it<jxzh.end(); ++it)
+    for (std::vector<int>::iterator it=jxzh.begin(); it<jxzh.end(); ++it)
     {
       std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
       nerror += checkSave(grid->savexzSlice(data, tmp, filename, *it), filename);    
@@ -245,17 +245,17 @@ int Cross::crossSimple(double * restrict data, double * restrict tmp, std::strin
   }
   else
   {
-    for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
+    for (std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
     {
       std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
       nerror += checkSave(grid->savexzSlice(data, tmp, filename, *it), filename);    
     }
   }
 
-  if(name == "w")
+  if (name == "w")
   {
     // loop over the index arrays to save all xy cross sections
-    for(std::vector<int>::iterator it=kxyh.begin(); it<kxyh.end(); ++it)
+    for (std::vector<int>::iterator it=kxyh.begin(); it<kxyh.end(); ++it)
     {
       std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->get_iotime());
       nerror += checkSave(grid->savexySlice(data, tmp, filename, *it), filename);
@@ -263,7 +263,7 @@ int Cross::crossSimple(double * restrict data, double * restrict tmp, std::strin
   }
   else
   {
-    for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
+    for (std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
     {
       std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->get_iotime());
       nerror += checkSave(grid->savexySlice(data, tmp, filename, *it), filename);
@@ -312,9 +312,9 @@ int Cross::crossLngrad(double * restrict a, double * restrict lngrad, double * r
 
   // calculate the log of the gradient
   // bottom
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk  = i + j*jj1 + kstart*kk1;
       lngrad[ijk] = std::log( constants::dtiny +
@@ -335,10 +335,10 @@ int Cross::crossLngrad(double * restrict a, double * restrict lngrad, double * r
     }
 
   // interior
-  for(int k=grid->kstart+1; k<grid->kend-1; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart+1; k<grid->kend-1; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk  = i + j*jj1 + k*kk1;
         lngrad[ijk] = std::log( constants::dtiny +
@@ -359,9 +359,9 @@ int Cross::crossLngrad(double * restrict a, double * restrict lngrad, double * r
       }
 
   // top
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk  = i + j*jj1 + (kend-1)*kk1;
       lngrad[ijk] = std::log(constants::dtiny +
@@ -383,14 +383,14 @@ int Cross::crossLngrad(double * restrict a, double * restrict lngrad, double * r
 
 
   // loop over the index arrays to save all xz cross sections
-  for(std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
+  for (std::vector<int>::iterator it=jxz.begin(); it<jxz.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
     nerror += checkSave(grid->savexzSlice(lngrad, tmp, filename, *it),filename);
   }
 
   // loop over the index arrays to save all xy cross sections
-  for(std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
+  for (std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
   {
     std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xy", *it, model->timeloop->get_iotime());
     nerror += checkSave(grid->savexySlice(lngrad, tmp, filename, *it),filename);
@@ -409,19 +409,19 @@ int Cross::crossPath(double * restrict data, double * restrict tmp, double * res
   char filename[256];
 
   // Path is integrated in first full level, set to zero first
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jj + kstart*kk;
       tmp[ijk] = 0.;
     }
 
   // Integrate with height
-  for(int k=kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=kstart; k<grid->kend; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk1 = i + j*jj + kstart*kk;
         ijk  = i + j*jj + k*kk;

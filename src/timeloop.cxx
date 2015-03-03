@@ -45,7 +45,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   int n = 0;
 
   // obligatory parameters
-  if(master->mode == "init")
+  if (master->mode == "init")
     starttime = 0.;
   else
     n += inputin->getItem(&starttime, "time", "starttime", "");
@@ -61,15 +61,15 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 20              );
   n += inputin->getItem(&iotimeprec  , "time", "iotimeprec"  , "", 0               );
 
-  if(master->mode == "post")
+  if (master->mode == "post")
     n += inputin->getItem(&postproctime, "time", "postproctime", "");
 
   // if one argument fails, then crash
-  if(n > 0)
+  if (n > 0)
     throw 1;
 
   // 3 and 4 are the only valid values for the rkorder
-  if(!(rkorder == 3 || rkorder == 4))
+  if (!(rkorder == 3 || rkorder == 4))
   {
     master->print_error("\"%d\" is an illegal value for rkorder\n", rkorder);
     throw 1;
@@ -89,7 +89,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   idt           = (unsigned long)(ifactor * dt + 0.5);
   idtmax        = (unsigned long)(ifactor * dtmax + 0.5);
   isavetime     = (unsigned long)(ifactor * savetime + 0.5);
-  if(master->mode == "post")
+  if (master->mode == "post")
     ipostproctime = (unsigned long)(ifactor * postproctime + 0.5);
 
   idtlim = idt;
@@ -98,7 +98,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   iiotimeprec = (unsigned long)(ifactor * std::pow(10., iotimeprec) + 0.5);
 
   // check whether starttime and savetime are an exact multiple of iotimeprec
-  if((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
+  if ((istarttime % iiotimeprec) || (isavetime % iiotimeprec))
   {
     master->print_error("starttime or savetime is not an exact multiple of iotimeprec\n");
     throw 1;
@@ -108,7 +108,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
 
   gettimeofday(&start, NULL);
 
-  if(master->mode == "init")
+  if (master->mode == "init")
     inputin->flagUsed("time", "starttime");
 }
 
@@ -121,7 +121,7 @@ void Timeloop::setTimeStepLimit()
   idtlim = idtmax;
 
   // Check whether the run should be stopped because of the wall clock limit
-  if(master->atWallClockLimit())
+  if (master->atWallClockLimit())
   {
     // Set the time step to the nearest multiple of iotimeprec
     idtlim = std::min(idtlim, iiotimeprec - itime % iiotimeprec);
@@ -138,7 +138,7 @@ void Timeloop::setTimeStepLimit(unsigned long idtlimin)
 void Timeloop::stepTime()
 {
   // Only step forward in time if we are not in a substep
-  if(inSubStep())
+  if (inSubStep())
     return;
 
   time  += dt;
@@ -147,13 +147,13 @@ void Timeloop::stepTime()
 
   ++iteration;
 
-  if(itime >= iendtime)
+  if (itime >= iendtime)
     loop = false;
 }
 
 bool Timeloop::doCheck()
 {
-  if(iteration % outputiter == 0 && !inSubStep())
+  if (iteration % outputiter == 0 && !inSubStep())
     return true;
 
   return false;
@@ -163,7 +163,7 @@ bool Timeloop::doSave()
 {
   // Check whether the simulation has to stop due to the wallclock limit,
   // but only at a time step where actual saves can be made.
-  if(itime % iiotimeprec == 0 && !inSubStep() && master->atWallClockLimit())
+  if (itime % iiotimeprec == 0 && !inSubStep() && master->atWallClockLimit())
   {
     master->print_warning("Simulation will be stopped after saving the restart files due to wall clock limit\n");
 
@@ -173,7 +173,7 @@ bool Timeloop::doSave()
   }
 
   // Do not save directly after the start of the simulation and not in a substep
-  if(itime % isavetime == 0 && iteration != 0 && !inSubStep())
+  if (itime % isavetime == 0 && iteration != 0 && !inSubStep())
     return true;
 
   return false;
@@ -198,12 +198,12 @@ double Timeloop::check()
 void Timeloop::setTimeStep()
 {
   // Only set the time step if we are not in a substep
-  if(inSubStep())
+  if (inSubStep())
     return;
 
-  if(adaptivestep)
+  if (adaptivestep)
   {
-    if(idt == 0)
+    if (idt == 0)
     {
       master->print_error("Required time step less than precision %E of the time stepping\n", 1./ifactor);
       throw 1;
@@ -216,17 +216,17 @@ void Timeloop::setTimeStep()
 #ifndef USECUDA
 void Timeloop::exec()
 {
-  if(rkorder == 3)
+  if (rkorder == 3)
   {
-    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    for (FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
       rk3(fields->ap[it->first]->data, it->second->data, dt);
 
     substep = (substep+1) % 3;
   }
 
-  if(rkorder == 4)
+  if (rkorder == 4)
   {
-    for(FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
+    for (FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
       rk4(fields->ap[it->first]->data, it->second->data, dt);
 
     substep = (substep+1) % 5;
@@ -237,9 +237,9 @@ void Timeloop::exec()
 double Timeloop::getSubTimeStep()
 {
   double subdt = 0.;
-  if(rkorder == 3)
+  if (rkorder == 3)
     subdt = rk3subdt(dt);
-  else if(rkorder == 4)
+  else if (rkorder == 4)
     subdt = rk4subdt(dt);
 
   return subdt;
@@ -273,10 +273,10 @@ void Timeloop::rk3(double * restrict a, double * restrict at, double dt)
   jj = grid->icells;
   kk = grid->ijcells;
 
-  for(k=grid->kstart; k<grid->kend; k++)
-    for(j=grid->jstart; j<grid->jend; j++)
+  for (k=grid->kstart; k<grid->kend; k++)
+    for (j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(i=grid->istart; i<grid->iend; i++)
+      for (i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
@@ -285,10 +285,10 @@ void Timeloop::rk3(double * restrict a, double * restrict at, double dt)
   int substepn = (substep+1) % 3;
 
   // substep 0 resets the tendencies, because cA[0] == 0
-  for(k=grid->kstart; k<grid->kend; k++)
-    for(j=grid->jstart; j<grid->jend; j++)
+  for (k=grid->kstart; k<grid->kend; k++)
+    for (j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(i=grid->istart; i<grid->iend; i++)
+      for (i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         at[ijk] = cA[substepn]*at[ijk];
@@ -317,10 +317,10 @@ void Timeloop::rk4(double * restrict a, double * restrict at, double dt)
   jj = grid->icells;
   kk = grid->ijcells;
 
-  for(k=grid->kstart; k<grid->kend; k++)
-    for(j=grid->jstart; j<grid->jend; j++)
+  for (k=grid->kstart; k<grid->kend; k++)
+    for (j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(i=grid->istart; i<grid->iend; i++)
+      for (i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
@@ -329,10 +329,10 @@ void Timeloop::rk4(double * restrict a, double * restrict at, double dt)
   int substepn = (substep+1) % 5;
 
   // substep 0 resets the tendencies, because cA[0] == 0
-  for(k=grid->kstart; k<grid->kend; k++)
-    for(j=grid->jstart; j<grid->jend; j++)
+  for (k=grid->kstart; k<grid->kend; k++)
+    for (j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(i=grid->istart; i<grid->iend; i++)
+      for (i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         at[ijk] = cA[substepn]*at[ijk];
@@ -341,7 +341,7 @@ void Timeloop::rk4(double * restrict a, double * restrict at, double dt)
 
 bool Timeloop::inSubStep()
 {
-  if(substep > 0)
+  if (substep > 0)
     return true;
   else
     return false;
@@ -351,7 +351,7 @@ bool Timeloop::isStatsStep()
 {
   // In case we are not in a substep and not at the first iteration
   // after a restart, we can could do statistics.
-  if(!inSubStep() && !((iteration > 0) && (itime == istarttime)))
+  if (!inSubStep() && !((iteration > 0) && (itime == istarttime)))
     return true;
   else
     return false;
@@ -361,7 +361,7 @@ void Timeloop::save(int starttime)
 {
   int nerror = 0;
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
@@ -371,7 +371,7 @@ void Timeloop::save(int starttime)
     FILE *pFile;
     pFile = fopen(filename, "wbx");
 
-    if(pFile == NULL)
+    if (pFile == NULL)
     {
       master->print_message("FAILED\n", filename);
       ++nerror;
@@ -389,7 +389,7 @@ void Timeloop::save(int starttime)
 
   // Broadcast the error code to prevent deadlocks in case of error.
   master->broadcast(&nerror, 1);
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -397,7 +397,7 @@ void Timeloop::load(int starttime)
 {
   int nerror = 0;
 
-  if(master->mpiid == 0)
+  if (master->mpiid == 0)
   {
     char filename[256];
     std::sprintf(filename, "time.%07d", starttime);
@@ -407,7 +407,7 @@ void Timeloop::load(int starttime)
     FILE *pFile;
     pFile = fopen(filename, "rb");
 
-    if(pFile == NULL)
+    if (pFile == NULL)
     {
       master->print_error("\"%s\" does not exist\n", filename);
       ++nerror;
@@ -424,7 +424,7 @@ void Timeloop::load(int starttime)
   }
 
   master->broadcast(&nerror, 1);
-  if(nerror)
+  if (nerror)
     throw 1;
 
   master->broadcast(&itime    , 1);
@@ -441,6 +441,6 @@ void Timeloop::stepPostProcTime()
   itime += ipostproctime;
   iotime = (int)(itime/iiotimeprec);
 
-  if(itime > iendtime)
+  if (itime > iendtime)
     loop = false;
 }

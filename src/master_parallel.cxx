@@ -38,7 +38,7 @@ Master::Master()
 
 Master::~Master()
 {
-  if(allocated)
+  if (allocated)
   {
     delete[] reqs;
     MPI_Comm_free(&commxy);
@@ -48,7 +48,7 @@ Master::~Master()
 
   print_message("Finished run on %d processes\n", nprocs);
 
-  if(initialized)
+  if (initialized)
     MPI_Finalize();
 }
 
@@ -58,7 +58,7 @@ void Master::start(int argc, char *argv[])
 
   // initialize the MPI
   n = MPI_Init(NULL, NULL);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   wallClockStart = getWallClockTime();
@@ -67,23 +67,23 @@ void Master::start(int argc, char *argv[])
 
   // get the rank of the current process
   n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   // get the total number of processors
   n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   // store a temporary copy of COMM_WORLD in commxy
   n = MPI_Comm_dup(MPI_COMM_WORLD, &commxy);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   print_message("Starting run on %d processes\n", nprocs);
 
   // process the command line options
-  if(argc <= 1)
+  if (argc <= 1)
   {
     print_error("Specify init, run or post mode\n");
     throw 1;
@@ -92,13 +92,13 @@ void Master::start(int argc, char *argv[])
   {
     // check the execution mode
     mode = argv[1];
-    if(mode != "init" && mode != "run" && mode != "post")
+    if (mode != "init" && mode != "run" && mode != "post")
     {
       print_error("Specify init, run or post mode\n");
       throw 1;
     }
     // set the name of the simulation
-    if(argc > 2)
+    if (argc > 2)
       simname = argv[2];
     else
       simname = "microhh";
@@ -115,12 +115,12 @@ void Master::init(Input *inputin)
   double wallClockLimit;
   nerror += inputin->getItem(&wallClockLimit, "master", "wallclocklimit", "", 1E8);
 
-  if(nerror)
+  if (nerror)
     throw 1;
 
   wallClockEnd = wallClockStart + 3600.*wallClockLimit;
 
-  if(nprocs != npx*npy)
+  if (nprocs != npx*npy)
   {
     print_error("nprocs = %d does not equal npx*npy = %d*%d\n", nprocs, npx, npy);
     throw 1;
@@ -132,28 +132,28 @@ void Master::init(Input *inputin)
 
   // define the dimensions of the 2-D grid layout
   n = MPI_Dims_create(nprocs, 2, dims);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   // create a 2-D grid communicator that is optimized for grid to grid transfer
   // first, free our temporary copy of COMM_WORLD
   n = MPI_Comm_free(&commxy);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   // for now, do not reorder processes, blizzard gives large performance loss
   n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   n = MPI_Comm_rank(commxy, &mpiid);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   // retrieve the x- and y-coordinates in the 2-D grid for each process
   int mpicoords[2];
   n = MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   mpicoordx = mpicoords[1];
@@ -163,20 +163,20 @@ void Master::init(Input *inputin)
   int dimy[2] = {true , false};
 
   n = MPI_Cart_sub(commxy, dimx, &commx);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   n = MPI_Cart_sub(commxy, dimy, &commy);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   // find out who are the neighbors of this process to facilitate the communication routines
   n = MPI_Cart_shift(commxy, 1, 1, &nwest , &neast );
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   n = MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth);
-  if(checkError(n))
+  if (checkError(n))
     throw 1;
 
   // create the requests arrays for the nonblocking sends
@@ -201,7 +201,7 @@ int Master::checkError(int n)
   char errbuffer[MPI_MAX_ERROR_STRING];
   int errlen;
 
-  if(n != MPI_SUCCESS)
+  if (n != MPI_SUCCESS)
   {
     MPI_Error_string(n, errbuffer, &errlen);
     print_error("MPI: %s\n", errbuffer);

@@ -47,7 +47,7 @@ DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
   nerror += inputin->getItem(&cs   , "diff", "cs"   , "", 0.23 );
   nerror += inputin->getItem(&tPr  , "diff", "tPr"  , "", 1./3.);
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -98,7 +98,7 @@ void DiffSmag2::execViscosity()
           grid->z, grid->dzi, grid->dzhi);
 
   // start with retrieving the stability information
-  if(model->thermo->getSwitch() == "0")
+  if (model->thermo->getSwitch() == "0")
   {
     eviscNeutral(fields->sd["evisc"]->data,
                  fields->u->data, fields->v->data, fields->w->data,
@@ -131,7 +131,7 @@ void DiffSmag2::exec()
   diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
   diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->rhoref, fields->rhorefh);
 
-  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+  for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
     diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
 }
 #endif
@@ -153,9 +153,9 @@ void DiffSmag2::strain2(double * restrict strain2,
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -169,10 +169,10 @@ void DiffSmag2::strain2(double * restrict strain2,
       strain2[ijk] += constants::dsmall;
     }
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         strain2[ijk] = 2.*(
@@ -241,9 +241,9 @@ void DiffSmag2::evisc(double * restrict evisc,
   double tPr = this->tPr;
   double cs  = this->cs;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -254,16 +254,16 @@ void DiffSmag2::evisc(double * restrict evisc,
       evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
     }
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
   {
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
     mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[k]+z0m), n))), 1./n);
     fac   = std::pow(mlen, 2);
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         // Add the buoyancy production to the TKE
@@ -294,16 +294,16 @@ void DiffSmag2::eviscNeutral(double * restrict evisc,
 
   int ijk;
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
     const double mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
     const double mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[k]+z0m), n))), 1./n);
     const double fac   = std::pow(mlen, 2);
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         evisc[ijk] = fac * std::sqrt(evisc[ijk]);
@@ -332,9 +332,9 @@ void DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restri
   dyi = 1./grid->dy;
 
   // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -354,10 +354,10 @@ void DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restri
                + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
@@ -377,9 +377,9 @@ void DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restri
       }
 
   // top boundary
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk;
@@ -419,9 +419,9 @@ void DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restri
   dyi = 1./grid->dy;
 
   // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -441,10 +441,10 @@ void DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restri
                + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
@@ -464,9 +464,9 @@ void DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restri
       }
 
   // top boundary
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk;
@@ -502,10 +502,10 @@ void DiffSmag2::diffw(double * restrict wt, double * restrict u, double * restri
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         evisce = 0.25*(evisc[ijk   -kk] + evisc[ijk   ] + evisc[ijk+ii-kk] + evisc[ijk+ii]);
@@ -544,9 +544,9 @@ void DiffSmag2::diffc(double * restrict at, double * restrict a,
   dyidyi = 1./(grid->dy * grid->dy);
 
   // bottom boundary
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
@@ -566,10 +566,10 @@ void DiffSmag2::diffc(double * restrict at, double * restrict a,
                + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         evisce = 0.5*(evisc[ijk   ]+evisc[ijk+ii])/tPr;
@@ -589,9 +589,9 @@ void DiffSmag2::diffc(double * restrict at, double * restrict a,
       }
 
   // top boundary
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk;
@@ -627,10 +627,10 @@ double DiffSmag2::calc_dnmul(double * restrict evisc, double * restrict dzi, dou
   double dnmul = 0;
 
   // get the maximum time step for diffusion
-  for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk;
         dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));

@@ -128,20 +128,20 @@ void Pres2::set_values()
 
   const double pi = std::acos(-1.);
 
-  for(int j=0; j<jtot/2+1; j++)
+  for (int j=0; j<jtot/2+1; j++)
     bmatj[j] = 2. * (std::cos(2.*pi*(double)j/(double)jtot)-1.) * dyidyi;
 
-  for(int j=jtot/2+1; j<jtot; j++)
+  for (int j=jtot/2+1; j<jtot; j++)
     bmatj[j] = bmatj[jtot-j];
 
-  for(int i=0; i<itot/2+1; i++)
+  for (int i=0; i<itot/2+1; i++)
     bmati[i] = 2. * (std::cos(2.*pi*(double)i/(double)itot)-1.) * dxidxi;
 
-  for(int i=itot/2+1; i<itot; i++)
+  for (int i=itot/2+1; i<itot; i++)
     bmati[i] = bmati[itot-i];
 
   // create vectors that go into the tridiagonal matrix solver
-  for(int k=0; k<kmax; k++)
+  for (int k=0; k<kmax; k++)
   {
     a[k] = grid->dz[k+kgc] * fields->rhorefh[k+kgc  ]*grid->dzhi[k+kgc  ];
     c[k] = grid->dz[k+kgc] * fields->rhorefh[k+kgc+1]*grid->dzhi[k+kgc+1];
@@ -178,10 +178,10 @@ void Pres2::input(double * restrict p,
   grid->boundaryCyclic(vt, NorthSouthEdge);
 
   // write pressure as a 3d array without ghost cells
-  for(int k=0; k<grid->kmax; k++)
-    for(int j=0; j<grid->jmax; j++)
+  for (int k=0; k<grid->kmax; k++)
+    for (int j=0; j<grid->jmax; j++)
 #pragma ivdep
-      for(int i=0; i<grid->imax; i++)
+      for (int i=0; i<grid->imax; i++)
       {
         ijkp = i + j*jjp + k*kkp;
         ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
@@ -220,10 +220,10 @@ void Pres2::solve(double * restrict p, double * restrict work3d, double * restri
 
   // solve the tridiagonal system
   // create vectors that go into the tridiagonal matrix solver
-  for(k=0; k<kmax; k++)
-    for(j=0; j<jblock; j++)
+  for (k=0; k<kmax; k++)
+    for (j=0; j<jblock; j++)
 #pragma ivdep
-      for(i=0; i<iblock; i++)
+      for (i=0; i<iblock; i++)
       {
         // swap the mpicoords, because domain is turned 90 degrees to avoid two mpi transposes
         iindex = master->mpicoordy * iblock + i;
@@ -234,9 +234,9 @@ void Pres2::solve(double * restrict p, double * restrict work3d, double * restri
         p[ijk] = dz[k+kgc]*dz[k+kgc] * p[ijk];
       }
 
-  for(j=0; j<jblock; j++)
+  for (j=0; j<jblock; j++)
 #pragma ivdep
-    for(i=0; i<iblock; i++)
+    for (i=0; i<iblock; i++)
     {
       iindex = master->mpicoordy * iblock + i;
       jindex = master->mpicoordx * jblock + j;
@@ -247,7 +247,7 @@ void Pres2::solve(double * restrict p, double * restrict work3d, double * restri
 
       // for wave number 0, which contains average, set pressure at top to zero
       ijk  = i + j*jj + (kmax-1)*kk;
-      if(iindex == 0 && jindex == 0)
+      if (iindex == 0 && jindex == 0)
         b[ijk] -= c[kmax-1];
       // set dp/dz at top to zero
       else
@@ -267,10 +267,10 @@ void Pres2::solve(double * restrict p, double * restrict work3d, double * restri
   kkp = grid->ijcells;
 
   // put the pressure back onto the original grid including ghost cells
-  for(int k=0; k<grid->kmax; k++)
-    for(int j=0; j<grid->jmax; j++)
+  for (int k=0; k<grid->kmax; k++)
+    for (int j=0; j<grid->jmax; j++)
 #pragma ivdep
-      for(int i=0; i<grid->imax; i++)
+      for (int i=0; i<grid->imax; i++)
       {
         ijkp = i+igc + (j+jgc)*jjp + (k+kgc)*kkp;
         ijk  = i + j*jj + k*kk;
@@ -279,9 +279,9 @@ void Pres2::solve(double * restrict p, double * restrict work3d, double * restri
 
   // set the boundary conditions
   // set a zero gradient boundary at the bottom
-  for(int j=grid->jstart; j<grid->jend; j++)
+  for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; i++)
+    for (int i=grid->istart; i<grid->iend; i++)
     {
       ijk = i + j*jjp + grid->kstart*kkp;
       p[ijk-kkp] = p[ijk];
@@ -304,10 +304,10 @@ void Pres2::output(double * restrict ut, double * restrict vt, double * restrict
   dxi = 1./grid->dx;
   dyi = 1./grid->dy;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart; k<grid->kend; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         ut[ijk] -= (p[ijk] - p[ijk-ii]) * dxi;
@@ -331,43 +331,43 @@ void Pres2::tdma(double * restrict a, double * restrict b, double * restrict c,
   jj = iblock;
   kk = iblock*jblock;
 
-  for(j=0;j<jblock;j++)
+  for (j=0;j<jblock;j++)
 #pragma ivdep
-    for(i=0;i<iblock;i++)
+    for (i=0;i<iblock;i++)
     {
       ij = i + j*jj;
       work2d[ij] = b[ij];
     }
 
-  for(j=0;j<jblock;j++)
+  for (j=0;j<jblock;j++)
 #pragma ivdep
-    for(i=0;i<iblock;i++)
+    for (i=0;i<iblock;i++)
     {
       ij = i + j*jj;
       p[ij] /= work2d[ij];
     }
 
-  for(k=1; k<kmax; k++)
+  for (k=1; k<kmax; k++)
   {
-    for(j=0;j<jblock;j++)
+    for (j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<iblock;i++)
+      for (i=0;i<iblock;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         work3d[ijk] = c[k-1] / work2d[ij];
       }
-    for(j=0;j<jblock;j++)
+    for (j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<iblock;i++)
+      for (i=0;i<iblock;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
         work2d[ij] = b[ijk] - a[k]*work3d[ijk];
       }
-    for(j=0;j<jblock;j++)
+    for (j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<iblock;i++)
+      for (i=0;i<iblock;i++)
       {
         ij  = i + j*jj;
         ijk = i + j*jj + k*kk;
@@ -376,10 +376,10 @@ void Pres2::tdma(double * restrict a, double * restrict b, double * restrict c,
       }
   }
 
-  for(k=kmax-2; k>=0; k--)
-    for(j=0;j<jblock;j++)
+  for (k=kmax-2; k>=0; k--)
+    for (j=0;j<jblock;j++)
 #pragma ivdep
-      for(i=0;i<iblock;i++)
+      for (i=0;i<iblock;i++)
       {
         ijk = i + j*jj + k*kk;
         p[ijk] -= work3d[ijk+kk]*p[ijk+kk];
@@ -404,10 +404,10 @@ double Pres2::calcDivergence(double * restrict u, double * restrict v, double * 
   div    = 0;
   divmax = 0;
 
-  for(int k=grid->kstart; k<grid->kend; k++)
-    for(int j=grid->jstart; j<grid->jend; j++)
+  for (int k=grid->kstart; k<grid->kend; k++)
+    for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; i++)
+      for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
         div = rhoref[k]*((u[ijk+ii]-u[ijk])*dxi + (v[ijk+jj]-v[ijk])*dyi) 

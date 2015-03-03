@@ -41,13 +41,13 @@ Dump::Dump(Model *modelin, Input *inputin)
   int nerror = 0;
   nerror += inputin->getItem(&swdump, "dump", "swdump", "", "0");
 
-  if(swdump == "1")
+  if (swdump == "1")
   {  
     nerror += inputin->getItem(&sampletime, "dump", "sampletime", "");
     nerror += inputin->getList(&dumplist ,  "dump", "dumplist" ,  "");
   }  
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -57,7 +57,7 @@ Dump::~Dump()
 
 void Dump::init(double ifactor)
 {
-  if(swdump == "0")
+  if (swdump == "0")
     return;
 
   isampletime = (unsigned long)(ifactor * sampletime);
@@ -67,16 +67,16 @@ void Dump::create()
 {  
   /* All classes (fields, thermo) have removed their dump-variables from
      dumplist by now. If it isnt empty, print warnings for invalid variables */
-  if(dumplist.size() > 0)
+  if (dumplist.size() > 0)
   {
-    for(std::vector<std::string>::const_iterator it=dumplist.begin(); it!=dumplist.end(); ++it)
+    for (std::vector<std::string>::const_iterator it=dumplist.begin(); it!=dumplist.end(); ++it)
       master->print_warning("field %s in [dump][dumplist] is illegal\n", it->c_str());
   } 
 }
 
 unsigned long Dump::get_time_limit(unsigned long itime)
 {
-  if(swdump == "0")
+  if (swdump == "0")
     return constants::ulhuge;
 
   unsigned long idtlim = isampletime - itime % isampletime;
@@ -96,10 +96,10 @@ std::vector<std::string>* Dump::getDumpList()
 
 bool Dump::doDump()
 {
-  if(swdump == "0")
+  if (swdump == "0")
     return false;
 
-  if(model->timeloop->get_itime() % isampletime == 0)
+  if (model->timeloop->get_itime() % isampletime == 0)
     return true;
   else
     return false;
@@ -113,7 +113,7 @@ void Dump::saveDump(double * restrict data, double * restrict tmp, std::string v
   std::sprintf(filename, "%s.%07d", varname.c_str(), model->timeloop->get_iotime());
   master->print_message("Saving \"%s\" ... ", filename);
 
-  if(grid->saveField3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))
+  if (grid->saveField3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))
   {
     master->print_message("FAILED\n");
     throw 1;

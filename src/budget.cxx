@@ -45,7 +45,7 @@ Budget::Budget(Model *modelin, Input *inputin)
   int nerror = 0;
   nerror += inputin->getItem(&swbudget, "budget", "swbudget", "", "0");
 
-  if(nerror)
+  if (nerror)
     throw 1;
 }
 
@@ -64,13 +64,13 @@ void Budget::init()
   master = model->master;
 
   // if the stats is disabled, also disable the budget stats
-  if(stats->getSwitch() == "0")
+  if (stats->getSwitch() == "0")
     swbudget = "0";
 
   umodel = new double[grid->kcells];
   vmodel = new double[grid->kcells];
 
-  for(int k=0; k<grid->kcells; ++k)
+  for (int k=0; k<grid->kcells; ++k)
   {
     umodel[k] = 0.;
     vmodel[k] = 0.;
@@ -79,7 +79,7 @@ void Budget::init()
 
 void Budget::create()
 {
-  if(swbudget == "0")
+  if (swbudget == "0")
     return;
 
   // add the profiles for the kinetic energy to the statistics
@@ -113,13 +113,13 @@ void Budget::create()
   stats->addProf("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
   stats->addProf("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
 
-  if(model->thermo->getSwitch() != "0")
+  if (model->thermo->getSwitch() != "0")
   {
     stats->addProf("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
     stats->addProf("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
   }
 
-  if(model->thermo->getSwitch() != "0")
+  if (model->thermo->getSwitch() != "0")
   {
     // add the profiles for the potential energy budget to the statistics
     stats->addProf("bsort", "Sorted buoyancy", "m s-2", "z");
@@ -142,14 +142,14 @@ void Budget::create()
 
 void Budget::exec_stats(Mask *m)
 {
-  if(swbudget == "0")
+  if (swbudget == "0")
     return;
 
   // calculate the mean of the fields
   grid->calcMean(umodel, fields->u->data, grid->kcells);
   grid->calcMean(vmodel, fields->v->data, grid->kcells);
 
-  if(grid->swspatialorder == "4")
+  if (grid->swspatialorder == "4")
   {
     // calculate the TKE budget
     calcKe(fields->u->data, fields->v->data, fields->w->data,
@@ -169,7 +169,7 @@ void Budget::exec_stats(Mask *m)
                   grid->dzi4, grid->dzhi4, fields->visc);
 
     // calculate the buoyancy term of the TKE budget
-    if(model->thermo->getSwitch() != "0")
+    if (model->thermo->getSwitch() != "0")
     {
       // store the buoyancy in the tmp1 field
       model->thermo->getThermoField(fields->atmp["tmp1"], fields->atmp["tmp2"], "b");
@@ -178,7 +178,7 @@ void Budget::exec_stats(Mask *m)
     }
 
     // calculate the potential energy budget
-    if(model->thermo->getSwitch() != "0")
+    if (model->thermo->getSwitch() != "0")
     {
       // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
       stats->calcSortedProf(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, m->profs["bsort"].data);
@@ -226,13 +226,13 @@ void Budget::calcKe(double * restrict u, double * restrict v, double * restrict 
   kk1 = 1*grid->ijcells;
   kk2 = 2*grid->ijcells;
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     ke [k] = 0;
     tke[k] = 0;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         u2 = ci0*std::pow(u[ijk-ii1] + utrans, 2) + ci1*std::pow(u[ijk    ] + utrans, 2) 
@@ -243,9 +243,9 @@ void Budget::calcKe(double * restrict u, double * restrict v, double * restrict 
         ke[k] += 0.5*(u2 + v2 + w2);
       }
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         u2 = ci0*std::pow(u[ijk-ii1] - umodel[k], 2) + ci1*std::pow(u[ijk    ] - umodel[k], 2) 
@@ -261,7 +261,7 @@ void Budget::calcKe(double * restrict u, double * restrict v, double * restrict 
   master->sum(tke, grid->kcells);
 
   int n = grid->itot*grid->jtot;
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     ke [k] /= n;
     tke[k] /= n;
@@ -313,9 +313,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   v2_shear [k] = 0.;
   tke_shear[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       u2_shear[k] -= 2.*(u[ijk]-umean[k])*(ci0*wx[ijk-kk1] + ci1*wx[ijk] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2])
@@ -333,14 +333,14 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
 
   // interior
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     u2_shear [k] = 0.;
     v2_shear [k] = 0.;
     tke_shear[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_shear[k] -= 2.*(u[ijk]-umean[k])*(ci0*wx[ijk-kk1] + ci1*wx[ijk] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2])
@@ -364,9 +364,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   u2_shear [k] = 0.;
   v2_shear [k] = 0.;
   tke_shear[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       u2_shear[k] -= 2.*(u[ijk]-umean[k])*(ci0*wx[ijk-kk1] + ci1*wx[ijk] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2])
@@ -388,7 +388,7 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   master->sum(v2_shear, grid->kcells);
   master->sum(tke_shear, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_shear [k] /= n;
     v2_shear [k] /= n;
@@ -403,9 +403,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   v2_turb [k] = 0.;
   tke_turb[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       u2_turb[k]  -= ( cg0*((bi0*std::pow(u[ijk-kk2]-umean[k-2],2) + bi1*std::pow(u[ijk-kk1]-umean[k-1],2) + bi2*std::pow(u[ijk    ]-umean[k  ],2) + bi3*std::pow(u[ijk+kk1]-umean[k+1],2))*wx[ijk-kk1])
@@ -423,15 +423,15 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
 
   // interior
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     u2_turb [k] = 0.;
     v2_turb [k] = 0.;
     tke_turb[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_turb[k]  -= ( cg0*((ci0*std::pow(u[ijk-kk3]-umean[k-3],2) + ci1*std::pow(u[ijk-kk2]-umean[k-2],2) + ci2*std::pow(u[ijk-kk1]-umean[k-1],2) + ci3*std::pow(u[ijk    ]-umean[k  ],2))*wx[ijk-kk1])
@@ -456,9 +456,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   v2_turb [k] = 0.;
   tke_turb[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       u2_turb[k]  -= ( cg0*((ci0*std::pow(u[ijk-kk3]-umean[k-3],2) + ci1*std::pow(u[ijk-kk2]-umean[k-2],2) + ci2*std::pow(u[ijk-kk1]-umean[k-1],2) + ci3*std::pow(u[ijk    ]-umean[k  ],2))*wx[ijk-kk1])
@@ -478,9 +478,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   // calculate the vertical velocity term
   k = grid->kstart;
   w2_turb[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       w2_turb[k] -= ( cg0*(bi0*std::pow(w[ijk-kk2],3) + bi1*std::pow(w[ijk-kk1],3) + bi2*std::pow(w[ijk    ],3) + bi3*std::pow(w[ijk+kk1],3))
@@ -489,12 +489,12 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
                     + cg3*(ci0*std::pow(w[ijk    ],3) + ci1*std::pow(w[ijk+kk1],3) + ci2*std::pow(w[ijk+kk2],3) + ci3*std::pow(w[ijk+kk3],3)) ) * dzhi4[k];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
   {
     w2_turb[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_turb[k] -= ( cg0*(ci0*std::pow(w[ijk-kk3],3) + ci1*std::pow(w[ijk-kk2],3) + ci2*std::pow(w[ijk-kk1],3) + ci3*std::pow(w[ijk    ],3))
@@ -506,9 +506,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
 
   k = grid->kend;
   w2_turb[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       w2_turb[k] -= ( cg0*(ci0*std::pow(w[ijk-kk3],3) + ci1*std::pow(w[ijk-kk2],3) + ci2*std::pow(w[ijk-kk1],3) + ci3*std::pow(w[ijk    ],3))
@@ -523,14 +523,14 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   master->sum(w2_turb , grid->kcells);
   master->sum(tke_turb, grid->kcells);
 
-  for(k=grid->kstart; k<grid->kend; ++k)
+  for (k=grid->kstart; k<grid->kend; ++k)
   {
     u2_turb [k] /= n;
     v2_turb [k] /= n;
     tke_turb[k] /= n;
   }
 
-  for(k=grid->kstart; k<grid->kend+1; ++k)
+  for (k=grid->kstart; k<grid->kend+1; ++k)
     w2_turb [k] /= n;
 
   // 4. CALCULATE THE PRESSURE TRANSPORT TERM
@@ -538,9 +538,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   k = grid->kstart;
   tke_pres[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       tke_pres[k] -= ( cg0*((bi0*p[ijk-kk2] + bi1*p[ijk-kk1] + bi2*p[ijk    ] + bi3*p[ijk+kk1])*w[ijk-kk1])
@@ -550,13 +550,13 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
     }
 
   // interior
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     tke_pres[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         tke_pres[k] -= ( cg0*((ci0*p[ijk-kk3] + ci1*p[ijk-kk2] + ci2*p[ijk-kk1] + ci3*p[ijk    ])*w[ijk-kk1])
@@ -570,9 +570,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   k = grid->kend-1;
   tke_pres[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       tke_pres[k] -= ( cg0*((ci0*p[ijk-kk3] + ci1*p[ijk-kk2] + ci2*p[ijk-kk1] + ci3*p[ijk    ])*w[ijk-kk1])
@@ -586,9 +586,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   // bottom boundary
   k = grid->kstart;
   w2_pres[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       w2_pres[k] -= 0.*( cg0*((bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1])*p[ijk-kk2])
@@ -598,12 +598,12 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
     }
 
   // interior
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
   {
     w2_pres[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_pres[k] -= 2.*( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ])*p[ijk-kk2])
@@ -616,9 +616,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   // top boundary
   k = grid->kend;
   w2_pres[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       w2_pres[k] -= 0.*( cg0*((ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ])*p[ijk-kk2])
@@ -630,27 +630,27 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   master->sum(w2_pres , grid->kcells);
   master->sum(tke_pres, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
     tke_pres[k] /= n;
 
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
     w2_pres [k] /= n;
   
   // 5. CALCULATE THE VISCOUS TRANSPORT TERM
   // first, interpolate the vertical velocity to the scalar levels using temporary array wx
-  for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         wx[ijk] = ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2];
       }
 
   // calculate the ghost cells at the bottom
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + kstart*kk1;
       wx[ijk-kk1] = - 2.*wx[ijk] + (1./3.)*wx[ijk+kk1];
@@ -658,9 +658,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
     }
 
   // calculate the ghost cells at the top
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
       wx[ijk+kk1] = - 2.*wx[ijk] + (1./3.)*wx[ijk-kk1];
@@ -674,9 +674,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   v2_visc [k] = 0.;
   tke_visc[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       u2_visc[k]  += visc * ( cg0*((bg0*std::pow(u[ijk-kk2]-umean[k-2],2) + bg1*std::pow(u[ijk-kk1]-umean[k-1],2) + bg2*std::pow(u[ijk    ]-umean[k  ],2) + bg3*std::pow(u[ijk+kk1]-umean[k+1],2)) * dzhi4[k-1])
@@ -698,15 +698,15 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
     tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
 
   // interior
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     u2_visc [k] = 0.;
     v2_visc [k] = 0.;
     tke_visc[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_visc[k]  += visc * ( cg0*((cg0*std::pow(u[ijk-kk3]-umean[k-3],2) + cg1*std::pow(u[ijk-kk2]-umean[k-2],2) + cg2*std::pow(u[ijk-kk1]-umean[k-1],2) + cg3*std::pow(u[ijk    ]-umean[k  ],2)) * dzhi4[k-1])
@@ -733,9 +733,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   v2_visc [k] = 0.;
   tke_visc[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       u2_visc[k]  += visc * ( cg0*((cg0*std::pow(u[ijk-kk3]-umean[k-3],2) + cg1*std::pow(u[ijk-kk2]-umean[k-2],2) + cg2*std::pow(u[ijk-kk1]-umean[k-1],2) + cg3*std::pow(u[ijk    ]-umean[k  ],2)) * dzhi4[k-1])
@@ -762,9 +762,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   // Bottom boundary.
   k = grid->kstart;
   w2_visc[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       w2_visc[k] += visc * ( bg0*((bg0*std::pow(w[ijk-kk1],2) + bg1*std::pow(w[ijk    ],2) + bg2*std::pow(w[ijk+kk1],2) + bg3*std::pow(w[ijk+kk2],2)) * dzi4[k-1])
@@ -776,9 +776,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   // Bottom boundary + 1.
   k = grid->kstart+1;
   w2_visc[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       w2_visc[k] += visc * ( cg0*((bg0*std::pow(w[ijk-kk2],2) + bg1*std::pow(w[ijk-kk1],2) + bg2*std::pow(w[ijk    ],2) + bg3*std::pow(w[ijk+kk1],2)) * dzi4[k-2])
@@ -788,12 +788,12 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
     }
 
   // Interior.
-  for(int k=grid->kstart+2; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+2; k<grid->kend-1; ++k)
   {
     w2_visc[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_visc[k] += visc * ( cg0*((cg0*std::pow(w[ijk-kk3],2) + cg1*std::pow(w[ijk-kk2],2) + cg2*std::pow(w[ijk-kk1],2) + cg3*std::pow(w[ijk    ],2)) * dzi4[k-2])
@@ -806,9 +806,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   // Top boundary - 1.
   k = grid->kend-1;
   w2_visc[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       w2_visc[k] += visc * ( cg0*((cg0*std::pow(w[ijk-kk3],2) + cg1*std::pow(w[ijk-kk2],2) + cg2*std::pow(w[ijk-kk1],2) + cg3*std::pow(w[ijk    ],2)) * dzi4[k-2])
@@ -820,9 +820,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   // Top boundary.
   k = grid->kend;
   w2_visc[k] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       w2_visc[k] += visc * ( tg0*((cg0*std::pow(w[ijk-kk4],2) + cg1*std::pow(w[ijk-kk3],2) + cg2*std::pow(w[ijk-kk2],2) + cg3*std::pow(w[ijk-kk1],2)) * dzi4[k-3])
@@ -836,13 +836,13 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   master->sum(w2_visc , grid->kcells);
   master->sum(tke_visc, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_visc [k] /= n;
     v2_visc [k] /= n;
     tke_visc[k] /= n;
   }
-  for(int k=grid->kstart; k<grid->kend+1; ++k)
+  for (int k=grid->kstart; k<grid->kend+1; ++k)
     w2_visc [k] /= n;
 
   // 6. CALCULATE THE DISSIPATION TERM
@@ -857,9 +857,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   v2_diss [k] = 0.;
   tke_diss[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       u2_diss[k]  -= 2.*visc * (
@@ -902,15 +902,15 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   tke_diss[k] += 0.5*(u2_diss[k] + v2_diss[k]);
 
   // interior
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     u2_diss [k] = 0.;
     v2_diss [k] = 0.;
     tke_diss[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_diss[k]  -= 2.*visc * (
@@ -960,9 +960,9 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   v2_diss [k] = 0.;
   tke_diss[k] = 0.;
 
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk  = i + j*jj1 + k*kk1;
       u2_diss[k]  -= 2.*visc * (
@@ -1005,12 +1005,12 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   tke_diss[k] += 0.5*(u2_diss[k] + v2_diss[k]);
 
   // calculate the w2 budget term
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
   {
     w2_diss[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_diss[k]  -= 2.*visc * (
@@ -1036,25 +1036,25 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   master->sum(w2_diss , grid->kcells);
   master->sum(tke_diss, grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_diss [k] /= n;
     v2_diss [k] /= n;
     tke_diss[k] /= n;
   }
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
     w2_diss [k] /= n;
 
   // 7. CALCULATE THE PRESSURE REDISTRIBUTION TERM
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_rdstr [k] = 0.;
     v2_rdstr [k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         u2_rdstr [k] += 2.*(ci0*p[ijk-ii2] + ci1*p[ijk-ii1] + ci2*p[ijk] + ci3*p[ijk+ii1])*
@@ -1070,12 +1070,12 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
       }
   }
 
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
   {
     w2_rdstr[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_rdstr[k] += 2.*(ci0*p[ijk-kk2] + ci1*p[ijk-kk1] + ci2*p[ijk] + ci3*p[ijk+kk1])*
@@ -1090,7 +1090,7 @@ void Budget::calcTkeBudget(double * restrict u, double * restrict v, double * re
   master->sum(v2_rdstr , grid->kcells);
   master->sum(w2_rdstr , grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     u2_rdstr[k] /= n;
     v2_rdstr[k] /= n;
@@ -1110,29 +1110,29 @@ void Budget::calcTkeBudgetBuoy(double * restrict w, double * restrict b,
   double n = grid->imax*grid->jmax;
 
   // calculate the buoyancy term
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     w2_buoy [k] = 0.;
     tke_buoy[k] = 0.;
 
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         tke_buoy[k] += (ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*b[ijk];
       }
   }
-  for(int k=grid->kstart+1; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk  = i + j*jj1 + k*kk1;
         w2_buoy[k] += 2.*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1])*w[ijk];
       }
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     w2_buoy [k] /= n;
     tke_buoy[k] /= n;
@@ -1156,12 +1156,12 @@ void Budget::calcPe(double * restrict b, double * restrict zsort, double * restr
   kstart = grid->kstart;
   kend = grid->kend;
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     pe_total[k] = 0;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
         pe_total[k] -= b[ijk] * z[k];
@@ -1171,36 +1171,36 @@ void Budget::calcPe(double * restrict b, double * restrict zsort, double * restr
   master->sum(pe_total, grid->kcells);
 
   int n = grid->itot*grid->jtot;
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
     pe_total[k] /= n;
 
   // now find out the available potential energy
   // int ks;
   double zsortval;
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     zsortprof[k] = 0.;
     pe_bg    [k] = 0.;
     pe_avail [k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj + k*kk1;
         /*
         ks  = k;
-        if(b[ijk] > bsort[k])
+        if (b[ijk] > bsort[k])
         {
-          while(b[ijk] > bsort[ks] && ks < grid->kend-1)
+          while (b[ijk] > bsort[ks] && ks < grid->kend-1)
             ++ks;
 
           // linearly interpolate the height
           zsortval = z[ks-1] + (b[ijk]-bsort[ks-1])/(bsort[ks]-bsort[ks-1]) * (z[ks]-z[ks-1]);
 
         }
-        else if(b[ijk] < bsort[k])
+        else if (b[ijk] < bsort[k])
         {
-          while(b[ijk] < bsort[ks] && ks > grid->kstart)
+          while (b[ijk] < bsort[ks] && ks > grid->kstart)
             --ks;
 
           // linearly interpolate the height
@@ -1222,7 +1222,7 @@ void Budget::calcPe(double * restrict b, double * restrict zsort, double * restr
   master->sum(pe_bg    , grid->kcells);
   master->sum(pe_avail , grid->kcells);
 
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     zsortprof[k] /= n;
     pe_bg    [k] /= n;
@@ -1231,9 +1231,9 @@ void Budget::calcPe(double * restrict b, double * restrict zsort, double * restr
 
   // now, calculate the boundary conditions for zsort
   // bottom bc
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk1;
@@ -1241,9 +1241,9 @@ void Budget::calcPe(double * restrict b, double * restrict zsort, double * restr
     }
 
   // top bc
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk1;
@@ -1251,9 +1251,9 @@ void Budget::calcPe(double * restrict b, double * restrict zsort, double * restr
     }
 
   // calculate the ghost cells at the bottom
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk1;
@@ -1262,9 +1262,9 @@ void Budget::calcPe(double * restrict b, double * restrict zsort, double * restr
     }
 
   // calculate the ghost cells at the top
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj;
       ijk = i + j*jj + (kend-1)*kk1;
@@ -1278,18 +1278,18 @@ double Budget::calc_zsort(double b, double * restrict bsort, double * restrict z
   double zsortval;
   int ks = k;
 
-  if(b > bsort[k])
+  if (b > bsort[k])
   {
-    while(b > bsort[ks] && ks < grid->kend-1)
+    while (b > bsort[ks] && ks < grid->kend-1)
       ++ks;
 
     // linearly interpolate the height
     zsortval = z[ks-1] + (b-bsort[ks-1])/(bsort[ks]-bsort[ks-1]) * (z[ks]-z[ks-1]);
 
   }
-  else if(b < bsort[k])
+  else if (b < bsort[k])
   {
-    while(b < bsort[ks] && ks > grid->kstart)
+    while (b < bsort[ks] && ks > grid->kstart)
       --ks;
 
     // linearly interpolate the height
@@ -1305,7 +1305,7 @@ double Budget::calc_dzstardb(double b, double * restrict bsort, double * restric
 {
   // start the iteration below the grid to make sure not to miss values below the first full level
   int k = grid->kstart-1;
-  while(bsort[k+1] < b && k < grid->kend)
+  while (bsort[k+1] < b && k < grid->kend)
     ++k;
 
   // our required value is in between bsort[k] and bsort[k+1]
@@ -1356,9 +1356,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
   // first, calculate the Boussinesq term (kappa*db/dz). Here bz contains the buoyancy and not the PE yet
   // bottom boundary
   pe_bous[kstart] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + kstart*kk1;
       pe_bous[kstart] += visc * ( cg0*(bi0*b[ijk-kk2] + bi1*b[ijk-kk1] + bi2*b[ijk    ] + bi3*b[ijk+kk1])
@@ -1368,12 +1368,12 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
                                 * dzi4[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     pe_bous[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         pe_bous[k] += visc * ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
@@ -1386,9 +1386,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 
   // top boundary
   pe_bous[kend-1] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
       pe_bous[kend-1] += visc * ( cg0*(ci0*b[ijk-kk3] + ci1*b[ijk-kk2] + ci2*b[ijk-kk1] + ci3*b[ijk    ])
@@ -1400,9 +1400,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 
   // now, convert the buoyancy field into a potential energy field
   // first, before destroying the field, calculate the potential energy at the top
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj1;
       ijk = i + j*jj1 + (kend-1)*kk1;
@@ -1410,19 +1410,19 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
     }
 
   // calculate the potential energy
-  for(int k=grid->kstart; k<grid->kend; ++k)
-    for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int k=grid->kstart; k<grid->kend; ++k)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         bz[ijk] = -b[ijk] * z[k];
       }
 
   // calculate the ghost cells at the bottom, making use of the fact that bz = 0
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj1;
       ijk = i + j*jj1 + kstart*kk1;
@@ -1431,9 +1431,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
     }
 
   // calculate the ghost cells at the top
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ij  = i + j*jj1;
       ijk = i + j*jj1 + (kend-1)*kk1;
@@ -1444,9 +1444,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
   // calculate the advective transport term
   // bottom boundary
   pe_turb[kstart] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + kstart*kk1;
       pe_turb[kstart] -= ( cg0*(w[ijk-kk1] * (bi0*bz[ijk-kk2] + bi1*bz[ijk-kk1] + bi2*bz[ijk    ] + bi3*bz[ijk+kk1]))
@@ -1456,12 +1456,12 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
                          * dzi4[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     pe_turb[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         pe_turb[k] -= ( cg0*(w[ijk-kk1] * (ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ]))
@@ -1474,9 +1474,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 
   // top boundary
   pe_turb[kend-1] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
       pe_turb[kend-1] -= ( cg0*(w[ijk-kk1] * (ci0*bz[ijk-kk3] + ci1*bz[ijk-kk2] + ci2*bz[ijk-kk1] + ci3*bz[ijk    ]))
@@ -1489,9 +1489,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
   // calculate the diffusion of potential energy
   // bottom boundary
   pe_visc[kstart] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + kstart*kk1;
       pe_visc[kstart] -= visc * ( cg0*zh[kstart-1]*(bg0*b[ijk-kk2] + bg1*b[ijk-kk1] + bg2*b[ijk    ] + bg3*b[ijk+kk1]) * dzhi4[kstart-1]
@@ -1501,12 +1501,12 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
                                 * dzi4[kstart];
     }
 
-  for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+  for (int k=grid->kstart+1; k<grid->kend-1; ++k)
   {
     pe_visc[k] = 0.;
-    for(int j=grid->jstart; j<grid->jend; ++j)
+    for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for(int i=grid->istart; i<grid->iend; ++i)
+      for (int i=grid->istart; i<grid->iend; ++i)
       {
         ijk = i + j*jj1 + k*kk1;
         pe_visc[k] -= visc * ( cg0*zh[k-1]*(cg0*b[ijk-kk3] + cg1*b[ijk-kk2] + cg2*b[ijk-kk1] + cg3*b[ijk    ]) * dzhi4[k-1]
@@ -1519,9 +1519,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 
   // top boundary
   pe_visc[kend-1] = 0.;
-  for(int j=grid->jstart; j<grid->jend; ++j)
+  for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-    for(int i=grid->istart; i<grid->iend; ++i)
+    for (int i=grid->istart; i<grid->iend; ++i)
     {
       ijk = i + j*jj1 + (kend-1)*kk1;
       pe_visc[kend-1] -= visc * ( cg0*zh[kend-2]*(cg0*b[ijk-kk3] + cg1*b[ijk-kk2] + cg2*b[ijk-kk1] + cg3*b[ijk    ]) * dzhi4[kend-2]
@@ -1536,7 +1536,7 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
   master->sum(pe_bous, grid->kcells);
 
   int n = grid->itot*grid->jtot;
-  for(int k=grid->kstart; k<grid->kend; ++k)
+  for (int k=grid->kstart; k<grid->kend; ++k)
   {
     pe_turb[k] /= n;
     pe_visc[k] /= n;
@@ -1570,9 +1570,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //   // calculate the diffusion of potential energy
 //   // bottom boundary
 //   bpe_visc[kstart] = 0.;
-//   for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; ++i)
+//     for (int i=grid->istart; i<grid->iend; ++i)
 //     {
 //       ijk = i + j*jj1 + kstart*kk1;
 //       bpe_visc[kstart] -= visc *
@@ -1587,12 +1587,12 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //                             * dzi4[kstart];
 //     }
 // 
-//   for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+//   for (int k=grid->kstart+1; k<grid->kend-1; ++k)
 //   {
 //     bpe_visc[k] = 0.;
-//     for(int j=grid->jstart; j<grid->jend; ++j)
+//     for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//       for(int i=grid->istart; i<grid->iend; ++i)
+//       for (int i=grid->istart; i<grid->iend; ++i)
 //       {
 //         ijk = i + j*jj1 + k*kk1;
 //         bpe_visc[k] -= visc *
@@ -1610,9 +1610,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 // 
 //   // top boundary
 //   bpe_visc[kend-1] = 0.;
-//   for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; ++i)
+//     for (int i=grid->istart; i<grid->iend; ++i)
 //     {
 //       ijk = i + j*jj1 + (kend-1)*kk1;
 //       bpe_visc[kend-1] -= visc *
@@ -1633,9 +1633,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //   dyi = 1./grid->dy;
 // 
 //   bpe_diss[kstart] = 0.;
-//   for(int j=grid->jstart; j<grid->jend; j++)
+//   for (int j=grid->jstart; j<grid->jend; j++)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; i++)
+//     for (int i=grid->istart; i<grid->iend; i++)
 //     {
 //       ijk  = i + j*jj1 + kstart*kk1;
 //       dzstardb = calc_dzstardb(b[ijk], bsort, z);
@@ -1657,12 +1657,12 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //     }
 // 
 //   // interior
-//   for(int k=grid->kstart+1; k<grid->kend-1; k++)
+//   for (int k=grid->kstart+1; k<grid->kend-1; k++)
 //   {
 //     bpe_diss[k] = 0.;
-//     for(int j=grid->jstart; j<grid->jend; j++)
+//     for (int j=grid->jstart; j<grid->jend; j++)
 // #pragma ivdep
-//       for(int i=grid->istart; i<grid->iend; i++)
+//       for (int i=grid->istart; i<grid->iend; i++)
 //       {
 //         ijk  = i + j*jj1 + k*kk1;
 //         dzstardb = calc_dzstardb(b[ijk], bsort, z);
@@ -1686,9 +1686,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 // 
 //   // top
 //   bpe_diss[kend-1] = 0.;
-//   for(int j=grid->jstart; j<grid->jend; j++)
+//   for (int j=grid->jstart; j<grid->jend; j++)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; i++)
+//     for (int i=grid->istart; i<grid->iend; i++)
 //     {
 //       ijk = i + j*jj1 + (kend-1)*kk1;
 //       dzstardb = calc_dzstardb(b[ijk], bsort, z);
@@ -1712,9 +1712,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //   /*
 //   // CONVERT THE BZ FIELD INTO BACKGROUND POTENTIAL ENERGY
 //   // first, calculate the potential energy at the bottom, the bot field contains the zsort at the bottom boundary
-//   for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; ++i)
+//     for (int i=grid->istart; i<grid->iend; ++i)
 //     {
 //       ij  = i + j*jj1;
 //       ijk = i + j*jj1 + kstart*kk1;
@@ -1723,9 +1723,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 // 
 // 
 //   // calculate the potential energy at the top, the top field contains the zsort at the top boundary
-//   for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; ++i)
+//     for (int i=grid->istart; i<grid->iend; ++i)
 //     {
 //       ij  = i + j*jj1;
 //       ijk = i + j*jj1 + (kend-1)*kk1;
@@ -1733,19 +1733,19 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //     }
 // 
 //   // calculate the potential energy
-//   for(int k=grid->kstart; k<grid->kend; ++k)
-//     for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int k=grid->kstart; k<grid->kend; ++k)
+//     for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//       for(int i=grid->istart; i<grid->iend; ++i)
+//       for (int i=grid->istart; i<grid->iend; ++i)
 //       {
 //         ijk = i + j*jj1 + k*kk1;
 //         bz[ijk] = -b[ijk] * bz[ijk];
 //       }
 // 
 //   // calculate the ghost cells at the bottom
-//   for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; ++i)
+//     for (int i=grid->istart; i<grid->iend; ++i)
 //     {
 //       ij  = i + j*jj1;
 //       ijk = i + j*jj1 + kstart*kk1;
@@ -1754,9 +1754,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //     }
 // 
 //   // calculate the ghost cells at the top
-//   for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; ++i)
+//     for (int i=grid->istart; i<grid->iend; ++i)
 //     {
 //       ij  = i + j*jj1;
 //       ijk = i + j*jj1 + (kend-1)*kk1;
@@ -1768,9 +1768,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //   // calculate the advective transport term
 //   // bottom boundary
 //   bpe_turb[kstart] = 0.;
-//   for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; ++i)
+//     for (int i=grid->istart; i<grid->iend; ++i)
 //     {
 //       ijk = i + j*jj1 + kstart*kk1;
 //       bpe_turb[kstart] += bz[ijk]*
@@ -1781,12 +1781,12 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //                           * dzi4[kstart];
 //     }
 // 
-//   for(int k=grid->kstart+1; k<grid->kend-1; ++k)
+//   for (int k=grid->kstart+1; k<grid->kend-1; ++k)
 //   {
 //     bpe_turb[k] = 0.;
-//     for(int j=grid->jstart; j<grid->jend; ++j)
+//     for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//       for(int i=grid->istart; i<grid->iend; ++i)
+//       for (int i=grid->istart; i<grid->iend; ++i)
 //       {
 //         ijk = i + j*jj1 + k*kk1;
 //         bpe_turb[k] += bz[ijk]*
@@ -1800,9 +1800,9 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 // 
 //   // top boundary
 //   bpe_turb[kend-1] = 0.;
-//   for(int j=grid->jstart; j<grid->jend; ++j)
+//   for (int j=grid->jstart; j<grid->jend; ++j)
 // #pragma ivdep
-//     for(int i=grid->istart; i<grid->iend; ++i)
+//     for (int i=grid->istart; i<grid->iend; ++i)
 //     {
 //       ijk = i + j*jj1 + (kend-1)*kk1;
 //       bpe_turb[kend-1] += bz[ijk]*
@@ -1818,7 +1818,7 @@ void Budget::calcPeBudget(double * restrict w, double * restrict b, double * res
 //   master->sum(bpe_diss, grid->kcells);
 // 
 //   int n = grid->itot*grid->jtot;
-//   for(int k=grid->kstart; k<grid->kend; ++k)
+//   for (int k=grid->kstart; k<grid->kend; ++k)
 //   {
 //     bpe_turb[k] /= n;
 //     bpe_visc[k] /= n;

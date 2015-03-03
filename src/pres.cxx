@@ -81,14 +81,14 @@ double Pres::checkDivergence()
 Pres* Pres::factory(Master *masterin, Input *inputin, Model *modelin, const std::string swspatialorder)
 {
   std::string swpres;
-  if(inputin->getItem(&swpres, "pres", "swpres", "", swspatialorder))
+  if (inputin->getItem(&swpres, "pres", "swpres", "", swspatialorder))
     return 0;
 
-  if(swpres == "0")
+  if (swpres == "0")
     return new Pres(modelin, inputin);
-  else if(swpres == "2")
+  else if (swpres == "2")
     return new Pres2(modelin, inputin);
-  else if(swpres == "4")
+  else if (swpres == "4")
     return new Pres4(modelin, inputin);
   else
   {
