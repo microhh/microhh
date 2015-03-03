@@ -479,7 +479,7 @@ void ThermoMoist::exec_cross()
 {
   int nerror = 0;
 
-  Cross *cross = model->cross;
+  Cross* cross = model->cross;
 
   // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
   for (std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
@@ -490,24 +490,24 @@ void ThermoMoist::exec_cross()
     if (*it == "b")
     {
       calcBuoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
-      nerror += cross->crossSimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
+      nerror += cross->cross_simple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if (*it == "ql")
     {
       calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
-      nerror += cross->crossSimple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
+      nerror += cross->cross_simple(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, *it);
     }
     else if (*it == "blngrad")
     {
       calcBuoyancy(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp2"]->data, thvref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += cross->crossLngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
+      nerror += cross->cross_lngrad(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, grid->dzi4, *it);
     }
     else if (*it == "qlpath")
     {
       calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
       // Note: tmp1 twice used as argument -> overwritten in crosspath()
-      nerror += cross->crossPath(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qlpath");
+      nerror += cross->cross_path(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qlpath");
     }
     else if (*it == "bbot" or *it == "bfluxbot")
     {
@@ -515,9 +515,9 @@ void ThermoMoist::exec_cross()
       calcBuoyancyFluxBot(fields->atmp["tmp1"]->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 
       if (*it == "bbot")
-        nerror += cross->crossPlane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
+        nerror += cross->cross_plane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
       else if (*it == "bfluxbot")
-        nerror += cross->crossPlane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
+        nerror += cross->cross_plane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
     }
   }
 
@@ -986,7 +986,7 @@ void ThermoMoist::initStat()
 
 void ThermoMoist::initCross()
 {
-  if (model->cross->getSwitch() == "1")
+  if (model->cross->get_switch() == "1")
   {
 
     allowedcrossvars.push_back("b");
@@ -998,7 +998,7 @@ void ThermoMoist::initCross()
     allowedcrossvars.push_back("qlpath");
 
     // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+    std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
 
     // Check input list of cross variables (crosslist)
     std::vector<std::string>::iterator it=crosslist_global->begin();

@@ -172,7 +172,7 @@ void Boundary_surface::init(Input *inputin)
     allowedcrossvars.push_back("obuk");
 
     // Get global cross-list from cross.cxx
-    std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+    std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
 
     // Check input list of cross variables (crosslist)
     std::vector<std::string>::iterator it2=crosslist_global->begin();
@@ -196,9 +196,9 @@ void Boundary_surface::exec_cross()
     for (std::vector<std::string>::const_iterator it=crosslist.begin(); it<crosslist.end(); ++it)
     {
         if (*it == "ustar")
-            nerror += model->cross->crossPlane(ustar, fields->atmp["tmp1"]->data, "ustar");
+            nerror += model->cross->cross_plane(ustar, fields->atmp["tmp1"]->data, "ustar");
         else if (*it == "obuk")
-            nerror += model->cross->crossPlane(obuk,  fields->atmp["tmp1"]->data, "obuk");
+            nerror += model->cross->cross_plane(obuk,  fields->atmp["tmp1"]->data, "obuk");
     }  
 
     if (nerror)

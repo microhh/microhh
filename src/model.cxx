@@ -310,7 +310,7 @@ void Model::exec()
       }
 
       // Save the selected cross sections to disk, cross sections are handled on CPU.
-      if (cross->doCross())
+      if (cross->do_cross())
       {
         fields  ->exec_cross();
         thermo  ->exec_cross();

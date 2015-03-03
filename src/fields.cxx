@@ -194,7 +194,7 @@ void Fields::init()
   }
 
   // Get global cross-list from cross.cxx
-  std::vector<std::string> *crosslist_global = model->cross->getCrossList(); 
+  std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
 
   // Check different type of crosses and put them in their respective lists 
   for (FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
@@ -1037,22 +1037,22 @@ void Fields::exec_cross()
   Cross *cross = model->cross;
 
   for (std::vector<std::string>::const_iterator it=crosssimple.begin(); it<crosssimple.end(); ++it)
-    nerror += cross->crossSimple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
+    nerror += cross->cross_simple(a[*it]->data, atmp["tmp1"]->data, a[*it]->name);
 
   for (std::vector<std::string>::const_iterator it=crosslngrad.begin(); it<crosslngrad.end(); ++it)
-    nerror += cross->crossLngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
+    nerror += cross->cross_lngrad(a[*it]->data, atmp["tmp1"]->data, atmp["tmp2"]->data, grid->dzi4, a[*it]->name + "lngrad");
 
   for (std::vector<std::string>::const_iterator it=crossfluxbot.begin(); it<crossfluxbot.end(); ++it)
-    nerror += cross->crossPlane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
+    nerror += cross->cross_plane(a[*it]->datafluxbot, atmp["tmp1"]->data, a[*it]->name + "fluxbot");
 
   for (std::vector<std::string>::const_iterator it=crossfluxtop.begin(); it<crossfluxtop.end(); ++it)
-    nerror += cross->crossPlane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
+    nerror += cross->cross_plane(a[*it]->datafluxtop, atmp["tmp1"]->data, a[*it]->name + "fluxtop");
 
   for (std::vector<std::string>::const_iterator it=crossbot.begin(); it<crossbot.end(); ++it)
-    nerror += cross->crossPlane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
+    nerror += cross->cross_plane(a[*it]->databot, atmp["tmp1"]->data, a[*it]->name + "bot");
 
   for (std::vector<std::string>::const_iterator it=crosstop.begin(); it<crosstop.end(); ++it)
-    nerror += cross->crossPlane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
+    nerror += cross->cross_plane(a[*it]->datatop, atmp["tmp1"]->data, a[*it]->name + "top");
 
   if (nerror)
     throw 1;
