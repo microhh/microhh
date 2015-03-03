@@ -206,9 +206,9 @@ void ThermoDry::exec_stats(Mask *m)
   // calculate diffusive fluxes
   if (grid->swspatialorder == "2")
   {
-    if (model->diff->getName() == "smag2")
+    if (model->diff->get_name() == "smag2")
     {
-      DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
+      Diff_smag_2* diffptr = static_cast<Diff_smag_2*>(model->diff);
       stats->calcDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
                           fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,

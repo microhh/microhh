@@ -31,30 +31,30 @@ class Master;
 
 class Diff
 {
-  public:
-    Diff(Model *, Input *);
-    virtual ~Diff();
-    static Diff* factory(Master *, Input *, Model *, const std::string); ///< Factory function for diff class generation.
+    public:
+        Diff(Model*, Input*);
+        virtual ~Diff();
+        static Diff* factory(Master*, Input*, Model*, const std::string); ///< Factory function for diff class generation.
 
-    virtual void set_values();
-    virtual void execViscosity();
-    virtual void exec();
+        virtual void set_values();
+        virtual void exec_viscosity();
+        virtual void exec();
 
-    std::string getName();
-    virtual unsigned long get_time_limit(unsigned long, double);
-    virtual double get_dn(double);
+        std::string get_name();
+        virtual unsigned long get_time_limit(unsigned long, double);
+        virtual double get_dn(double);
 
-    double dnmax;
+        double dnmax;
 
-    // GPU functions and variables
-    virtual void prepare_device();
+        // GPU functions and variables
+        virtual void prepare_device();
 
-  protected:
-    Model  *model;
-    Grid   *grid;
-    Fields *fields;
-    Master *master;
+    protected:
+        Model*  model;
+        Grid*   grid;
+        Fields* fields;
+        Master* master;
 
-    std::string swdiff;
+        std::string swdiff;
 };
 #endif

@@ -33,16 +33,16 @@
 
 using namespace fd::o4;
 
-Diff4::Diff4(Model *modelin, Input *inputin) : Diff(modelin, inputin)
+Diff_4::Diff_4(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {
   swdiff = "4";
 }
 
-Diff4::~Diff4()
+Diff_4::~Diff_4()
 {
 }
 
-void Diff4::set_values()
+void Diff_4::set_values()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
@@ -54,7 +54,7 @@ void Diff4::set_values()
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
-unsigned long Diff4::get_time_limit(unsigned long idt, double dt)
+unsigned long Diff_4::get_time_limit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
@@ -63,7 +63,7 @@ unsigned long Diff4::get_time_limit(unsigned long idt, double dt)
   return idtlim;
 }
 
-double Diff4::get_dn(double dt)
+double Diff_4::get_dn(double dt)
 {
   double dn;
 
@@ -73,32 +73,32 @@ double Diff4::get_dn(double dt)
 }
 
 #ifndef USECUDA
-void Diff4::exec()
+void Diff_4::exec()
 {
   // In case of a two-dimensional run, strip v component out of all kernels and do 
   // not calculate v-diffusion tendency.
   if (grid->jtot == 1)
   {
-    diffc<false>(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
-    diffw<false>(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
+    diff_c<false>(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
+    diff_w<false>(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
     for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      diffc<false>(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
+      diff_c<false>(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
   }
   else
   {
-    diffc<true>(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
-    diffc<true>(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
-    diffw<true>(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
+    diff_c<true>(fields->ut->data, fields->u->data, grid->dzi4, grid->dzhi4, fields->visc);
+    diff_c<true>(fields->vt->data, fields->v->data, grid->dzi4, grid->dzhi4, fields->visc);
+    diff_w<true>(fields->wt->data, fields->w->data, grid->dzi4, grid->dzhi4, fields->visc);
 
     for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-      diffc<true>(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
+      diff_c<true>(it->second->data, fields->sp[it->first]->data, grid->dzi4, grid->dzhi4, fields->sp[it->first]->visc);
   }
 }
 #endif
 
 template<bool dim3>
-void Diff4::diffc(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, const double visc)
+void Diff_4::diff_c(double* restrict at, double* restrict a, double* restrict dzi4, double* restrict dzhi4, const double visc)
 {
   const int ii1 = 1;
   const int ii2 = 2;
@@ -168,7 +168,7 @@ void Diff4::diffc(double * restrict at, double * restrict a, double * restrict d
 }
 
 template<bool dim3>
-void Diff4::diffw(double * restrict at, double * restrict a, double * restrict dzi4, double * restrict dzhi4, double visc)
+void Diff_4::diff_w(double* restrict at, double* restrict a, double* restrict dzi4, double* restrict dzhi4, double visc)
 {
   const int ii1 = 1;
   const int ii2 = 2;

@@ -30,16 +30,16 @@
 #include "defines.h"
 #include "model.h"
 
-Diff2::Diff2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
+Diff_2::Diff_2(Model* modelin, Input* inputin) : Diff(modelin, inputin)
 {
   swdiff = "2";
 }
 
-Diff2::~Diff2()
+Diff_2::~Diff_2()
 {
 }
 
-void Diff2::set_values()
+void Diff_2::set_values()
 {
   // get the maximum time step for diffusion
   double viscmax = fields->visc;
@@ -51,7 +51,7 @@ void Diff2::set_values()
     dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
-unsigned long Diff2::get_time_limit(unsigned long idt, double dt)
+unsigned long Diff_2::get_time_limit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
 
@@ -60,7 +60,7 @@ unsigned long Diff2::get_time_limit(unsigned long idt, double dt)
   return idtlim;
 }
 
-double Diff2::get_dn(double dt)
+double Diff_2::get_dn(double dt)
 {
   double dn;
 
@@ -70,18 +70,18 @@ double Diff2::get_dn(double dt)
 }
 
 #ifndef USECUDA
-void Diff2::exec()
+void Diff_2::exec()
 {
-  diffc(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
-  diffc(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
-  diffw(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
+  diff_c(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
+  diff_c(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
+  diff_w(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
 
   for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sp[it->first]->visc);
+    diff_c(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sp[it->first]->visc);
 }
 #endif
 
-void Diff2::diffc(double * restrict at, double * restrict a, double * restrict dzi, double * restrict dzhi, double visc)
+void Diff_2::diff_c(double* restrict at, double* restrict a, double* restrict dzi, double* restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;
@@ -109,7 +109,7 @@ void Diff2::diffc(double * restrict at, double * restrict a, double * restrict d
       }
 }
 
-void Diff2::diffw(double * restrict wt, double * restrict w, double * restrict dzi, double * restrict dzhi, double visc)
+void Diff_2::diff_w(double* restrict wt, double* restrict w, double* restrict dzi, double* restrict dzhi, double visc)
 {
   int    ijk,ii,jj,kk;
   double dxidxi,dyidyi;

@@ -242,7 +242,7 @@ void Model::exec()
   fields->exec();
 
   // Get the viscosity to be used in diffusion.
-  diff->execViscosity();
+  diff->exec_viscosity();
 
   // Set the time step.
   set_time_step();
@@ -378,7 +378,7 @@ void Model::exec()
     fields->exec();
 
     // Get the viscosity to be used in diffusion.
-    diff->execViscosity();
+    diff->exec_viscosity();
 
     // Write status information to disk.
     print_status();

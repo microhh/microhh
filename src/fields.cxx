@@ -440,7 +440,7 @@ void Fields::exec_stats(Mask *m)
     stats->calcFlux_2nd(u->data, umodel, w->data, m->profs["w"].data,
                         m->profs["uw"].data, atmp["tmp2"]->data, uloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    if (model->diff->getName() == "smag2")
+    if (model->diff->get_name() == "smag2")
       stats->calcDiff_2nd(u->data, w->data, sd["evisc"]->data,
                           m->profs["udiff"].data, grid->dzhi,
                           u->datafluxbot, u->datafluxtop, 1., uloc,
@@ -482,7 +482,7 @@ void Fields::exec_stats(Mask *m)
     stats->calcFlux_2nd(v->data, vmodel, w->data, m->profs["w"].data,
                         m->profs["vw"].data, atmp["tmp2"]->data, vloc,
                         atmp["tmp1"]->data, stats->nmaskh);
-    if (model->diff->getName() == "smag2")
+    if (model->diff->get_name() == "smag2")
       stats->calcDiff_2nd(v->data, w->data, sd["evisc"]->data,
                           m->profs["vdiff"].data, grid->dzhi,
                           v->datafluxbot, v->datafluxtop, 1., vloc,
@@ -503,7 +503,7 @@ void Fields::exec_stats(Mask *m)
   }
 
   // calculate stats for the prognostic scalars
-  DiffSmag2 *diffptr = static_cast<DiffSmag2 *>(model->diff);
+  Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
   for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
   {
     stats->calcMean(m->profs[it->first].data, it->second->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
@@ -522,7 +522,7 @@ void Fields::exec_stats(Mask *m)
       stats->calcFlux_2nd(it->second->data, m->profs[it->first].data, w->data, m->profs["w"].data,
                           m->profs[it->first+"w"].data, atmp["tmp1"]->data, sloc,
                           atmp["tmp4"]->data, stats->nmaskh);
-      if (model->diff->getName() == "smag2")
+      if (model->diff->get_name() == "smag2")
         stats->calcDiff_2nd(it->second->data, w->data, sd["evisc"]->data,
                             m->profs[it->first+"diff"].data, grid->dzhi,
                             it->second->datafluxbot, it->second->datafluxtop, diffptr->tPr, sloc,
@@ -560,7 +560,7 @@ void Fields::exec_stats(Mask *m)
   for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
     stats->addFluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
 
-  if (model->diff->getName() == "smag2")
+  if (model->diff->get_name() == "smag2")
     stats->calcMean(m->profs["evisc"].data, sd["evisc"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
 }
 
@@ -847,7 +847,7 @@ void Fields::createStats()
     stats->addProf(sd["p"]->name +"w", "Turbulent flux of the " + sd["p"]->longname, sd["p"]->unit + " m s-1", "zh");
  
     // CvH, shouldn't this call be in the diffusion class?
-    if (model->diff->getName() == "smag2")
+    if (model->diff->get_name() == "smag2")
       stats->addProf(sd["evisc"]->name, sd["evisc"]->longname, sd["evisc"]->unit, "z");
   
     // moments

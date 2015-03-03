@@ -36,7 +36,7 @@
 #include "diff_4.h"
 #include "diff_smag2.h"
 
-Diff::Diff(Model *modelin, Input *inputin)
+Diff::Diff(Model* modelin, Input* inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -76,7 +76,7 @@ double Diff::get_dn(double dt)
   return dn;
 }
 
-void Diff::execViscosity()
+void Diff::exec_viscosity()
 {
 }
 
@@ -84,12 +84,12 @@ void Diff::exec()
 {
 }
 
-std::string Diff::getName()
+std::string Diff::get_name()
 {
   return swdiff;
 }
 
-Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std::string swspatialorder)
+Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
 {
   std::string swdiff;
   std::string swboundary;
@@ -104,9 +104,9 @@ Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std:
   if (swdiff == "0")
     return new Diff(modelin, inputin);
   else if (swdiff == "2")
-    return new Diff2(modelin, inputin);
+    return new Diff_2(modelin, inputin);
   else if (swdiff == "4")
-    return new Diff4(modelin, inputin);
+    return new Diff_4(modelin, inputin);
   else if (swdiff == "smag2")
   {
     // the subgrid model requires a surface model because of the MO matching at first level
@@ -115,7 +115,7 @@ Diff* Diff::factory(Master *masterin, Input *inputin, Model *modelin, const std:
       masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
       return 0;
     }
-    return new DiffSmag2(modelin, inputin);
+    return new Diff_smag_2(modelin, inputin);
   }
   else
   {

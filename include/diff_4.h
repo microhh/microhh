@@ -26,22 +26,24 @@
 #include "diff.h"
 #include "defines.h"
 
-class Diff4 : public Diff
+class Diff_4 : public Diff
 {
-  public:
-    Diff4(Model *, Input *);
-    ~Diff4();
+    public:
+        Diff_4(Model*, Input*);
+        ~Diff_4();
 
-    void set_values();
-    void exec();
+        void set_values();
+        void exec();
 
-    unsigned long get_time_limit(unsigned long, double);
-    double get_dn(double);
+        unsigned long get_time_limit(unsigned long, double);
+        double get_dn(double);
 
-  private:
-    double dnmul;
+    private:
+        double dnmul;
 
-    template<bool> void diffc(double * restrict, double * restrict, double * restrict, double * restrict, double);
-    template<bool> void diffw(double * restrict, double * restrict, double * restrict, double * restrict, double);
+        template<bool>
+        void diff_c(double* restrict, double* restrict, double* restrict, double* restrict, double);
+        template<bool> 
+        void diff_w(double* restrict, double* restrict, double* restrict, double* restrict, double);
 };
 #endif

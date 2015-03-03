@@ -34,7 +34,7 @@
 #include "model.h"
 #include "most.h"
 
-DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
+Diff_smag_2::Diff_smag_2(Model* modelin, Input* inputin) : Diff(modelin, inputin)
 {
   swdiff = "smag2";
 
@@ -51,7 +51,7 @@ DiffSmag2::DiffSmag2(Model *modelin, Input *inputin) : Diff(modelin, inputin)
     throw 1;
 }
 
-DiffSmag2::~DiffSmag2()
+Diff_smag_2::~Diff_smag_2()
 {
   #ifdef USECUDA
   clear_device();
@@ -59,7 +59,7 @@ DiffSmag2::~DiffSmag2()
 }
 
 #ifndef USECUDA
-unsigned long DiffSmag2::get_time_limit(unsigned long idt, double dt)
+unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
   double dnmul;
@@ -74,7 +74,7 @@ unsigned long DiffSmag2::get_time_limit(unsigned long idt, double dt)
 #endif
 
 #ifndef USECUDA
-double DiffSmag2::get_dn(double dt)
+double Diff_smag_2::get_dn(double dt)
 {
   double dnmul;
 
@@ -86,7 +86,7 @@ double DiffSmag2::get_dn(double dt)
 #endif
 
 #ifndef USECUDA
-void DiffSmag2::execViscosity()
+void Diff_smag_2::exec_viscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
   Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
@@ -100,10 +100,10 @@ void DiffSmag2::execViscosity()
   // start with retrieving the stability information
   if (model->thermo->getSwitch() == "0")
   {
-    eviscNeutral(fields->sd["evisc"]->data,
-                 fields->u->data, fields->v->data, fields->w->data,
-                 fields->u->datafluxbot, fields->v->datafluxbot,
-                 grid->z, grid->dz, boundaryptr->z0m);
+    evisc_neutral(fields->sd["evisc"]->data,
+                  fields->u->data, fields->v->data, fields->w->data,
+                  fields->u->datafluxbot, fields->v->datafluxbot,
+                  grid->z, grid->dz, boundaryptr->z0m);
   }
   // assume buoyancy calculation is needed
   else
@@ -125,22 +125,22 @@ void DiffSmag2::execViscosity()
 #endif
 
 #ifndef USECUDA
-void DiffSmag2::exec()
+void Diff_smag_2::exec()
 {
-  diffu(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
-  diffv(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
-  diffw(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->rhoref, fields->rhorefh);
+  diff_u(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
+  diff_v(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
+  diff_w(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->rhoref, fields->rhorefh);
 
   for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-    diffc(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
+    diff_c(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data, fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
 }
 #endif
 
-void DiffSmag2::strain2(double * restrict strain2,
-                        double * restrict u, double * restrict v, double * restrict w,
-                        double * restrict ufluxbot, double * restrict vfluxbot,
-                        double * restrict ustar, double * restrict obuk,
-                        double * restrict z, double * restrict dzi, double * restrict dzhi)
+void Diff_smag_2::strain2(double* restrict strain2,
+                          double* restrict u, double* restrict v, double* restrict w,
+                          double* restrict ufluxbot, double* restrict vfluxbot,
+                          double* restrict ustar, double* restrict obuk,
+                          double* restrict z, double* restrict dzi, double* restrict dzhi)
 {
   int    ij,ijk,ii,jj,kk,kstart;
   double dxi,dyi;
@@ -208,11 +208,11 @@ void DiffSmag2::strain2(double * restrict strain2,
       }
 }
 
-void DiffSmag2::evisc(double * restrict evisc,
-                      double * restrict u, double * restrict v, double * restrict w,  double * restrict N2,
-                      double * restrict ufluxbot, double * restrict vfluxbot, double * restrict bfluxbot,
-                      double * restrict ustar, double * restrict obuk,
-                      double * restrict z, double * restrict dz, double * restrict dzi,
+void Diff_smag_2::evisc(double* restrict evisc,
+                      double* restrict u, double* restrict v, double* restrict w,  double* restrict N2,
+                      double* restrict ufluxbot, double* restrict vfluxbot, double* restrict bfluxbot,
+                      double* restrict ustar, double* restrict obuk,
+                      double* restrict z, double* restrict dz, double* restrict dzi,
                       double z0m)
 {
   int    ij,ijk,jj,kk,kstart;
@@ -276,10 +276,10 @@ void DiffSmag2::evisc(double * restrict evisc,
   grid->boundaryCyclic(evisc);
 }
 
-void DiffSmag2::eviscNeutral(double * restrict evisc,
-                             double * restrict u, double * restrict v, double * restrict w,
-                             double * restrict ufluxbot, double * restrict vfluxbot,
-                             double * restrict z, double * restrict dz, double z0m)
+void Diff_smag_2::evisc_neutral(double* restrict evisc,
+                                double* restrict u, double* restrict v, double* restrict w,
+                                double* restrict ufluxbot, double* restrict vfluxbot,
+                                double* restrict z, double* restrict dz, double z0m)
 {
   const int jj = grid->icells;
   const int kk = grid->ijcells;
@@ -313,10 +313,10 @@ void DiffSmag2::eviscNeutral(double * restrict evisc,
   grid->boundaryCyclic(evisc);
 }
 
-void DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restrict v, double * restrict w,
-                      double * restrict dzi, double * restrict dzhi, double * restrict evisc,
-                      double * restrict fluxbot, double * restrict fluxtop,
-                      double * restrict rhoref, double * restrict rhorefh)
+void Diff_smag_2::diff_u(double* restrict ut, double* restrict u, double* restrict v, double* restrict w,
+                         double* restrict dzi, double* restrict dzhi, double* restrict evisc,
+                         double* restrict fluxbot, double* restrict fluxtop,
+                         double* restrict rhoref, double* restrict rhorefh)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
@@ -400,10 +400,10 @@ void DiffSmag2::diffu(double * restrict ut, double * restrict u, double * restri
     }
 }
 
-void DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restrict v, double * restrict w,
-                      double * restrict dzi, double * restrict dzhi, double * restrict evisc,
-                      double * restrict fluxbot, double * restrict fluxtop,
-                      double * restrict rhoref, double * restrict rhorefh)
+void Diff_smag_2::diff_v(double* restrict vt, double* restrict u, double* restrict v, double* restrict w,
+                         double* restrict dzi, double* restrict dzhi, double* restrict evisc,
+                         double* restrict fluxbot, double* restrict fluxtop,
+                         double* restrict rhoref, double* restrict rhorefh)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxi,dyi;
@@ -487,9 +487,9 @@ void DiffSmag2::diffv(double * restrict vt, double * restrict u, double * restri
     }
 }
 
-void DiffSmag2::diffw(double * restrict wt, double * restrict u, double * restrict v, double * restrict w,
-                      double * restrict dzi, double * restrict dzhi, double * restrict evisc,
-                      double * restrict rhoref, double * restrict rhorefh)
+void Diff_smag_2::diff_w(double* restrict wt, double* restrict u, double* restrict v, double* restrict w,
+                         double* restrict dzi, double* restrict dzhi, double* restrict evisc,
+                         double* restrict rhoref, double* restrict rhorefh)
 {
   int    ijk,ii,jj,kk;
   double dxi,dyi;
@@ -525,10 +525,10 @@ void DiffSmag2::diffw(double * restrict wt, double * restrict u, double * restri
       }
 }
 
-void DiffSmag2::diffc(double * restrict at, double * restrict a,
-                      double * restrict dzi, double * restrict dzhi, double * restrict evisc,
-                      double * restrict fluxbot, double * restrict fluxtop, 
-                      double * restrict rhoref, double * restrict rhorefh, double tPr)
+void Diff_smag_2::diff_c(double* restrict at, double* restrict a,
+                         double* restrict dzi, double* restrict dzhi, double* restrict evisc,
+                         double* restrict fluxbot, double* restrict fluxtop, 
+                         double* restrict rhoref, double* restrict rhorefh, double tPr)
 {
   int    ijk,ij,ii,jj,kk,kstart,kend;
   double dxidxi,dyidyi;
@@ -612,7 +612,7 @@ void DiffSmag2::diffc(double * restrict at, double * restrict a,
     }
 }
 
-double DiffSmag2::calc_dnmul(double * restrict evisc, double * restrict dzi, double tPr)
+double Diff_smag_2::calc_dnmul(double* restrict evisc, double* restrict dzi, double tPr)
 {
   int    ijk,jj,kk;
   double dxidxi,dyidyi;
@@ -642,7 +642,7 @@ double DiffSmag2::calc_dnmul(double * restrict evisc, double * restrict dzi, dou
 }
 
 #ifndef USECUDA
-void DiffSmag2::prepare_device()
+void Diff_smag_2::prepare_device()
 {
 }
 #endif

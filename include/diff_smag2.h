@@ -25,51 +25,53 @@
 
 #include "diff.h"
 
-class DiffSmag2 : public Diff
+class Diff_smag_2 : public Diff
 {
-  public:
-    DiffSmag2(Model *, Input *);
-    ~DiffSmag2();
+    public:
+        Diff_smag_2(Model*, Input*);
+        ~Diff_smag_2();
 
-    void exec();
-    void execViscosity();
+        void exec();
+        void exec_viscosity();
 
-    unsigned long get_time_limit(unsigned long, double);
-    double get_dn(double);
+        unsigned long get_time_limit(unsigned long, double);
+        double get_dn(double);
 
-    double tPr;
+        double tPr;
 
-    // GPU functions and variables
-    void prepare_device();
-    void clear_device();
+        // GPU functions and variables
+        void prepare_device();
+        void clear_device();
 
-    double *mlen_g; 
+        double* mlen_g; 
 
-  private:
-    void strain2(double *,
-                 double *, double *, double *,
-                 double *, double *,
-                 double *, double *,
-                 double *, double *, double *);
+    private:
+        void strain2(double*,
+                     double*, double*, double*,
+                     double*, double*,
+                     double*, double*,
+                     double*, double*, double*);
 
-    void evisc(double *,
-               double *, double *, double *, double *,
-               double *, double *, double *,
-               double *, double *,
-               double *, double *, double *,
-               double);
-    void eviscNeutral(double *,
-                      double *, double *, double *,
-                      double *, double *,
-                      double *, double *,
-                      double);
-    void diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    void diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    void diffw(double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    void diffc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
+        void evisc(double*,
+                   double*, double*, double*, double*,
+                   double*, double*, double*,
+                   double*, double*,
+                   double*, double*, double*,
+                   double);
 
-    double calc_dnmul(double *, double *, double);
+        void evisc_neutral(double*,
+                           double*, double*, double*,
+                           double*, double*,
+                           double*, double*,
+                           double);
 
-    double cs;
+        void diff_u(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
+        void diff_v(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
+        void diff_w(double*, double*, double*, double*, double*, double*, double*, double*, double*);
+        void diff_c(double*, double*, double*, double*, double*, double*, double*, double*, double*, double);
+
+        double calc_dnmul(double*, double*, double);
+
+        double cs;
 };
 #endif

@@ -25,22 +25,22 @@
 
 #include "diff.h"
 
-class Diff2 : public Diff
+class Diff_2 : public Diff
 {
-  public:
-    Diff2(Model *, Input *);
-    ~Diff2();
+    public:
+        Diff_2(Model*, Input*);
+        ~Diff_2();
 
-    void set_values();
-    void exec();
+        void set_values();
+        void exec();
 
-    unsigned long get_time_limit(unsigned long, double);
-    double get_dn(double);
+        unsigned long get_time_limit(unsigned long, double);
+        double get_dn(double);
 
-  private:
-    double dnmul;
+    private:
+        double dnmul;
 
-    void diffc(double *, double *, double *, double *, double);
-    void diffw(double *, double *, double *, double *, double);
+        void diff_c(double*, double*, double*, double*, double);
+        void diff_w(double*, double*, double*, double*, double);
 };
 #endif
