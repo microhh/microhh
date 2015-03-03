@@ -36,12 +36,12 @@ class Fields;
 class Buffer
 {
   public:
-    Buffer(Model *, Input *); ///< Constructor of the buffer class.
-    ~Buffer();                  ///< Destructor of the buffer class.
+    Buffer(Model*, Input*); ///< Constructor of the buffer class.
+    ~Buffer();              ///< Destructor of the buffer class.
 
-    void init();           ///< Initialize the arrays that contain the profiles.
-    void create(Input *); ///< Read the profiles of the forces from the input.
-    void exec();            ///< Add the tendencies created by the damping.
+    void init();         ///< Initialize the arrays that contain the profiles.
+    void create(Input*); ///< Read the profiles of the forces from the input.
+    void exec();         ///< Add the tendencies created by the damping.
 
     // GPU functions and variables
     void prepare_device(); ///< Allocate and copy buffer profiles at/to GPU                             
@@ -64,8 +64,8 @@ class Buffer
 
     std::string swbuffer; ///< Switch for buffer.
 
-    void buffer(double * const, const double * const, 
-                const double * const, const double * const); ///< Calculate the tendency.
+    void buffer(double* const, const double* const, 
+                const double* const, const double* const); ///< Calculate the tendency.
 
     // GPU functions and variables
     std::map<std::string, double*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.
