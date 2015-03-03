@@ -106,7 +106,7 @@ void Grid::prepareDevice()
   ncellsp   = ijcellsp * kcells + memoffset;
 
   // Calculate optimal size thread blocks based on grid
-  iThreadBlock = min(256,(int)ceil(itot/16)*16); 
+  iThreadBlock = max(16,min(256,(int)ceil(itot/16)*16)); 
   jThreadBlock = 256 / iThreadBlock;
  
   const int kmemsize = kcells*sizeof(double);
