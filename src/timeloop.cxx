@@ -262,40 +262,37 @@ inline double Timeloop::rk4subdt(const double dt)
     return cB[substep]*dt;
 }
 
-void Timeloop::rk3(double * restrict a, double * restrict at, double dt)
+void Timeloop::rk3(double * restrict a, double * restrict at, const double dt)
 {
     const double cA [] = {0., -5./9., -153./128.};
     const double cB [] = {1./3., 15./16., 8./15.};
 
-    int i,j,k;
-    int ijk,jj,kk;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
 
-    jj = grid->icells;
-    kk = grid->ijcells;
-
-    for (k=grid->kstart; k<grid->kend; k++)
-        for (j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for (i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
-                ijk = i + j*jj + k*kk;
-                a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
+                const int ijk = i + j*jj + k*kk;
+                a[ijk] += cB[substep]*dt*at[ijk];
             }
 
-    int substepn = (substep+1) % 3;
+    const int substepn = (substep+1) % 3;
 
     // substep 0 resets the tendencies, because cA[0] == 0
-    for (k=grid->kstart; k<grid->kend; k++)
-        for (j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for (i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
-                ijk = i + j*jj + k*kk;
-                at[ijk] = cA[substepn]*at[ijk];
+                const int ijk = i + j*jj + k*kk;
+                at[ijk] *= cA[substepn];
             }
 }
 
-void Timeloop::rk4(double * restrict a, double * restrict at, double dt)
+void Timeloop::rk4(double * restrict a, double * restrict at, const double dt)
 {
     const double cA [] = {
         0.,
@@ -311,30 +308,27 @@ void Timeloop::rk4(double * restrict a, double * restrict at, double dt)
         3134564353537./ 4481467310338.,
         2277821191437./14882151754819.};
 
-    int i,j,k;
-    int ijk,jj,kk;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
 
-    jj = grid->icells;
-    kk = grid->ijcells;
-
-    for (k=grid->kstart; k<grid->kend; k++)
-        for (j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for (i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
-                ijk = i + j*jj + k*kk;
+                const int ijk = i + j*jj + k*kk;
                 a[ijk] = a[ijk] + cB[substep]*dt*at[ijk];
             }
 
-    int substepn = (substep+1) % 5;
+    const int substepn = (substep+1) % 5;
 
     // substep 0 resets the tendencies, because cA[0] == 0
-    for (k=grid->kstart; k<grid->kend; k++)
-        for (j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-            for (i=grid->istart; i<grid->iend; i++)
+            for (int i=grid->istart; i<grid->iend; i++)
             {
-                ijk = i + j*jj + k*kk;
+                const int ijk = i + j*jj + k*kk;
                 at[ijk] = cA[substepn]*at[ijk];
             }
 }
