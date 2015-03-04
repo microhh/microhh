@@ -28,7 +28,7 @@
 #include "fd.h"
 #include "tools.h"
 
-namespace ThermoBuoySlope_g
+namespace Thermo_buoy_slope_g
 {
   __global__ void calcBuoyancyTend_u_4th(double * const __restrict__ ut, const double * const __restrict__ b,
                                          const double sinalpha,
@@ -97,7 +97,7 @@ namespace ThermoBuoySlope_g
 } // End namespace.
 
 #ifdef USECUDA
-void ThermoBuoySlope::exec()
+void Thermo_buoy_slope::exec()
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -119,21 +119,21 @@ void ThermoBuoySlope::exec()
     const double sinalpha = std::sin(this->alpha);
     const double cosalpha = std::cos(this->alpha);
 
-    ThermoBuoySlope_g::calcBuoyancyTend_u_4th<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->sp["b"]->data_g[offs],
+    Thermo_buoy_slope_g::calcBuoyancyTend_u_4th<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->sp["b"]->data_g[offs],
                                                                      sinalpha,
                                                                      grid->istart, grid->jstart, grid->kstart,
                                                                      grid->iend, grid->jend, grid->kend,
                                                                      grid->icellsp, grid->ijcellsp);
     cudaCheckError(); 
 
-    ThermoBuoySlope_g::calcBuoyancyTend_w_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs],
+    Thermo_buoy_slope_g::calcBuoyancyTend_w_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs],
                                                                      cosalpha,
                                                                      grid->istart, grid->jstart, grid->kstart+1,
                                                                      grid->iend, grid->jend, grid->kend,
                                                                      grid->icellsp, grid->ijcellsp);
     cudaCheckError(); 
 
-    ThermoBuoySlope_g::calcBuoyancyTend_b_4th<<<gridGPU, blockGPU>>>(&fields->st["b"]->data_g[offs],
+    Thermo_buoy_slope_g::calcBuoyancyTend_b_4th<<<gridGPU, blockGPU>>>(&fields->st["b"]->data_g[offs],
                                                                      &fields->u->data_g[offs], &fields->w->data_g[offs],
                                                                      grid->utrans, n2, sinalpha, cosalpha,
                                                                      grid->istart, grid->jstart, grid->kstart,

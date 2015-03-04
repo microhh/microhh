@@ -32,11 +32,11 @@
 
 class Model;
 
-class Pres4 : public Pres
+class Pres_4 : public Pres
 {
   public:
-    Pres4(Model *, Input *);
-    ~Pres4();
+    Pres_4(Model *, Input *);
+    ~Pres_4();
 
     void init();
     void set_values();

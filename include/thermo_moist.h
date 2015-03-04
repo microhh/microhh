@@ -31,11 +31,11 @@ class Fields;
 class Stats;
 struct Mask;
 
-class ThermoMoist : public Thermo
+class Thermo_moist : public Thermo
 {
   public:
-    ThermoMoist(Model *, Input *);
-    virtual ~ThermoMoist();
+    Thermo_moist(Model *, Input *);
+    virtual ~Thermo_moist();
 
     virtual void init();
     virtual void create(Input *);

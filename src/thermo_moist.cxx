@@ -42,7 +42,7 @@ using fd::o2::interp2;
 using fd::o4::interp4;
 using namespace constants;
 
-ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
+Thermo_moist::Thermo_moist(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 {
   swthermo = "moist";
 
@@ -107,7 +107,7 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
     throw 1;
 }
 
-ThermoMoist::~ThermoMoist()
+Thermo_moist::~Thermo_moist()
 {
   delete[] thl0;
   delete[] qt0;
@@ -123,7 +123,7 @@ ThermoMoist::~ThermoMoist()
   #endif
 }
 
-void ThermoMoist::init()
+void Thermo_moist::init()
 {
   stats = model->stats;
 
@@ -152,7 +152,7 @@ void ThermoMoist::init()
   initDump();
 }
 
-void ThermoMoist::create(Input *inputin)
+void Thermo_moist::create(Input *inputin)
 {
   int kstart = grid->kstart;
   int kend   = grid->kend;
@@ -203,7 +203,7 @@ void ThermoMoist::create(Input *inputin)
 }
 
 #ifndef USECUDA
-void ThermoMoist::exec()
+void Thermo_moist::exec()
 {
   const int kk = grid->ijcells;
   const int kcells = grid->kcells;
@@ -230,7 +230,7 @@ void ThermoMoist::exec()
 }
 #endif
 
-void ThermoMoist::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
+void Thermo_moist::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if (m->name == "ql")
   {
@@ -251,7 +251,7 @@ void ThermoMoist::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
   }
 }
 
-void ThermoMoist::calcMask_ql(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+void Thermo_moist::calcMask_ql(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                               int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                               double * restrict ql)
 {
@@ -317,7 +317,7 @@ void ThermoMoist::calcMask_ql(double * restrict mask, double * restrict maskh, d
   //nmaskh[kend  ] = 0;
 }
 
-void ThermoMoist::calcMask_qlcore(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+void Thermo_moist::calcMask_qlcore(double * restrict mask, double * restrict maskh, double * restrict maskbot,
                                   int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
                                   double * restrict ql, double * restrict b, double * restrict bmean)
 {
@@ -378,7 +378,7 @@ void ThermoMoist::calcMask_qlcore(double * restrict mask, double * restrict mask
   *nmaskbot = nmaskh[grid->kstart];
 }
 
-void ThermoMoist::exec_stats(Mask *m)
+void Thermo_moist::exec_stats(Mask *m)
 {
   const double NoOffset = 0.;
 
@@ -475,7 +475,7 @@ void ThermoMoist::exec_stats(Mask *m)
   }
 }
 
-void ThermoMoist::exec_cross()
+void Thermo_moist::exec_cross()
 {
   int nerror = 0;
 
@@ -525,7 +525,7 @@ void ThermoMoist::exec_cross()
     throw 1;
 }
 
-void ThermoMoist::exec_dump()
+void Thermo_moist::exec_dump()
 {
   for (std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
   {
@@ -541,7 +541,7 @@ void ThermoMoist::exec_dump()
   }
 }
 
-bool ThermoMoist::checkThermoField(std::string name)
+bool Thermo_moist::checkThermoField(std::string name)
 {
   if (name == "b" || name == "ql")
     return false;
@@ -550,7 +550,7 @@ bool ThermoMoist::checkThermoField(std::string name)
 }
 
 #ifndef USECUDA
-void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_moist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
   const int kcells = grid->kcells;
 
@@ -573,7 +573,7 @@ void ThermoMoist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #endif
 
 #ifndef USECUDA
-void ThermoMoist::getBuoyancySurf(Field3d *bfield)
+void Thermo_moist::getBuoyancySurf(Field3d *bfield)
 {
   calcBuoyancyBot(bfield->data         , bfield->databot,
                   fields->sp[thvar]->data, fields->sp[thvar]->databot,
@@ -584,13 +584,13 @@ void ThermoMoist::getBuoyancySurf(Field3d *bfield)
 #endif
 
 #ifndef USECUDA
-void ThermoMoist::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo_moist::getBuoyancyFluxbot(Field3d *bfield)
 {
   calcBuoyancyFluxBot(bfield->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 }
 #endif
 
-void ThermoMoist::getProgVars(std::vector<std::string> *list)
+void Thermo_moist::getProgVars(std::vector<std::string> *list)
 {
   list->push_back(thvar);
   list->push_back("qt");
@@ -611,7 +611,7 @@ void ThermoMoist::getProgVars(std::vector<std::string> *list)
  * @param thlmean Pointer to input liq. water potential temperature array (horizontal mean, full level) 
  * @param qtmean Pointer to input tot. moisture mix. ratio  array (horizontal mean, full level) 
  */
-void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict prefh,
+void  Thermo_moist::calcBaseState(double * restrict pref,     double * restrict prefh,
                                  double * restrict rho,      double * restrict rhoh,
                                  double * restrict thv,      double * restrict thvh,
                                  double * restrict ex,       double * restrict exh,
@@ -695,7 +695,7 @@ void  ThermoMoist::calcBaseState(double * restrict pref,     double * restrict p
   }
 }
 
-void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict thl, double * restrict qt, 
+void Thermo_moist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict thl, double * restrict qt, 
                                        double * restrict ph, double * restrict thlh, double * restrict qth, double * restrict ql,
                                        double * restrict thvrefh)
 {
@@ -744,7 +744,7 @@ void ThermoMoist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict t
   }
 }
 
-void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict thl,  double * restrict qt, 
+void Thermo_moist::calcBuoyancyTend_4th(double * restrict wt, double * restrict thl,  double * restrict qt, 
                                        double * restrict ph, double * restrict thlh, double * restrict qth, double * restrict ql,
                                        double * restrict thvrefh)
 {
@@ -793,7 +793,7 @@ void ThermoMoist::calcBuoyancyTend_4th(double * restrict wt, double * restrict t
   }
 }
 
-void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict thl, double * restrict qt, double * restrict p, double * restrict ql,
+void Thermo_moist::calcBuoyancy(double * restrict b, double * restrict thl, double * restrict qt, double * restrict p, double * restrict ql,
                                double * restrict thvref)
 {
   int ijk,jj,kk,ij;
@@ -837,7 +837,7 @@ void ThermoMoist::calcBuoyancy(double * restrict b, double * restrict thl, doubl
   }
 }
 
-void ThermoMoist::calcLiquidWater(double * restrict ql, double * restrict thl, double * restrict qt, double * restrict p)
+void Thermo_moist::calcLiquidWater(double * restrict ql, double * restrict thl, double * restrict qt, double * restrict p)
 {
   int ijk,jj,kk;
   double ex;
@@ -882,7 +882,7 @@ void ThermoMoist::calcLiquidWater(double * restrict ql, double * restrict thl, d
   }
 }
 
-void ThermoMoist::calcN2(double * restrict N2, double * restrict thl, double * restrict dzi, double * restrict thvref)
+void Thermo_moist::calcN2(double * restrict N2, double * restrict thl, double * restrict dzi, double * restrict thvref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -898,7 +898,7 @@ void ThermoMoist::calcN2(double * restrict N2, double * restrict thl, double * r
       }
 }
 
-void ThermoMoist::calcBuoyancyBot(double * restrict b,   double * restrict bbot,
+void Thermo_moist::calcBuoyancyBot(double * restrict b,   double * restrict bbot,
                                   double * restrict thl, double * restrict thlbot,
                                   double * restrict qt,  double * restrict qtbot,
                                   double * restrict thvref, double * restrict thvrefh)
@@ -920,7 +920,7 @@ void ThermoMoist::calcBuoyancyBot(double * restrict b,   double * restrict bbot,
     }
 }
 
-void ThermoMoist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restrict thlbot, double * restrict thlfluxbot, double * restrict qtbot, double * restrict qtfluxbot,
+void Thermo_moist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restrict thlbot, double * restrict thlfluxbot, double * restrict qtbot, double * restrict qtfluxbot,
                                       double * restrict thvrefh)
 {
   int ij,jj,kstart;
@@ -937,7 +937,7 @@ void ThermoMoist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * restr
     }
 }
 
-void ThermoMoist::initStat()
+void Thermo_moist::initStat()
 {
   // Add variables to the statistics
   if (stats->getSwitch() == "1")
@@ -984,7 +984,7 @@ void ThermoMoist::initStat()
   }
 }
 
-void ThermoMoist::initCross()
+void Thermo_moist::initCross()
 {
   if (model->cross->get_switch() == "1")
   {
@@ -1019,7 +1019,7 @@ void ThermoMoist::initCross()
   }
 }
 
-void ThermoMoist::initDump()
+void Thermo_moist::initDump()
 {
   if (model->dump->get_switch() == "1")
   {
@@ -1043,22 +1043,22 @@ void ThermoMoist::initDump()
 }
 
 // INLINE FUNCTIONS
-inline double ThermoMoist::buoyancy(const double exn, const double thl, const double qt, const double ql, const double thvref)
+inline double Thermo_moist::buoyancy(const double exn, const double thl, const double qt, const double ql, const double thvref)
 {
   return grav * ((thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
 }
 
-inline double ThermoMoist::buoyancyNoql(const double thl, const double qt, const double thvref)
+inline double Thermo_moist::buoyancyNoql(const double thl, const double qt, const double thvref)
 {
   return grav * (thl * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
 }
 
-inline double ThermoMoist::buoyancyFluxNoql(const double thl, const double thlflux, const double qt, const double qtflux, const double thvref)
+inline double Thermo_moist::buoyancyFluxNoql(const double thl, const double thlflux, const double qt, const double qtflux, const double thvref)
 {
   return grav/thvref * (thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux);
 }
 
-inline double ThermoMoist::satAdjust(const double thl, const double qt, const double p, const double exn)
+inline double Thermo_moist::satAdjust(const double thl, const double qt, const double p, const double exn)
 {
   int niter = 0, nitermax = 30;
   double ql, tl, tnr_old = 1.e9, tnr, qs=0;
@@ -1082,23 +1082,23 @@ inline double ThermoMoist::satAdjust(const double thl, const double qt, const do
   return ql;
 }
 
-inline double ThermoMoist::exner(const double p)
+inline double Thermo_moist::exner(const double p)
 {
   return pow((p/p0),(Rd/cp));
 }
 
-inline double ThermoMoist::exn2(const double p)
+inline double Thermo_moist::exn2(const double p)
 {
   double dp=p-p0;
   return (1+(dp*(ex1+dp*(ex2+dp*(ex3+dp*(ex4+dp*(ex5+dp*(ex6+ex7*dp)))))))); 
 }
 
-inline double ThermoMoist::qsat(const double p, const double T)
+inline double Thermo_moist::qsat(const double p, const double T)
 {
   return ep*esat(T)/(p-(1-ep)*esat(T));
 }
 
-inline double ThermoMoist::esat(const double T)
+inline double Thermo_moist::esat(const double T)
 {
   const double x=std::max(-80.,T-T0);
   return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));

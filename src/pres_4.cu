@@ -30,7 +30,7 @@
 
 using namespace fd::o4;
 
-namespace Pres4_g
+namespace Pres_4_g
 {
   __global__ void gcwt(double * const __restrict__ wt,
                        const int jj, const int kk,
@@ -422,7 +422,7 @@ namespace Pres4_g
 } // End namespace.
 
 #ifdef USECUDA
-void Pres4::exec(double dt)
+void Pres_4::exec(double dt)
 {
   // 1. Create the input for the pressure solver.
   const int blocki = 128;
@@ -446,13 +446,13 @@ void Pres4::exec(double dt)
   grid->boundaryCyclic_g(&fields->vt->data_g[offs]);
   grid->boundaryCyclic_g(&fields->wt->data_g[offs]);
 
-  Pres4_g::gcwt<<<grid2dGPU, block2dGPU>>>(&fields->wt->data_g[offs],
+  Pres_4_g::gcwt<<<grid2dGPU, block2dGPU>>>(&fields->wt->data_g[offs],
                                            grid->icellsp, grid->ijcellsp,
                                            grid->istart, grid->jstart, grid->kstart,
                                            grid->iend, grid->jend, grid->kend);
   cudaCheckError();
 
-  Pres4_g::presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
+  Pres_4_g::presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                          &fields->u ->data_g[offs], &fields->v ->data_g[offs], &fields->w ->data_g[offs],
                                          &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                          grid->dzi4_g,
@@ -485,7 +485,7 @@ void Pres4::exec(double dt)
   for(int n=0; n<nj; ++n)
   {
     // Prepare the fields that go into the matrix solver
-    Pres4_g::solvein<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
+    Pres_4_g::solvein<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
                                                  m1_g, m2_g, m3_g, m4_g,
                                                  m5_g, m6_g, m7_g,
                                                  &tmp1_g[0*ns], &tmp1_g[1*ns], &tmp1_g[2*ns], &tmp1_g[3*ns],
@@ -498,13 +498,13 @@ void Pres4::exec(double dt)
     cudaCheckError();
 
     // Solve the sevenbanded matrix
-    Pres4_g::hdma<<<grid2dsGPU,block2dsGPU>>>(&tmp1_g[0*ns], &tmp1_g[1*ns], &tmp1_g[2*ns], &tmp1_g[3*ns],
+    Pres_4_g::hdma<<<grid2dsGPU,block2dsGPU>>>(&tmp1_g[0*ns], &tmp1_g[1*ns], &tmp1_g[2*ns], &tmp1_g[3*ns],
                                               &tmp2_g[0*ns], &tmp2_g[1*ns], &tmp2_g[2*ns], &tmp2_g[3*ns],
                                               grid->iblock, grid->kmax, jslice);
     cudaCheckError();
 
     // Put the solution back into the pressure field
-    Pres4_g::solveputback<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
+    Pres_4_g::solveputback<<<grid2dsGPU,block2dsGPU>>>(fields->sd["p"]->data_g,
                                                       &tmp2_g[3*ns],
                                                       grid->iblock, grid->jblock,
                                                       grid->kmax,
@@ -516,7 +516,7 @@ void Pres4::exec(double dt)
 
   cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
-  Pres4_g::solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
+  Pres_4_g::solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
                                            grid->imax, grid->imax*grid->jmax,
                                            grid->icellsp, grid->ijcellsp,
                                            grid->istart, grid->jstart, grid->kstart,
@@ -526,7 +526,7 @@ void Pres4::exec(double dt)
   grid->boundaryCyclic_g(&fields->sd["p"]->data_g[offs]);
 
   // 3. Get the pressure tendencies from the pressure field.
-  Pres4_g::presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
+  Pres_4_g::presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                           &fields->sd["p"]->data_g[offs],
                                           grid->dzhi4_g,
                                           1./grid->dx, 1./grid->dy,
@@ -536,7 +536,7 @@ void Pres4::exec(double dt)
   cudaCheckError();
 }
 
-double Pres4::checkDivergence()
+double Pres_4::checkDivergence()
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -548,7 +548,7 @@ double Pres4::checkDivergence()
 
   const int offs = grid->memoffset;
 
-  Pres4_g::calcdivergence<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs],
+  Pres_4_g::calcdivergence<<<gridGPU, blockGPU>>>(&fields->atmp["tmp1"]->data_g[offs],
                                                  &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
                                                  grid->dzi4_g,
                                                  grid->dxi, grid->dyi,
@@ -563,7 +563,7 @@ double Pres4::checkDivergence()
   return divmax;
 }
 
-void Pres4::prepare_device()
+void Pres_4::prepare_device()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -594,7 +594,7 @@ void Pres4::prepare_device()
   makeCufftPlan();
 }
 
-void Pres4::clear_device()
+void Pres_4::clear_device()
 {
   cudaSafeCall(cudaFree(bmati_g));
   cudaSafeCall(cudaFree(bmatj_g));

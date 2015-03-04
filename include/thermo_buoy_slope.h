@@ -35,11 +35,11 @@ class Fields;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-class ThermoBuoySlope : public Thermo
+class Thermo_buoy_slope : public Thermo
 {
   public:
-    ThermoBuoySlope(Model *, Input *); ///< Constructor of the dry thermodynamics class.
-    virtual ~ThermoBuoySlope();        ///< Destructor of the dry thermodynamics class.
+    Thermo_buoy_slope(Model *, Input *); ///< Constructor of the dry thermodynamics class.
+    virtual ~Thermo_buoy_slope();        ///< Destructor of the dry thermodynamics class.
 
     virtual void exec(); ///< Add the tendencies belonging to the buoyancy.
 

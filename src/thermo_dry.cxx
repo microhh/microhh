@@ -40,7 +40,7 @@ using fd::o2::interp2;
 using fd::o4::interp4;
 using namespace constants;
 
-ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
+Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 {
   swthermo = "dry";
 
@@ -90,7 +90,7 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
     throw 1;
 }
 
-ThermoDry::~ThermoDry()
+Thermo_dry::~Thermo_dry()
 {
   delete[] this->thref;
   delete[] this->threfh;
@@ -104,7 +104,7 @@ ThermoDry::~ThermoDry()
   #endif
 }
 
-void ThermoDry::init()
+void Thermo_dry::init()
 {
   // copy pointers
   stats = model->stats;
@@ -121,7 +121,7 @@ void ThermoDry::init()
   initDump(); 
 }
 
-void ThermoDry::create(Input *inputin)
+void Thermo_dry::create(Input *inputin)
 {
   /* Setup base state: 
      For anelastic setup, calculate reference density and temperature from input sounding
@@ -152,7 +152,7 @@ void ThermoDry::create(Input *inputin)
 }
 
 #ifndef USECUDA
-void ThermoDry::exec()
+void Thermo_dry::exec()
 {
   if (grid->swspatialorder== "2")
     calcbuoyancytend_2nd(fields->wt->data, fields->sp["th"]->data, threfh);
@@ -161,7 +161,7 @@ void ThermoDry::exec()
 }
 #endif
 
-void ThermoDry::exec_stats(Mask *m)
+void Thermo_dry::exec_stats(Mask *m)
 {
   const double NoOffset = 0.;
 
@@ -231,7 +231,7 @@ void ThermoDry::exec_stats(Mask *m)
   //stats->calcSortedProf(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 }
 
-void ThermoDry::exec_cross()
+void Thermo_dry::exec_cross()
 {
   int nerror = 0;
 
@@ -273,7 +273,7 @@ void ThermoDry::exec_cross()
     throw 1;
 }
 
-void ThermoDry::exec_dump()
+void Thermo_dry::exec_dump()
 {
   for (std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
   {
@@ -287,7 +287,7 @@ void ThermoDry::exec_dump()
   }
 }
 
-bool ThermoDry::checkThermoField(std::string name)
+bool Thermo_dry::checkThermoField(std::string name)
 {
   if (name == "b")
     return false;
@@ -296,7 +296,7 @@ bool ThermoDry::checkThermoField(std::string name)
 }
 
 #ifndef USECUDA
-void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_dry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
   if (name == "b")
     calcbuoyancy(fld->data, fields->sp["th"]->data, thref);
@@ -308,14 +308,14 @@ void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #endif
 
 #ifndef USECUDA
-void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo_dry::getBuoyancyFluxbot(Field3d *bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 }
 #endif
 
 #ifndef USECUDA
-void ThermoDry::getBuoyancySurf(Field3d *bfield)
+void Thermo_dry::getBuoyancySurf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
                   fields->sp["th"]->data, fields->sp["th"]->databot, thref, threfh);
@@ -323,12 +323,12 @@ void ThermoDry::getBuoyancySurf(Field3d *bfield)
 }
 #endif
 
-void ThermoDry::getProgVars(std::vector<std::string> *list)
+void Thermo_dry::getProgVars(std::vector<std::string> *list)
 {
   list->push_back("th");
 }
 
-void ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double * restrict thref)
+void Thermo_dry::calcbuoyancy(double * restrict b, double * restrict th, double * restrict thref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -344,7 +344,7 @@ void ThermoDry::calcbuoyancy(double * restrict b, double * restrict th, double *
       }
 }
 
-void ThermoDry::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
+void Thermo_dry::calcN2(double * restrict N2, double * restrict th, double * restrict dzi, double * restrict thref)
 {
   int ijk,jj,kk;
   jj = grid->icells;
@@ -360,7 +360,7 @@ void ThermoDry::calcN2(double * restrict N2, double * restrict th, double * rest
       }
 }
 
-void ThermoDry::calcbuoyancybot(double * restrict b , double * restrict bbot,
+void Thermo_dry::calcbuoyancybot(double * restrict b , double * restrict bbot,
                                 double * restrict th, double * restrict thbot,
                                 double * restrict thref, double * restrict threfh)
 {
@@ -381,7 +381,7 @@ void ThermoDry::calcbuoyancybot(double * restrict b , double * restrict bbot,
     }
 }
 
-void ThermoDry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict thfluxbot, double * restrict threfh)
+void Thermo_dry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restrict thfluxbot, double * restrict threfh)
 {
   int ij,jj;
   jj = grid->icells;
@@ -397,7 +397,7 @@ void ThermoDry::calcbuoyancyfluxbot(double * restrict bfluxbot, double * restric
     }
 }
 
-void ThermoDry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
+void Thermo_dry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th, double * restrict threfh)
 {
   using namespace fd::o2;
 
@@ -416,7 +416,7 @@ void ThermoDry::calcbuoyancytend_2nd(double * restrict wt, double * restrict th,
       }
 }
 
-void ThermoDry::calcbuoyancytend_4th(double * restrict wt, double * restrict th, double * restrict threfh)
+void Thermo_dry::calcbuoyancytend_4th(double * restrict wt, double * restrict th, double * restrict threfh)
 {
   int ijk,jj;
   int kk1,kk2;
@@ -435,7 +435,7 @@ void ThermoDry::calcbuoyancytend_4th(double * restrict wt, double * restrict th,
       }
 }
 
-void ThermoDry::initBaseState(double * restrict rho,    double * restrict rhoh,
+void Thermo_dry::initBaseState(double * restrict rho,    double * restrict rhoh,
                               double * restrict pref,   double * restrict prefh,
                               double * restrict exner,  double * restrict exnerh,
                               double * restrict thref,  double * restrict threfh,
@@ -489,7 +489,7 @@ void ThermoDry::initBaseState(double * restrict rho,    double * restrict rhoh,
   rho[kend]       = 2.*rhoh[kend] - rho[kend-1];
 }
 
-void ThermoDry::initStat()
+void Thermo_dry::initStat()
 {
   if (stats->getSwitch() == "1")
   {
@@ -522,7 +522,7 @@ void ThermoDry::initStat()
   }
 }
 
-void ThermoDry::initCross()
+void Thermo_dry::initCross()
 {
   if (model->cross->get_switch() == "1")
   {
@@ -555,7 +555,7 @@ void ThermoDry::initCross()
   }
 }
 
-void ThermoDry::initDump()
+void Thermo_dry::initDump()
 {
   if (model->dump->get_switch() == "1")
   {

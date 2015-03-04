@@ -35,7 +35,7 @@
 #include "tools.h"
 #include "constants.h"
 
-namespace Pres2_g
+namespace Pres_2_g
 {
   __global__ void presin(double * __restrict__ p,
                          double * __restrict__ u ,  double * __restrict__ v ,     double * __restrict__ w ,
@@ -206,7 +206,7 @@ namespace Pres2_g
   }
 } // End namespace.
 
-void Pres2::prepare_device()
+void Pres_2::prepare_device()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -229,7 +229,7 @@ void Pres2::prepare_device()
   makeCufftPlan();
 }
 
-void Pres2::clear_device()
+void Pres_2::clear_device()
 {
   cudaSafeCall(cudaFree(bmati_g ));
   cudaSafeCall(cudaFree(bmatj_g ));
@@ -239,7 +239,7 @@ void Pres2::clear_device()
 }
 
 #ifdef USECUDA
-void Pres2::exec(double dt)
+void Pres_2::exec(double dt)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -261,7 +261,7 @@ void Pres2::exec(double dt)
   grid->boundaryCyclic_g(&fields->vt->data_g[offs]);
   grid->boundaryCyclic_g(&fields->wt->data_g[offs]);
 
-  Pres2_g::presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
+  Pres_2_g::presin<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                          &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
                                          &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                          grid->dzi_g, fields->rhoref_g, fields->rhorefh_g,
@@ -273,7 +273,7 @@ void Pres2::exec(double dt)
 
   fftForward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
-  Pres2_g::solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
+  Pres_2_g::solvein<<<gridGPU, blockGPU>>>(fields->sd["p"]->data_g,
                                           fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g,
                                           a_g, c_g,
                                           grid->dz_g, fields->rhoref_g, bmati_g, bmatj_g,
@@ -282,7 +282,7 @@ void Pres2::exec(double dt)
                                           grid->kstart);
   cudaCheckError();
 
-  Pres2_g::tdma<<<grid2dGPU, block2dGPU>>>(a_g, fields->atmp["tmp2"]->data_g, c_g,
+  Pres_2_g::tdma<<<grid2dGPU, block2dGPU>>>(a_g, fields->atmp["tmp2"]->data_g, c_g,
                                            fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g,
                                            grid->imax, grid->imax*grid->jmax,
                                            grid->imax, grid->jmax, grid->kmax);
@@ -292,7 +292,7 @@ void Pres2::exec(double dt)
 
   cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
-  Pres2_g::solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
+  Pres_2_g::solveout<<<gridGPU, blockGPU>>>(&fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
                                            grid->imax, grid->imax*grid->jmax,
                                            grid->icellsp, grid->ijcellsp,
                                            grid->istart, grid->jstart, grid->kstart,
@@ -301,7 +301,7 @@ void Pres2::exec(double dt)
 
   grid->boundaryCyclic_g(&fields->sd["p"]->data_g[offs]);
 
-  Pres2_g::presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
+  Pres_2_g::presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
                                           &fields->sd["p"]->data_g[offs],
                                           grid->dzhi_g, 1./grid->dx, 1./grid->dy,
                                           grid->icellsp, grid->ijcellsp,
@@ -312,7 +312,7 @@ void Pres2::exec(double dt)
 #endif
 
 #ifdef USECUDA
-double Pres2::checkDivergence()
+double Pres_2::checkDivergence()
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -329,7 +329,7 @@ double Pres2::checkDivergence()
 
   const int offs = grid->memoffset;
 
-  Pres2_g::calcdivergence<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
+  Pres_2_g::calcdivergence<<<gridGPU, blockGPU>>>(&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
                                                  &fields->atmp["tmp1"]->data_g[offs], grid->dzi_g,
                                                  fields->rhoref_g, fields->rhorefh_g, dxi, dyi,
                                                  grid->icellsp, grid->ijcellsp,

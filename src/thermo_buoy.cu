@@ -27,7 +27,7 @@
 #include "fd.h"
 #include "tools.h"
 
-namespace ThermoBuoy_g
+namespace Thermo_buoy_g
 {
   __global__ void calcBuoyancyTend_2nd(double * __restrict__ wt, double * __restrict__ b, 
                                        int istart, int jstart, int kstart,
@@ -66,7 +66,7 @@ namespace ThermoBuoy_g
 } // end namespace
 
 #ifdef USECUDA
-void ThermoBuoy::exec()
+void Thermo_buoy::exec()
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -80,7 +80,7 @@ void ThermoBuoy::exec()
 
   if(grid->swspatialorder== "2")
   {
-    ThermoBuoy_g::calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
+    Thermo_buoy_g::calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
                                                               grid->istart, grid->jstart, grid->kstart+1,
                                                               grid->iend,   grid->jend, grid->kend,
                                                               grid->icellsp, grid->ijcellsp);
@@ -88,7 +88,7 @@ void ThermoBuoy::exec()
   }
   else if(grid->swspatialorder== "4")
   {
-    ThermoBuoy_g::calcBuoyancyTend_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
+    Thermo_buoy_g::calcBuoyancyTend_4th<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
                                                               grid->istart, grid->jstart, grid->kstart+1,
                                                               grid->iend,   grid->jend, grid->kend,
                                                               grid->icellsp, grid->ijcellsp);
