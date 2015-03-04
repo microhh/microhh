@@ -26,54 +26,54 @@
 
 void Master::print_message(const char *format, ...)
 {
-  if (mpiid == 0)
-  {
-    va_list args;
-    va_start(args, format);
-    std::vfprintf(stdout, format, args);
-    va_end(args);
-  }
+    if (mpiid == 0)
+    {
+        va_list args;
+        va_start(args, format);
+        std::vfprintf(stdout, format, args);
+        va_end(args);
+    }
 }
 
 void Master::print_warning(const char *format, ...)
 {
-  std::string warningstr("WARNING: ");
-  warningstr += std::string(format);
+    std::string warningstr("WARNING: ");
+    warningstr += std::string(format);
 
-  const char *warningformat = warningstr.c_str();
+    const char *warningformat = warningstr.c_str();
 
-  if (mpiid == 0)
-  {
-    va_list args;
-    va_start(args, format);
-    std::vfprintf(stdout, warningformat, args);
-    va_end(args);
-  }
+    if (mpiid == 0)
+    {
+        va_list args;
+        va_start(args, format);
+        std::vfprintf(stdout, warningformat, args);
+        va_end(args);
+    }
 }
 
 void Master::print_error(const char *format, ...)
 {
-  std::string errorstr("ERROR: ");
-  errorstr += std::string(format);
+    std::string errorstr("ERROR: ");
+    errorstr += std::string(format);
 
-  const char *errorformat = errorstr.c_str();
+    const char *errorformat = errorstr.c_str();
 
-  if (mpiid == 0)
-  {
-    va_list args;
-    va_start(args, format);
-    std::vfprintf(stdout, errorformat, args);
-    va_end(args);
-  }
+    if (mpiid == 0)
+    {
+        va_list args;
+        va_start(args, format);
+        std::vfprintf(stdout, errorformat, args);
+        va_end(args);
+    }
 }
 
-bool Master::atWallClockLimit()
+bool Master::at_wall_clock_limit()
 {
-  const double wallClockTimeLeft = wallClockEnd - getWallClockTime();
-  const double tenMinutes = 10.*60.;
+    const double wall_clock_time_left = wall_clock_end - get_wall_clock_time();
+    const double ten_minutes = 10.*60.;
 
-  if (wallClockTimeLeft < tenMinutes)
-    return true;
-  else
-    return false;
+    if (wall_clock_time_left < ten_minutes)
+        return true;
+    else
+        return false;
 }
