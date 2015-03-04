@@ -450,7 +450,7 @@ void Model::print_status()
     iter = timeloop->get_iteration();
     time = timeloop->get_time();
     dt   = timeloop->get_dt();
-    div  = pres->checkDivergence();
+    div  = pres->check_divergence();
     mom  = fields->check_momentum();
     tke  = fields->check_tke();
     mass = fields->check_mass();
