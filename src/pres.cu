@@ -272,7 +272,7 @@ void Pres::fft_forward(double* __restrict__ p, double* __restrict__ tmp1, double
 
     // Transform complex to double output. Allows for creating parallel cuda version at a later stage
     Pres_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  true);
-    cudaCheckError();
+    cuda_check_error();
 
     // Forward FFT in the y-direction.
     if (grid->jtot > 1)
@@ -288,26 +288,26 @@ void Pres::fft_forward(double* __restrict__ p, double* __restrict__ tmp1, double
             }
 
             cudaThreadSynchronize();
-            cudaCheckError();
+            cuda_check_error();
 
             Pres_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, true);
-            cudaCheckError();
+            cuda_check_error();
         }
         else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
         {
             Pres_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
-            cudaCheckError();
+            cuda_check_error();
 
             if (Pres_g::check_cufft(cufftExecD2Z(jplanf, (cufftDoubleReal*)tmp2, (cufftDoubleComplex*)tmp1)))
                 throw 1;
             cudaThreadSynchronize();
 
             Pres_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->jtot, grid->itot, kk, kkj,  true);
-            cudaCheckError();
+            cuda_check_error();
 
             Pres_g::transpose<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
-            cudaSafeCall(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-            cudaCheckError();
+            cuda_safe_call(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+            cuda_check_error();
         }
     }
 }
@@ -345,7 +345,7 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
         if (FFTPerSlice) // Batched FFT per horizontal slice
         {
             Pres_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, false);
-            cudaCheckError();
+            cuda_check_error();
 
             for (int k=0; k<grid->ktot; ++k)
             {
@@ -355,31 +355,31 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
                     throw 1;
             }
             cudaThreadSynchronize();
-            cudaCheckError();
+            cuda_check_error();
         }
         else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
         {
             Pres_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
-            cudaCheckError();
+            cuda_check_error();
 
             Pres_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, tmp2, grid->jtot, grid->itot, kk, kkj, false);
-            cudaCheckError();
+            cuda_check_error();
 
             if (Pres_g::check_cufft(cufftExecZ2D(jplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p)))
                 throw 1;
             cudaThreadSynchronize();
-            cudaCheckError();
+            cuda_check_error();
 
             Pres_g::transpose<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
-            cudaCheckError();
-            cudaSafeCall(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
-            cudaCheckError();
+            cuda_check_error();
+            cuda_safe_call(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+            cuda_check_error();
         }
     }
 
     // Backward FFT in the x-direction
     Pres_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  false);
-    cudaCheckError();
+    cuda_check_error();
 
     if (FFTPerSlice) // Batched FFT per horizontal slice
     {
@@ -391,19 +391,19 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
                 throw 1;
         }
         cudaThreadSynchronize();
-        cudaCheckError();
+        cuda_check_error();
     }
     else // Batch FFT over entire domain
     {
         if (Pres_g::check_cufft(cufftExecZ2D(iplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p)))
             throw 1;
         cudaThreadSynchronize();
-        cudaCheckError();
+        cuda_check_error();
     }
 
     // Normalize output
     Pres_g::normalize<<<gridGPU,blockGPU>>>(p, grid->itot, grid->jtot, grid->ktot, 1./(grid->itot*grid->jtot));
-    cudaCheckError();
+    cuda_check_error();
 }
 
 // For debugging: FFTs need memory during execution. Check is enough memory is available..

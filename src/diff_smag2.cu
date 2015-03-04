@@ -394,8 +394,8 @@ void Diff_smag_2::prepare_device()
     }
 
     const int nmemsize = grid->kcells*sizeof(double);
-    cudaSafeCall(cudaMalloc(&mlen_g, nmemsize));
-    cudaSafeCall(cudaMemcpy(mlen_g, mlen, nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMalloc(&mlen_g, nmemsize));
+    cuda_safe_call(cudaMemcpy(mlen_g, mlen, nmemsize, cudaMemcpyHostToDevice));
 
     delete[] mlen;
 }
@@ -403,7 +403,7 @@ void Diff_smag_2::prepare_device()
 
 void Diff_smag_2::clear_device()
 {
-    cudaSafeCall(cudaFree(mlen_g));
+    cuda_safe_call(cudaFree(mlen_g));
 }
 
 #ifdef USECUDA
@@ -432,7 +432,7 @@ void Diff_smag_2::exec_viscosity()
         grid->istart,  grid->jstart, grid->kstart, 
         grid->iend,    grid->jend,   grid->kend,
         grid->icellsp, grid->ijcellsp);  
-    cudaCheckError();
+    cuda_check_error();
 
     // start with retrieving the stability information
     if (model->thermo->get_switch() == "0")
@@ -442,7 +442,7 @@ void Diff_smag_2::exec_viscosity()
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);  
-        cudaCheckError();
+        cuda_check_error();
 
         grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
     }
@@ -463,7 +463,7 @@ void Diff_smag_2::exec_viscosity()
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);  
-        cudaCheckError();
+        cuda_check_error();
 
         grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
     }
@@ -496,7 +496,7 @@ void Diff_smag_2::exec()
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);  
-    cudaCheckError();
+    cuda_check_error();
 
     for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
         Diff_smag_2_g::diff_c<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], &fields->sd["evisc"]->data_g[offs], 
@@ -506,7 +506,7 @@ void Diff_smag_2::exec()
                 grid->istart,  grid->jstart, grid->kstart, 
                 grid->iend,    grid->jend,   grid->kend,
                 grid->icellsp, grid->ijcellsp);  
-    cudaCheckError();
+    cuda_check_error();
 }
 #endif
 
@@ -534,7 +534,7 @@ unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
         grid->istart,  grid->jstart, grid->kstart, 
         grid->iend,    grid->jend,   grid->kend,
         grid->icellsp, grid->ijcellsp);  
-    cudaCheckError();
+    cuda_check_error();
 
     // Get maximum from tmp1 field
     double dnmul = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
@@ -569,7 +569,7 @@ double Diff_smag_2::get_dn(double dt)
         grid->istart,  grid->jstart, grid->kstart, 
         grid->iend,    grid->jend,   grid->kend,
         grid->icellsp, grid->ijcellsp);  
-    cudaCheckError();
+    cuda_check_error();
 
     // Get maximum from tmp1 field
     double dnmul = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 

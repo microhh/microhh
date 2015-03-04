@@ -119,7 +119,7 @@ double Fields::check_momentum()
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend,
         grid->icellsp, grid->ijcellsp);
-    cudaCheckError();
+    cuda_check_error();
 
     double mom = grid->get_sum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
     grid->get_sum(&mom);
@@ -148,7 +148,7 @@ double Fields::check_tke()
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend,
         grid->icellsp, grid->ijcellsp);
-    cudaCheckError();
+    cuda_check_error();
 
     double tke = grid->get_sum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
 
@@ -183,7 +183,7 @@ double Fields::check_mass()
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
 
         mass = grid->get_sum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
         grid->get_sum(&mass);
@@ -214,15 +214,15 @@ void Fields::prepare_device()
 
     // Tendencies
     for (FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
-        cudaSafeCall(cudaMalloc(&it->second->data_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&it->second->data_g, nmemsize));
 
     // Temporary fields
     atmp["tmp1"]->init_device();
     atmp["tmp2"]->init_device();
 
     // Reference profiles
-    cudaSafeCall(cudaMalloc(&rhoref_g,  nmemsize1d));
-    cudaSafeCall(cudaMalloc(&rhorefh_g, nmemsize1d));
+    cuda_safe_call(cudaMalloc(&rhoref_g,  nmemsize1d));
+    cuda_safe_call(cudaMalloc(&rhorefh_g, nmemsize1d));
 
     // copy all the data to the GPU
     forward_device();
@@ -240,13 +240,13 @@ void Fields::clear_device()
         it->second->clear_device();
 
     for (FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
-        cudaSafeCall(cudaFree(it->second->data_g));
+        cuda_safe_call(cudaFree(it->second->data_g));
 
     atmp["tmp1"]->clear_device();
     atmp["tmp2"]->clear_device();
 
-    cudaSafeCall(cudaFree(rhoref_g));
-    cudaSafeCall(cudaFree(rhorefh_g));
+    cuda_safe_call(cudaFree(rhoref_g));
+    cuda_safe_call(cudaFree(rhorefh_g));
 }
 
 /**
@@ -330,9 +330,9 @@ void Fields::forward_field_device_3d(double* field_g, double* field, Offset_type
     const int imemsize   = grid->icells  * sizeof(double);
 
     if (sw == Offset)
-        cudaSafeCall(cudaMemcpy2D(&field_g[grid->memoffset], imemsizep,  field, imemsize, imemsize, grid->jcells*grid->kcells, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy2D(&field_g[grid->memoffset], imemsizep,  field, imemsize, imemsize, grid->jcells*grid->kcells, cudaMemcpyHostToDevice));
     else if (sw == No_offset)
-        cudaSafeCall(cudaMemcpy(field_g, field, grid->ncells*sizeof(double), cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(field_g, field, grid->ncells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
 /**
@@ -347,9 +347,9 @@ void Fields::forward_field_device_2d(double* field_g, double* field, Offset_type
     const int imemsize   = grid->icells  * sizeof(double);
 
     if (sw == Offset)
-        cudaSafeCall(cudaMemcpy2D(&field_g[grid->memoffset], imemsizep,  field, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy2D(&field_g[grid->memoffset], imemsizep,  field, imemsize, imemsize, grid->jcells,  cudaMemcpyHostToDevice));
     else if (sw == No_offset)
-        cudaSafeCall(cudaMemcpy(field_g, field, grid->ijcells*sizeof(double), cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(field_g, field, grid->ijcells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
 /**
@@ -360,7 +360,7 @@ void Fields::forward_field_device_2d(double* field_g, double* field, Offset_type
  */
 void Fields::forward_field_device_1d(double* field_g, double* field, int ncells)
 {
-    cudaSafeCall(cudaMemcpy(field_g, field, ncells*sizeof(double), cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(field_g, field, ncells*sizeof(double), cudaMemcpyHostToDevice));
 }
 
 /**
@@ -375,9 +375,9 @@ void Fields::backward_field_device_3d(double* field, double* field_g, Offset_typ
     const int imemsize   = grid->icells  * sizeof(double);
 
     if (sw == Offset)
-        cudaSafeCall(cudaMemcpy2D(field, imemsize, &field_g[grid->memoffset], imemsizep, imemsize, grid->jcells*grid->kcells, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[grid->memoffset], imemsizep, imemsize, grid->jcells*grid->kcells, cudaMemcpyDeviceToHost));
     else if (sw == No_offset)
-        cudaSafeCall(cudaMemcpy(field, field_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(field, field_g, grid->ncells*sizeof(double), cudaMemcpyDeviceToHost));
 }
 
 /**
@@ -392,9 +392,9 @@ void Fields::backward_field_device_2d(double* field, double* field_g, Offset_typ
     const int imemsize   = grid->icells  * sizeof(double);
 
     if (sw == Offset)
-        cudaSafeCall(cudaMemcpy2D(field, imemsize, &field_g[grid->memoffset], imemsizep, imemsize, grid->jcells, cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy2D(field, imemsize, &field_g[grid->memoffset], imemsizep, imemsize, grid->jcells, cudaMemcpyDeviceToHost));
     else if (sw == No_offset)
-        cudaSafeCall(cudaMemcpy(field, field_g, grid->ijcells*sizeof(double), cudaMemcpyDeviceToHost));
+        cuda_safe_call(cudaMemcpy(field, field_g, grid->ijcells*sizeof(double), cudaMemcpyDeviceToHost));
 }
 
 /**
@@ -405,5 +405,5 @@ void Fields::backward_field_device_2d(double* field, double* field_g, Offset_typ
  */
 void Fields::backward_field_device_1d(double* field, double* field_g, int ncells)
 {
-    cudaSafeCall(cudaMemcpy(field, field_g, ncells*sizeof(double), cudaMemcpyDeviceToHost));
+    cuda_safe_call(cudaMemcpy(field, field_g, ncells*sizeof(double), cudaMemcpyDeviceToHost));
 }

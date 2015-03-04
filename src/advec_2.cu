@@ -167,7 +167,7 @@ double Advec_2::get_cfl(const double dt)
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     double cfl = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
     grid->get_max(&cfl); 
@@ -198,7 +198,7 @@ void Advec_2::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
         Advec_2_g::advec_s<<<gridGPU, blockGPU>>>(
@@ -208,6 +208,6 @@ void Advec_2::exec()
             grid->icellsp, grid->ijcellsp,
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 }
 #endif

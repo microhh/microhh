@@ -240,6 +240,6 @@ void Timeloop::exec()
          */
     }
 
-    cudaCheckError();
+    cuda_check_error();
 }
 #endif

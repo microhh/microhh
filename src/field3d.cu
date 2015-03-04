@@ -28,14 +28,14 @@
 #ifdef USECUDA
 Field3d::~Field3d()
 {
-    cudaSafeCall(cudaFreeHost(data));
-    cudaSafeCall(cudaFreeHost(databot));
-    cudaSafeCall(cudaFreeHost(datatop));
-    cudaSafeCall(cudaFreeHost(datagradbot));
-    cudaSafeCall(cudaFreeHost(datagradtop));
-    cudaSafeCall(cudaFreeHost(datafluxbot));
-    cudaSafeCall(cudaFreeHost(datafluxtop));
-    cudaSafeCall(cudaFreeHost(datamean));
+    cuda_safe_call(cudaFreeHost(data));
+    cuda_safe_call(cudaFreeHost(databot));
+    cuda_safe_call(cudaFreeHost(datatop));
+    cuda_safe_call(cudaFreeHost(datagradbot));
+    cuda_safe_call(cudaFreeHost(datagradtop));
+    cuda_safe_call(cudaFreeHost(datafluxbot));
+    cuda_safe_call(cudaFreeHost(datafluxtop));
+    cuda_safe_call(cudaFreeHost(datamean));
 }
 
 int Field3d::init()
@@ -45,16 +45,16 @@ int Field3d::init()
     const int ksize   = grid->kcells *sizeof(double);
 
     // Allocate the 3d field.
-    cudaSafeCall(cudaMallocHost(&data, ijksize));
+    cuda_safe_call(cudaMallocHost(&data, ijksize));
 
     // Allocate the boundary cells.
-    cudaSafeCall(cudaMallocHost(&databot, ijsize));
-    cudaSafeCall(cudaMallocHost(&datatop, ijsize));
-    cudaSafeCall(cudaMallocHost(&datagradbot, ijsize));
-    cudaSafeCall(cudaMallocHost(&datagradtop, ijsize));
-    cudaSafeCall(cudaMallocHost(&datafluxbot, ijsize));
-    cudaSafeCall(cudaMallocHost(&datafluxtop, ijsize));
-    cudaSafeCall(cudaMallocHost(&datamean, ksize));
+    cuda_safe_call(cudaMallocHost(&databot, ijsize));
+    cuda_safe_call(cudaMallocHost(&datatop, ijsize));
+    cuda_safe_call(cudaMallocHost(&datagradbot, ijsize));
+    cuda_safe_call(cudaMallocHost(&datagradtop, ijsize));
+    cuda_safe_call(cudaMallocHost(&datafluxbot, ijsize));
+    cuda_safe_call(cudaMallocHost(&datafluxtop, ijsize));
+    cuda_safe_call(cudaMallocHost(&datamean, ksize));
 
     // Set all values to zero
     for (int n=0; n<grid->ncells; n++)
@@ -83,24 +83,24 @@ void Field3d::init_device()
     const int nmemsize1d = grid->kcells *sizeof(double);
     const int nmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
 
-    cudaSafeCall(cudaMalloc(&data_g,        nmemsize  ));
-    cudaSafeCall(cudaMalloc(&databot_g,     nmemsize2d));
-    cudaSafeCall(cudaMalloc(&datatop_g,     nmemsize2d));
-    cudaSafeCall(cudaMalloc(&datagradbot_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&datagradtop_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&datafluxbot_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&datafluxtop_g, nmemsize2d));
-    cudaSafeCall(cudaMalloc(&datamean_g,    nmemsize1d));
+    cuda_safe_call(cudaMalloc(&data_g,        nmemsize  ));
+    cuda_safe_call(cudaMalloc(&databot_g,     nmemsize2d));
+    cuda_safe_call(cudaMalloc(&datatop_g,     nmemsize2d));
+    cuda_safe_call(cudaMalloc(&datagradbot_g, nmemsize2d));
+    cuda_safe_call(cudaMalloc(&datagradtop_g, nmemsize2d));
+    cuda_safe_call(cudaMalloc(&datafluxbot_g, nmemsize2d));
+    cuda_safe_call(cudaMalloc(&datafluxtop_g, nmemsize2d));
+    cuda_safe_call(cudaMalloc(&datamean_g,    nmemsize1d));
 }
 
 void Field3d::clear_device()
 {
-    cudaSafeCall(cudaFree(data_g));
-    cudaSafeCall(cudaFree(databot_g));
-    cudaSafeCall(cudaFree(datatop_g));
-    cudaSafeCall(cudaFree(datagradbot_g));
-    cudaSafeCall(cudaFree(datagradtop_g));
-    cudaSafeCall(cudaFree(datafluxbot_g));
-    cudaSafeCall(cudaFree(datafluxtop_g));
-    cudaSafeCall(cudaFree(datamean_g));
+    cuda_safe_call(cudaFree(data_g));
+    cuda_safe_call(cudaFree(databot_g));
+    cuda_safe_call(cudaFree(datatop_g));
+    cuda_safe_call(cudaFree(datagradbot_g));
+    cuda_safe_call(cudaFree(datagradtop_g));
+    cuda_safe_call(cudaFree(datafluxbot_g));
+    cuda_safe_call(cudaFree(datafluxtop_g));
+    cuda_safe_call(cudaFree(datamean_g));
 }

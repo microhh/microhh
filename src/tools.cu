@@ -4,7 +4,7 @@
  * Copyright (c) 2011-2015 Thijs Heus
  * Copyright (c) 2014-2015 Bart van Stratum
  *
- * The cudaSafeCall() and cudaCheckError() are from
+ * The cuda_safe_call() and cuda_check_error() are from
  * http://choorucode.com/2011/03/02/how-to-do-error-checking-in-cuda/
  *
  * This file is part of MicroHH
@@ -191,7 +191,7 @@ namespace Tools_g
                     reduce_interior_kernel<sumType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, a2d, istart, jstart, kstart, iend, jend, icells, ijcells); break;
             }
         }
-        cudaCheckError();
+        cuda_check_error();
     }
 
     void reduce_all(double* a, double* aout, int ncells, int nblocks, int nvaluesperblock, ReduceType mode, double scalefac)
@@ -237,6 +237,6 @@ namespace Tools_g
                     reduce_all_kernel<sumType,  16><<<gridGPU, blockGPU, nthreads*sizeof(double)>>>(a, aout, ncells, nvaluesperblock, scalefac); break;
             }
         }
-        cudaCheckError();
+        cuda_check_error();
     }
 }

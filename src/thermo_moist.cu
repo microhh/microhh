@@ -384,30 +384,30 @@ void Thermo_moist::prepare_device()
     const int nmemsize = grid->kcells*sizeof(double);
              
     // Allocate fields for Boussinesq and anelastic solver
-    cudaSafeCall(cudaMalloc(&thvref_g,  nmemsize));
-    cudaSafeCall(cudaMalloc(&thvrefh_g, nmemsize));
-    cudaSafeCall(cudaMalloc(&pref_g,    nmemsize));
-    cudaSafeCall(cudaMalloc(&prefh_g,   nmemsize));
-    cudaSafeCall(cudaMalloc(&exnref_g,  nmemsize));
-    cudaSafeCall(cudaMalloc(&exnrefh_g, nmemsize));
+    cuda_safe_call(cudaMalloc(&thvref_g,  nmemsize));
+    cuda_safe_call(cudaMalloc(&thvrefh_g, nmemsize));
+    cuda_safe_call(cudaMalloc(&pref_g,    nmemsize));
+    cuda_safe_call(cudaMalloc(&prefh_g,   nmemsize));
+    cuda_safe_call(cudaMalloc(&exnref_g,  nmemsize));
+    cuda_safe_call(cudaMalloc(&exnrefh_g, nmemsize));
              
     // Copy fields to device
-    cudaSafeCall(cudaMemcpy(thvref_g,  thvref,  nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(thvrefh_g, thvrefh, nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(pref_g,    pref,    nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(prefh_g,   prefh,   nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(exnref_g,  exnref,  nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(exnrefh_g, exnrefh, nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(thvref_g,  thvref,  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(thvrefh_g, thvrefh, nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(pref_g,    pref,    nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(prefh_g,   prefh,   nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(exnref_g,  exnref,  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(exnrefh_g, exnrefh, nmemsize, cudaMemcpyHostToDevice));
 }            
              
 void Thermo_moist::clear_device()
 {            
-    cudaSafeCall(cudaFree(thvref_g ));
-    cudaSafeCall(cudaFree(thvrefh_g));
-    cudaSafeCall(cudaFree(pref_g   ));
-    cudaSafeCall(cudaFree(prefh_g  ));
-    cudaSafeCall(cudaFree(exnref_g ));
-    cudaSafeCall(cudaFree(exnrefh_g));
+    cuda_safe_call(cudaFree(thvref_g ));
+    cuda_safe_call(cudaFree(thvrefh_g));
+    cuda_safe_call(cudaFree(pref_g   ));
+    cuda_safe_call(cudaFree(prefh_g  ));
+    cuda_safe_call(cudaFree(exnref_g ));
+    cuda_safe_call(cudaFree(exnrefh_g));
 }            
              
 #ifdef USECUDA
@@ -435,7 +435,7 @@ void Thermo_moist::exec()
         //  Thermo_moist_g::calc_hydrostatic_pressure<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
         //                                                      fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
         //                                                      grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-        //cudaCheckError();
+        //cuda_check_error();
              
         // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles. 
@@ -460,7 +460,7 @@ void Thermo_moist::exec()
             grid->istart,  grid->jstart, grid->kstart+1,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
     else if (grid->swspatialorder == "4")
     {
@@ -498,7 +498,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
         //  Thermo_moist_g::calc_hydrostatic_pressure<4><<<1, 1>>>(pref_g, prefh_g, exnref_g, exnrefh_g, 
         //                                                      fields->sp["thl"]->datamean_g, fields->sp["qt"]->datamean_g, 
         //                                                      grid->z_g, grid->dz_g, grid->dzh_g, pbot, grid->kstart, grid->kend);
-        //cudaCheckError();
+        //cuda_check_error();
 
         // BvS: Calculating hydrostatic pressure on GPU is extremely slow. As temporary solution, copy back mean profiles to host,
         //      calculate pressure there and copy back the required profiles. 
@@ -523,7 +523,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
             grid->istart,  grid->jstart, 
             grid->iend, grid->jend, grid->kcells,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
     else if (name == "ql")
     {
@@ -533,7 +533,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
             grid->istart,  grid->jstart,  grid->kstart, 
             grid->iend,    grid->jend,    grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
     else if (name == "N2")
     {
@@ -542,7 +542,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
     else
         throw 1;
@@ -568,7 +568,7 @@ void Thermo_moist::get_buoyancy_fluxbot(Field3d *bfield)
         &fields->sp["qt"]->databot_g[offs], &fields->sp["qt"]->datafluxbot_g[offs], 
         thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
-    cudaCheckError();
+    cuda_check_error();
 }
 #endif
 
@@ -591,7 +591,7 @@ void Thermo_moist::get_buoyancy_surf(Field3d *bfield)
         &fields->sp["qt"]->data_g[offs], &fields->sp["qt"]->databot_g[offs],
         thvref_g, thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
-    cudaCheckError();
+    cuda_check_error();
 
     Thermo_moist_g::calc_buoyancy_flux_bot<<<gridGPU, blockGPU>>>(
         &bfield->datafluxbot_g[offs], 
@@ -599,6 +599,6 @@ void Thermo_moist::get_buoyancy_surf(Field3d *bfield)
         &fields->sp["qt"]->databot_g[offs], &fields->sp["qt"]->datafluxbot_g[offs], 
         thvrefh_g, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
-    cudaCheckError();
+    cuda_check_error();
 }
 #endif
