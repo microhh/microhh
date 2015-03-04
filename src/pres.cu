@@ -223,7 +223,7 @@ void Pres::makeCufftPlan()
     throw 1;
 }
 
-void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
+void Pres::fft_forward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -311,7 +311,7 @@ void Pres::fftForward(double * __restrict__ p, double * __restrict__ tmp1, doubl
   }
 }
 
-void Pres::fftBackward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
+void Pres::fft_backward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;

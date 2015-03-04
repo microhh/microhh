@@ -111,7 +111,7 @@ void Dump::save_dump(double * restrict data, double * restrict tmp, std::string 
     std::sprintf(filename, "%s.%07d", varname.c_str(), model->timeloop->get_iotime());
     master->print_message("Saving \"%s\" ... ", filename);
 
-    if (grid->saveField3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))
+    if (grid->save_field3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))
     {
         master->print_message("FAILED\n");
         throw 1;

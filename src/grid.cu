@@ -26,7 +26,7 @@
 
 namespace Grid_g
 {
-  __global__ void boundaryCyclic_x(double * const __restrict__ data,
+  __global__ void boundary_cyclic_x(double * const __restrict__ data,
                                    const int icells, const int jcells, const int kcells,
                                    const int icellsp,
                                    const int istart, const int jstart,
@@ -53,7 +53,7 @@ namespace Grid_g
     }
   }
   
-  __global__ void boundaryCyclic_y(double * const __restrict__ data,
+  __global__ void boundary_cyclic_y(double * const __restrict__ data,
                                    const int icells, const int jcells, const int kcells,
                                    const int icellsp,
                                    const int istart, const int jstart,
@@ -142,7 +142,7 @@ void Grid::clear_device()
   cudaSafeCall(cudaFree(dzhi4_g));
 }
 
-void Grid::boundaryCyclic_g(double * data)
+void Grid::boundary_cyclic_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -160,12 +160,12 @@ void Grid::boundaryCyclic_g(double * data)
   dim3 gridGPUy (gridi_y, gridj_y, kcells);
   dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-  Grid_g::boundaryCyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
+  Grid_g::boundary_cyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
                                                    istart, jstart,
                                                    iend,   jend,
                                                    igc,    jgc);
 
-  Grid_g::boundaryCyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
+  Grid_g::boundary_cyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
                                                    istart, jstart,
                                                    iend,   jend,
                                                    igc,    jgc);
@@ -173,7 +173,7 @@ void Grid::boundaryCyclic_g(double * data)
   cudaCheckError();
 }
 
-void Grid::boundaryCyclic2d_g(double * data)
+void Grid::boundary_cyclic_2d_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);
@@ -191,12 +191,12 @@ void Grid::boundaryCyclic2d_g(double * data)
   dim3 gridGPUy (gridi_y, gridj_y, 1);
   dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-  Grid_g::boundaryCyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
+  Grid_g::boundary_cyclic_x<<<gridGPUx,blockGPUx>>>(data, icells, jcells, kcells, icellsp,
                                                    istart, jstart,
                                                    iend,   jend,
                                                    igc,    jgc);
 
-  Grid_g::boundaryCyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
+  Grid_g::boundary_cyclic_y<<<gridGPUy,blockGPUy>>>(data, icells, jcells, kcells, icellsp,
                                                    istart, jstart,
                                                    iend,   jend,
                                                    igc,    jgc);
@@ -205,7 +205,7 @@ void Grid::boundaryCyclic2d_g(double * data)
 }
 
 
-double Grid::getMax_g(double *data, double *tmp)
+double Grid::get_max_g(double *data, double *tmp)
 {
   using namespace Tools_g;
 
@@ -224,7 +224,7 @@ double Grid::getMax_g(double *data, double *tmp)
   return maxvalue;
 }
 
-double Grid::getSum_g(double *data, double *tmp)
+double Grid::get_sum_g(double *data, double *tmp)
 {
   using namespace Tools_g;
 
@@ -243,7 +243,7 @@ double Grid::getSum_g(double *data, double *tmp)
   return sumvalue;
 }
 
-void Grid::calcMean_g(double *prof, double *data, double *tmp)
+void Grid::calc_mean_g(double *prof, double *data, double *tmp)
 {
   using namespace Tools_g;
 

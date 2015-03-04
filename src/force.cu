@@ -262,7 +262,7 @@ void Force::exec(double dt)
             grid->iend,    grid->jend,   grid->kend);
         cudaCheckError();
 
-        double uavg  = grid->getSum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+    double uavg  = grid->get_sum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
         Force_g::flux_step_1<<<gridGPU, blockGPU>>>(
             &fields->atmp["tmp1"]->data_g[offs], &fields->ut->data_g[offs],
@@ -272,7 +272,7 @@ void Force::exec(double dt)
             grid->iend,    grid->jend,   grid->kend);
         cudaCheckError();
 
-        double utavg = grid->getSum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+    double utavg = grid->get_sum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
         uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
         utavg = utavg / (grid->itot*grid->jtot*grid->zsize);

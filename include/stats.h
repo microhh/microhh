@@ -88,14 +88,15 @@ class Stats
     void addFixedProf(std::string, std::string, std::string, std::string, double *);
     void addTimeSeries(std::string, std::string, std::string);
 
-    void calcArea   (double *, const int[3], int *);
+    void calcArea(double *, const int[3], int *);
 
-    void calcMean  (double * const, const double * const,
-                    const double, const int[3],
-                    const double * const, const int * const);
-    void calcMean2d(double * const, const double * const,
-                    const double,
-                    const double * const, const int * const);
+    void calc_mean(double * const, const double * const,
+                   const double, const int[3],
+                   const double * const, const int * const);
+
+    void calc_mean2d(double * const, const double * const,
+                     const double,
+                     const double * const, const int * const);
 
     void calcMoment  (double *, double *, double *, double, const int[3], double *, int *);
 

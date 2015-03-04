@@ -361,7 +361,7 @@ void Stats::calcMask(double * restrict mask, double * restrict maskh, double * r
 }
 
 /*
-void Stats::calcMean(double * const restrict prof, const double * const restrict data,
+void Stats::calc_mean(double * const restrict prof, const double * const restrict data,
                       const double offset)
 {
   int ijk,jj,kk;
@@ -386,7 +386,7 @@ void Stats::calcMean(double * const restrict prof, const double * const restrict
   for (int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
-  grid->getProf(prof, grid->kcells);
+  grid->get_prof(prof, grid->kcells);
 }
 */
 
@@ -403,7 +403,7 @@ void Stats::calcArea(double * restrict area, const int loc[3], int * restrict nm
   }
 }
 
-void Stats::calcMean(double * const restrict prof, const double * const restrict data,
+void Stats::calc_mean(double * const restrict prof, const double * const restrict data,
                       const double offset, const int loc[3],
                       const double * const restrict mask, const int * const restrict nmask)
 {
@@ -435,7 +435,7 @@ void Stats::calcMean(double * const restrict prof, const double * const restrict
   }
 }
 
-void Stats::calcMean2d(double * const restrict mean, const double * const restrict data,
+void Stats::calc_mean2d(double * const restrict mean, const double * const restrict data,
                         const double offset,
                         const double * const restrict mask, const int * const restrict nmask)
 {
@@ -595,7 +595,7 @@ int Stats::calccount(double * restrict data, double * restrict prof, double thre
   for (int k=0; k<grid->kcells; ++k)
     prof[k] /= n;
 
-  grid->getProf(prof, grid->kcells);
+  grid->get_prof(prof, grid->kcells);
 
   return 0;
 }
@@ -659,7 +659,7 @@ void Stats::calcMoment(double * restrict data, double * restrict datamean, doubl
   for (int k=grid->kstart; k<grid->kend+a; ++k)
     prof[k] /= n;
 
-  grid->getProf(prof, grid->kcells);
+  grid->get_prof(prof, grid->kcells);
 }
 */
 
@@ -732,7 +732,7 @@ int Stats::calcFlux_2nd(double * restrict data, double * restrict w, double * re
   for (int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
-  grid->getProf(prof, grid->kcells);
+  grid->get_prof(prof, grid->kcells);
 
   return 0;
 }
@@ -868,7 +868,7 @@ int Stats::calcGrad_2nd(double * restrict data, double * restrict prof, double *
   for (int k=grid->kstart; k<grid->kend+1; ++k)
     prof[k] /= n;
 
-  grid->getProf(prof, grid->kcells);
+  grid->get_prof(prof, grid->kcells);
 
   return 0;
 }
@@ -1143,7 +1143,7 @@ void Stats::calcPath(double * restrict data, double * restrict maskbot, int * re
           }
       }
     *path /= (double)*nmaskbot;
-    grid->getProf(path,1);
+    grid->get_prof(path,1);
   }
   else
     *path = NC_FILL_DOUBLE;
@@ -1180,7 +1180,7 @@ void Stats::calcCover(double * restrict data, double * restrict maskbot, int * r
           }
       }
     *cover /= (double)*nmaskbot;
-    grid->getProf(cover,1);
+    grid->get_prof(cover,1);
   }
   else
     *cover = NC_FILL_DOUBLE;

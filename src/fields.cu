@@ -95,7 +95,7 @@ void Fields::exec()
     if (calc_mean_profs)
     {
         for (FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
-            grid->calcMean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
+        grid->calc_mean_g(it->second->datamean_g, &it->second->data_g[grid->memoffset], atmp["tmp1"]->data_g);
     }
 }
 #endif
@@ -121,8 +121,8 @@ double Fields::check_momentum()
         grid->icellsp, grid->ijcellsp);
     cudaCheckError();
 
-    double mom = grid->getSum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
-    grid->getSum(&mom);
+    double mom = grid->get_sum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
+    grid->get_sum(&mom);
     mom /= (grid->itot*grid->jtot*grid->zsize);
 
     return mom;
@@ -150,9 +150,9 @@ double Fields::check_tke()
         grid->icellsp, grid->ijcellsp);
     cudaCheckError();
 
-    double tke = grid->getSum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
+    double tke = grid->get_sum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
 
-    grid->getSum(&tke);
+    grid->get_sum(&tke);
     tke /= (grid->itot*grid->jtot*grid->zsize);
     tke *= 0.5;
 
@@ -185,8 +185,8 @@ double Fields::check_mass()
             grid->icellsp, grid->ijcellsp);
         cudaCheckError();
 
-        mass = grid->getSum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
-        grid->getSum(&mass);
+        mass = grid->get_sum_g(&atmp["tmp1"]->data_g[offs], atmp["tmp2"]->data_g); 
+        grid->get_sum(&mass);
         mass /= (grid->itot*grid->jtot*grid->zsize);
     }
     else

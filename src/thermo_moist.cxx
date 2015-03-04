@@ -163,9 +163,9 @@ void Thermo_moist::create(Input *inputin)
 
   // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration. 
   // 1. Take the initial profile as the reference
-  if (inputin->getProf(&thl0[grid->kstart], thvar, grid->kmax))
+  if (inputin->get_prof(&thl0[grid->kstart], thvar, grid->kmax))
     throw 1;
-  if (inputin->getProf(&qt0[grid->kstart], "qt", grid->kmax))
+  if (inputin->get_prof(&qt0[grid->kstart], "qt", grid->kmax))
     throw 1;
 
   // 2. Calculate surface and model top values thl and qt
@@ -243,7 +243,7 @@ void Thermo_moist::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
   {
     calcBuoyancy(fields->atmp["tmp2"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp1"]->data,thvref);
     // calculate the mean buoyancy to determine positive buoyancy
-    grid->calcMean(fields->atmp["tmp2"]->datamean, fields->atmp["tmp2"]->data, grid->kcells);
+    grid->calc_mean(fields->atmp["tmp2"]->datamean, fields->atmp["tmp2"]->data, grid->kcells);
     calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
     calcMask_qlcore(mfield->data, mfieldh->data, mfieldh->databot,
                     stats->nmask, stats->nmaskh, &stats->nmaskbot,
@@ -304,9 +304,9 @@ void Thermo_moist::calcMask_ql(double * restrict mask, double * restrict maskh, 
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundaryCyclic(mask);
-  grid->boundaryCyclic(maskh);
-  grid->boundaryCyclic2d(maskbot);
+  grid->boundary_cyclic(mask);
+  grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic_2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
@@ -369,9 +369,9 @@ void Thermo_moist::calcMask_qlcore(double * restrict mask, double * restrict mas
       maskbot[ij] = maskh[ijk];
     }
 
-  grid->boundaryCyclic(mask);
-  grid->boundaryCyclic(maskh);
-  grid->boundaryCyclic2d(maskbot);
+  grid->boundary_cyclic(mask);
+  grid->boundary_cyclic(maskh);
+  grid->boundary_cyclic_2d(maskbot);
 
   master->sum(nmask , grid->kcells);
   master->sum(nmaskh, grid->kcells);
@@ -390,7 +390,7 @@ void Thermo_moist::exec_stats(Mask *m)
   const int sloc[] = {0,0,0};
 
   // mean
-  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset, sloc,
+  stats->calc_mean(m->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset, sloc,
                   fields->atmp["tmp3"]->data, stats->nmask);
 
   // moments
@@ -449,7 +449,7 @@ void Thermo_moist::exec_stats(Mask *m)
 
   // calculate the liquid water stats
   calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
-  stats->calcMean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+  stats->calc_mean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
   stats->calcCount(fields->atmp["tmp1"]->data, m->profs["cfrac"].data, 0.,
                    fields->atmp["tmp3"]->data, stats->nmask);
 

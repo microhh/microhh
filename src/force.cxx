@@ -133,8 +133,8 @@ void Force::create(Input *inputin)
 
     if (swlspres == "geo")
     {
-        nerror += inputin->getProf(&ug[grid->kstart], "ug", grid->kmax);
-        nerror += inputin->getProf(&vg[grid->kstart], "vg", grid->kmax);
+        nerror += inputin->get_prof(&ug[grid->kstart], "ug", grid->kmax);
+        nerror += inputin->get_prof(&vg[grid->kstart], "vg", grid->kmax);
     }
 
     if (swls == "1")
@@ -149,11 +149,11 @@ void Force::create(Input *inputin)
 
         // read the large scale sources, which are the variable names with a "ls" suffix
         for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-            nerror += inputin->getProf(&lsprofs[*it][grid->kstart], *it+"ls", grid->kmax);
+            nerror += inputin->get_prof(&lsprofs[*it][grid->kstart], *it+"ls", grid->kmax);
     }
 
     if (swwls == "1")
-        nerror += inputin->getProf(&wls[grid->kstart], "wls", grid->kmax);
+        nerror += inputin->get_prof(&wls[grid->kstart], "wls", grid->kmax);
 
     // process the profiles for the time dependent data
     if (swtimedep == "1")
@@ -301,8 +301,8 @@ void Force::calc_flux(double* const restrict ut, const double* const restrict u,
                 utavg += ut[ijk]*dz[k];
             }
 
-    grid->getSum(&uavg);
-    grid->getSum(&utavg);
+    grid->get_sum(&uavg);
+    grid->get_sum(&utavg);
 
     uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
     utavg = utavg / (grid->itot*grid->jtot*grid->zsize);

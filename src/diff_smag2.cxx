@@ -265,7 +265,7 @@ void Diff_smag_2::evisc(double* restrict evisc,
             }
     }
 
-    grid->boundaryCyclic(evisc);
+    grid->boundary_cyclic(evisc);
 }
 
 void Diff_smag_2::evisc_neutral(double* restrict evisc,
@@ -300,7 +300,7 @@ void Diff_smag_2::evisc_neutral(double* restrict evisc,
             }
     }
 
-    grid->boundaryCyclic(evisc);
+    grid->boundary_cyclic(evisc);
 }
 
 void Diff_smag_2::diff_u(double* restrict ut, double* restrict u, double* restrict v, double* restrict w,
@@ -615,7 +615,7 @@ double Diff_smag_2::calc_dnmul(double* restrict evisc, double* restrict dzi, dou
                 dnmul = std::max(dnmul, std::abs(tPrfac*evisc[ijk]*(dxidxi + dyidyi + dzi[k]*dzi[k])));
             }
 
-    grid->getMax(&dnmul);
+    grid->get_max(&dnmul);
 
     return dnmul;
 }

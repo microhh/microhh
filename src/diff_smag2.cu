@@ -444,7 +444,7 @@ void Diff_smag_2::exec_viscosity()
             grid->icellsp, grid->ijcellsp);  
         cudaCheckError();
 
-        grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
+        grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
     }
     // assume buoyancy calculation is needed
     else
@@ -465,7 +465,7 @@ void Diff_smag_2::exec_viscosity()
             grid->icellsp, grid->ijcellsp);  
         cudaCheckError();
 
-        grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
+        grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
     }
 }
 #endif
