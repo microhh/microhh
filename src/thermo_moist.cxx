@@ -399,25 +399,25 @@ void Thermo_moist::exec_stats(Mask *m)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcMoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+    stats->calc_moment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
                       fields->atmp["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if (grid->swspatialorder == "2")
-    stats->calcGrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+    stats->calc_grad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   else if (grid->swspatialorder == "4")
-    stats->calcGrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+    stats->calc_grad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if (grid->swspatialorder == "2")
-    stats->calcFlux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+    stats->calc_flux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
                         m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   else if (grid->swspatialorder == "4")
-    stats->calcFlux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+    stats->calc_flux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
@@ -426,35 +426,35 @@ void Thermo_moist::exec_stats(Mask *m)
     if (model->diff->get_name() == "smag2")
     {
       Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
-      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
+      stats->calc_diff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
                           fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
     {
-      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+      stats->calc_diff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
     }
   }
   else if (grid->swspatialorder == "4")
   {
     // take the diffusivity of temperature for that of buoyancy
-    stats->calcDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+    stats->calc_diff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
-  stats->addFluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
+  stats->add_fluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the liquid water stats
   calcLiquidWater(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
   stats->calc_mean(m->profs["ql"].data, fields->atmp["tmp1"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
-  stats->calcCount(fields->atmp["tmp1"]->data, m->profs["cfrac"].data, 0.,
+  stats->calc_count(fields->atmp["tmp1"]->data, m->profs["cfrac"].data, 0.,
                    fields->atmp["tmp3"]->data, stats->nmask);
 
-  stats->calcCover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
-  stats->calcPath (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
+  stats->calc_cover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
+  stats->calc_path (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
   // Calculate base state in tmp array
   if (swupdatebasestate == 1)
@@ -944,43 +944,43 @@ void Thermo_moist::initStat()
   {
     /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
        there the statistics are initialized before thermo->create() is called */
-    stats->addFixedProf("rhoref",  "Full level basic state density", "kg m-3", "z",  fields->rhoref );
-    stats->addFixedProf("rhorefh", "Half level basic state density", "kg m-3", "zh", fields->rhorefh);
-    stats->addFixedProf("thvref",  "Full level basic state virtual potential temperature", "K", "z", thvref );
-    stats->addFixedProf("thvrefh", "Half level basic state virtual potential temperature", "K", "zh",thvrefh);
+    stats->add_fixed_prof("rhoref",  "Full level basic state density", "kg m-3", "z",  fields->rhoref );
+    stats->add_fixed_prof("rhorefh", "Half level basic state density", "kg m-3", "zh", fields->rhorefh);
+    stats->add_fixed_prof("thvref",  "Full level basic state virtual potential temperature", "K", "z", thvref );
+    stats->add_fixed_prof("thvrefh", "Half level basic state virtual potential temperature", "K", "zh",thvrefh);
 
     if (swupdatebasestate == 1)
     {
-      stats->addProf("ph",   "Full level hydrostatic pressure", "Pa",     "z" );
-      stats->addProf("phh",  "Half level hydrostatic pressure", "Pa",     "zh");
-      stats->addProf("rho",  "Full level density",  "kg m-3", "z" );
-      stats->addProf("rhoh", "Half level density",  "kg m-3", "zh");
+      stats->add_prof("ph",   "Full level hydrostatic pressure", "Pa",     "z" );
+      stats->add_prof("phh",  "Half level hydrostatic pressure", "Pa",     "zh");
+      stats->add_prof("rho",  "Full level density",  "kg m-3", "z" );
+      stats->add_prof("rhoh", "Half level density",  "kg m-3", "zh");
     }
     else
     {
-      stats->addFixedProf("ph",  "Full level hydrostatic pressure", "Pa", "z",  pref );
-      stats->addFixedProf("phh", "Half level hydrostatic pressure", "Pa", "zh", prefh);
+      stats->add_fixed_prof("ph",  "Full level hydrostatic pressure", "Pa", "z",  pref );
+      stats->add_fixed_prof("phh", "Half level hydrostatic pressure", "Pa", "zh", prefh);
     }
 
-    stats->addProf("b", "Buoyancy", "m s-2", "z");
+    stats->add_prof("b", "Buoyancy", "m s-2", "z");
     for (int n=2; n<5; ++n)
     {
       std::stringstream ss;
       ss << n;
       std::string sn = ss.str();
-      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+      stats->add_prof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
     }
 
-    stats->addProf("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
-    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-    stats->addProf("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
-    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+    stats->add_prof("bgrad", "Gradient of the buoyancy", "m s-3", "zh");
+    stats->add_prof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->add_prof("bdiff", "Diffusive flux of the buoyancy", "m2 s-3", "zh");
+    stats->add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
-    stats->addProf("ql", "Liquid water mixing ratio", "kg kg-1", "z");
-    stats->addProf("cfrac", "Cloud fraction", "-","z");
+    stats->add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
+    stats->add_prof("cfrac", "Cloud fraction", "-","z");
 
-    stats->addTimeSeries("lwp", "Liquid water path", "kg m-2");
-    stats->addTimeSeries("ccover", "Projected cloud cover", "-");
+    stats->add_time_series("lwp", "Liquid water path", "kg m-2");
+    stats->add_time_series("ccover", "Projected cloud cover", "-");
   }
 }
 

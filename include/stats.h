@@ -31,109 +31,113 @@ class Grid;
 class Fields;
 
 // struct for profiles
-struct ProfVar
+struct Prof_var
 {
-  NcVar *ncvar;
-  double *data;
+    NcVar*  ncvar;
+    double* data;
 };
 
 // struct for time series
-struct TimeSeriesVar
+struct Time_series_var
 {
-  NcVar *ncvar;
-  double data;
+    NcVar* ncvar;
+    double data;
 };
 
 // typedefs for containers of profiles and time series
-typedef std::map<std::string, ProfVar> ProfMap;
-typedef std::map<std::string, TimeSeriesVar> TimeSeriesMap;
+typedef std::map<std::string, Prof_var> Prof_map;
+typedef std::map<std::string, Time_series_var> Time_series_map;
 
 // structure
 struct Mask
 {
-  std::string name;
-  NcFile *dataFile;
-  NcDim  *z_dim, *zh_dim, *t_dim;
-  NcVar  *t_var, *iter_var;
-  ProfMap profs;
-  TimeSeriesMap tseries;
+    std::string name;
+    NcFile* dataFile;
+    NcDim* z_dim;
+    NcDim* zh_dim;
+    NcDim* t_dim;
+    NcVar* iter_var;
+    NcVar* t_var;
+    Prof_map profs;
+    Time_series_map tseries;
 };
 
-typedef std::map<std::string, Mask> MaskMap;
+typedef std::map<std::string, Mask> Mask_map;
 
 class Stats
 {
-  public:
-    Stats(Model *, Input *);
-    ~Stats();
+    public:
+        Stats(Model*, Input*);
+        ~Stats();
 
-    void init(double);
-    void create(int);
+        void init(double);
+        void create(int);
 
-    unsigned long get_time_limit(unsigned long);
-    void get_mask(Field3d *, Field3d *, Mask *);
-    void exec(int, double, unsigned long);
-    bool doStats();
-    std::string getSwitch();
+        unsigned long get_time_limit(unsigned long);
+        void get_mask(Field3d*, Field3d*, Mask*);
+        void exec(int, double, unsigned long);
+        bool doStats();
+        std::string getSwitch();
 
-    // Container for all stats, masks as uppermost in hierarchy
-    MaskMap masks;
-    int *nmask;
-    int *nmaskh;
-    int nmaskbot;
+        // Container for all stats, masks as uppermost in hierarchy
+        Mask_map masks;
+        int* nmask;
+        int* nmaskh;
+        int nmaskbot;
 
-    // Interface functions.
-    void addMask(const std::string);
-    void addProf(std::string, std::string, std::string, std::string);
-    void addFixedProf(std::string, std::string, std::string, std::string, double *);
-    void addTimeSeries(std::string, std::string, std::string);
+        // Interface functions.
+        void add_mask(const std::string);
+        void add_prof(std::string, std::string, std::string, std::string);
+        void add_fixed_prof(std::string, std::string, std::string, std::string, double*);
+        void add_time_series(std::string, std::string, std::string);
 
-    void calcArea(double *, const int[3], int *);
+        void calc_area(double*, const int[3], int*);
 
-    void calc_mean(double * const, const double * const,
-                   const double, const int[3],
-                   const double * const, const int * const);
+        void calc_mean(double* const, const double* const,
+                       const double, const int[3],
+                       const double* const, const int* const);
 
-    void calc_mean2d(double * const, const double * const,
-                     const double,
-                     const double * const, const int * const);
+        void calc_mean2d(double* const, const double* const,
+                         const double,
+                         const double* const, const int* const);
 
-    void calcMoment  (double *, double *, double *, double, const int[3], double *, int *);
+        void calc_moment  (double*, double*, double*, double, const int[3], double*, int*);
 
-    void calcDiff_2nd(double *, double *, double *, double, const int[3], double *, int *);
-    void calcDiff_2nd(double *, double *, double *, double *, double *, double *, double *, double, const int[3], double *, int *);
-    void calcDiff_4th(double *, double *, double *, double, const int[3], double *, int *);
+        void calc_diff_2nd(double*, double*, double*, double, const int[3], double*, int*);
+        void calc_diff_2nd(double*, double*, double*, double*, double*,
+                           double*, double*, double, const int[3], double*, int*);
+        void calc_diff_4th(double*, double*, double*, double, const int[3], double*, int*);
 
-    void calcGrad_2nd(double *, double *, double *, const int[3], double *, int *);
-    void calcGrad_4th(double *, double *, double *, const int[3], double *, int *);
+        void calc_grad_2nd(double*, double*, double*, const int[3], double*, int*);
+        void calc_grad_4th(double*, double*, double*, const int[3], double*, int*);
 
-    void calcFlux_2nd(double *, double *, double *, double *, double *, double *, const int[3], double *, int *);
-    void calcFlux_4th(double *, double *, double *, double *, const int[3], double *, int *);
+        void calc_flux_2nd(double*, double*, double*, double*, double*, double*, const int[3], double*, int*);
+        void calc_flux_4th(double*, double*, double*, double*, const int[3], double*, int*);
 
-    void addFluxes   (double *, double *, double *);
-    void calcCount   (double *, double *, double, double *, int *);
-    void calcPath    (double *, double *, int *, double *);
-    void calcCover   (double *, double *, int *, double *, double);
+        void add_fluxes   (double*, double*, double*);
+        void calc_count   (double*, double*, double, double*, int*);
+        void calc_path    (double*, double*, int*, double*);
+        void calc_cover   (double*, double*, int*, double*, double);
 
-    void calcSortedProf(double *, double *, double *);
+        void calc_sorted_prof(double*, double*, double*);
 
-  private:
-    int nstats;
+    private:
+        int nstats;
 
-    // mask calculations
-    void calcMask(double *, double *, double *, int *, int *, int *);
+        // mask calculations
+        void calc_mask(double*, double*, double*, int*, int*, int*);
 
-  protected:
-    Model  *model;
-    Grid   *grid;
-    Fields *fields;
-    Master *master;
+    protected:
+        Model*  model;
+        Grid*   grid;
+        Fields* fields;
+        Master* master;
 
-    double sampletime;
-    unsigned long isampletime;
+        double sampletime;
+        unsigned long isampletime;
 
-    std::string swstats;
+        std::string swstats;
 
-    static const int nthres = 0;
+        static const int nthres = 0;
 };
 #endif

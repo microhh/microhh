@@ -107,7 +107,7 @@ Model::Model(Master *masterin, Input *inputin)
       else if ((*it == "ql" || *it == "qlcore") && thermo->getSwitch() != "moist")
         master->print_warning("%s mask only works for swthermo=moist \n", it->c_str());
       else
-        stats->addMask(*it);
+        stats->add_mask(*it);
     }
 
     // if one or more arguments fails, then crash

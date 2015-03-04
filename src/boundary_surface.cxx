@@ -80,8 +80,8 @@ void Boundary_surface::create(Input *inputin)
     // add variables to the statistics
     if (stats->getSwitch() == "1")
     {
-        stats->addTimeSeries("ustar", "Surface friction velocity", "m s-1");
-        stats->addTimeSeries("obuk", "Obukhov length", "m");
+        stats->add_time_series("ustar", "Surface friction velocity", "m s-1");
+        stats->add_time_series("obuk", "Obukhov length", "m");
     }
 }
 

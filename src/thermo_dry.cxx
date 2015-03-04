@@ -182,25 +182,25 @@ void Thermo_dry::exec_stats(Mask *m)
     std::stringstream ss;
     ss << n;
     std::string sn = ss.str();
-    stats->calcMoment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
+    stats->calc_moment(fields->atmp["tmp1"]->data, m->profs["b"].data, m->profs["b"+sn].data, n, sloc,
                       fields->atmp["tmp3"]->data, stats->nmask);
   }
 
   // calculate the gradients
   if (grid->swspatialorder == "2")
-    stats->calcGrad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
+    stats->calc_grad_2nd(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   else if (grid->swspatialorder == "4")
-    stats->calcGrad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
+    stats->calc_grad_4th(fields->atmp["tmp1"]->data, m->profs["bgrad"].data, grid->dzhi4, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate turbulent fluxes
   if (grid->swspatialorder == "2")
-    stats->calcFlux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
+    stats->calc_flux_2nd(fields->atmp["tmp1"]->data, m->profs["b"].data, fields->w->data, m->profs["w"].data,
                         m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   else if (grid->swspatialorder == "4")
-    stats->calcFlux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
+    stats->calc_flux_4th(fields->atmp["tmp1"]->data, fields->w->data, m->profs["bw"].data, fields->atmp["tmp2"]->data, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
 
   // calculate diffusive fluxes
@@ -209,26 +209,26 @@ void Thermo_dry::exec_stats(Mask *m)
     if (model->diff->get_name() == "smag2")
     {
       Diff_smag_2* diffptr = static_cast<Diff_smag_2*>(model->diff);
-      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
+      stats->calc_diff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
                           m->profs["bdiff"].data, grid->dzhi,
                           fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->datafluxtop, diffptr->tPr, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
     }
     else
-      stats->calcDiff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+      stats->calc_diff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
                           fields->atmp["tmp4"]->data, stats->nmaskh);
   }
   else if (grid->swspatialorder == "4")
   {
-    stats->calcDiff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+    stats->calc_diff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
                         fields->atmp["tmp4"]->data, stats->nmaskh);
   }
 
   // calculate the total fluxes
-  stats->addFluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
+  stats->add_fluxes(m->profs["bflux"].data, m->profs["bw"].data, m->profs["bdiff"].data);
 
   // calculate the sorted buoyancy profile
-  //stats->calcSortedProf(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
+  //stats->calc_sorted_prof(fields->sd["tmp1"]->data, fields->sd["tmp2"]->data, m->profs["bsort"].data);
 }
 
 void Thermo_dry::exec_cross()
@@ -494,31 +494,31 @@ void Thermo_dry::initStat()
   if (stats->getSwitch() == "1")
   {
     // Add base state profiles to statistics
-    stats->addFixedProf("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
-    stats->addFixedProf("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
-    stats->addFixedProf("thref",   "Full level basic state potential temperature", "K", "z", thref);
-    stats->addFixedProf("threfh",  "Half level basic state potential temperature", "K", "zh",thref);
+    stats->add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
+    stats->add_fixed_prof("rhorefh", "Half level basic state density",  "kg m-3", "zh", fields->rhorefh);
+    stats->add_fixed_prof("thref",   "Full level basic state potential temperature", "K", "z", thref);
+    stats->add_fixed_prof("threfh",  "Half level basic state potential temperature", "K", "zh",thref);
     if (swbasestate == "anelastic")
     {
-      stats->addFixedProf("ph",    "Full level hydrostatic pressure", "Pa",     "z",  pref);
-      stats->addFixedProf("phh",   "Half level hydrostatic pressure", "Pa",     "zh", prefh);
+      stats->add_fixed_prof("ph",    "Full level hydrostatic pressure", "Pa",     "z",  pref);
+      stats->add_fixed_prof("phh",   "Half level hydrostatic pressure", "Pa",     "zh", prefh);
     }
 
-    stats->addProf("b", "Buoyancy", "m s-2", "z");
+    stats->add_prof("b", "Buoyancy", "m s-2", "z");
     for (int n=2; n<5; ++n)
     {
       std::stringstream ss;
       ss << n;
       std::string sn = ss.str();
-      stats->addProf("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
+      stats->add_prof("b"+sn, "Moment " +sn+" of the buoyancy", "(m s-2)"+sn,"z");
     }
 
-    stats->addProf("bgrad", "Gradient of the buoyancy", "s-2", "zh");
-    stats->addProf("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
-    stats->addProf("bdiff", "usive flux of the buoyancy", "m2 s-3", "zh");
-    stats->addProf("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
+    stats->add_prof("bgrad", "Gradient of the buoyancy", "s-2", "zh");
+    stats->add_prof("bw"   , "Turbulent flux of the buoyancy", "m2 s-3", "zh");
+    stats->add_prof("bdiff", "usive flux of the buoyancy", "m2 s-3", "zh");
+    stats->add_prof("bflux", "Total flux of the buoyancy", "m2 s-3", "zh");
 
-    stats->addProf("bsort", "Sorted buoyancy", "m s-2", "z");
+    stats->add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
   }
 }
 
