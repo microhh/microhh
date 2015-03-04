@@ -35,37 +35,39 @@ class Master;
 class Pres
 {
   public:
-    Pres(Model *, Input *);
+    Pres(Model*, Input*);
     virtual ~Pres();
-    static Pres* factory(Master *, Input *, Model *, const std::string); ///< Factory function for pres class generation.
+    static Pres* factory(Master*, Input*, Model*, const std::string); ///< Factory function for pres class generation.
 
     virtual void init();
     virtual void set_values();
 
     virtual void exec(double);
-    virtual double checkDivergence();
+    virtual double check_divergence();
 
     virtual void prepare_device();
 
   protected:
-    Master *master;
-    Model  *model;
-    Grid   *grid;
-    Fields *fields;
+    Master* master;
+    Model*  model;
+    Grid*   grid;
+    Fields* fields;
 
     #ifdef USECUDA
-    void makeCufftPlan();
-    void fft_forward (double *, double *, double *);
-    void fft_backward(double *, double *, double *);
+    void make_cufft_plan();
+    void fft_forward (double*, double*, double*);
+    void fft_backward(double*, double*, double*);
 
     bool FFTPerSlice;
-    cufftHandle iplanf, jplanf; 
-    cufftHandle iplanb, jplanb; 
+    cufftHandle iplanf;
+    cufftHandle jplanf;
+    cufftHandle iplanb;
+    cufftHandle jplanb;
     #endif
   
   private:
     #ifdef USECUDA
-    void checkCufftMemory();
+    void check_cufft_memory();
     #endif
 };
 #endif

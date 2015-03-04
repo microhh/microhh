@@ -34,56 +34,73 @@ class Model;
 
 class Pres_4 : public Pres
 {
-  public:
-    Pres_4(Model *, Input *);
-    ~Pres_4();
+    public:
+        Pres_4(Model*, Input*);
+        ~Pres_4();
 
-    void init();
-    void set_values();
+        void init();
+        void set_values();
 
-    void exec(double);
-    double checkDivergence();
+        void exec(double);
+        double check_divergence();
 
-    #ifdef USECUDA
-    void prepare_device();
-    void clear_device();
-    #endif
+#ifdef USECUDA
+        void prepare_device();
+        void clear_device();
+#endif
 
-  private:
-    double *bmati, *bmatj;
-    double *m1,*m2,*m3,*m4,*m5,*m6,*m7;
+    private:
+        double* bmati;
+        double* bmatj;
+        double* m1;
+        double* m2;
+        double* m3;
+        double* m4;
+        double* m5;
+        double* m6;
+        double* m7;
 
-    #ifdef USECUDA
-    double *bmati_g, *bmatj_g;
-    double *m1_g,*m2_g,*m3_g,*m4_g,*m5_g,*m6_g,*m7_g;
+#ifdef USECUDA
+        double* bmati_g;
+        double* bmatj_g;
+        double* m1_g;
+        double* m2_g;
+        double* m3_g;
+        double* m4_g;
+        double* m5_g;
+        double* m6_g;
+        double* m7_g;
 
-    cufftDoubleComplex *ffti_complex_g, *fftj_complex_g; 
-    cufftHandle iplanf, jplanf; 
-    cufftHandle iplanb, jplanb; 
-    #endif
+        cufftDoubleComplex* ffti_complex_g;
+        cufftDoubleComplex* fftj_complex_g;
+        cufftHandle iplanf;
+        cufftHandle jplanf; 
+        cufftHandle iplanb;
+        cufftHandle jplanb; 
+#endif
 
-    template<bool>
-    void input(double * restrict, 
-               double * restrict, double * restrict, double * restrict,
-               double * restrict, double * restrict, double * restrict,
-               double * restrict, double);
+        template<bool>
+        void input(double* restrict, 
+                   double* restrict, double* restrict, double* restrict,
+                   double* restrict, double* restrict, double* restrict,
+                   double* restrict, double);
 
-    void solve(double * restrict, double * restrict, double * restrict,
-               double * restrict, double * restrict, double * restrict, double * restrict,
-               double * restrict, double * restrict, double * restrict,
-               double * restrict, double * restrict, double * restrict, double * restrict,
-               double * restrict, double * restrict, double * restrict, double * restrict,
-               double * restrict, double * restrict,
-               int);
+        void solve(double* restrict, double* restrict, double* restrict,
+                   double* restrict, double* restrict, double* restrict, double* restrict,
+                   double* restrict, double* restrict, double* restrict,
+                   double* restrict, double* restrict, double* restrict, double* restrict,
+                   double* restrict, double* restrict, double* restrict, double* restrict,
+                   double* restrict, double* restrict,
+                   int);
 
-    template<bool>
-    void output(double * restrict, double * restrict, double * restrict,
-                double * restrict, double * restrict);
+        template<bool>
+        void output(double* restrict, double* restrict, double* restrict,
+                    double* restrict, double* restrict);
 
-    void hdma(double * restrict, double * restrict, double * restrict, double * restrict,
-              double * restrict, double * restrict, double * restrict, double * restrict,
-              int);
+        void hdma(double* restrict, double* restrict, double* restrict, double* restrict,
+                  double* restrict, double* restrict, double* restrict, double* restrict,
+                  int);
 
-    double calcDivergence(double * restrict, double * restrict, double * restrict, double * restrict);
+        double calc_divergence(double* restrict, double* restrict, double* restrict, double* restrict);
 };
 #endif
