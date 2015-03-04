@@ -27,109 +27,115 @@
 #include "constants.h"
 #include "tools.h"
 
-namespace Diff2_g
+namespace Diff_2_g
 {
-  __global__ void diffc(double * __restrict__ const at, const double * __restrict__ const a,
-                        const double * __restrict__ const dzi, const double * __restrict__ const dzhi,
-                        const double dxidxi, const double dyidyi, const double visc,
-                        const int jj, const int kk,
-                        const int istart, const int jstart, const int kstart,
-                        const int iend, const int jend, const int kend)
-  {
-    const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-    const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-    const int k = blockIdx.z + kstart;
-  
-    if(i < iend && j < jend && k < kend)
+    __global__ 
+    void diff_c(double* __restrict__ const at, const double* __restrict__ const a,
+                const double* __restrict__ const dzi, const double* __restrict__ const dzhi,
+                const double dxidxi, const double dyidyi, const double visc,
+                const int jj,     const int kk,
+                const int istart, const int jstart, const int kstart,
+                const int iend,   const int jend,   const int kend)
     {
-      const int ijk = i + j*jj + k*kk;
-      const int ii = 1;
-  
-      at[ijk] += visc * (
-            + (  (a[ijk+ii] - a[ijk   ]) 
-               - (a[ijk   ] - a[ijk-ii]) ) * dxidxi 
-            + (  (a[ijk+jj] - a[ijk   ]) 
-               - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
-            + (  (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
-               - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k] );
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            const int ii = 1;
+
+            at[ijk] += visc * (
+                + (  (a[ijk+ii] - a[ijk   ]) 
+                   - (a[ijk   ] - a[ijk-ii]) ) * dxidxi 
+                + (  (a[ijk+jj] - a[ijk   ]) 
+                   - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
+                + (  (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
+                   - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k]);
+        }
     }
-  }
-  
-  __global__ void diffw(double * __restrict__ const at, const double * __restrict__ const a,
-                        const double * __restrict__ const dzi, const double * __restrict__ const dzhi,
-                        const double dxidxi, const double dyidyi, const double visc,
-                        const int jj, const int kk,
-                        const int istart, const int jstart, const int kstart,
-                        const int iend, const int jend, const int kend)
-  {
-    const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-    const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-    const int k = blockIdx.z + kstart;
-  
-    if(i < iend && j < jend && k > kstart && k < kend)
+
+    __global__ 
+    void diff_w(double* __restrict__ const at, const double* __restrict__ const a,
+                const double* __restrict__ const dzi, const double* __restrict__ const dzhi,
+                const double dxidxi, const double dyidyi, const double visc,
+                const int jj,     const int kk,
+                const int istart, const int jstart, const int kstart,
+                const int iend,   const int jend,   const int kend)
     {
-      const int ijk = i + j*jj + k*kk;
-      const int ii = 1;
-  
-      at[ijk] += visc * (
-            + (  (a[ijk+ii] - a[ijk   ])
-               - (a[ijk   ] - a[ijk-ii]) ) * dxidxi
-            + (  (a[ijk+jj] - a[ijk   ])
-               - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
-            + (  (a[ijk+kk] - a[ijk   ]) * dzi[k]
-               - (a[ijk   ] - a[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k > kstart && k < kend)
+        {
+            const int ijk = i + j*jj + k*kk;
+            const int ii = 1;
+
+            at[ijk] += visc * (
+                + (  (a[ijk+ii] - a[ijk   ])
+                    - (a[ijk   ] - a[ijk-ii]) ) * dxidxi
+                + (  (a[ijk+jj] - a[ijk   ])
+                    - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
+                + (  (a[ijk+kk] - a[ijk   ]) * dzi[k]
+                    - (a[ijk   ] - a[ijk-kk]) * dzi[k-1] ) * dzhi[k]);
+        }
     }
-  }
 }
 
 #ifdef USECUDA
 void Diff_2::exec()
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
-  const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
-  const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
+    const int blocki = grid->iThreadBlock;
+    const int blockj = grid->jThreadBlock;
+    const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
+    const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
-  dim3 gridGPU (gridi, gridj, grid->kmax);
-  dim3 blockGPU(blocki, blockj, 1);
+    dim3 gridGPU (gridi, gridj, grid->kmax);
+    dim3 blockGPU(blocki, blockj, 1);
 
-  const double dxidxi = 1./(grid->dx*grid->dx);
-  const double dyidyi = 1./(grid->dy*grid->dy);
+    const double dxidxi = 1./(grid->dx*grid->dx);
+    const double dyidyi = 1./(grid->dy*grid->dy);
 
-  const int offs = grid->memoffset;
+    const int offs = grid->memoffset;
 
-  Diff2_g::diffc<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->u->data_g[offs],
-                                        grid->dzi_g, grid->dzhi_g,
-                                        dxidxi, dyidyi, fields->visc,
-                                        grid->icellsp, grid->ijcellsp,
-                                        grid->istart, grid->jstart, grid->kstart,
-                                        grid->iend, grid->jend, grid->kend);
-  cudaCheckError();
+    Diff_2_g::diff_c<<<gridGPU, blockGPU>>>(
+        &fields->ut->data_g[offs], &fields->u->data_g[offs],
+        grid->dzi_g, grid->dzhi_g,
+        dxidxi, dyidyi, fields->visc,
+        grid->icellsp, grid->ijcellsp,
+        grid->istart,  grid->jstart, grid->kstart,
+        grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
 
-  Diff2_g::diffc<<<gridGPU, blockGPU>>>(&fields->vt->data_g[offs], &fields->v->data_g[offs],
-                                        grid->dzi_g, grid->dzhi_g,
-                                        dxidxi, dyidyi, fields->visc,
-                                        grid->icellsp, grid->ijcellsp,
-                                        grid->istart, grid->jstart, grid->kstart,
-                                        grid->iend, grid->jend, grid->kend);
-  cudaCheckError();
+    Diff_2_g::diff_c<<<gridGPU, blockGPU>>>(
+        &fields->vt->data_g[offs], &fields->v->data_g[offs],
+        grid->dzi_g, grid->dzhi_g,
+        dxidxi, dyidyi, fields->visc,
+        grid->icellsp, grid->ijcellsp,
+        grid->istart,  grid->jstart, grid->kstart,
+        grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
 
-  Diff2_g::diffw<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->w->data_g[offs],
-                                        grid->dzi_g, grid->dzhi_g,
-                                        dxidxi, dyidyi, fields->visc,
-                                        grid->icellsp, grid->ijcellsp,
-                                        grid->istart, grid->jstart, grid->kstart,
-                                        grid->iend, grid->jend, grid->kend);
-  cudaCheckError();
+    Diff_2_g::diff_w<<<gridGPU, blockGPU>>>(
+        &fields->wt->data_g[offs], &fields->w->data_g[offs],
+        grid->dzi_g, grid->dzhi_g,
+        dxidxi, dyidyi, fields->visc,
+        grid->icellsp, grid->ijcellsp,
+        grid->istart,  grid->jstart, grid->kstart,
+        grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
 
 
-  for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    Diff2_g::diffc<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs],
-                                          grid->dzi_g, grid->dzhi_g,
-                                          dxidxi, dyidyi, fields->sp[it->first]->visc,
-                                          grid->icellsp, grid->ijcellsp,
-                                          grid->istart, grid->jstart, grid->kstart,
-                                          grid->iend, grid->jend, grid->kend);
-  cudaCheckError();
+    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+        Diff_2_g::diff_c<<<gridGPU, blockGPU>>>(
+            &it->second->data_g[offs], &fields->sp[it->first]->data_g[offs],
+            grid->dzi_g, grid->dzhi_g,
+            dxidxi, dyidyi, fields->sp[it->first]->visc,
+            grid->icellsp, grid->ijcellsp,
+            grid->istart,  grid->jstart, grid->kstart,
+            grid->iend,    grid->jend,   grid->kend);
+    cudaCheckError();
 }
 #endif
