@@ -401,8 +401,8 @@ unsigned long Advec_2i4::get_time_limit(unsigned long idt, double dt)
 #ifdef USECUDA
 double Advec_2i4::get_cfl(const double dt)
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
     const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -434,8 +434,8 @@ double Advec_2i4::get_cfl(const double dt)
 #ifdef USECUDA
 void Advec_2i4::exec()
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

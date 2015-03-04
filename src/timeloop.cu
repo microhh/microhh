@@ -150,8 +150,8 @@ namespace Timeloop_g
 #ifdef USECUDA
 void Timeloop::exec()
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

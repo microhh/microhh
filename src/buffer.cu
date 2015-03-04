@@ -95,8 +95,8 @@ void Buffer::exec()
 {
     if (swbuffer == "1")
     {
-        const int blocki = grid->iThreadBlock;
-        const int blockj = grid->jThreadBlock;
+        const int blocki = grid->ithread_block;
+        const int blockj = grid->jthread_block;
         const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
         const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
         const int gridk  = grid->kmax - bufferkstart + 1;

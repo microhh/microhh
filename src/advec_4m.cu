@@ -368,8 +368,8 @@ unsigned long Advec_4m::get_time_limit(unsigned long idt, double dt)
 
 double Advec_4m::get_cfl(const double dt)
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
     const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -390,8 +390,8 @@ double Advec_4m::get_cfl(const double dt)
         grid->iend,    grid->jend,   grid->kend);
     cudaCheckError(); 
 
-    double cfl = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
-    grid->getMax(&cfl); 
+    double cfl = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+    grid->get_max(&cfl); 
     cfl = cfl*dt;
 
     return cfl;
@@ -399,8 +399,8 @@ double Advec_4m::get_cfl(const double dt)
 
 void Advec_4m::exec()
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

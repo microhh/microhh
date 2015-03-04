@@ -412,8 +412,8 @@ void Diff_smag_2::exec_viscosity()
     // do a cast because the base boundary class does not have the MOST related variables
     Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
 
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -473,8 +473,8 @@ void Diff_smag_2::exec_viscosity()
 #ifdef USECUDA
 void Diff_smag_2::exec()
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -513,8 +513,8 @@ void Diff_smag_2::exec()
 #ifdef USECUDA
 unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -537,7 +537,7 @@ unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
     cudaCheckError();
 
     // Get maximum from tmp1 field
-    double dnmul = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+    double dnmul = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
     dnmul = std::max(constants::dsmall, dnmul);
     const unsigned long idtlim = idt * dnmax/(dnmul*dt);
 
@@ -548,8 +548,8 @@ unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
 #ifdef USECUDA
 double Diff_smag_2::get_dn(double dt)
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -572,7 +572,7 @@ double Diff_smag_2::get_dn(double dt)
     cudaCheckError();
 
     // Get maximum from tmp1 field
-    double dnmul = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+    double dnmul = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
     return dnmul*dt;
 }
