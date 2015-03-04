@@ -183,7 +183,7 @@ void Model::load()
   dump ->create();
 
   fields->load(timeloop->get_iotime());
-  fields->createStats();
+  fields->create_stats();
 
   // Initialize data or load data from disk.
   boundary->create(input);
@@ -451,9 +451,9 @@ void Model::print_status()
     time = timeloop->get_time();
     dt   = timeloop->get_dt();
     div  = pres->checkDivergence();
-    mom  = fields->checkMomentum();
-    tke  = fields->checkTke();
-    mass = fields->checkMass();
+    mom  = fields->check_momentum();
+    tke  = fields->check_tke();
+    mass = fields->check_mass();
     cfl  = advec->get_cfl(timeloop->get_dt());
     dn   = diff->get_dn(timeloop->get_dt());
 

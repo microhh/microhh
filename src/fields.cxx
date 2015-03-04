@@ -41,7 +41,7 @@ Fields::Fields(Model *modelin, Input *inputin)
   grid   = model->grid;
   master = model->master;
 
-  calcMeanProfs = false;
+  calc_mean_profs = false;
 
   // Initialize the pointers.
   rhoref  = 0;
@@ -66,7 +66,7 @@ Fields::Fields(Model *modelin, Input *inputin)
   // initialize the scalars
   for (std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
   {
-    initPrognosticField(*it, *it, "-");
+    init_prognostic_field(*it, *it, "-");
     nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
   }
 
@@ -74,14 +74,14 @@ Fields::Fields(Model *modelin, Input *inputin)
     throw 1;
 
   // initialize the basic set of fields
-  initMomentumField(u, ut, "u", "U velocity", "m s-1");
-  initMomentumField(v, vt, "v", "V velocity", "m s-1");
-  initMomentumField(w, wt, "w", "Vertical velocity", "m s-1");
-  initDiagnosticField("p", "Pressure", "Pa");
-  initTmpField("tmp1", "", "");
-  initTmpField("tmp2", "", "");
-  initTmpField("tmp3", "", "");
-  initTmpField("tmp4", "", "");
+  init_momentum_field(u, ut, "u", "U velocity", "m s-1");
+  init_momentum_field(v, vt, "v", "V velocity", "m s-1");
+  init_momentum_field(w, wt, "w", "Vertical velocity", "m s-1");
+  init_diagnostic_field("p", "Pressure", "Pa");
+  init_tmp_field("tmp1", "", "");
+  init_tmp_field("tmp2", "", "");
+  init_tmp_field("tmp3", "", "");
+  init_tmp_field("tmp4", "", "");
 
   // Remove the data from the input that is not used in run mode, to avoid warnings.
   if (master->mode == "run")
@@ -199,18 +199,18 @@ void Fields::init()
   // Check different type of crosses and put them in their respective lists 
   for (FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
   {
-    checkAddedCross(it->first, "",        crosslist_global, &crosssimple);
-    checkAddedCross(it->first, "lngrad",  crosslist_global, &crosslngrad);
-    checkAddedCross(it->first, "bot",     crosslist_global, &crossbot);
-    checkAddedCross(it->first, "top",     crosslist_global, &crosstop);
-    checkAddedCross(it->first, "fluxbot", crosslist_global, &crossfluxbot);
-    checkAddedCross(it->first, "fluxtop", crosslist_global, &crossfluxtop);
+    check_added_cross(it->first, "",        crosslist_global, &crosssimple);
+    check_added_cross(it->first, "lngrad",  crosslist_global, &crosslngrad);
+    check_added_cross(it->first, "bot",     crosslist_global, &crossbot);
+    check_added_cross(it->first, "top",     crosslist_global, &crosstop);
+    check_added_cross(it->first, "fluxbot", crosslist_global, &crossfluxbot);
+    check_added_cross(it->first, "fluxtop", crosslist_global, &crossfluxtop);
   }
 
   for (FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
   {
-    checkAddedCross(it->first, "",        crosslist_global, &crosssimple);
-    checkAddedCross(it->first, "lngrad",  crosslist_global, &crosslngrad);
+    check_added_cross(it->first, "",        crosslist_global, &crosssimple);
+    check_added_cross(it->first, "lngrad",  crosslist_global, &crosslngrad);
   }
 
   // Get global dump-list from cross.cxx
@@ -231,7 +231,7 @@ void Fields::init()
   }
 }
 
-void Fields::checkAddedCross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
+void Fields::check_added_cross(std::string var, std::string type, std::vector<std::string> *crosslist, std::vector<std::string> *typelist)
 {
   std::vector<std::string>::iterator position;
   
@@ -251,7 +251,7 @@ void Fields::checkAddedCross(std::string var, std::string type, std::vector<std:
 void Fields::exec()
 {
   // calculate the means for the prognostic scalars
-  if (calcMeanProfs)
+  if (calc_mean_profs)
   {
     for (FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
       grid->calcMean(it->second->datamean, it->second->data, grid->kcells);
@@ -262,16 +262,16 @@ void Fields::exec()
 void Fields::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
   if (m->name == "wplus")
-    calcMask_wplus(mfield->data, mfieldh->data, mfieldh->databot, 
+    calc_mask_wplus(mfield->data, mfieldh->data, mfieldh->databot, 
                    stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
   else if (m->name == "wmin")                                                  
-    calcMask_wmin(mfield->data, mfieldh->data, mfieldh->databot,
+    calc_mask_wmin(mfield->data, mfieldh->data, mfieldh->databot,
                   stats->nmask, stats->nmaskh, &stats->nmaskbot, w->data);
 }
 
-void Fields::calcMask_wplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                            int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
-                            double * restrict w)
+void Fields::calc_mask_wplus(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                             int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                             double * restrict w)
 {
   int ijk,ij,jj,kk,kstart;
 
@@ -329,9 +329,9 @@ void Fields::calcMask_wplus(double * restrict mask, double * restrict maskh, dou
   *nmaskbot = nmaskh[grid->kstart];
 }
 
-void Fields::calcMask_wmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
-                           int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
-                           double * restrict w)
+void Fields::calc_mask_wmin(double * restrict mask, double * restrict maskh, double * restrict maskbot,
+                            int * restrict nmask, int * restrict nmaskh, int * restrict nmaskbot,
+                            double * restrict w)
 {
   int ijk,ij,jj,kk,kstart;
 
@@ -564,12 +564,12 @@ void Fields::exec_stats(Mask *m)
     stats->calcMean(m->profs["evisc"].data, sd["evisc"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
 }
 
-void Fields::set_calcMeanProfs(bool sw)
+void Fields::set_calc_mean_profs(bool sw)
 {
-  calcMeanProfs = sw;
+  calc_mean_profs = sw;
 }
 
-void Fields::initMomentumField(Field3d *&fld, Field3d *&fldt, std::string fldname, std::string longname, std::string unit)
+void Fields::init_momentum_field(Field3d*& fld, Field3d*& fldt, std::string fldname, std::string longname, std::string unit)
 {
   if (mp.find(fldname)!=mp.end())
   {
@@ -597,7 +597,7 @@ void Fields::initMomentumField(Field3d *&fld, Field3d *&fldt, std::string fldnam
   at[fldname] = mt[fldname];
 }
 
-void Fields::initPrognosticField(std::string fldname, std::string longname, std::string unit)
+void Fields::init_prognostic_field(std::string fldname, std::string longname, std::string unit)
 {
   if (sp.find(fldname)!=sp.end())
   {
@@ -621,7 +621,7 @@ void Fields::initPrognosticField(std::string fldname, std::string longname, std:
   at[fldname] = st[fldname];
 }
 
-void Fields::initDiagnosticField(std::string fldname,std::string longname, std::string unit)
+void Fields::init_diagnostic_field(std::string fldname,std::string longname, std::string unit)
 {
   if (sd.find(fldname)!=sd.end())
   {
@@ -633,7 +633,7 @@ void Fields::initDiagnosticField(std::string fldname,std::string longname, std::
   a [fldname] = sd[fldname];
 }
 
-void Fields::initTmpField(std::string fldname,std::string longname, std::string unit)
+void Fields::init_tmp_field(std::string fldname,std::string longname, std::string unit)
 {
   if (atmp.find(fldname)!=atmp.end())
   {
@@ -660,14 +660,14 @@ void Fields::create(Input *inputin)
     nerror += randomize(inputin, it->first, it->second->data);
   
   // Add Vortices
-  nerror += addVortexPair(inputin);
+  nerror += add_vortex_pair(inputin);
   
   // Add the mean profiles to the fields
-  nerror += addMeanProf(inputin, "u", mp["u"]->data, grid->utrans);
-  nerror += addMeanProf(inputin, "v", mp["v"]->data, grid->vtrans);
+  nerror += add_mean_prof(inputin, "u", mp["u"]->data, grid->utrans);
+  nerror += add_mean_prof(inputin, "v", mp["v"]->data, grid->vtrans);
  
   for (FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
-    nerror += addMeanProf(inputin, it->first, it->second->data, 0.);
+    nerror += add_mean_prof(inputin, it->first, it->second->data, 0.);
   
   // set w equal to zero at the boundaries, just to be sure
   int lbot = grid->kstart*grid->ijcells;
@@ -682,7 +682,7 @@ void Fields::create(Input *inputin)
     throw 1;
 }
 
-int Fields::randomize(Input *inputin, std::string fld, double * restrict data)
+int Fields::randomize(Input* inputin, std::string fld, double* restrict data)
 {
   int nerror = 0;
 
@@ -736,7 +736,7 @@ int Fields::randomize(Input *inputin, std::string fld, double * restrict data)
   return nerror;
 }
 
-int Fields::addVortexPair(Input *inputin)
+int Fields::add_vortex_pair(Input* inputin)
 {
   int nerror = 0;
 
@@ -777,7 +777,7 @@ int Fields::addVortexPair(Input *inputin)
   return nerror;
 }
 
-int Fields::addMeanProf(Input *inputin, std::string fld, double * restrict data, double offset)
+int Fields::add_mean_prof(Input *inputin, std::string fld, double * restrict data, double offset)
 {
   int ijk, jj, kk;
   double proftemp[grid->kmax];
@@ -826,7 +826,7 @@ void Fields::load(int n)
     throw 1;
 }
 
-void Fields::createStats()
+void Fields::create_stats()
 {
   int nerror = 0;
 
@@ -920,32 +920,32 @@ void Fields::save(int n)
 }
 
 #ifndef USECUDA
-double Fields::checkMomentum()
+double Fields::check_momentum()
 {
-  return calcMomentum_2nd(u->data, v->data, w->data, grid->dz);
+  return calc_momentum_2nd(u->data, v->data, w->data, grid->dz);
 }
 #endif
 
 #ifndef USECUDA
-double Fields::checkTke()
+double Fields::check_tke()
 {
-  return calcTke_2nd(u->data, v->data, w->data, grid->dz);
+  return calc_tke_2nd(u->data, v->data, w->data, grid->dz);
 }
 #endif
 
 #ifndef USECUDA
-double Fields::checkMass()
+double Fields::check_mass()
 {
   // CvH for now, do the mass check on the first scalar... Do we want to change this?
   FieldMap::const_iterator itProg=sp.begin();
   if (sp.begin() != sp.end())
-    return calcMass(itProg->second->data, grid->dz);
+    return calc_mass(itProg->second->data, grid->dz);
   else
     return 0.;
 }
 #endif
 
-double Fields::calcMass(double * restrict s, double * restrict dz)
+double Fields::calc_mass(double * restrict s, double * restrict dz)
 {
   int ijk,jj,kk;
 
@@ -970,7 +970,7 @@ double Fields::calcMass(double * restrict s, double * restrict dz)
   return mass;
 }
 
-double Fields::calcMomentum_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double Fields::calc_momentum_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   using fd::o2::interp2;
 
@@ -999,7 +999,7 @@ double Fields::calcMomentum_2nd(double * restrict u, double * restrict v, double
   return momentum;
 }
 
-double Fields::calcTke_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
+double Fields::calc_tke_2nd(double * restrict u, double * restrict v, double * restrict w, double * restrict dz)
 {
   using fd::o2::interp2;
 

@@ -60,7 +60,7 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 
   int nerror = 0;
 
-  fields->initPrognosticField("th", "Potential Temperature", "K");
+  fields->init_prognostic_field("th", "Potential Temperature", "K");
 
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
 

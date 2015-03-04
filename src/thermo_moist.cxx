@@ -69,8 +69,8 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   nerror += inputin->getItem(&thvar, "thermo", "progvar", "", "thl");  // defaults to thl
 
   // Initialize the prognostic fields
-  fields->initPrognosticField(thvar, "Liquid water potential temperature", "K");
-  fields->initPrognosticField("qt", "Total water mixing ratio", "kg kg-1");
+  fields->init_prognostic_field(thvar, "Liquid water potential temperature", "K");
+  fields->init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
 
   nerror += inputin->getItem(&fields->sp[thvar]->visc, "fields", "svisc", thvar );
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
@@ -159,7 +159,7 @@ void ThermoMoist::create(Input *inputin)
 
   // Enable automated calculation of horizontally averaged fields
   if (swupdatebasestate)
-    fields->set_calcMeanProfs(true);
+    fields->set_calc_mean_profs(true);
 
   // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration. 
   // 1. Take the initial profile as the reference

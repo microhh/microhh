@@ -39,41 +39,41 @@ class Fields
 {
   public:
     // functions
-    Fields(Model *, Input *); ///< Constructor of the fields class.
-    ~Fields();                ///< Destructor of the fields class.
+    Fields(Model*, Input*); ///< Constructor of the fields class.
+    ~Fields();              ///< Destructor of the fields class.
 
-    void init();          ///< Initialization of the field arrays.
-    void create(Input *); ///< Initialization of the fields (random perturbations, vortices).
-    void createStats();   ///< Initialization of the fields statistics.
+    void init();         ///< Initialization of the field arrays.
+    void create(Input*); ///< Initialization of the fields (random perturbations, vortices).
+    void create_stats(); ///< Initialization of the fields statistics.
 
     void exec();
-    void get_mask(Field3d *, Field3d *, Mask *);
-    void exec_stats(Mask *);
+    void get_mask(Field3d*, Field3d*, Mask*);
+    void exec_stats(Mask*);
 
-    void initMomentumField  (Field3d*&, Field3d*&, std::string, std::string, std::string);
-    void initPrognosticField(std::string, std::string, std::string);
-    void initDiagnosticField(std::string, std::string, std::string);
-    void initTmpField       (std::string, std::string, std::string);
+    void init_momentum_field  (Field3d*&, Field3d*&, std::string, std::string, std::string);
+    void init_prognostic_field(std::string, std::string, std::string);
+    void init_diagnostic_field(std::string, std::string, std::string);
+    void init_tmp_field       (std::string, std::string, std::string);
     
     void save(int);
     void load(int);
 
-    double checkMomentum();
-    double checkTke();
-    double checkMass();
+    double check_momentum();
+    double check_tke();
+    double check_mass();
 
-    void set_calcMeanProfs(bool);
+    void set_calc_mean_profs(bool);
 
     void exec_cross();
     void exec_dump();
 
-    Field3d *u; ///< Field3d instance of x velocity component
-    Field3d *v; ///< Field3d instance of y velocity component
-    Field3d *w; ///< Field3d instance of vertical velocity component
+    Field3d* u; ///< Field3d instance of x velocity component
+    Field3d* v; ///< Field3d instance of y velocity component
+    Field3d* w; ///< Field3d instance of vertical velocity component
 
-    Field3d *ut; ///< Field3d instance of x velocity component tendency 
-    Field3d *vt; ///< Field3d instance of y velocity component tendency
-    Field3d *wt; ///< Field3d instance of vertical velocity component tendency 
+    Field3d* ut; ///< Field3d instance of x velocity component tendency 
+    Field3d* vt; ///< Field3d instance of y velocity component tendency
+    Field3d* wt; ///< Field3d instance of vertical velocity component tendency 
 
     FieldMap a;  ///< Map containing all field3d instances
     FieldMap ap; ///< Map containing all prognostic field3d instances
@@ -88,8 +88,8 @@ class Fields
 
     FieldMap atmp; ///< Map containing all temporary field3d instances
 
-    double *rhoref;  ///< Reference density at full levels 
-    double *rhorefh; ///< Reference density at half levels
+    double* rhoref;  ///< Reference density at full levels 
+    double* rhorefh; ///< Reference density at half levels
 
     // TODO remove these to and bring them to diffusion model
     double visc;
@@ -97,31 +97,31 @@ class Fields
     /* 
      *Device (GPU) functions and variables
      */
-    enum OffsetType {Offset, NoOffset};
+    enum Offset_type {Offset, No_offset};
 
     void prepare_device();  ///< Allocation of all fields at device 
-    void forwardDevice();  ///< Copy of all fields from host to device
+    void forward_device();  ///< Copy of all fields from host to device
     void backward_device(); ///< Copy of all fields required for statistics and output from device to host
     void clear_device();    ///< Deallocation of all fields at device
 
-    void forwardFieldDevice_3d (double *, double *, OffsetType); ///< Copy of a single 3d field from host to device
-    void forwardFieldDevice_2d (double *, double *, OffsetType); ///< Copy of a single 2d field from host to device
-    void forwardFieldDevice_1d (double *, double *, int);        ///< Copy of a single array from host to device
-    void backwardFieldDevice_3d(double *, double *, OffsetType); ///< Copy of a single 3d field from device to host
-    void backwardFieldDevice_2d(double *, double *, OffsetType); ///< Copy of a single 2d field from device to host
-    void backwardFieldDevice_1d(double *, double *, int);        ///< Copy of a single array from device to host
+    void forward_field_device_3d (double*, double*, Offset_type); ///< Copy of a single 3d field from host to device
+    void forward_field_device_2d (double*, double*, Offset_type); ///< Copy of a single 2d field from host to device
+    void forward_field_device_1d (double*, double*, int);         ///< Copy of a single array from host to device
+    void backward_field_device_3d(double*, double*, Offset_type); ///< Copy of a single 3d field from device to host
+    void backward_field_device_2d(double*, double*, Offset_type); ///< Copy of a single 2d field from device to host
+    void backward_field_device_1d(double*, double*, int);         ///< Copy of a single array from device to host
 
-    double *rhoref_g;  ///< Reference density at full levels at device
-    double *rhorefh_g; ///< Reference density at half levels at device
+    double* rhoref_g;  ///< Reference density at full levels at device
+    double* rhorefh_g; ///< Reference density at half levels at device
     
   private:
     // variables
-    Model  *model;
-    Grid   *grid;
-    Master *master;
-    Stats  *stats;
+    Model*  model;
+    Grid*   grid;
+    Master* master;
+    Stats*  stats;
 
-    bool calcMeanProfs;
+    bool calc_mean_profs;
 
     // cross sections
     std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
@@ -135,11 +135,11 @@ class Fields
     std::vector<std::string> crossfluxbot;
     std::vector<std::string> crossfluxtop;
 
-    void checkAddedCross(std::string, std::string, std::vector<std::string> *, std::vector<std::string> *);
+    void check_added_cross(std::string, std::string, std::vector<std::string>*, std::vector<std::string>*);
 
     // masks
-    void calcMask_wplus(double *, double *, double *, int *, int *, int *, double *);
-    void calcMask_wmin (double *, double *, double *, int *, int *, int *, double *);
+    void calc_mask_wplus(double*, double*, double*, int*, int*, int*, double*);
+    void calc_mask_wmin (double*, double*, double*, int*, int*, int*, double*);
 
     // perturbations
     double rndamp;
@@ -150,22 +150,22 @@ class Fields
     std::string vortexaxis;
     
     // Kernels for the check functions.
-    double calcMomentum_2nd(double *, double *, double *, double *);
-    double calcTke_2nd     (double *, double *, double *, double *);
-    double calcMass        (double *, double *);
+    double calc_momentum_2nd(double*, double*, double*, double*);
+    double calc_tke_2nd     (double*, double*, double*, double*);
+    double calc_mass        (double*, double*);
 
-    int addMeanProf  (Input *, std::string, double *, double);
-    int randomize    (Input *, std::string, double *);
-    int addVortexPair(Input *);
+    int add_mean_prof(Input*, std::string, double*, double);
+    int randomize    (Input*, std::string, double*);
+    int add_vortex_pair(Input*);
 
     // statistics
-    double *umodel;
-    double *vmodel;
+    double* umodel;
+    double* vmodel;
 
     /* 
      *Device (GPU) functions and variables
      */
-    void forwardField3dDevice(Field3d *);  ///< Copy of a complete Field3d instance from host to device
-    void backwardField3dDevice(Field3d *); ///< Copy of a complete Field3d instance from device to host
+    void forward_field3d_device(Field3d *);  ///< Copy of a complete Field3d instance from host to device
+    void backward_field3d_device(Field3d *); ///< Copy of a complete Field3d instance from device to host
 };
 #endif

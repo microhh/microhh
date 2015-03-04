@@ -40,7 +40,7 @@ Diff_smag_2::Diff_smag_2(Model* modelin, Input* inputin) : Diff(modelin, inputin
 
     mlen_g = 0;
 
-    fields->initDiagnosticField("evisc", "Eddy viscosity", "m2 s-1");
+    fields->init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1");
 
     int nerror = 0;
     nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.5  );

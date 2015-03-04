@@ -37,7 +37,7 @@ ThermoBuoySlope::ThermoBuoySlope(Model *modelin, Input *inputin) : Thermo(modeli
   swthermo = "slope";
   master = modelin->master;
 
-  fields->initPrognosticField("b", "Buoyancy", "m s-2");
+  fields->init_prognostic_field("b", "Buoyancy", "m s-2");
 
   int nerror = 0;
   nerror += inputin->getItem(&alpha, "thermo", "alpha", "");
