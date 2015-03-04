@@ -33,6 +33,7 @@
 #include "thermo_buoy_slope.h"
 #include "thermo_dry.h"
 #include "thermo_moist.h"
+#include "thermo_disabled.h"
 
 Thermo::Thermo(Model* modelin, Input* inputin)
 {
@@ -40,52 +41,9 @@ Thermo::Thermo(Model* modelin, Input* inputin)
     grid   = model->grid;
     fields = model->fields;
     master = model->master;
-
-    swthermo = "0";
 }
 
 Thermo::~Thermo()
-{
-}
-
-void Thermo::init()
-{
-}
-
-void Thermo::create(Input* inputin)
-{
-}
-
-void Thermo::exec()
-{
-}
-
-void Thermo::exec_stats(Mask* f)
-{
-}
-
-void Thermo::exec_cross()
-{
-}
-
-void Thermo::exec_dump()
-{
-}
-
-bool Thermo::check_thermo_field(std::string name)
-{
-    return true;  // always returns error 
-}
-
-void Thermo::get_thermo_field(Field3d* field, Field3d* tmp, std::string name)
-{
-}
-
-void Thermo::get_buoyancy_surf(Field3d* bfield)
-{
-}
-
-void Thermo::get_buoyancy_fluxbot(Field3d *bfield)
 {
 }
 
@@ -94,21 +52,13 @@ std::string Thermo::get_switch()
     return swthermo;
 }
 
-void Thermo::get_prog_vars(std::vector<std::string> *list)
-{
-}
-
-void Thermo::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *f)
-{
-}
-
 Thermo* Thermo::factory(Master* masterin, Input* inputin, Model* modelin)
 {
     std::string swthermo;
     if (inputin->get_item(&swthermo, "thermo", "swthermo", "", "0"))
         return 0;
 
-    if (swthermo== "moist")
+    if (swthermo == "moist")
         return new Thermo_moist(modelin, inputin);
     else if (swthermo == "buoy")
         return new Thermo_buoy(modelin, inputin);
@@ -117,18 +67,10 @@ Thermo* Thermo::factory(Master* masterin, Input* inputin, Model* modelin)
     else if (swthermo == "buoy_slope")
         return new Thermo_buoy_slope(modelin, inputin);
     else if (swthermo == "0")
-        return new Thermo(modelin, inputin);
+        return new Thermo_disabled(modelin, inputin);
     else
     {
         masterin->print_error("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
         return 0;
     }
-}
-
-void Thermo::prepare_device()
-{
-}
-
-void Thermo::clear_device()
-{
 }
