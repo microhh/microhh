@@ -94,8 +94,8 @@ namespace Diff_4_g
     }
 
     __global__ 
-    void diff_w(double * __restrict__ const at, const double * __restrict__ const a,
-                const double * __restrict__ const dzi4, const double * __restrict__ const dzhi4,
+    void diff_w(double* __restrict__ const at, const double* __restrict__ const a,
+                const double* __restrict__ const dzi4, const double* __restrict__ const dzhi4,
                 const double dx, const double dy, const double visc,
                 const int jj,     const int kk,
                 const int istart, const int jstart, const int kstart,
