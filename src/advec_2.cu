@@ -148,8 +148,8 @@ unsigned long Advec_2::get_time_limit(unsigned long idt, double dt)
 
 double Advec_2::get_cfl(const double dt)
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -178,8 +178,8 @@ double Advec_2::get_cfl(const double dt)
 
 void Advec_2::exec()
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
     const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

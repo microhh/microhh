@@ -225,8 +225,8 @@ void Pres::makeCufftPlan()
 
 void Pres::fft_forward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -313,8 +313,8 @@ void Pres::fft_forward(double * __restrict__ p, double * __restrict__ tmp1, doub
 
 void Pres::fft_backward(double * __restrict__ p, double * __restrict__ tmp1, double * __restrict__ tmp2)
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 

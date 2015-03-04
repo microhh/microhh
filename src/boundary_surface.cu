@@ -324,8 +324,8 @@ void Boundary_surface::clear_device()
 #ifdef USECUDA
 void Boundary_surface::update_bcs()
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
 
     // For 2D field excluding ghost cells
     int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
@@ -351,7 +351,7 @@ void Boundary_surface::update_bcs()
     cudaCheckError();
 
     // 2D cyclic boundaries on dutot  
-    grid->boundary_cyclic_2d_g(&fields->atmp["tmp2"]->data_g[offs]);
+    grid->boundary_cyclic2d_g(&fields->atmp["tmp2"]->data_g[offs]);
 
     // start with retrieving the stability information
     if (model->thermo->getSwitch() == "0")
@@ -390,8 +390,8 @@ void Boundary_surface::update_bcs()
     cudaCheckError();
 
     // 2D cyclic boundaries on the surface fluxes  
-    grid->boundary_cyclic_2d_g(&fields->u->datafluxbot_g[offs]);
-    grid->boundary_cyclic_2d_g(&fields->v->datafluxbot_g[offs]);
+    grid->boundary_cyclic2d_g(&fields->u->datafluxbot_g[offs]);
+    grid->boundary_cyclic2d_g(&fields->v->datafluxbot_g[offs]);
 
     // Calculate surface gradients, including ghost cells
     Boundary_surface_g::surfm_grad<<<gridGPU2, blockGPU2>>>(

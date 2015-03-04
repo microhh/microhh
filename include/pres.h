@@ -55,8 +55,8 @@ class Pres
 
     #ifdef USECUDA
     void makeCufftPlan();
-    void fftForward (double *, double *, double *);
-    void fftBackward(double *, double *, double *);
+    void fft_forward (double *, double *, double *);
+    void fft_backward(double *, double *, double *);
 
     bool FFTPerSlice;
     cufftHandle iplanf, jplanf; 

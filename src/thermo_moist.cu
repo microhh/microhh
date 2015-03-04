@@ -405,8 +405,8 @@ void Thermo_moist::clear_device()
 #ifdef USECUDA
 void Thermo_moist::exec()
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -465,8 +465,8 @@ void Thermo_moist::exec()
 #ifdef USECUDA
 void Thermo_moist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -541,8 +541,8 @@ void Thermo_moist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #ifdef USECUDA
 void Thermo_moist::getBuoyancyFluxbot(Field3d *bfield)
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -563,8 +563,8 @@ void Thermo_moist::getBuoyancyFluxbot(Field3d *bfield)
 #ifdef USECUDA
 void Thermo_moist::getBuoyancySurf(Field3d *bfield)
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
   const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 

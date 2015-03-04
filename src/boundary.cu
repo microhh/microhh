@@ -207,8 +207,8 @@ namespace Boundary_g
 #ifdef USECUDA
 void Boundary::exec()
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
     const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 
@@ -346,8 +346,8 @@ void Boundary::exec()
 void Boundary::set_bc_g(double* restrict a, double* restrict agrad, double* restrict aflux, 
                         Boundary_type sw, double aval, double visc, double offset)
 {
-    const int blocki = grid->iThreadBlock;
-    const int blockj = grid->jThreadBlock;
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
     const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
     const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
 

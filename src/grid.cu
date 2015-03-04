@@ -106,8 +106,8 @@ void Grid::prepare_device()
   ncellsp   = ijcellsp * kcells + memoffset;
 
   // Calculate optimal size thread blocks based on grid
-  iThreadBlock = min(256, 16 * ((itot / 16) + (itot % 16 > 0)));
-  jThreadBlock = 256 / iThreadBlock;
+  ithread_block = min(256, 16 * ((itot / 16) + (itot % 16 > 0)));
+  jthread_block = 256 / ithread_block;
 
   const int kmemsize = kcells*sizeof(double);
 
@@ -173,7 +173,7 @@ void Grid::boundary_cyclic_g(double * data)
   cudaCheckError();
 }
 
-void Grid::boundary_cyclic_2d_g(double * data)
+void Grid::boundary_cyclic2d_g(double * data)
 {
   const int blocki_x = igc;
   const int blockj_x = 256 / igc + (256%igc > 0);

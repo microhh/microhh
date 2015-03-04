@@ -241,8 +241,8 @@ void Pres_2::clear_device()
 #ifdef USECUDA
 void Pres_2::exec(double dt)
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   const int gridi = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
@@ -314,8 +314,8 @@ void Pres_2::exec(double dt)
 #ifdef USECUDA
 double Pres_2::checkDivergence()
 {
-  const int blocki = grid->iThreadBlock;
-  const int blockj = grid->jThreadBlock;
+  const int blocki = grid->ithread_block;
+  const int blockj = grid->jthread_block;
   const int gridi  = grid->imax/blocki + (grid->imax%blocki > 0);
   const int gridj  = grid->jmax/blockj + (grid->jmax%blockj > 0);
 
