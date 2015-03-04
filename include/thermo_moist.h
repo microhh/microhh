@@ -59,9 +59,9 @@ class Thermo_moist : public Thermo
 #endif
 
     private:
-        void initStat();  ///< Initialize the thermo statistics
-        void initCross(); ///< Initialize the thermo cross-sections
-        void initDump();  ///< Initialize the thermo field dumps
+        void init_stat();  ///< Initialize the thermo statistics
+        void init_cross(); ///< Initialize the thermo cross-sections
+        void init_dump();  ///< Initialize the thermo field dumps
 
         int swupdatebasestate;
         std::string thvar; ///< Name of prognostic potential temperature variable
@@ -74,43 +74,43 @@ class Thermo_moist : public Thermo
         Stats *stats;
 
         // masks
-        void calcMask_ql    (double*, double*, double*, int *, int *, int *, double *);
-        void calcMask_qlcore(double*, double*, double*, int *, int *, int *, double*, double*, double *);
+        void calc_mask_ql    (double*, double*, double*, int *, int *, int *, double*);
+        void calc_mask_qlcore(double*, double*, double*, int *, int *, int *, double*, double*, double*);
 
-        void calcBuoyancyTend_2nd(double*, double*, double*, double*, double*, double*, double*, double *);
-        void calcBuoyancyTend_4th(double*, double*, double*, double*, double*, double*, double*, double *);
+        void calc_buoyancy_tend_2nd(double*, double*, double*, double*, double*, double*, double*, double*);
+        void calc_buoyancy_tend_4th(double*, double*, double*, double*, double*, double*, double*, double*);
 
-        void calcBuoyancy(double*, double*, double*, double*, double*, double *);
-        void calcN2(double*, double*, double*, double *); ///< Calculation of the Brunt-Vaissala frequency.
-        void calcBaseState(double*, double*, double*, double*, double*, double*, double*, double*, double*, double *);
+        void calc_buoyancy(double*, double*, double*, double*, double*, double*);
+        void calc_N2(double*, double*, double*, double*); ///< Calculation of the Brunt-Vaissala frequency.
+        void calc_base_state(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
 
-        void calcLiquidWater(double*, double*, double*, double *);
-        void calcBuoyancyBot(double*, double*,
-                double*, double*,
-                double*, double*,
-                double*, double *);
-        void calcBuoyancyFluxBot(double*, double*, double*, double*, double*, double *);
+        void calc_liquid_water(double*, double*, double*, double*);
+        void calc_buoyancy_bot(double*, double*,
+                               double*, double*,
+                               double*, double*,
+                               double*, double*);
+        void calc_buoyancy_fluxbot(double*, double*, double*, double*, double*, double*);
 
         std::string swbasestate;
         double pbot;
         double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
 
         // REFERENCE PROFILES
-        double *thl0;    // Initial thl profile 
-        double *qt0;     // Initial qt profile
-        double *thvref; 
-        double *thvrefh;
-        double *exnref;
-        double *exnrefh;
-        double *pref;
-        double *prefh;
+        double* thl0;    // Initial thl profile 
+        double* qt0;     // Initial qt profile
+        double* thvref; 
+        double* thvrefh;
+        double* exnref;
+        double* exnrefh;
+        double* pref;
+        double* prefh;
 
         // GPU functions and variables
-        double *thvref_g; 
-        double *thvrefh_g;
-        double *exnref_g;
-        double *exnrefh_g;
-        double *pref_g;
-        double *prefh_g;
+        double* thvref_g; 
+        double* thvrefh_g;
+        double* exnref_g;
+        double* exnrefh_g;
+        double* pref_g;
+        double* prefh_g;
 };
 #endif
