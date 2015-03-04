@@ -32,15 +32,15 @@ using fd::o4::interp4;
 
 Thermo_buoy::Thermo_buoy(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
-  swthermo = "buoy";
+    swthermo = "buoy";
 
-  fields->init_prognostic_field("b", "Buoyancy", "m s-2");
+    fields->init_prognostic_field("b", "Buoyancy", "m s-2");
 
-  int nerror = 0;
-  nerror += inputin->get_item(&fields->sp["b"]->visc, "fields", "svisc", "b");
+    int nerror = 0;
+    nerror += inputin->get_item(&fields->sp["b"]->visc, "fields", "svisc", "b");
 
-  if (nerror)
-    throw 1;
+    if (nerror)
+        throw 1;
 }
 
 Thermo_buoy::~Thermo_buoy()
@@ -50,120 +50,113 @@ Thermo_buoy::~Thermo_buoy()
 #ifndef USECUDA
 void Thermo_buoy::exec()
 {
-  // extend later for gravity vector not normal to surface
-  if (grid->swspatialorder== "2")
-    calcBuoyancyTend_2nd(fields->wt->data, fields->sp["b"]->data);
-  else if (grid->swspatialorder == "4")
-    calcBuoyancyTend_4th(fields->wt->data, fields->sp["b"]->data);
+    // extend later for gravity vector not normal to surface
+    if (grid->swspatialorder== "2")
+        calc_buoyancy_tend_2nd(fields->wt->data, fields->sp["b"]->data);
+    else if (grid->swspatialorder == "4")
+        calc_buoyancy_tend_4th(fields->wt->data, fields->sp["b"]->data);
 }
 #endif
 
 void Thermo_buoy::get_buoyancy(Field3d* bfield, Field3d* tmp)
 {
-  calcBuoyancy(bfield->data, fields->sp["b"]->data);
+    calc_buoyancy(bfield->data, fields->sp["b"]->data);
 }
 
 void Thermo_buoy::get_buoyancy_fluxbot(Field3d* bfield)
 {
-  calcBuoyancyFluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
+    calc_buoyancy_fluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
 void Thermo_buoy::get_buoyancy_surf(Field3d* bfield)
 {
-  calcBuoyancyBot(bfield->data, bfield->databot,
-                  fields->sp["b"]->data, fields->sp["b"]->databot);
-  calcBuoyancyFluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
+    calc_buoyancy_bot(bfield->data, bfield->databot,
+                      fields->sp["b"]->data, fields->sp["b"]->databot);
+    calc_buoyancy_fluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
 bool Thermo_buoy::check_thermo_field(std::string name)
 {
-  if (name == "b")
-    return false;
-  else
-    return true;
+    if (name == "b")
+        return false;
+    else
+        return true;
 }
 
 void Thermo_buoy::get_thermo_field(Field3d *field, Field3d *tmp, std::string name)
 {
-  calcBuoyancy(field->data, fields->sp["b"]->data);
+    calc_buoyancy(field->data, fields->sp["b"]->data);
 }
 
 void Thermo_buoy::get_prog_vars(std::vector<std::string> *list)
 {
-  list->push_back("b");
+    list->push_back("b");
 }
 
-void Thermo_buoy::calcBuoyancy(double * restrict b, double * restrict bin)
+void Thermo_buoy::calc_buoyancy(double* restrict b, double* restrict bin)
 {
-  for (int n=0; n<grid->ncells; ++n)
-    b[n] = bin[n];
+    for (int n=0; n<grid->ncells; ++n)
+        b[n] = bin[n];
 }
 
-void Thermo_buoy::calcBuoyancyBot(double * restrict b  , double * restrict bbot,
-                                 double * restrict bin, double * restrict binbot)
+void Thermo_buoy::calc_buoyancy_bot(double* restrict b  , double* restrict bbot,
+                                    double* restrict bin, double* restrict binbot)
 {
-  int ij,ijk,jj,kk,kstart;
-  jj = grid->icells;
-  kk = grid->ijcells;
-  kstart = grid->kstart;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+    const int kstart = grid->kstart;
 
-  for (int j=0; j<grid->jcells; ++j)
+    for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-    for (int i=0; i<grid->icells; ++i)
-    {
-      ij  = i + j*jj;
-      ijk = i + j*jj + kstart*kk;
-      bbot[ij] = binbot[ij];
-      b[ijk]   = bin[ijk];
-    }
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + kstart*kk;
+            bbot[ij] = binbot[ij];
+            b[ijk]   = bin[ijk];
+        }
 }
 
-void Thermo_buoy::calcBuoyancyFluxbot(double * restrict bfluxbot, double * restrict binfluxbot)
+void Thermo_buoy::calc_buoyancy_fluxbot(double* restrict bfluxbot, double* restrict binfluxbot)
 {
-  int ij,jj;
-  jj = grid->icells;
+    const int jj = grid->icells;
 
-  for (int j=0; j<grid->jcells; ++j)
+    for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
-    for (int i=0; i<grid->icells; ++i)
-    {
-      ij  = i + j*jj;
-      bfluxbot[ij] = binfluxbot[ij];
-    }
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ij  = i + j*jj;
+            bfluxbot[ij] = binfluxbot[ij];
+        }
 }
 
-void Thermo_buoy::calcBuoyancyTend_2nd(double * restrict wt, double * restrict b)
+void Thermo_buoy::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict b)
 {
-  int ijk,jj,kk;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
 
-  jj = grid->icells;
-  kk = grid->ijcells;
-
-  for (int k=grid->kstart+1; k<grid->kend; ++k)
-    for (int j=grid->jstart; j<grid->jend; ++j)
+    for (int k=grid->kstart+1; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for (int i=grid->istart; i<grid->iend; ++i)
-      {
-        ijk = i + j*jj + k*kk;
-        wt[ijk] += interp2(b[ijk-kk], b[ijk]);
-      }
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                wt[ijk] += interp2(b[ijk-kk], b[ijk]);
+            }
 }
 
-void Thermo_buoy::calcBuoyancyTend_4th(double * restrict wt, double * restrict b)
+void Thermo_buoy::calc_buoyancy_tend_4th(double* restrict wt, double* restrict b)
 {
-  int ijk,jj;
-  int kk1,kk2;
+    const int jj  = grid->icells;
+    const int kk1 = 1*grid->ijcells;
+    const int kk2 = 2*grid->ijcells;
 
-  jj  = grid->icells;
-  kk1 = 1*grid->ijcells;
-  kk2 = 2*grid->ijcells;
-
-  for (int k=grid->kstart+1; k<grid->kend; ++k)
-    for (int j=grid->jstart; j<grid->jend; ++j)
+    for (int k=grid->kstart+1; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
-      for (int i=grid->istart; i<grid->iend; ++i)
-      {
-        ijk = i + j*jj + k*kk1;
-        wt[ijk] += interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
-      }
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk1;
+                wt[ijk] += interp4(b[ijk-kk2], b[ijk-kk1], b[ijk], b[ijk+kk1]);
+            }
 }

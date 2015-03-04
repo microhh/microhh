@@ -59,11 +59,11 @@ class Thermo_buoy : public Thermo
         void get_mask(Field3d*, Field3d*, Mask*) {}
 
     private:
-        void calcBuoyancy(double*, double*);         ///< Calculation of the buoyancy.
-        void calcBuoyancyBot(double*, double*,
-                             double*, double*);      ///< Calculation of the near-surface and surface buoyancy.
-        void calcBuoyancyFluxbot(double*, double*);  ///< Calculation of the buoyancy flux at the bottom.
-        void calcBuoyancyTend_2nd(double*, double*); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-        void calcBuoyancyTend_4th(double*, double*); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+        void calc_buoyancy(double*, double*); ///< Calculation of the buoyancy.
+        void calc_buoyancy_bot(double*, double*,
+                               double*, double*); ///< Calculation of the near-surface and surface buoyancy.
+        void calc_buoyancy_fluxbot(double*, double*);  ///< Calculation of the buoyancy flux at the bottom.
+        void calc_buoyancy_tend_2nd(double*, double*); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+        void calc_buoyancy_tend_4th(double*, double*); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 };
 #endif
