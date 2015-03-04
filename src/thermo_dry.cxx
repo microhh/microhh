@@ -60,7 +60,7 @@ ThermoDry::ThermoDry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 
   int nerror = 0;
 
-  fields->initPrognosticField("th", "Potential Temperature", "K");
+  fields->init_prognostic_field("th", "Potential Temperature", "K");
 
   nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
 
@@ -283,7 +283,7 @@ void ThermoDry::exec_dump()
     else
       throw 1;
 
-    model->dump->saveDump(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, *it);
+    model->dump->save_dump(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, *it);
   }
 }
 
@@ -557,10 +557,10 @@ void ThermoDry::initCross()
 
 void ThermoDry::initDump()
 {
-  if (model->dump->getSwitch() == "1")
+  if (model->dump->get_switch() == "1")
   {
     // Get global cross-list from cross.cxx
-    std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
+    std::vector<std::string>* dumplist_global = model->dump->get_dumplist(); 
 
     // Check if fields in dumplist are retrievable thermo fields
     std::vector<std::string>::iterator dumpvar=dumplist_global->begin();

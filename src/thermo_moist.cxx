@@ -69,8 +69,8 @@ ThermoMoist::ThermoMoist(Model *modelin, Input *inputin) : Thermo(modelin, input
   nerror += inputin->getItem(&thvar, "thermo", "progvar", "", "thl");  // defaults to thl
 
   // Initialize the prognostic fields
-  fields->initPrognosticField(thvar, "Liquid water potential temperature", "K");
-  fields->initPrognosticField("qt", "Total water mixing ratio", "kg kg-1");
+  fields->init_prognostic_field(thvar, "Liquid water potential temperature", "K");
+  fields->init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
 
   nerror += inputin->getItem(&fields->sp[thvar]->visc, "fields", "svisc", thvar );
   nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
@@ -159,7 +159,7 @@ void ThermoMoist::create(Input *inputin)
 
   // Enable automated calculation of horizontally averaged fields
   if (swupdatebasestate)
-    fields->set_calcMeanProfs(true);
+    fields->set_calc_mean_profs(true);
 
   // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration. 
   // 1. Take the initial profile as the reference
@@ -537,7 +537,7 @@ void ThermoMoist::exec_dump()
     else
       throw 1;
 
-    model->dump->saveDump(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, *it);
+    model->dump->save_dump(fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, *it);
   }
 }
 
@@ -1021,10 +1021,10 @@ void ThermoMoist::initCross()
 
 void ThermoMoist::initDump()
 {
-  if (model->dump->getSwitch() == "1")
+  if (model->dump->get_switch() == "1")
   {
     // Get global cross-list from cross.cxx
-    std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
+    std::vector<std::string> *dumplist_global = model->dump->get_dumplist(); 
 
     // Check if fields in dumplist are retrievable thermo fields
     std::vector<std::string>::iterator dumpvar=dumplist_global->begin();

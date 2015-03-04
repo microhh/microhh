@@ -77,7 +77,7 @@ int Field3d::init()
 }
 #endif
 
-void Field3d::initDevice()
+void Field3d::init_device()
 {
   const int nmemsize   = grid->ncellsp*sizeof(double);
   const int nmemsize1d = grid->kcells *sizeof(double);

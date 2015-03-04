@@ -73,7 +73,7 @@ Force::Force(Model *modelin, Input *inputin)
   }
 
   if (swwls == "1")
-    fields->set_calcMeanProfs(true);
+    fields->set_calc_mean_profs(true);
   else if (swwls != "0")
   {
     ++nerror;

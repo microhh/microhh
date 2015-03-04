@@ -38,42 +38,36 @@
 
 Diff::Diff(Model* modelin, Input* inputin)
 {
-  model  = modelin;
-  grid   = model->grid;
-  fields = model->fields;
-  master = model->master;
+    model  = modelin;
+    grid   = model->grid;
+    fields = model->fields;
+    master = model->master;
 
-  swdiff = "0";
+    swdiff = "0";
 
-  int nerror = 0;
-  nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.4);
- 
-  if (nerror)
-    throw 1;
+    int nerror = 0;
+    nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.4);
+
+    if (nerror)
+        throw 1;
 }
 
 Diff::~Diff()
 {
 }
 
-unsigned long Diff::get_time_limit(unsigned long idtlim, double dt)
+unsigned long Diff::get_time_limit(const unsigned long idtlim, const double dt)
 {
-  idtlim = (unsigned long) constants::dbig;
-
-  return idtlim;
+    return static_cast<unsigned long>(constants::dbig);
 }
 
 void Diff::set_values()
 {
 }
 
-double Diff::get_dn(double dt)
+double Diff::get_dn(const double dt)
 {
-  double dn;
-
-  dn = constants::dsmall;
-
-  return dn;
+    return constants::dsmall;
 }
 
 void Diff::exec_viscosity()
@@ -86,42 +80,42 @@ void Diff::exec()
 
 std::string Diff::get_name()
 {
-  return swdiff;
+    return swdiff;
 }
 
 Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
 {
-  std::string swdiff;
-  std::string swboundary;
+    std::string swdiff;
+    std::string swboundary;
 
-  int nerror = 0;
-  nerror += inputin->getItem(&swdiff, "diff", "swdiff", "", swspatialorder);
-  // load the boundary switch as well in order to be able to check whether the surface model is used
-  nerror += inputin->getItem(&swboundary, "boundary", "swboundary", "", "default");
-  if (nerror)
-    return 0;
+    int nerror = 0;
+    nerror += inputin->getItem(&swdiff, "diff", "swdiff", "", swspatialorder);
+    // load the boundary switch as well in order to be able to check whether the surface model is used
+    nerror += inputin->getItem(&swboundary, "boundary", "swboundary", "", "default");
+    if (nerror)
+        return 0;
 
-  if (swdiff == "0")
-    return new Diff(modelin, inputin);
-  else if (swdiff == "2")
-    return new Diff_2(modelin, inputin);
-  else if (swdiff == "4")
-    return new Diff_4(modelin, inputin);
-  else if (swdiff == "smag2")
-  {
-    // the subgrid model requires a surface model because of the MO matching at first level
-    if (swboundary != "surface")
+    if (swdiff == "0")
+        return new Diff(modelin, inputin);
+    else if (swdiff == "2")
+        return new Diff_2(modelin, inputin);
+    else if (swdiff == "4")
+        return new Diff_4(modelin, inputin);
+    else if (swdiff == "smag2")
     {
-      masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
-      return 0;
+        // the subgrid model requires a surface model because of the MO matching at first level
+        if (swboundary != "surface")
+        {
+            masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
+            return 0;
+        }
+        return new Diff_smag_2(modelin, inputin);
     }
-    return new Diff_smag_2(modelin, inputin);
-  }
-  else
-  {
-    masterin->print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
-    return 0;
-  }
+    else
+    {
+        masterin->print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
+        return 0;
+    }
 }
 
 void Diff::prepare_device()

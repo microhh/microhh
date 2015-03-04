@@ -32,7 +32,7 @@
 
 Diff_2::Diff_2(Model* modelin, Input* inputin) : Diff(modelin, inputin)
 {
-  swdiff = "2";
+    swdiff = "2";
 }
 
 Diff_2::~Diff_2()
@@ -41,98 +41,84 @@ Diff_2::~Diff_2()
 
 void Diff_2::set_values()
 {
-  // get the maximum time step for diffusion
-  double viscmax = fields->visc;
-  for (FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
-    viscmax = std::max(it->second->visc, viscmax);
+    // Get the maximum time step for diffusion.
+    double viscmax = fields->visc;
+    for (FieldMap::iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+        viscmax = std::max(it->second->visc, viscmax);
 
-  dnmul = 0;
-  for (int k=grid->kstart; k<grid->kend; k++)
-    dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
+    dnmul = 0;
+    for (int k=grid->kstart; k<grid->kend; k++)
+        dnmul = std::max(dnmul, std::abs(viscmax * (1./(grid->dx*grid->dx) + 1./(grid->dy*grid->dy) + 1./(grid->dz[k]*grid->dz[k]))));
 }
 
 unsigned long Diff_2::get_time_limit(unsigned long idt, double dt)
 {
-  unsigned long idtlim;
-
-  idtlim = idt * dnmax / (dt * dnmul);
-
-  return idtlim;
+    return idt * dnmax / (dt * dnmul);
 }
 
-double Diff_2::get_dn(double dt)
+double Diff_2::get_dn(const double dt)
 {
-  double dn;
-
-  dn = dnmul*dt;
-
-  return dn;
+    return dnmul*dt;
 }
 
 #ifndef USECUDA
 void Diff_2::exec()
 {
-  diff_c(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
-  diff_c(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
-  diff_w(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
+    diff_c(fields->ut->data, fields->u->data, grid->dzi, grid->dzhi, fields->visc);
+    diff_c(fields->vt->data, fields->v->data, grid->dzi, grid->dzhi, fields->visc);
+    diff_w(fields->wt->data, fields->w->data, grid->dzi, grid->dzhi, fields->visc);
 
-  for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    diff_c(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sp[it->first]->visc);
+    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+        diff_c(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sp[it->first]->visc);
 }
 #endif
 
 void Diff_2::diff_c(double* restrict at, double* restrict a, double* restrict dzi, double* restrict dzhi, double visc)
 {
-  int    ijk,ii,jj,kk;
-  double dxidxi,dyidyi;
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->ijcells;
+    const double dxidxi = 1./(grid->dx * grid->dx);
+    const double dyidyi = 1./(grid->dy * grid->dy);
 
-  dxidxi = 1./(grid->dx * grid->dx);
-  dyidyi = 1./(grid->dy * grid->dy);
-
-  for (int k=grid->kstart; k<grid->kend; k++)
-    for (int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart; k<grid->kend; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for (int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        at[ijk] += visc * (
-              + (  (a[ijk+ii] - a[ijk   ]) 
-                 - (a[ijk   ] - a[ijk-ii]) ) * dxidxi 
-              + (  (a[ijk+jj] - a[ijk   ]) 
-                 - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
-              + (  (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
-                 - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k] );
-      }
+            for (int i=grid->istart; i<grid->iend; i++)
+            {
+                const int ijk = i + j*jj + k*kk;
+                at[ijk] += visc * (
+                        + ( (a[ijk+ii] - a[ijk   ]) 
+                          - (a[ijk   ] - a[ijk-ii]) ) * dxidxi 
+                        + ( (a[ijk+jj] - a[ijk   ]) 
+                          - (a[ijk   ] - a[ijk-jj]) ) * dyidyi
+                        + ( (a[ijk+kk] - a[ijk   ]) * dzhi[k+1]
+                          - (a[ijk   ] - a[ijk-kk]) * dzhi[k]   ) * dzi[k] );
+            }
 }
 
 void Diff_2::diff_w(double* restrict wt, double* restrict w, double* restrict dzi, double* restrict dzhi, double visc)
 {
-  int    ijk,ii,jj,kk;
-  double dxidxi,dyidyi;
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
 
-  ii = 1;
-  jj = grid->icells;
-  kk = grid->ijcells;
+    const double dxidxi = 1./(grid->dx*grid->dx);
+    const double dyidyi = 1./(grid->dy*grid->dy);
 
-  dxidxi = 1./(grid->dx*grid->dx);
-  dyidyi = 1./(grid->dy*grid->dy);
-
-  for (int k=grid->kstart+1; k<grid->kend; k++)
-    for (int j=grid->jstart; j<grid->jend; j++)
+    for (int k=grid->kstart+1; k<grid->kend; k++)
+        for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
-      for (int i=grid->istart; i<grid->iend; i++)
-      {
-        ijk = i + j*jj + k*kk;
-        wt[ijk] += visc * (
-              + (  (w[ijk+ii] - w[ijk   ]) 
-                 - (w[ijk   ] - w[ijk-ii]) ) * dxidxi 
-              + (  (w[ijk+jj] - w[ijk   ]) 
-                 - (w[ijk   ] - w[ijk-jj]) ) * dyidyi
-              + (  (w[ijk+kk] - w[ijk   ]) * dzi[k]
-                 - (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
-      }
+            for (int i=grid->istart; i<grid->iend; i++)
+            {
+                const int ijk = i + j*jj + k*kk;
+                wt[ijk] += visc * (
+                        + ( (w[ijk+ii] - w[ijk   ]) 
+                          - (w[ijk   ] - w[ijk-ii]) ) * dxidxi 
+                        + ( (w[ijk+jj] - w[ijk   ]) 
+                          - (w[ijk   ] - w[ijk-jj]) ) * dyidyi
+                        + ( (w[ijk+kk] - w[ijk   ]) * dzi[k]
+                          - (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * dzhi[k] );
+            }
 }
