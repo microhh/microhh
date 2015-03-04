@@ -354,7 +354,7 @@ void Boundary_surface::update_bcs()
     grid->boundary_cyclic2d_g(&fields->atmp["tmp2"]->data_g[offs]);
 
     // start with retrieving the stability information
-    if (model->thermo->getSwitch() == "0")
+    if (model->thermo->get_switch() == "0")
     {
         // Calculate ustar and Obukhov length, including ghost cells
         Boundary_surface_g::stability_neutral<<<gridGPU2, blockGPU2>>>(
@@ -366,7 +366,7 @@ void Boundary_surface::update_bcs()
     else
     {
         // store the buoyancy in tmp1
-        model->thermo->getBuoyancySurf(fields->atmp["tmp1"]);
+        model->thermo->get_buoyancy_surf(fields->atmp["tmp1"]);
 
         // Calculate ustar and Obukhov length, including ghost cells
         Boundary_surface_g::stability<<<gridGPU2, blockGPU2>>>(

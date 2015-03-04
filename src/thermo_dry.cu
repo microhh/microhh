@@ -187,7 +187,7 @@ void Thermo_dry::exec()
 #endif
 
 #ifdef USECUDA
-void Thermo_dry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
 {
     const int blocki = grid->ithread_block;
     const int blockj = grid->jthread_block;
@@ -226,7 +226,7 @@ void Thermo_dry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #endif
 
 #ifdef USECUDA
-void Thermo_dry::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo_dry::get_buoyancy_fluxbot(Field3d *bfield)
 {
     const int blocki = grid->ithread_block;
     const int blockj = grid->jthread_block;
@@ -247,7 +247,7 @@ void Thermo_dry::getBuoyancyFluxbot(Field3d *bfield)
 #endif
 
 #ifdef USECUDA
-void Thermo_dry::getBuoyancySurf(Field3d *bfield)
+void Thermo_dry::get_buoyancy_surf(Field3d *bfield)
 {
     const int blocki = grid->ithread_block;
     const int blockj = grid->jthread_block;
