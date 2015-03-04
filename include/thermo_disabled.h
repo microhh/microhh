@@ -45,9 +45,9 @@ class Thermo_disabled : public Thermo
     void exec_stats(Mask*) {}
     void exec_cross() {}
     void exec_dump() {}
+    void get_mask(Field3d*, Field3d*, Mask*) {}
 
     // Empty functions that shall throw.
-    void get_mask(Field3d*, Field3d*, Mask*) { throw 1; }
     void get_thermo_field(Field3d*, Field3d*, std::string name) { throw 1; }
     void get_buoyancy_surf(Field3d*) { throw 1; }
     void get_buoyancy_fluxbot(Field3d*) { throw 1; }
