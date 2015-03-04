@@ -56,7 +56,7 @@ void Master::start(int argc, char *argv[])
 {
     // initialize the MPI
     int n = MPI_Init(NULL, NULL);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     wall_clock_start = get_wall_clock_time();
@@ -65,17 +65,17 @@ void Master::start(int argc, char *argv[])
 
     // get the rank of the current process
     n = MPI_Comm_rank(MPI_COMM_WORLD, &mpiid);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     // get the total number of processors
     n = MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     // store a temporary copy of COMM_WORLD in commxy
     n = MPI_Comm_dup(MPI_COMM_WORLD, &commxy);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     print_message("Starting run on %d processes\n", nprocs);
@@ -110,13 +110,13 @@ void Master::init(Input *inputin)
     nerror += inputin->get_item(&npy, "master", "npy", "", 1);
 
     // Get the wall clock limit with a default value of 1E8 hours, which will be never hit
-    double wallClockLimit;
-    nerror += inputin->get_item(&wallClockLimit, "master", "wallclocklimit", "", 1E8);
+    double wall_clock_limit;
+    nerror += inputin->get_item(&wall_clock_limit, "master", "wallclocklimit", "", 1E8);
 
     if (nerror)
         throw 1;
 
-    wallClockEnd = wallClockStart + 3600.*wallClockLimit;
+    wall_clock_end = wall_clock_start + 3600.*wall_clock_limit;
 
     if (nprocs != npx*npy)
     {
@@ -130,28 +130,28 @@ void Master::init(Input *inputin)
 
     // define the dimensions of the 2-D grid layout
     n = MPI_Dims_create(nprocs, 2, dims);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     // create a 2-D grid communicator that is optimized for grid to grid transfer
     // first, free our temporary copy of COMM_WORLD
     n = MPI_Comm_free(&commxy);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     // for now, do not reorder processes, blizzard gives large performance loss
     n = MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periodic, false, &commxy);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     n = MPI_Comm_rank(commxy, &mpiid);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     // retrieve the x- and y-coordinates in the 2-D grid for each process
     int mpicoords[2];
     n = MPI_Cart_coords(commxy, mpiid, 2, mpicoords);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     mpicoordx = mpicoords[1];
@@ -161,20 +161,20 @@ void Master::init(Input *inputin)
     int dimy[2] = {true , false};
 
     n = MPI_Cart_sub(commxy, dimx, &commx);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     n = MPI_Cart_sub(commxy, dimy, &commy);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     // find out who are the neighbors of this process to facilitate the communication routines
     n = MPI_Cart_shift(commxy, 1, 1, &nwest , &neast );
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     n = MPI_Cart_shift(commxy, 0, 1, &nsouth, &nnorth);
-    if (checkError(n))
+    if (check_error(n))
         throw 1;
 
     // create the requests arrays for the nonblocking sends
@@ -194,7 +194,7 @@ double Master::get_wall_clock_time()
     return MPI_Wtime();
 }
 
-int Master::checkError(int n)
+int Master::check_error(int n)
 {
     char errbuffer[MPI_MAX_ERROR_STRING];
     int errlen;
