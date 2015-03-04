@@ -31,26 +31,26 @@ struct Mask;
 
 class Thermo_disabled : public Thermo
 {
-  public:
-    Thermo_disabled(Model*, Input*);
-    virtual ~Thermo_disabled();
+    public:
+        Thermo_disabled(Model*, Input*);
+        virtual ~Thermo_disabled();
 
-    // Interfacing functions to get buoyancy properties from other classes.
-    bool check_thermo_field(std::string name);
+        // Interfacing functions to get buoyancy properties from other classes.
+        bool check_thermo_field(std::string name);
 
-    // Empty functions that are allowed to pass.
-    void init() {}
-    void create(Input*) {}
-    void exec() {}
-    void exec_stats(Mask*) {}
-    void exec_cross() {}
-    void exec_dump() {}
-    void get_mask(Field3d*, Field3d*, Mask*) {}
+        // Empty functions that are allowed to pass.
+        void init() {}
+        void create(Input*) {}
+        void exec() {}
+        void exec_stats(Mask*) {}
+        void exec_cross() {}
+        void exec_dump() {}
+        void get_mask(Field3d*, Field3d*, Mask*) {}
 
-    // Empty functions that shall throw.
-    void get_thermo_field(Field3d*, Field3d*, std::string name) { throw 1; }
-    void get_buoyancy_surf(Field3d*) { throw 1; }
-    void get_buoyancy_fluxbot(Field3d*) { throw 1; }
-    void get_prog_vars(std::vector<std::string>*) { throw 1; }
+        // Empty functions that shall throw.
+        void get_thermo_field(Field3d*, Field3d*, std::string name) { throw 1; }
+        void get_buoyancy_surf(Field3d*) { throw 1; }
+        void get_buoyancy_fluxbot(Field3d*) { throw 1; }
+        void get_prog_vars(std::vector<std::string>*) { throw 1; }
 };
 #endif
