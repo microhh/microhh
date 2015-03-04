@@ -30,74 +30,74 @@
 // Forward declaration to avoid circular dependency.
 class Master;
 
-typedef std::map<std::string, std::vector<double> > DataMap;
+typedef std::map<std::string, std::vector<double> > Data_map;
 
 class Input
 {
-  public:
-    Input(Master *);
-    ~Input();
+    public:
+        Input(Master*);
+        ~Input();
 
-    void clear();
+        void clear();
 
-    // Item retrieval functions
-    int getItem(int *        , std::string, std::string, std::string);
-    int getItem(int *        , std::string, std::string, std::string, int);
-    int getItem(double *     , std::string, std::string, std::string);
-    int getItem(double *     , std::string, std::string, std::string, double);
-    int getItem(bool *       , std::string, std::string, std::string);
-    int getItem(bool *       , std::string, std::string, std::string, bool);
-    int getItem(std::string *, std::string, std::string, std::string);
-    int getItem(std::string *, std::string, std::string, std::string, std::string);
+        // Item retrieval functions
+        int get_item(int*        , std::string, std::string, std::string);
+        int get_item(int*        , std::string, std::string, std::string, int);
+        int get_item(double*     , std::string, std::string, std::string);
+        int get_item(double*     , std::string, std::string, std::string, double);
+        int get_item(bool*       , std::string, std::string, std::string);
+        int get_item(bool*       , std::string, std::string, std::string, bool);
+        int get_item(std::string*, std::string, std::string, std::string);
+        int get_item(std::string*, std::string, std::string, std::string, std::string);
 
-    // List retrieval functions
-    int getList(std::vector<int> *        , std::string, std::string, std::string);
-    int getList(std::vector<double> *     , std::string, std::string, std::string);
-    int getList(std::vector<std::string> *, std::string, std::string, std::string);
+        // List retrieval functions
+        int get_list(std::vector<int> *        , std::string, std::string, std::string);
+        int get_list(std::vector<double> *     , std::string, std::string, std::string);
+        int get_list(std::vector<std::string> *, std::string, std::string, std::string);
 
-    int get_prof(double *, std::string, int size);
-    int getTime(double **, std::vector<double> *, std::string);
-    int getTimeProf(double **, std::vector<double> *, std::string, int);
+        int get_prof(double*, std::string, int size);
+        int get_time(double**, std::vector<double>*, std::string);
+        int get_time_prof(double**, std::vector<double>*, std::string, int);
 
-    void printUnused();
-    void flagUsed(std::string, std::string);
+        void print_unused();
+        void flag_as_used(std::string, std::string);
 
-  private:
-    Master *master;
+    private:
+        Master* master;
 
-    int readIniFile();
-    int readDataFile(DataMap *, std::string, bool);
+        int read_ini_file();
+        int read_data_file(Data_map*, std::string, bool);
 
-    template <class valuetype>
-    int parseItem(valuetype *, std::string, std::string, std::string, bool, valuetype);
+        template <class valuetype>
+        int parse_item(valuetype*, std::string, std::string, std::string, bool, valuetype);
 
-    template <class valuetype>
-    int parseList(std::vector<valuetype> *, std::string, std::string, std::string);
+        template <class valuetype>
+        int parse_list(std::vector<valuetype> *, std::string, std::string, std::string);
 
-    int checkItemExists(std::string, std::string, std::string el="default");
-    int checkItem(int *        , std::string, std::string, std::string el="default");
-    int checkItem(double *     , std::string, std::string, std::string el="default");
-    int checkItem(bool *       , std::string, std::string, std::string el="default");
-    int checkItem(std::string *, std::string, std::string, std::string el="default");
+        int check_item_exists(std::string, std::string, std::string el="default");
+        int check_item(int*        , std::string, std::string, std::string el="default");
+        int check_item(double*     , std::string, std::string, std::string el="default");
+        int check_item(bool*       , std::string, std::string, std::string el="default");
+        int check_item(std::string*, std::string, std::string, std::string el="default");
 
-    // list retrieval
-    int checkList(std::vector<int> *        , std::string, std::string, std::string el="default");
-    int checkList(std::vector<double> *     , std::string, std::string, std::string el="default");
-    int checkList(std::vector<std::string> *, std::string, std::string, std::string el="default");
+        // list retrieval
+        int check_list(std::vector<int>*        , std::string, std::string, std::string el="default");
+        int check_list(std::vector<double>*     , std::string, std::string, std::string el="default");
+        int check_list(std::vector<std::string>*, std::string, std::string, std::string el="default");
 
-    struct InputType
-    {
-      std::string data;
-      bool isused;
-    };
-    typedef std::map<std::string, InputType > InputMap1d;
-    typedef std::map<std::string, InputMap1d> InputMap2d;
-    typedef std::map<std::string, InputMap2d> InputMap;
-    InputMap inputlist;
-    DataMap proflist;
-    DataMap timelist;
-    // std::vector<std::string> varnames;
-    // std::vector<double> varvalues;
-    std::string isused;
+        struct Input_type
+        {
+            std::string data;
+            bool isused;
+        };
+        typedef std::map<std::string, Input_type  > Input_map_1d;
+        typedef std::map<std::string, Input_map_1d> Input_map_2d;
+        typedef std::map<std::string, Input_map_2d> Input_map;
+
+        Input_map inputlist;
+        Data_map proflist;
+        Data_map timelist;
+
+        std::string isused;
 };
 #endif

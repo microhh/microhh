@@ -43,7 +43,7 @@ Budget::Budget(Model* modelin, Input* inputin)
     vmodel = 0;
 
     int nerror = 0;
-    nerror += inputin->getItem(&swbudget, "budget", "swbudget", "", "0");
+    nerror += inputin->get_item(&swbudget, "budget", "swbudget", "", "0");
 
     if (nerror)
         throw 1;

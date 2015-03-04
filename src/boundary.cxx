@@ -63,8 +63,8 @@ void Boundary::process_bcs(Input* inputin)
 
     std::string swbot, swtop;
 
-    nerror += inputin->getItem(&swbot, "boundary", "mbcbot", "");
-    nerror += inputin->getItem(&swtop, "boundary", "mbctop", "");
+    nerror += inputin->get_item(&swbot, "boundary", "mbcbot", "");
+    nerror += inputin->get_item(&swtop, "boundary", "mbctop", "");
 
     // set the bottom bc
     if (swbot == "noslip")
@@ -96,10 +96,10 @@ void Boundary::process_bcs(Input* inputin)
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
         sbc[it->first] = new Field3dBc;
-        nerror += inputin->getItem(&swbot, "boundary", "sbcbot", it->first);
-        nerror += inputin->getItem(&swtop, "boundary", "sbctop", it->first);
-        nerror += inputin->getItem(&sbc[it->first]->bot, "boundary", "sbot", it->first);
-        nerror += inputin->getItem(&sbc[it->first]->top, "boundary", "stop", it->first);
+        nerror += inputin->get_item(&swbot, "boundary", "sbcbot", it->first);
+        nerror += inputin->get_item(&swtop, "boundary", "sbctop", it->first);
+        nerror += inputin->get_item(&sbc[it->first]->bot, "boundary", "sbot", it->first);
+        nerror += inputin->get_item(&sbc[it->first]->top, "boundary", "stop", it->first);
 
         // set the bottom bc
         if (swbot == "dirichlet")
@@ -129,8 +129,8 @@ void Boundary::process_bcs(Input* inputin)
     }
 
     // get the list of time varying variables
-    nerror += inputin->getItem(&swtimedep  , "boundary", "swtimedep"  , "", "0");
-    nerror += inputin->getList(&timedeplist, "boundary", "timedeplist", "");
+    nerror += inputin->get_item(&swtimedep  , "boundary", "swtimedep"  , "", "0");
+    nerror += inputin->get_list(&timedeplist, "boundary", "timedeplist", "");
 
     if (nerror)
         throw 1;
@@ -174,7 +174,7 @@ void Boundary::process_time_dependent(Input* inputin)
             std::string name = "sbot[" + it->first + "]";
             if (std::find(timedeplist.begin(), timedeplist.end(), name) != timedeplist.end()) 
             {
-                nerror += inputin->getTime(&timedepdata[name], &timedeptime, name);
+                nerror += inputin->get_time(&timedepdata[name], &timedeptime, name);
 
                 // remove the item from the tmplist
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), name);
@@ -336,7 +336,7 @@ void Boundary::update_bcs()
 Boundary* Boundary::factory(Master* masterin, Input* inputin, Model* modelin)
 {
     std::string swboundary;
-    if (inputin->getItem(&swboundary, "boundary", "swboundary", "", "default"))
+    if (inputin->get_item(&swboundary, "boundary", "swboundary", "", "default"))
         return 0;
 
     if (swboundary == "surface")

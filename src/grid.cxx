@@ -73,18 +73,18 @@ Grid::Grid(Model *modelin, Input *inputin)
     fftoutj = 0;
 
     int nerror = 0;
-    nerror += inputin->getItem(&xsize, "grid", "xsize", "");
-    nerror += inputin->getItem(&ysize, "grid", "ysize", "");
-    nerror += inputin->getItem(&zsize, "grid", "zsize", "");
+    nerror += inputin->get_item(&xsize, "grid", "xsize", "");
+    nerror += inputin->get_item(&ysize, "grid", "ysize", "");
+    nerror += inputin->get_item(&zsize, "grid", "zsize", "");
 
-    nerror += inputin->getItem(&itot, "grid", "itot", "");
-    nerror += inputin->getItem(&jtot, "grid", "jtot", "");
-    nerror += inputin->getItem(&ktot, "grid", "ktot", "");
+    nerror += inputin->get_item(&itot, "grid", "itot", "");
+    nerror += inputin->get_item(&jtot, "grid", "jtot", "");
+    nerror += inputin->get_item(&ktot, "grid", "ktot", "");
 
-    nerror += inputin->getItem(&utrans, "grid", "utrans", "", 0.);
-    nerror += inputin->getItem(&vtrans, "grid", "vtrans", "", 0.);
+    nerror += inputin->get_item(&utrans, "grid", "utrans", "", 0.);
+    nerror += inputin->get_item(&vtrans, "grid", "vtrans", "", 0.);
 
-    nerror += inputin->getItem(&swspatialorder, "grid", "swspatialorder", "");
+    nerror += inputin->get_item(&swspatialorder, "grid", "swspatialorder", "");
 
     if (nerror)
         throw 1;

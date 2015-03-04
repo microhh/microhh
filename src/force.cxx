@@ -47,16 +47,16 @@ Force::Force(Model* modelin, Input* inputin)
     wls_g = 0;
 
     int nerror = 0;
-    nerror += inputin->getItem(&swlspres, "force", "swlspres", "", "0");
-    nerror += inputin->getItem(&swls    , "force", "swls"    , "", "0");
-    nerror += inputin->getItem(&swwls   , "force", "swwls"   , "", "0");
+    nerror += inputin->get_item(&swlspres, "force", "swlspres", "", "0");
+    nerror += inputin->get_item(&swls    , "force", "swls"    , "", "0");
+    nerror += inputin->get_item(&swwls   , "force", "swwls"   , "", "0");
 
     if (swlspres != "0")
     {
         if (swlspres == "uflux")
-            nerror += inputin->getItem(&uflux, "force", "uflux", "");
+            nerror += inputin->get_item(&uflux, "force", "uflux", "");
         else if (swlspres == "geo")
-            nerror += inputin->getItem(&fc, "force", "fc", "");
+            nerror += inputin->get_item(&fc, "force", "fc", "");
         else
         {
             ++nerror;
@@ -65,7 +65,7 @@ Force::Force(Model* modelin, Input* inputin)
     }
 
     if (swls == "1")
-        nerror += inputin->getList(&lslist, "force", "lslist", "");
+        nerror += inputin->get_list(&lslist, "force", "lslist", "");
     else if (swls != "0")
     {
         ++nerror;
@@ -81,8 +81,8 @@ Force::Force(Model* modelin, Input* inputin)
     }
 
     // get the list of time varying variables
-    nerror += inputin->getItem(&swtimedep  , "force", "swtimedep"  , "", "0");
-    nerror += inputin->getList(&timedeplist, "force", "timedeplist", "");
+    nerror += inputin->get_item(&swtimedep  , "force", "swtimedep"  , "", "0");
+    nerror += inputin->get_list(&timedeplist, "force", "timedeplist", "");
 
     if (nerror)
         throw 1;
@@ -169,7 +169,7 @@ void Force::create(Input *inputin)
             std::string name = *it + "ls";
             if (std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end()) 
             {
-                nerror += inputin->getTimeProf(&timedepdata[name], &timedeptime, name, grid->kmax);
+                nerror += inputin->get_time_prof(&timedepdata[name], &timedeptime, name, grid->kmax);
 
                 // remove the item from the tmplist
                 std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), *it);

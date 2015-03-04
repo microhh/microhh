@@ -46,7 +46,7 @@ Diff::Diff(Model* modelin, Input* inputin)
     swdiff = "0";
 
     int nerror = 0;
-    nerror += inputin->getItem(&dnmax, "diff", "dnmax", "", 0.4);
+    nerror += inputin->get_item(&dnmax, "diff", "dnmax", "", 0.4);
 
     if (nerror)
         throw 1;
@@ -89,9 +89,9 @@ Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std:
     std::string swboundary;
 
     int nerror = 0;
-    nerror += inputin->getItem(&swdiff, "diff", "swdiff", "", swspatialorder);
+    nerror += inputin->get_item(&swdiff, "diff", "swdiff", "", swspatialorder);
     // load the boundary switch as well in order to be able to check whether the surface model is used
-    nerror += inputin->getItem(&swboundary, "boundary", "swboundary", "", "default");
+    nerror += inputin->get_item(&swboundary, "boundary", "swboundary", "", "default");
     if (nerror)
         return 0;
 

@@ -48,21 +48,21 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   if (master->mode == "init")
     starttime = 0.;
   else
-    n += inputin->getItem(&starttime, "time", "starttime", "");
+    n += inputin->get_item(&starttime, "time", "starttime", "");
 
-  n += inputin->getItem(&endtime , "time", "endtime" , "");
-  n += inputin->getItem(&savetime, "time", "savetime", "");
+  n += inputin->get_item(&endtime , "time", "endtime" , "");
+  n += inputin->get_item(&savetime, "time", "savetime", "");
 
   // optional parameters
-  n += inputin->getItem(&adaptivestep, "time", "adaptivestep", "", true            );
-  n += inputin->getItem(&dtmax       , "time", "dtmax"       , "", constants::dbig );
-  n += inputin->getItem(&dt          , "time", "dt"          , "", dtmax           );
-  n += inputin->getItem(&rkorder     , "time", "rkorder"     , "", 3               );
-  n += inputin->getItem(&outputiter  , "time", "outputiter"  , "", 20              );
-  n += inputin->getItem(&iotimeprec  , "time", "iotimeprec"  , "", 0               );
+  n += inputin->get_item(&adaptivestep, "time", "adaptivestep", "", true            );
+  n += inputin->get_item(&dtmax       , "time", "dtmax"       , "", constants::dbig );
+  n += inputin->get_item(&dt          , "time", "dt"          , "", dtmax           );
+  n += inputin->get_item(&rkorder     , "time", "rkorder"     , "", 3               );
+  n += inputin->get_item(&outputiter  , "time", "outputiter"  , "", 20              );
+  n += inputin->get_item(&iotimeprec  , "time", "iotimeprec"  , "", 0               );
 
   if (master->mode == "post")
-    n += inputin->getItem(&postproctime, "time", "postproctime", "");
+    n += inputin->get_item(&postproctime, "time", "postproctime", "");
 
   // if one argument fails, then crash
   if (n > 0)
@@ -109,7 +109,7 @@ Timeloop::Timeloop(Model *modelin, Input *inputin)
   gettimeofday(&start, NULL);
 
   if (master->mode == "init")
-    inputin->flagUsed("time", "starttime");
+    inputin->flag_as_used("time", "starttime");
 }
 
 Timeloop::~Timeloop()

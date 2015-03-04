@@ -62,10 +62,10 @@ Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin
 
   fields->init_prognostic_field("th", "Potential Temperature", "K");
 
-  nerror += inputin->getItem(&fields->sp["th"]->visc, "fields", "svisc", "th");
+  nerror += inputin->get_item(&fields->sp["th"]->visc, "fields", "svisc", "th");
 
   // Get base state option (boussinesq or anelastic)
-  nerror += inputin->getItem(&swbasestate, "thermo", "swbasestate", "", "");
+  nerror += inputin->get_item(&swbasestate, "thermo", "swbasestate", "", "");
 
   if (!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
   {
@@ -82,8 +82,8 @@ Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin
   // Remove the data from the input that is not used, to avoid warnings.
   if (master->mode == "init")
   {
-    inputin->flagUsed("thermo", "thref0");
-    inputin->flagUsed("thermo", "pbot");
+    inputin->flag_as_used("thermo", "thref0");
+    inputin->flag_as_used("thermo", "pbot");
   }
 
   if (nerror)
@@ -128,7 +128,7 @@ void Thermo_dry::create(Input *inputin)
      For boussinesq, reference density and temperature are fixed */
   if (swbasestate == "anelastic")
   {
-    if (inputin->getItem(&pbot, "thermo", "pbot", ""))
+    if (inputin->get_item(&pbot, "thermo", "pbot", ""))
       throw 1;
     if (inputin->get_prof(&thref[grid->kstart], "th", grid->kmax))
       throw 1;
@@ -137,7 +137,7 @@ void Thermo_dry::create(Input *inputin)
   }
   else
   {
-    if (inputin->getItem(&thref0, "thermo", "thref0", ""))
+    if (inputin->get_item(&thref0, "thermo", "thref0", ""))
       throw 1;
 
     // Set entire column to reference value. Density is already initialized at 1.0 in fields.cxx

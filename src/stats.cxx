@@ -44,10 +44,10 @@ Stats::Stats(Model *modelin, Input *inputin)
   nmaskh = 0;
 
   int nerror = 0;
-  nerror += inputin->getItem(&swstats, "stats", "swstats", "", "0");
+  nerror += inputin->get_item(&swstats, "stats", "swstats", "", "0");
 
   if (swstats == "1")
-    nerror += inputin->getItem(&sampletime, "stats", "sampletime", "");
+    nerror += inputin->get_item(&sampletime, "stats", "sampletime", "");
 
   if (!(swstats == "0" || swstats == "1" ))
   {

@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     }
 
     // Print warnings for input variables that are unused.
-    input.printUnused();
+    input.print_unused();
 
     // Free the memory taken by the input fields.
     input.clear();

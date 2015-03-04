@@ -39,12 +39,12 @@ Dump::Dump(Model *modelin, Input *inputin)
     master = model->master;
 
     int nerror = 0;
-    nerror += inputin->getItem(&swdump, "dump", "swdump", "", "0");
+    nerror += inputin->get_item(&swdump, "dump", "swdump", "", "0");
 
     if (swdump == "1")
     {  
-        nerror += inputin->getItem(&sampletime, "dump", "sampletime", "");
-        nerror += inputin->getList(&dumplist ,  "dump", "dumplist" ,  "");
+        nerror += inputin->get_item(&sampletime, "dump", "sampletime", "");
+        nerror += inputin->get_list(&dumplist ,  "dump", "dumplist" ,  "");
     }  
 
     if (nerror)

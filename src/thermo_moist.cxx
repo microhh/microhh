@@ -66,18 +66,18 @@ Thermo_moist::Thermo_moist(Model *modelin, Input *inputin) : Thermo(modelin, inp
   int nerror = 0;
 
   // Option to overrule the prognostic variable 
-  nerror += inputin->getItem(&thvar, "thermo", "progvar", "", "thl");  // defaults to thl
+  nerror += inputin->get_item(&thvar, "thermo", "progvar", "", "thl");  // defaults to thl
 
   // Initialize the prognostic fields
   fields->init_prognostic_field(thvar, "Liquid water potential temperature", "K");
   fields->init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
 
-  nerror += inputin->getItem(&fields->sp[thvar]->visc, "fields", "svisc", thvar );
-  nerror += inputin->getItem(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
-  nerror += inputin->getItem(&pbot, "thermo", "pbot", "");
+  nerror += inputin->get_item(&fields->sp[thvar]->visc, "fields", "svisc", thvar );
+  nerror += inputin->get_item(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
+  nerror += inputin->get_item(&pbot, "thermo", "pbot", "");
 
   // Get base state option (boussinesq or anelastic)
-  nerror += inputin->getItem(&swbasestate, "thermo", "swbasestate", "", "");
+  nerror += inputin->get_item(&swbasestate, "thermo", "swbasestate", "", "");
 
   if (!(swbasestate == "boussinesq" || swbasestate == "anelastic"))
   {
@@ -94,13 +94,13 @@ Thermo_moist::Thermo_moist(Model *modelin, Input *inputin) : Thermo(modelin, inp
   // BvS test for updating hydrostatic prssure during run
   // swupdate..=0 -> initial base state pressure used in saturation calculation
   // swupdate..=1 -> base state pressure updated before saturation calculation
-  nerror += inputin->getItem(&swupdatebasestate, "thermo", "swupdatebasestate", ""); 
+  nerror += inputin->get_item(&swupdatebasestate, "thermo", "swupdatebasestate", ""); 
 
   // Remove the data from the input that is not used, to avoid warnings.
   if (master->mode == "init")
   {
-    inputin->flagUsed("thermo", "thvref0");
-    inputin->flagUsed("thermo", "pbot");
+    inputin->flag_as_used("thermo", "thvref0");
+    inputin->flag_as_used("thermo", "pbot");
   }
 
   if (nerror)
@@ -187,7 +187,7 @@ void Thermo_moist::create(Input *inputin)
   // 5. In Boussinesq mode, overwrite reference temperature and density
   if (swbasestate == "boussinesq")
   {
-    if (inputin->getItem(&thvref0, "thermo", "thvref0", ""))
+    if (inputin->get_item(&thvref0, "thermo", "thvref0", ""))
       throw 1;
 
     for (int k=0; k<grid->kcells; ++k)

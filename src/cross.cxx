@@ -45,15 +45,15 @@ Cross::Cross(Model* modelin, Input* inputin)
 
     // Optional, by default switch cross off.
     int nerror = 0;
-    nerror += inputin->getItem(&swcross, "cross", "swcross", "", "0");
+    nerror += inputin->get_item(&swcross, "cross", "swcross", "", "0");
 
     if (swcross == "1")
     {
         // Get the time at which the cross sections are triggered.
-        nerror += inputin->getItem(&sampletime, "cross", "sampletime", "");
+        nerror += inputin->get_item(&sampletime, "cross", "sampletime", "");
 
         // Get list of cross variables.
-        nerror += inputin->getList(&crosslist , "cross", "crosslist" , "");
+        nerror += inputin->get_list(&crosslist , "cross", "crosslist" , "");
 
         // Crash on empty list.
         if (crosslist.empty())
@@ -63,8 +63,8 @@ Cross::Cross(Model* modelin, Input* inputin)
         }
 
         // get the list of indices at which to take cross sections
-        nerror += inputin->getList(&xz, "cross", "xz", "");
-        nerror += inputin->getList(&xy, "cross", "xy", "");
+        nerror += inputin->get_list(&xz, "cross", "xz", "");
+        nerror += inputin->get_list(&xy, "cross", "xy", "");
     }
 
     if (nerror)

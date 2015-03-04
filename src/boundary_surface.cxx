@@ -91,11 +91,11 @@ void Boundary_surface::init(Input *inputin)
     process_bcs(inputin);
 
     int nerror = 0;
-    nerror += inputin->getItem(&z0m, "boundary", "z0m", "");
-    nerror += inputin->getItem(&z0h, "boundary", "z0h", "");
+    nerror += inputin->get_item(&z0m, "boundary", "z0m", "");
+    nerror += inputin->get_item(&z0h, "boundary", "z0h", "");
 
     // Read list of cross sections
-    nerror += inputin->getList(&crosslist , "boundary", "crosslist" , "");
+    nerror += inputin->get_list(&crosslist , "boundary", "crosslist" , "");
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Neumann_type)
@@ -105,7 +105,7 @@ void Boundary_surface::init(Input *inputin)
     }
     // read the ustar value only if fixed fluxes are prescribed
     else if (mbcbot == Ustar_type)
-        nerror += inputin->getItem(&ustarin, "boundary", "ustar", "");
+        nerror += inputin->get_item(&ustarin, "boundary", "ustar", "");
 
     // process the scalars
     for (BcMap::const_iterator it=sbc.begin(); it!=sbc.end(); ++it)
