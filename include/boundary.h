@@ -45,8 +45,10 @@ class Boundary
 
         virtual void init(Input*);     ///< Initialize the fields.
         virtual void create(Input*);   ///< Create the fields.
-        virtual void update_time_dep(); ///< Update the time dependent parameters.
-        virtual void set_values();      ///< Set all 2d fields to the prober BC value.
+
+        virtual void update_time_dependent(); ///< Update the time dependent parameters.
+
+        virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
         virtual void exec(); ///< Update the boundary conditions.
 
@@ -89,8 +91,9 @@ class Boundary
         std::vector<std::string> timedeplist;
         std::map<std::string, double*> timedepdata;
 
-        void process_bcs(Input *);     ///< Process the boundary condition settings from the ini file.
-        void process_time_dep(Input *); ///< Process the time dependent settings from the ini file.
+        void process_bcs(Input *); ///< Process the boundary condition settings from the ini file.
+
+        void process_time_dependent(Input *); ///< Process the time dependent settings from the ini file.
 
         void set_bc(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
