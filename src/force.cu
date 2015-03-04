@@ -330,7 +330,7 @@ void Force::exec(double dt)
 #endif
 
 #ifdef USECUDA
-void Force::update_time_depProfs(double fac0, double fac1, int index0, int index1)
+void Force::update_time_dependent_profs(double fac0, double fac1, int index0, int index1)
 {
   const int blockk = 128;
   const int gridk  = grid->kmax/blockk + (grid->kmax%blockk > 0);
