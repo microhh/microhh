@@ -89,7 +89,7 @@ void Diff_4::exec()
 }
 #endif
 
-    template<bool dim3>
+template<bool dim3>
 void Diff_4::diff_c(double* restrict at, double* restrict a, double* restrict dzi4, double* restrict dzhi4, const double visc)
 {
     const int ii1 = 1;
