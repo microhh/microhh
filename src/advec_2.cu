@@ -69,7 +69,7 @@ namespace Advec_2_g
                 - (  rhorefh[k+1] * interp2(w[ijk-jj+kk], w[ijk+kk]) * interp2(v[ijk   ], v[ijk+kk])
                    - rhorefh[k  ] * interp2(w[ijk-jj   ], w[ijk   ]) * interp2(v[ijk-kk], v[ijk   ]) ) / rhoref[k] * dzi[k];
 
-            if (k>kstart)
+            if (k > kstart)
             {
                 wt[ijk] += 
                     - (  interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk   ], w[ijk+ii])
@@ -200,7 +200,7 @@ void Advec_2::exec()
                                                 grid->iend,   grid->jend, grid->kend);
     cudaCheckError(); 
 
-    for(FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
         Advec_2_g::advec_s<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
                                                   &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
                                                   fields->rhoref_g, fields->rhorefh_g, 
