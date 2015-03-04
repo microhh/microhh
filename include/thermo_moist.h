@@ -74,31 +74,22 @@ class Thermo_moist : public Thermo
         Stats *stats;
 
         // masks
-        void calcMask_ql    (double *, double *, double *, int *, int *, int *, double *);
-        void calcMask_qlcore(double *, double *, double *, int *, int *, int *, double *, double *, double *);
+        void calcMask_ql    (double*, double*, double*, int *, int *, int *, double *);
+        void calcMask_qlcore(double*, double*, double*, int *, int *, int *, double*, double*, double *);
 
-        void calcBuoyancyTend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
-        void calcBuoyancyTend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
+        void calcBuoyancyTend_2nd(double*, double*, double*, double*, double*, double*, double*, double *);
+        void calcBuoyancyTend_4th(double*, double*, double*, double*, double*, double*, double*, double *);
 
-        void calcBuoyancy(double *, double *, double *, double *, double *, double *);
-        void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
-        void calcBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+        void calcBuoyancy(double*, double*, double*, double*, double*, double *);
+        void calcN2(double*, double*, double*, double *); ///< Calculation of the Brunt-Vaissala frequency.
+        void calcBaseState(double*, double*, double*, double*, double*, double*, double*, double*, double*, double *);
 
-        void calcLiquidWater(double *, double *, double *, double *);
-        void calcBuoyancyBot(double *, double *,
-                double *, double *,
-                double *, double *,
-                double *, double *);
-        void calcBuoyancyFluxBot(double *, double *, double *, double *, double *, double *);
-
-        inline double satAdjust(const double, const double, const double ,const double);
-        inline double buoyancy(const double, const double, const double, const double, const double);
-        inline double buoyancyNoql(const double, const double, const double);
-        inline double buoyancyFluxNoql(const double, const double, const double, const double, const double);
-        inline double exner(const double);
-        inline double exn2(const double);
-        inline double qsat(const double, const double);
-        inline double esat(const double);
+        void calcLiquidWater(double*, double*, double*, double *);
+        void calcBuoyancyBot(double*, double*,
+                double*, double*,
+                double*, double*,
+                double*, double *);
+        void calcBuoyancyFluxBot(double*, double*, double*, double*, double*, double *);
 
         std::string swbasestate;
         double pbot;
