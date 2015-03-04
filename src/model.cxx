@@ -266,13 +266,13 @@ void Model::exec()
     buffer->exec();
 
     // Apply the large scale forcings. Keep this one always right before the pressure.
-    force->exec(timeloop->getSubTimeStep());
+    force->exec(timeloop->get_sub_time_step());
 
     // Solve the poisson equation for pressure.
-    pres->exec(timeloop->getSubTimeStep());
+    pres->exec(timeloop->get_sub_time_step());
 
     // Allow only for statistics when not in substep and not directly after restart.
-    if (timeloop->isStatsStep())
+    if (timeloop->is_stats_step())
     {
       #ifdef USECUDA
       // Copy fields from device to host
@@ -326,7 +326,7 @@ void Model::exec()
     }
 
     // Exit the simulation when the runtime has been hit.
-    if (timeloop->isFinished())
+    if (timeloop->is_finished())
       break;
 
     // RUN MODE: In case of run mode do the time stepping.
@@ -336,10 +336,10 @@ void Model::exec()
       timeloop->exec();
 
       // Increase the time with the time step.
-      timeloop->stepTime();
+      timeloop->step_time();
 
       // Save the data for restarts.
-      if (timeloop->doSave())
+      if (timeloop->do_save())
       {
         #ifdef USECUDA
         fields  ->backward_device();
@@ -356,10 +356,10 @@ void Model::exec()
     else if (master->mode == "post")
     {
       // Step to the next time step.
-      timeloop->stepPostProcTime();
+      timeloop->step_post_proc_time();
 
       // In case the simulation is done, step out of the loop.
-      if (timeloop->isFinished())
+      if (timeloop->is_finished())
         break;
 
       // Load the data from disk.
@@ -395,19 +395,19 @@ void Model::exec()
 void Model::set_time_step()
 {
   // Only set the time step if the model is not in a substep.
-  if (timeloop->inSubStep())
+  if (timeloop->in_substep())
     return;
 
   // Retrieve the maximum allowed time step per class.
-  timeloop->setTimeStepLimit();
-  timeloop->setTimeStepLimit(advec->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-  timeloop->setTimeStepLimit(diff ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-  timeloop->setTimeStepLimit(stats->get_time_limit(timeloop->get_itime()));
-  timeloop->setTimeStepLimit(cross->get_time_limit(timeloop->get_itime()));
-  timeloop->setTimeStepLimit(dump ->get_time_limit(timeloop->get_itime()));
+  timeloop->set_time_step_limit();
+  timeloop->set_time_step_limit(advec->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->set_time_step_limit(diff ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+  timeloop->set_time_step_limit(stats->get_time_limit(timeloop->get_itime()));
+  timeloop->set_time_step_limit(cross->get_time_limit(timeloop->get_itime()));
+  timeloop->set_time_step_limit(dump ->get_time_limit(timeloop->get_itime()));
 
   // Set the time step.
-  timeloop->setTimeStep();
+  timeloop->set_time_step();
 }
 
 // Calculate the statistics for all classes that have a statistics function.
@@ -444,7 +444,7 @@ void Model::print_status()
   }
 
   // Retrieve all the status information.
-  if (timeloop->doCheck())
+  if (timeloop->do_check())
   {
     // Get status variables.
     iter = timeloop->get_iteration();
@@ -468,7 +468,7 @@ void Model::print_status()
         iter, time, cputime, dt, cfl, dn, div, mom, tke, mass);
   }
 
-  if (timeloop->isFinished())
+  if (timeloop->is_finished())
   {
     // Close the output file when the run is done.
     if (master->mpiid == 0)

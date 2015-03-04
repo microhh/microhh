@@ -35,15 +35,15 @@ class Fields;
 class Timeloop
 {
   public:
-    Timeloop(Model *, Input *);
+    Timeloop(Model*, Input*);
     ~Timeloop();
 
-    void stepTime();
-    void stepPostProcTime();
-    void setTimeStep();
-    void setTimeStepLimit();
-    void setTimeStepLimit(unsigned long);
-    double getSubTimeStep();
+    void step_time();
+    void step_post_proc_time();
+    void set_time_step();
+    void set_time_step_limit();
+    void set_time_step_limit(unsigned long);
+    double get_sub_time_step();
 
     void exec();
 
@@ -53,11 +53,11 @@ class Timeloop
     void load(int);
 
     // Query functions for main loop
-    bool inSubStep();
-    bool isStatsStep();
-    bool doCheck();
-    bool doSave();
-    bool isFinished();
+    bool in_substep();
+    bool is_stats_step();
+    bool do_check();
+    bool do_save();
+    bool is_finished();
 
     // Accessors for other classes
     double get_time()   { return time;    }
@@ -69,10 +69,10 @@ class Timeloop
     int get_iteration() { return iteration; }
 
   private:
-    Master *master;
-    Model  *model;
-    Grid   *grid;
-    Fields *fields;
+    Master* master;
+    Model*  model;
+    Grid*   grid;
+    Fields* fields;
 
     timeval start;
     timeval end;
@@ -81,8 +81,8 @@ class Timeloop
 
     int outputiter;
 
-    void rk3(double *, double *, double);
-    void rk4(double *, double *, double);
+    void rk3(double*, double*, double);
+    void rk4(double*, double*, double);
 
     double rk3subdt(double);
     double rk4subdt(double);
