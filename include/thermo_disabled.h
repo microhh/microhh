@@ -35,21 +35,22 @@ class Thermo_disabled : public Thermo
     Thermo_disabled(Model*, Input*);
     virtual ~Thermo_disabled();
 
-    void init();
-    void create(Input*);
-    void exec();
-    void exec_stats(Mask*);
-
-    void exec_cross();
-    void exec_dump();
-
-    void get_mask(Field3d*, Field3d*, Mask*);
-
-    // interfacing functions to get buoyancy properties from other classes
+    // Interfacing functions to get buoyancy properties from other classes.
     bool check_thermo_field(std::string name);
-    void get_thermo_field(Field3d*, Field3d*, std::string name);
-    void get_buoyancy_surf(Field3d*);
-    void get_buoyancy_fluxbot(Field3d*);
-    void get_prog_vars(std::vector<std::string>*);
+
+    // Empty functions that are allowed to pass.
+    void init() {}
+    void create(Input*) {}
+    void exec() {}
+    void exec_stats(Mask*) {}
+    void exec_cross() {}
+    void exec_dump() {}
+
+    // Empty functions that shall throw.
+    void get_mask(Field3d*, Field3d*, Mask*) { throw 1; }
+    void get_thermo_field(Field3d*, Field3d*, std::string name) { throw 1; }
+    void get_buoyancy_surf(Field3d*) { throw 1; }
+    void get_buoyancy_fluxbot(Field3d*) { throw 1; }
+    void get_prog_vars(std::vector<std::string>*) { throw 1; }
 };
 #endif
