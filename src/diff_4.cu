@@ -176,7 +176,7 @@ void Diff_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError();
+    cuda_check_error();
 
     Diff_4_g::diff_c<<<gridGPU, blockGPU>>>(
         &fields->vt->data_g[offs], &fields->v->data_g[offs],
@@ -185,7 +185,7 @@ void Diff_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError();
+    cuda_check_error();
 
     Diff_4_g::diff_w<<<gridGPU, blockGPU>>>(
         &fields->wt->data_g[offs], &fields->w->data_g[offs],
@@ -194,7 +194,7 @@ void Diff_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError();
+    cuda_check_error();
 
     for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
         Diff_4_g::diff_c<<<gridGPU, blockGPU>>>(
@@ -204,6 +204,6 @@ void Diff_4::exec()
             grid->icellsp, grid->ijcellsp,
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError();
+    cuda_check_error();
 }
 #endif

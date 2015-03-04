@@ -500,7 +500,7 @@ double Advec_4::get_cfl(const double dt)
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     double cfl = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
     grid->get_max(&cfl); 
@@ -534,7 +534,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     Advec_4_g::advec_u_boundary<1><<<gridGPU2D, blockGPU2D>>>(
         &fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
@@ -542,7 +542,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     // Interior:
     Advec_4_g::advec_u<<<gridGPU, blockGPU>>>(
@@ -551,7 +551,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     // Top and bottom boundary:
     Advec_4_g::advec_v_boundary<0><<<gridGPU2D, blockGPU2D>>>(
@@ -560,7 +560,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     Advec_4_g::advec_v_boundary<1><<<gridGPU2D, blockGPU2D>>>(
         &fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
@@ -568,7 +568,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     // Interior
     Advec_4_g::advec_v<<<gridGPU, blockGPU>>>(
@@ -577,7 +577,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     // Top and bottom boundary:
     Advec_4_g::advec_w_boundary<0><<<gridGPU2D, blockGPU2D>>>(
@@ -586,7 +586,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     Advec_4_g::advec_w_boundary<1><<<gridGPU2D, blockGPU2D>>>(
         &fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
@@ -594,7 +594,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     // Interior:
     Advec_4_g::advec_w<<<gridGPU, blockGPU>>>(
@@ -603,7 +603,7 @@ void Advec_4::exec()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 
     for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
         Advec_4_g::advec_s<<<gridGPU, blockGPU>>>(
@@ -613,6 +613,6 @@ void Advec_4::exec()
             grid->icellsp, grid->ijcellsp,
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError(); 
+    cuda_check_error(); 
 }
 #endif

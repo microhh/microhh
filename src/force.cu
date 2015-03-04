@@ -182,26 +182,26 @@ void Force::prepare_device()
 
     if (swlspres == "geo")
     {
-        cudaSafeCall(cudaMalloc(&ug_g, nmemsize));
-        cudaSafeCall(cudaMalloc(&vg_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&ug_g, nmemsize));
+        cuda_safe_call(cudaMalloc(&vg_g, nmemsize));
 
-        cudaSafeCall(cudaMemcpy(ug_g, ug, nmemsize, cudaMemcpyHostToDevice));
-        cudaSafeCall(cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(ug_g, ug, nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMemcpy(vg_g, vg, nmemsize, cudaMemcpyHostToDevice));
     }
 
     if (swls == "1")
     {
         for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
         {
-            cudaSafeCall(cudaMalloc(&lsprofs_g[*it], nmemsize));
-            cudaSafeCall(cudaMemcpy(lsprofs_g[*it], lsprofs[*it], nmemsize, cudaMemcpyHostToDevice));
+            cuda_safe_call(cudaMalloc(&lsprofs_g[*it], nmemsize));
+            cuda_safe_call(cudaMemcpy(lsprofs_g[*it], lsprofs[*it], nmemsize, cudaMemcpyHostToDevice));
         }
     }
 
     if (swwls == "1")
     {
-        cudaSafeCall(cudaMalloc(&wls_g, nmemsize));
-        cudaSafeCall(cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice));
+        cuda_safe_call(cudaMalloc(&wls_g, nmemsize));
+        cuda_safe_call(cudaMemcpy(wls_g, wls, nmemsize, cudaMemcpyHostToDevice));
     }
 
     if (swtimedep == "1")
@@ -209,8 +209,8 @@ void Force::prepare_device()
         int nmemsize2 = grid->kmax*timedeptime.size()*sizeof(double);
         for (std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
         {
-            cudaSafeCall(cudaMalloc(&timedepdata_g[it->first], nmemsize2));
-            cudaSafeCall(cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice));
+            cuda_safe_call(cudaMalloc(&timedepdata_g[it->first], nmemsize2));
+            cuda_safe_call(cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice));
         }
     }
 }
@@ -219,23 +219,23 @@ void Force::clear_device()
 {
     if (swlspres == "geo")
     {
-        cudaSafeCall(cudaFree(ug_g));
-        cudaSafeCall(cudaFree(vg_g));
+        cuda_safe_call(cudaFree(ug_g));
+        cuda_safe_call(cudaFree(vg_g));
     }
 
     if (swls == "1")
     {
         for(std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-            cudaSafeCall(cudaFree(lsprofs_g[*it]));
+            cuda_safe_call(cudaFree(lsprofs_g[*it]));
     }
 
     if (swwls == "1")
-        cudaSafeCall(cudaFree(wls_g));
+        cuda_safe_call(cudaFree(wls_g));
 
     if (swtimedep == "1")
     {
         for (std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
-            cudaSafeCall(cudaFree(timedepdata_g[it->first]));
+            cuda_safe_call(cudaFree(timedepdata_g[it->first]));
     }
 }
 
@@ -260,7 +260,7 @@ void Force::exec(double dt)
             grid->icellsp, grid->ijcellsp,
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend);
-        cudaCheckError();
+        cuda_check_error();
 
     double uavg  = grid->get_sum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
@@ -270,7 +270,7 @@ void Force::exec(double dt)
             grid->icellsp, grid->ijcellsp,
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend);
-        cudaCheckError();
+        cuda_check_error();
 
     double utavg = grid->get_sum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
@@ -285,7 +285,7 @@ void Force::exec(double dt)
             grid->icellsp, grid->ijcellsp,
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend);
-        cudaCheckError();
+        cuda_check_error();
     }
     else if (swlspres == "geo")
     {
@@ -298,7 +298,7 @@ void Force::exec(double dt)
                 grid->icellsp, grid->ijcellsp,
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend);
-            cudaCheckError();
+            cuda_check_error();
         }
         else if (grid->swspatialorder == "4")
         {
@@ -309,7 +309,7 @@ void Force::exec(double dt)
                 grid->icellsp, grid->ijcellsp,
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend);
-            cudaCheckError();
+            cuda_check_error();
         }
     }
 
@@ -322,7 +322,7 @@ void Force::exec(double dt)
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend,
                 grid->icellsp, grid->ijcellsp);
-            cudaCheckError();
+            cuda_check_error();
         }
     }
 
@@ -335,7 +335,7 @@ void Force::exec(double dt)
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend,
                 grid->icellsp, grid->ijcellsp);
-            cudaCheckError();
+            cuda_check_error();
         }
     }
 }
@@ -357,7 +357,7 @@ void Force::update_time_dependent_profs(double fac0, double fac1, int index0, in
         {
             Force_g::update_time_dependent_prof<<<gridk, blockk>>>(
                 lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
-            cudaCheckError();
+            cuda_check_error();
         }
     }
 }

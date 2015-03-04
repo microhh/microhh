@@ -128,31 +128,31 @@ void Thermo_dry::prepare_device()
     const int nmemsize = grid->kcells*sizeof(double);
 
     // Allocate fields for Boussinesq and anelastic solver
-    cudaSafeCall(cudaMalloc(&thref_g,  nmemsize));
-    cudaSafeCall(cudaMalloc(&threfh_g, nmemsize));
-    cudaSafeCall(cudaMalloc(&pref_g,   nmemsize));
-    cudaSafeCall(cudaMalloc(&prefh_g,  nmemsize));
-    cudaSafeCall(cudaMalloc(&exner_g,  nmemsize));
-    cudaSafeCall(cudaMalloc(&exnerh_g, nmemsize));
+    cuda_safe_call(cudaMalloc(&thref_g,  nmemsize));
+    cuda_safe_call(cudaMalloc(&threfh_g, nmemsize));
+    cuda_safe_call(cudaMalloc(&pref_g,   nmemsize));
+    cuda_safe_call(cudaMalloc(&prefh_g,  nmemsize));
+    cuda_safe_call(cudaMalloc(&exner_g,  nmemsize));
+    cuda_safe_call(cudaMalloc(&exnerh_g, nmemsize));
 
     // Copy fields to device
-    cudaSafeCall(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(threfh_g, threfh, nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(pref_g,   pref,   nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(prefh_g,  prefh,  nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(exner_g,  exner,  nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(exnerh_g, exnerh, nmemsize, cudaMemcpyHostToDevice));
-    cudaSafeCall(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(threfh_g, threfh, nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(pref_g,   pref,   nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(prefh_g,  prefh,  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(exner_g,  exner,  nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(exnerh_g, exnerh, nmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
 }
 
 void Thermo_dry::clear_device()
 {
-    cudaSafeCall(cudaFree(thref_g ));
-    cudaSafeCall(cudaFree(threfh_g));
-    cudaSafeCall(cudaFree(pref_g  ));
-    cudaSafeCall(cudaFree(prefh_g ));
-    cudaSafeCall(cudaFree(exner_g ));
-    cudaSafeCall(cudaFree(exnerh_g));
+    cuda_safe_call(cudaFree(thref_g ));
+    cuda_safe_call(cudaFree(threfh_g));
+    cuda_safe_call(cudaFree(pref_g  ));
+    cuda_safe_call(cudaFree(prefh_g ));
+    cuda_safe_call(cudaFree(exner_g ));
+    cuda_safe_call(cudaFree(exnerh_g));
 }
 
 #ifdef USECUDA
@@ -176,7 +176,7 @@ void Thermo_dry::exec()
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
 
-        cudaCheckError();
+        cuda_check_error();
     }
     else if (grid->swspatialorder == "4")
     {
@@ -209,7 +209,7 @@ void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
             grid->istart, grid->jstart, 
             grid->iend, grid->jend, grid->kcells,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
     else if (name == "N2")
     {
@@ -218,7 +218,7 @@ void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
     else
         throw 1;
@@ -242,7 +242,7 @@ void Thermo_dry::get_buoyancy_fluxbot(Field3d *bfield)
         &bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
-    cudaCheckError();
+    cuda_check_error();
 }
 #endif
 
@@ -264,12 +264,12 @@ void Thermo_dry::get_buoyancy_surf(Field3d *bfield)
         &fields->sp["th"]->data_g[offs], &fields->sp["th"]->databot_g[offs],
         thref_g, threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
-    cudaCheckError();
+    cuda_check_error();
 
     Thermo_dry_g::calc_buoyancy_flux_bot<<<gridGPU, blockGPU>>>(
         &bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
-    cudaCheckError();
+    cuda_check_error();
 }
 #endif

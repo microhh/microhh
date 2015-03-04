@@ -67,15 +67,15 @@ void Buffer::prepare_device()
 
         // Allocate the buffer arrays at GPU.
         for (FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
-            cudaSafeCall(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
+            cuda_safe_call(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            cudaSafeCall(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
+            cuda_safe_call(cudaMalloc(&bufferprofs_g[it->first], nmemsize));
 
         // Copy buffers to GPU.
         for (FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
-            cudaSafeCall(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
+            cuda_safe_call(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            cudaSafeCall(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
+            cuda_safe_call(cudaMemcpy(bufferprofs_g[it->first], bufferprofs[it->first], nmemsize, cudaMemcpyHostToDevice));
     }
 }
 
@@ -84,9 +84,9 @@ void Buffer::clear_device()
     if(swbuffer == "1")
     {
         for (FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
-            cudaSafeCall(cudaFree(bufferprofs_g[it->first]));
+            cuda_safe_call(cudaFree(bufferprofs_g[it->first]));
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            cudaSafeCall(cudaFree(bufferprofs_g[it->first]));
+            cuda_safe_call(cudaFree(bufferprofs_g[it->first]));
     }
 }
 
@@ -114,7 +114,7 @@ void Buffer::exec()
             grid->istart,  grid->jstart, bufferkstart,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
 
         Buffer_g::buffer<<<gridGPU, blockGPU>>>(
             &fields->mt["v"]->data_g[offs], &fields->mp["v"]->data_g[offs],
@@ -123,7 +123,7 @@ void Buffer::exec()
             grid->istart,  grid->jstart, bufferkstart,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
 
         Buffer_g::buffer<<<gridGPU, blockGPU>>>(
             &fields->mt["w"]->data_g[offs], &fields->mp["w"]->data_g[offs],
@@ -132,7 +132,7 @@ void Buffer::exec()
             grid->istart,  grid->jstart, bufferkstart,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
 
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
             Buffer_g::buffer<<<gridGPU, blockGPU>>>(
@@ -142,7 +142,7 @@ void Buffer::exec()
                 grid->istart,  grid->jstart, bufferkstart,
                 grid->iend,    grid->jend,   grid->kend,
                 grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
 }
 #endif

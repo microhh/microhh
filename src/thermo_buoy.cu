@@ -87,7 +87,7 @@ void Thermo_buoy::exec()
             grid->istart,  grid->jstart, grid->kstart+1,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
     else if (grid->swspatialorder== "4")
     {
@@ -96,7 +96,7 @@ void Thermo_buoy::exec()
             grid->istart,  grid->jstart, grid->kstart+1,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
 }
 #endif

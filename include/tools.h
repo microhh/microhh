@@ -26,8 +26,8 @@
 /* CUDA error checking, from: http://choorucode.com/2011/03/02/how-to-do-error-checking-in-cuda/
    In debug mode, CUDACHECKS is defined and all kernel calls are checked with cudaCheckError().
    All CUDA api calls are always checked with cudaSafeCall() */
-#define cudaSafeCall(err) Tools_g::__cudaSafeCall(err, __FILE__, __LINE__)
-#define cudaCheckError()  Tools_g::__cudaCheckError(__FILE__, __LINE__)
+#define cuda_safe_call(err) Tools_g::__cuda_safe_call(err, __FILE__, __LINE__)
+#define cuda_check_error()  Tools_g::__cuda_check_error(__FILE__, __LINE__)
 
 namespace Tools_g
 {
@@ -38,7 +38,7 @@ namespace Tools_g
     void reduce_all(double *, double *, int, int, int, ReduceType, double);
 
     // Wrapper to check for errors in CUDA api calls (e.g. cudaMalloc)
-    inline void __cudaSafeCall(cudaError err, const char *file, const int line)
+    inline void __cuda_safe_call(cudaError err, const char *file, const int line)
     {
         if (cudaSuccess != err)
         {
@@ -48,7 +48,7 @@ namespace Tools_g
     }
 
     // Function to check for errors in CUDA kernels. Call directly after kernel.
-    inline void __cudaCheckError(const char *file, const int line)
+    inline void __cuda_check_error(const char *file, const int line)
     {
 #ifdef CUDACHECKS
         cudaError err = cudaGetLastError();

@@ -218,28 +218,28 @@ void Pres_2::prepare_device()
 
     const int ijmemsize = grid->imax*grid->jmax*sizeof(double);
 
-    cudaSafeCall(cudaMalloc((void**)&bmati_g, imemsize  ));
-    cudaSafeCall(cudaMalloc((void**)&bmatj_g, jmemsize  ));
-    cudaSafeCall(cudaMalloc((void**)&a_g, kmemsize      ));
-    cudaSafeCall(cudaMalloc((void**)&c_g, kmemsize      ));
-    cudaSafeCall(cudaMalloc((void**)&work2d_g, ijmemsize));
+    cuda_safe_call(cudaMalloc((void**)&bmati_g, imemsize  ));
+    cuda_safe_call(cudaMalloc((void**)&bmatj_g, jmemsize  ));
+    cuda_safe_call(cudaMalloc((void**)&a_g, kmemsize      ));
+    cuda_safe_call(cudaMalloc((void**)&c_g, kmemsize      ));
+    cuda_safe_call(cudaMalloc((void**)&work2d_g, ijmemsize));
 
-    cudaSafeCall(cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice   ));
-    cudaSafeCall(cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice   ));
-    cudaSafeCall(cudaMemcpy(a_g, a, kmemsize, cudaMemcpyHostToDevice           ));
-    cudaSafeCall(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
-    cudaSafeCall(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
+    cuda_safe_call(cudaMemcpy(bmati_g, bmati, imemsize, cudaMemcpyHostToDevice   ));
+    cuda_safe_call(cudaMemcpy(bmatj_g, bmatj, jmemsize, cudaMemcpyHostToDevice   ));
+    cuda_safe_call(cudaMemcpy(a_g, a, kmemsize, cudaMemcpyHostToDevice           ));
+    cuda_safe_call(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
+    cuda_safe_call(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
 
     make_cufft_plan();
 }
 
 void Pres_2::clear_device()
 {
-    cudaSafeCall(cudaFree(bmati_g ));
-    cudaSafeCall(cudaFree(bmatj_g ));
-    cudaSafeCall(cudaFree(a_g     ));
-    cudaSafeCall(cudaFree(c_g     ));
-    cudaSafeCall(cudaFree(work2d_g));
+    cuda_safe_call(cudaFree(bmati_g ));
+    cuda_safe_call(cudaFree(bmatj_g ));
+    cuda_safe_call(cudaFree(a_g     ));
+    cuda_safe_call(cudaFree(c_g     ));
+    cuda_safe_call(cudaFree(work2d_g));
 }
 
 #ifdef USECUDA
@@ -278,7 +278,7 @@ void Pres_2::exec(double dt)
         grid->imax, grid->imax*grid->jmax,
         grid->imax, grid->jmax, grid->kmax,
         grid->igc,  grid->jgc,  grid->kgc);
-    cudaCheckError();
+    cuda_check_error();
 
     fft_forward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
@@ -289,18 +289,18 @@ void Pres_2::exec(double dt)
         grid->imax, grid->imax*grid->jmax,
         grid->imax, grid->jmax, grid->kmax,
         grid->kstart);
-    cudaCheckError();
+    cuda_check_error();
 
     Pres_2_g::tdma<<<grid2dGPU, block2dGPU>>>(
         a_g, fields->atmp["tmp2"]->data_g, c_g,
         fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g,
         grid->imax, grid->imax*grid->jmax,
         grid->imax, grid->jmax, grid->kmax);
-    cudaCheckError();
+    cuda_check_error();
 
     fft_backward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
-    cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
+    cuda_safe_call(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
     Pres_2_g::solve_out<<<gridGPU, blockGPU>>>(
         &fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
@@ -308,7 +308,7 @@ void Pres_2::exec(double dt)
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->imax,    grid->jmax,   grid->kmax);
-    cudaCheckError();
+    cuda_check_error();
 
     grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
 
@@ -319,7 +319,7 @@ void Pres_2::exec(double dt)
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError();
+    cuda_check_error();
 }
 #endif
 
@@ -346,7 +346,7 @@ double Pres_2::check_divergence()
         grid->icellsp, grid->ijcellsp,
         grid->istart,  grid->jstart, grid->kstart,
         grid->iend,    grid->jend,   grid->kend);
-    cudaCheckError();
+    cuda_check_error();
 
     double divmax = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
     grid->get_max(&divmax);

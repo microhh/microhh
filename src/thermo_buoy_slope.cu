@@ -128,7 +128,7 @@ void Thermo_buoy_slope::exec()
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError(); 
+        cuda_check_error(); 
 
         Thermo_buoy_slope_g::calc_buoyancy_tend_w_4th<<<gridGPU, blockGPU>>>(
             &fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs],
@@ -136,7 +136,7 @@ void Thermo_buoy_slope::exec()
             grid->istart,  grid->jstart, grid->kstart+1,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError(); 
+        cuda_check_error(); 
 
         Thermo_buoy_slope_g::calc_buoyancy_tend_b_4th<<<gridGPU, blockGPU>>>(
             &fields->st["b"]->data_g[offs],
@@ -145,7 +145,7 @@ void Thermo_buoy_slope::exec()
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend,
             grid->icellsp, grid->ijcellsp);
-        cudaCheckError();
+        cuda_check_error();
     }
 }
 #endif
