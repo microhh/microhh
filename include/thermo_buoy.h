@@ -58,6 +58,11 @@ class Thermo_buoy : public Thermo
     void exec_dump() {}
     void get_mask(Field3d*, Field3d*, Mask*) {}
 
+#ifdef USECUDA
+    void prepare_device() {};
+    void clear_device() {};
+#endif
+
   private:
     void calcBuoyancy(double*, double*);         ///< Calculation of the buoyancy.
     void calcBuoyancyBot(double*, double*,
