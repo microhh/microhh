@@ -92,7 +92,7 @@ void Diff_smag_2::exec_viscosity()
             grid->z, grid->dzi, grid->dzhi);
 
     // start with retrieving the stability information
-    if (model->thermo->getSwitch() == "0")
+    if (model->thermo->get_switch() == "0")
     {
         evisc_neutral(fields->sd["evisc"]->data,
                 fields->u->data, fields->v->data, fields->w->data,
@@ -103,9 +103,9 @@ void Diff_smag_2::exec_viscosity()
     else
     {
         // store the buoyancyflux in tmp1
-        model->thermo->getBuoyancyFluxbot(fields->atmp["tmp1"]);
+        model->thermo->get_buoyancy_fluxbot(fields->atmp["tmp1"]);
         // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-        model->thermo->getThermoField(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
+        model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
         // model->thermo->getThermoField(fields->sd["tmp1"], fields->sd["tmp2"], "b");
 
         evisc(fields->sd["evisc"]->data,

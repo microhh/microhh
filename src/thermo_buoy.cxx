@@ -30,7 +30,7 @@
 using fd::o2::interp2;
 using fd::o4::interp4;
 
-Thermo_buoy::Thermo_buoy(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
+Thermo_buoy::Thermo_buoy(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
   swthermo = "buoy";
 
@@ -58,24 +58,24 @@ void Thermo_buoy::exec()
 }
 #endif
 
-void Thermo_buoy::getBuoyancy(Field3d *bfield, Field3d *tmp)
+void Thermo_buoy::get_buoyancy(Field3d* bfield, Field3d* tmp)
 {
   calcBuoyancy(bfield->data, fields->sp["b"]->data);
 }
 
-void Thermo_buoy::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo_buoy::get_buoyancy_fluxbot(Field3d* bfield)
 {
   calcBuoyancyFluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
-void Thermo_buoy::getBuoyancySurf(Field3d *bfield)
+void Thermo_buoy::get_buoyancy_surf(Field3d* bfield)
 {
   calcBuoyancyBot(bfield->data, bfield->databot,
                   fields->sp["b"]->data, fields->sp["b"]->databot);
   calcBuoyancyFluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
-bool Thermo_buoy::checkThermoField(std::string name)
+bool Thermo_buoy::check_thermo_field(std::string name)
 {
   if (name == "b")
     return false;
@@ -83,12 +83,12 @@ bool Thermo_buoy::checkThermoField(std::string name)
     return true;
 }
 
-void Thermo_buoy::getThermoField(Field3d *field, Field3d *tmp, std::string name)
+void Thermo_buoy::get_thermo_field(Field3d *field, Field3d *tmp, std::string name)
 {
   calcBuoyancy(field->data, fields->sp["b"]->data);
 }
 
-void Thermo_buoy::getProgVars(std::vector<std::string> *list)
+void Thermo_buoy::get_prog_vars(std::vector<std::string> *list)
 {
   list->push_back("b");
 }

@@ -75,7 +75,7 @@ void Thermo_buoy_slope::exec()
 }
 #endif
 
-bool Thermo_buoy_slope::checkThermoField(std::string name)
+bool Thermo_buoy_slope::check_thermo_field(std::string name)
 {
   if (name == "b")
     return false;
@@ -83,24 +83,24 @@ bool Thermo_buoy_slope::checkThermoField(std::string name)
     return true;
 }
 
-void Thermo_buoy_slope::getThermoField(Field3d *field, Field3d *tmp, std::string name)
+void Thermo_buoy_slope::get_thermo_field(Field3d* field, Field3d* tmp, const std::string name)
 {
   calcBuoyancy(field->data, fields->sp["b"]->data);
 }
 
-void Thermo_buoy_slope::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo_buoy_slope::get_buoyancy_fluxbot(Field3d* bfield)
 {
   calcBuoyancyFluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
-void Thermo_buoy_slope::getBuoyancySurf(Field3d *bfield)
+void Thermo_buoy_slope::get_buoyancy_surf(Field3d *bfield)
 {
   calcBuoyancyBot(bfield->data        , bfield->databot,
                   fields->sp["b"]->data, fields->sp["b"]->databot);
   calcBuoyancyFluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
-void Thermo_buoy_slope::getProgVars(std::vector<std::string> *list)
+void Thermo_buoy_slope::get_prog_vars(std::vector<std::string>* list)
 {
   list->push_back("b");
 }
