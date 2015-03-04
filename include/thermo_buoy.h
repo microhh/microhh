@@ -41,14 +41,6 @@ class Thermo_buoy : public Thermo
     Thermo_buoy(Model*, Input*); ///< Constructor of the dry thermodynamics class.
     virtual ~Thermo_buoy();      ///< Destructor of the dry thermodynamics class.
 
-    // Empty functions
-    void init() {}
-    void create(Input*) {}
-    void exec_stats(Mask*) {}
-    void exec_cross() {}
-    void exec_dump() {}
-    void get_mask(Field3d*, Field3d*, Mask*) {}
-
     void exec(); ///< Add the tendencies belonging to the buoyancy.
 
     bool check_thermo_field(std::string name);
@@ -57,6 +49,14 @@ class Thermo_buoy : public Thermo
     void get_buoyancy_fluxbot(Field3d*);           ///< Compute the bottom buoyancy flux for usage in another routine.
     void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
     void get_thermo_field(Field3d*, Field3d*, std::string name);
+
+    // Empty functions that are allowed to pass.
+    void init() {}
+    void create(Input*) {}
+    void exec_stats(Mask*) {}
+    void exec_cross() {}
+    void exec_dump() {}
+    void get_mask(Field3d*, Field3d*, Mask*) {}
 
   private:
     void calcBuoyancy(double*, double*);         ///< Calculation of the buoyancy.

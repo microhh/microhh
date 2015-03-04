@@ -61,7 +61,7 @@ class Thermo_dry : public Thermo
     void clear_device();
     #endif
 
-    // Empty functions, required to implement by abstract base class
+    // Empty functions that are allowed to pass.
     void get_mask(Field3d*, Field3d*, Mask*) {}
 
   private:

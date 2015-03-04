@@ -49,7 +49,7 @@ class Thermo_buoy_slope : public Thermo
     void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
     void get_thermo_field(Field3d*, Field3d*, std::string name);
 
-    // Empty functions, required to implement by abstract base class
+    // Empty functions that are allowed to pass.
     void init() {}
     void create(Input*) {}
     void exec_stats(Mask*) {}
