@@ -75,7 +75,7 @@ Boundary_surface::~Boundary_surface()
 
 void Boundary_surface::create(Input *inputin)
 {
-    process_time_dep(inputin);
+    process_time_dependent(inputin);
 
     // add variables to the statistics
     if (stats->getSwitch() == "1")

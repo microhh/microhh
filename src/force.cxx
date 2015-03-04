@@ -31,7 +31,7 @@
 #include "model.h"
 #include "timeloop.h"
 
-Force::Force(Model *modelin, Input *inputin)
+Force::Force(Model* modelin, Input* inputin)
 {
   model  = modelin;
   grid   = model->grid;
@@ -101,7 +101,7 @@ Force::~Force()
   }
 
   // clean up time dependent data
-  for (std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
+  for (std::map<std::string, double*>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
     delete[] it->second;
 
   #ifdef USECUDA
@@ -191,20 +191,20 @@ void Force::create(Input *inputin)
 void Force::exec(double dt)
 {
   if (swlspres == "uflux")
-    calcFlux(fields->ut->data, fields->u->data, grid->dz, dt);
+    calc_flux(fields->ut->data, fields->u->data, grid->dz, dt);
 
   else if (swlspres == "geo")
   {
     if (grid->swspatialorder == "2")
-      calcCoriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
+      calc_coriolis_2nd(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
     else if (grid->swspatialorder == "4")
-      calcCoriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
+      calc_coriolis_4th(fields->ut->data, fields->vt->data, fields->u->data, fields->v->data, ug, vg);
   }
 
   if (swls == "1")
   {
     for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-      calcLargeScaleSource(fields->st[*it]->data, lsprofs[*it]);
+      calc_large_scale_source(fields->st[*it]->data, lsprofs[*it]);
   }
 
   if (swwls == "1")
@@ -215,7 +215,7 @@ void Force::exec(double dt)
 }
 #endif
 
-void Force::update_time_dep()
+void Force::update_time_dependent()
 {
   if (swtimedep == "0")
     return;
@@ -257,11 +257,11 @@ void Force::update_time_dep()
     fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
   }
 
-  update_time_depProfs(fac0, fac1, index0, index1);
+  update_time_dependent_profs(fac0, fac1, index0, index1);
 }
 
 #ifndef USECUDA
-void Force::update_time_depProfs(const double fac0, const double fac1, const int index0, const int index1)
+void Force::update_time_dependent_profs(const double fac0, const double fac1, const int index0, const int index1)
 {
   // process time dependent bcs for the large scale forcings
   int kk = grid->kmax;
@@ -270,7 +270,7 @@ void Force::update_time_depProfs(const double fac0, const double fac1, const int
   for (std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
   {
     std::string name = *it1 + "ls";
-    std::map<std::string, double *>::const_iterator it2 = timedepdata.find(name);
+    std::map<std::string, double*>::const_iterator it2 = timedepdata.find(name);
 
     // update the profile
     if (it2 != timedepdata.end())
@@ -280,8 +280,8 @@ void Force::update_time_depProfs(const double fac0, const double fac1, const int
 }
 #endif
 
-void Force::calcFlux(double * const restrict ut, const double * const restrict u, 
-                     const double * const restrict dz, const double dt)
+void Force::calc_flux(double* const restrict ut, const double* const restrict u, 
+                      const double* const restrict dz, const double dt)
 {
   int ijk,jj,kk;
 
@@ -317,9 +317,9 @@ void Force::calcFlux(double * const restrict ut, const double * const restrict u
     ut[n] += fbody;
 }
 
-void Force::calcCoriolis_2nd(double * const restrict ut, double * const restrict vt,
-                             const double * const restrict u , const double * const restrict v ,
-                             const double * const restrict ug, const double * const restrict vg)
+void Force::calc_coriolis_2nd(double* const restrict ut, double* const restrict vt,
+                              const double* const restrict u , const double* const restrict v ,
+                              const double* const restrict ug, const double* const restrict vg)
 {
   int ijk,ii,jj,kk;
   double ugrid, vgrid;
@@ -350,9 +350,9 @@ void Force::calcCoriolis_2nd(double * const restrict ut, double * const restrict
       }
 }
 
-void Force::calcCoriolis_4th(double * const restrict ut, double * const restrict vt,
-                             const double * const restrict u , const double * const restrict v ,
-                             const double * const restrict ug, const double * const restrict vg)
+void Force::calc_coriolis_4th(double* const restrict ut, double* const restrict vt,
+                              const double* const restrict u , const double* const restrict v ,
+                              const double* const restrict ug, const double* const restrict vg)
 {
   using namespace fd::o4;
 
@@ -395,7 +395,7 @@ void Force::calcCoriolis_4th(double * const restrict ut, double * const restrict
       }
 }
 
-void Force::calcLargeScaleSource(double * const restrict st, const double * const restrict sls)
+void Force::calc_large_scale_source(double* const restrict st, const double* const restrict sls)
 {
   int ijk,jj,kk;
 
@@ -411,8 +411,8 @@ void Force::calcLargeScaleSource(double * const restrict st, const double * cons
       }
 }
 
-void Force::advec_wls_2nd(double * const restrict st, const double * const restrict s,
-                          const double * const restrict wls, const double * const dzhi)
+void Force::advec_wls_2nd(double* const restrict st, const double* const restrict s,
+                          const double* const restrict wls, const double* const dzhi)
 {
   int ijk,jj,kk;
 

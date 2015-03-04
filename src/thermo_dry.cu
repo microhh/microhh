@@ -29,7 +29,7 @@
 #include "master.h"
 #include "tools.h"
 
-namespace ThermoDry_g
+namespace Thermo_dry_g
 {
   __global__ void calcBuoyancyTend_2nd(double * __restrict__ wt, double * __restrict__ th,
                                        double * __restrict__ threfh, 
@@ -119,7 +119,7 @@ namespace ThermoDry_g
   }
 } // end namespace
 
-void ThermoDry::prepare_device()
+void Thermo_dry::prepare_device()
 {
   const int nmemsize = grid->kcells*sizeof(double);
 
@@ -141,7 +141,7 @@ void ThermoDry::prepare_device()
   cudaSafeCall(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
 }
 
-void ThermoDry::clear_device()
+void Thermo_dry::clear_device()
 {
   cudaSafeCall(cudaFree(thref_g ));
   cudaSafeCall(cudaFree(threfh_g));
@@ -152,7 +152,7 @@ void ThermoDry::clear_device()
 }
 
 #ifdef USECUDA
-void ThermoDry::exec()
+void Thermo_dry::exec()
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -166,7 +166,7 @@ void ThermoDry::exec()
 
   if(grid->swspatialorder== "2")
   {
-    ThermoDry_g::calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["th"]->data_g[offs], threfh_g, 
+    Thermo_dry_g::calcBuoyancyTend_2nd<<<gridGPU, blockGPU>>>(&fields->wt->data_g[offs], &fields->sp["th"]->data_g[offs], threfh_g, 
                                                              grid->istart, grid->jstart, grid->kstart+1,
                                                              grid->iend,   grid->jend, grid->kend,
                                                              grid->icellsp, grid->ijcellsp);
@@ -182,7 +182,7 @@ void ThermoDry::exec()
 #endif
 
 #ifdef USECUDA
-void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_dry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -199,14 +199,14 @@ void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 
   if(name == "b")
   {
-    ThermoDry_g::calcBuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->sp["th"]->data_g[offs], 
+    Thermo_dry_g::calcBuoyancy<<<gridGPU, blockGPU>>>(&fld->data_g[offs], &fields->sp["th"]->data_g[offs], 
                                                      thref_g, grid->istart, grid->jstart, grid->iend, grid->jend, grid->kcells,
                                                      grid->icellsp, grid->ijcellsp);
     cudaCheckError();
   }
   else if(name == "N2")
   {
-    ThermoDry_g::calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["th"]->data_g[offs], thref_g, grid->dzi_g, 
+    Thermo_dry_g::calcN2<<<gridGPU2, blockGPU2>>>(&fld->data_g[offs], &fields->sp["th"]->data_g[offs], thref_g, grid->dzi_g, 
                                                  grid->istart, grid->jstart, grid->kstart, 
                                                  grid->iend,   grid->jend,   grid->kend,
                                                  grid->icellsp, grid->ijcellsp);
@@ -218,7 +218,7 @@ void ThermoDry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #endif
 
 #ifdef USECUDA
-void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo_dry::getBuoyancyFluxbot(Field3d *bfield)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -230,7 +230,7 @@ void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
   
   const int offs = grid->memoffset;
 
-  ThermoDry_g::calcBuoyancyFluxBot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
+  Thermo_dry_g::calcBuoyancyFluxBot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
                                                           threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                           grid->icellsp, grid->ijcellsp);
   cudaCheckError();
@@ -238,7 +238,7 @@ void ThermoDry::getBuoyancyFluxbot(Field3d *bfield)
 #endif
 
 #ifdef USECUDA
-void ThermoDry::getBuoyancySurf(Field3d *bfield)
+void Thermo_dry::getBuoyancySurf(Field3d *bfield)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -250,13 +250,13 @@ void ThermoDry::getBuoyancySurf(Field3d *bfield)
   
   const int offs = grid->memoffset;
 
-  ThermoDry_g::calcBuoyancyBot<<<gridGPU, blockGPU>>>(&bfield->data_g[offs], &bfield->databot_g[offs], 
+  Thermo_dry_g::calcBuoyancyBot<<<gridGPU, blockGPU>>>(&bfield->data_g[offs], &bfield->databot_g[offs], 
                                                       &fields->sp["th"]->data_g[offs], &fields->sp["th"]->databot_g[offs],
                                                       thref_g, threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                       grid->icellsp, grid->ijcellsp);
   cudaCheckError();
 
-  ThermoDry_g::calcBuoyancyFluxBot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
+  Thermo_dry_g::calcBuoyancyFluxBot<<<gridGPU, blockGPU>>>(&bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
                                                           threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
                                                           grid->icellsp, grid->ijcellsp);
   cudaCheckError();

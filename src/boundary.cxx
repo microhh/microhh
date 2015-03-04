@@ -156,10 +156,10 @@ void Boundary::init(Input *inputin)
 
 void Boundary::create(Input* inputin)
 {
-    process_time_dep(inputin);
+    process_time_dependent(inputin);
 }
 
-void Boundary::process_time_dep(Input* inputin)
+void Boundary::process_time_dependent(Input* inputin)
 {
     int nerror = 0;
 
@@ -192,7 +192,7 @@ void Boundary::process_time_dep(Input* inputin)
         throw 1;
 }
 
-void Boundary::update_time_dep()
+void Boundary::update_time_dependent()
 {
     if (swtimedep == "0")
         return;

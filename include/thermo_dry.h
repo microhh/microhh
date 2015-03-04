@@ -36,11 +36,11 @@ class Stats;
  * the acceleration by buoyancy. In the dry thermodynamics temperature and buoyancy are
  * equivalent and no complex buoyancy function is required.
  */
-class ThermoDry : public Thermo
+class Thermo_dry : public Thermo
 {
   public:
-    ThermoDry(Model *, Input *); ///< Constructor of the dry thermodynamics class.
-    virtual ~ThermoDry();                  ///< Destructor of the dry thermodynamics class.
+    Thermo_dry(Model *, Input *); ///< Constructor of the dry thermodynamics class.
+    virtual ~Thermo_dry();                  ///< Destructor of the dry thermodynamics class.
 
     virtual void init();
     virtual void create(Input *);

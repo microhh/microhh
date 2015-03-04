@@ -232,8 +232,8 @@ void Model::exec()
   master->print_message("Starting time integration\n");
 
   // Update the time dependent parameters.
-  boundary->update_time_dep();
-  force   ->update_time_dep();
+  boundary->update_time_dependent();
+  force   ->update_time_dependent();
 
   // Set the boundary conditions.
   boundary->exec();
@@ -368,8 +368,8 @@ void Model::exec()
     }
 
     // Update the time dependent parameters.
-    boundary->update_time_dep();
-    force   ->update_time_dep();
+    boundary->update_time_dependent();
+    force   ->update_time_dependent();
 
     // Set the boundary conditions.
     boundary->exec();
