@@ -211,11 +211,11 @@ double Grid::get_max_g(double* data, double* tmp)
     double maxvalue;
 
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, maxType);
+    reduce_interior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, maxType);
     // Reduce jtot*ktot to ktot values
-    reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, maxType, scalefac);
+    reduce_all     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, maxType, scalefac);
     // Reduce ktot values to a single value
-    reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, maxType, scalefac);
+    reduce_all     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, maxType, scalefac);
     // Copy back result from GPU
     cudaSafeCall(cudaMemcpy(&maxvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost));
 
@@ -230,11 +230,11 @@ double Grid::get_sum_g(double* data, double* tmp)
     double sumvalue;
 
     // Reduce 3D field excluding ghost cells and padding to jtot*ktot values
-    reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, sumType);
+    reduce_interior(data, tmp, itot, istart, iend, jtot, jstart, jend, ktot, kstart, icellsp, ijcellsp, sumType);
     // Reduce jtot*ktot to ktot values
-    reduceAll     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sumType, scalefac);
+    reduce_all     (tmp, &tmp[jtot*ktot], jtot*ktot, ktot, jtot, sumType, scalefac);
     // Reduce ktot values to a single value
-    reduceAll     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sumType, scalefac);
+    reduce_all     (&tmp[jtot*ktot], tmp, ktot, 1, ktot, sumType, scalefac);
     // Copy back result from GPU
     cudaSafeCall(cudaMemcpy(&sumvalue, &tmp[0], sizeof(double), cudaMemcpyDeviceToHost));
 
@@ -248,7 +248,7 @@ void Grid::calc_mean_g(double* prof, double* data, double* tmp)
     const double scalefac = 1./(itot*jtot);
 
     // Reduce 3D field excluding ghost cells and padding to jtot*kcells values
-    reduceInterior(data, tmp, itot, istart, iend, jtot, jstart, jend, kcells, 0, icellsp, ijcellsp, sumType);
+    reduce_interior(data, tmp, itot, istart, iend, jtot, jstart, jend, kcells, 0, icellsp, ijcellsp, sumType);
     // Reduce jtot*kcells to kcells values
-    reduceAll     (tmp, prof, jtot*kcells, kcells, jtot, sumType, scalefac);
+    reduce_all     (tmp, prof, jtot*kcells, kcells, jtot, sumType, scalefac);
 } 
