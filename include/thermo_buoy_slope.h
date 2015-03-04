@@ -58,17 +58,15 @@ class Thermo_buoy_slope : public Thermo
         void get_mask(Field3d*, Field3d*, Mask*) {}
 
     private:
-        void calcBuoyancy(double *, double *); ///< Calculation of the buoyancy.
-        void calcBuoyancyBot(double *, double *,
-                             double *, double *); ///< Calculation of the near-surface and surface buoyancy.
-        void calcBuoyancyFluxbot(double *, double *); ///< Calculation of the buoyancy flux at the bottom.
-        void calcBuoyancyTend_u_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-        void calcBuoyancyTend_w_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-        void calcBuoyancyTend_b_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+        void calc_buoyancy(double *, double *); ///< Calculation of the buoyancy.
+        void calc_buoyancy_bot(double *, double *,
+                               double *, double *); ///< Calculation of the near-surface and surface buoyancy.
+        void calc_buoyancy_fluxbot(double *, double *); ///< Calculation of the buoyancy flux at the bottom.
+        void calc_buoyancy_tend_u_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+        void calc_buoyancy_tend_w_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+        void calc_buoyancy_tend_b_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
         double alpha; ///< Slope angle in radians.
         double n2;    ///< Background stratification.
-
-        Master *master; ///< Pointer to master class.
 };
 #endif
