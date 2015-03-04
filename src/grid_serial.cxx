@@ -28,16 +28,16 @@
 #include "defines.h"
 
 // MPI functions
-void Grid::initMpi()
+void Grid::init_mpi()
 {
   mpitypes = true;
 } 
 
-void Grid::exitMpi()
+void Grid::exit_mpi()
 {
 }
 
-void Grid::boundaryCyclic(double * restrict data, Edge edge)
+void Grid::boundary_cyclic(double * restrict data, Edge edge)
 {
   int ijk0,ijk1,jj,kk;
 
@@ -115,7 +115,7 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
   }
 }
 
-void Grid::boundaryCyclic2d(double * restrict data)
+void Grid::boundary_cyclic_2d(double * restrict data)
 {
   int ij0,ij1,jj;
 
@@ -181,7 +181,7 @@ void Grid::boundaryCyclic2d(double * restrict data)
   }
 }
 
-void Grid::transposezx(double * restrict ar, double * restrict as)
+void Grid::transpose_zx(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -197,7 +197,7 @@ void Grid::transposezx(double * restrict ar, double * restrict as)
       }
 }
 
-void Grid::transposexz(double * restrict ar, double * restrict as)
+void Grid::transpose_xz(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -213,7 +213,7 @@ void Grid::transposexz(double * restrict ar, double * restrict as)
       }
 }
 
-void Grid::transposexy(double * restrict ar, double * restrict as)
+void Grid::transpose_xy(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -229,7 +229,7 @@ void Grid::transposexy(double * restrict ar, double * restrict as)
       }
 }
 
-void Grid::transposeyx(double * restrict ar, double * restrict as)
+void Grid::transpose_yx(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -245,7 +245,7 @@ void Grid::transposeyx(double * restrict ar, double * restrict as)
       }
 }
 
-void Grid::transposeyz(double * restrict ar, double * restrict as)
+void Grid::transpose_yz(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -261,7 +261,7 @@ void Grid::transposeyz(double * restrict ar, double * restrict as)
       }
 }
 
-void Grid::transposezy(double * restrict ar, double * restrict as)
+void Grid::transpose_zy(double * restrict ar, double * restrict as)
 {
   int ijk,jj,kk;
   jj = imax;
@@ -277,15 +277,15 @@ void Grid::transposezy(double * restrict ar, double * restrict as)
       }
 }
 
-void Grid::getMax(double *var)
+void Grid::get_max(double *var)
 {
 }
 
-void Grid::getSum(double *var)
+void Grid::get_sum(double *var)
 {
 }
 
-void Grid::getProf(double *prof, int kcellsin)
+void Grid::get_prof(double *prof, int kcellsin)
 {
 }
 
@@ -421,7 +421,7 @@ void Grid::load()
   fftw_forget_wisdom();
 }
 
-int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::save_field3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "wbx");
@@ -456,7 +456,7 @@ int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * r
   return 0;
 }
 
-int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::load_field3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   FILE *pFile;
   pFile = fopen(filename, "rb");
@@ -491,7 +491,7 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
   return 0;
 }
 
-void Grid::fftForward(double * restrict data,   double * restrict tmp1,
+void Grid::fft_forward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
@@ -547,7 +547,7 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
   }
 }
 
-void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
+void Grid::fft_backward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
@@ -603,7 +603,7 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
   }
 }
 
-int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filename, int jslice)
+int Grid::save_xz_slice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -636,7 +636,7 @@ int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filen
   return 0;
 }
 
-int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::save_xy_slice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -669,7 +669,7 @@ int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filen
   return 0;
 }
 
-int Grid::loadxySlice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::load_xy_slice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   int count = imax*jmax;
 

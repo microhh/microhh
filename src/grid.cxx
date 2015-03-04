@@ -148,7 +148,7 @@ Grid::~Grid()
   clear_device();
   #endif
 
-  exitMpi();
+  exit_mpi();
 }
 
 /**
@@ -236,7 +236,7 @@ void Grid::init()
   fftoutj = fftw_alloc_real(jtot*iblock);
 
   // initialize the communication functions
-  initMpi();
+  init_mpi();
 }
 
 /**
@@ -247,7 +247,7 @@ void Grid::init()
 void Grid::create(Input *inputin)
 {
   // get the grid coordinates from the input
-  if (inputin->getProf(&z[kstart], "z", kmax))
+  if (inputin->get_prof(&z[kstart], "z", kmax))
     throw 1;
 
   if (z[kend-1] > zsize)
@@ -489,7 +489,7 @@ void Grid::interpolate_4th(double * restrict out, double * restrict in, const in
  * @param krange Number of vertical levels over which the profile is to be calculated.
  * @return Returns 0.
  */
-void Grid::calcMean(double * restrict prof, const double * restrict data, const int krange)
+void Grid::calc_mean(double * restrict prof, const double * restrict data, const int krange)
 {
   int ijk,jj,kk;
 
@@ -513,7 +513,7 @@ void Grid::calcMean(double * restrict prof, const double * restrict data, const 
   for (int k=0; k<krange; ++k)
     prof[k] /= n;
 
-  getProf(prof, krange);
+  get_prof(prof, krange);
 }
 
 /*

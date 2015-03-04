@@ -82,8 +82,8 @@ void Buffer::create(Input* inputin)
     if (swbuffer == "1")
     {
         // set the buffers according to the initial profiles of the variables
-        nerror += inputin->getProf(&bufferprofs["u"][grid->kstart], "u", grid->kmax);
-        nerror += inputin->getProf(&bufferprofs["v"][grid->kstart], "v", grid->kmax);
+        nerror += inputin->get_prof(&bufferprofs["u"][grid->kstart], "u", grid->kmax);
+        nerror += inputin->get_prof(&bufferprofs["v"][grid->kstart], "v", grid->kmax);
 
         // in case of u and v, subtract the grid velocity
         for (int k=grid->kstart; k<grid->kend; ++k)
@@ -97,7 +97,7 @@ void Buffer::create(Input* inputin)
             bufferprofs["w"][k] = 0.;
 
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            nerror += inputin->getProf(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
+            nerror += inputin->get_prof(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
 
         // find the starting points
         bufferkstart  = grid->kstart;

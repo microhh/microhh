@@ -28,7 +28,7 @@
 #include "defines.h"
 
 // MPI functions
-void Grid::initMpi()
+void Grid::init_mpi()
 {
   // create the MPI types for the cyclic boundary conditions
   int datacount, datablock, datastride;
@@ -142,7 +142,7 @@ void Grid::initMpi()
   mpitypes = true;
 } 
 
-void Grid::exitMpi()
+void Grid::exit_mpi()
 {
   if (mpitypes)
   {
@@ -166,7 +166,7 @@ void Grid::exitMpi()
   }
 }
 
-void Grid::boundaryCyclic(double * restrict data, Edge edge)
+void Grid::boundary_cyclic(double * restrict data, Edge edge)
 {
   const int ncount = 1;
 
@@ -236,7 +236,7 @@ void Grid::boundaryCyclic(double * restrict data, Edge edge)
   }
 }
 
-void Grid::boundaryCyclic2d(double * restrict data)
+void Grid::boundary_cyclic_2d(double * restrict data)
 {
   int ncount = 1;
 
@@ -299,7 +299,7 @@ void Grid::boundaryCyclic2d(double * restrict data)
   }
 }
 
-void Grid::transposezx(double * restrict ar, double * restrict as)
+void Grid::transpose_zx(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -323,7 +323,7 @@ void Grid::transposezx(double * restrict ar, double * restrict as)
   master->waitAll();
 }
 
-void Grid::transposexz(double * restrict ar, double * restrict as)
+void Grid::transpose_xz(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -347,7 +347,7 @@ void Grid::transposexz(double * restrict ar, double * restrict as)
   master->waitAll();
 }
 
-void Grid::transposexy(double * restrict ar, double * restrict as)
+void Grid::transpose_xy(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -371,7 +371,7 @@ void Grid::transposexy(double * restrict ar, double * restrict as)
   master->waitAll();
 }
 
-void Grid::transposeyx(double * restrict ar, double * restrict as)
+void Grid::transpose_yx(double * restrict ar, double * restrict as)
 {
   int ijks, ijkr;
   int ncount = 1;
@@ -395,7 +395,7 @@ void Grid::transposeyx(double * restrict ar, double * restrict as)
   master->waitAll();
 }
 
-void Grid::transposeyz(double * restrict ar, double * restrict as)
+void Grid::transpose_yz(double * restrict ar, double * restrict as)
 {
   int ijks,ijkr;
   int ncount = 1;
@@ -419,7 +419,7 @@ void Grid::transposeyz(double * restrict ar, double * restrict as)
   master->waitAll();
 }
 
-void Grid::transposezy(double * restrict ar, double * restrict as)
+void Grid::transpose_zy(double * restrict ar, double * restrict as)
 {
   int ijks,ijkr;
   int ncount = 1;
@@ -443,19 +443,19 @@ void Grid::transposezy(double * restrict ar, double * restrict as)
   master->waitAll();
 }
 
-void Grid::getMax(double *var)
+void Grid::get_max(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, master->commxy);
 }
 
-void Grid::getSum(double *var)
+void Grid::get_sum(double *var)
 {
   double varl = *var;
   MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, master->commxy);
 }
 
-void Grid::getProf(double *prof, int kcellsin)
+void Grid::get_prof(double *prof, int kcellsin)
 {
   for (int k=0; k<kcellsin; k++)
     profl[k] = prof[k] / master->nprocs;
@@ -643,7 +643,7 @@ void Grid::load()
   fftw_forget_wisdom();
 }
 
-int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::save_field3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -669,7 +669,7 @@ int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * r
         tmp1[ijkb] = data[ijk] + offset;
       }
 
-  transposezx(tmp2, tmp1);
+  transpose_zx(tmp2, tmp1);
 
   MPI_File fh;
   if (MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
@@ -691,7 +691,7 @@ int Grid::saveField3d(double * restrict data, double * restrict tmp1, double * r
   return 0;
 }
 
-int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::load_field3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
 {
   // save the data in transposed order to have large chunks of contiguous disk space
   // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -716,7 +716,7 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
     return 1;
 
   // transpose the data back
-  transposexz(tmp2, tmp1);
+  transpose_xz(tmp2, tmp1);
 
   int ijk,jj,kk;
   int ijkb,jjb,kkb;
@@ -739,14 +739,14 @@ int Grid::loadField3d(double * restrict data, double * restrict tmp1, double * r
   return 0;
 }
 
-void Grid::fftForward(double * restrict data,   double * restrict tmp1,
+void Grid::fft_forward(double * restrict data,   double * restrict tmp1,
                       double * restrict fftini, double * restrict fftouti,
                       double * restrict fftinj, double * restrict fftoutj)
 {
   int ij,ijk,kk;
 
   // transpose the pressure field
-  transposezx(tmp1,data);
+  transpose_zx(tmp1,data);
 
   kk = itot*jmax;
 
@@ -773,7 +773,7 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
   }
 
   // transpose again
-  transposexy(data,tmp1);
+  transpose_xy(data,tmp1);
 
   kk = iblock*jtot;
 
@@ -801,17 +801,17 @@ void Grid::fftForward(double * restrict data,   double * restrict tmp1,
   }
 
   // transpose back to original orientation
-  transposeyz(data,tmp1);
+  transpose_yz(data,tmp1);
 }
 
-void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
+void Grid::fft_backward(double * restrict data,   double * restrict tmp1,
                        double * restrict fftini, double * restrict fftouti,
                        double * restrict fftinj, double * restrict fftoutj)
 {
   int ij,ijk,kk;
 
   // transpose back to y
-  transposezy(tmp1, data);
+  transpose_zy(tmp1, data);
 
   kk = iblock*jtot;
 
@@ -838,7 +838,7 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
   }
 
   // transpose back to x
-  transposeyx(tmp1, data);
+  transpose_yx(tmp1, data);
 
   kk = itot*jmax;
 
@@ -866,10 +866,10 @@ void Grid::fftBackward(double * restrict data,   double * restrict tmp1,
   }
 
   // and transpose back...
-  transposexz(tmp1, data);
+  transpose_xz(tmp1, data);
 }
 
-int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filename, int jslice)
+int Grid::save_xz_slice(double * restrict data, double * restrict tmp, char *filename, int jslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -927,7 +927,7 @@ int Grid::savexzSlice(double * restrict data, double * restrict tmp, char *filen
   return nerror;
 }
 
-int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::save_xy_slice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;
@@ -978,7 +978,7 @@ int Grid::savexySlice(double * restrict data, double * restrict tmp, char *filen
   return 0;
 }
 
-int Grid::loadxySlice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::load_xy_slice(double * restrict data, double * restrict tmp, char *filename, int kslice)
 {
   // extract the data from the 3d field without the ghost cells
   int ijk,jj,kk;

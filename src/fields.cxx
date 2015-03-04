@@ -254,7 +254,7 @@ void Fields::exec()
     if (calc_mean_profs)
     {
         for (FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
-            grid->calcMean(it->second->datamean, it->second->data, grid->kcells);
+            grid->calc_mean(it->second->datamean, it->second->data, grid->kcells);
     }
 }
 #endif
@@ -320,9 +320,9 @@ void Fields::calc_mask_wplus(double* restrict mask, double* restrict maskh, doub
             maskbot[ij] = maskh[ijk];
         }
 
-    grid->boundaryCyclic(mask);
-    grid->boundaryCyclic(maskh);
-    grid->boundaryCyclic2d(maskbot);
+    grid->boundary_cyclic(mask);
+    grid->boundary_cyclic(maskh);
+    grid->boundary_cyclic_2d(maskbot);
 
     master->sum(nmask , grid->kcells);
     master->sum(nmaskh, grid->kcells);
@@ -376,9 +376,9 @@ void Fields::calc_mask_wmin(double* restrict mask, double* restrict maskh, doubl
             maskbot[ij] = maskh[ijk];
         }
 
-    grid->boundaryCyclic(mask);
-    grid->boundaryCyclic(maskh);
-    grid->boundaryCyclic2d(maskbot);
+    grid->boundary_cyclic(mask);
+    grid->boundary_cyclic(maskh);
+    grid->boundary_cyclic_2d(maskbot);
 
     master->sum(nmask , grid->kcells);
     master->sum(nmaskh, grid->kcells);
@@ -403,7 +403,7 @@ void Fields::exec_stats(Mask *m)
     stats->calcArea(m->profs["areah"].data, wloc, stats->nmaskh);
 
     // start with the stats on the w location, to make the wmean known for the flux calculations
-    stats->calcMean(m->profs["w"].data, w->data, NoOffset, wloc, atmp["tmp4"]->data, stats->nmaskh);
+    stats->calc_mean(m->profs["w"].data, w->data, NoOffset, wloc, atmp["tmp4"]->data, stats->nmaskh);
     for (int n=2; n<5; ++n)
     {
         std::stringstream ss;
@@ -416,8 +416,8 @@ void Fields::exec_stats(Mask *m)
     // calculate the stats on the u location
     // interpolate the mask horizontally onto the u coordinate
     grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, uloc);
-    stats->calcMean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
-    stats->calcMean(umodel            , u->data, NoOffset   , uloc, atmp["tmp1"]->data, stats->nmask);
+    stats->calc_mean(m->profs["u"].data, u->data, grid->utrans, uloc, atmp["tmp1"]->data, stats->nmask);
+    stats->calc_mean(umodel            , u->data, NoOffset   , uloc, atmp["tmp1"]->data, stats->nmask);
     for (int n=2; n<5; ++n)
     {
         std::stringstream ss;
@@ -458,8 +458,8 @@ void Fields::exec_stats(Mask *m)
 
     // calculate the stats on the v location
     grid->interpolate_2nd(atmp["tmp1"]->data, atmp["tmp3"]->data, sloc, vloc);
-    stats->calcMean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
-    stats->calcMean(vmodel            , v->data, NoOffset   , vloc, atmp["tmp1"]->data, stats->nmask);
+    stats->calc_mean(m->profs["v"].data, v->data, grid->vtrans, vloc, atmp["tmp1"]->data, stats->nmask);
+    stats->calc_mean(vmodel            , v->data, NoOffset   , vloc, atmp["tmp1"]->data, stats->nmask);
     for (int n=2; n<5; ++n)
     {
         std::stringstream ss;
@@ -502,7 +502,7 @@ void Fields::exec_stats(Mask *m)
     Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
     for (FieldMap::const_iterator it=sp.begin(); it!=sp.end(); ++it)
     {
-        stats->calcMean(m->profs[it->first].data, it->second->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
+        stats->calc_mean(m->profs[it->first].data, it->second->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
         for (int n=2; n<5; ++n)
         {
             std::stringstream ss;
@@ -539,7 +539,7 @@ void Fields::exec_stats(Mask *m)
     }
 
     // Calculate pressure statistics
-    stats->calcMean(m->profs["p"].data, sd["p"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
+    stats->calc_mean(m->profs["p"].data, sd["p"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
     stats->calcMoment(sd["p"]->data, m->profs["p"].data, m->profs["p2"].data, 2, sloc,
                       atmp["tmp1"]->data, stats->nmask);
     if (grid->swspatialorder == "2")
@@ -557,7 +557,7 @@ void Fields::exec_stats(Mask *m)
         stats->addFluxes(m->profs[it->first+"flux"].data, m->profs[it->first+"w"].data, m->profs[it->first+"diff"].data);
 
     if (model->diff->get_name() == "smag2")
-        stats->calcMean(m->profs["evisc"].data, sd["evisc"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
+        stats->calc_mean(m->profs["evisc"].data, sd["evisc"]->data, NoOffset, sloc, atmp["tmp3"]->data, stats->nmask);
 }
 
 void Fields::set_calc_mean_profs(bool sw)
@@ -779,7 +779,7 @@ int Fields::add_mean_prof(Input* inputin, std::string fld, double* restrict data
     const int jj = grid->icells;
     const int kk = grid->ijcells;
 
-    if (inputin->getProf(proftemp, fld, grid->kmax))
+    if (inputin->get_prof(proftemp, fld, grid->kmax))
         return 1;
 
     for (int k=grid->kstart; k<grid->kend; ++k)
@@ -805,7 +805,7 @@ void Fields::load(int n)
         char filename[256];
         std::sprintf(filename, "%s.%07d", it->second->name.c_str(), n);
         master->print_message("Loading \"%s\" ... ", filename);
-        if (grid->loadField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
+        if (grid->load_field3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
         {
             master->print_message("FAILED\n");
             ++nerror;
@@ -898,7 +898,7 @@ void Fields::save(int n)
         master->print_message("Saving \"%s\" ... ", filename);
 
         // the offset is kept at zero, because otherwise bitwise identical restarts is not possible
-        if (grid->saveField3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
+        if (grid->save_field3d(it->second->data, atmp["tmp1"]->data, atmp["tmp2"]->data, filename, NoOffset))
         {
             master->print_message("FAILED\n");
             ++nerror;
@@ -955,7 +955,7 @@ double Fields::calc_mass(double* restrict s, double* restrict dz)
                 mass += s[ijk]*dz[k];
             }
 
-    grid->getSum(&mass);
+    grid->get_sum(&mass);
 
     mass /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -981,7 +981,7 @@ double Fields::calc_momentum_2nd(double* restrict u, double* restrict v, double*
                 momentum += (interp2(u[ijk], u[ijk+ii]) + interp2(v[ijk], v[ijk+jj]) + interp2(w[ijk], w[ijk+kk]))*dz[k];
             }
 
-    grid->getSum(&momentum);
+    grid->get_sum(&momentum);
 
     momentum /= (grid->itot*grid->jtot*grid->zsize);
 
@@ -1009,7 +1009,7 @@ double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* rest
                        + interp2(w[ijk]*w[ijk], w[ijk+kk]*w[ijk+kk]))*dz[k];
             }
 
-    grid->getSum(&tke);
+    grid->get_sum(&tke);
 
     tke /= (grid->itot*grid->jtot*grid->zsize);
     tke *= 0.5;

@@ -439,7 +439,7 @@ void Diff_smag_2::exec_viscosity()
                                                       grid->icellsp, grid->ijcellsp);  
     cudaCheckError();
 
-    grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
+    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
   // assume buoyancy calculation is needed
   else
@@ -458,7 +458,7 @@ void Diff_smag_2::exec_viscosity()
                                               grid->icellsp, grid->ijcellsp);  
     cudaCheckError();
 
-    grid->boundaryCyclic_g(&fields->sd["evisc"]->data_g[offs]);
+    grid->boundary_cyclic_g(&fields->sd["evisc"]->data_g[offs]);
   }
 }
 #endif
@@ -527,7 +527,7 @@ unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
   cudaCheckError();
 
   // Get maximum from tmp1 field
-  dnmul = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+  dnmul = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
   dnmul = std::max(constants::dsmall, dnmul);
   idtlim = idt * dnmax/(dnmul*dt);
 
@@ -560,7 +560,7 @@ double Diff_smag_2::get_dn(double dt)
   cudaCheckError();
 
   // Get maximum from tmp1 field
-  dnmul = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
+  dnmul = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
   return dnmul*dt;
 }

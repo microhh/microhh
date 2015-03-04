@@ -345,7 +345,7 @@ void Boundary_surface::update_bcs()
   cudaCheckError();
 
   // 2D cyclic boundaries on dutot  
-  grid->boundaryCyclic2d_g(&fields->atmp["tmp2"]->data_g[offs]);
+  grid->boundary_cyclic_2d_g(&fields->atmp["tmp2"]->data_g[offs]);
 
   // start with retrieving the stability information
   if(model->thermo->getSwitch() == "0")
@@ -382,8 +382,8 @@ void Boundary_surface::update_bcs()
   cudaCheckError();
 
   // 2D cyclic boundaries on the surface fluxes  
-  grid->boundaryCyclic2d_g(&fields->u->datafluxbot_g[offs]);
-  grid->boundaryCyclic2d_g(&fields->v->datafluxbot_g[offs]);
+  grid->boundary_cyclic_2d_g(&fields->u->datafluxbot_g[offs]);
+  grid->boundary_cyclic_2d_g(&fields->v->datafluxbot_g[offs]);
 
   // Calculate surface gradients, including ghost cells
   BoundarySurface_g::surfm_grad<<<gridGPU2, blockGPU2>>>(&fields->u->datagradbot_g[offs], &fields->v->datagradbot_g[offs],

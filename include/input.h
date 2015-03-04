@@ -55,7 +55,7 @@ class Input
     int getList(std::vector<double> *     , std::string, std::string, std::string);
     int getList(std::vector<std::string> *, std::string, std::string, std::string);
 
-    int getProf(double *, std::string, int size);
+    int get_prof(double *, std::string, int size);
     int getTime(double **, std::vector<double> *, std::string);
     int getTimeProf(double **, std::vector<double> *, std::string, int);
 

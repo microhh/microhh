@@ -442,9 +442,9 @@ void Pres_4::exec(double dt)
   const int offs = grid->memoffset;
 
   // calculate the cyclic BCs first
-  grid->boundaryCyclic_g(&fields->ut->data_g[offs]);
-  grid->boundaryCyclic_g(&fields->vt->data_g[offs]);
-  grid->boundaryCyclic_g(&fields->wt->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->ut->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->vt->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->wt->data_g[offs]);
 
   Pres_4_g::gcwt<<<grid2dGPU, block2dGPU>>>(&fields->wt->data_g[offs],
                                            grid->icellsp, grid->ijcellsp,
@@ -463,7 +463,7 @@ void Pres_4::exec(double dt)
                                          grid->igc, grid->jgc, grid->kgc);
   cudaCheckError();
 
-  fftForward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
+  fft_forward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
   double *tmp1_g = fields->atmp["tmp1"]->data_g;
   double *tmp2_g = fields->atmp["tmp2"]->data_g;
@@ -512,7 +512,7 @@ void Pres_4::exec(double dt)
     cudaCheckError();
   }
 
-  fftBackward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
+  fft_backward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
   cudaSafeCall(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
@@ -523,7 +523,7 @@ void Pres_4::exec(double dt)
                                            grid->imax, grid->jmax, grid->kmax);
   cudaCheckError();
 
-  grid->boundaryCyclic_g(&fields->sd["p"]->data_g[offs]);
+  grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
 
   // 3. Get the pressure tendencies from the pressure field.
   Pres_4_g::presout<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
@@ -557,8 +557,8 @@ double Pres_4::checkDivergence()
                                                  grid->iend, grid->jend, grid->kend);
   cudaCheckError();
 
-  double divmax = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
-  grid->getMax(&divmax);
+  double divmax = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g);
+  grid->get_max(&divmax);
 
   return divmax;
 }

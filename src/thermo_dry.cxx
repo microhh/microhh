@@ -130,7 +130,7 @@ void Thermo_dry::create(Input *inputin)
   {
     if (inputin->getItem(&pbot, "thermo", "pbot", ""))
       throw 1;
-    if (inputin->getProf(&thref[grid->kstart], "th", grid->kmax))
+    if (inputin->get_prof(&thref[grid->kstart], "th", grid->kmax))
       throw 1;
 
     initBaseState(fields->rhoref, fields->rhorefh, pref, prefh, exner, exnerh, thref, threfh, pbot);
@@ -173,7 +173,7 @@ void Thermo_dry::exec_stats(Mask *m)
   const int sloc[] = {0,0,0};
 
   // calculate the mean
-  stats->calcMean(m->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset, sloc,
+  stats->calc_mean(m->profs["b"].data, fields->atmp["tmp1"]->data, NoOffset, sloc,
                   fields->atmp["tmp3"]->data, stats->nmask);
 
   // calculate the moments

@@ -883,7 +883,7 @@ int Input::checkList(std::vector<double> *value, std::string cat, std::string it
   return 0;
 }
 
-int Input::getProf(double *data, std::string varname, int kmaxin)
+int Input::get_prof(double *data, std::string varname, int kmaxin)
 {
   DataMap::const_iterator it = proflist.find(varname);
 

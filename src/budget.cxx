@@ -146,8 +146,8 @@ void Budget::exec_stats(Mask *m)
         return;
 
     // calculate the mean of the fields
-    grid->calcMean(umodel, fields->u->data, grid->kcells);
-    grid->calcMean(vmodel, fields->v->data, grid->kcells);
+    grid->calc_mean(umodel, fields->u->data, grid->kcells);
+    grid->calc_mean(vmodel, fields->v->data, grid->kcells);
 
     if (grid->swspatialorder == "4")
     {
@@ -1131,8 +1131,8 @@ void Budget::calc_tke_budget_buoy(double* restrict w, double* restrict b,
         tke_buoy[k] /= n;
     }
 
-    grid->getProf(w2_buoy , grid->kcells);
-    grid->getProf(tke_buoy, grid->kcells);
+    grid->get_prof(w2_buoy , grid->kcells);
+    grid->get_prof(tke_buoy, grid->kcells);
 }
 
 void Budget::calc_pe(double* restrict b, double* restrict zsort, double* restrict zsortbot, double* restrict zsorttop,
