@@ -188,7 +188,7 @@ void Grid::boundary_cyclic(double* restrict data, Edge edge)
         MPI_Irecv(&data[eastin], ncount, eastwestedge, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
         master->reqsn++;
         // Wait here for the MPI to have correct values in the corners of the cells.
-        master->waitAll();
+        master->wait_all();
     }
 
     if (edge == North_south_edge || edge == Both_edges)
@@ -211,7 +211,7 @@ void Grid::boundary_cyclic(double* restrict data, Edge edge)
             master->reqsn++;
             MPI_Irecv(&data[northin], ncount, northsouthedge, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
             master->reqsn++;
-            master->waitAll();
+            master->wait_all();
         }
         // In case of 2D, fill all the ghost cells in the y-direction with the same value.
         else
@@ -260,7 +260,7 @@ void Grid::boundary_cyclic_2d(double* restrict data)
     MPI_Irecv(&data[eastin], ncount, eastwestedge2d, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
     master->reqsn++;
     // wait here for the mpi to have correct values in the corners of the cells
-    master->waitAll();
+    master->wait_all();
 
     // if the run is 3D, apply the BCs
     if (jtot > 1)
@@ -274,7 +274,7 @@ void Grid::boundary_cyclic_2d(double* restrict data)
         master->reqsn++;
         MPI_Irecv(&data[northin], ncount, northsouthedge2d, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
         master->reqsn++;
-        master->waitAll();
+        master->wait_all();
     }
     // in case of 2D, fill all the ghost cells with the current value
     else
@@ -315,7 +315,7 @@ void Grid::transpose_zx(double* restrict ar, double* restrict as)
         MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master->commx, &master->reqs[master->reqsn]);
         master->reqsn++;
     }
-    master->waitAll();
+    master->wait_all();
 }
 
 void Grid::transpose_xz(double* restrict ar, double* restrict as)
@@ -338,7 +338,7 @@ void Grid::transpose_xz(double* restrict ar, double* restrict as)
         MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master->commx, &master->reqs[master->reqsn]);
         master->reqsn++;
     }
-    master->waitAll();
+    master->wait_all();
 }
 
 void Grid::transpose_xy(double* restrict ar, double* restrict as)
@@ -361,7 +361,7 @@ void Grid::transpose_xy(double* restrict ar, double* restrict as)
         MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master->commy, &master->reqs[master->reqsn]);
         master->reqsn++;
     }
-    master->waitAll();
+    master->wait_all();
 }
 
 void Grid::transpose_yx(double* restrict ar, double* restrict as)
@@ -384,7 +384,7 @@ void Grid::transpose_yx(double* restrict ar, double* restrict as)
         MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master->commy, &master->reqs[master->reqsn]);
         master->reqsn++;
     }
-    master->waitAll();
+    master->wait_all();
 }
 
 void Grid::transpose_yz(double* restrict ar, double* restrict as)
@@ -407,7 +407,7 @@ void Grid::transpose_yz(double* restrict ar, double* restrict as)
         MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master->commx, &master->reqs[master->reqsn]);
         master->reqsn++;
     }
-    master->waitAll();
+    master->wait_all();
 }
 
 void Grid::transpose_zy(double* restrict ar, double* restrict as)
@@ -430,7 +430,7 @@ void Grid::transpose_zy(double* restrict ar, double* restrict as)
         MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master->commx, &master->reqs[master->reqsn]);
         master->reqsn++;
     }
-    master->waitAll();
+    master->wait_all();
 }
 
 void Grid::get_max(double *var)
