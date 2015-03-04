@@ -34,40 +34,40 @@ class Master;
 
 class Pres
 {
-  public:
-    Pres(Model*, Input*);
-    virtual ~Pres();
-    static Pres* factory(Master*, Input*, Model*, const std::string); ///< Factory function for pres class generation.
+    public:
+        Pres(Model*, Input*);
+        virtual ~Pres();
+        static Pres* factory(Master*, Input*, Model*, const std::string); ///< Factory function for pres class generation.
 
-    virtual void init();
-    virtual void set_values();
+        virtual void init();
+        virtual void set_values();
 
-    virtual void exec(double);
-    virtual double check_divergence();
+        virtual void exec(double);
+        virtual double check_divergence();
 
-    virtual void prepare_device();
+        virtual void prepare_device();
 
-  protected:
-    Master* master;
-    Model*  model;
-    Grid*   grid;
-    Fields* fields;
+    protected:
+        Master* master;
+        Model*  model;
+        Grid*   grid;
+        Fields* fields;
 
-    #ifdef USECUDA
-    void make_cufft_plan();
-    void fft_forward (double*, double*, double*);
-    void fft_backward(double*, double*, double*);
+#ifdef USECUDA
+        void make_cufft_plan();
+        void fft_forward (double*, double*, double*);
+        void fft_backward(double*, double*, double*);
 
-    bool FFTPerSlice;
-    cufftHandle iplanf;
-    cufftHandle jplanf;
-    cufftHandle iplanb;
-    cufftHandle jplanb;
-    #endif
-  
-  private:
-    #ifdef USECUDA
-    void check_cufft_memory();
-    #endif
+        bool FFTPerSlice;
+        cufftHandle iplanf;
+        cufftHandle jplanf;
+        cufftHandle iplanb;
+        cufftHandle jplanb;
+#endif
+
+    private:
+#ifdef USECUDA
+        void check_cufft_memory();
+#endif
 };
 #endif
