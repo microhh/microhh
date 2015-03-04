@@ -34,14 +34,14 @@
 #include "thermo_dry.h"
 #include "thermo_moist.h"
 
-Thermo::Thermo(Model *modelin, Input *inputin)
+Thermo::Thermo(Model* modelin, Input* inputin)
 {
-  model  = modelin;
-  grid   = model->grid;
-  fields = model->fields;
-  master = model->master;
+    model  = modelin;
+    grid   = model->grid;
+    fields = model->fields;
+    master = model->master;
 
-  swthermo = "0";
+    swthermo = "0";
 }
 
 Thermo::~Thermo()
@@ -52,7 +52,7 @@ void Thermo::init()
 {
 }
 
-void Thermo::create(Input *inputin)
+void Thermo::create(Input* inputin)
 {
 }
 
@@ -60,7 +60,7 @@ void Thermo::exec()
 {
 }
 
-void Thermo::exec_stats(Mask *f)
+void Thermo::exec_stats(Mask* f)
 {
 }
 
@@ -72,29 +72,29 @@ void Thermo::exec_dump()
 {
 }
 
-bool Thermo::checkThermoField(std::string name)
+bool Thermo::check_thermo_field(std::string name)
 {
-  return true;  // always returns error 
+    return true;  // always returns error 
 }
 
-void Thermo::getThermoField(Field3d *field, Field3d *tmp, std::string name)
-{
-}
-
-void Thermo::getBuoyancySurf(Field3d *bfield)
+void Thermo::get_thermo_field(Field3d* field, Field3d* tmp, std::string name)
 {
 }
 
-void Thermo::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo::get_buoyancy_surf(Field3d* bfield)
 {
 }
 
-std::string Thermo::getSwitch()
+void Thermo::get_buoyancy_fluxbot(Field3d *bfield)
 {
-  return swthermo;
 }
 
-void Thermo::getProgVars(std::vector<std::string> *list)
+std::string Thermo::get_switch()
+{
+    return swthermo;
+}
+
+void Thermo::get_prog_vars(std::vector<std::string> *list)
 {
 }
 
@@ -102,27 +102,27 @@ void Thermo::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *f)
 {
 }
 
-Thermo* Thermo::factory(Master *masterin, Input *inputin, Model *modelin)
+Thermo* Thermo::factory(Master* masterin, Input* inputin, Model* modelin)
 {
-  std::string swthermo;
-  if (inputin->get_item(&swthermo, "thermo", "swthermo", "", "0"))
-    return 0;
+    std::string swthermo;
+    if (inputin->get_item(&swthermo, "thermo", "swthermo", "", "0"))
+        return 0;
 
-  if (swthermo== "moist")
-    return new Thermo_moist(modelin, inputin);
-  else if (swthermo == "buoy")
-    return new Thermo_buoy(modelin, inputin);
-  else if (swthermo == "dry")
-    return new Thermo_dry(modelin, inputin);
-  else if (swthermo == "buoy_slope")
-    return new Thermo_buoy_slope(modelin, inputin);
-  else if (swthermo == "0")
-    return new Thermo(modelin, inputin);
-  else
-  {
-    masterin->print_error("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
-    return 0;
-  }
+    if (swthermo== "moist")
+        return new Thermo_moist(modelin, inputin);
+    else if (swthermo == "buoy")
+        return new Thermo_buoy(modelin, inputin);
+    else if (swthermo == "dry")
+        return new Thermo_dry(modelin, inputin);
+    else if (swthermo == "buoy_slope")
+        return new Thermo_buoy_slope(modelin, inputin);
+    else if (swthermo == "0")
+        return new Thermo(modelin, inputin);
+    else
+    {
+        masterin->print_error("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
+        return 0;
+    }
 }
 
 void Thermo::prepare_device()

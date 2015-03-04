@@ -113,13 +113,13 @@ void Budget::create()
     stats->add_prof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
     stats->add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
 
-    if (model->thermo->getSwitch() != "0")
+    if (model->thermo->get_switch() != "0")
     {
         stats->add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
         stats->add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
     }
 
-    if (model->thermo->getSwitch() != "0")
+    if (model->thermo->get_switch() != "0")
     {
         // add the profiles for the potential energy budget to the statistics
         stats->add_prof("bsort", "Sorted buoyancy", "m s-2", "z");
@@ -169,16 +169,16 @@ void Budget::exec_stats(Mask *m)
                         grid->dzi4, grid->dzhi4, fields->visc);
 
         // calculate the buoyancy term of the TKE budget
-        if (model->thermo->getSwitch() != "0")
+        if (model->thermo->get_switch() != "0")
         {
             // store the buoyancy in the tmp1 field
-            model->thermo->getThermoField(fields->atmp["tmp1"], fields->atmp["tmp2"], "b");
+            model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "b");
             calc_tke_budget_buoy(fields->w->data, fields->atmp["tmp1"]->data,
                                  m->profs["w2_buoy"].data, m->profs["tke_buoy"].data);
         }
 
         // calculate the potential energy budget
-        if (model->thermo->getSwitch() != "0")
+        if (model->thermo->get_switch() != "0")
         {
             // calculate the sorted buoyancy profile, tmp1 still contains the buoyancy
             stats->calc_sorted_prof(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, m->profs["bsort"].data);

@@ -104,7 +104,7 @@ Model::Model(Master *masterin, Input *inputin)
       {
         master->print_warning("%s is an undefined mask for conditional statistics\n", it->c_str());
       }
-      else if ((*it == "ql" || *it == "qlcore") && thermo->getSwitch() != "moist")
+      else if ((*it == "ql" || *it == "qlcore") && thermo->get_switch() != "moist")
         master->print_warning("%s mask only works for swthermo=moist \n", it->c_str());
       else
         stats->add_mask(*it);

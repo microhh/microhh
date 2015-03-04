@@ -127,7 +127,7 @@ void Boundary_surface::init(Input *inputin)
 
     // check whether the prognostic thermo vars are of the same type
     std::vector<std::string> thermolist;
-    model->thermo->getProgVars(&thermolist);
+    model->thermo->get_prog_vars(&thermolist);
 
     std::vector<std::string>::const_iterator it = thermolist.begin();
 
@@ -308,42 +308,42 @@ void Boundary_surface::set_values()
 void Boundary_surface::update_bcs()
 {
     // Start with retrieving the stability information.
-    if (model->thermo->getSwitch() == "0")
+    if (model->thermo->get_switch() == "0")
     {
         stability_neutral(ustar, obuk,
-                fields->u->data, fields->v->data,
-                fields->u->databot, fields->v->databot,
-                fields->atmp["tmp1"]->data, grid->z);
+                          fields->u->data, fields->v->data,
+                          fields->u->databot, fields->v->databot,
+                          fields->atmp["tmp1"]->data, grid->z);
     }
     else
     {
         // Store the buoyancy in tmp1.
-        model->thermo->getBuoyancySurf(fields->atmp["tmp1"]);
+        model->thermo->get_buoyancy_surf(fields->atmp["tmp1"]);
         stability(ustar, obuk, fields->atmp["tmp1"]->datafluxbot,
-                fields->u->data,    fields->v->data,    fields->atmp["tmp1"]->data,
-                fields->u->databot, fields->v->databot, fields->atmp["tmp1"]->databot,
-                fields->atmp["tmp2"]->data, grid->z);
+                  fields->u->data,    fields->v->data,    fields->atmp["tmp1"]->data,
+                  fields->u->databot, fields->v->databot, fields->atmp["tmp1"]->databot,
+                  fields->atmp["tmp2"]->data, grid->z);
     }
 
     // Calculate the surface value, gradient and flux depending on the chosen boundary condition.
     surfm(ustar, obuk,
-            fields->u->data, fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
-            fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
-            grid->z[grid->kstart], mbcbot);
+          fields->u->data, fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
+          fields->v->data, fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
+          grid->z[grid->kstart], mbcbot);
 
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
         surfs(ustar, obuk, it->second->data,
-                it->second->databot, it->second->datagradbot, it->second->datafluxbot,
-                grid->z[grid->kstart], sbc[it->first]->bcbot);
+              it->second->databot, it->second->datagradbot, it->second->datafluxbot,
+              grid->z[grid->kstart], sbc[it->first]->bcbot);
     }
 }
 #endif
 
 void Boundary_surface::stability(double* restrict ustar, double* restrict obuk, double* restrict bfluxbot,
-        double* restrict u    , double* restrict v   , double* restrict b       ,
-        double* restrict ubot , double* restrict vbot, double* restrict bbot    ,
-        double* restrict dutot, double* restrict z)
+                                 double* restrict u    , double* restrict v   , double* restrict b       ,
+                                 double* restrict ubot , double* restrict vbot, double* restrict bbot    ,
+                                 double* restrict dutot, double* restrict z)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -411,9 +411,9 @@ void Boundary_surface::stability(double* restrict ustar, double* restrict obuk, 
 }
 
 void Boundary_surface::stability_neutral(double* restrict ustar, double* restrict obuk,
-        double* restrict u    , double* restrict v   ,
-        double* restrict ubot , double* restrict vbot,
-        double* restrict dutot, double* restrict z)
+                                         double* restrict u    , double* restrict v   ,
+                                         double* restrict ubot , double* restrict vbot,
+                                         double* restrict dutot, double* restrict z)
 {
     const int ii = 1;
     const int jj = grid->icells;

@@ -32,38 +32,38 @@ struct Mask;
 class Thermo
 {
   public:
-    Thermo(Model *, Input *);
+    Thermo(Model*, Input*);
     virtual ~Thermo();
-    static Thermo* factory(Master *, Input *, Model *); ///< Factory function for thermo class generation.
+    static Thermo* factory(Master*, Input*, Model*); ///< Factory function for thermo class generation.
 
     virtual void init();
-    virtual void create(Input *);
+    virtual void create(Input*);
     virtual void exec();
-    virtual void exec_stats(Mask *);
+    virtual void exec_stats(Mask*);
 
     virtual void exec_cross();
     virtual void exec_dump();
 
-    virtual void get_mask(Field3d *, Field3d *, Mask *);
+    virtual void get_mask(Field3d*, Field3d*, Mask*);
 
     // interfacing functions to get buoyancy properties from other classes
-    virtual bool checkThermoField(std::string name);
-    virtual void getThermoField(Field3d *, Field3d *, std::string name);
-    virtual void getBuoyancySurf(Field3d *);
-    virtual void getBuoyancyFluxbot(Field3d *);
-    virtual void getProgVars(std::vector<std::string> *);
+    virtual bool check_thermo_field(std::string name);
+    virtual void get_thermo_field(Field3d*, Field3d*, std::string name);
+    virtual void get_buoyancy_surf(Field3d*);
+    virtual void get_buoyancy_fluxbot(Field3d*);
+    virtual void get_prog_vars(std::vector<std::string>*);
 
-    std::string getSwitch();
+    std::string get_switch();
 
     // GPU functions and variables
     virtual void prepare_device();
     virtual void clear_device();
 
   protected:
-    Grid   *grid;
-    Fields *fields;
-    Master *master;
-    Model  *model;
+    Grid*   grid;
+    Fields* fields;
+    Master* master;
+    Model*  model;
 
     std::string swthermo;
 };
