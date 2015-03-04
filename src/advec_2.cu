@@ -161,12 +161,12 @@ double Advec_2::get_cfl(const double dt)
 
     const int offs = grid->memoffset;
 
-    Advec_2_g::calc_cfl<<<gridGPU, blockGPU>>>
-        (&fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
-         &fields->atmp["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
-         grid->icellsp, grid->ijcellsp,
-         grid->istart,  grid->jstart, grid->kstart,
-         grid->iend,    grid->jend,   grid->kend);
+    Advec_2_g::calc_cfl<<<gridGPU, blockGPU>>>(
+        &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
+        &fields->atmp["tmp1"]->data_g[offs], grid->dzi_g, dxi, dyi,
+        grid->icellsp, grid->ijcellsp,
+        grid->istart,  grid->jstart, grid->kstart,
+        grid->iend,    grid->jend,   grid->kend);
     cudaCheckError(); 
 
     double cfl = grid->getMax_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
@@ -191,23 +191,23 @@ void Advec_2::exec()
 
     const int offs = grid->memoffset;
 
-    Advec_2_g::advec_uvw<<<gridGPU, blockGPU>>>
-        (&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs], 
-         &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs], 
-         fields->rhoref_g, fields->rhorefh_g, grid->dzi_g, grid->dzhi_g, dxi, dyi, 
-         grid->icellsp, grid->ijcellsp,
-         grid->istart,  grid->jstart, grid->kstart,
-         grid->iend,    grid->jend,   grid->kend);
+    Advec_2_g::advec_uvw<<<gridGPU, blockGPU>>>(
+        &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs], 
+        &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs], 
+        fields->rhoref_g, fields->rhorefh_g, grid->dzi_g, grid->dzhi_g, dxi, dyi, 
+        grid->icellsp, grid->ijcellsp,
+        grid->istart,  grid->jstart, grid->kstart,
+        grid->iend,    grid->jend,   grid->kend);
     cudaCheckError(); 
 
     for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-        Advec_2_g::advec_s<<<gridGPU, blockGPU>>>
-            (&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
-             &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
-             fields->rhoref_g, fields->rhorefh_g, grid->dzi_g, dxi, dyi,
-             grid->icellsp, grid->ijcellsp,
-             grid->istart,  grid->jstart, grid->kstart,
-             grid->iend,    grid->jend,   grid->kend);
+        Advec_2_g::advec_s<<<gridGPU, blockGPU>>>(
+            &it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
+            &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
+            fields->rhoref_g, fields->rhorefh_g, grid->dzi_g, dxi, dyi,
+            grid->icellsp, grid->ijcellsp,
+            grid->istart,  grid->jstart, grid->kstart,
+            grid->iend,    grid->jend,   grid->kend);
     cudaCheckError(); 
 }
 #endif
