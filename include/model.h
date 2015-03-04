@@ -44,47 +44,46 @@ class Budget;
 
 class Model
 {
-  public:
-    Model(Master*, Input*);
-    ~Model();
+    public:
+        Model(Master*, Input*);
+        ~Model();
 
-    void init();
-    void load();
-    void save();
-    void exec();
+        void init();
+        void load();
+        void save();
+        void exec();
 
-    // Make the pointers public for use in other classes.
-    // TODO maybe it is safer to create get functions
-    Master* master;
-    Input*  input;
-    Grid*   grid;
-    Fields* fields;
+        // Make the pointers public for use in other classes.
+        // TODO maybe it is safer to create get functions
+        Master* master;
+        Input*  input;
+        Grid*   grid;
+        Fields* fields;
 
-    // Model operators.
-    Boundary* boundary;
-    Timeloop* timeloop;
-    Advec*    advec;
-    Diff*     diff;
-    Pres*     pres;  
-    Force*    force;   
-    Thermo*   thermo;
-    Buffer*   buffer;
+        // Model operators.
+        Boundary* boundary;
+        Timeloop* timeloop;
+        Advec*    advec;
+        Diff*     diff;
+        Pres*     pres;  
+        Force*    force;   
+        Thermo*   thermo;
+        Buffer*   buffer;
 
-    // Postprocessing and output modules.
-    Stats*  stats;
-    Cross*  cross;
-    Dump*   dump;
-    Budget* budget;
+        // Postprocessing and output modules.
+        Stats*  stats;
+        Cross*  cross;
+        Dump*   dump;
+        Budget* budget;
 
-  private:
+    private:
+        // list of masks for statistics
+        std::vector<std::string> masklist;
 
-    // list of masks for statistics
-    std::vector<std::string> masklist;
+        void delete_objects();
 
-    void delete_objects();
-
-    void print_status();
-    void calc_stats(std::string);
-    void set_time_step();
+        void print_status();
+        void calc_stats(std::string);
+        void set_time_step();
 };
 #endif
