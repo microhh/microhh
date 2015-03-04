@@ -171,7 +171,7 @@ namespace Force_g
   }
 }
 
-void Force::prepareDevice()
+void Force::prepare_device()
 {
   const int nmemsize  = grid->kcells*sizeof(double);
 
@@ -210,7 +210,7 @@ void Force::prepareDevice()
   }
 }
 
-void Force::clearDevice()
+void Force::clear_device()
 {
   if(swlspres == "geo")
   {
@@ -330,7 +330,7 @@ void Force::exec(double dt)
 #endif
 
 #ifdef USECUDA
-void Force::updateTimeDepProfs(double fac0, double fac1, int index0, int index1)
+void Force::update_time_depProfs(double fac0, double fac1, int index0, int index1)
 {
   const int blockk = 128;
   const int gridk  = grid->kmax/blockk + (grid->kmax%blockk > 0);

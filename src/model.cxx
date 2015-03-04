@@ -276,7 +276,7 @@ void Model::exec()
     {
       #ifdef USECUDA
       // Copy fields from device to host
-      if (stats->doStats() || cross->doCross() || dump->doDump())
+      if (stats->doStats() || cross->do_cross() || dump->doDump())
       {
         fields  ->backward_device();
         boundary->backward_device();

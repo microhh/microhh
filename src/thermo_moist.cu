@@ -371,7 +371,7 @@ namespace ThermoMoist_g
   }
 } // end namespace
 
-void ThermoMoist::prepareDevice()
+void ThermoMoist::prepare_device()
 {
   const int nmemsize = grid->kcells*sizeof(double);
 
@@ -392,7 +392,7 @@ void ThermoMoist::prepareDevice()
   cudaSafeCall(cudaMemcpy(exnrefh_g, exnrefh, nmemsize, cudaMemcpyHostToDevice));
 }
 
-void ThermoMoist::clearDevice()
+void ThermoMoist::clear_device()
 {
   cudaSafeCall(cudaFree(thvref_g ));
   cudaSafeCall(cudaFree(thvrefh_g));
@@ -455,7 +455,7 @@ void ThermoMoist::exec()
   }
   else if(grid->swspatialorder == "4")
   {
-    master->printMessage("4th order thermo_moist not (yet) implemented\n");  
+    master->print_message("4th order thermo_moist not (yet) implemented\n");  
   //  calcbuoyancytend_4th(fields->wt->data, fields->s["th"]->data, threfh);
     throw 1;
   }

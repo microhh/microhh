@@ -161,7 +161,7 @@ namespace Diff4_g
 }
 
 #ifdef USECUDA
-void Diff4::exec()
+void Diff_4::exec()
 {
   const int blocki = 128;
   const int blockj = 2;

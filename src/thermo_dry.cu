@@ -119,7 +119,7 @@ namespace ThermoDry_g
   }
 } // end namespace
 
-void ThermoDry::prepareDevice()
+void ThermoDry::prepare_device()
 {
   const int nmemsize = grid->kcells*sizeof(double);
 
@@ -141,7 +141,7 @@ void ThermoDry::prepareDevice()
   cudaSafeCall(cudaMemcpy(thref_g,  thref,  nmemsize, cudaMemcpyHostToDevice));
 }
 
-void ThermoDry::clearDevice()
+void ThermoDry::clear_device()
 {
   cudaSafeCall(cudaFree(thref_g ));
   cudaSafeCall(cudaFree(threfh_g));
@@ -175,7 +175,7 @@ void ThermoDry::exec()
   }
   else if(grid->swspatialorder == "4")
   {
-    master->printMessage("4th order thermo_dry not (yet) implemented\n");  
+    master->print_message("4th order thermo_dry not (yet) implemented\n");  
     throw 1;
   }
 }

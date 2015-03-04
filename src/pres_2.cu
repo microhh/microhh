@@ -206,7 +206,7 @@ namespace Pres2_g
   }
 } // End namespace.
 
-void Pres2::prepareDevice()
+void Pres2::prepare_device()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -229,7 +229,7 @@ void Pres2::prepareDevice()
   makeCufftPlan();
 }
 
-void Pres2::clearDevice()
+void Pres2::clear_device()
 {
   cudaSafeCall(cudaFree(bmati_g ));
   cudaSafeCall(cudaFree(bmatj_g ));

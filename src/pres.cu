@@ -207,7 +207,7 @@ void Pres::makeCufftPlan()
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
-    master->printMessage("cuFFT strategy: batched per 2D slice\n");
+    master->print_message("cuFFT strategy: batched per 2D slice\n");
   }
   else
   {
@@ -216,7 +216,7 @@ void Pres::makeCufftPlan()
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot)); 
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
     nerror += Pres_g::checkCuFFT(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
-    master->printMessage("cuFFT strategy: batched over entire 3D field\n");
+    master->print_message("cuFFT strategy: batched over entire 3D field\n");
   }
 
   if(nerror > 0)

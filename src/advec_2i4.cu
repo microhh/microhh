@@ -383,7 +383,7 @@ namespace Advec2i4_g
 }
 
 #ifdef USECUDA
-unsigned long Advec2i4::getTimeLimit(unsigned long idt, double dt)
+unsigned long Advec_2i4::get_time_limit(unsigned long idt, double dt)
 {
   unsigned long idtlim;
   double cfl;
@@ -398,7 +398,7 @@ unsigned long Advec2i4::getTimeLimit(unsigned long idt, double dt)
 #endif
 
 #ifdef USECUDA
-double Advec2i4::get_cfl(const double dt)
+double Advec_2i4::get_cfl(const double dt)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -432,7 +432,7 @@ double Advec2i4::get_cfl(const double dt)
 #endif
 
 #ifdef USECUDA
-void Advec2i4::exec()
+void Advec_2i4::exec()
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;

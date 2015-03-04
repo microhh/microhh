@@ -563,7 +563,7 @@ double Pres4::checkDivergence()
   return divmax;
 }
 
-void Pres4::prepareDevice()
+void Pres4::prepare_device()
 {
   const int kmemsize = grid->kmax*sizeof(double);
   const int imemsize = grid->itot*sizeof(double);
@@ -594,7 +594,7 @@ void Pres4::prepareDevice()
   makeCufftPlan();
 }
 
-void Pres4::clearDevice()
+void Pres4::clear_device()
 {
   cudaSafeCall(cudaFree(bmati_g));
   cudaSafeCall(cudaFree(bmatj_g));

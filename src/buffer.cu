@@ -59,7 +59,7 @@ namespace Buffer_g
   }
 }
 
-void Buffer::prepareDevice()
+void Buffer::prepare_device()
 {
   if(swbuffer == "1")
   {
@@ -79,7 +79,7 @@ void Buffer::prepareDevice()
   }
 }
 
-void Buffer::clearDevice()
+void Buffer::clear_device()
 {
   if(swbuffer == "1")
   {

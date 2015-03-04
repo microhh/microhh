@@ -98,7 +98,7 @@ namespace BoundarySurface_g
                             int * __restrict__ nobuk_g,
                             double z0m, double z0h, double zsl,
                             int icells, int jcells, int kstart, int jj, int kk, 
-                            Boundary::BoundaryType mbcbot, int thermobc)
+                            Boundary::Boundary_type mbcbot, int thermobc)
   {
     int i = blockIdx.x*blockDim.x + threadIdx.x; 
     int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -109,18 +109,18 @@ namespace BoundarySurface_g
       int ijk = i + j*jj + kstart*kk;
   
       // case 1: fixed buoyancy flux and fixed ustar
-      if(mbcbot == Boundary::UstarType && thermobc == Boundary::FluxType)
+      if(mbcbot == Boundary::Ustar_type && thermobc == Boundary::Flux_type)
       {
         obuk[ij] = -pow(ustar[ij], 3) / (constants::kappa*bfluxbot[ij]);
       }
       // case 2: fixed buoyancy flux and free ustar
-      else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::FluxType)
+      else if(mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Flux_type)
       {
         obuk [ij] = calcobuk_noslip_flux(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
         ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
       }
       // case 3: fixed buoyancy surface value and free ustar
-      else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::DirichletType)
+      else if(mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Dirichlet_type)
       {
         double db = b[ijk] - bbot[ij];
         obuk [ij] = calcobuk_noslip_dirichlet(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
@@ -133,7 +133,7 @@ namespace BoundarySurface_g
   __global__ void stability_neutral(double * __restrict__ ustar, double * __restrict__ obuk,
                                     double * __restrict__ dutot, double z0m, double z0h, double zsl,
                                     int icells, int jcells, int kstart, int jj, int kk,
-                                    Boundary::BoundaryType mbcbot, int thermobc)
+                                    Boundary::Boundary_type mbcbot, int thermobc)
   {
     int i = blockIdx.x*blockDim.x + threadIdx.x; 
     int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -143,18 +143,18 @@ namespace BoundarySurface_g
       int ij  = i + j*jj;
   
       // case 1: fixed buoyancy flux and fixed ustar
-      if(mbcbot == Boundary::UstarType && thermobc == Boundary::FluxType)
+      if(mbcbot == Boundary::Ustar_type && thermobc == Boundary::Flux_type)
       {
         obuk[ij] = -constants::dbig;
       }
       // case 2: fixed buoyancy flux and free ustar
-      else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::FluxType)
+      else if(mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Flux_type)
       {
         obuk [ij] = -constants::dbig;
         ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
       }
       // case 3: fixed buoyancy surface value and free ustar
-      else if(mbcbot == Boundary::DirichletType && thermobc == Boundary::DirichletType)
+      else if(mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Dirichlet_type)
       {
         obuk [ij] = -constants::dbig;
         ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
@@ -169,7 +169,7 @@ namespace BoundarySurface_g
                              double zsl, double z0m,
                              int istart, int jstart, int kstart,
                              int iend,   int jend, int jj, int kk,
-                             Boundary::BoundaryType bcbot)
+                             Boundary::Boundary_type bcbot)
   {
     int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
     int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -180,13 +180,13 @@ namespace BoundarySurface_g
       int ij  = i + j*jj;
       int ijk = i + j*jj + kstart*kk;
   
-      if(bcbot == Boundary::DirichletType)
+      if(bcbot == Boundary::Dirichlet_type)
       {
         // interpolate the whole stability function rather than ustar or obuk
         ufluxbot[ij] = -(u[ijk]-ubot[ij])*0.5*(ustar[ij-ii]*most::fm(zsl, z0m, obuk[ij-ii]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
         vfluxbot[ij] = -(v[ijk]-vbot[ij])*0.5*(ustar[ij-jj]*most::fm(zsl, z0m, obuk[ij-jj]) + ustar[ij]*most::fm(zsl, z0m, obuk[ij]));
       }
-      else if(bcbot == Boundary::UstarType)
+      else if(bcbot == Boundary::Ustar_type)
       {
         double u2,v2,vonu2,uonv2,ustaronu4,ustaronv4;
         const double minval = 1.e-2;
@@ -232,7 +232,7 @@ namespace BoundarySurface_g
                         double * __restrict__ ustar, double * __restrict__ obuk, double zsl, double z0h,
                         int icells, int jcells, int kstart,
                         int jj, int kk,
-                        Boundary::BoundaryType bcbot)
+                        Boundary::Boundary_type bcbot)
   {
     int i = blockIdx.x*blockDim.x + threadIdx.x; 
     int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -242,12 +242,12 @@ namespace BoundarySurface_g
       int ij  = i + j*jj;
       int ijk = i + j*jj + kstart*kk;
   
-      if(bcbot == Boundary::DirichletType)
+      if(bcbot == Boundary::Dirichlet_type)
       {
         varfluxbot[ij] = -(var[ijk]-varbot[ij])*ustar[ij]*most::fh(zsl, z0h, obuk[ij]);
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
       }
-      else if(bcbot == Boundary::FluxType)
+      else if(bcbot == Boundary::Flux_type)
       {
         varbot[ij]     = varfluxbot[ij] / (ustar[ij]*most::fh(zsl, z0h, obuk[ij])) + var[ijk];
         vargradbot[ij] = (var[ijk]-varbot[ij])/zsl;
@@ -256,7 +256,7 @@ namespace BoundarySurface_g
   }
 }
 
-void BoundarySurface::prepareDevice()
+void Boundary_surface::prepare_device()
 {
   const int dmemsize2d  = (grid->ijcellsp+grid->memoffset)*sizeof(double);
   const int imemsize2d  = (grid->ijcellsp+grid->memoffset)*sizeof(int);
@@ -281,7 +281,7 @@ void BoundarySurface::prepareDevice()
 }
 
 // TMP BVS
-void BoundarySurface::forwardDevice()
+void Boundary_surface::forward_device()
 {
   const int dimemsizep  = grid->icellsp * sizeof(double);
   const int dimemsize   = grid->icells  * sizeof(double);
@@ -294,7 +294,7 @@ void BoundarySurface::forwardDevice()
 }
 
 // TMP BVS
-void BoundarySurface::backwardDevice()
+void Boundary_surface::backward_device()
 {
   const int dimemsizep  = grid->icellsp * sizeof(double);
   const int dimemsize   = grid->icells  * sizeof(double);
@@ -306,7 +306,7 @@ void BoundarySurface::backwardDevice()
   cudaSafeCall(cudaMemcpy2D(nobuk, iimemsize, &nobuk_g[grid->memoffset], iimemsizep, iimemsize, grid->jcells,  cudaMemcpyDeviceToHost));
 }
 
-void BoundarySurface::clearDevice()
+void Boundary_surface::clear_device()
 {
   cudaSafeCall(cudaFree(obuk_g ));
   cudaSafeCall(cudaFree(ustar_g));
@@ -316,7 +316,7 @@ void BoundarySurface::clearDevice()
 }
 
 #ifdef USECUDA
-void BoundarySurface::updateBcs()
+void Boundary_surface::update_bcs()
 {
   int gridi, gridj;
   const int blocki = grid->iThreadBlock;

@@ -93,7 +93,7 @@ void Field3d::initDevice()
   cudaSafeCall(cudaMalloc(&datamean_g,    nmemsize1d));
 }
 
-void Field3d::clearDevice()
+void Field3d::clear_device()
 {
   cudaSafeCall(cudaFree(data_g));
   cudaSafeCall(cudaFree(databot_g));

@@ -52,7 +52,7 @@ namespace Boundary_g
     }
   } 
 
-  __global__ void calcGhostCellsBot_2nd(double * __restrict__ a, double * __restrict__ dzh, Boundary::BoundaryType sw, 
+  __global__ void calcGhostCellsBot_2nd(double * __restrict__ a, double * __restrict__ dzh, Boundary::Boundary_type sw, 
                                         double * __restrict__ abot, double * __restrict__ agradbot,
                                         const int icells, const int icellsp,
                                         const int jcells, const int kstart)
@@ -66,15 +66,15 @@ namespace Boundary_g
   
     if(i < icells && j < jcells)
     {
-      if(sw == Boundary::DirichletType)
+      if(sw == Boundary::Dirichlet_type)
         a[ijk-kk] = 2.*abot[ij] - a[ijk];
   
-      else if(sw == Boundary::NeumannType || sw == Boundary::FluxType)
+      else if(sw == Boundary::Neumann_type || sw == Boundary::Flux_type)
         a[ijk-kk] = -agradbot[ij]*dzh[kstart] + a[ijk];
     }
   } 
   
-  __global__ void calcGhostCellsTop_2nd(double * __restrict__ a, double * __restrict__ dzh, const Boundary::BoundaryType sw,
+  __global__ void calcGhostCellsTop_2nd(double * __restrict__ a, double * __restrict__ dzh, const Boundary::Boundary_type sw,
                                         double * __restrict__ atop, double * __restrict__ agradtop,
                                         const int icells, const int icellsp,
                                         const int jcells, const int kend)
@@ -88,15 +88,15 @@ namespace Boundary_g
   
     if(i < icells && j < jcells)
     {
-      if(sw == Boundary::DirichletType)
+      if(sw == Boundary::Dirichlet_type)
         a[ijk+kk] = 2.*atop[ij] - a[ijk];
   
-      else if(sw == Boundary::NeumannType || sw == Boundary::FluxType)
+      else if(sw == Boundary::Neumann_type || sw == Boundary::Flux_type)
         a[ijk+kk] = agradtop[ij]*dzh[kend] + a[ijk];
     }
   }
   
-  __global__ void calcGhostCellsBot_4th(double * __restrict__ a, const Boundary::BoundaryType sw,
+  __global__ void calcGhostCellsBot_4th(double * __restrict__ a, const Boundary::Boundary_type sw,
                                         double * __restrict__ abot, double * __restrict__ agradbot,
                                         double * __restrict__ z,
                                         const int icells, const int icellsp,
@@ -113,13 +113,13 @@ namespace Boundary_g
   
     if(i < icells && j < jcells)
     {
-      if(sw == Boundary::DirichletType)
+      if(sw == Boundary::Dirichlet_type)
       {
         a[ijk-kk1] = (8./3.)*abot[ij] - 2.*a[ijk] + (1./3.)*a[ijk+kk1];
         a[ijk-kk2] = 8.*abot[ij] - 9.*a[ijk] + 2.*a[ijk+kk1];
       }
   
-      else if(sw == Boundary::NeumannType || sw == Boundary::FluxType)
+      else if(sw == Boundary::Neumann_type || sw == Boundary::Flux_type)
       {
         a[ijk-kk1] = -(1./24.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk    ];
         a[ijk-kk2] = -(1./ 8.)*grad4x(z[kstart-2], z[kstart-1], z[kstart], z[kstart+1])*agradbot[ij] + a[ijk+kk1];
@@ -127,7 +127,7 @@ namespace Boundary_g
     }
   } 
   
-  __global__ void calcGhostCellsTop_4th(double * __restrict__ a, const Boundary::BoundaryType sw,
+  __global__ void calcGhostCellsTop_4th(double * __restrict__ a, const Boundary::Boundary_type sw,
                                         double * __restrict__ atop, double * __restrict__ agradtop,
                                         double * __restrict__ z,
                                         const int icells, const int icellsp,
@@ -144,13 +144,13 @@ namespace Boundary_g
   
     if(i < icells && j < jcells)
     {
-      if(sw == Boundary::DirichletType)
+      if(sw == Boundary::Dirichlet_type)
       {
         a[ijk+kk1] = (8./3.)*atop[ij] - 2.*a[ijk] + (1./3.)*a[ijk-kk1];
         a[ijk+kk2] = 8.*atop[ij] - 9.*a[ijk] + 2.*a[ijk-kk1];
       }
   
-      else if(sw == Boundary::NeumannType || sw == Boundary::FluxType)
+      else if(sw == Boundary::Neumann_type || sw == Boundary::Flux_type)
       {
         a[ijk+kk1] = (1./24.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk    ];
         a[ijk+kk2] = (1./ 8.)*grad4x(z[kend-2], z[kend-1], z[kend], z[kend+1])*agradtop[ij] + a[ijk-kk1];
@@ -219,7 +219,7 @@ void Boundary::exec()
     grid->boundaryCyclic_g(&it->second->data_g[offs]);
 
   // Calculate the boundary values.
-  updateBcs();
+  update_bcs();
 
   if(grid->swspatialorder == "2")
   {
@@ -322,8 +322,8 @@ void Boundary::exec()
 }
 #endif
 
-void Boundary::setBc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
-                       BoundaryType sw, double aval, double visc, double offset)
+void Boundary::set_bc_g(double * restrict a, double * restrict agrad, double * restrict aflux, 
+                       Boundary_type sw, double aval, double visc, double offset)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -332,18 +332,18 @@ void Boundary::setBc_g(double * restrict a, double * restrict agrad, double * re
   dim3 grid2dGPU (gridi, gridj);
   dim3 block2dGPU(blocki, blockj);
   const int offs = grid->memoffset;
-  if(sw == DirichletType)
+  if(sw == Dirichlet_type)
   {
     Boundary_g::setbc<<<grid2dGPU, block2dGPU>>>(&a[offs], aval-offset,    grid->icells, grid->icellsp, grid->jcells);
     cudaCheckError(); 
   }
-  else if(sw == NeumannType)
+  else if(sw == Neumann_type)
   {
     Boundary_g::setbc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
     Boundary_g::setbc<<<grid2dGPU, block2dGPU>>>(&aflux[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
     cudaCheckError(); 
   }
-  else if(sw == FluxType)
+  else if(sw == Flux_type)
   {
     Boundary_g::setbc<<<grid2dGPU, block2dGPU>>>(&aflux[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
     Boundary_g::setbc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);

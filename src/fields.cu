@@ -193,7 +193,7 @@ double Fields::checkMass()
 /**
  * This function allocates all field3d instances and fields at device 
  */
-void Fields::prepareDevice()
+void Fields::prepare_device()
 {
   const int nmemsize   = grid->ncellsp*sizeof(double);
   const int nmemsize1d = grid->kcells*sizeof(double);
@@ -225,19 +225,19 @@ void Fields::prepareDevice()
 /**
  * This function deallocates all field3d instances and fields at device 
  */
-void Fields::clearDevice()
+void Fields::clear_device()
 {
   for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
-    it->second->clearDevice();
+    it->second->clear_device();
 
   for(FieldMap::const_iterator it=sd.begin(); it!=sd.end(); ++it)
-    it->second->clearDevice();
+    it->second->clear_device();
 
   for(FieldMap::const_iterator it=at.begin(); it!=at.end(); ++it)
     cudaSafeCall(cudaFree(it->second->data_g));
 
-  atmp["tmp1"]->clearDevice();
-  atmp["tmp2"]->clearDevice();
+  atmp["tmp1"]->clear_device();
+  atmp["tmp2"]->clear_device();
   
   cudaSafeCall(cudaFree(rhoref_g));
   cudaSafeCall(cudaFree(rhorefh_g));
@@ -269,7 +269,7 @@ void Fields::forwardDevice()
 /**
  * This function copies all fields required for statistics and output from device to host 
  */
-void Fields::backwardDevice()
+void Fields::backward_device()
 {
   for(FieldMap::const_iterator it=ap.begin(); it!=ap.end(); ++it)
     backwardField3dDevice(it->second);

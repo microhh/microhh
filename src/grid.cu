@@ -95,7 +95,7 @@ namespace Grid_g
   }
 }
 
-void Grid::prepareDevice()
+void Grid::prepare_device()
 {
   /* Align the interior of the grid (i.e. excluding ghost cells) with 
      the 128 byte memory blocks of the GPU's global memory */
@@ -130,7 +130,7 @@ void Grid::prepareDevice()
   cudaSafeCall(cudaMemcpy(dzhi4_g, dzhi4, kmemsize, cudaMemcpyHostToDevice));
 }
 
-void Grid::clearDevice()
+void Grid::clear_device()
 {
   cudaSafeCall(cudaFree(z_g    ));
   cudaSafeCall(cudaFree(zh_g   ));

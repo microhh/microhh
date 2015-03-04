@@ -111,7 +111,7 @@ void ThermoBuoySlope::exec()
 
   if(grid->swspatialorder== "2")
   {
-    master->printError("Second order accuracy not implemented for slope flow thermodynamics\n");
+    master->print_error("Second order accuracy not implemented for slope flow thermodynamics\n");
     throw 1;
   }
   else if(grid->swspatialorder== "4")

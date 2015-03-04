@@ -379,9 +379,9 @@ namespace DiffSmag2_g
 
 /* Calculate the mixing length (mlen) offline, and put on GPU */
 #ifdef USECUDA
-void DiffSmag2::prepareDevice()
+void Diff_smag_2::prepare_device()
 {
-  BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
+  Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
 
   const double n=2.;
   double mlen0;
@@ -400,16 +400,16 @@ void DiffSmag2::prepareDevice()
 }
 #endif
 
-void DiffSmag2::clearDevice()
+void Diff_smag_2::clear_device()
 {
   cudaSafeCall(cudaFree(mlen_g));
 }
 
 #ifdef USECUDA
-void DiffSmag2::execViscosity()
+void Diff_smag_2::exec_viscosity()
 {
   // do a cast because the base boundary class does not have the MOST related variables
-  BoundarySurface *boundaryptr = static_cast<BoundarySurface *>(model->boundary);
+  Boundary_surface *boundaryptr = static_cast<Boundary_surface *>(model->boundary);
 
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -464,7 +464,7 @@ void DiffSmag2::execViscosity()
 #endif
 
 #ifdef USECUDA
-void DiffSmag2::exec()
+void Diff_smag_2::exec()
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -502,7 +502,7 @@ void DiffSmag2::exec()
 #endif
 
 #ifdef USECUDA
-unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
+unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
@@ -536,7 +536,7 @@ unsigned long DiffSmag2::getTimeLimit(unsigned long idt, double dt)
 #endif
 
 #ifdef USECUDA
-double DiffSmag2::get_dn(double dt)
+double Diff_smag_2::get_dn(double dt)
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;

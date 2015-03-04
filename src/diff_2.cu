@@ -83,7 +83,7 @@ namespace Diff2_g
 }
 
 #ifdef USECUDA
-void Diff2::exec()
+void Diff_2::exec()
 {
   const int blocki = grid->iThreadBlock;
   const int blockj = grid->jThreadBlock;
