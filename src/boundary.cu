@@ -222,8 +222,8 @@ void Boundary::exec()
     grid->boundaryCyclic_g(&fields->v->data_g[offs]);
     grid->boundaryCyclic_g(&fields->w->data_g[offs]);
 
-    for(FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
-        grid->boundaryCyclic_g(&it->second->data_g[offs]);
+    for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); ++it)
+         grid->boundaryCyclic_g(&it->second->data_g[offs]);
 
     // Calculate the boundary values.
     update_bcs();
