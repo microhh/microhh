@@ -121,7 +121,7 @@ void Timeloop::setTimeStepLimit()
   idtlim = idtmax;
 
   // Check whether the run should be stopped because of the wall clock limit
-  if (master->atWallClockLimit())
+  if (master->at_wall_clock_limit())
   {
     // Set the time step to the nearest multiple of iotimeprec
     idtlim = std::min(idtlim, iiotimeprec - itime % iiotimeprec);
@@ -163,7 +163,7 @@ bool Timeloop::doSave()
 {
   // Check whether the simulation has to stop due to the wallclock limit,
   // but only at a time step where actual saves can be made.
-  if (itime % iiotimeprec == 0 && !inSubStep() && master->atWallClockLimit())
+  if (itime % iiotimeprec == 0 && !inSubStep() && master->at_wall_clock_limit())
   {
     master->print_warning("Simulation will be stopped after saving the restart files due to wall clock limit\n");
 
