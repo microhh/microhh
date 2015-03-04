@@ -214,7 +214,7 @@ void Fields::init()
   }
 
   // Get global dump-list from cross.cxx
-  std::vector<std::string> *dumplist_global = model->dump->getDumpList(); 
+  std::vector<std::string> *dumplist_global = model->dump->get_dumplist(); 
 
   // Check if fields in dumplist are diagnostic fields, if not delete them and print warning
   std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
@@ -1061,5 +1061,5 @@ void Fields::exec_cross()
 void Fields::exec_dump()
 {
   for (std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
-    model->dump->saveDump(sd[*it]->data, atmp["tmp1"]->data, *it);
+    model->dump->save_dump(sd[*it]->data, atmp["tmp1"]->data, *it);
 }

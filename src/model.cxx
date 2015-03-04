@@ -276,7 +276,7 @@ void Model::exec()
     {
       #ifdef USECUDA
       // Copy fields from device to host
-      if (stats->doStats() || cross->doCross() || dump->doDump())
+      if (stats->doStats() || cross->doCross() || dump->do_dump())
       {
         fields  ->backward_device();
         boundary->backward_device();
@@ -318,7 +318,7 @@ void Model::exec()
       }
 
       // Save the 3d dumps to disk
-      if (dump->doDump())
+      if (dump->do_dump())
       {
         fields->exec_dump();
         thermo->exec_dump();
