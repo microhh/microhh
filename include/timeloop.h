@@ -34,87 +34,87 @@ class Fields;
 
 class Timeloop
 {
-  public:
-    Timeloop(Model*, Input*);
-    ~Timeloop();
+    public:
+        Timeloop(Model*, Input*);
+        ~Timeloop();
 
-    void step_time();
-    void step_post_proc_time();
-    void set_time_step();
-    void set_time_step_limit();
-    void set_time_step_limit(unsigned long);
-    double get_sub_time_step();
+        void step_time();
+        void step_post_proc_time();
+        void set_time_step();
+        void set_time_step_limit();
+        void set_time_step_limit(unsigned long);
+        double get_sub_time_step();
 
-    void exec();
+        void exec();
 
-    double check();
+        double check();
 
-    void save(int);
-    void load(int);
+        void save(int);
+        void load(int);
 
-    // Query functions for main loop
-    bool in_substep();
-    bool is_stats_step();
-    bool do_check();
-    bool do_save();
-    bool is_finished();
+        // Query functions for main loop
+        bool in_substep();
+        bool is_stats_step();
+        bool do_check();
+        bool do_save();
+        bool is_finished();
 
-    // Accessors for other classes
-    double get_time()   { return time;    }
-    double get_dt()     { return dt;      }
-    double get_ifactor(){ return ifactor; }
-    unsigned long get_itime() { return itime; }
-    unsigned long get_idt()   { return idt;   }
-    int get_iotime()    { return iotime;    }
-    int get_iteration() { return iteration; }
+        // Accessors for other classes
+        double get_time()   { return time;    }
+        double get_dt()     { return dt;      }
+        double get_ifactor(){ return ifactor; }
+        unsigned long get_itime() { return itime; }
+        unsigned long get_idt()   { return idt;   }
+        int get_iotime()    { return iotime;    }
+        int get_iteration() { return iteration; }
 
-  private:
-    Master* master;
-    Model*  model;
-    Grid*   grid;
-    Fields* fields;
+    private:
+        Master* master;
+        Model*  model;
+        Grid*   grid;
+        Fields* fields;
 
-    timeval start;
-    timeval end;
+        timeval start;
+        timeval end;
 
-    int rkorder;
+        int rkorder;
 
-    int outputiter;
+        int outputiter;
 
-    void rk3(double*, double*, double);
-    void rk4(double*, double*, double);
+        void rk3(double*, double*, double);
+        void rk4(double*, double*, double);
 
-    double rk3subdt(double);
-    double rk4subdt(double);
+        double rk3subdt(double);
+        double rk4subdt(double);
 
-    // Variables
-    bool loop;
+        // Variables
+        bool loop;
 
-    int substep;
-    bool adaptivestep;
+        int substep;
+        bool adaptivestep;
 
-    double time;
-    double dt;
-    double dtmax;
-    double endtime;
-    double postproctime;
-    double savetime;
-    double starttime;
+        double time;
+        double dt;
+        double dtmax;
+        double endtime;
+        double postproctime;
+        double savetime;
+        double starttime;
 
-    int iteration;
-    int iotime;
-    int iotimeprec;
+        int iteration;
+        int iotime;
+        int iotimeprec;
 
-    unsigned long itime;
-    unsigned long istarttime;
-    unsigned long iendtime;
-    unsigned long idt;
-    unsigned long idtmax;
-    unsigned long ipostproctime;
-    unsigned long isavetime;
-    unsigned long idtlim;
-    unsigned long iiotimeprec;
+        unsigned long itime;
+        unsigned long istarttime;
+        unsigned long iendtime;
+        unsigned long idt;
+        unsigned long idtmax;
+        unsigned long ipostproctime;
+        unsigned long isavetime;
+        unsigned long idtlim;
+        unsigned long iiotimeprec;
 
-    double ifactor;
+        double ifactor;
 };
 #endif
