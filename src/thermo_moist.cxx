@@ -596,6 +596,65 @@ void Thermo_moist::get_prog_vars(std::vector<std::string> *list)
   list->push_back("qt");
 }
 
+namespace
+{
+    // INLINE FUNCTIONS
+    inline double buoyancy(const double exn, const double thl, const double qt, const double ql, const double thvref)
+    {
+      return grav * ((thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
+    }
+    
+    inline double buoyancy_no_ql(const double thl, const double qt, const double thvref)
+    {
+      return grav * (thl * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
+    }
+    
+    inline double buoyancy_flux_no_ql(const double thl, const double thlflux, const double qt, const double qtflux, const double thvref)
+    {
+      return grav/thvref * (thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux);
+    }
+    
+    inline double esat(const double T)
+    {
+      const double x=std::max(-80.,T-T0);
+      return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
+    }
+    
+    inline double qsat(const double p, const double T)
+    {
+      return ep*esat(T)/(p-(1-ep)*esat(T));
+    }
+    
+    inline double sat_adjust(const double thl, const double qt, const double p, const double exn)
+    {
+      int niter = 0, nitermax = 30;
+      double ql, tl, tnr_old = 1.e9, tnr, qs=0;
+      tl = thl * exn;
+      tnr = tl;
+      while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
+      {
+        ++niter;
+        tnr_old = tnr;
+        qs = qsat(p,tnr);
+        tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(std::pow(Lv,2)*qs)/ (Rv*cp*std::pow(tnr,2)));
+      }
+    
+      if (niter == nitermax)
+      {  
+        printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",thl,qt,p);
+        throw 1;
+      }  
+    
+      ql = std::max(0.,qt - qs);
+      return ql;
+    }
+    
+    inline double exner(const double p)
+    {
+      return pow((p/p0),(Rd/cp));
+    }
+}
+
 /**
  * This function calculates the hydrostatic pressure at full and half levels, 
  * with option to return base state profiles like reference density and temperature
@@ -640,7 +699,7 @@ void  Thermo_moist::calcBaseState(double * restrict pref,     double * restrict 
 
   // Calculate surface (half=kstart) values
   exh[kstart]   = exner(pbot);
-  ql            = satAdjust(thlsurf,qtsurf,pbot,exh[kstart]); 
+  ql            = sat_adjust(thlsurf,qtsurf,pbot,exh[kstart]); 
   thvh[kstart]  = (thlsurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
   prefh[kstart] = pbot;
   rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
@@ -652,7 +711,7 @@ void  Thermo_moist::calcBaseState(double * restrict pref,     double * restrict 
   {
     // 1. Calculate values at full level below zh[k] 
     ex[k-1]  = exner(pref[k-1]);
-    ql       = satAdjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
+    ql       = sat_adjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
     thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
     rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
  
@@ -672,7 +731,7 @@ void  Thermo_moist::calcBaseState(double * restrict pref,     double * restrict 
     }
 
     exh[k]   = exner(prefh[k]);
-    qli      = satAdjust(thli,qti,prefh[k],exh[k]);
+    qli      = sat_adjust(thli,qti,prefh[k],exh[k]);
     thvh[k]  = (thli + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
     rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]); 
 
@@ -726,9 +785,9 @@ void Thermo_moist::calcBuoyancyTend_2nd(double * restrict wt, double * restrict 
       for (int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
-        if (ql[ij]>0)   // already doesn't vectorize because of iteration in satAdjust()
+        if (ql[ij]>0)   // already doesn't vectorize because of iteration in sat_adjust()
         {
-          ql[ij] = satAdjust(thlh[ij], qth[ij], ph[k], exnh);
+          ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
         }
         else
           ql[ij] = 0.;
@@ -777,8 +836,8 @@ void Thermo_moist::calcBuoyancyTend_4th(double * restrict wt, double * restrict 
       for (int i=grid->istart; i<grid->iend; i++)
       {
         ij  = i + j*jj;
-        if (ql[ij]>0)   // already doesn't vectorize because of iteration in satAdjust()
-          ql[ij] = satAdjust(thlh[ij], qth[ij], ph[k], exnh);
+        if (ql[ij]>0)   // already doesn't vectorize because of iteration in sat_adjust()
+          ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
         else
           ql[ij] = 0.;
       }
@@ -821,7 +880,7 @@ void Thermo_moist::calcBuoyancy(double * restrict b, double * restrict thl, doub
         ijk = i + j*jj + k*kk;
         ij  = i + j*jj;
         if (ql[ij] > 0)
-          ql[ij] = satAdjust(thl[ijk], qt[ijk], p[k], ex);
+          ql[ij] = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
         else
           ql[ij] = 0.;
       }
@@ -877,7 +936,7 @@ void Thermo_moist::calcLiquidWater(double * restrict ql, double * restrict thl, 
       for (int i=grid->istart; i<grid->iend; i++)
       {
         ijk = i + j*jj + k*kk;
-        ql[ijk] = satAdjust(thl[ijk], qt[ijk], p[k], ex);
+        ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
       }
   }
 }
@@ -915,8 +974,8 @@ void Thermo_moist::calcBuoyancyBot(double * restrict b,   double * restrict bbot
     {
       ij  = i + j*jj;
       ijk = i + j*jj + kstart*kk;
-      bbot[ij ] = buoyancyNoql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
-      b   [ijk] = buoyancyNoql(thl[ijk], qt[ijk], thvref[kstart]);
+      bbot[ij ] = buoyancy_no_ql(thlbot[ij], qtbot[ij], thvrefh[kstart]);
+      b   [ijk] = buoyancy_no_ql(thl[ijk], qt[ijk], thvref[kstart]);
     }
 }
 
@@ -933,7 +992,7 @@ void Thermo_moist::calcBuoyancyFluxBot(double * restrict bfluxbot, double * rest
     for (int i=0; i<grid->icells; i++)
     {
       ij  = i + j*jj;
-      bfluxbot[ij] = buoyancyFluxNoql(thlbot[ij], thlfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+      bfluxbot[ij] = buoyancy_flux_no_ql(thlbot[ij], thlfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
     }
 }
 
@@ -1042,64 +1101,4 @@ void Thermo_moist::initDump()
   }
 }
 
-// INLINE FUNCTIONS
-inline double Thermo_moist::buoyancy(const double exn, const double thl, const double qt, const double ql, const double thvref)
-{
-  return grav * ((thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
-}
 
-inline double Thermo_moist::buoyancyNoql(const double thl, const double qt, const double thvref)
-{
-  return grav * (thl * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
-}
-
-inline double Thermo_moist::buoyancyFluxNoql(const double thl, const double thlflux, const double qt, const double qtflux, const double thvref)
-{
-  return grav/thvref * (thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux);
-}
-
-inline double Thermo_moist::satAdjust(const double thl, const double qt, const double p, const double exn)
-{
-  int niter = 0, nitermax = 30;
-  double ql, tl, tnr_old = 1.e9, tnr, qs=0;
-  tl = thl * exn;
-  tnr = tl;
-  while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
-  {
-    ++niter;
-    tnr_old = tnr;
-    qs = qsat(p,tnr);
-    tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(std::pow(Lv,2)*qs)/ (Rv*cp*std::pow(tnr,2)));
-  }
-
-  if (niter == nitermax)
-  {  
-    printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",thl,qt,p);
-    throw 1;
-  }  
-
-  ql = std::max(0.,qt - qs);
-  return ql;
-}
-
-inline double Thermo_moist::exner(const double p)
-{
-  return pow((p/p0),(Rd/cp));
-}
-
-inline double Thermo_moist::exn2(const double p)
-{
-  double dp=p-p0;
-  return (1+(dp*(ex1+dp*(ex2+dp*(ex3+dp*(ex4+dp*(ex5+dp*(ex6+ex7*dp)))))))); 
-}
-
-inline double Thermo_moist::qsat(const double p, const double T)
-{
-  return ep*esat(T)/(p-(1-ep)*esat(T));
-}
-
-inline double Thermo_moist::esat(const double T)
-{
-  const double x=std::max(-80.,T-T0);
-  return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
-}

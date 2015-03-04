@@ -32,42 +32,42 @@ struct Mask;
 // Thermo is an abstract base class. Only derived types can be initialized.
 class Thermo
 {
-  public:
-    Thermo(Model*, Input*);
-    virtual ~Thermo();
-    static Thermo* factory(Master*, Input*, Model*); ///< Factory function for thermo class generation.
-    std::string get_switch();
+    public:
+        Thermo(Model*, Input*);
+        virtual ~Thermo();
+        static Thermo* factory(Master*, Input*, Model*); ///< Factory function for thermo class generation.
+        std::string get_switch();
 
-    // Below are the functions that the derived class has to implement.
-    virtual void init() = 0;
-    virtual void create(Input*) = 0;
-    virtual void exec() = 0;
-    virtual void exec_stats(Mask*) = 0;
+        // Below are the functions that the derived class has to implement.
+        virtual void init() = 0;
+        virtual void create(Input*) = 0;
+        virtual void exec() = 0;
+        virtual void exec_stats(Mask*) = 0;
 
-    virtual void exec_cross() = 0;
-    virtual void exec_dump() = 0;
+        virtual void exec_cross() = 0;
+        virtual void exec_dump() = 0;
 
-    virtual void get_mask(Field3d*, Field3d*, Mask*) = 0;
+        virtual void get_mask(Field3d*, Field3d*, Mask*) = 0;
 
-    // interfacing functions to get buoyancy properties from other classes
-    virtual bool check_thermo_field(std::string name) = 0;
-    virtual void get_thermo_field(Field3d*, Field3d*, std::string name) = 0;
-    virtual void get_buoyancy_surf(Field3d*) = 0;
-    virtual void get_buoyancy_fluxbot(Field3d*) = 0;
-    virtual void get_prog_vars(std::vector<std::string>*) = 0;
+        // Interfacing functions to get buoyancy properties from other classes.
+        virtual bool check_thermo_field(std::string name) = 0;
+        virtual void get_thermo_field(Field3d*, Field3d*, std::string name) = 0;
+        virtual void get_buoyancy_surf(Field3d*) = 0;
+        virtual void get_buoyancy_fluxbot(Field3d*) = 0;
+        virtual void get_prog_vars(std::vector<std::string>*) = 0;
 
 #ifdef USECUDA
-    // GPU functions and variables
-    virtual void prepare_device() = 0;
-    virtual void clear_device() = 0;
+        // GPU functions and variables.
+        virtual void prepare_device() = 0;
+        virtual void clear_device() = 0;
 #endif
 
-  protected:
-    Grid*   grid;
-    Fields* fields;
-    Master* master;
-    Model*  model;
+    protected:
+        Grid*   grid;
+        Fields* fields;
+        Master* master;
+        Model*  model;
 
-    std::string swthermo;
+        std::string swthermo;
 };
 #endif
