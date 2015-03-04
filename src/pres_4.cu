@@ -536,7 +536,7 @@ void Pres_4::exec(double dt)
   cudaCheckError();
 }
 
-double Pres_4::checkDivergence()
+double Pres_4::check_divergence()
 {
   const int blocki = 128;
   const int blockj = 2;
@@ -591,7 +591,7 @@ void Pres_4::prepare_device()
   cudaSafeCall(cudaMemcpy(m6_g, m6, kmemsize, cudaMemcpyHostToDevice));
   cudaSafeCall(cudaMemcpy(m7_g, m7, kmemsize, cudaMemcpyHostToDevice));
 
-  makeCufftPlan();
+  make_cufft_plan();
 }
 
 void Pres_4::clear_device()

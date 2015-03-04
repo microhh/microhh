@@ -162,7 +162,7 @@ namespace Pres_g
 }
 
 #ifdef USECUDA
-void Pres::makeCufftPlan()
+void Pres::make_cufft_plan()
 {
 
   int rank      = 1;
@@ -405,7 +405,7 @@ void Pres::fft_backward(double * __restrict__ p, double * __restrict__ tmp1, dou
 }
 
 // For debugging: FFTs need memory during execution. Check is enough memory is available..
-void Pres::checkCufftMemory()
+void Pres::check_cufft_memory()
 {
   size_t workSize, totalWorkSize=0;
   size_t freeMem, totalMem;

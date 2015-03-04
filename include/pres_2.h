@@ -53,7 +53,7 @@ class Pres_2 : public Pres
 
 #ifdef USECUDA
         double* bmati_g;
-        double* bmati_g;
+        double* bmatj_g;
         double* a_g;
         double* c_g;
         double* work2d_g;

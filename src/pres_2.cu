@@ -230,7 +230,7 @@ void Pres_2::prepare_device()
     cudaSafeCall(cudaMemcpy(c_g, c, kmemsize, cudaMemcpyHostToDevice           ));
     cudaSafeCall(cudaMemcpy(work2d_g, work2d, ijmemsize, cudaMemcpyHostToDevice));
 
-    makeCufftPlan();
+    make_cufft_plan();
 }
 
 void Pres_2::clear_device()
@@ -324,7 +324,7 @@ void Pres_2::exec(double dt)
 #endif
 
 #ifdef USECUDA
-double Pres_2::checkDivergence()
+double Pres_2::check_divergence()
 {
     const int blocki = grid->ithread_block;
     const int blockj = grid->jthread_block;
