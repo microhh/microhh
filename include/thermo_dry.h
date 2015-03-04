@@ -42,24 +42,27 @@ class Thermo_dry : public Thermo
     Thermo_dry(Model *, Input *); ///< Constructor of the dry thermodynamics class.
     virtual ~Thermo_dry();                  ///< Destructor of the dry thermodynamics class.
 
-    virtual void init();
-    virtual void create(Input *);
-    virtual void exec();                ///< Add the tendencies belonging to the buoyancy.
-    virtual void exec_stats(Mask *);
-    virtual void exec_cross();
-    virtual void exec_dump();
+    void init();
+    void create(Input *);
+    void exec();                ///< Add the tendencies belonging to the buoyancy.
+    void exec_stats(Mask *);
+    void exec_cross();
+    void exec_dump();
 
-    virtual bool checkThermoField(std::string name);
-    virtual void getThermoField(Field3d *, Field3d *, std::string name);
-    virtual void getBuoyancySurf(Field3d *);              ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    virtual void getBuoyancyFluxbot(Field3d *);           ///< Compute the bottom buoyancy flux for usage in another routine.
-    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
+    bool check_thermo_field(std::string name);
+    void get_thermo_field(Field3d*, Field3d*, std::string name);
+    void get_buoyancy_surf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    void get_buoyancy_fluxbot(Field3d*);           ///< Compute the bottom buoyancy flux for usage in another routine.
+    void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
 
     #ifdef USECUDA
     // GPU functions and variables
-    virtual void prepare_device();
-    virtual void clear_device();
+    void prepare_device();
+    void clear_device();
     #endif
+
+    // Empty functions, required to implement by abstract base class
+    void get_mask(Field3d*, Field3d*, Mask*) {}
 
   private:
     void initStat();  ///< Initialize the thermo statistics

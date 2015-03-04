@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef THERMO
-#define THERMO
+#ifndef THERMO_DISABLED
+#define THERMO_DISABLED
 
 class Master;
 class Input;
@@ -29,42 +29,27 @@ class Grid;
 class Fields;
 struct Mask;
 
-class Thermo
+class Thermo_disabled : public Thermo
 {
   public:
-    Thermo(Model*, Input*);
-    virtual ~Thermo();
-    static Thermo* factory(Master*, Input*, Model*); ///< Factory function for thermo class generation.
+    Thermo_disabled(Model*, Input*);
+    virtual ~Thermo_disabled();
 
-    virtual void init();
-    virtual void create(Input*);
-    virtual void exec();
-    virtual void exec_stats(Mask*);
+    void init();
+    void create(Input*);
+    void exec();
+    void exec_stats(Mask*);
 
-    virtual void exec_cross();
-    virtual void exec_dump();
+    void exec_cross();
+    void exec_dump();
 
-    virtual void get_mask(Field3d*, Field3d*, Mask*);
+    void get_mask(Field3d*, Field3d*, Mask*);
 
     // interfacing functions to get buoyancy properties from other classes
-    virtual bool check_thermo_field(std::string name);
-    virtual void get_thermo_field(Field3d*, Field3d*, std::string name);
-    virtual void get_buoyancy_surf(Field3d*);
-    virtual void get_buoyancy_fluxbot(Field3d*);
-    virtual void get_prog_vars(std::vector<std::string>*);
-
-    std::string get_switch();
-
-    // GPU functions and variables
-    virtual void prepare_device();
-    virtual void clear_device();
-
-  protected:
-    Grid*   grid;
-    Fields* fields;
-    Master* master;
-    Model*  model;
-
-    std::string swthermo;
+    bool check_thermo_field(std::string name);
+    void get_thermo_field(Field3d*, Field3d*, std::string name);
+    void get_buoyancy_surf(Field3d*);
+    void get_buoyancy_fluxbot(Field3d*);
+    void get_prog_vars(std::vector<std::string>*);
 };
 #endif

@@ -287,7 +287,7 @@ void Thermo_dry::exec_dump()
   }
 }
 
-bool Thermo_dry::checkThermoField(std::string name)
+bool Thermo_dry::check_thermo_field(std::string name)
 {
   if (name == "b")
     return false;
@@ -296,7 +296,7 @@ bool Thermo_dry::checkThermoField(std::string name)
 }
 
 #ifndef USECUDA
-void Thermo_dry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
 {
   if (name == "b")
     calcbuoyancy(fld->data, fields->sp["th"]->data, thref);
@@ -308,14 +308,14 @@ void Thermo_dry::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #endif
 
 #ifndef USECUDA
-void Thermo_dry::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo_dry::get_buoyancy_fluxbot(Field3d* bfield)
 {
   calcbuoyancyfluxbot(bfield->datafluxbot, fields->sp["th"]->datafluxbot, threfh);
 }
 #endif
 
 #ifndef USECUDA
-void Thermo_dry::getBuoyancySurf(Field3d *bfield)
+void Thermo_dry::get_buoyancy_surf(Field3d *bfield)
 {
   calcbuoyancybot(bfield->data, bfield->databot,
                   fields->sp["th"]->data, fields->sp["th"]->databot, thref, threfh);
@@ -323,7 +323,7 @@ void Thermo_dry::getBuoyancySurf(Field3d *bfield)
 }
 #endif
 
-void Thermo_dry::getProgVars(std::vector<std::string> *list)
+void Thermo_dry::get_prog_vars(std::vector<std::string>* list)
 {
   list->push_back("th");
 }
@@ -566,7 +566,7 @@ void Thermo_dry::initDump()
     std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
     while (dumpvar != dumplist_global->end())
     {
-      if (!checkThermoField(*dumpvar))
+      if (!check_thermo_field(*dumpvar))
       {
         // Remove variable from global list, put in local list
         dumplist.push_back(*dumpvar);

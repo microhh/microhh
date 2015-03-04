@@ -27,6 +27,7 @@
 #include "defines.h"
 #include "model.h"
 #include "thermo.h"
+#include "thermo_disabled.h"
 
 Thermo_disabled::Thermo_disabled(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
@@ -83,13 +84,5 @@ void Thermo_disabled::get_prog_vars(std::vector<std::string> *list)
 }
 
 void Thermo_disabled::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *f)
-{
-}
-
-void Thermo_disabled::prepare_device()
-{
-}
-
-void Thermo_disabled::clear_device()
 {
 }
