@@ -43,7 +43,7 @@ Advec::Advec(Model* modelin, Input* inputin)
     master = model->master;
 
     int nerror = 0;
-    nerror += inputin->getItem(&cflmax, "advec", "cflmax", "", 1.);
+    nerror += inputin->get_item(&cflmax, "advec", "cflmax", "", 1.);
 
     if (nerror)
         throw 1;
@@ -70,7 +70,7 @@ void Advec::exec()
 Advec* Advec::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
 {
     std::string swadvec;
-    if (inputin->getItem(&swadvec, "advec", "swadvec", "", swspatialorder))
+    if (inputin->get_item(&swadvec, "advec", "swadvec", "", swspatialorder))
         throw 1;
 
     if (swadvec == "0")

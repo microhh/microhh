@@ -94,7 +94,7 @@ Model::Model(Master *masterin, Input *inputin)
     // Get the list of masks.
     // TODO Make an interface that takes this out of the main loop.
     int nerror = 0;
-    nerror += input->getList(&masklist, "stats", "masklist", "");
+    nerror += input->get_list(&masklist, "stats", "masklist", "");
     for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
     {
       if (*it != "wplus" &&

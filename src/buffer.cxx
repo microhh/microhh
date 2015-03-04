@@ -39,13 +39,13 @@ Buffer::Buffer(Model* modelin, Input* inputin)
     master = model->master;
 
     int nerror = 0;
-    nerror += inputin->getItem(&swbuffer, "buffer", "swbuffer", "", "0");
+    nerror += inputin->get_item(&swbuffer, "buffer", "swbuffer", "", "0");
 
     if (swbuffer == "1")
     {
-        nerror += inputin->getItem(&zstart, "buffer", "zstart", "");
-        nerror += inputin->getItem(&sigma , "buffer", "sigma" , "", 2.);
-        nerror += inputin->getItem(&beta  , "buffer", "beta"  , "", 2.);
+        nerror += inputin->get_item(&zstart, "buffer", "zstart", "");
+        nerror += inputin->get_item(&sigma , "buffer", "sigma" , "", 2.);
+        nerror += inputin->get_item(&beta  , "buffer", "beta"  , "", 2.);
     }
 
     if (nerror)

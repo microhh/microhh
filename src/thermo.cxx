@@ -105,7 +105,7 @@ void Thermo::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *f)
 Thermo* Thermo::factory(Master *masterin, Input *inputin, Model *modelin)
 {
   std::string swthermo;
-  if (inputin->getItem(&swthermo, "thermo", "swthermo", "", "0"))
+  if (inputin->get_item(&swthermo, "thermo", "swthermo", "", "0"))
     return 0;
 
   if (swthermo== "moist")

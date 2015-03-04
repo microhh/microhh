@@ -40,12 +40,12 @@ void Boundary_user::init(Input* inputin)
     process_bcs(inputin);
 
     // Patch type.
-    nerror += inputin->getItem(&patch_dim,  "boundary", "patch_dim" , "", 2 );
-    nerror += inputin->getItem(&patch_xh,   "boundary", "patch_xh"  , "", 1.);
-    nerror += inputin->getItem(&patch_xr,   "boundary", "patch_xr"  , "", 1.);
-    nerror += inputin->getItem(&patch_xi,   "boundary", "patch_xi"  , "", 0.);
-    nerror += inputin->getItem(&patch_facr, "boundary", "patch_facr", "", 1.);
-    nerror += inputin->getItem(&patch_facl, "boundary", "patch_facl", "", 0.);
+    nerror += inputin->get_item(&patch_dim,  "boundary", "patch_dim" , "", 2 );
+    nerror += inputin->get_item(&patch_xh,   "boundary", "patch_xh"  , "", 1.);
+    nerror += inputin->get_item(&patch_xr,   "boundary", "patch_xr"  , "", 1.);
+    nerror += inputin->get_item(&patch_xi,   "boundary", "patch_xi"  , "", 0.);
+    nerror += inputin->get_item(&patch_facr, "boundary", "patch_facr", "", 1.);
+    nerror += inputin->get_item(&patch_facl, "boundary", "patch_facl", "", 0.);
 
     if (nerror)
         throw 1;

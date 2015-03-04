@@ -57,17 +57,17 @@ Fields::Fields(Model *modelin, Input *inputin)
     int nerror = 0;
 
     // obligatory parameters
-    nerror += inputin->getItem(&visc, "fields", "visc", "");
+    nerror += inputin->get_item(&visc, "fields", "visc", "");
 
     // read the name of the passive scalars
     std::vector<std::string> slist;
-    nerror += inputin->getList(&slist, "fields", "slist", "");
+    nerror += inputin->get_list(&slist, "fields", "slist", "");
 
     // initialize the scalars
     for (std::vector<std::string>::const_iterator it=slist.begin(); it!=slist.end(); ++it)
     {
         init_prognostic_field(*it, *it, "-");
-        nerror += inputin->getItem(&sp[*it]->visc, "fields", "svisc", *it);
+        nerror += inputin->get_item(&sp[*it]->visc, "fields", "svisc", *it);
     }
 
     if (nerror)
@@ -86,14 +86,14 @@ Fields::Fields(Model *modelin, Input *inputin)
     // Remove the data from the input that is not used in run mode, to avoid warnings.
     if (master->mode == "run")
     {
-        inputin->flagUsed("fields", "rndamp");
-        inputin->flagUsed("fields", "rndexp");
-        inputin->flagUsed("fields", "rndseed");
-        inputin->flagUsed("fields", "rndz");
+        inputin->flag_as_used("fields", "rndamp");
+        inputin->flag_as_used("fields", "rndexp");
+        inputin->flag_as_used("fields", "rndseed");
+        inputin->flag_as_used("fields", "rndz");
 
-        inputin->flagUsed("fields", "vortexnpair");
-        inputin->flagUsed("fields", "vortexamp"  );
-        inputin->flagUsed("fields", "vortexaxis" );
+        inputin->flag_as_used("fields", "vortexnpair");
+        inputin->flag_as_used("fields", "vortexamp"  );
+        inputin->flag_as_used("fields", "vortexaxis" );
     }
 }
 
@@ -687,7 +687,7 @@ int Fields::randomize(Input* inputin, std::string fld, double* restrict data)
 
     if (!seed)
     {
-        nerror += inputin->getItem(&seed, "fields", "rndseed", "", 0);
+        nerror += inputin->get_item(&seed, "fields", "rndseed", "", 0);
         seed += master->mpiid + 2;
         std::srand(seed);
     }
@@ -700,9 +700,9 @@ int Fields::randomize(Input* inputin, std::string fld, double* restrict data)
     kk = grid->ijcells;
 
     // look up the specific randomizer variables
-    nerror += inputin->getItem(&rndamp, "fields", "rndamp", fld, 0.);
-    nerror += inputin->getItem(&rndz  , "fields", "rndz"  , fld, 0.);
-    nerror += inputin->getItem(&rndexp, "fields", "rndexp", fld, 0.);
+    nerror += inputin->get_item(&rndamp, "fields", "rndamp", fld, 0.);
+    nerror += inputin->get_item(&rndz  , "fields", "rndz"  , fld, 0.);
+    nerror += inputin->get_item(&rndexp, "fields", "rndexp", fld, 0.);
 
     // find the location of the randomizer height
     kendrnd = grid->kstart;
@@ -737,9 +737,9 @@ int Fields::add_vortex_pair(Input* inputin)
     int nerror = 0;
 
     // optional parameters
-    nerror += inputin->getItem(&vortexnpair, "fields", "vortexnpair", "", 0    );
-    nerror += inputin->getItem(&vortexamp  , "fields", "vortexamp"  , "", 1.e-3);
-    nerror += inputin->getItem(&vortexaxis , "fields", "vortexaxis" , "", "y"  );
+    nerror += inputin->get_item(&vortexnpair, "fields", "vortexnpair", "", 0    );
+    nerror += inputin->get_item(&vortexamp  , "fields", "vortexamp"  , "", 1.e-3);
+    nerror += inputin->get_item(&vortexaxis , "fields", "vortexaxis" , "", "y"  );
 
     // add a double vortex to the initial conditions
     const double pi = std::acos((double)-1.);
