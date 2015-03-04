@@ -263,9 +263,9 @@ void Pres_4::input(double * restrict p,
   kmax = grid->kmax;
 
   // Set the cyclic boundary conditions for the tendencies.
-  grid->boundary_cyclic(ut, EastWestEdge  );
+  grid->boundary_cyclic(ut, East_west_edge  );
   if (dim3)
-    grid->boundary_cyclic(vt, NorthSouthEdge);
+    grid->boundary_cyclic(vt, North_south_edge);
 
   // Set the bc. 
   for (int j=0; j<grid->jmax; j++)

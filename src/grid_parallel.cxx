@@ -166,11 +166,11 @@ void Grid::exit_mpi()
     }
 }
 
-void Grid::boundary_cyclic(double * restrict data, Edge edge)
+void Grid::boundary_cyclic(double* restrict data, Edge edge)
 {
     const int ncount = 1;
 
-    if (edge == EastWestEdge || edge == BothEdges)
+    if (edge == East_west_edge || edge == Both_edges)
     {
         // Communicate east-west edges.
         const int eastout = iend-igc;
@@ -191,7 +191,7 @@ void Grid::boundary_cyclic(double * restrict data, Edge edge)
         master->waitAll();
     }
 
-    if (edge == NorthSouthEdge || edge == BothEdges)
+    if (edge == North_south_edge || edge == Both_edges)
     {
         // If the run is 3D, perform the cyclic boundary routine for the north-south direction.
         if (jtot > 1)
@@ -234,7 +234,7 @@ void Grid::boundary_cyclic(double * restrict data, Edge edge)
     }
 }
 
-void Grid::boundary_cyclic_2d(double * restrict data)
+void Grid::boundary_cyclic_2d(double* restrict data)
 {
     int ncount = 1;
 
@@ -295,7 +295,7 @@ void Grid::boundary_cyclic_2d(double * restrict data)
     }
 }
 
-void Grid::transpose_zx(double * restrict ar, double * restrict as)
+void Grid::transpose_zx(double* restrict ar, double* restrict as)
 {
     const int ncount = 1;
     const int tag = 1;
@@ -318,7 +318,7 @@ void Grid::transpose_zx(double * restrict ar, double * restrict as)
     master->waitAll();
 }
 
-void Grid::transpose_xz(double * restrict ar, double * restrict as)
+void Grid::transpose_xz(double* restrict ar, double* restrict as)
 {
     const int ncount = 1;
     const int tag = 1;
@@ -341,7 +341,7 @@ void Grid::transpose_xz(double * restrict ar, double * restrict as)
     master->waitAll();
 }
 
-void Grid::transpose_xy(double * restrict ar, double * restrict as)
+void Grid::transpose_xy(double* restrict ar, double* restrict as)
 {
     const int ncount = 1;
     const int tag = 1;
@@ -364,7 +364,7 @@ void Grid::transpose_xy(double * restrict ar, double * restrict as)
     master->waitAll();
 }
 
-void Grid::transpose_yx(double * restrict ar, double * restrict as)
+void Grid::transpose_yx(double* restrict ar, double* restrict as)
 {
     const int ncount = 1;
     const int tag = 1;
@@ -387,7 +387,7 @@ void Grid::transpose_yx(double * restrict ar, double * restrict as)
     master->waitAll();
 }
 
-void Grid::transpose_yz(double * restrict ar, double * restrict as)
+void Grid::transpose_yz(double* restrict ar, double* restrict as)
 {
     const int ncount = 1;
     const int tag = 1;
@@ -410,7 +410,7 @@ void Grid::transpose_yz(double * restrict ar, double * restrict as)
     master->waitAll();
 }
 
-void Grid::transpose_zy(double * restrict ar, double * restrict as)
+void Grid::transpose_zy(double* restrict ar, double* restrict as)
 {
     const int ncount = 1;
     const int tag = 1;
@@ -633,7 +633,7 @@ void Grid::load()
     fftw_forget_wisdom();
 }
 
-int Grid::save_field3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::save_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
 {
     // save the data in transposed order to have large chunks of contiguous disk space
     // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -678,7 +678,7 @@ int Grid::save_field3d(double * restrict data, double * restrict tmp1, double * 
     return 0;
 }
 
-int Grid::load_field3d(double * restrict data, double * restrict tmp1, double * restrict tmp2, char *filename, double offset)
+int Grid::load_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
 {
     // save the data in transposed order to have large chunks of contiguous disk space
     // MPI-IO is not stable on Juqueen and supermuc otherwise
@@ -723,9 +723,9 @@ int Grid::load_field3d(double * restrict data, double * restrict tmp1, double * 
     return 0;
 }
 
-void Grid::fft_forward(double * restrict data,   double * restrict tmp1,
-                       double * restrict fftini, double * restrict fftouti,
-                       double * restrict fftinj, double * restrict fftoutj)
+void Grid::fft_forward(double* restrict data,   double* restrict tmp1,
+                       double* restrict fftini, double* restrict fftouti,
+                       double* restrict fftinj, double* restrict fftoutj)
 {
     // transpose the pressure field
     transpose_zx(tmp1,data);
@@ -786,9 +786,9 @@ void Grid::fft_forward(double * restrict data,   double * restrict tmp1,
     transpose_yz(data,tmp1);
 }
 
-void Grid::fft_backward(double * restrict data,   double * restrict tmp1,
-                        double * restrict fftini, double * restrict fftouti,
-                        double * restrict fftinj, double * restrict fftoutj)
+void Grid::fft_backward(double* restrict data,   double* restrict tmp1,
+                        double* restrict fftini, double* restrict fftouti,
+                        double* restrict fftinj, double* restrict fftoutj)
 {
     // transpose back to y
     transpose_zy(tmp1, data);
@@ -849,7 +849,7 @@ void Grid::fft_backward(double * restrict data,   double * restrict tmp1,
     transpose_xz(tmp1, data);
 }
 
-int Grid::save_xz_slice(double * restrict data, double * restrict tmp, char *filename, int jslice)
+int Grid::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
 {
     // extract the data from the 3d field without the ghost cells
     int nerror=0;
@@ -905,7 +905,7 @@ int Grid::save_xz_slice(double * restrict data, double * restrict tmp, char *fil
     return nerror;
 }
 
-int Grid::save_xy_slice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 {
     // extract the data from the 3d field without the ghost cells
     const int jj  = icells;
@@ -953,7 +953,7 @@ int Grid::save_xy_slice(double * restrict data, double * restrict tmp, char *fil
     return 0;
 }
 
-int Grid::load_xy_slice(double * restrict data, double * restrict tmp, char *filename, int kslice)
+int Grid::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 {
     // extract the data from the 3d field without the ghost cells
     const int jj  = icells;

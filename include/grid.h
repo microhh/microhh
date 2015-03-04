@@ -32,7 +32,7 @@
 class Model;
 class Master;
 
-enum Edge {EastWestEdge, NorthSouthEdge, BothEdges};
+enum Edge {East_west_edge, North_south_edge, Both_edges};
 
 /**
  * Class for the grid settings and operators.
@@ -117,7 +117,7 @@ class Grid
         // MPI functions
         void init_mpi(); ///< Creates the MPI data types used in grid operations.
         void exit_mpi(); ///< Destructs the MPI data types used in grid operations.
-        void boundary_cyclic   (double*, Edge=BothEdges); ///< Fills the ghost cells in the periodic directions.
+        void boundary_cyclic   (double*, Edge=Both_edges); ///< Fills the ghost cells in the periodic directions.
         void boundary_cyclic_2d(double*); ///< Fills the ghost cells of one slice in the periodic direction.
         void transpose_zx(double*, double*); ///< Changes the transpose orientation from z to x.
         void transpose_xz(double*, double*); ///< Changes the transpose orientation from x to z.

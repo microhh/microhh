@@ -418,7 +418,7 @@ void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int k
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate_2nd(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_2nd(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
 {
     const int ii = 1;
     const int jj = icells;
@@ -448,7 +448,7 @@ void Grid::interpolate_2nd(double * restrict out, double * restrict in, const in
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate_4th(double * restrict out, double * restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_4th(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
 {
     using namespace fd::o4;
 
@@ -477,7 +477,7 @@ void Grid::interpolate_4th(double * restrict out, double * restrict in, const in
             }
 }
 
-void Grid::calc_mean(double * restrict prof, const double * restrict data, const int krange)
+void Grid::calc_mean(double* restrict prof, const double* restrict data, const int krange)
 {
     const int jj = icells;
     const int kk = ijcells;
