@@ -541,7 +541,7 @@ void Thermo_moist::exec_dump()
   }
 }
 
-bool Thermo_moist::checkThermoField(std::string name)
+bool Thermo_moist::check_thermo_field(const std::string name)
 {
   if (name == "b" || name == "ql")
     return false;
@@ -550,7 +550,7 @@ bool Thermo_moist::checkThermoField(std::string name)
 }
 
 #ifndef USECUDA
-void Thermo_moist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::string name)
 {
   const int kcells = grid->kcells;
 
@@ -573,7 +573,7 @@ void Thermo_moist::getThermoField(Field3d *fld, Field3d *tmp, std::string name)
 #endif
 
 #ifndef USECUDA
-void Thermo_moist::getBuoyancySurf(Field3d *bfield)
+void Thermo_moist::get_buoyancy_surf(Field3d* bfield)
 {
   calcBuoyancyBot(bfield->data         , bfield->databot,
                   fields->sp[thvar]->data, fields->sp[thvar]->databot,
@@ -584,13 +584,13 @@ void Thermo_moist::getBuoyancySurf(Field3d *bfield)
 #endif
 
 #ifndef USECUDA
-void Thermo_moist::getBuoyancyFluxbot(Field3d *bfield)
+void Thermo_moist::get_buoyancy_fluxbot(Field3d *bfield)
 {
   calcBuoyancyFluxBot(bfield->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot, fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot, thvrefh);
 }
 #endif
 
-void Thermo_moist::getProgVars(std::vector<std::string> *list)
+void Thermo_moist::get_prog_vars(std::vector<std::string> *list)
 {
   list->push_back(thvar);
   list->push_back("qt");
@@ -1030,7 +1030,7 @@ void Thermo_moist::initDump()
     std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
     while (dumpvar != dumplist_global->end())
     {
-      if (!checkThermoField(*dumpvar))
+      if (!check_thermo_field(*dumpvar))
       {
         // Remove variable from global list, put in local list
         dumplist.push_back(*dumpvar);

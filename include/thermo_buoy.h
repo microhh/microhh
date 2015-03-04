@@ -38,24 +38,32 @@ class Fields;
 class Thermo_buoy : public Thermo
 {
   public:
-    Thermo_buoy(Model *, Input *); ///< Constructor of the dry thermodynamics class.
-    virtual ~Thermo_buoy();                ///< Destructor of the dry thermodynamics class.
+    Thermo_buoy(Model*, Input*); ///< Constructor of the dry thermodynamics class.
+    virtual ~Thermo_buoy();      ///< Destructor of the dry thermodynamics class.
 
-    virtual void exec();                ///< Add the tendencies belonging to the buoyancy.
+    // Empty functions
+    void init() {}
+    void create(Input*) {}
+    void exec_stats(Mask*) {}
+    void exec_cross() {}
+    void exec_dump() {}
+    void get_mask(Field3d*, Field3d*, Mask*) {}
 
-    virtual bool checkThermoField(std::string name);
-    virtual void getBuoyancy(Field3d *, Field3d *);       ///< Compute the buoyancy for usage in another routine.
-    virtual void getBuoyancySurf(Field3d *);              ///< Compute the near-surface and bottom buoyancy for usage in another routine.
-    virtual void getBuoyancyFluxbot(Field3d *);           ///< Compute the bottom buoyancy flux for usage in another routine.
-    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
-    virtual void getThermoField(Field3d *, Field3d *, std::string name);
+    void exec(); ///< Add the tendencies belonging to the buoyancy.
+
+    bool check_thermo_field(std::string name);
+    void get_buoyancy(Field3d*, Field3d*);         ///< Compute the buoyancy for usage in another routine.
+    void get_buoyancy_surf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
+    void get_buoyancy_fluxbot(Field3d*);           ///< Compute the bottom buoyancy flux for usage in another routine.
+    void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
+    void get_thermo_field(Field3d*, Field3d*, std::string name);
 
   private:
-    void calcBuoyancy(double *, double *);         ///< Calculation of the buoyancy.
-    void calcBuoyancyBot(double *, double *,
-                         double *, double *);      ///< Calculation of the near-surface and surface buoyancy.
-    void calcBuoyancyFluxbot(double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-    void calcBuoyancyTend_2nd(double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-    void calcBuoyancyTend_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+    void calcBuoyancy(double*, double*);         ///< Calculation of the buoyancy.
+    void calcBuoyancyBot(double*, double*,
+                         double*, double*);      ///< Calculation of the near-surface and surface buoyancy.
+    void calcBuoyancyFluxbot(double*, double*);  ///< Calculation of the buoyancy flux at the bottom.
+    void calcBuoyancyTend_2nd(double*, double*); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+    void calcBuoyancyTend_4th(double*, double*); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 };
 #endif

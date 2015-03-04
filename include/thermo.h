@@ -56,9 +56,11 @@ class Thermo
     virtual void get_buoyancy_fluxbot(Field3d*) = 0;
     virtual void get_prog_vars(std::vector<std::string>*) = 0;
 
+#ifdef USECUDA
     // GPU functions and variables
     virtual void prepare_device() = 0;
     virtual void clear_device() = 0;
+#endif
 
   protected:
     Grid*   grid;
