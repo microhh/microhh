@@ -39,13 +39,13 @@ class Stats;
 class Thermo_dry : public Thermo
 {
     public:
-        Thermo_dry(Model *, Input *); ///< Constructor of the dry thermodynamics class.
-        virtual ~Thermo_dry();                  ///< Destructor of the dry thermodynamics class.
+        Thermo_dry(Model*, Input*); ///< Constructor of the dry thermodynamics class.
+        virtual ~Thermo_dry();      ///< Destructor of the dry thermodynamics class.
 
         void init();
-        void create(Input *);
+        void create(Input*);
         void exec();                ///< Add the tendencies belonging to the buoyancy.
-        void exec_stats(Mask *);
+        void exec_stats(Mask*);
         void exec_cross();
         void exec_dump();
 
@@ -65,48 +65,47 @@ class Thermo_dry : public Thermo
         void get_mask(Field3d*, Field3d*, Mask*) {}
 
     private:
-        void initStat();  ///< Initialize the thermo statistics
-        void initCross(); ///< Initialize the thermo cross-sections
-        void initDump();  ///< Initialize the thermo field dumps
+        void init_stat();  ///< Initialize the thermo statistics
+        void init_cross(); ///< Initialize the thermo cross-sections
+        void init_dump();  ///< Initialize the thermo field dumps
 
-        void calcbuoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
-        void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
+        void calc_buoyancy(double *, double *, double *);     ///< Calculation of the buoyancy.
+        void calc_N2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
 
         // cross sections
         std::vector<std::string> crosslist;        ///< List with all crosses from ini file
         std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
         std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
-        void calcbuoyancybot(double *, double *,
-                double *, double *,
-                double *, double *);                ///< Calculation of the near-surface and surface buoyancy.
-        void calcbuoyancyfluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
-        void calcbuoyancytend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
-        void calcbuoyancytend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
+        void calc_buoyancy_bot(double *, double *,
+                               double *, double *,
+                               double *, double *); ///< Calculation of the near-surface and surface buoyancy.
+        void calc_buoyancy_fluxbot(double *, double *, double *);  ///< Calculation of the buoyancy flux at the bottom.
+        void calc_buoyancy_tend_2nd(double *, double *, double *); ///< Calculation of the buoyancy tendency with 2nd order accuracy.
+        void calc_buoyancy_tend_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
 
-        void initBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double); ///< For anelastic setup, calculate base state from initial input profiles
+        void init_base_state(double *, double *, double *, double *, double *, double *, double *, double *, double); ///< For anelastic setup, calculate base state from initial input profiles
 
-        Stats *stats;
+        Stats* stats;
 
         std::string swbasestate;
 
         double pbot;   ///< Surface pressure.
         double thref0; ///< Reference potential temperature in case of Boussinesq
 
-        double *thref;
-        double *threfh;
-        double *pref;
-        double *prefh;
-        double *exner;
-        double *exnerh;
+        double* thref;
+        double* threfh;
+        double* pref;
+        double* prefh;
+        double* exner;
+        double* exnerh;
 
         // GPU functions and variables
-        double *thref_g;
-        double *threfh_g;
-        double *pref_g;
-        double *prefh_g;
-        double *exner_g;
-        double *exnerh_g;
-
+        double* thref_g;
+        double* threfh_g;
+        double* pref_g;
+        double* prefh_g;
+        double* exner_g;
+        double* exnerh_g;
 };
 #endif
