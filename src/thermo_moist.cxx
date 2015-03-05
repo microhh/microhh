@@ -41,7 +41,7 @@
 
 using Finite_difference::O2::interp2;
 using Finite_difference::O4::interp4;
-using namespace constants;
+using namespace Constants;
 using namespace Thermo_moist_functions;
 
 Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
@@ -645,8 +645,8 @@ void  Thermo_moist::calc_base_state(double* restrict pref,    double* restrict p
     const int kstart = grid->kstart;
     const int kend = grid->kend;
 
-    double thlsurf = constants::dhuge;
-    double qtsurf = constants::dhuge;
+    double thlsurf = Constants::dhuge;
+    double qtsurf = Constants::dhuge;
 
     if (grid->swspatialorder == "2")
     {

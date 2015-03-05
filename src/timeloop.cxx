@@ -55,7 +55,7 @@ Timeloop::Timeloop(Model* modelin, Input* inputin)
 
     // optional parameters
     n += inputin->get_item(&adaptivestep, "time", "adaptivestep", "", true            );
-    n += inputin->get_item(&dtmax       , "time", "dtmax"       , "", constants::dbig );
+    n += inputin->get_item(&dtmax       , "time", "dtmax"       , "", Constants::dbig );
     n += inputin->get_item(&dt          , "time", "dt"          , "", dtmax           );
     n += inputin->get_item(&rkorder     , "time", "rkorder"     , "", 3               );
     n += inputin->get_item(&outputiter  , "time", "outputiter"  , "", 20              );

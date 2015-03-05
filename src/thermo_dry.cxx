@@ -38,7 +38,7 @@
 
 using Finite_difference::O2::interp2;
 using Finite_difference::O4::interp4;
-using namespace constants;
+using namespace Constants;
 
 Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 {

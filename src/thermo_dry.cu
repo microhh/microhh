@@ -45,7 +45,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += constants::grav/threfh[k] * (0.5*(th[ijk-kk]+th[ijk]) - threfh[k]);
+            wt[ijk] += Constants::grav/threfh[k] * (0.5*(th[ijk-kk]+th[ijk]) - threfh[k]);
         }
     }
 
@@ -64,7 +64,7 @@ namespace
         if (i < iend && j < jend && k < kcells)
         {
             const int ijk = i + j*jj + k*kk;
-            b[ijk] = constants::grav/thref[k] * (th[ijk] - thref[k]);
+            b[ijk] = Constants::grav/thref[k] * (th[ijk] - thref[k]);
         }
     }
 
@@ -118,7 +118,7 @@ namespace
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            N2[ijk] = constants::grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
+            N2[ijk] = Constants::grav/thref[k]*0.5*(th[ijk+kk] - th[ijk-kk])*dzi[k];
         }
     }
 } // end namespace
@@ -243,7 +243,7 @@ void Thermo_dry::get_buoyancy_fluxbot(Field3d *bfield)
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
-        threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
+        threfh_g, Constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
     cuda_check_error();
 }
@@ -265,13 +265,13 @@ void Thermo_dry::get_buoyancy_surf(Field3d *bfield)
     calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->data_g[offs], &bfield->databot_g[offs], 
         &fields->sp["th"]->data_g[offs], &fields->sp["th"]->databot_g[offs],
-        thref_g, threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
+        thref_g, threfh_g, Constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
     cuda_check_error();
 
     calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
-        threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
+        threfh_g, Constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
     cuda_check_error();
 }

@@ -63,11 +63,11 @@ namespace
             {
                 strain2[ijk] = 2.*(
                    // du/dz
-                   + 0.5*pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2)
+                   + 0.5*pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2)
                    // dv/dz
-                   + 0.5*pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2) );
+                   + 0.5*pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[k]*ustar[ij])*most::phim(z[k]/obuk[ij]), 2) );
                 // add a small number to avoid zero divisions
-                strain2[ijk] += constants::dsmall;  
+                strain2[ijk] += Constants::dsmall;  
             }
             else
             {
@@ -94,7 +94,7 @@ namespace
                     + 0.125*pow((v[ijk   +kk]-v[ijk      ])*dzhi[k+1] + (w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2)
                     + 0.125*pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2) );
                 // add a small number to avoid zero divisions
-                strain2[ijk] += constants::dsmall;
+                strain2[ijk] += Constants::dsmall;
             }
         }
     }
@@ -120,15 +120,15 @@ namespace
             if (k == kstart)
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
-                double RitPrratio = -bfluxbot[ij]/(constants::kappa*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
-                RitPrratio        = fmin(RitPrratio, 1.-constants::dsmall);
+                double RitPrratio = -bfluxbot[ij]/(Constants::kappa*zsl*ustar[ij])*most::phih(zsl/obuk[ij]) / evisc[ijk] * tPri;
+                RitPrratio        = fmin(RitPrratio, 1.-Constants::dsmall);
                 evisc[ijk]        = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
             }
             else
             {
                 // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
                 double RitPrratio = N2[ijk] / evisc[ijk] * tPri;
-                RitPrratio        = fmin(RitPrratio, 1.-constants::dsmall);
+                RitPrratio        = fmin(RitPrratio, 1.-Constants::dsmall);
                 evisc[ijk]        = mlen[k] * sqrt(evisc[ijk] * (1.-RitPrratio));
             }
         }
@@ -391,7 +391,7 @@ void Diff_smag_2::prepare_device()
     for (int k=0; k<grid->kcells; ++k) 
     {
         mlen0   = cs * pow(grid->dx*grid->dy*grid->dz[k], 1./3.);
-        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(constants::kappa*(grid->z[k]+boundaryptr->z0m), n))), 1./n), 2);
+        mlen[k] = pow(pow(1./(1./pow(mlen0, n) + 1./(pow(Constants::kappa*(grid->z[k]+boundaryptr->z0m), n))), 1./n), 2);
     }
 
     const int nmemsize = grid->kcells*sizeof(double);
@@ -539,7 +539,7 @@ unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
 
     // Get maximum from tmp1 field
     double dnmul = grid->get_max_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
-    dnmul = std::max(constants::dsmall, dnmul);
+    dnmul = std::max(Constants::dsmall, dnmul);
     const unsigned long idtlim = idt * dnmax/(dnmul*dt);
 
     return idtlim;

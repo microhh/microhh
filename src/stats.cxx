@@ -166,7 +166,7 @@ void Stats::create(int n)
 unsigned long Stats::get_time_limit(unsigned long itime)
 {
     if (swstats == "0")
-        return constants::ulhuge;
+        return Constants::ulhuge;
 
     unsigned long idtlim = isampletime - itime % isampletime;
     return idtlim;
@@ -434,8 +434,8 @@ void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double
     const int kstart = grid->kstart;
     const int kend = grid->kend;
 
-    double minval =  constants::dhuge;
-    double maxval = -constants::dhuge;
+    double minval =  Constants::dhuge;
+    double maxval = -Constants::dhuge;
 
     // first, get min and max
     for (int k=grid->kstart; k<grid->kend; ++k)
@@ -454,7 +454,7 @@ void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double
     master->max(&maxval, 1);
 
     // make sure that the max ends up in the last bin (introduce 1E-9 error)
-    maxval *= (1.+constants::dsmall);
+    maxval *= (1.+Constants::dsmall);
 
     const double range = maxval-minval;
 

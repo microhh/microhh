@@ -68,7 +68,7 @@ unsigned long Diff_smag_2::get_time_limit(const unsigned long idt, const double 
 {
     double dnmul = calc_dnmul(fields->sd["evisc"]->data, grid->dzi, this->tPr);
     // Avoid zero division.
-    dnmul = std::max(constants::dsmall, dnmul);
+    dnmul = std::max(Constants::dsmall, dnmul);
 
     return idt * dnmax/(dnmul*dt);
 }
@@ -161,12 +161,12 @@ void Diff_smag_2::calc_strain2(double* restrict strain2,
             const int ijk = i + j*jj + kstart*kk;
             strain2[ijk] = 2.*(
                            // du/dz
-                           + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
+                           + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
                            // dv/dz
-                           + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2) );
+                           + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2) );
 
             // add a small number to avoid zero divisions
-            strain2[ijk] += constants::dsmall;
+            strain2[ijk] += Constants::dsmall;
         }
 
     for (int k=grid->kstart+1; k<grid->kend; ++k)
@@ -204,7 +204,7 @@ void Diff_smag_2::calc_strain2(double* restrict strain2,
                                + 0.125*std::pow((v[ijk+jj+kk]-v[ijk+jj   ])*dzhi[k+1] + (w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2) );
 
                        // Add a small number to avoid zero divisions.
-                       strain2[ijk] += constants::dsmall;
+                       strain2[ijk] += Constants::dsmall;
             }
 }
 
@@ -231,7 +231,7 @@ void Diff_smag_2::calc_evisc(double* restrict evisc,
     // bottom boundary, here strain is fully parametrized using MO
     // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
     mlen0 = this->cs*std::pow(dx*dy*dz[kstart], 1./3.);
-    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[kstart]+z0m), n))), 1./n);
+    mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[kstart]+z0m), n))), 1./n);
     fac   = std::pow(mlen, 2);
 
     // local copies to aid vectorization
@@ -246,8 +246,8 @@ void Diff_smag_2::calc_evisc(double* restrict evisc,
             const int ijk = i + j*jj + kstart*kk;
             // TODO use the thermal expansion coefficient from the input later, what to do if there is no buoyancy?
             // Add the buoyancy production to the TKE
-            RitPrratio = -bfluxbot[ij]/(constants::kappa*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
-            RitPrratio = std::min(RitPrratio, 1.-constants::dsmall);
+            RitPrratio = -bfluxbot[ij]/(Constants::kappa*z[kstart]*ustar[ij])*most::phih(z[kstart]/obuk[ij]) / evisc[ijk] / tPr;
+            RitPrratio = std::min(RitPrratio, 1.-Constants::dsmall);
             evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
         }
 
@@ -255,7 +255,7 @@ void Diff_smag_2::calc_evisc(double* restrict evisc,
     {
         // calculate smagorinsky constant times filter width squared, use wall damping according to Mason
         mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-        mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[k]+z0m), n))), 1./n);
+        mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
         fac   = std::pow(mlen, 2);
 
         for (int j=grid->jstart; j<grid->jend; ++j)
@@ -265,7 +265,7 @@ void Diff_smag_2::calc_evisc(double* restrict evisc,
                 const int ijk = i + j*jj + k*kk;
                 // Add the buoyancy production to the TKE
                 RitPrratio = N2[ijk] / evisc[ijk] / tPr;
-                RitPrratio = std::min(RitPrratio, 1.-constants::dsmall);
+                RitPrratio = std::min(RitPrratio, 1.-Constants::dsmall);
                 evisc[ijk] = fac * std::sqrt(evisc[ijk]) * std::sqrt(1.-RitPrratio);
             }
     }
@@ -293,7 +293,7 @@ void Diff_smag_2::calc_evisc_neutral(double* restrict evisc,
     {
         // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
         const double mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-        const double mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(constants::kappa*(z[k]+z0m), n))), 1./n);
+        const double mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
         const double fac   = std::pow(mlen, 2);
 
         for (int j=grid->jstart; j<grid->jend; ++j)

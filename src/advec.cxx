@@ -55,7 +55,7 @@ Advec::~Advec()
 
 unsigned long Advec::get_time_limit(unsigned long idt, const double dt)
 {
-    unsigned long idtlim = (unsigned long) constants::dbig;
+    unsigned long idtlim = (unsigned long) Constants::dbig;
     return idtlim;
 }
 

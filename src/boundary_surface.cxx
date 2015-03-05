@@ -165,7 +165,7 @@ void Boundary_surface::init(Input *inputin)
         for (int i=0; i<grid->icells; ++i)
         {
             const int ij = i + j*jj;
-            obuk[ij]  = constants::dsmall;
+            obuk[ij]  = Constants::dsmall;
             nobuk[ij] = 0;
         }
 
@@ -272,7 +272,7 @@ void Boundary_surface::set_values()
 
     // Find stretching that ends up at the correct value using geometric progression.
     double r  = 1.01;
-    double r0 = constants::dhuge;
+    double r0 = Constants::dhuge;
     while (std::abs( (r-r0)/r0 ) > 1.e-10)
     {
         r0 = r;
@@ -382,7 +382,7 @@ void Boundary_surface::stability(double* restrict ustar, double* restrict obuk, 
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
-                obuk[ij] = -std::pow(ustar[ij], 3) / (constants::kappa*bfluxbot[ij]);
+                obuk[ij] = -std::pow(ustar[ij], 3) / (Constants::kappa*bfluxbot[ij]);
             }
     }
     // case 2: fixed buoyancy surface value and free ustar
@@ -452,7 +452,7 @@ void Boundary_surface::stability_neutral(double* restrict ustar, double* restric
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ij = i + j*jj;
-                obuk[ij] = -constants::dbig;
+                obuk[ij] = -Constants::dbig;
             }
     }
     // case 2: fixed buoyancy surface value and free ustar
@@ -463,7 +463,7 @@ void Boundary_surface::stability_neutral(double* restrict ustar, double* restric
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
-                obuk [ij] = -constants::dbig;
+                obuk [ij] = -Constants::dbig;
                 ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
             }
     }
@@ -474,7 +474,7 @@ void Boundary_surface::stability_neutral(double* restrict ustar, double* restric
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij  = i + j*jj;
-                obuk [ij] = -constants::dbig;
+                obuk [ij] = -Constants::dbig;
                 ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
             }
     }
@@ -640,7 +640,7 @@ double Boundary_surface::calc_obuk_noslip_flux(const float* const restrict zL, c
                                                const double du, const double bfluxbot, const double zsl)
 {
     // Calculate the appropriate Richardson number and reduce precision.
-    const float Ri = -constants::kappa * bfluxbot * zsl / std::pow(du, 3);
+    const float Ri = -Constants::kappa * bfluxbot * zsl / std::pow(du, 3);
 
     return zsl/find_zL(zL, f, n, Ri);
 }
@@ -650,7 +650,7 @@ double Boundary_surface::calc_obuk_noslip_dirichlet(const float* const restrict 
                                                     const double du, const double db, const double zsl)
 {
     // Calculate the appropriate Richardson number and reduce precision.
-    const float Ri = constants::kappa * db * zsl / std::pow(du, 2);
+    const float Ri = Constants::kappa * db * zsl / std::pow(du, 2);
 
     return zsl/find_zL(zL, f, n, Ri);
 }

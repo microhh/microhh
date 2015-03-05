@@ -201,7 +201,7 @@ void Cross::create()
 unsigned long Cross::get_time_limit(unsigned long itime)
 {
     if (swcross == "0")
-        return constants::ulhuge;
+        return Constants::ulhuge;
 
     unsigned long idtlim = isampletime - itime % isampletime;
 
@@ -314,7 +314,7 @@ int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * 
         for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + kstart*kk1;
-            lngrad[ijk] = std::log( constants::dtiny +
+            lngrad[ijk] = std::log( Constants::dtiny +
                 std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
                           + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
                           + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])
@@ -338,7 +338,7 @@ int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * 
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                lngrad[ijk] = std::log( constants::dtiny +
+                lngrad[ijk] = std::log( Constants::dtiny +
                     std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
                               + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
                               + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])
@@ -361,7 +361,7 @@ int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * 
         for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ijk = i + j*jj1 + (kend-1)*kk1;
-            lngrad[ijk] = std::log(constants::dtiny +
+            lngrad[ijk] = std::log(Constants::dtiny +
                 std::pow( ( cg0*(ci0*a[ijk-ii3] + ci1*a[ijk-ii2] + ci2*a[ijk-ii1] + ci3*a[ijk    ])
                           + cg1*(ci0*a[ijk-ii2] + ci1*a[ijk-ii1] + ci2*a[ijk    ] + ci3*a[ijk+ii1])
                           + cg2*(ci0*a[ijk-ii1] + ci1*a[ijk    ] + ci2*a[ijk+ii1] + ci3*a[ijk+ii2])

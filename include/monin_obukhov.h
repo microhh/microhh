@@ -98,15 +98,15 @@ namespace Monin_obukhov
     CUDA_MACRO inline double fm(const double zsl, const double z0m, const double L)
     {
         return (L <= 0.)
-            ? constants::kappa / (std::log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
-            : constants::kappa / (std::log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
+            ? Constants::kappa / (std::log(zsl/z0m) - psim_unstable(zsl/L) + psim_unstable(z0m/L))
+            : Constants::kappa / (std::log(zsl/z0m) - psim_stable  (zsl/L) + psim_stable  (z0m/L));
     }
 
     CUDA_MACRO inline double fh(const double zsl, const double z0h, const double L)
     {
         return (L <= 0.)
-            ? constants::kappa / (std::log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
-            : constants::kappa / (std::log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
+            ? Constants::kappa / (std::log(zsl/z0h) - psih_unstable(zsl/L) + psih_unstable(z0h/L))
+            : Constants::kappa / (std::log(zsl/z0h) - psih_stable  (zsl/L) + psih_stable  (z0h/L));
     }
 }
 #endif

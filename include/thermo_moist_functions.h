@@ -12,7 +12,7 @@
 
 namespace Thermo_moist_functions
 {
-    using namespace constants;
+    using namespace Constants;
 
     // INLINE FUNCTIONS
     CUDA_MACRO inline double buoyancy(const double exn, const double thl, const double qt, const double ql, const double thvref)

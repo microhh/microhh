@@ -25,7 +25,7 @@
 
 #include <climits>
 
-namespace constants
+namespace Constants
 {
     const double kappa = 0.4;        ///< von Karman constant
     const double grav  = 9.81;       ///< Gravitational acceleration [m s-2]

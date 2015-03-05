@@ -33,7 +33,7 @@
 
 namespace 
 {
-    using namespace constants;
+    using namespace Constants;
     using namespace Finite_difference::O2;
     using namespace Finite_difference::O4;
     using namespace Thermo_moist_functions;

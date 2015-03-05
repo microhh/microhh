@@ -338,8 +338,8 @@ void Grid::calculate()
         z[kend+1] =      8.*zsize - 9.*z[kend-1] +      2.*z[kend-2];
 
         // Initialize the non-used values at a large value
-        z[kstart-3] = constants::dhuge;
-        z[kend+2  ] = constants::dhuge;
+        z[kstart-3] = Constants::dhuge;
+        z[kend+2  ] = Constants::dhuge;
 
         zh[kstart] = 0.;
         for (k=kstart+1; k<kend; ++k)
@@ -390,10 +390,10 @@ void Grid::calculate()
         dzhi4biastop = 1./(tg0*z[kend-3  ] + tg1*z[kend-2] + tg2*z[kend-1  ] + tg3*z[kend    ]);
 
         // Initialize the unused values at a huge value to allow for easier error tracing.
-        dzi4[kstart-2] = constants::dhuge;
-        dzi4[kstart-3] = constants::dhuge;
-        dzi4[kend+1  ] = constants::dhuge;
-        dzi4[kend+2  ] = constants::dhuge;
+        dzi4[kstart-2] = Constants::dhuge;
+        dzi4[kstart-3] = Constants::dhuge;
+        dzi4[kend+1  ] = Constants::dhuge;
+        dzi4[kend+2  ] = Constants::dhuge;
     }
 }
 

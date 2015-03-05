@@ -60,7 +60,7 @@ namespace
     double calc_Obuk_noslip_flux_g(float* __restrict__ zL, float* __restrict__ f, int& n, double du, double bfluxbot, double zsl)
     {
         // Calculate the appropriate Richardson number.
-        const double Ri = -constants::kappa * bfluxbot * zsl / pow(du, 3);
+        const double Ri = -Constants::kappa * bfluxbot * zsl / pow(du, 3);
         return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
@@ -68,7 +68,7 @@ namespace
     double calc_Obuk_noslip_dirichlet_g(float* __restrict__ zL, float* __restrict__ f, int& n, double du, double db, double zsl)
     {
         // Calculate the appropriate Richardson number.
-        const double Ri = constants::kappa * db * zsl / pow(du, 2);
+        const double Ri = Constants::kappa * db * zsl / pow(du, 2);
         return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
@@ -116,7 +116,7 @@ namespace
             // case 1: fixed buoyancy flux and fixed ustar
             if (mbcbot == Boundary::Ustar_type && thermobc == Boundary::Flux_type)
             {
-                obuk[ij] = -pow(ustar[ij], 3) / (constants::kappa*bfluxbot[ij]);
+                obuk[ij] = -pow(ustar[ij], 3) / (Constants::kappa*bfluxbot[ij]);
             }
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Flux_type)
@@ -150,18 +150,18 @@ namespace
             // case 1: fixed buoyancy flux and fixed ustar
             if (mbcbot == Boundary::Ustar_type && thermobc == Boundary::Flux_type)
             {
-                obuk[ij] = -constants::dbig;
+                obuk[ij] = -Constants::dbig;
             }
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Flux_type)
             {
-                obuk [ij] = -constants::dbig;
+                obuk [ij] = -Constants::dbig;
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
             }
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Dirichlet_type)
             {
-                obuk [ij] = -constants::dbig;
+                obuk [ij] = -Constants::dbig;
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
             }
         }

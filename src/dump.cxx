@@ -77,7 +77,7 @@ void Dump::create()
 unsigned long Dump::get_time_limit(unsigned long itime)
 {
     if (swdump == "0")
-        return constants::ulhuge;
+        return Constants::ulhuge;
 
     return isampletime - itime % isampletime;
 }

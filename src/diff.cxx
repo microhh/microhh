@@ -58,7 +58,7 @@ Diff::~Diff()
 
 unsigned long Diff::get_time_limit(const unsigned long idtlim, const double dt)
 {
-    return static_cast<unsigned long>(constants::dbig);
+    return static_cast<unsigned long>(Constants::dbig);
 }
 
 void Diff::set_values()
@@ -67,7 +67,7 @@ void Diff::set_values()
 
 double Diff::get_dn(const double dt)
 {
-    return constants::dsmall;
+    return Constants::dsmall;
 }
 
 void Diff::exec_viscosity()
