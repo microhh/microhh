@@ -31,7 +31,7 @@ class Fields;
 class Dump
 {
     public:
-        Dump(Model *, Input *);
+        Dump(Model*, Input*);
         ~Dump();
 
         void init(double);
@@ -57,4 +57,3 @@ class Dump
         unsigned long isampletime;
 };
 #endif
-
