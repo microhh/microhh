@@ -37,6 +37,8 @@
 
 namespace
 {
+    namespace most = Monin_obukhov;
+
     __global__ 
     void strain2_g(double* __restrict__ strain2,
                    double* __restrict__ u,  double* __restrict__ v,  double* __restrict__ w,
