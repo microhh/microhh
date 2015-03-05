@@ -35,10 +35,12 @@
 #include "model.h"
 #include "master.h"
 #include "cross.h"
-#include "most.h"
+#include "monin_obukhov.h"
 
 namespace
 {
+    // Make a shortcut in the file scope.
+    namespace most = Monin_obukhov;
     // Size of the lookup table.
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 }

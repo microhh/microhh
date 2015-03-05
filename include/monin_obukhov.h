@@ -20,7 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MOST
+#ifndef MONIN_OBUKHOV
 
 // In case the code is compiled with NVCC, add the macros for CUDA
 #ifdef __CUDACC__
@@ -29,7 +29,7 @@
 #  define CUDA_MACRO
 #endif
 
-namespace most
+namespace Monin_obukhov
 {
     //
     // GRADIENT FUNCTIONS

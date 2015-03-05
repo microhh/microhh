@@ -31,10 +31,11 @@
 #include "model.h"
 #include "master.h"
 #include "tools.h"
-#include "most.h"
+#include "monin_obukhov.h"
 
 namespace
 {
+    namespace most = Monin_obukhov;
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 }
 

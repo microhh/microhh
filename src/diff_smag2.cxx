@@ -32,7 +32,12 @@
 #include "constants.h"
 #include "thermo.h"
 #include "model.h"
-#include "most.h"
+#include "monin_obukhov.h"
+
+namespace
+{
+    namespace most = Monin_obukhov;
+}
 
 Diff_smag_2::Diff_smag_2(Model* modelin, Input* inputin) : Diff(modelin, inputin)
 {
