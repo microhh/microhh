@@ -35,18 +35,18 @@
 #include "tools.h"
 #include "constants.h"
 
-namespace Pres_2_g
+namespace
 {
     __global__ 
-    void pres_in(double* __restrict__ p,
-                 double* __restrict__ u ,  double* __restrict__ v ,     double* __restrict__ w ,
-                 double* __restrict__ ut,  double* __restrict__ vt,     double* __restrict__ wt,
-                 double* __restrict__ dzi, double* __restrict__ rhoref, double* __restrict__ rhorefh,
-                 double dxi, double dyi, double dti,
-                 const int jj, const int kk,
-                 const int jjp, const int kkp,
-                 const int imax, const int jmax, const int kmax,
-                 const int igc, const int jgc, const int kgc)
+    void pres_in_g(double* __restrict__ p,
+                   double* __restrict__ u ,  double* __restrict__ v ,     double* __restrict__ w ,
+                   double* __restrict__ ut,  double* __restrict__ vt,     double* __restrict__ wt,
+                   double* __restrict__ dzi, double* __restrict__ rhoref, double* __restrict__ rhorefh,
+                   double dxi, double dyi, double dti,
+                   const int jj, const int kk,
+                   const int jjp, const int kkp,
+                   const int imax, const int jmax, const int kmax,
+                   const int igc, const int jgc, const int kgc)
     {
         const int ii = 1;
         const int i  = blockIdx.x*blockDim.x + threadIdx.x;
@@ -66,12 +66,12 @@ namespace Pres_2_g
     }
 
     __global__ 
-    void pres_out(double* __restrict__ ut, double* __restrict__ vt, double* __restrict__ wt,
-                  double* __restrict__ p,
-                  double* __restrict__ dzhi, const double dxi, const double dyi,
-                  const int jj, const int kk,
-                  const int istart, const int jstart, const int kstart,
-                  const int iend, const int jend, const int kend)
+    void pres_out_g(double* __restrict__ ut, double* __restrict__ vt, double* __restrict__ wt,
+                    double* __restrict__ p,
+                    double* __restrict__ dzhi, const double dxi, const double dyi,
+                    const int jj, const int kk,
+                    const int istart, const int jstart, const int kstart,
+                    const int iend, const int jend, const int kend)
     {
         const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -88,11 +88,11 @@ namespace Pres_2_g
     }
 
     __global__ 
-    void solve_out(double* __restrict__ p, double* __restrict__ work3d,
-                   const int jj, const int kk,
-                   const int jjp, const int kkp,
-                   const int istart, const int jstart, const int kstart,
-                   const int imax, const int jmax, const int kmax)
+    void solve_out_g(double* __restrict__ p, double* __restrict__ work3d,
+                     const int jj, const int kk,
+                     const int jjp, const int kkp,
+                     const int istart, const int jstart, const int kstart,
+                     const int imax, const int jmax, const int kmax)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -111,14 +111,14 @@ namespace Pres_2_g
     }
 
     __global__ 
-    void solve_in(double* __restrict__ p,
-                  double* __restrict__ work3d, double* __restrict__ b,
-                  double* __restrict__ a, double* __restrict__ c,
-                  double* __restrict__ dz, double* __restrict__ rhoref,
-                  double* __restrict__ bmati, double* __restrict__ bmatj,
-                  const int jj, const int kk,
-                  const int imax, const int jmax, const int kmax,
-                  const int kstart)
+    void solve_in_g(double* __restrict__ p,
+                    double* __restrict__ work3d, double* __restrict__ b,
+                    double* __restrict__ a, double* __restrict__ c,
+                    double* __restrict__ dz, double* __restrict__ rhoref,
+                    double* __restrict__ bmati, double* __restrict__ bmatj,
+                    const int jj, const int kk,
+                    const int imax, const int jmax, const int kmax,
+                    const int kstart)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -156,10 +156,10 @@ namespace Pres_2_g
     }
 
     __global__ 
-    void tdma(double* __restrict__ a, double* __restrict__ b, double* __restrict__ c,
-              double* __restrict__ p, double* __restrict__ work3d,
-              const int jj, const int kk,
-              const int imax, const int jmax, const int kmax)
+    void tdma_g(double* __restrict__ a, double* __restrict__ b, double* __restrict__ c,
+                double* __restrict__ p, double* __restrict__ work3d,
+                const int jj, const int kk,
+                const int imax, const int jmax, const int kmax)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -189,12 +189,12 @@ namespace Pres_2_g
     }
 
     __global__ 
-    void calc_divergence(double* __restrict__ u, double* __restrict__ v, double* __restrict__ w,
-                         double* __restrict__ div, double* __restrict__ dzi,
-                         double* __restrict__ rhoref, double* __restrict__ rhorefh,
-                         double dxi, double dyi,
-                         int jj, int kk, int istart, int jstart, int kstart,
-                         int iend, int jend, int kend)
+    void calc_divergence_g(double* __restrict__ u, double* __restrict__ v, double* __restrict__ w,
+                           double* __restrict__ div, double* __restrict__ dzi,
+                           double* __restrict__ rhoref, double* __restrict__ rhorefh,
+                           double dxi, double dyi,
+                           int jj, int kk, int istart, int jstart, int kstart,
+                           int iend, int jend, int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -269,7 +269,7 @@ void Pres_2::exec(double dt)
     grid->boundary_cyclic_g(&fields->vt->data_g[offs]);
     grid->boundary_cyclic_g(&fields->wt->data_g[offs]);
 
-    Pres_2_g::pres_in<<<gridGPU, blockGPU>>>(
+    pres_in_g<<<gridGPU, blockGPU>>>(
         fields->sd["p"]->data_g,
         &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
         &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
@@ -282,7 +282,7 @@ void Pres_2::exec(double dt)
 
     fft_forward(fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g);
 
-    Pres_2_g::solve_in<<<gridGPU, blockGPU>>>(
+    solve_in_g<<<gridGPU, blockGPU>>>(
         fields->sd["p"]->data_g,
         fields->atmp["tmp1"]->data_g, fields->atmp["tmp2"]->data_g,
         a_g, c_g, grid->dz_g, fields->rhoref_g, bmati_g, bmatj_g,
@@ -291,7 +291,7 @@ void Pres_2::exec(double dt)
         grid->kstart);
     cuda_check_error();
 
-    Pres_2_g::tdma<<<grid2dGPU, block2dGPU>>>(
+    tdma_g<<<grid2dGPU, block2dGPU>>>(
         a_g, fields->atmp["tmp2"]->data_g, c_g,
         fields->sd["p"]->data_g, fields->atmp["tmp1"]->data_g,
         grid->imax, grid->imax*grid->jmax,
@@ -302,7 +302,7 @@ void Pres_2::exec(double dt)
 
     cuda_safe_call(cudaMemcpy(fields->atmp["tmp1"]->data_g, fields->sd["p"]->data_g, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
 
-    Pres_2_g::solve_out<<<gridGPU, blockGPU>>>(
+    solve_out_g<<<gridGPU, blockGPU>>>(
         &fields->sd["p"]->data_g[offs], fields->atmp["tmp1"]->data_g,
         grid->imax, grid->imax*grid->jmax,
         grid->icellsp, grid->ijcellsp,
@@ -312,7 +312,7 @@ void Pres_2::exec(double dt)
 
     grid->boundary_cyclic_g(&fields->sd["p"]->data_g[offs]);
 
-    Pres_2_g::pres_out<<<gridGPU, blockGPU>>>(
+    pres_out_g<<<gridGPU, blockGPU>>>(
         &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
         &fields->sd["p"]->data_g[offs],
         grid->dzhi_g, 1./grid->dx, 1./grid->dy,
@@ -339,7 +339,7 @@ double Pres_2::check_divergence()
 
     const int offs = grid->memoffset;
 
-    Pres_2_g::calc_divergence<<<gridGPU, blockGPU>>>(
+    calc_divergence_g<<<gridGPU, blockGPU>>>(
         &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
         &fields->atmp["tmp1"]->data_g[offs], grid->dzi_g,
         fields->rhoref_g, fields->rhorefh_g, dxi, dyi,

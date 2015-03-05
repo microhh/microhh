@@ -28,14 +28,14 @@
 #include "constants.h"
 #include "tools.h"
 
-namespace Force_g
+namespace
 {
     __global__ 
-    void flux_step_1(double* const __restrict__ aSum, const double* const __restrict__ a,
-                     const double* const __restrict__ dz,
-                     const int jj, const int kk, 
-                     const int istart, const int jstart, const int kstart,
-                     const int iend,   const int jend,   const int kend)
+    void flux_step_1_g(double* const __restrict__ aSum, const double* const __restrict__ a,
+                       const double* const __restrict__ dz,
+                       const int jj, const int kk, 
+                       const int istart, const int jstart, const int kstart,
+                       const int iend,   const int jend,   const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -49,11 +49,11 @@ namespace Force_g
     }
 
     __global__ 
-    void flux_step_2(double* const __restrict__ ut,
-                     const double fbody,
-                     const int jj, const int kk, 
-                     const int istart, const int jstart, const int kstart,
-                     const int iend,   const int jend,   const int kend)
+    void flux_step_2_g(double* const __restrict__ ut,
+                       const double fbody,
+                       const int jj, const int kk, 
+                       const int istart, const int jstart, const int kstart,
+                       const int iend,   const int jend,   const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -67,13 +67,13 @@ namespace Force_g
     }
 
     __global__ 
-    void coriolis_2nd(double* const __restrict__ ut, double* const __restrict__ vt,
-                      double* const __restrict__ u,  double* const __restrict__ v, 
-                      double* const __restrict__ ug, double* const __restrict__ vg, 
-                      const double fc, const double ugrid, const double vgrid,
-                      const int jj, const int kk, 
-                      const int istart, const int jstart, const int kstart,
-                      const int iend,   const int jend,   const int kend)
+    void coriolis_2nd_g(double* const __restrict__ ut, double* const __restrict__ vt,
+                        double* const __restrict__ u,  double* const __restrict__ v, 
+                        double* const __restrict__ ug, double* const __restrict__ vg, 
+                        const double fc, const double ugrid, const double vgrid,
+                        const int jj, const int kk, 
+                        const int istart, const int jstart, const int kstart,
+                        const int iend,   const int jend,   const int kend)
     {
         const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -89,13 +89,13 @@ namespace Force_g
     }
 
     __global__ 
-    void coriolis_4th(double* const __restrict__ ut, double* const __restrict__ vt,
-                      double* const __restrict__ u,  double* const __restrict__ v, 
-                      double* const __restrict__ ug, double* const __restrict__ vg, 
-                      const double fc, const double ugrid, const double vgrid,
-                      const int jj, const int kk, 
-                      const int istart, const int jstart, const int kstart,
-                      const int iend,   const int jend,   const int kend)
+    void coriolis_4th_g(double* const __restrict__ ut, double* const __restrict__ vt,
+                        double* const __restrict__ u,  double* const __restrict__ v, 
+                        double* const __restrict__ ug, double* const __restrict__ vg, 
+                        const double fc, const double ugrid, const double vgrid,
+                        const int jj, const int kk, 
+                        const int istart, const int jstart, const int kstart,
+                        const int iend,   const int jend,   const int kend)
     {
         using namespace fd::o4;
 
@@ -124,11 +124,11 @@ namespace Force_g
     }
 
     __global__ 
-    void advec_wls_2nd(double* const __restrict__ st, double* const __restrict__ s,
-                       const double* const __restrict__ wls, const double* const __restrict__ dzhi,
-                       const int istart, const int jstart, const int kstart,
-                       const int iend,   const int jend,   const int kend,
-                       const int jj,     const int kk)
+    void advec_wls_2nd_g(double* const __restrict__ st, double* const __restrict__ s,
+                         const double* const __restrict__ wls, const double* const __restrict__ dzhi,
+                         const int istart, const int jstart, const int kstart,
+                         const int iend,   const int jend,   const int kend,
+                         const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -146,10 +146,10 @@ namespace Force_g
     }
 
     __global__ 
-    void large_scale_source(double* const __restrict__ st, double* const __restrict__ sls,
-                            const int istart, const int jstart, const int kstart,
-                            const int iend,   const int jend,   const int kend,
-                            const int jj,     const int kk)
+    void large_scale_source_g(double* const __restrict__ st, double* const __restrict__ sls,
+                              const int istart, const int jstart, const int kstart,
+                              const int iend,   const int jend,   const int kend,
+                              const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -163,10 +163,10 @@ namespace Force_g
     }
 
     __global__ 
-    void update_time_dependent_prof(double* const __restrict__ sls, double* const __restrict__ slstd,
-                                    const double fac0, const double fac1, 
-                                    const int index0,  const int index1, 
-                                    const int kmax,    const int kgc)
+    void update_time_dependent_prof_g(double* const __restrict__ sls, double* const __restrict__ slstd,
+                                      const double fac0, const double fac1, 
+                                      const int index0,  const int index1, 
+                                      const int kmax,    const int kgc)
     {
         const int k = blockIdx.x*blockDim.x + threadIdx.x;
         const int kk = kmax;
@@ -254,7 +254,7 @@ void Force::exec(double dt)
 
     if (swlspres == "uflux")
     {
-        Force_g::flux_step_1<<<gridGPU, blockGPU>>>(
+        flux_step_1_g<<<gridGPU, blockGPU>>>(
             &fields->atmp["tmp1"]->data_g[offs], &fields->u->data_g[offs],
             grid->dz_g,
             grid->icellsp, grid->ijcellsp,
@@ -264,7 +264,7 @@ void Force::exec(double dt)
 
     double uavg  = grid->get_sum_g(&fields->atmp["tmp1"]->data_g[offs], fields->atmp["tmp2"]->data_g); 
 
-        Force_g::flux_step_1<<<gridGPU, blockGPU>>>(
+        flux_step_1_g<<<gridGPU, blockGPU>>>(
             &fields->atmp["tmp1"]->data_g[offs], &fields->ut->data_g[offs],
             grid->dz_g,
             grid->icellsp, grid->ijcellsp,
@@ -279,7 +279,7 @@ void Force::exec(double dt)
 
         const double fbody = (uflux - uavg - grid->utrans) / dt - utavg;
 
-        Force_g::flux_step_2<<<gridGPU, blockGPU>>>(
+        flux_step_2_g<<<gridGPU, blockGPU>>>(
             &fields->ut->data_g[offs],
             fbody,
             grid->icellsp, grid->ijcellsp,
@@ -291,7 +291,7 @@ void Force::exec(double dt)
     {
         if (grid->swspatialorder == "2")
         {
-            Force_g::coriolis_2nd<<<gridGPU, blockGPU>>>(
+            coriolis_2nd_g<<<gridGPU, blockGPU>>>(
                 &fields->ut->data_g[offs], &fields->vt->data_g[offs],
                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
                 ug_g, vg_g, fc, grid->utrans, grid->vtrans, 
@@ -302,7 +302,7 @@ void Force::exec(double dt)
         }
         else if (grid->swspatialorder == "4")
         {
-            Force_g::coriolis_4th<<<gridGPU, blockGPU>>>(
+            coriolis_4th_g<<<gridGPU, blockGPU>>>(
                 &fields->ut->data_g[offs], &fields->vt->data_g[offs],
                 &fields->u->data_g[offs],  &fields->v->data_g[offs],
                 ug_g, vg_g, fc, grid->utrans, grid->vtrans, 
@@ -317,7 +317,7 @@ void Force::exec(double dt)
     {
         for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
         {
-            Force_g::large_scale_source<<<gridGPU, blockGPU>>>(
+            large_scale_source_g<<<gridGPU, blockGPU>>>(
                 &fields->st[*it]->data_g[offs], lsprofs_g[*it],
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend,
@@ -330,7 +330,7 @@ void Force::exec(double dt)
     {
         for (FieldMap::iterator it = fields->st.begin(); it!=fields->st.end(); it++)
         {
-            Force_g::advec_wls_2nd<<<gridGPU, blockGPU>>>(
+            advec_wls_2nd_g<<<gridGPU, blockGPU>>>(
                 &it->second->data_g[offs], fields->sp[it->first]->datamean_g, wls_g, grid->dzhi_g,
                 grid->istart,  grid->jstart, grid->kstart,
                 grid->iend,    grid->jend,   grid->kend,
@@ -355,7 +355,7 @@ void Force::update_time_dependent_profs(double fac0, double fac1, int index0, in
         // update the profile
         if (it2 != timedepdata.end())
         {
-            Force_g::update_time_dependent_prof<<<gridk, blockk>>>(
+            update_time_dependent_prof_g<<<gridk, blockk>>>(
                 lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
             cuda_check_error();
         }

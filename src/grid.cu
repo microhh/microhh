@@ -24,15 +24,15 @@
 #include "tools.h"
 #include "math.h"
 
-namespace Grid_g
+namespace
 {
     __global__ 
-    void boundary_cyclic_x(double* const __restrict__ data,
-                           const int icells, const int jcells, const int kcells,
-                           const int icellsp,
-                           const int istart, const int jstart,
-                           const int iend,   const int jend, 
-                           const int igc,    const int jgc)
+    void boundary_cyclic_x_g(double* const __restrict__ data,
+                             const int icells, const int jcells, const int kcells,
+                             const int icellsp,
+                             const int istart, const int jstart,
+                             const int iend,   const int jend, 
+                             const int igc,    const int jgc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -55,12 +55,12 @@ namespace Grid_g
     }
 
     __global__ 
-    void boundary_cyclic_y(double* const __restrict__ data,
-                           const int icells, const int jcells, const int kcells,
-                           const int icellsp,
-                           const int istart, const int jstart,
-                           const int iend,   const int jend, 
-                           const int igc,    const int jgc)
+    void boundary_cyclic_y_g(double* const __restrict__ data,
+                             const int icells, const int jcells, const int kcells,
+                             const int icellsp,
+                             const int istart, const int jstart,
+                             const int iend,   const int jend, 
+                             const int igc,    const int jgc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -162,11 +162,11 @@ void Grid::boundary_cyclic_g(double* data)
     dim3 gridGPUy (gridi_y,  gridj_y,  kcells);
     dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-    Grid_g::boundary_cyclic_x<<<gridGPUx,blockGPUx>>>(
+    boundary_cyclic_x_g<<<gridGPUx,blockGPUx>>>(
         data, icells, jcells, kcells, icellsp,
         istart, jstart, iend, jend, igc, jgc);
 
-    Grid_g::boundary_cyclic_y<<<gridGPUy,blockGPUy>>>(
+    boundary_cyclic_y_g<<<gridGPUy,blockGPUy>>>(
         data, icells, jcells, kcells, icellsp,
         istart, jstart, iend, jend, igc, jgc);
 
@@ -191,11 +191,11 @@ void Grid::boundary_cyclic2d_g(double* data)
     dim3 gridGPUy (gridi_y,  gridj_y,  1);
     dim3 blockGPUy(blocki_y, blockj_y, 1);
 
-    Grid_g::boundary_cyclic_x<<<gridGPUx,blockGPUx>>>(
+    boundary_cyclic_x_g<<<gridGPUx,blockGPUx>>>(
         data, icells, jcells, kcells, icellsp,
         istart, jstart, iend, jend, igc, jgc);
 
-    Grid_g::boundary_cyclic_y<<<gridGPUy,blockGPUy>>>(
+    boundary_cyclic_y_g<<<gridGPUy,blockGPUy>>>(
         data, icells, jcells, kcells, icellsp,
         istart, jstart, iend, jend, igc, jgc);
 

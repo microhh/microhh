@@ -30,7 +30,7 @@
 #include "tools.h"
 #include "master.h"
 
-namespace Pres_g
+namespace
 {
     const int TILE_DIM = 16; // Size of shared memory array used for transpose
 
@@ -66,7 +66,7 @@ namespace Pres_g
     }
 
     __global__ 
-    void transpose(double* fieldOut, const double* fieldIn, const int itot, const int jtot, const int ktot)
+    void transpose_g(double* fieldOut, const double* fieldIn, const int itot, const int jtot, const int ktot)
     {
         __shared__ double tile[TILE_DIM][TILE_DIM+1];
 
@@ -93,8 +93,8 @@ namespace Pres_g
     }
 
     __global__ 
-    void complex_double_x(cufftDoubleComplex* __restrict__ cdata, double* __restrict__ ddata, 
-                          const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kki, bool forward)
+    void complex_double_x_g(cufftDoubleComplex* __restrict__ cdata, double* __restrict__ ddata, 
+                            const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kki, bool forward)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -123,8 +123,8 @@ namespace Pres_g
     }
 
     __global__ 
-    void complex_double_y(cufftDoubleComplex* __restrict__ cdata, double* __restrict__ ddata, 
-                          const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kkj, bool forward)
+    void complex_double_y_g(cufftDoubleComplex* __restrict__ cdata, double* __restrict__ ddata, 
+                            const unsigned int itot, const unsigned int jtot, unsigned int kk, unsigned int kkj, bool forward)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -152,7 +152,7 @@ namespace Pres_g
         }
     }
 
-    __global__ void normalize(double* const __restrict__ data, const int itot, const int jtot, const int ktot, const double in)
+    __global__ void normalize_g(double* const __restrict__ data, const int itot, const int jtot, const int ktot, const double in)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -188,13 +188,13 @@ void Pres::make_cufft_plan()
     // Get memory estimate of batched FFT over entire field.
     size_t workSize, totalWorkSize=0;
 
-    Pres_g::check_cufft(cufftEstimateMany(rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot, &workSize));
+    check_cufft(cufftEstimateMany(rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot, &workSize));
     totalWorkSize += workSize;
-    Pres_g::check_cufft(cufftEstimateMany(rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot, &workSize));
+    check_cufft(cufftEstimateMany(rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot, &workSize));
     totalWorkSize += workSize;
-    Pres_g::check_cufft(cufftEstimateMany(rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot, &workSize));
+    check_cufft(cufftEstimateMany(rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot, &workSize));
     totalWorkSize += workSize;
-    Pres_g::check_cufft(cufftEstimateMany(rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot, &workSize));
+    check_cufft(cufftEstimateMany(rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot, &workSize));
     totalWorkSize += workSize;
 
     // Get available memory GPU
@@ -205,19 +205,19 @@ void Pres::make_cufft_plan()
     if (freeMem < totalWorkSize) // Put margin here?
     {
         FFTPerSlice = true;
-        nerror += Pres_g::check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
-        nerror += Pres_g::check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
-        nerror += Pres_g::check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
-        nerror += Pres_g::check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
+        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot)); 
+        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot));
+        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_jstride, i_jdist,        o_nj, o_jstride, o_jdist,        CUFFT_D2Z, grid->itot)); 
+        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_jstride, o_jdist,        i_nj, i_jstride, i_jdist,        CUFFT_Z2D, grid->itot));
         master->print_message("cuFFT strategy: batched per 2D slice\n");
     }
     else
     {
         FFTPerSlice = false;
-        nerror += Pres_g::check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot)); 
-        nerror += Pres_g::check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot)); 
-        nerror += Pres_g::check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
-        nerror += Pres_g::check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
+        nerror += check_cufft(cufftPlanMany(&iplanf, rank, i_ni, i_ni, i_istride, i_idist,        o_ni, o_istride, o_idist,        CUFFT_D2Z, grid->jtot*grid->ktot)); 
+        nerror += check_cufft(cufftPlanMany(&iplanb, rank, i_ni, o_ni, o_istride, o_idist,        i_ni, i_istride, i_idist,        CUFFT_Z2D, grid->jtot*grid->ktot)); 
+        nerror += check_cufft(cufftPlanMany(&jplanf, rank, i_nj, i_nj, i_istride, grid->jtot,     o_nj, o_istride, grid->jtot/2+1, CUFFT_D2Z, grid->itot*grid->ktot)); 
+        nerror += check_cufft(cufftPlanMany(&jplanb, rank, i_nj, o_nj, o_istride, grid->jtot/2+1, i_nj, i_istride, grid->jtot,     CUFFT_Z2D, grid->itot*grid->ktot)); 
         master->print_message("cuFFT strategy: batched over entire 3D field\n");
     }
 
@@ -237,11 +237,11 @@ void Pres::fft_forward(double* __restrict__ p, double* __restrict__ tmp1, double
     dim3 blockGPU(blocki, blockj, 1);
 
     // Square grid for transposes 
-    const int gridiT = grid->imax/Pres_g::TILE_DIM + (grid->imax%Pres_g::TILE_DIM > 0);
-    const int gridjT = grid->jmax/Pres_g::TILE_DIM + (grid->jmax%Pres_g::TILE_DIM > 0);
+    const int gridiT = grid->imax/TILE_DIM + (grid->imax%TILE_DIM > 0);
+    const int gridjT = grid->jmax/TILE_DIM + (grid->jmax%TILE_DIM > 0);
     dim3 gridGPUTf(gridiT, gridjT, grid->ktot);
     dim3 gridGPUTb(gridjT, gridiT, grid->ktot);
-    dim3 blockGPUT(Pres_g::TILE_DIM, Pres_g::TILE_DIM, 1);
+    dim3 blockGPUT(TILE_DIM, TILE_DIM, 1);
 
     // Transposed grid
     gridi = grid->jmax/blocki + (grid->jmax%blocki > 0);
@@ -260,18 +260,18 @@ void Pres::fft_forward(double* __restrict__ p, double* __restrict__ tmp1, double
             const int ijk  = k*kk;
             const int ijk2 = 2*k*kki;
 
-            if (Pres_g::check_cufft(cufftExecD2Z(iplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2])))
+            if (check_cufft(cufftExecD2Z(iplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2])))
                 throw 1;
         }
     }
     else // Single batched FFT over entire 3D field
     {
-        cufftExecD2Z(iplanf, (cufftDoubleReal*)p, (cufftDoubleComplex*)tmp1);
+        check_cufft(cufftExecD2Z(iplanf, (cufftDoubleReal*)p, (cufftDoubleComplex*)tmp1));
         cudaThreadSynchronize();
     }
 
     // Transform complex to double output. Allows for creating parallel cuda version at a later stage
-    Pres_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  true);
+    complex_double_x_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  true);
     cuda_check_error();
 
     // Forward FFT in the y-direction.
@@ -283,29 +283,29 @@ void Pres::fft_forward(double* __restrict__ p, double* __restrict__ tmp1, double
             {
                 const int ijk  = k*kk;
                 const int ijk2 = 2*k*kkj;
-                if (Pres_g::check_cufft(cufftExecD2Z(jplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2])))
+                if (check_cufft(cufftExecD2Z(jplanf, (cufftDoubleReal*)&p[ijk], (cufftDoubleComplex*)&tmp1[ijk2])))
                     throw 1;
             }
 
             cudaThreadSynchronize();
             cuda_check_error();
 
-            Pres_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, true);
+            complex_double_y_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, true);
             cuda_check_error();
         }
         else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
         {
-            Pres_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
+            transpose_g<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
             cuda_check_error();
 
-            if (Pres_g::check_cufft(cufftExecD2Z(jplanf, (cufftDoubleReal*)tmp2, (cufftDoubleComplex*)tmp1)))
+            if (check_cufft(cufftExecD2Z(jplanf, (cufftDoubleReal*)tmp2, (cufftDoubleComplex*)tmp1)))
                 throw 1;
             cudaThreadSynchronize();
 
-            Pres_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->jtot, grid->itot, kk, kkj,  true);
+            complex_double_x_g<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->jtot, grid->itot, kk, kkj,  true);
             cuda_check_error();
 
-            Pres_g::transpose<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
+            transpose_g<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
             cuda_safe_call(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
             cuda_check_error();
         }
@@ -324,11 +324,11 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
     dim3 blockGPU(blocki, blockj, 1);
 
     // Square grid for transposes 
-    const int gridiT = grid->imax/Pres_g::TILE_DIM + (grid->imax%Pres_g::TILE_DIM > 0);
-    const int gridjT = grid->jmax/Pres_g::TILE_DIM + (grid->jmax%Pres_g::TILE_DIM > 0);
+    const int gridiT = grid->imax/TILE_DIM + (grid->imax%TILE_DIM > 0);
+    const int gridjT = grid->jmax/TILE_DIM + (grid->jmax%TILE_DIM > 0);
     dim3 gridGPUTf(gridiT, gridjT, grid->ktot); 
     dim3 gridGPUTb(gridjT, gridiT, grid->ktot); 
-    dim3 blockGPUT(Pres_g::TILE_DIM, Pres_g::TILE_DIM, 1);
+    dim3 blockGPUT(TILE_DIM, TILE_DIM, 1);
 
     // Transposed grid
     gridi = grid->jmax/blocki + (grid->jmax%blocki > 0);
@@ -344,14 +344,14 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
     {
         if (FFTPerSlice) // Batched FFT per horizontal slice
         {
-            Pres_g::complex_double_y<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, false);
+            complex_double_y_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kkj, false);
             cuda_check_error();
 
             for (int k=0; k<grid->ktot; ++k)
             {
                 const int ijk = k*kk;
                 const int ijk2 = 2*k*kkj;
-                if (Pres_g::check_cufft(cufftExecZ2D(jplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk])))
+                if (check_cufft(cufftExecZ2D(jplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk])))
                     throw 1;
             }
             cudaThreadSynchronize();
@@ -359,18 +359,18 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
         }
         else // Single batched FFT over entire 3D field. Y-direction FFT requires transpose of field
         {
-            Pres_g::transpose<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
+            transpose_g<<<gridGPUTf, blockGPUT>>>(tmp2, p, grid->itot, grid->jtot, grid->ktot); 
             cuda_check_error();
 
-            Pres_g::complex_double_x<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, tmp2, grid->jtot, grid->itot, kk, kkj, false);
+            complex_double_x_g<<<gridGPUji,blockGPU>>>((cufftDoubleComplex*)tmp1, tmp2, grid->jtot, grid->itot, kk, kkj, false);
             cuda_check_error();
 
-            if (Pres_g::check_cufft(cufftExecZ2D(jplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p)))
+            if (check_cufft(cufftExecZ2D(jplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p)))
                 throw 1;
             cudaThreadSynchronize();
             cuda_check_error();
 
-            Pres_g::transpose<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
+            transpose_g<<<gridGPUTb, blockGPUT>>>(tmp1, p, grid->jtot, grid->itot, grid->ktot); 
             cuda_check_error();
             cuda_safe_call(cudaMemcpy(p, tmp1, grid->ncellsp*sizeof(double), cudaMemcpyDeviceToDevice));
             cuda_check_error();
@@ -378,7 +378,7 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
     }
 
     // Backward FFT in the x-direction
-    Pres_g::complex_double_x<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  false);
+    complex_double_x_g<<<gridGPU,blockGPU>>>((cufftDoubleComplex*)tmp1, p, grid->itot, grid->jtot, kk, kki,  false);
     cuda_check_error();
 
     if (FFTPerSlice) // Batched FFT per horizontal slice
@@ -387,7 +387,7 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
         {
             const int ijk = k*kk;
             const int ijk2 = 2*k*kki;
-            if (Pres_g::check_cufft(cufftExecZ2D(iplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk])))
+            if (check_cufft(cufftExecZ2D(iplanb, (cufftDoubleComplex*)&tmp1[ijk2], (cufftDoubleReal*)&p[ijk])))
                 throw 1;
         }
         cudaThreadSynchronize();
@@ -395,14 +395,14 @@ void Pres::fft_backward(double* __restrict__ p, double* __restrict__ tmp1, doubl
     }
     else // Batch FFT over entire domain
     {
-        if (Pres_g::check_cufft(cufftExecZ2D(iplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p)))
+        if (check_cufft(cufftExecZ2D(iplanb, (cufftDoubleComplex*)tmp1, (cufftDoubleReal*)p)))
             throw 1;
         cudaThreadSynchronize();
         cuda_check_error();
     }
 
     // Normalize output
-    Pres_g::normalize<<<gridGPU,blockGPU>>>(p, grid->itot, grid->jtot, grid->ktot, 1./(grid->itot*grid->jtot));
+    normalize_g<<<gridGPU,blockGPU>>>(p, grid->itot, grid->jtot, grid->ktot, 1./(grid->itot*grid->jtot));
     cuda_check_error();
 }
 
