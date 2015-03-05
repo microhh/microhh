@@ -125,7 +125,6 @@ set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_subdirectory(src)
 add_subdirectory(main)
-add_subdirectory(test)
 
 # Documentation generation
 add_custom_target(todo ALL)
