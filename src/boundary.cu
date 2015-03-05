@@ -37,11 +37,11 @@
 
 using namespace fd::o4;
 
-namespace Boundary_g
+namespace
 {
     __global__ 
-    void set_bc(double* __restrict__ a, double aval, 
-                const int icells, const int icellsp, const int jcells)
+    void set_bc_value_g(double* __restrict__ a, double aval, 
+                  const int icells, const int icellsp, const int jcells)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -54,10 +54,10 @@ namespace Boundary_g
     } 
 
     __global__ 
-    void calc_ghost_cells_bot_2nd(double* __restrict__ a, double* __restrict__ dzh, Boundary::Boundary_type sw, 
-                                  double* __restrict__ abot, double* __restrict__ agradbot,
-                                  const int icells, const int icellsp,
-                                  const int jcells, const int kstart)
+    void calc_ghost_cells_bot_2nd_g(double* __restrict__ a, double* __restrict__ dzh, Boundary::Boundary_type sw, 
+                                    double* __restrict__ abot, double* __restrict__ agradbot,
+                                    const int icells, const int icellsp,
+                                    const int jcells, const int kstart)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -77,10 +77,10 @@ namespace Boundary_g
     } 
 
     __global__ 
-    void calc_ghost_cells_top_2nd(double* __restrict__ a, double* __restrict__ dzh, const Boundary::Boundary_type sw,
-                                  double* __restrict__ atop, double* __restrict__ agradtop,
-                                  const int icells, const int icellsp,
-                                  const int jcells, const int kend)
+    void calc_ghost_cells_top_2nd_g(double* __restrict__ a, double* __restrict__ dzh, const Boundary::Boundary_type sw,
+                                    double* __restrict__ atop, double* __restrict__ agradtop,
+                                    const int icells, const int icellsp,
+                                    const int jcells, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -100,11 +100,11 @@ namespace Boundary_g
     }
 
     __global__ 
-    void calc_ghost_cells_bot_4th(double* __restrict__ a, const Boundary::Boundary_type sw,
-                                  double* __restrict__ abot, double* __restrict__ agradbot,
-                                  double* __restrict__ z,
-                                  const int icells, const int icellsp,
-                                  const int jcells, const int kstart)
+    void calc_ghost_cells_bot_4th_g(double* __restrict__ a, const Boundary::Boundary_type sw,
+                                    double* __restrict__ abot, double* __restrict__ agradbot,
+                                    double* __restrict__ z,
+                                    const int icells, const int icellsp,
+                                    const int jcells, const int kstart)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -132,11 +132,11 @@ namespace Boundary_g
     } 
 
     __global__ 
-    void calc_ghost_cells_top_4th(double* __restrict__ a, const Boundary::Boundary_type sw,
-                                  double* __restrict__ atop, double* __restrict__ agradtop,
-                                  double* __restrict__ z,
-                                  const int icells, const int icellsp,
-                                  const int jcells, const int kend)
+    void calc_ghost_cells_top_4th_g(double* __restrict__ a, const Boundary::Boundary_type sw,
+                                    double* __restrict__ atop, double* __restrict__ agradtop,
+                                    double* __restrict__ z,
+                                    const int icells, const int icellsp,
+                                    const int jcells, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -164,9 +164,9 @@ namespace Boundary_g
     } 
 
     __global__ 
-    void calc_ghost_cells_bot_w_4th(double* __restrict__ w,
-                                    const int icells, const int icellsp,
-                                    const int jcells, const int kstart)
+    void calc_ghost_cells_bot_w_4th_g(double* __restrict__ w,
+                                      const int icells, const int icellsp,
+                                      const int jcells, const int kstart)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -184,9 +184,9 @@ namespace Boundary_g
     }
 
     __global__ 
-    void calc_ghost_cells_top_w_4th(double* __restrict__ w,
-                                    const int icells, const int icellsp,
-                                    const int jcells, const int kend)
+    void calc_ghost_cells_top_w_4th_g(double* __restrict__ w,
+                                      const int icells, const int icellsp,
+                                      const int jcells, const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x;
         const int j = blockIdx.y*blockDim.y + threadIdx.y;
@@ -230,28 +230,28 @@ void Boundary::exec()
 
     if(grid->swspatialorder == "2")
     {
-        Boundary_g::calc_ghost_cells_bot_2nd<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_2nd_g<<<grid2dGPU, block2dGPU>>>(
             &fields->u->data_g[offs], grid->dzh_g, mbcbot, 
             &fields->u->databot_g[offs], &fields->u->datagradbot_g[offs],
             grid->icells, grid->icellsp,
             grid->jcells, grid->kstart);
         cuda_check_error(); 
 
-        Boundary_g::calc_ghost_cells_top_2nd<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_2nd_g<<<grid2dGPU, block2dGPU>>>(
             &fields->u->data_g[offs], grid->dzh_g, mbctop, 
             &fields->u->datatop_g[offs], &fields->u->datagradtop_g[offs],
             grid->icells, grid->icellsp,
             grid->jcells, grid->kend);
         cuda_check_error(); 
 
-        Boundary_g::calc_ghost_cells_bot_2nd<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_2nd_g<<<grid2dGPU, block2dGPU>>>(
             &fields->v->data_g[offs], grid->dzh_g, mbcbot, 
             &fields->v->databot_g[offs], &fields->v->datagradbot_g[offs],
             grid->icells, grid->icellsp,
             grid->jcells, grid->kstart);
         cuda_check_error(); 
 
-        Boundary_g::calc_ghost_cells_top_2nd<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_2nd_g<<<grid2dGPU, block2dGPU>>>(
             &fields->v->data_g[offs], grid->dzh_g, mbctop, 
             &fields->v->datatop_g[offs], &fields->v->datagradtop_g[offs],
             grid->icells, grid->icellsp,
@@ -260,14 +260,14 @@ void Boundary::exec()
 
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
         {
-            Boundary_g::calc_ghost_cells_bot_2nd<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_bot_2nd_g<<<grid2dGPU, block2dGPU>>>(
                 &it->second->data_g[offs], grid->dzh_g, sbc[it->first]->bcbot, 
                 &it->second->databot_g[offs], &it->second->datagradbot_g[offs],
                 grid->icells, grid->icellsp,
                 grid->jcells, grid->kstart);
             cuda_check_error(); 
 
-            Boundary_g::calc_ghost_cells_top_2nd<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_top_2nd_g<<<grid2dGPU, block2dGPU>>>(
                 &it->second->data_g[offs], grid->dzh_g, sbc[it->first]->bctop, 
                 &it->second->datatop_g[offs], &it->second->datagradtop_g[offs],
                 grid->icells, grid->icellsp,
@@ -277,7 +277,7 @@ void Boundary::exec()
     }
     else if(grid->swspatialorder == "4")
     {
-        Boundary_g::calc_ghost_cells_bot_4th<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_4th_g<<<grid2dGPU, block2dGPU>>>(
             &fields->u->data_g[offs], mbcbot, 
             &fields->u->databot_g[offs], &fields->u->datagradbot_g[offs],
             grid->z_g,
@@ -285,7 +285,7 @@ void Boundary::exec()
             grid->jcells, grid->kstart);
         cuda_check_error(); 
 
-        Boundary_g::calc_ghost_cells_top_4th<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_4th_g<<<grid2dGPU, block2dGPU>>>(
             &fields->u->data_g[offs], mbctop, 
             &fields->u->datatop_g[offs], &fields->u->datagradtop_g[offs],
             grid->z_g,
@@ -293,7 +293,7 @@ void Boundary::exec()
             grid->jcells, grid->kend);
         cuda_check_error(); 
 
-        Boundary_g::calc_ghost_cells_bot_4th<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_4th_g<<<grid2dGPU, block2dGPU>>>(
             &fields->v->data_g[offs], mbcbot, 
             &fields->v->databot_g[offs], &fields->v->datagradbot_g[offs],
             grid->z_g,
@@ -301,7 +301,7 @@ void Boundary::exec()
             grid->jcells, grid->kstart);
         cuda_check_error(); 
 
-        Boundary_g::calc_ghost_cells_top_4th<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_4th_g<<<grid2dGPU, block2dGPU>>>(
             &fields->v->data_g[offs], mbctop, 
             &fields->v->datatop_g[offs], &fields->v->datagradtop_g[offs],
             grid->z_g,
@@ -309,13 +309,13 @@ void Boundary::exec()
             grid->jcells, grid->kend);
         cuda_check_error(); 
 
-        Boundary_g::calc_ghost_cells_bot_w_4th<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_bot_w_4th_g<<<grid2dGPU, block2dGPU>>>(
             &fields->w->data_g[offs],
             grid->icells, grid->icellsp,
             grid->jcells, grid->kstart);
         cuda_check_error(); 
 
-        Boundary_g::calc_ghost_cells_top_w_4th<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_top_w_4th_g<<<grid2dGPU, block2dGPU>>>(
             &fields->w->data_g[offs],
             grid->icells, grid->icellsp,
             grid->jcells, grid->kend);
@@ -323,7 +323,7 @@ void Boundary::exec()
 
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
         {
-            Boundary_g::calc_ghost_cells_bot_4th<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_bot_4th_g<<<grid2dGPU, block2dGPU>>>(
                 &it->second->data_g[offs], sbc[it->first]->bcbot,
                 &it->second->databot_g[offs], &it->second->datagradbot_g[offs],
                 grid->z_g,
@@ -331,7 +331,7 @@ void Boundary::exec()
                 grid->jcells, grid->kstart);
             cuda_check_error(); 
 
-            Boundary_g::calc_ghost_cells_top_4th<<<grid2dGPU, block2dGPU>>>(
+            calc_ghost_cells_top_4th_g<<<grid2dGPU, block2dGPU>>>(
                 &it->second->data_g[offs], sbc[it->first]->bctop, 
                 &it->second->datatop_g[offs], &it->second->datagradtop_g[offs],
                 grid->z_g,
@@ -358,19 +358,19 @@ void Boundary::set_bc_g(double* restrict a, double* restrict agrad, double* rest
 
     if (sw == Dirichlet_type)
     {
-        Boundary_g::set_bc<<<grid2dGPU, block2dGPU>>>(&a[offs], aval-offset,    grid->icells, grid->icellsp, grid->jcells);
+        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&a[offs], aval-offset,    grid->icells, grid->icellsp, grid->jcells);
         cuda_check_error(); 
     }
     else if (sw == Neumann_type)
     {
-        Boundary_g::set_bc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
-        Boundary_g::set_bc<<<grid2dGPU, block2dGPU>>>(&aflux[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
+        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&agrad[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
+        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&aflux[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
         cuda_check_error(); 
     }
     else if (sw == Flux_type)
     {
-        Boundary_g::set_bc<<<grid2dGPU, block2dGPU>>>(&aflux[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
-        Boundary_g::set_bc<<<grid2dGPU, block2dGPU>>>(&agrad[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
+        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&aflux[offs], aval,       grid->icells, grid->icellsp, grid->jcells);
+        set_bc_value_g<<<grid2dGPU, block2dGPU>>>(&agrad[offs], -aval*visc, grid->icells, grid->icellsp, grid->jcells);
         cuda_check_error(); 
     }
 }

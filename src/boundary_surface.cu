@@ -38,11 +38,11 @@ namespace
     const int nzL = 10000; // Size of the lookup table for MO iterations.
 }
 
-namespace Boundary_surface_g
+namespace
 {
     __device__ 
-    double find_Obuk(const float* const __restrict__ zL, const float* const __restrict__ f,
-                    int &n, const double Ri, const double zsl)
+    double find_Obuk_g(const float* const __restrict__ zL, const float* const __restrict__ f,
+                       int &n, const double Ri, const double zsl)
     {
         // Determine search direction.
         if ((f[n]-Ri) > 0)
@@ -56,28 +56,28 @@ namespace Boundary_surface_g
     }
 
     __device__ 
-    double calc_Obuk_noslip_flux(float* __restrict__ zL, float* __restrict__ f, int& n, double du, double bfluxbot, double zsl)
+    double calc_Obuk_noslip_flux_g(float* __restrict__ zL, float* __restrict__ f, int& n, double du, double bfluxbot, double zsl)
     {
         // Calculate the appropriate Richardson number.
         const double Ri = -constants::kappa * bfluxbot * zsl / pow(du, 3);
-        return find_Obuk(zL, f, n, Ri, zsl);
+        return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
     __device__ 
-    double calc_Obuk_noslip_dirichlet(float* __restrict__ zL, float* __restrict__ f, int& n, double du, double db, double zsl)
+    double calc_Obuk_noslip_dirichlet_g(float* __restrict__ zL, float* __restrict__ f, int& n, double du, double db, double zsl)
     {
         // Calculate the appropriate Richardson number.
         const double Ri = constants::kappa * db * zsl / pow(du, 2);
-        return find_Obuk(zL, f, n, Ri, zsl);
+        return find_Obuk_g(zL, f, n, Ri, zsl);
     }
 
     /* Calculate absolute wind speed */
     __global__ 
-    void du_tot(double* __restrict__ dutot, 
-                double* __restrict__ u,    double* __restrict__ v,
-                double* __restrict__ ubot, double* __restrict__ vbot, 
-                int istart, int jstart, int kstart,
-                int iend,   int jend, int jj, int kk)
+    void du_tot_g(double* __restrict__ dutot, 
+                  double* __restrict__ u,    double* __restrict__ v,
+                  double* __restrict__ ubot, double* __restrict__ vbot, 
+                  int istart, int jstart, int kstart,
+                  int iend,   int jend, int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -96,13 +96,13 @@ namespace Boundary_surface_g
     }
 
     __global__ 
-    void stability(double* __restrict__ ustar, double* __restrict__ obuk,
-                   double* __restrict__ b, double* __restrict__ bbot, double* __restrict__ bfluxbot,
-                   double* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g, 
-                   int* __restrict__ nobuk_g,
-                   double z0m, double z0h, double zsl,
-                   int icells, int jcells, int kstart, int jj, int kk, 
-                   Boundary::Boundary_type mbcbot, int thermobc)
+    void stability_g(double* __restrict__ ustar, double* __restrict__ obuk,
+                     double* __restrict__ b, double* __restrict__ bbot, double* __restrict__ bfluxbot,
+                     double* __restrict__ dutot, float* __restrict__ zL_sl_g, float* __restrict__ f_sl_g, 
+                     int* __restrict__ nobuk_g,
+                     double z0m, double z0h, double zsl,
+                     int icells, int jcells, int kstart, int jj, int kk, 
+                     Boundary::Boundary_type mbcbot, int thermobc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -120,24 +120,24 @@ namespace Boundary_surface_g
             // case 2: fixed buoyancy flux and free ustar
             else if (mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Flux_type)
             {
-                obuk [ij] = calc_Obuk_noslip_flux(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
+                obuk [ij] = calc_Obuk_noslip_flux_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], bfluxbot[ij], zsl);
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
             }
             // case 3: fixed buoyancy surface value and free ustar
             else if (mbcbot == Boundary::Dirichlet_type && thermobc == Boundary::Dirichlet_type)
             {
                 double db = b[ijk] - bbot[ij];
-                obuk [ij] = calc_Obuk_noslip_dirichlet(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
+                obuk [ij] = calc_Obuk_noslip_dirichlet_g(zL_sl_g, f_sl_g, nobuk_g[ij], dutot[ij], db, zsl);
                 ustar[ij] = dutot[ij] * most::fm(zsl, z0m, obuk[ij]);
             }
         }
     }
 
     __global__ 
-    void stability_neutral(double* __restrict__ ustar, double* __restrict__ obuk,
-                           double* __restrict__ dutot, double z0m, double z0h, double zsl,
-                           int icells, int jcells, int kstart, int jj, int kk,
-                           Boundary::Boundary_type mbcbot, int thermobc)
+    void stability_neutral_g(double* __restrict__ ustar, double* __restrict__ obuk,
+                             double* __restrict__ dutot, double z0m, double z0h, double zsl,
+                             int icells, int jcells, int kstart, int jj, int kk,
+                             Boundary::Boundary_type mbcbot, int thermobc)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -167,14 +167,14 @@ namespace Boundary_surface_g
     }
 
     __global__ 
-    void surfm_flux(double* __restrict__ ufluxbot, double* __restrict__ vfluxbot,
-                    double* __restrict__ u,        double* __restrict__ v,
-                    double* __restrict__ ubot,     double* __restrict__ vbot, 
-                    double* __restrict__ ustar,    double* __restrict__ obuk, 
-                    double zsl, double z0m,
-                    int istart, int jstart, int kstart,
-                    int iend,   int jend, int jj, int kk,
-                    Boundary::Boundary_type bcbot)
+    void surfm_flux_g(double* __restrict__ ufluxbot, double* __restrict__ vfluxbot,
+                      double* __restrict__ u,        double* __restrict__ v,
+                      double* __restrict__ ubot,     double* __restrict__ vbot, 
+                      double* __restrict__ ustar,    double* __restrict__ obuk, 
+                      double zsl, double z0m,
+                      int istart, int jstart, int kstart,
+                      int iend,   int jend, int jj, int kk,
+                      Boundary::Boundary_type bcbot)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -214,10 +214,10 @@ namespace Boundary_surface_g
     }
 
     __global__ 
-    void surfm_grad(double* __restrict__ ugradbot, double* __restrict__ vgradbot,
-                    double* __restrict__ u,        double* __restrict__ v, 
-                    double* __restrict__ ubot,     double* __restrict__ vbot, double zsl, 
-                    int icells, int jcells, int kstart, int jj, int kk)
+    void surfm_grad_g(double* __restrict__ ugradbot, double* __restrict__ vgradbot,
+                      double* __restrict__ u,        double* __restrict__ v, 
+                      double* __restrict__ ubot,     double* __restrict__ vbot, double zsl, 
+                      int icells, int jcells, int kstart, int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -233,12 +233,12 @@ namespace Boundary_surface_g
     }
 
     __global__ 
-    void surfs(double* __restrict__ varfluxbot, double* __restrict__ vargradbot, 
-               double* __restrict__ varbot,     double* __restrict__ var, 
-               double* __restrict__ ustar,      double* __restrict__ obuk, double zsl, double z0h,
-               int icells, int jcells, int kstart,
-               int jj, int kk,
-               Boundary::Boundary_type bcbot)
+    void surfs_g(double* __restrict__ varfluxbot, double* __restrict__ vargradbot, 
+                 double* __restrict__ varbot,     double* __restrict__ var, 
+                 double* __restrict__ ustar,      double* __restrict__ obuk, double zsl, double z0h,
+                 int icells, int jcells, int kstart,
+                 int jj, int kk,
+                 Boundary::Boundary_type bcbot)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -342,7 +342,7 @@ void Boundary_surface::update_bcs()
     const int offs = grid->memoffset;
 
     // Calculate dutot in tmp2
-    Boundary_surface_g::du_tot<<<gridGPU, blockGPU>>>(
+    du_tot_g<<<gridGPU, blockGPU>>>(
         &fields->atmp["tmp2"]->data_g[offs], 
         &fields->u->data_g[offs],    &fields->v->data_g[offs],
         &fields->u->databot_g[offs], &fields->v->databot_g[offs],
@@ -357,7 +357,7 @@ void Boundary_surface::update_bcs()
     if (model->thermo->get_switch() == "0")
     {
         // Calculate ustar and Obukhov length, including ghost cells
-        Boundary_surface_g::stability_neutral<<<gridGPU2, blockGPU2>>>(
+        stability_neutral_g<<<gridGPU2, blockGPU2>>>(
             &ustar_g[offs], &obuk_g[offs], 
             &fields->atmp["tmp2"]->data_g[offs], z0m, z0h, grid->z[grid->kstart],
             grid->icells, grid->jcells, grid->kstart, grid->icellsp, grid->ijcellsp, mbcbot, thermobc); 
@@ -369,7 +369,7 @@ void Boundary_surface::update_bcs()
         model->thermo->get_buoyancy_surf(fields->atmp["tmp1"]);
 
         // Calculate ustar and Obukhov length, including ghost cells
-        Boundary_surface_g::stability<<<gridGPU2, blockGPU2>>>(
+        stability_g<<<gridGPU2, blockGPU2>>>(
             &ustar_g[offs], &obuk_g[offs], 
             &fields->atmp["tmp1"]->data_g[offs], &fields->atmp["tmp1"]->databot_g[offs], &fields->atmp["tmp1"]->datafluxbot_g[offs],
             &fields->atmp["tmp2"]->data_g[offs], 
@@ -380,7 +380,7 @@ void Boundary_surface::update_bcs()
     }
 
     // Calculate surface momentum fluxes, excluding ghost cells
-    Boundary_surface_g::surfm_flux<<<gridGPU, blockGPU>>>(
+    surfm_flux_g<<<gridGPU, blockGPU>>>(
         &fields->u->datafluxbot_g[offs], &fields->v->datafluxbot_g[offs],
         &fields->u->data_g[offs],        &fields->v->data_g[offs],
         &fields->u->databot_g[offs],     &fields->v->databot_g[offs], 
@@ -394,7 +394,7 @@ void Boundary_surface::update_bcs()
     grid->boundary_cyclic2d_g(&fields->v->datafluxbot_g[offs]);
 
     // Calculate surface gradients, including ghost cells
-    Boundary_surface_g::surfm_grad<<<gridGPU2, blockGPU2>>>(
+    surfm_grad_g<<<gridGPU2, blockGPU2>>>(
         &fields->u->datagradbot_g[offs], &fields->v->datagradbot_g[offs],
         &fields->u->data_g[offs],        &fields->v->data_g[offs],
         &fields->u->databot_g[offs],     &fields->v->databot_g[offs],
@@ -403,7 +403,7 @@ void Boundary_surface::update_bcs()
 
     // Calculate scalar fluxes, gradients and/or values, including ghost cells
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-        Boundary_surface_g::surfs<<<gridGPU2, blockGPU2>>>(
+        surfs_g<<<gridGPU2, blockGPU2>>>(
             &it->second->datafluxbot_g[offs], &it->second->datagradbot_g[offs],
             &it->second->databot_g[offs],     &it->second->data_g[offs],
             &ustar_g[offs], &obuk_g[offs], grid->z[grid->kstart], z0h,            
