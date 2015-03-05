@@ -110,7 +110,5 @@ class Boundary
 
         void calc_ghost_cells_botw_4th(double*); ///< Calculate the bottom ghost cells for the vertical velocity with 4th order accuracy.
         void calc_ghost_cells_topw_4th(double*); ///< Calculate the top ghost cells for the vertical velocity with 4th order accuracy.
-
-        inline double grad4x(const double, const double, const double, const double); ///< Calculate a 4th order gradient.
 };
 #endif

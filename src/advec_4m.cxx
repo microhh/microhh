@@ -33,6 +33,8 @@
 
 using fd::o2::interp2;
 using fd::o4::interp4;
+using fd::o4::grad4;
+using fd::o4::grad4x;
 
 Advec_4m::Advec_4m(Model* modelin, Input* inputin) : Advec(modelin, inputin)
 {
@@ -464,25 +466,3 @@ void Advec_4m::advec_s(double * restrict st, double * restrict s, double * restr
                        * dzi4[kend-1];
         }
 }
-
-
-inline double Advec_4m::grad4(const double a, const double b, const double c, const double d, const double dxi)
-{
-    return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
-}
-
-inline double Advec_4m::grad4x(const double a, const double b, const double c, const double d)
-{
-    return (-(d-a) + 27.*(c-b)); 
-}
-
-//inline double Advec_4m::grad4xbiasbot(const double a, const double b, const double c, const double d)
-//{
-//  return (-23.*a + 21.*b + 3.*c - d);
-//}
-//
-//inline double Advec_4m::grad4xbiastop(const double a, const double b, const double c, const double d)
-//{
-//  return ( 23.*d - 21.*c - 3.*b + a);
-//}
-

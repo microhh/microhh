@@ -37,10 +37,12 @@
 #include "master.h"
 #include "cross.h"
 #include "dump.h"
+#include "thermo_moist_functions.h"
 
 using fd::o2::interp2;
 using fd::o4::interp4;
 using namespace constants;
+using namespace Thermo_moist_functions;
 
 Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
@@ -587,65 +589,6 @@ void Thermo_moist::get_prog_vars(std::vector<std::string> *list)
 {
     list->push_back(thvar);
     list->push_back("qt");
-}
-
-namespace
-{
-    // INLINE FUNCTIONS
-    inline double buoyancy(const double exn, const double thl, const double qt, const double ql, const double thvref)
-    {
-        return grav * ((thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
-    }
-
-    inline double buoyancy_no_ql(const double thl, const double qt, const double thvref)
-    {
-        return grav * (thl * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
-    }
-
-    inline double buoyancy_flux_no_ql(const double thl, const double thlflux, const double qt, const double qtflux, const double thvref)
-    {
-        return grav/thvref * (thlflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*thl*qtflux);
-    }
-
-    inline double esat(const double T)
-    {
-        const double x=std::max(-80.,T-T0);
-        return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
-    }
-
-    inline double qsat(const double p, const double T)
-    {
-        return ep*esat(T)/(p-(1-ep)*esat(T));
-    }
-
-    inline double sat_adjust(const double thl, const double qt, const double p, const double exn)
-    {
-        int niter = 0, nitermax = 30;
-        double ql, tl, tnr_old = 1.e9, tnr, qs=0;
-        tl = thl * exn;
-        tnr = tl;
-        while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
-        {
-            ++niter;
-            tnr_old = tnr;
-            qs = qsat(p,tnr);
-            tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(std::pow(Lv,2)*qs)/ (Rv*cp*std::pow(tnr,2)));
-        }
-
-        if (niter == nitermax)
-        {  
-            printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",thl,qt,p);
-            throw 1;
-        }  
-
-        ql = std::max(0.,qt - qs);
-        return ql;
-    }
-
-    inline double exner(const double p)
-    {
-        return pow((p/p0),(Rd/cp));
-    }
 }
 
 /**
