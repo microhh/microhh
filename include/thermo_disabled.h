@@ -36,7 +36,7 @@ class Thermo_disabled : public Thermo
         virtual ~Thermo_disabled();
 
         // Interfacing functions to get buoyancy properties from other classes.
-        bool check_thermo_field(std::string name);
+        bool check_field_exists(std::string name);
 
         // Empty functions that are allowed to pass.
         void init() {}

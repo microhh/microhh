@@ -534,12 +534,12 @@ void Thermo_moist::exec_dump()
     }
 }
 
-bool Thermo_moist::check_thermo_field(const std::string name)
+bool Thermo_moist::check_field_exists(const std::string name)
 {
     if (name == "b" || name == "ql")
-        return false;
-    else
         return true;
+    else
+        return false;
 }
 
 #ifndef USECUDA
@@ -1075,7 +1075,7 @@ void Thermo_moist::init_dump()
         std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
         while (dumpvar != dumplist_global->end())
         {
-            if (!check_thermo_field(*dumpvar))
+            if (check_field_exists(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);

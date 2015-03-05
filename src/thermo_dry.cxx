@@ -287,12 +287,12 @@ void Thermo_dry::exec_dump()
     }
 }
 
-bool Thermo_dry::check_thermo_field(std::string name)
+bool Thermo_dry::check_field_exists(std::string name)
 {
     if (name == "b")
-        return false;
-    else
         return true;
+    else
+        return false;
 }
 
 #ifndef USECUDA
@@ -555,7 +555,7 @@ void Thermo_dry::init_dump()
         std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
         while (dumpvar != dumplist_global->end())
         {
-            if (!check_thermo_field(*dumpvar))
+            if (check_field_exists(*dumpvar))
             {
                 // Remove variable from global list, put in local list
                 dumplist.push_back(*dumpvar);

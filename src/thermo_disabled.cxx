@@ -38,7 +38,7 @@ Thermo_disabled::~Thermo_disabled()
 {
 }
 
-bool Thermo_disabled::check_thermo_field(std::string name)
+bool Thermo_disabled::check_field_exists(std::string name)
 {
-    return true;  // always returns error 
+    return false;  // always returns error 
 }

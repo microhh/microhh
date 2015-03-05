@@ -43,7 +43,7 @@ class Thermo_buoy : public Thermo
 
         void exec(); ///< Add the tendencies belonging to the buoyancy.
 
-        bool check_thermo_field(std::string name);
+        bool check_field_exists(std::string name);
         void get_buoyancy(Field3d*, Field3d*);         ///< Compute the buoyancy for usage in another routine.
         void get_buoyancy_surf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
         void get_buoyancy_fluxbot(Field3d*);           ///< Compute the bottom buoyancy flux for usage in another routine.

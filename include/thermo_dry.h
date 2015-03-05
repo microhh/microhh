@@ -49,7 +49,7 @@ class Thermo_dry : public Thermo
         void exec_cross();
         void exec_dump();
 
-        bool check_thermo_field(std::string name);
+        bool check_field_exists(std::string name);
         void get_thermo_field(Field3d*, Field3d*, std::string name);
         void get_buoyancy_surf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
         void get_buoyancy_fluxbot(Field3d*);           ///< Compute the bottom buoyancy flux for usage in another routine.

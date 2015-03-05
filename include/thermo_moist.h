@@ -46,7 +46,7 @@ class Thermo_moist : public Thermo
         void exec_dump();
 
         // functions to retrieve buoyancy properties, to be called from other classes
-        bool check_thermo_field(std::string name);
+        bool check_field_exists(std::string name);
         void get_thermo_field(Field3d*, Field3d*, std::string name);
         void get_buoyancy_surf(Field3d*);
         void get_buoyancy_fluxbot(Field3d*);

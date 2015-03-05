@@ -75,12 +75,12 @@ void Thermo_buoy_slope::exec()
 }
 #endif
 
-bool Thermo_buoy_slope::check_thermo_field(std::string name)
+bool Thermo_buoy_slope::check_field_exists(std::string name)
 {
     if (name == "b")
-        return false;
-    else
         return true;
+    else
+        return false;
 }
 
 void Thermo_buoy_slope::get_thermo_field(Field3d* field, Field3d* tmp, const std::string name)
