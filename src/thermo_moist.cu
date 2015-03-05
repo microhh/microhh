@@ -219,7 +219,7 @@ namespace Thermo_moist_g
         }
     }
 
-    /* This routine needs to be solved level by level, so one thread does everything */
+    /* BvS: no longer used, base state is calculated at the host
     template <int swspatialorder> __global__ 
     void calc_base_state(double* __restrict__ pref,     double* __restrict__ prefh,
                          double* __restrict__ rho,      double* __restrict__ rhoh,
@@ -300,9 +300,10 @@ namespace Thermo_moist_g
             pref[kend]     = (8./3.)*prefh[kend]   - 2.*pref[kend-1] + (1./3.)*pref[kend-2];
             pref[kend+1]   = 8.*prefh[kend]        - 9.*pref[kend-1] + 2.*pref[kend-2];
         }
-    }
+    } */
+    
 
-    /* This routine needs to be solved level by level, so one thread does everything */
+    /* BvS: no longer used, base state is calculated at the host
     template <int swspatialorder> __global__ 
     void calc_hydrostatic_pressure(double* __restrict__ pref,     double* __restrict__ prefh,
                                    double* __restrict__ ex,       double* __restrict__ exh,
@@ -376,7 +377,8 @@ namespace Thermo_moist_g
             pref[kend]     = (8./3.)*prefh[kend]   - 2.*pref[kend-1] + (1./3.)*pref[kend-2];
             pref[kend+1]   = 8.*prefh[kend]        - 9.*pref[kend-1] + 2.*pref[kend-2];
         }    
-    }        
+    } */      
+    
 } // end name    space
                  
 void Thermo_moist::prepare_device()
