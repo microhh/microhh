@@ -85,19 +85,19 @@ void Diff_smag_2::exec_viscosity()
     // Do a cast because the base boundary class does not have the MOST related variables.
     Boundary_surface* boundaryptr = static_cast<Boundary_surface*>(model->boundary);
 
-    strain2(fields->sd["evisc"]->data,
-            fields->u->data, fields->v->data, fields->w->data,
-            fields->u->datafluxbot, fields->v->datafluxbot,
-            boundaryptr->ustar, boundaryptr->obuk,
-            grid->z, grid->dzi, grid->dzhi);
+    calc_strain2(fields->sd["evisc"]->data,
+                 fields->u->data, fields->v->data, fields->w->data,
+                 fields->u->datafluxbot, fields->v->datafluxbot,
+                 boundaryptr->ustar, boundaryptr->obuk,
+                 grid->z, grid->dzi, grid->dzhi);
 
     // start with retrieving the stability information
     if (model->thermo->get_switch() == "0")
     {
-        evisc_neutral(fields->sd["evisc"]->data,
-                fields->u->data, fields->v->data, fields->w->data,
-                fields->u->datafluxbot, fields->v->datafluxbot,
-                grid->z, grid->dz, boundaryptr->z0m);
+        calc_evisc_neutral(fields->sd["evisc"]->data,
+                           fields->u->data, fields->v->data, fields->w->data,
+                           fields->u->datafluxbot, fields->v->datafluxbot,
+                           grid->z, grid->dz, boundaryptr->z0m);
     }
     // assume buoyancy calculation is needed
     else
@@ -108,12 +108,12 @@ void Diff_smag_2::exec_viscosity()
         model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
         // model->thermo->getThermoField(fields->sd["tmp1"], fields->sd["tmp2"], "b");
 
-        evisc(fields->sd["evisc"]->data,
-              fields->u->data, fields->v->data, fields->w->data, fields->atmp["tmp1"]->data,
-              fields->u->datafluxbot, fields->v->datafluxbot, fields->atmp["tmp1"]->datafluxbot,
-              boundaryptr->ustar, boundaryptr->obuk,
-              grid->z, grid->dz, grid->dzi,
-              boundaryptr->z0m);
+        calc_evisc(fields->sd["evisc"]->data,
+                   fields->u->data, fields->v->data, fields->w->data, fields->atmp["tmp1"]->data,
+                   fields->u->datafluxbot, fields->v->datafluxbot, fields->atmp["tmp1"]->datafluxbot,
+                   boundaryptr->ustar, boundaryptr->obuk,
+                   grid->z, grid->dz, grid->dzi,
+                   boundaryptr->z0m);
     }
 }
 #endif
@@ -134,11 +134,11 @@ void Diff_smag_2::exec()
 }
 #endif
 
-void Diff_smag_2::strain2(double* restrict strain2,
-                          double* restrict u, double* restrict v, double* restrict w,
-                          double* restrict ufluxbot, double* restrict vfluxbot,
-                          double* restrict ustar, double* restrict obuk,
-                          double* restrict z, double* restrict dzi, double* restrict dzhi)
+void Diff_smag_2::calc_strain2(double* restrict strain2,
+                               double* restrict u, double* restrict v, double* restrict w,
+                               double* restrict ufluxbot, double* restrict vfluxbot,
+                               double* restrict ustar, double* restrict obuk,
+                               double* restrict z, double* restrict dzi, double* restrict dzhi)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -203,12 +203,12 @@ void Diff_smag_2::strain2(double* restrict strain2,
             }
 }
 
-void Diff_smag_2::evisc(double* restrict evisc,
-                        double* restrict u, double* restrict v, double* restrict w,  double* restrict N2,
-                        double* restrict ufluxbot, double* restrict vfluxbot, double* restrict bfluxbot,
-                        double* restrict ustar, double* restrict obuk,
-                        double* restrict z, double* restrict dz, double* restrict dzi,
-                        double z0m)
+void Diff_smag_2::calc_evisc(double* restrict evisc,
+                             double* restrict u, double* restrict v, double* restrict w,  double* restrict N2,
+                             double* restrict ufluxbot, double* restrict vfluxbot, double* restrict bfluxbot,
+                             double* restrict ustar, double* restrict obuk,
+                             double* restrict z, double* restrict dz, double* restrict dzi,
+                             const double z0m)
 {
     // Variables for the wall damping.
     double mlen,mlen0,fac;
@@ -268,10 +268,10 @@ void Diff_smag_2::evisc(double* restrict evisc,
     grid->boundary_cyclic(evisc);
 }
 
-void Diff_smag_2::evisc_neutral(double* restrict evisc,
-                                double* restrict u, double* restrict v, double* restrict w,
-                                double* restrict ufluxbot, double* restrict vfluxbot,
-                                double* restrict z, double* restrict dz, double z0m)
+void Diff_smag_2::calc_evisc_neutral(double* restrict evisc,
+                                     double* restrict u, double* restrict v, double* restrict w,
+                                     double* restrict ufluxbot, double* restrict vfluxbot,
+                                     double* restrict z, double* restrict dz, const double z0m)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;

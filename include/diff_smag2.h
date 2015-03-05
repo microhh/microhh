@@ -46,24 +46,24 @@ class Diff_smag_2 : public Diff
         double* mlen_g; 
 
     private:
-        void strain2(double*,
-                     double*, double*, double*,
-                     double*, double*,
-                     double*, double*,
-                     double*, double*, double*);
+        void calc_strain2(double*,
+                          double*, double*, double*,
+                          double*, double*,
+                          double*, double*,
+                          double*, double*, double*);
 
-        void evisc(double*,
-                   double*, double*, double*, double*,
-                   double*, double*, double*,
-                   double*, double*,
-                   double*, double*, double*,
-                   double);
+        void calc_evisc(double*,
+                        double*, double*, double*, double*,
+                        double*, double*, double*,
+                        double*, double*,
+                        double*, double*, double*,
+                        double);
 
-        void evisc_neutral(double*,
-                           double*, double*, double*,
-                           double*, double*,
-                           double*, double*,
-                           double);
+        void calc_evisc_neutral(double*,
+                                double*, double*, double*,
+                                double*, double*,
+                                double*, double*,
+                                double);
 
         void diff_u(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
         void diff_v(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
