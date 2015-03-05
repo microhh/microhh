@@ -20,6 +20,9 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef CONSTANTS
+#define CONSTANTS
+
 #include <climits>
 
 namespace constants
@@ -62,3 +65,4 @@ namespace constants
     const double        dhuge  = 1.e30;
     const unsigned long ulhuge = ULONG_MAX;
 }
+#endif
