@@ -44,10 +44,12 @@ namespace
         const int ii1 = 1;
         const int ii2 = 2;
 
+        using namespace Finite_difference::O4;
+
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            ut[ijk] += sinalpha * (fd::o4::ci0*b[ijk-ii2] + fd::o4::ci1*b[ijk-ii1] + fd::o4::ci2*b[ijk] + fd::o4::ci3*b[ijk+ii1]);
+            ut[ijk] += sinalpha * (ci0*b[ijk-ii2] + ci1*b[ijk-ii1] + ci2*b[ijk] + ci3*b[ijk+ii1]);
         }
     }
 
@@ -65,10 +67,12 @@ namespace
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
 
+        using namespace Finite_difference::O4;
+
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += cosalpha * (fd::o4::ci0*b[ijk-kk2] + fd::o4::ci1*b[ijk-kk1] + fd::o4::ci2*b[ijk] + fd::o4::ci3*b[ijk+kk1]);
+            wt[ijk] += cosalpha * (ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1]);
         }
     }
 
@@ -90,11 +94,13 @@ namespace
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
 
+        using namespace Finite_difference::O4;
+
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            bt[ijk] -= n2 * ( sinalpha * ( (fd::o4::ci0*u[ijk-ii1] + fd::o4::ci1*u[ijk] + fd::o4::ci2*u[ijk+ii1] + fd::o4::ci3*u[ijk+ii2]) + utrans )
-                            + cosalpha * (  fd::o4::ci0*w[ijk-kk1] + fd::o4::ci1*w[ijk] + fd::o4::ci2*w[ijk+kk1] + fd::o4::ci3*w[ijk+kk2]) );
+            bt[ijk] -= n2 * ( sinalpha * ( (ci0*u[ijk-ii1] + ci1*u[ijk] + ci2*u[ijk+ii1] + ci3*u[ijk+ii2]) + utrans )
+                            + cosalpha * (  ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2]) );
         }
     }
 } // End namespace.

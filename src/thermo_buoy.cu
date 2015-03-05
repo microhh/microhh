@@ -39,10 +39,12 @@ namespace
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
         const int k = blockIdx.z + kstart; 
 
+        using Finite_difference::O2::interp2;
+
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += fd::o2::interp2(b[ijk-kk], b[ijk]);
+            wt[ijk] += interp2(b[ijk-kk], b[ijk]);
         }
     }
 
@@ -59,10 +61,12 @@ namespace
         const int kk1 = 1*kk;
         const int kk2 = 2*kk;
 
+        using namespace Finite_difference::O4;
+
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            wt[ijk] += fd::o4::ci0*b[ijk-kk2] + fd::o4::ci1*b[ijk-kk1] + fd::o4::ci2*b[ijk] + fd::o4::ci3*b[ijk+kk1];
+            wt[ijk] += ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1];
         }
     }
 } // end namespace
