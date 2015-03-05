@@ -27,7 +27,7 @@
 #include "constants.h"
 #include "tools.h"
 
-namespace Timeloop_g
+namespace
 {
     /*
        __global__ void rk3_kernel(double * __restrict__ a, double * __restrict__ at, double dt,
@@ -55,10 +55,10 @@ namespace Timeloop_g
      */
 
     template<int substep> __global__ 
-    void rk3(double* __restrict__ a, double* __restrict__ at, double dt,
-             const int jj, const int kk,
-             const int istart, const int jstart, const int kstart,
-             const int iend,   const int jend,   const int kend)
+    void rk3_g(double* __restrict__ a, double* __restrict__ at, double dt,
+               const int jj, const int kk,
+               const int istart, const int jstart, const int kstart,
+               const int iend,   const int jend,   const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -95,10 +95,10 @@ namespace Timeloop_g
     }
 
     template<int substep> __global__ 
-    void rk4(double* __restrict__ a, double* __restrict__ at, double dt,
-             const int jj, const int kk,
-             const int istart, const int jstart, const int kstart,
-             const int iend,   const int jend,   const int kend)
+    void rk4_g(double* __restrict__ a, double* __restrict__ at, double dt,
+               const int jj, const int kk,
+               const int istart, const int jstart, const int kstart,
+               const int iend,   const int jend,   const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -165,19 +165,19 @@ void Timeloop::exec()
         for (FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
         {
             if (substep == 0)
-                Timeloop_g::rk3<0><<<gridGPU, blockGPU>>>(
+                rk3_g<0><<<gridGPU, blockGPU>>>(
                     &fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
                     grid->icellsp, grid->ijcellsp,
                     grid->istart,  grid->jstart, grid->kstart,
                     grid->iend,    grid->jend,   grid->kend);
             else if (substep == 1)
-                Timeloop_g::rk3<1><<<gridGPU, blockGPU>>>(
+                rk3_g<1><<<gridGPU, blockGPU>>>(
                     &fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
                     grid->icellsp, grid->ijcellsp,
                     grid->istart,  grid->jstart, grid->kstart,
                     grid->iend,    grid->jend,   grid->kend);
             else if (substep == 2)
-                Timeloop_g::rk3<2><<<gridGPU, blockGPU>>>(
+                rk3_g<2><<<gridGPU, blockGPU>>>(
                     &fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
                     grid->icellsp, grid->ijcellsp,
                     grid->istart,  grid->jstart, grid->kstart,
@@ -199,31 +199,31 @@ void Timeloop::exec()
         for (FieldMap::const_iterator it = fields->at.begin(); it!=fields->at.end(); ++it)
         {
             if (substep==0)
-                Timeloop_g::rk4<0><<<gridGPU, blockGPU>>>(
+                rk4_g<0><<<gridGPU, blockGPU>>>(
                     &fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
                     grid->icellsp, grid->ijcellsp,
                     grid->istart,  grid->jstart, grid->kstart,
                     grid->iend,    grid->jend,   grid->kend);
             else if (substep==1)
-                Timeloop_g::rk4<1><<<gridGPU, blockGPU>>>(
+                rk4_g<1><<<gridGPU, blockGPU>>>(
                     &fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
                     grid->icellsp, grid->ijcellsp,
                     grid->istart,  grid->jstart, grid->kstart,
                     grid->iend,    grid->jend,   grid->kend);
             else if (substep==2)
-                Timeloop_g::rk4<2><<<gridGPU, blockGPU>>>(
+                rk4_g<2><<<gridGPU, blockGPU>>>(
                     &fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
                     grid->icellsp, grid->ijcellsp,
                     grid->istart,  grid->jstart, grid->kstart,
                     grid->iend,    grid->jend,   grid->kend);
             else if (substep==3)
-                Timeloop_g::rk4<3><<<gridGPU, blockGPU>>>(
+                rk4_g<3><<<gridGPU, blockGPU>>>(
                     &fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
                     grid->icellsp, grid->ijcellsp,
                     grid->istart,  grid->jstart, grid->kstart,
                     grid->iend,    grid->jend,   grid->kend);
             else if (substep==4)
-                Timeloop_g::rk4<4><<<gridGPU, blockGPU>>>(
+                rk4_g<4><<<gridGPU, blockGPU>>>(
                     &fields->ap[it->first]->data_g[offs], &it->second->data_g[offs], dt,
                     grid->icellsp, grid->ijcellsp,
                     grid->istart,  grid->jstart, grid->kstart,
