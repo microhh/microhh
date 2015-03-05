@@ -1,41 +1,60 @@
-// 1.1 All classes, structs, typedefs and enums go PascalCase:
-class ThermoMoist;
-struct StatsVar;
-typedef std::map<std::string, Field3d *> FieldMap;
-enum BoundaryType {DirichletType, NeumannType, FluxType};
+// NAMING CONVENTIONS
+
+// Coding conventions: use underscores to separate words.
+// Name of class, struct, enum, namespace or typedef will begin with an uppercase letter.
+// Functions and variables have only lowercase letters.
+struct Thermo;
+class Thermo_moist;
+typedef std::map<std::string, Field3d*> Field_map;
+
+void exec_stats();
+void init_prognostic_variable();
+
+// Accessors and mutators contain the exact name of the variable:
+bool calc_mean_profs = true;
+bool get_calc_mean_profs();
+void set_calc_mean_profs(bool);
+
+// Functions that refer to the used name of quantity use the exact same name:
+void calc_mask_ql();
+
+// Inline functions that are used inside of kernels can be kept short for readability:
+inline double i_4(const double, const double, const double, const double);
+a[ijk] = u[ijk] * i_4( s[ijk-ii2], s[ijk-ii1], s[ijk], s[ijk+ii1] );
+
+// GPU versions of existing functions and variables are written with a suffix _g:
+void boundary_cyclic_g();
 
 
-// 2.1 All functions go camelCase, function names should be informative:
-void execStats();
-void initPrognosticVariable;
+// INDENTATION AND WHITE SPACE
+// Only use FOUR spaces for indentation. Add whitespace after if, for, while, catch.
+if (name == "b")
+    return true;
+else
+    return false;
 
-// 2.2 All accessors and mutators contain the name of the variable without changing the case:
-bool get_calcMeanProfs();
-void set_calcMeanProfs(bool);
-void get_gridData();
+// OTHER IMPORTANT CONVENTIONS
+// Only initialize variables when you need them, thus in the innermost scope. Declare 
+// everything const that will be never changed.
 
-// 2.3 Functions that distinguish multiple versions for different spatial orders use underscore suffix:
-void interpolate_4th();
-void calcFlux_2nd();
-
-// 2.3 Functions that refer to the used name of quantity can also apply underscores:
-void calcMask_ql();
-void calcMask_qlcore();
-
-// 2.4 Inline functions that are used inside of kernels can be kept short for readability:
-inline double interp4(const double, const double, const double, const double);
-a[ijk] = u[ijk]*interp4(s[ijk-ii2], s[ijk-ii1], s[ijk], s[ijk+ii1]);
-
-// 3.1 Variable names go at the wish of the user:
-bool calcProfs = true;
-int icells;
-
-
-// 4.1 GPU versions of existing functions and variables are written with a suffix _g:
-void boundaryCyclic_g();
-
-// 4.2 GPU kernels are stored in namespaces with the name of the class and a suffix _g:
-namespace ThermoMoist_g
+// Correct:
+for (int i=grid->istart; i<grid->iend; ++i)
 {
-  calcBuoyancy();
+    const int ijk = i + j*jj + k*kk;
+    u[ijk] = a*s[ijk];
 }
+
+// Wrong:
+int i;
+int ijk;
+
+for (i=grid->istart; i<grid->iend; ++i)
+{
+    ijk = i + j*jj + k*kk;
+    u[ijk] = a*s[ijk];
+}
+
+// For further information, have a look at the JSF C++ coding standard,
+// we like it and use it as a guideline.
+//
+// http://www.stroustrup.com/JSF-AV-rules.pdf
