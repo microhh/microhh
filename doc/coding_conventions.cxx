@@ -54,3 +54,7 @@ for (i=grid->istart; i<grid->iend; ++i)
     u[ijk] = a*s[ijk];
 }
 
+// For further information, have a look at the JSF C++ coding standard,
+// we like it and use it as a guideline.
+//
+// http://www.stroustrup.com/JSF-AV-rules.pdf
