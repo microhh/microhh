@@ -29,15 +29,15 @@
 #include "constants.h"
 #include "tools.h"
 
-namespace Buffer_g
+namespace
 {
     __global__ 
-    void buffer(double* __restrict__ at,   double* __restrict__ a,
-                double* __restrict__ abuf, double* __restrict__ z,
-                double zstart, double zsizebufi, double sigma,  double beta,
-                int istart, int jstart, int bufferkstart,
-                int iend,   int jend,   int kend,
-                int jj, int kk)
+    void buffer_g(double* __restrict__ at,   double* __restrict__ a,
+                  double* __restrict__ abuf, double* __restrict__ z,
+                  double zstart, double zsizebufi, double sigma,  double beta,
+                  int istart, int jstart, int bufferkstart,
+                  int iend,   int jend,   int kend,
+                  int jj, int kk)
     {
         __shared__ double sigmaz;
 
@@ -107,7 +107,7 @@ void Buffer::exec()
         const int offs = grid->memoffset;
         const double zsizebufi = 1./(grid->zsize-zstart);
 
-        Buffer_g::buffer<<<gridGPU, blockGPU>>>(
+        buffer_g<<<gridGPU, blockGPU>>>(
             &fields->mt["u"]->data_g[offs], &fields->mp["u"]->data_g[offs],
             bufferprofs_g["u"], grid->z_g, 
             zstart, zsizebufi, sigma, beta, 
@@ -116,7 +116,7 @@ void Buffer::exec()
             grid->icellsp, grid->ijcellsp);
         cuda_check_error();
 
-        Buffer_g::buffer<<<gridGPU, blockGPU>>>(
+        buffer_g<<<gridGPU, blockGPU>>>(
             &fields->mt["v"]->data_g[offs], &fields->mp["v"]->data_g[offs],
             bufferprofs_g["v"], grid->z_g, 
             zstart, zsizebufi, sigma, beta, 
@@ -125,7 +125,7 @@ void Buffer::exec()
             grid->icellsp, grid->ijcellsp);
         cuda_check_error();
 
-        Buffer_g::buffer<<<gridGPU, blockGPU>>>(
+        buffer_g<<<gridGPU, blockGPU>>>(
             &fields->mt["w"]->data_g[offs], &fields->mp["w"]->data_g[offs],
             bufferprofs_g["w"], grid->zh_g, 
             zstart, zsizebufi, sigma, beta, 
@@ -135,7 +135,7 @@ void Buffer::exec()
         cuda_check_error();
 
         for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            Buffer_g::buffer<<<gridGPU, blockGPU>>>(
+            buffer_g<<<gridGPU, blockGPU>>>(
                 &fields->st[it->first]->data_g[offs], &it->second->data_g[offs],
                 bufferprofs_g[it->first], grid->z_g, 
                 zstart, zsizebufi, sigma, beta, 
