@@ -83,7 +83,7 @@ namespace
 
             // Calculate tendency
             if (ql > 0) 
-                wt[ijk] += buoyancy(ph[k], thh, qth, ql, thvrefh[k]);
+                wt[ijk] += buoyancy(exnh[k], thh, qth, ql, thvrefh[k]);
             else
                 wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
@@ -107,7 +107,7 @@ namespace
             const double ql = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
 
             if (ql > 0)
-                b[ijk] = buoyancy(p[k], th[ijk], qt[ijk], ql, thvref[k]);
+                b[ijk] = buoyancy(exn[k], th[ijk], qt[ijk], ql, thvref[k]);
             else
                 b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
         }
