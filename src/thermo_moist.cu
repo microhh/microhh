@@ -444,7 +444,7 @@ void Thermo_moist::exec()
              
         int kcells = grid->kcells; 
         double *tmp2 = fields->atmp["tmp2"]->data;
-        calcBaseState(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+        calc_base_state(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
                 fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
              
         // Only half level pressure and exner needed for BuoyancyTend()
@@ -507,7 +507,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
 
         int kcells = grid->kcells; 
         double *tmp2 = fields->atmp["tmp2"]->data;
-        calcBaseState(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+        calc_base_state(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
                 fields->sp["thl"]->datamean, fields->sp["qt"]->datamean);
 
         // Only full level pressure and exner needed
