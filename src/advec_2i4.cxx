@@ -28,11 +28,11 @@
 #include "advec_2i4.h"
 #include "defines.h"
 #include "constants.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 
-using namespace fd::o4;
-using namespace fd::o2;
+using namespace Finite_difference::O4;
+using namespace Finite_difference::O2;
 
 Advec_2i4::Advec_2i4(Model* modelin, Input* inputin) : Advec(modelin, inputin)
 {

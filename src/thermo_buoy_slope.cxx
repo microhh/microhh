@@ -26,11 +26,11 @@
 #include "fields.h"
 #include "thermo_buoy_slope.h"
 #include "defines.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 #include "master.h"
 
-using fd::o4::interp4;
+using Finite_difference::O4::interp4;
 
 Thermo_buoy_slope::Thermo_buoy_slope(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 {

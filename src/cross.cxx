@@ -30,7 +30,7 @@
 #include "cross.h"
 #include "defines.h"
 #include "constants.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 #include "thermo.h"
 #include "timeloop.h"
@@ -286,7 +286,7 @@ int Cross::cross_plane(double * restrict data, double * restrict tmp, std::strin
 
 int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
 {
-    using namespace fd::o4;
+    using namespace Finite_difference::O4;
 
     const int ii1 = 1;
     const int ii2 = 2;

@@ -26,7 +26,7 @@
 #include "thermo_moist.h"
 #include "defines.h"
 #include "constants.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "master.h"
 #include "tools.h"
 #include "thermo_moist_functions.h"
@@ -34,8 +34,8 @@
 namespace 
 {
     using namespace constants;
-    using namespace fd::o2;
-    using namespace fd::o4;
+    using namespace Finite_difference::O2;
+    using namespace Finite_difference::O4;
     using namespace Thermo_moist_functions;
 
     __device__ double sat_adjust_g(const double s, const double qt,

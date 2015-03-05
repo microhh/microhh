@@ -28,13 +28,13 @@
 #include "advec_4m.h"
 #include "defines.h"
 #include "constants.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 
-using fd::o2::interp2;
-using fd::o4::interp4;
-using fd::o4::grad4;
-using fd::o4::grad4x;
+using Finite_difference::O2::interp2;
+using Finite_difference::O4::interp4;
+using Finite_difference::O4::grad4;
+using Finite_difference::O4::grad4x;
 
 Advec_4m::Advec_4m(Model* modelin, Input* inputin) : Advec(modelin, inputin)
 {

@@ -24,10 +24,10 @@
 #include "fields.h"
 #include "diff_4.h"
 #include "defines.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "tools.h"
 
-using namespace fd::o4;
+using namespace Finite_difference::O4;
 
 namespace
 {

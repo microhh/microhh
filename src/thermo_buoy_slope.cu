@@ -25,7 +25,7 @@
 #include "fields.h"
 #include "thermo_buoy_slope.h"
 #include "master.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "tools.h"
 
 namespace

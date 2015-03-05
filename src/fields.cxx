@@ -28,7 +28,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 #include "stats.h"
 #include "cross.h"
@@ -964,7 +964,7 @@ double Fields::calc_mass(double* restrict s, double* restrict dz)
 
 double Fields::calc_momentum_2nd(double* restrict u, double* restrict v, double* restrict w, double* restrict dz)
 {
-    using fd::o2::interp2;
+    using Finite_difference::O2::interp2;
 
     const int ii = 1;
     const int jj = grid->icells;
@@ -990,7 +990,7 @@ double Fields::calc_momentum_2nd(double* restrict u, double* restrict v, double*
 
 double Fields::calc_tke_2nd(double* restrict u, double* restrict v, double* restrict w, double* restrict dz)
 {
-    using fd::o2::interp2;
+    using Finite_difference::O2::interp2;
 
     const int ii = 1;
     const int jj = grid->icells;

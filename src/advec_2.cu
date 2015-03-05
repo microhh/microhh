@@ -26,9 +26,9 @@
 #include "tools.h"
 #include "constants.h"
 #include "tools.h"
-#include "fd.h"
+#include "finite_difference.h"
 
-using namespace fd::o2;
+using namespace Finite_difference::O2;
 
 namespace
 {

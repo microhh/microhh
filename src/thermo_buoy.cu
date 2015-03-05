@@ -24,7 +24,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "thermo_buoy.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "tools.h"
 
 namespace

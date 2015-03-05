@@ -31,11 +31,11 @@
 #include "defines.h"
 #include "model.h"
 #include "timeloop.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
 
-using namespace fd::o4;
+using namespace Finite_difference::O4;
 
 namespace
 {

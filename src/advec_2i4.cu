@@ -25,12 +25,12 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "tools.h"
 #include "constants.h"
 
-using namespace fd::o2;
-using namespace fd::o4;
+using namespace Finite_difference::O2;
+using namespace Finite_difference::O4;
 
 namespace
 {

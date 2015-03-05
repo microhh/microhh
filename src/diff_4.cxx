@@ -28,10 +28,10 @@
 #include "master.h"
 #include "diff_4.h"
 #include "defines.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 
-using namespace fd::o4;
+using namespace Finite_difference::O4;
 
 Diff_4::Diff_4(Model *modelin, Input *inputin) : Diff(modelin, inputin)
 {

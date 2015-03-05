@@ -20,7 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FD
+#ifndef FINITE_DIFFERENCE
 
 // In case the code is compiled with NVCC, add the macros for CUDA
 #ifdef __CUDACC__
@@ -29,9 +29,9 @@
 #  define CUDA_MACRO
 #endif
 
-namespace fd
+namespace Finite_difference
 {
-    namespace o2
+    namespace O2
     {
         CUDA_MACRO inline double interp2(const double a, const double b)
         {
@@ -39,7 +39,7 @@ namespace fd
         }
     }
 
-    namespace o4
+    namespace O4
     {
         // 4th order interpolation
         const double ci0  = -1./16.;

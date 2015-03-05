@@ -27,7 +27,7 @@
 #include "fields.h"
 #include "force.h"
 #include "defines.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 #include "timeloop.h"
 
@@ -348,7 +348,7 @@ void Force::calc_coriolis_4th(double* const restrict ut, double* const restrict 
                               const double* const restrict u , const double* const restrict v ,
                               const double* const restrict ug, const double* const restrict vg)
 {
-    using namespace fd::o4;
+    using namespace Finite_difference::O4;
 
     const int ii1 = 1;
     const int ii2 = 2;

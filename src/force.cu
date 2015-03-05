@@ -24,7 +24,7 @@
 #include "force.h"
 #include "grid.h"
 #include "fields.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
 
@@ -97,7 +97,7 @@ namespace
                         const int istart, const int jstart, const int kstart,
                         const int iend,   const int jend,   const int kend)
     {
-        using namespace fd::o4;
+        using namespace Finite_difference::O4;
 
         const int i   = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j   = blockIdx.y*blockDim.y + threadIdx.y + jstart;

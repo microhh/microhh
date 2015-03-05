@@ -25,10 +25,10 @@
 #include "fields.h"
 #include "thermo_buoy.h"
 #include "defines.h"
-#include "fd.h"
+#include "finite_difference.h"
 
-using fd::o2::interp2;
-using fd::o4::interp4;
+using Finite_difference::O2::interp2;
+using Finite_difference::O4::interp4;
 
 Thermo_buoy::Thermo_buoy(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {

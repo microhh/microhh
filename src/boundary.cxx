@@ -30,7 +30,7 @@
 #include "defines.h"
 #include "model.h"
 #include "timeloop.h"
-#include "fd.h"
+#include "finite_difference.h"
 
 // Boundary schemes.
 #include "boundary.h"
@@ -486,7 +486,7 @@ void Boundary::calc_ghost_cells_bot_4th(double* restrict a, double* restrict z, 
     }
     else if (boundary_type == Neumann_type || boundary_type == Flux_type)
     {
-        using fd::o4::grad4x;
+        using Finite_difference::O4::grad4x;
 
         for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
@@ -523,7 +523,7 @@ void Boundary::calc_ghost_cells_top_4th(double* restrict a, double* restrict z, 
     }
     else if (boundary_type == Neumann_type || boundary_type == Flux_type)
     {
-        using fd::o4::grad4x;
+        using Finite_difference::O4::grad4x;
 
         for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep

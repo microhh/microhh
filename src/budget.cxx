@@ -27,13 +27,13 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 #include "thermo.h"
 #include "stats.h"
 #include <netcdfcpp.h>
 
-using namespace fd::o4;
+using namespace Finite_difference::O4;
 
 Budget::Budget(Model* modelin, Input* inputin)
 {

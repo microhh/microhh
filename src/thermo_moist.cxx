@@ -31,7 +31,7 @@
 #include "diff_smag2.h"
 #include "defines.h"
 #include "constants.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 #include "stats.h"
 #include "master.h"
@@ -39,8 +39,8 @@
 #include "dump.h"
 #include "thermo_moist_functions.h"
 
-using fd::o2::interp2;
-using fd::o4::interp4;
+using Finite_difference::O2::interp2;
+using Finite_difference::O4::interp4;
 using namespace constants;
 using namespace Thermo_moist_functions;
 

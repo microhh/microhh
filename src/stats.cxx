@@ -29,7 +29,7 @@
 #include "thermo_moist.h"
 #include "defines.h"
 #include "constants.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 #include "diff_smag2.h"
 #include "timeloop.h"
@@ -644,7 +644,7 @@ void Stats::calc_flux_2nd(double* restrict data, double* restrict datamean, doub
 void Stats::calc_flux_4th(double* restrict data, double* restrict w, double* restrict prof, double* restrict tmp1, const int loc[3],
                           double* restrict mask, int* restrict nmask)
 {
-    using namespace fd::o4;
+    using namespace Finite_difference::O4;
 
     const int jj  = 1*grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -724,7 +724,7 @@ void Stats::calc_grad_2nd(double* restrict data, double* restrict prof, double* 
 void Stats::calc_grad_4th(double* restrict data, double* restrict prof, double* restrict dzhi4, const int loc[3],
                           double* restrict mask, int* restrict nmask)
 {
-    using namespace fd::o4;
+    using namespace Finite_difference::O4;
 
     const int jj  = 1*grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -756,7 +756,7 @@ void Stats::calc_grad_4th(double* restrict data, double* restrict prof, double* 
 void Stats::calc_diff_4th(double* restrict data, double* restrict prof, double* restrict dzhi4, double visc, const int loc[3],
                           double* restrict mask, int* restrict nmask)
 {
-    using namespace fd::o4;
+    using namespace Finite_difference::O4;
 
     const int jj  = 1*grid->icells;
     const int kk1 = 1*grid->ijcells;

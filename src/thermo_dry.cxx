@@ -28,7 +28,7 @@
 #include "thermo_dry.h"
 #include "defines.h"
 #include "constants.h"
-#include "fd.h"
+#include "finite_difference.h"
 #include "model.h"
 #include "stats.h"
 #include "diff_smag2.h"
@@ -36,8 +36,8 @@
 #include "cross.h"
 #include "dump.h"
 
-using fd::o2::interp2;
-using fd::o4::interp4;
+using Finite_difference::O2::interp2;
+using Finite_difference::O4::interp4;
 using namespace constants;
 
 Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
@@ -393,7 +393,7 @@ void Thermo_dry::calc_buoyancy_fluxbot(double* restrict bfluxbot, double* restri
 
 void Thermo_dry::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict th, double* restrict threfh)
 {
-    using namespace fd::o2;
+    using namespace Finite_difference::O2;
 
     const int jj = grid->icells;
     const int kk = grid->ijcells;
