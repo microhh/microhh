@@ -546,7 +546,10 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
         cuda_check_error();
     }
     else
+    {
+        master->print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
         throw 1;
+    }
 }
 #endif
 
