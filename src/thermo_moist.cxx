@@ -591,6 +591,34 @@ void Thermo_moist::get_prog_vars(std::vector<std::string> *list)
     list->push_back("qt");
 }
 
+namespace
+{
+    inline double sat_adjust(const double thl, const double qt, const double p, const double exn)
+    {
+        int niter = 0;
+        int nitermax = 30;
+        double ql, tl, tnr_old = 1.e9, tnr, qs=0;
+        tl = thl * exn;
+        tnr = tl;
+        while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
+        {
+            ++niter;
+            tnr_old = tnr;
+            qs = qsat(p,tnr);
+            tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(std::pow(Lv,2)*qs)/ (Rv*cp*std::pow(tnr,2)));
+        }
+
+        if (niter == nitermax)
+        {  
+            printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",thl,qt,p);
+            throw 1;
+        }  
+
+        ql = std::max(0.,qt - qs);
+        return ql;
+    }
+}
+
 /**
  * This function calculates the hydrostatic pressure at full and half levels, 
  * with option to return base state profiles like reference density and temperature

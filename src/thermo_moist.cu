@@ -29,52 +29,22 @@
 #include "fd.h"
 #include "master.h"
 #include "tools.h"
-
-using namespace constants;
-
-using namespace fd::o2;
-using namespace fd::o4;
+#include "thermo_moist_functions.h"
 
 namespace 
 {
-    __device__ double exner_g(double p)
-    {
-        return pow((p/p0),(Rd/cp));
-    }
+    using namespace constants;
+    using namespace fd::o2;
+    using namespace fd::o4;
+    using namespace Thermo_moist_functions;
 
-    __device__ double buoyancy_g(double p, double s, double qt, double ql, double thvref)
-    {
-        return grav * ((s + Lv*ql/(cp*exner_g(p))) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
-    }
-
-    __device__ double buoyancy_no_ql(double s, double qt, double thvref)
-    {
-        return grav * (s * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
-    }
-
-    __device__ double buoyancy_flux_no_ql_g(double s, double sflux, double qt, double qtflux, double thvref)
-    {
-        return grav/thvref * (sflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*s*qtflux);
-    }
-
-    __device__ double esat_g(double T)
-    {
-        const double x=fmax(-80.,T-T0);
-        return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
-    }
-
-    __device__ double qsat_g(double p, double T)
-    {
-        double esl = esat_g(T);
-        return ep*esl/(p-(1-ep)*esl);
-    }
-
-    __device__ double sat_adjust_g(double s, double qt, double p, double exn)
+    __device__ double sat_adjust_g(const double s, const double qt,
+                                   const double p, const double exn)
     {
         double tl = s * exn;  // Liquid water temperature
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        if(qt-qsat_g(p, tl) <= 0)
+        if(qt-qsat(p, tl) <= 0)
             return 0.;
 
         int niter = 0; //, nitermax = 5;
@@ -84,7 +54,7 @@ namespace
         {
             ++niter;
             tnr_old = tnr;
-            qs = qsat_g(p,tnr);
+            qs = qsat(p,tnr);
             tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(pow(Lv,2)*qs)/ (Rv*cp*pow(tnr,2)));
         }
         ql = fmax(0.,qt-qs);
@@ -113,7 +83,7 @@ namespace
 
             // Calculate tendency
             if (ql > 0) 
-                wt[ijk] += buoyancy_g(ph[k], thh, qth, ql, thvrefh[k]);
+                wt[ijk] += buoyancy(ph[k], thh, qth, ql, thvrefh[k]);
             else
                 wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
@@ -137,7 +107,7 @@ namespace
             const double ql = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
 
             if (ql > 0)
-                b[ijk] = buoyancy_g(p[k], th[ijk], qt[ijk], ql, thvref[k]);
+                b[ijk] = buoyancy(p[k], th[ijk], qt[ijk], ql, thvref[k]);
             else
                 b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
         }
@@ -178,7 +148,7 @@ namespace
         if (i < icells && j < jcells)
         {
             const int ij  = i + j*jj;
-            bfluxbot[ij] = buoyancy_flux_no_ql_g(thbot[ij], thfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+            bfluxbot[ij] = buoyancy_flux_no_ql(thbot[ij], thfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
         }
     }
 
