@@ -29,15 +29,15 @@
 
 using namespace fd::o4;
 
-namespace Diff_4_g
+namespace
 {
     __global__ 
-    void diff_c(double* __restrict__ const at, const double* __restrict__ const a,
-                const double* __restrict__ const dzi4, const double* __restrict__ const dzhi4,
-                const double dx, const double dy, const double visc,
-                const int jj,     const int kk,
-                const int istart, const int jstart, const int kstart,
-                const int iend,   const int jend,   const int kend)
+    void diff_c_g(double* __restrict__ const at, const double* __restrict__ const a,
+                  const double* __restrict__ const dzi4, const double* __restrict__ const dzhi4,
+                  const double dx, const double dy, const double visc,
+                  const int jj,     const int kk,
+                  const int istart, const int jstart, const int kstart,
+                  const int iend,   const int jend,   const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -94,12 +94,12 @@ namespace Diff_4_g
     }
 
     __global__ 
-    void diff_w(double* __restrict__ const at, const double* __restrict__ const a,
-                const double* __restrict__ const dzi4, const double* __restrict__ const dzhi4,
-                const double dx, const double dy, const double visc,
-                const int jj,     const int kk,
-                const int istart, const int jstart, const int kstart,
-                const int iend,   const int jend,   const int kend)
+    void diff_w_g(double* __restrict__ const at, const double* __restrict__ const a,
+                  const double* __restrict__ const dzi4, const double* __restrict__ const dzhi4,
+                  const double dx, const double dy, const double visc,
+                  const int jj,     const int kk,
+                  const int istart, const int jstart, const int kstart,
+                  const int iend,   const int jend,   const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -169,7 +169,7 @@ void Diff_4::exec()
 
     const int offs = grid->memoffset;
 
-    Diff_4_g::diff_c<<<gridGPU, blockGPU>>>(
+    diff_c_g<<<gridGPU, blockGPU>>>(
         &fields->ut->data_g[offs], &fields->u->data_g[offs],
         grid->dzi4_g, grid->dzhi4_g,
         grid->dx, grid->dy, fields->visc,
@@ -178,7 +178,7 @@ void Diff_4::exec()
         grid->iend,    grid->jend,   grid->kend);
     cuda_check_error();
 
-    Diff_4_g::diff_c<<<gridGPU, blockGPU>>>(
+    diff_c_g<<<gridGPU, blockGPU>>>(
         &fields->vt->data_g[offs], &fields->v->data_g[offs],
         grid->dzi4_g, grid->dzhi4_g,
         grid->dx, grid->dy, fields->visc,
@@ -187,7 +187,7 @@ void Diff_4::exec()
         grid->iend,    grid->jend,   grid->kend);
     cuda_check_error();
 
-    Diff_4_g::diff_w<<<gridGPU, blockGPU>>>(
+    diff_w_g<<<gridGPU, blockGPU>>>(
         &fields->wt->data_g[offs], &fields->w->data_g[offs],
         grid->dzi4_g, grid->dzhi4_g,
         grid->dx, grid->dy, fields->visc,
@@ -197,7 +197,7 @@ void Diff_4::exec()
     cuda_check_error();
 
     for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-        Diff_4_g::diff_c<<<gridGPU, blockGPU>>>(
+        diff_c_g<<<gridGPU, blockGPU>>>(
             &it->second->data_g[offs], &fields->sp[it->first]->data_g[offs],
             grid->dzi4_g, grid->dzhi4_g,
             grid->dx, grid->dy, fields->sp[it->first]->visc,

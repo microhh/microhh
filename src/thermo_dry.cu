@@ -29,14 +29,14 @@
 #include "master.h"
 #include "tools.h"
 
-namespace Thermo_dry_g
+namespace
 {
     __global__ 
-    void calc_buoyancy_tend_2nd(double* __restrict__ wt, 
-                                double* __restrict__ th, double* __restrict__ threfh, 
-                                int istart, int jstart, int kstart,
-                                int iend,   int jend,   int kend,
-                                int jj, int kk)
+    void calc_buoyancy_tend_2nd_g(double* __restrict__ wt, 
+                                  double* __restrict__ th, double* __restrict__ threfh, 
+                                  int istart, int jstart, int kstart,
+                                  int iend,   int jend,   int kend,
+                                  int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -51,11 +51,11 @@ namespace Thermo_dry_g
 
 
     __global__ 
-    void calc_buoyancy(double* __restrict__ b,
-                       double* __restrict__ th, double* __restrict__ thref, 
-                       int istart, int jstart,
-                       int iend,   int jend,   int kcells,
-                       int jj, int kk)
+    void calc_buoyancy_g(double* __restrict__ b,
+                         double* __restrict__ th, double* __restrict__ thref, 
+                         int istart, int jstart,
+                         int iend,   int jend,   int kcells,
+                         int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -69,11 +69,11 @@ namespace Thermo_dry_g
     }
 
     __global__ 
-    void calc_buoyancy_bot(double* __restrict__ b,     double* __restrict__ bbot,
-                           double* __restrict__ th,    double* __restrict__ thbot, 
-                           double* __restrict__ thref, double* __restrict__ threfh,
-                           double grav, int kstart, int icells, int jcells,  
-                           int jj, int kk)
+    void calc_buoyancy_bot_g(double* __restrict__ b,     double* __restrict__ bbot,
+                             double* __restrict__ th,    double* __restrict__ thbot, 
+                             double* __restrict__ thref, double* __restrict__ threfh,
+                             double grav, int kstart, int icells, int jcells,  
+                             int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -89,10 +89,10 @@ namespace Thermo_dry_g
     }
 
     __global__ 
-    void calc_buoyancy_flux_bot(double* __restrict__ bfluxbot, double* __restrict__ thfluxbot,
-                                double* __restrict__ threfh, 
-                                double grav, int kstart, int icells, int jcells,  
-                                int jj, int kk)
+    void calc_buoyancy_flux_bot_g(double* __restrict__ bfluxbot, double* __restrict__ thfluxbot,
+                                  double* __restrict__ threfh, 
+                                  double grav, int kstart, int icells, int jcells,  
+                                  int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -105,11 +105,11 @@ namespace Thermo_dry_g
     }
 
     __global__ 
-    void calc_N2(double* __restrict__ N2,    double* __restrict__ th,
-                 double* __restrict__ thref, double* __restrict__ dzi, 
-                 int istart, int jstart, int kstart,
-                 int iend,   int jend,   int kend,
-                 int jj, int kk)
+    void calc_N2_g(double* __restrict__ N2,    double* __restrict__ th,
+                   double* __restrict__ thref, double* __restrict__ dzi, 
+                   int istart, int jstart, int kstart,
+                   int iend,   int jend,   int kend,
+                   int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -170,7 +170,7 @@ void Thermo_dry::exec()
 
     if (grid->swspatialorder== "2")
     {
-        Thermo_dry_g::calc_buoyancy_tend_2nd<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
             &fields->wt->data_g[offs], &fields->sp["th"]->data_g[offs], threfh_g, 
             grid->istart,  grid->jstart, grid->kstart+1,
             grid->iend,    grid->jend,   grid->kend,
@@ -204,7 +204,7 @@ void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
 
     if (name == "b")
     {
-        Thermo_dry_g::calc_buoyancy<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_g<<<gridGPU, blockGPU>>>(
             &fld->data_g[offs], &fields->sp["th"]->data_g[offs], thref_g, 
             grid->istart, grid->jstart, 
             grid->iend, grid->jend, grid->kcells,
@@ -213,7 +213,7 @@ void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
     }
     else if (name == "N2")
     {
-        Thermo_dry_g::calc_N2<<<gridGPU2, blockGPU2>>>(
+        calc_N2_g<<<gridGPU2, blockGPU2>>>(
             &fld->data_g[offs], &fields->sp["th"]->data_g[offs], thref_g, grid->dzi_g, 
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
@@ -221,7 +221,10 @@ void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
         cuda_check_error();
     }
     else
+    {
+        master->print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
         throw 1;
+    }
 }
 #endif
 
@@ -238,7 +241,7 @@ void Thermo_dry::get_buoyancy_fluxbot(Field3d *bfield)
 
     const int offs = grid->memoffset;
 
-    Thermo_dry_g::calc_buoyancy_flux_bot<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
@@ -259,14 +262,14 @@ void Thermo_dry::get_buoyancy_surf(Field3d *bfield)
 
     const int offs = grid->memoffset;
 
-    Thermo_dry_g::calc_buoyancy_bot<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->data_g[offs], &bfield->databot_g[offs], 
         &fields->sp["th"]->data_g[offs], &fields->sp["th"]->databot_g[offs],
         thref_g, threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);
     cuda_check_error();
 
-    Thermo_dry_g::calc_buoyancy_flux_bot<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->datafluxbot_g[offs], &fields->sp["th"]->datafluxbot_g[offs], 
         threfh_g, constants::grav, grid->kstart, grid->icells, grid->jcells, 
         grid->icellsp, grid->ijcellsp);

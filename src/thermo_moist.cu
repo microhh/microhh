@@ -35,16 +35,16 @@ using namespace constants;
 using namespace fd::o2;
 using namespace fd::o4;
 
-namespace Thermo_moist_g
+namespace 
 {
-    __device__ double exner(double p)
+    __device__ double exner_g(double p)
     {
         return pow((p/p0),(Rd/cp));
     }
 
-    __device__ double buoyancy(double p, double s, double qt, double ql, double thvref)
+    __device__ double buoyancy_g(double p, double s, double qt, double ql, double thvref)
     {
-        return grav * ((s + Lv*ql/(cp*exner(p))) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
+        return grav * ((s + Lv*ql/(cp*exner_g(p))) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
     }
 
     __device__ double buoyancy_no_ql(double s, double qt, double thvref)
@@ -52,29 +52,29 @@ namespace Thermo_moist_g
         return grav * (s * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;
     }
 
-    __device__ double buoyancy_flux_no_ql(double s, double sflux, double qt, double qtflux, double thvref)
+    __device__ double buoyancy_flux_no_ql_g(double s, double sflux, double qt, double qtflux, double thvref)
     {
         return grav/thvref * (sflux * (1. - (1.-Rv/Rd)*qt) - (1.-Rv/Rd)*s*qtflux);
     }
 
-    __device__ double esat(double T)
+    __device__ double esat_g(double T)
     {
         const double x=fmax(-80.,T-T0);
         return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))));
     }
 
-    __device__ double qsat(double p, double T)
+    __device__ double qsat_g(double p, double T)
     {
-        double esl = esat(T);
+        double esl = esat_g(T);
         return ep*esl/(p-(1-ep)*esl);
     }
 
-    __device__ double sat_adjust(double s, double qt, double p, double exn)
+    __device__ double sat_adjust_g(double s, double qt, double p, double exn)
     {
         double tl = s * exn;  // Liquid water temperature
 
         // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
-        if(qt-qsat(p, tl) <= 0)
+        if(qt-qsat_g(p, tl) <= 0)
             return 0.;
 
         int niter = 0; //, nitermax = 5;
@@ -84,20 +84,19 @@ namespace Thermo_moist_g
         {
             ++niter;
             tnr_old = tnr;
-            qs = qsat(p,tnr);
+            qs = qsat_g(p,tnr);
             tnr = tnr - (tnr+(Lv/cp)*qs-tl-(Lv/cp)*qt)/(1+(pow(Lv,2)*qs)/ (Rv*cp*pow(tnr,2)));
         }
         ql = fmax(0.,qt-qs);
         return ql;
     }
 
-
     __global__ 
-    void calc_buoyancy_tend_2nd(double* __restrict__ wt, double* __restrict__ th, double* __restrict__ qt,
-                                double* __restrict__ thvrefh, double* __restrict__ exnh, double* __restrict__ ph,  
-                                int istart, int jstart, int kstart,
-                                int iend,   int jend,   int kend,
-                                int jj, int kk)
+    void calc_buoyancy_tend_2nd_g(double* __restrict__ wt, double* __restrict__ th, double* __restrict__ qt,
+                                  double* __restrict__ thvrefh, double* __restrict__ exnh, double* __restrict__ ph,  
+                                  int istart, int jstart, int kstart,
+                                  int iend,   int jend,   int kend,
+                                  int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -110,23 +109,23 @@ namespace Thermo_moist_g
             // Half level temperature and moisture content
             const double thh = 0.5 * (th[ijk-kk] + th[ijk]);         // Half level liq. water pot. temp.
             const double qth = 0.5 * (qt[ijk-kk] + qt[ijk]);         // Half level specific hum.
-            const double ql  = sat_adjust(thh, qth, ph[k], exnh[k]); // Half level liquid water content
+            const double ql  = sat_adjust_g(thh, qth, ph[k], exnh[k]); // Half level liquid water content
 
             // Calculate tendency
             if (ql > 0) 
-                wt[ijk] += buoyancy(ph[k], thh, qth, ql, thvrefh[k]);
+                wt[ijk] += buoyancy_g(ph[k], thh, qth, ql, thvrefh[k]);
             else
                 wt[ijk] += buoyancy_no_ql(thh, qth, thvrefh[k]);
         }
     }
 
     __global__ 
-    void calc_buoyancy(double* __restrict__ b,  double* __restrict__ th, 
-                       double* __restrict__ qt, double* __restrict__ thvref,
-                       double* __restrict__ p,  double* __restrict__ exn, 
-                       int istart, int jstart,
-                       int iend,   int jend,   int kcells,
-                       int jj, int kk)
+    void calc_buoyancy_g(double* __restrict__ b,  double* __restrict__ th, 
+                         double* __restrict__ qt, double* __restrict__ thvref,
+                         double* __restrict__ p,  double* __restrict__ exn, 
+                         int istart, int jstart,
+                         int iend,   int jend,   int kcells,
+                         int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -135,22 +134,22 @@ namespace Thermo_moist_g
         if (i < iend && j < jend && k < kcells)
         {
             const int ijk   = i + j*jj + k*kk;
-            const double ql = sat_adjust(th[ijk], qt[ijk], p[k], exn[k]);
+            const double ql = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
 
             if (ql > 0)
-                b[ijk] = buoyancy(p[k], th[ijk], qt[ijk], ql, thvref[k]);
+                b[ijk] = buoyancy_g(p[k], th[ijk], qt[ijk], ql, thvref[k]);
             else
                 b[ijk] = buoyancy_no_ql(th[ijk], qt[ijk], thvref[k]);
         }
     }
 
     __global__ 
-    void calc_buoyancy_bot(double* __restrict__ b,      double* __restrict__ bbot,
-                           double* __restrict__ th,     double* __restrict__ thbot, 
-                           double* __restrict__ qt,     double* __restrict__ qtbot,
-                           double* __restrict__ thvref, double* __restrict__ thvrefh,
-                           int kstart, int icells, int jcells,  
-                           int jj, int kk)
+    void calc_buoyancy_bot_g(double* __restrict__ b,      double* __restrict__ bbot,
+                             double* __restrict__ th,     double* __restrict__ thbot, 
+                             double* __restrict__ qt,     double* __restrict__ qtbot,
+                             double* __restrict__ thvref, double* __restrict__ thvrefh,
+                             int kstart, int icells, int jcells,  
+                             int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -166,12 +165,12 @@ namespace Thermo_moist_g
     }
 
     __global__ 
-    void calc_buoyancy_flux_bot(double* __restrict__ bfluxbot,
-                                double* __restrict__ thbot, double* __restrict__ thfluxbot, 
-                                double* __restrict__ qtbot, double* __restrict__ qtfluxbot,
-                                double* __restrict__ thvrefh, 
-                                int kstart, int icells, int jcells,  
-                                int jj, int kk)
+    void calc_buoyancy_flux_bot_g(double* __restrict__ bfluxbot,
+                                  double* __restrict__ thbot, double* __restrict__ thfluxbot, 
+                                  double* __restrict__ qtbot, double* __restrict__ qtfluxbot,
+                                  double* __restrict__ thvrefh, 
+                                  int kstart, int icells, int jcells,  
+                                  int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y; 
@@ -179,16 +178,16 @@ namespace Thermo_moist_g
         if (i < icells && j < jcells)
         {
             const int ij  = i + j*jj;
-            bfluxbot[ij] = buoyancy_flux_no_ql(thbot[ij], thfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
+            bfluxbot[ij] = buoyancy_flux_no_ql_g(thbot[ij], thfluxbot[ij], qtbot[ij], qtfluxbot[ij], thvrefh[kstart]);
         }
     }
 
     __global__ 
-    void calc_N2(double* __restrict__ N2, double* __restrict__ th,
-                 double* __restrict__ thvref, double* __restrict__ dzi, 
-                 int istart, int jstart, int kstart,
-                 int iend,   int jend,   int kend,
-                 int jj, int kk)
+    void calc_N2_g(double* __restrict__ N2, double* __restrict__ th,
+                   double* __restrict__ thvref, double* __restrict__ dzi, 
+                   int istart, int jstart, int kstart,
+                   int iend,   int jend,   int kend,
+                   int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -202,11 +201,11 @@ namespace Thermo_moist_g
     }
 
     __global__ 
-    void calc_liquid_water(double* __restrict__ ql, double* __restrict__ th, double* __restrict__ qt,
-                           double* __restrict__ exn, double* __restrict__ p,  
-                           int istart, int jstart, int kstart,
-                           int iend,   int jend,   int kend,
-                           int jj, int kk)
+    void calc_liquid_water_g(double* __restrict__ ql, double* __restrict__ th, double* __restrict__ qt,
+                             double* __restrict__ exn, double* __restrict__ p,  
+                             int istart, int jstart, int kstart,
+                             int iend,   int jend,   int kend,
+                             int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -215,7 +214,7 @@ namespace Thermo_moist_g
         if (i < iend && j < jend && k < kend)
         {
             const int ijk = i + j*jj + k*kk;
-            ql[ijk] = sat_adjust(th[ijk], qt[ijk], p[k], exn[k]);
+            ql[ijk] = sat_adjust_g(th[ijk], qt[ijk], p[k], exn[k]);
         }
     }
 
@@ -246,8 +245,8 @@ namespace Thermo_moist_g
         }
 
         // Calculate surface (half=kstart) values
-        exh[kstart]   = exner(pbot);
-        ql            = sat_adjust(ssurf,qtsurf,pbot,exh[kstart]); 
+        exh[kstart]   = exner_g(pbot);
+        ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]); 
         thvh[kstart]  = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
         prefh[kstart] = pbot;
         rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
@@ -258,8 +257,8 @@ namespace Thermo_moist_g
         for (int k=kstart+1; k<kend+1; k++)
         {
             // 1. Calculate values at full level below zh[k] 
-            ex[k-1]  = exner(pref[k-1]);
-            ql       = sat_adjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
+            ex[k-1]  = exner_g(pref[k-1]);
+            ql       = sat_adjust_g(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
             thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
             rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
 
@@ -278,8 +277,8 @@ namespace Thermo_moist_g
                 qti    = interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
             }
 
-            exh[k]   = exner(prefh[k]);
-            qli      = sat_adjust(si,qti,prefh[k],exh[k]);
+            exh[k]   = exner_g(prefh[k]);
+            qli      = sat_adjust_g(si,qti,prefh[k],exh[k]);
             thvh[k]  = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
             rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]); 
 
@@ -327,7 +326,7 @@ namespace Thermo_moist_g
         }
 
         // Calculate surface (half=kstart) values
-        ql            = sat_adjust(ssurf,qtsurf,pbot,exh[kstart]); 
+        ql            = sat_adjust_g(ssurf,qtsurf,pbot,exh[kstart]); 
         thvh          = (ssurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
         prefh[kstart] = pbot;
 
@@ -337,8 +336,8 @@ namespace Thermo_moist_g
         for (int k=kstart+1; k<kend+1; k++)
         {
             // 1. Calculate values at full level below zh[k] 
-            ex[k-1]  = exner(pref[k-1]);
-            ql       = sat_adjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
+            ex[k-1]  = exner_g(pref[k-1]);
+            ql       = sat_adjust_g(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
             thv      = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
 
             // 2. Calculate half level pressure at zh[k] using values at z[k-1]
@@ -356,8 +355,8 @@ namespace Thermo_moist_g
                 qti    = interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
             }
 
-            exh[k]   = exner(prefh[k]);
-            qli      = sat_adjust(si,qti,prefh[k],exh[k]);
+            exh[k]   = exner_g(prefh[k]);
+            qli      = sat_adjust_g(si,qti,prefh[k],exh[k]);
             thvh     = (si + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
 
             // 4. Calculate full level pressure at z[k]
@@ -456,7 +455,7 @@ void Thermo_moist::exec()
 
     if (grid->swspatialorder== "2")
     {
-        Thermo_moist_g::calc_buoyancy_tend_2nd<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
             &fields->wt->data_g[offs], &fields->sp["thl"]->data_g[offs], 
             &fields->sp["qt"]->data_g[offs], thvrefh_g, exnrefh_g, prefh_g,  
             grid->istart,  grid->jstart, grid->kstart+1,
@@ -519,7 +518,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
 
     if (name == "b")
     {
-        Thermo_moist_g::calc_buoyancy<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_g<<<gridGPU, blockGPU>>>(
             &fld->data_g[offs], &fields->sp["thl"]->data_g[offs], &fields->sp["qt"]->data_g[offs],
             thvref_g, pref_g, exnref_g,
             grid->istart,  grid->jstart, 
@@ -529,7 +528,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
     }
     else if (name == "ql")
     {
-        Thermo_moist_g::calc_liquid_water<<<gridGPU2, blockGPU2>>>(
+        calc_liquid_water_g<<<gridGPU2, blockGPU2>>>(
             &fld->data_g[offs], &fields->sp["thl"]->data_g[offs], &fields->sp["qt"]->data_g[offs], 
             exnref_g, pref_g, 
             grid->istart,  grid->jstart,  grid->kstart, 
@@ -539,7 +538,7 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
     }
     else if (name == "N2")
     {
-        Thermo_moist_g::calc_N2<<<gridGPU2, blockGPU2>>>(
+        calc_N2_g<<<gridGPU2, blockGPU2>>>(
             &fld->data_g[offs], &fields->sp["thl"]->data_g[offs], thvref_g, grid->dzi_g, 
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
@@ -547,7 +546,10 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
         cuda_check_error();
     }
     else
+    {
+        master->print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
         throw 1;
+    }
 }
 #endif
 
@@ -564,7 +566,7 @@ void Thermo_moist::get_buoyancy_fluxbot(Field3d *bfield)
 
     const int offs = grid->memoffset;
 
-    Thermo_moist_g::calc_buoyancy_flux_bot<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->datafluxbot_g[offs], 
         &fields->sp["thl"] ->databot_g[offs], &fields->sp["thl"] ->datafluxbot_g[offs], 
         &fields->sp["qt"]->databot_g[offs], &fields->sp["qt"]->datafluxbot_g[offs], 
@@ -587,7 +589,7 @@ void Thermo_moist::get_buoyancy_surf(Field3d *bfield)
 
     const int offs = grid->memoffset;
 
-    Thermo_moist_g::calc_buoyancy_bot<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->data_g[offs], &bfield->databot_g[offs], 
         &fields->sp["thl"] ->data_g[offs], &fields->sp["thl"] ->databot_g[offs],
         &fields->sp["qt"]->data_g[offs], &fields->sp["qt"]->databot_g[offs],
@@ -595,7 +597,7 @@ void Thermo_moist::get_buoyancy_surf(Field3d *bfield)
         grid->icellsp, grid->ijcellsp);
     cuda_check_error();
 
-    Thermo_moist_g::calc_buoyancy_flux_bot<<<gridGPU, blockGPU>>>(
+    calc_buoyancy_flux_bot_g<<<gridGPU, blockGPU>>>(
         &bfield->datafluxbot_g[offs], 
         &fields->sp["thl"] ->databot_g[offs], &fields->sp["thl"] ->datafluxbot_g[offs], 
         &fields->sp["qt"]->databot_g[offs], &fields->sp["qt"]->datafluxbot_g[offs], 

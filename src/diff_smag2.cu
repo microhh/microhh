@@ -35,17 +35,17 @@
 #include "tools.h"
 #include "most.h"
 
-namespace Diff_smag_2_g
+namespace
 {
     __global__ 
-    void strain2(double* __restrict__ strain2,
-                 double* __restrict__ u,  double* __restrict__ v,  double* __restrict__ w,
-                 double* __restrict__ ufluxbot, double* __restrict__ vfluxbot,
-                 double* __restrict__ ustar, double* __restrict__ obuk, 
-                 double* __restrict__ z, double* __restrict__ dzi, double* __restrict__ dzhi, const double dxi, const double dyi, 
-                 const int istart, const int jstart, const int kstart, 
-                 const int iend,   const int jend,   const int kend, 
-                 const int jj,     const int kk)
+    void strain2_g(double* __restrict__ strain2,
+                   double* __restrict__ u,  double* __restrict__ v,  double* __restrict__ w,
+                   double* __restrict__ ufluxbot, double* __restrict__ vfluxbot,
+                   double* __restrict__ ustar, double* __restrict__ obuk, 
+                   double* __restrict__ z, double* __restrict__ dzi, double* __restrict__ dzhi, const double dxi, const double dyi, 
+                   const int istart, const int jstart, const int kstart, 
+                   const int iend,   const int jend,   const int kend, 
+                   const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -98,13 +98,13 @@ namespace Diff_smag_2_g
     }
 
     __global__ 
-    void evisc(double* __restrict__ evisc, double* __restrict__ N2,
-               double* __restrict__ bfluxbot, double* __restrict__ ustar, double* __restrict__ obuk,
-               double* __restrict__ mlen,
-               const double tPri, const double z0m, const double zsl,
-               const int istart,  const int jstart, const int kstart,
-               const int iend,    const int jend,   const int kend, 
-               const int jj,      const int kk)
+    void evisc_g(double* __restrict__ evisc, double* __restrict__ N2,
+                 double* __restrict__ bfluxbot, double* __restrict__ ustar, double* __restrict__ obuk,
+                 double* __restrict__ mlen,
+                 const double tPri, const double z0m, const double zsl,
+                 const int istart,  const int jstart, const int kstart,
+                 const int iend,    const int jend,   const int kend, 
+                 const int jj,      const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -133,10 +133,10 @@ namespace Diff_smag_2_g
     }
 
     __global__ 
-    void evisc_neutral(double* __restrict__ evisc, double* __restrict__ mlen,
-                       const int istart, const int jstart, const int kstart, 
-                       const int iend,   const int jend,   const int kend, 
-                       const int jj,     const int kk)
+    void evisc_neutral_g(double* __restrict__ evisc, double* __restrict__ mlen,
+                         const int istart, const int jstart, const int kstart, 
+                         const int iend,   const int jend,   const int kend, 
+                         const int jj,     const int kk)
 
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
@@ -151,16 +151,16 @@ namespace Diff_smag_2_g
     }
 
     __global__ 
-    void diff_uvw(double* __restrict__ ut, double* __restrict__ vt, double* __restrict__ wt, 
-                  double* __restrict__ evisc,
-                  double* __restrict__ u, double* __restrict__ v, double* __restrict__ w,
-                  double* __restrict__ fluxbotu, double* __restrict__ fluxtopu, 
-                  double* __restrict__ fluxbotv, double* __restrict__ fluxtopv, 
-                  double* __restrict__ dzi, double* __restrict__ dzhi, const double dxi, const double dyi,
-                  double* __restrict__ rhoref, double* __restrict__ rhorefh, 
-                  const int istart, const int jstart, const int kstart, 
-                  const int iend,   const int jend,   const int kend, 
-                  const int jj,     const int kk)
+    void diff_uvw_g(double* __restrict__ ut, double* __restrict__ vt, double* __restrict__ wt, 
+                    double* __restrict__ evisc,
+                    double* __restrict__ u, double* __restrict__ v, double* __restrict__ w,
+                    double* __restrict__ fluxbotu, double* __restrict__ fluxtopu, 
+                    double* __restrict__ fluxbotv, double* __restrict__ fluxtopv, 
+                    double* __restrict__ dzi, double* __restrict__ dzhi, const double dxi, const double dyi,
+                    double* __restrict__ rhoref, double* __restrict__ rhorefh, 
+                    const int istart, const int jstart, const int kstart, 
+                    const int iend,   const int jend,   const int kend, 
+                    const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -288,13 +288,13 @@ namespace Diff_smag_2_g
     }
 
     __global__ 
-    void diff_c(double* __restrict__ at, double* __restrict__ a, double* __restrict__ evisc,
-                double* __restrict__ fluxbot, double* __restrict__ fluxtop, 
-                double* __restrict__ dzi, double* __restrict__ dzhi, const double dxidxi, const double dyidyi,
-                double* __restrict__ rhoref, double* __restrict__ rhorefh, const double tPri, 
-                const int istart, const int jstart, const int kstart, 
-                const int iend,   const int jend,   const int kend, 
-                const int jj,     const int kk)
+    void diff_c_g(double* __restrict__ at, double* __restrict__ a, double* __restrict__ evisc,
+                  double* __restrict__ fluxbot, double* __restrict__ fluxtop, 
+                  double* __restrict__ dzi, double* __restrict__ dzhi, const double dxidxi, const double dyidyi,
+                  double* __restrict__ rhoref, double* __restrict__ rhorefh, const double tPri, 
+                  const int istart, const int jstart, const int kstart, 
+                  const int iend,   const int jend,   const int kend, 
+                  const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -359,12 +359,11 @@ namespace Diff_smag_2_g
     }
 
     __global__ 
-    void calc_dnmul(double* __restrict__ dnmul, double* __restrict__ evisc, 
-                    double* __restrict__ dzi, double tPrfac, const double dxidxi, const double dyidyi,
-                    const int istart, const int jstart, const int kstart, 
-                    const int iend,   const int jend,   const int kend, 
-                    const int jj,     const int kk)
-
+    void calc_dnmul_g(double* __restrict__ dnmul, double* __restrict__ evisc, 
+                      double* __restrict__ dzi, double tPrfac, const double dxidxi, const double dyidyi,
+                      const int istart, const int jstart, const int kstart, 
+                      const int iend,   const int jend,   const int kend, 
+                      const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -423,7 +422,7 @@ void Diff_smag_2::exec_viscosity()
     const int offs = grid->memoffset;
 
     // Calculate total strain rate
-    Diff_smag_2_g::strain2<<<gridGPU, blockGPU>>>(
+    strain2_g<<<gridGPU, blockGPU>>>(
         &fields->sd["evisc"]->data_g[offs], 
         &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
         &fields->u->datafluxbot_g[offs],  &fields->v->datafluxbot_g[offs],
@@ -437,7 +436,7 @@ void Diff_smag_2::exec_viscosity()
     // start with retrieving the stability information
     if (model->thermo->get_switch() == "0")
     {
-        Diff_smag_2_g::evisc_neutral<<<gridGPU, blockGPU>>>(
+        evisc_neutral_g<<<gridGPU, blockGPU>>>(
             &fields->sd["evisc"]->data_g[offs], mlen_g,
             grid->istart,  grid->jstart, grid->kstart, 
             grid->iend,    grid->jend,   grid->kend,
@@ -456,7 +455,7 @@ void Diff_smag_2::exec_viscosity()
 
         // Calculate eddy viscosity
         double tPri = 1./tPr;
-        Diff_smag_2_g::evisc<<<gridGPU, blockGPU>>>(
+        evisc_g<<<gridGPU, blockGPU>>>(
             &fields->sd["evisc"]->data_g[offs], &fields->atmp["tmp1"]->data_g[offs], 
             &fields->atmp["tmp1"]->datafluxbot_g[offs], &boundaryptr->ustar_g[offs], &boundaryptr->obuk_g[offs],
             mlen_g, tPri, boundaryptr->z0m, grid->z[grid->kstart],
@@ -486,7 +485,7 @@ void Diff_smag_2::exec()
     const double dyidyi = 1./(grid->dy * grid->dy);
     const double tPri = 1./tPr;
 
-    Diff_smag_2_g::diff_uvw<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
+    diff_uvw_g<<<gridGPU, blockGPU>>>(&fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
             &fields->sd["evisc"]->data_g[offs], 
             &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
             &fields->u->datafluxbot_g[offs], &fields->u->datafluxtop_g[offs],
@@ -499,7 +498,7 @@ void Diff_smag_2::exec()
     cuda_check_error();
 
     for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-        Diff_smag_2_g::diff_c<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], &fields->sd["evisc"]->data_g[offs], 
+        diff_c_g<<<gridGPU, blockGPU>>>(&it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], &fields->sd["evisc"]->data_g[offs], 
                 &fields->sp[it->first]->datafluxbot_g[offs], &fields->sp[it->first]->datafluxtop_g[offs],
                 grid->dzi_g, grid->dzhi_g, dxidxi, dyidyi,
                 fields->rhoref_g, fields->rhorefh_g, tPri,
@@ -528,7 +527,7 @@ unsigned long Diff_smag_2::get_time_limit(unsigned long idt, double dt)
     const double tPrfac = std::min(1., tPr);
 
     // Calculate dnmul in tmp1 field
-    Diff_smag_2_g::calc_dnmul<<<gridGPU, blockGPU>>>(
+    calc_dnmul_g<<<gridGPU, blockGPU>>>(
         &fields->atmp["tmp1"]->data_g[offs], &fields->sd["evisc"]->data_g[offs],
         grid->dzi_g, tPrfac, dxidxi, dyidyi,  
         grid->istart,  grid->jstart, grid->kstart, 
@@ -563,7 +562,7 @@ double Diff_smag_2::get_dn(double dt)
     const double tPrfac = std::min(1., tPr);
 
     // Calculate dnmul in tmp1 field
-    Diff_smag_2_g::calc_dnmul<<<gridGPU, blockGPU>>>(
+    calc_dnmul_g<<<gridGPU, blockGPU>>>(
         &fields->atmp["tmp1"]->data_g[offs], &fields->sd["evisc"]->data_g[offs],
         grid->dzi_g, tPrfac, dxidxi, dyidyi,  
         grid->istart,  grid->jstart, grid->kstart, 

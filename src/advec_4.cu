@@ -31,15 +31,15 @@
 
 using namespace fd::o4;
 
-namespace Advec_4_g
+namespace
 {
     __global__ 
-    void advec_u(double* __restrict__ ut, double* __restrict__ u, 
-                 double* __restrict__ v,  double* __restrict__ w,
-                 double* __restrict__ dzi4, double dxi, double dyi, 
-                 int jj, int kk,
-                 int istart, int jstart, int kstart,
-                 int iend,   int jend,   int kend)
+    void advec_u_g(double* __restrict__ ut, double* __restrict__ u, 
+                   double* __restrict__ v,  double* __restrict__ w,
+                   double* __restrict__ dzi4, double dxi, double dyi, 
+                   int jj, int kk,
+                   int istart, int jstart, int kstart,
+                   int iend,   int jend,   int kend)
         {
             const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
             const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -76,12 +76,12 @@ namespace Advec_4_g
         }
 
     template<int loc> __global__ 
-    void advec_u_boundary(double* __restrict__ ut, double* __restrict__ u, 
-                          double* __restrict__ v,  double* __restrict__ w,
-                          double* __restrict__ dzi4, double dxi, double dyi, 
-                          int jj, int kk,
-                          int istart, int jstart, int kstart,
-                          int iend,   int jend,   int kend)
+    void advec_u_boundary_g(double* __restrict__ ut, double* __restrict__ u, 
+                            double* __restrict__ v,  double* __restrict__ w,
+                            double* __restrict__ dzi4, double dxi, double dyi, 
+                            int jj, int kk,
+                            int istart, int jstart, int kstart,
+                            int iend,   int jend,   int kend)
         {
             const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
             const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -143,12 +143,12 @@ namespace Advec_4_g
 
 
     __global__ 
-    void advec_v(double* __restrict__ vt, double* __restrict__ u, 
-                 double* __restrict__ v,  double* __restrict__ w,
-                 double* __restrict__ dzi4, double dxi, double dyi, 
-                 int jj, int kk,
-                 int istart, int jstart, int kstart,
-                 int iend,   int jend,   int kend)
+    void advec_v_g(double* __restrict__ vt, double* __restrict__ u, 
+                   double* __restrict__ v,  double* __restrict__ w,
+                   double* __restrict__ dzi4, double dxi, double dyi, 
+                   int jj, int kk,
+                   int istart, int jstart, int kstart,
+                   int iend,   int jend,   int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -186,12 +186,12 @@ namespace Advec_4_g
     }
 
     template<int loc> __global__ 
-    void advec_v_boundary(double* __restrict__ vt, double* __restrict__ u, 
-                          double* __restrict__ v,  double* __restrict__ w,
-                          double* __restrict__ dzi4, double dxi, double dyi, 
-                          int jj, int kk,
-                          int istart, int jstart, int kstart,
-                          int iend,   int jend,   int kend)
+    void advec_v_boundary_g(double* __restrict__ vt, double* __restrict__ u, 
+                            double* __restrict__ v,  double* __restrict__ w,
+                            double* __restrict__ dzi4, double dxi, double dyi, 
+                            int jj, int kk,
+                            int istart, int jstart, int kstart,
+                            int iend,   int jend,   int kend)
         {
             const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
             const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -252,12 +252,12 @@ namespace Advec_4_g
         }
 
     __global__ 
-    void advec_w(double* __restrict__ wt, double* __restrict__ u, 
-                 double* __restrict__ v,  double* __restrict__ w,
-                 double* __restrict__ dzhi4, double dxi, double dyi, 
-                 int jj, int kk, 
-                 int istart, int jstart, int kstart,
-                 int iend,   int jend,   int kend)
+    void advec_w_g(double* __restrict__ wt, double* __restrict__ u, 
+                   double* __restrict__ v,  double* __restrict__ w,
+                   double* __restrict__ dzhi4, double dxi, double dyi, 
+                   int jj, int kk, 
+                   int istart, int jstart, int kstart,
+                   int iend,   int jend,   int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -295,12 +295,12 @@ namespace Advec_4_g
     }
 
     template<int loc> __global__ 
-    void advec_w_boundary(double* __restrict__ wt, double* __restrict__ u, 
-                          double* __restrict__ v,  double* __restrict__ w,
-                          double* __restrict__ dzhi4, double dxi, double dyi, 
-                          int jj, int kk, 
-                          int istart, int jstart, int kstart,
-                          int iend,   int jend,   int kend)
+    void advec_w_boundary_g(double* __restrict__ wt, double* __restrict__ u, 
+                            double* __restrict__ v,  double* __restrict__ w,
+                            double* __restrict__ dzhi4, double dxi, double dyi, 
+                            int jj, int kk, 
+                            int istart, int jstart, int kstart,
+                            int iend,   int jend,   int kend)
         {
             const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
             const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -361,12 +361,12 @@ namespace Advec_4_g
         }
 
     __global__ 
-    void advec_s(double* __restrict__ st, double* __restrict__ s, 
-                double* __restrict__ u,  double* __restrict__ v, double* __restrict__ w,
-                double* __restrict__ dzi4, double dxi, double dyi, 
-                int jj, int kk,
-                int istart, int jstart, int kstart,
-                int iend,   int jend,   int kend)
+    void advec_s_g(double* __restrict__ st, double* __restrict__ s, 
+                   double* __restrict__ u,  double* __restrict__ v, double* __restrict__ w,
+                   double* __restrict__ dzi4, double dxi, double dyi, 
+                   int jj, int kk,
+                   int istart, int jstart, int kstart,
+                   int iend,   int jend,   int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
@@ -441,12 +441,12 @@ namespace Advec_4_g
     }
 
     __global__ 
-    void calc_cfl(double* const __restrict__ tmp1,
-                  const double* const __restrict__ u, const double* const __restrict__ v, const double* const __restrict__ w, 
-                  const double* const __restrict__ dzi, const double dxi, const double dyi,
-                  const int jj, const int kk,
-                  const int istart, const int jstart, const int kstart,
-                  const int iend,   const int jend,   const int kend)
+    void calc_cfl_g(double* const __restrict__ tmp1,
+                    const double* const __restrict__ u, const double* const __restrict__ v, const double* const __restrict__ w, 
+                    const double* const __restrict__ dzi, const double dxi, const double dyi,
+                    const int jj, const int kk,
+                    const int istart, const int jstart, const int kstart,
+                    const int iend,   const int jend,   const int kend)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -493,7 +493,7 @@ double Advec_4::get_cfl(const double dt)
 
     const int offs = grid->memoffset;
 
-    Advec_4_g::calc_cfl<<<gridGPU, blockGPU>>>(
+    calc_cfl_g<<<gridGPU, blockGPU>>>(
         &fields->atmp["tmp1"]->data_g[offs],
         &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs],
         grid->dzi_g, dxi, dyi,
@@ -528,7 +528,7 @@ void Advec_4::exec()
     const int offs = grid->memoffset;
 
     // Top and bottom boundary:
-    Advec_4_g::advec_u_boundary<0><<<gridGPU2D, blockGPU2D>>>(
+    advec_u_boundary_g<0><<<gridGPU2D, blockGPU2D>>>(
         &fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -536,7 +536,7 @@ void Advec_4::exec()
         grid->iend,    grid->jend,   grid->kend);
     cuda_check_error(); 
 
-    Advec_4_g::advec_u_boundary<1><<<gridGPU2D, blockGPU2D>>>(
+    advec_u_boundary_g<1><<<gridGPU2D, blockGPU2D>>>(
         &fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -545,7 +545,7 @@ void Advec_4::exec()
     cuda_check_error(); 
 
     // Interior:
-    Advec_4_g::advec_u<<<gridGPU, blockGPU>>>(
+    advec_u_g<<<gridGPU, blockGPU>>>(
         &fields->ut->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -554,7 +554,7 @@ void Advec_4::exec()
     cuda_check_error(); 
 
     // Top and bottom boundary:
-    Advec_4_g::advec_v_boundary<0><<<gridGPU2D, blockGPU2D>>>(
+    advec_v_boundary_g<0><<<gridGPU2D, blockGPU2D>>>(
         &fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -562,7 +562,7 @@ void Advec_4::exec()
         grid->iend,    grid->jend,   grid->kend);
     cuda_check_error(); 
 
-    Advec_4_g::advec_v_boundary<1><<<gridGPU2D, blockGPU2D>>>(
+    advec_v_boundary_g<1><<<gridGPU2D, blockGPU2D>>>(
         &fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -571,7 +571,7 @@ void Advec_4::exec()
     cuda_check_error(); 
 
     // Interior
-    Advec_4_g::advec_v<<<gridGPU, blockGPU>>>(
+    advec_v_g<<<gridGPU, blockGPU>>>(
         &fields->vt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -580,7 +580,7 @@ void Advec_4::exec()
     cuda_check_error(); 
 
     // Top and bottom boundary:
-    Advec_4_g::advec_w_boundary<0><<<gridGPU2D, blockGPU2D>>>(
+    advec_w_boundary_g<0><<<gridGPU2D, blockGPU2D>>>(
         &fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -588,7 +588,7 @@ void Advec_4::exec()
         grid->iend,    grid->jend,   grid->kend);
     cuda_check_error(); 
 
-    Advec_4_g::advec_w_boundary<1><<<gridGPU2D, blockGPU2D>>>(
+    advec_w_boundary_g<1><<<gridGPU2D, blockGPU2D>>>(
         &fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -597,7 +597,7 @@ void Advec_4::exec()
     cuda_check_error(); 
 
     // Interior:
-    Advec_4_g::advec_w<<<gridGPU, blockGPU>>>(
+    advec_w_g<<<gridGPU, blockGPU>>>(
         &fields->wt->data_g[offs], &fields->u->data_g[offs], &fields->v->data_g[offs], 
         &fields->w->data_g[offs], grid->dzhi4_g, dxi, dyi,
         grid->icellsp, grid->ijcellsp,
@@ -606,7 +606,7 @@ void Advec_4::exec()
     cuda_check_error(); 
 
     for(FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-        Advec_4_g::advec_s<<<gridGPU, blockGPU>>>(
+        advec_s_g<<<gridGPU, blockGPU>>>(
             &it->second->data_g[offs], &fields->sp[it->first]->data_g[offs], 
             &fields->u->data_g[offs], &fields->v->data_g[offs], &fields->w->data_g[offs], 
             grid->dzi4_g, dxi, dyi,
