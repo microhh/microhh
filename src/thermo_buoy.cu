@@ -27,13 +27,13 @@
 #include "fd.h"
 #include "tools.h"
 
-namespace Thermo_buoy_g
+namespace
 {
     __global__ 
-    void calc_buoyancy_tend_2nd(double* __restrict__ wt, double* __restrict__ b, 
-                                int istart, int jstart, int kstart,
-                                int iend,   int jend,   int kend,
-                                int jj, int kk)
+    void calc_buoyancy_tend_2nd_g(double* __restrict__ wt, double* __restrict__ b, 
+                                  int istart, int jstart, int kstart,
+                                  int iend,   int jend,   int kend,
+                                  int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -47,10 +47,10 @@ namespace Thermo_buoy_g
     }
 
     __global__ 
-    void calc_buoyancy_tend_4th(double* __restrict__ wt, double* __restrict__ b, 
-                                int istart, int jstart, int kstart,
-                                int iend,   int jend,   int kend,
-                                int jj, int kk)
+    void calc_buoyancy_tend_4th_g(double* __restrict__ wt, double* __restrict__ b, 
+                                  int istart, int jstart, int kstart,
+                                  int iend,   int jend,   int kend,
+                                  int jj, int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -82,7 +82,7 @@ void Thermo_buoy::exec()
 
     if (grid->swspatialorder== "2")
     {
-        Thermo_buoy_g::calc_buoyancy_tend_2nd<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_tend_2nd_g<<<gridGPU, blockGPU>>>(
             &fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
             grid->istart,  grid->jstart, grid->kstart+1,
             grid->iend,    grid->jend,   grid->kend,
@@ -91,7 +91,7 @@ void Thermo_buoy::exec()
     }
     else if (grid->swspatialorder== "4")
     {
-        Thermo_buoy_g::calc_buoyancy_tend_4th<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_tend_4th_g<<<gridGPU, blockGPU>>>(
             &fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs], 
             grid->istart,  grid->jstart, grid->kstart+1,
             grid->iend,    grid->jend,   grid->kend,

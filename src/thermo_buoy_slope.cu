@@ -28,14 +28,14 @@
 #include "fd.h"
 #include "tools.h"
 
-namespace Thermo_buoy_slope_g
+namespace
 {
     __global__ 
-    void calc_buoyancy_tend_u_4th(double* const __restrict__ ut, const double* const __restrict__ b,
-                                  const double sinalpha,
-                                  const int istart, const int jstart, const int kstart,
-                                  const int iend,   const int jend,   const int kend,
-                                  const int jj,     const int kk)
+    void calc_buoyancy_tend_u_4th_g(double* const __restrict__ ut, const double* const __restrict__ b,
+                                    const double sinalpha,
+                                    const int istart, const int jstart, const int kstart,
+                                    const int iend,   const int jend,   const int kend,
+                                    const int jj,     const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -52,11 +52,11 @@ namespace Thermo_buoy_slope_g
     }
 
     __global__ 
-    void calc_buoyancy_tend_w_4th(double* __restrict__ wt, const double* const __restrict__ b,
-                                  const double cosalpha,
-                                  const int istart, const int jstart, const int kstart,
-                                  const int iend, const int jend, const int kend,
-                                  const int jj, const int kk)
+    void calc_buoyancy_tend_w_4th_g(double* __restrict__ wt, const double* const __restrict__ b,
+                                    const double cosalpha,
+                                    const int istart, const int jstart, const int kstart,
+                                    const int iend, const int jend, const int kend,
+                                    const int jj, const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -73,12 +73,12 @@ namespace Thermo_buoy_slope_g
     }
 
     __global__ 
-    void calc_buoyancy_tend_b_4th(double* const __restrict__ bt,
-                                  const double* const __restrict__ u, const double* const __restrict__ w,
-                                  const double utrans, const double n2, const double sinalpha, const double cosalpha,
-                                  const int istart, const int jstart, const int kstart,
-                                  const int iend, const int jend, const int kend,
-                                  const int jj, const int kk)
+    void calc_buoyancy_tend_b_4th_g(double* const __restrict__ bt,
+                                    const double* const __restrict__ u, const double* const __restrict__ w,
+                                    const double utrans, const double n2, const double sinalpha, const double cosalpha,
+                                    const int istart, const int jstart, const int kstart,
+                                    const int iend, const int jend, const int kend,
+                                    const int jj, const int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -122,7 +122,7 @@ void Thermo_buoy_slope::exec()
         const double sinalpha = std::sin(this->alpha);
         const double cosalpha = std::cos(this->alpha);
 
-        Thermo_buoy_slope_g::calc_buoyancy_tend_u_4th<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_tend_u_4th_g<<<gridGPU, blockGPU>>>(
             &fields->ut->data_g[offs], &fields->sp["b"]->data_g[offs],
             sinalpha,
             grid->istart,  grid->jstart, grid->kstart,
@@ -130,7 +130,7 @@ void Thermo_buoy_slope::exec()
             grid->icellsp, grid->ijcellsp);
         cuda_check_error(); 
 
-        Thermo_buoy_slope_g::calc_buoyancy_tend_w_4th<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_tend_w_4th_g<<<gridGPU, blockGPU>>>(
             &fields->wt->data_g[offs], &fields->sp["b"]->data_g[offs],
             cosalpha,
             grid->istart,  grid->jstart, grid->kstart+1,
@@ -138,7 +138,7 @@ void Thermo_buoy_slope::exec()
             grid->icellsp, grid->ijcellsp);
         cuda_check_error(); 
 
-        Thermo_buoy_slope_g::calc_buoyancy_tend_b_4th<<<gridGPU, blockGPU>>>(
+        calc_buoyancy_tend_b_4th_g<<<gridGPU, blockGPU>>>(
             &fields->st["b"]->data_g[offs],
             &fields->u->data_g[offs], &fields->w->data_g[offs],
             grid->utrans, n2, sinalpha, cosalpha,
