@@ -27,15 +27,15 @@
 #include "constants.h"
 #include "tools.h"
 
-namespace Fields_g
+namespace
 {
     // TODO use interp2 functions instead of manual interpolation
     __global__ 
-    void calc_mom_2nd(double* __restrict__ u, double* __restrict__ v, double* __restrict__ w, 
-                     double* __restrict__ mom, double* __restrict__ dz,
-                     int istart, int jstart, int kstart,
-                     int iend,   int jend,   int kend,
-                     int jj,     int kk)
+    void calc_mom_2nd_g(double* __restrict__ u, double* __restrict__ v, double* __restrict__ w, 
+                        double* __restrict__ mom, double* __restrict__ dz,
+                        int istart, int jstart, int kstart,
+                        int iend,   int jend,   int kend,
+                        int jj,     int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -50,11 +50,11 @@ namespace Fields_g
     }
 
     __global__ 
-    void calc_tke_2nd(double* __restrict__ u, double* __restrict__ v, double* __restrict__ w, 
-                      double* __restrict__ tke, double* __restrict__ dz,
-                      int istart, int jstart, int kstart,
-                      int iend,   int jend,   int kend,
-                      int jj,     int kk)
+    void calc_tke_2nd_g(double* __restrict__ u, double* __restrict__ v, double* __restrict__ w, 
+                        double* __restrict__ tke, double* __restrict__ dz,
+                        int istart, int jstart, int kstart,
+                        int iend,   int jend,   int kend,
+                        int jj,     int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -71,10 +71,10 @@ namespace Fields_g
     }
 
     __global__ 
-    void calc_mass_2nd(double* __restrict__ s, double* __restrict__ mass, double* __restrict__ dz,
-                       int istart, int jstart, int kstart,
-                       int iend,   int jend,   int kend,
-                       int jj,     int kk)
+    void calc_mass_2nd_g(double* __restrict__ s, double* __restrict__ mass, double* __restrict__ dz,
+                         int istart, int jstart, int kstart,
+                         int iend,   int jend,   int kend,
+                         int jj,     int kk)
     {
         const int i = blockIdx.x*blockDim.x + threadIdx.x + istart; 
         const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart; 
@@ -113,7 +113,7 @@ double Fields::check_momentum()
 
     const int offs = grid->memoffset;
 
-    Fields_g::calc_mom_2nd<<<gridGPU, blockGPU>>>(
+    calc_mom_2nd_g<<<gridGPU, blockGPU>>>(
         &u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
         &atmp["tmp1"]->data_g[offs], grid->dz_g,
         grid->istart,  grid->jstart, grid->kstart,
@@ -142,7 +142,7 @@ double Fields::check_tke()
 
     const int offs = grid->memoffset;
 
-    Fields_g::calc_tke_2nd<<<gridGPU, blockGPU>>>(
+    calc_tke_2nd_g<<<gridGPU, blockGPU>>>(
         &u->data_g[offs], &v->data_g[offs], &w->data_g[offs], 
         &atmp["tmp1"]->data_g[offs], grid->dz_g,
         grid->istart,  grid->jstart, grid->kstart,
@@ -178,7 +178,7 @@ double Fields::check_mass()
     FieldMap::iterator itProg=sp.begin();
     if (sp.begin() != sp.end())
     {
-        Fields_g::calc_mass_2nd<<<gridGPU, blockGPU>>>(
+        calc_mass_2nd_g<<<gridGPU, blockGPU>>>(
             &itProg->second->data_g[offs], &atmp["tmp1"]->data_g[offs], grid->dz_g,
             grid->istart,  grid->jstart, grid->kstart,
             grid->iend,    grid->jend,   grid->kend,
