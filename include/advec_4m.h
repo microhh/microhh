@@ -49,10 +49,5 @@ class Advec_4m : public Advec
         void advec_v(double*, double*, double*, double*, double*);          ///< Calculate latitudinal velocity advection.
         void advec_w(double*, double*, double*, double*, double*);          ///< Calculate vertical velocity advection.
         void advec_s(double*, double*, double*, double*, double*, double*); ///< Calculate scalar advection.
-
-        inline double grad4  (double, double, double, double, double); ///< 4th order gradient.
-        inline double grad4x (double, double, double, double);         ///< 4th order gradient (only numerator).
-        inline double grad4xbiasbot (double, double, double, double);  ///< 4th order interpolation (bottom boundary, only numerator).
-        inline double grad4xbiastop (double, double, double, double);  ///< 4th order interpolation (top boundary, only numerator).
 };
 #endif
