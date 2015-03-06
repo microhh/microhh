@@ -29,7 +29,11 @@ class Grid;
 class Fields;
 struct Mask;
 
-// Thermo is an abstract base class. Only derived types can be initialized.
+/**
+ * Base class for the thermo scheme. This class is abstract and only
+ * derived classes can be instantiated. Derived classes are
+ * implemented that handle different thermodynamics.
+ */
 class Thermo
 {
     public:

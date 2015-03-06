@@ -33,8 +33,8 @@ class Fields;
 class Input;
 
 /**
- * Base class for the advection scheme.
- * This class handles the case when advection is turned off. Derived classes are
+ * Base class for the advection scheme. This class is abstract and only
+ * derived classes can be instantiated. Derived classes are
  * implemented that handle different advection schemes.
  */
 class Advec

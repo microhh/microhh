@@ -24,6 +24,7 @@
 #define ADVEC_4
 
 #include "advec.h"
+#include "defines.h"
 
 class Model;
 class Input;
