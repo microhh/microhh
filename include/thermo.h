@@ -46,8 +46,8 @@ class Thermo
         virtual void init() = 0;
         virtual void create(Input*) = 0;
         virtual void exec() = 0;
-        virtual void exec_stats(Mask*) = 0;
 
+        virtual void exec_stats(Mask*) = 0;
         virtual void exec_cross() = 0;
         virtual void exec_dump() = 0;
 
