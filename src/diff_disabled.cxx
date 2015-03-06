@@ -62,23 +62,7 @@ unsigned long Diff_disabled::get_time_limit(const unsigned long idtlim, const do
     return static_cast<unsigned long>(Constants::dbig);
 }
 
-void Diff_disabled::set_values()
-{
-}
-
 double Diff_disabled::get_dn(const double dt)
 {
     return Constants::dsmall;
-}
-
-void Diff_disabled::exec_viscosity()
-{
-}
-
-void Diff_disabled::exec()
-{
-}
-
-void Diff_disabled::prepare_device()
-{
 }

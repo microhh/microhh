@@ -39,11 +39,11 @@ class Diff_smag_2 : public Diff
 
         double tPr;
 
+        #ifdef USECUDA
         // GPU functions and variables
         void prepare_device();
         void clear_device();
-
-        double* mlen_g;
+        #endif
 
         // Empty functions, there are allowed to pass.
         void set_values() {}
@@ -76,5 +76,9 @@ class Diff_smag_2 : public Diff
         double calc_dnmul(double*, double*, double);
 
         double cs;
+
+        #ifdef USECUDA
+        double* mlen_g;
+        #endif
 };
 #endif

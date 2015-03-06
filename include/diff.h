@@ -46,10 +46,10 @@ class Diff
         virtual unsigned long get_time_limit(unsigned long, double) = 0;
         virtual double get_dn(double) = 0;
 
+        #ifdef USECUDA
         // GPU functions and variables
-#ifdef USECUDA
         virtual void prepare_device() = 0;
-#endif
+        #endif
 
     protected:
         Model*  model;

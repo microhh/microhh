@@ -35,15 +35,18 @@ class Diff_disabled : public Diff
         Diff_disabled(Model*, Input*);
         ~Diff_disabled();
 
-        void set_values();
-        void exec_viscosity();
-        void exec();
-
         std::string get_name();
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 
+        // Empty functions.
+        void set_values() {}
+        void exec_viscosity() {}
+        void exec() {}
+
+        #ifdef USECUDA
         // GPU functions and variables
-        void prepare_device();
+        void prepare_device() {}
+        #endif
 };
 #endif
