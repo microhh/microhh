@@ -43,7 +43,9 @@ Diff_smag_2::Diff_smag_2(Model* modelin, Input* inputin) : Diff(modelin, inputin
 {
     swdiff = "smag2";
 
+    #ifdef USECUDA
     mlen_g = 0;
+    #endif
 
     fields->init_diagnostic_field("evisc", "Eddy viscosity", "m2 s-1");
 
@@ -624,9 +626,3 @@ double Diff_smag_2::calc_dnmul(double* restrict evisc, double* restrict dzi, dou
 
     return dnmul;
 }
-
-#ifndef USECUDA
-void Diff_smag_2::prepare_device()
-{
-}
-#endif
