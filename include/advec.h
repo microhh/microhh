@@ -45,11 +45,10 @@ class Advec
 
         static Advec* factory(Master*, Input*, Model*, const std::string); ///< Factory function for advection class generation.
 
-        virtual void exec(); ///< Execute the advection scheme.
-
-        virtual unsigned long get_time_limit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-
-        virtual double get_cfl(double); ///< Retrieve the CFL number.
+        // Pure virtual functions that have to be implemented in derived class.
+        virtual void exec() = 0; ///< Execute the advection scheme.
+        virtual unsigned long get_time_limit(unsigned long, double) = 0; ///< Get the maximum time step imposed by advection scheme
+        virtual double get_cfl(double) = 0; ///< Retrieve the CFL number.
 
     protected:
         Master* master; ///< Pointer to master class.

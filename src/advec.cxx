@@ -30,6 +30,8 @@
 #include "master.h"
 #include "model.h"
 
+#include "advec.h"
+#include "advec_disabled.h"
 #include "advec_2.h"
 #include "advec_2i4.h"
 #include "advec_4.h"
@@ -53,20 +55,6 @@ Advec::~Advec()
 {
 }
 
-unsigned long Advec::get_time_limit(unsigned long idt, const double dt)
-{
-    unsigned long idtlim = (unsigned long) Constants::dbig;
-    return idtlim;
-}
-
-double Advec::get_cfl(const double dt)
-{
-    return cflmin;
-}
-
-void Advec::exec()
-{}
-
 Advec* Advec::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
 {
     std::string swadvec;
@@ -74,7 +62,7 @@ Advec* Advec::factory(Master* masterin, Input* inputin, Model* modelin, const st
         throw 1;
 
     if (swadvec == "0")
-        return new Advec(modelin, inputin);
+        return new Advec_disabled(modelin, inputin);
     else if (swadvec == "2")
         return new Advec_2(modelin, inputin);
     else if (swadvec == "2i4")

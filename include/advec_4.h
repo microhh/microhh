@@ -24,7 +24,9 @@
 #define ADVEC_4
 
 #include "advec.h"
-#include "defines.h"
+
+class Model;
+class Input;
 
 /**
  * Derived class for 4th order advection scheme.
@@ -36,9 +38,7 @@ class Advec_4 : public Advec
         ~Advec_4();              ///< Destructor of the advection class.
 
         void exec(); ///< Execute the advection scheme.
-
         unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-
         double get_cfl(double); ///< Get the CFL number.
 
     private:

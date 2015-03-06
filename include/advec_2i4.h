@@ -25,6 +25,9 @@
 
 #include "advec.h"
 
+class Model;
+class Input;
+
 /**
  * Derived class for 2nd order advection scheme with 4th order interpolation.
  */
@@ -35,9 +38,7 @@ class Advec_2i4 : public Advec
         ~Advec_2i4();              ///< Destructor of the advection class.
 
         void exec(); ///< Execute the advection scheme.
-
         unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-
         double get_cfl(double); ///< Get the CFL number.
 
     private:
