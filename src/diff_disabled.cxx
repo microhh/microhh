@@ -37,7 +37,7 @@
 #include "diff_4.h"
 #include "diff_smag2.h"
 
-Diff::Diff(Model* modelin, Input* inputin)
+Diff_disabled::Diff_disabled(Model* modelin, Input* inputin) : Diff(modelin, inputin)
 {
     model  = modelin;
     grid   = model->grid;
@@ -53,46 +53,32 @@ Diff::Diff(Model* modelin, Input* inputin)
         throw 1;
 }
 
-Diff::~Diff()
+Diff_disabled::~Diff_disabled()
 {
 }
 
-Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
+unsigned long Diff_disabled::get_time_limit(const unsigned long idtlim, const double dt)
 {
-    std::string swdiff;
-    std::string swboundary;
-
-    int nerror = 0;
-    nerror += inputin->get_item(&swdiff, "diff", "swdiff", "", swspatialorder);
-    // load the boundary switch as well in order to be able to check whether the surface model is used
-    nerror += inputin->get_item(&swboundary, "boundary", "swboundary", "", "default");
-    if (nerror)
-        return 0;
-
-    if (swdiff == "0")
-        return new Diff_disabled(modelin, inputin);
-    else if (swdiff == "2")
-        return new Diff_2(modelin, inputin);
-    else if (swdiff == "4")
-        return new Diff_4(modelin, inputin);
-    else if (swdiff == "smag2")
-    {
-        // the subgrid model requires a surface model because of the MO matching at first level
-        if (swboundary != "surface")
-        {
-            masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
-            return 0;
-        }
-        return new Diff_smag_2(modelin, inputin);
-    }
-    else
-    {
-        masterin->print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
-        return 0;
-    }
+    return static_cast<unsigned long>(Constants::dbig);
 }
 
-std::string Diff::get_name()
+void Diff_disabled::set_values()
 {
-    return swdiff;
+}
+
+double Diff_disabled::get_dn(const double dt)
+{
+    return Constants::dsmall;
+}
+
+void Diff_disabled::exec_viscosity()
+{
+}
+
+void Diff_disabled::exec()
+{
+}
+
+void Diff_disabled::prepare_device()
+{
 }

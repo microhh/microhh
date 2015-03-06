@@ -38,6 +38,9 @@ class Diff_4 : public Diff
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 
+        // Empty functions, these are allowed to pass.
+        void exec_viscosity() {}
+
     private:
         double dnmul;
 

@@ -43,7 +43,10 @@ class Diff_smag_2 : public Diff
         void prepare_device();
         void clear_device();
 
-        double* mlen_g; 
+        double* mlen_g;
+
+        // Empty functions, there are allowed to pass.
+        void set_values() {}
 
     private:
         void calc_strain2(double*,

@@ -36,18 +36,20 @@ class Diff
         virtual ~Diff();
         static Diff* factory(Master*, Input*, Model*, const std::string); ///< Factory function for diff class generation.
 
-        virtual void set_values();
-        virtual void exec_viscosity();
-        virtual void exec();
-
         std::string get_name();
-        virtual unsigned long get_time_limit(unsigned long, double);
-        virtual double get_dn(double);
 
-        double dnmax;
+        // Pure virtual functions below.
+        virtual void set_values() = 0;
+        virtual void exec_viscosity() = 0;
+        virtual void exec() = 0;
+
+        virtual unsigned long get_time_limit(unsigned long, double) = 0;
+        virtual double get_dn(double) = 0;
 
         // GPU functions and variables
-        virtual void prepare_device();
+#ifdef USECUDA
+        virtual void prepare_device() = 0;
+#endif
 
     protected:
         Model*  model;
@@ -56,5 +58,8 @@ class Diff
         Master* master;
 
         std::string swdiff;
+
+        double dnmax;
+
 };
 #endif
