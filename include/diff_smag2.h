@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,51 +25,60 @@
 
 #include "diff.h"
 
-class DiffSmag2 : public Diff
+class Diff_smag_2 : public Diff
 {
-  public:
-    DiffSmag2(Model *, Input *);
-    ~DiffSmag2();
+    public:
+        Diff_smag_2(Model*, Input*);
+        ~Diff_smag_2();
 
-    void exec();
-    void execViscosity();
+        void exec();
+        void exec_viscosity();
 
-    unsigned long getTimeLimit(unsigned long, double);
-    double get_dn(double);
+        unsigned long get_time_limit(unsigned long, double);
+        double get_dn(double);
 
-    double tPr;
+        double tPr;
 
-    // GPU functions and variables
-    void prepareDevice();
-    void clearDevice();
+        #ifdef USECUDA
+        // GPU functions and variables
+        void prepare_device();
+        void clear_device();
+        #endif
 
-    double *mlen_g; 
+        // Empty functions, there are allowed to pass.
+        void set_values() {}
 
-  private:
-    void strain2(double *,
-                 double *, double *, double *,
-                 double *, double *,
-                 double *, double *,
-                 double *, double *, double *);
+    private:
+        void calc_strain2(double*,
+                          double*, double*, double*,
+                          double*, double*,
+                          double*, double*,
+                          double*, double*, double*);
 
-    void evisc(double *,
-               double *, double *, double *, double *,
-               double *, double *, double *,
-               double *, double *,
-               double *, double *, double *,
-               double);
-    void eviscNeutral(double *,
-                      double *, double *, double *,
-                      double *, double *,
-                      double *, double *,
-                      double);
-    void diffu(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    void diffv(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    void diffw(double *, double *, double *, double *, double *, double *, double *, double *, double *);
-    void diffc(double *, double *, double *, double *, double *, double *, double *, double *, double *, double);
+        void calc_evisc(double*,
+                        double*, double*, double*, double*,
+                        double*, double*, double*,
+                        double*, double*,
+                        double*, double*, double*,
+                        double);
 
-    double calc_dnmul(double *, double *, double);
+        void calc_evisc_neutral(double*,
+                                double*, double*, double*,
+                                double*, double*,
+                                double*, double*,
+                                double);
 
-    double cs;
+        void diff_u(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
+        void diff_v(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
+        void diff_w(double*, double*, double*, double*, double*, double*, double*, double*, double*);
+        void diff_c(double*, double*, double*, double*, double*, double*, double*, double*, double*, double);
+
+        double calc_dnmul(double*, double*, double);
+
+        double cs;
+
+        #ifdef USECUDA
+        double* mlen_g;
+        #endif
 };
 #endif

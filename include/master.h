@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,71 +33,71 @@ class Input;
 
 class Master
 {
-  public:
-    Master();
-    ~Master();
+    public:
+        Master();
+        ~Master();
 
-    void start(int, char**);
-    void init(Input *);
+        void start(int, char**);
+        void init(Input*);
 
-    double getWallClockTime();
-    bool atWallClockLimit();
+        double get_wall_clock_time();
+        bool at_wall_clock_limit();
 
-    void waitAll();
+        void wait_all();
 
-    // overload the broadcast function
-    void broadcast(char *, int);
-    void broadcast(int *, int);
-    void broadcast(double *, int);
-    void broadcast(unsigned long *, int);
+        // overload the broadcast function
+        void broadcast(char *, int);
+        void broadcast(int *, int);
+        void broadcast(double *, int);
+        void broadcast(unsigned long *, int);
 
-    // overload the sum function
-    void sum(int *, int);
-    void sum(double *, int);
+        // overload the sum function
+        void sum(int *, int);
+        void sum(double *, int);
 
-    // overload the max function
-    void max(double *, int);
+        // overload the max function
+        void max(double *, int);
 
-    // overload the min function
-    void min(double *, int);
+        // overload the min function
+        void min(double *, int);
 
-    void printMessage(const char *format, ...);
-    void printWarning(const char *format, ...);
-    void printError  (const char *format, ...);
+        void print_message(const char *format, ...);
+        void print_warning(const char *format, ...);
+        void print_error  (const char *format, ...);
 
-    std::string mode;
-    std::string simname;
+        std::string mode;
+        std::string simname;
 
-    int nprocs;
-    int npx;
-    int npy;
-    int mpiid;
-    int mpicoordx;
-    int mpicoordy;
+        int nprocs;
+        int npx;
+        int npy;
+        int mpiid;
+        int mpicoordx;
+        int mpicoordy;
 
-    #ifdef USEMPI
-    int nnorth;
-    int nsouth;
-    int neast;
-    int nwest;
+#ifdef USEMPI
+        int nnorth;
+        int nsouth;
+        int neast;
+        int nwest;
 
-    MPI_Comm commxy;
-    MPI_Comm commx;
-    MPI_Comm commy;
+        MPI_Comm commxy;
+        MPI_Comm commx;
+        MPI_Comm commy;
 
-    MPI_Request *reqs;
-    int reqsn;
-    #endif
+        MPI_Request *reqs;
+        int reqsn;
+#endif
 
-  private:
-    bool initialized;
-    bool allocated;
+    private:
+        bool initialized;
+        bool allocated;
 
-    double wallClockStart;
-    double wallClockEnd;
+        double wall_clock_start;
+        double wall_clock_end;
 
-    #ifdef USEMPI
-    int checkError(int);
-    #endif
+#ifdef USEMPI
+        int check_error(int);
+#endif
 };
 #endif

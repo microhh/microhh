@@ -20,34 +20,33 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_2
-#define DIFF_2
+#ifndef DIFF_DISABLED
+#define DIFF_DISABLED
 
 #include "diff.h"
 
-class Diff_2 : public Diff
+// forward declaration to speed up build time
+class Model;
+class Input;
+
+class Diff_disabled : public Diff
 {
     public:
-        Diff_2(Model*, Input*);
-        ~Diff_2();
+        Diff_disabled(Model*, Input*);
+        ~Diff_disabled();
 
-        void set_values();
-        void exec();
-
+        std::string get_name();
         unsigned long get_time_limit(unsigned long, double);
         double get_dn(double);
 
-        // Empty functions, these are allowed to pass.
+        // Empty functions.
+        void set_values() {}
         void exec_viscosity() {}
+        void exec() {}
 
         #ifdef USECUDA
-        void prepare_device() {};
+        // GPU functions and variables
+        void prepare_device() {}
         #endif
-
-    private:
-        double dnmul;
-
-        void diff_c(double*, double*, double*, double*, double);
-        void diff_w(double*, double*, double*, double*, double);
 };
 #endif

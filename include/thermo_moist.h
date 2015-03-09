@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,95 +31,86 @@ class Fields;
 class Stats;
 struct Mask;
 
-class ThermoMoist : public Thermo
+class Thermo_moist : public Thermo
 {
-  public:
-    ThermoMoist(Model *, Input *);
-    virtual ~ThermoMoist();
+    public:
+        Thermo_moist(Model*, Input*);
+        virtual ~Thermo_moist();
 
-    virtual void init();
-    virtual void create(Input *);
-    virtual void exec();
-    virtual void getMask(Field3d *, Field3d *, Mask *);
-    virtual void execStats(Mask *);
-    virtual void execCross();
-    virtual void execDump();
+        void init();
+        void create(Input*);
+        void exec();
+        void get_mask(Field3d*, Field3d*, Mask*);
+        void exec_stats(Mask*);
+        void exec_cross();
+        void exec_dump();
 
-    // functions to retrieve buoyancy properties, to be called from other classes
-    virtual bool checkThermoField(std::string name);
-    virtual void getThermoField(Field3d *, Field3d *, std::string name);
-    virtual void getBuoyancySurf(Field3d *);
-    virtual void getBuoyancyFluxbot(Field3d *);
-    virtual void getProgVars(std::vector<std::string> *); ///< Retrieve a list of prognostic variables.
+        // functions to retrieve buoyancy properties, to be called from other classes
+        bool check_field_exists(std::string name);
+        void get_thermo_field(Field3d*, Field3d*, std::string name);
+        void get_buoyancy_surf(Field3d*);
+        void get_buoyancy_fluxbot(Field3d*);
+        void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
 
-    #ifdef USECUDA
-    // GPU functions and variables
-    void prepareDevice();
-    void clearDevice();
-    #endif
+#ifdef USECUDA
+        // GPU functions and variables
+        void prepare_device();
+        void clear_device();
+#endif
 
-  private:
-    void initStat();  ///< Initialize the thermo statistics
-    void initCross(); ///< Initialize the thermo cross-sections
-    void initDump();  ///< Initialize the thermo field dumps
+    private:
+        void init_stat();  ///< Initialize the thermo statistics
+        void init_cross(); ///< Initialize the thermo cross-sections
+        void init_dump();  ///< Initialize the thermo field dumps
 
-    int swupdatebasestate;
-    std::string thvar; ///< Name of prognostic potential temperature variable
+        int swupdatebasestate;
+        std::string thvar; ///< Name of prognostic potential temperature variable
 
-    // cross sections
-    std::vector<std::string> crosslist;        ///< List with all crosses from ini file
-    std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
-    std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
+        // cross sections
+        std::vector<std::string> crosslist;        ///< List with all crosses from ini file
+        std::vector<std::string> allowedcrossvars; ///< List with allowed cross variables
+        std::vector<std::string> dumplist;         ///< List with all 3d dumps from the ini file.
 
-    Stats *stats;
+        Stats *stats;
 
-    // masks
-    void calcMask_ql    (double *, double *, double *, int *, int *, int *, double *);
-    void calcMask_qlcore(double *, double *, double *, int *, int *, int *, double *, double *, double *);
+        // masks
+        void calc_mask_ql    (double*, double*, double*, int *, int *, int *, double*);
+        void calc_mask_qlcore(double*, double*, double*, int *, int *, int *, double*, double*, double*);
 
-    void calcBuoyancyTend_2nd(double *, double *, double *, double *, double *, double *, double *, double *);
-    void calcBuoyancyTend_4th(double *, double *, double *, double *, double *, double *, double *, double *);
+        void calc_buoyancy_tend_2nd(double*, double*, double*, double*, double*, double*, double*, double*);
+        void calc_buoyancy_tend_4th(double*, double*, double*, double*, double*, double*, double*, double*);
 
-    void calcBuoyancy(double *, double *, double *, double *, double *, double *);
-    void calcN2(double *, double *, double *, double *); ///< Calculation of the Brunt-Vaissala frequency.
-    void calcBaseState(double *, double *, double *, double *, double *, double *, double *, double *, double *, double *);
+        void calc_buoyancy(double*, double*, double*, double*, double*, double*);
+        void calc_N2(double*, double*, double*, double*); ///< Calculation of the Brunt-Vaissala frequency.
+        void calc_base_state(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
 
-    void calcLiquidWater(double *, double *, double *, double *);
-    void calcBuoyancyBot(double *, double *,
-                         double *, double *,
-                         double *, double *,
-                         double *, double *);
-    void calcBuoyancyFluxBot(double *, double *, double *, double *, double *, double *);
+        void calc_liquid_water(double*, double*, double*, double*);
+        void calc_buoyancy_bot(double*, double*,
+                               double*, double*,
+                               double*, double*,
+                               double*, double*);
+        void calc_buoyancy_fluxbot(double*, double*, double*, double*, double*, double*);
 
-    inline double satAdjust(const double, const double, const double ,const double);
-    inline double buoyancy(const double, const double, const double, const double, const double);
-    inline double buoyancyNoql(const double, const double, const double);
-    inline double buoyancyFluxNoql(const double, const double, const double, const double, const double);
-    inline double exner(const double);
-    inline double exn2(const double);
-    inline double qsat(const double, const double);
-    inline double esat(const double);
+        std::string swbasestate;
+        double pbot;
+        double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
 
-    std::string swbasestate;
-    double pbot;
-    double thvref0; ///< Reference virtual potential temperature in case of Boussinesq
+        // REFERENCE PROFILES
+        double* thl0;    // Initial thl profile 
+        double* qt0;     // Initial qt profile
+        double* thvref; 
+        double* thvrefh;
+        double* exnref;
+        double* exnrefh;
+        double* pref;
+        double* prefh;
 
-    // REFERENCE PROFILES
-    double *thl0;    // Initial thl profile 
-    double *qt0;     // Initial qt profile
-    double *thvref; 
-    double *thvrefh;
-    double *exnref;
-    double *exnrefh;
-    double *pref;
-    double *prefh;
-
-    // GPU functions and variables
-    double *thvref_g; 
-    double *thvrefh_g;
-    double *exnref_g;
-    double *exnrefh_g;
-    double *pref_g;
-    double *prefh_g;
+        // GPU functions and variables
+        double* thvref_g; 
+        double* thvrefh_g;
+        double* exnref_g;
+        double* exnrefh_g;
+        double* pref_g;
+        double* prefh_g;
 };
 #endif

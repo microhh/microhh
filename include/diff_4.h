@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -26,22 +26,31 @@
 #include "diff.h"
 #include "defines.h"
 
-class Diff4 : public Diff
+class Diff_4 : public Diff
 {
-  public:
-    Diff4(Model *, Input *);
-    ~Diff4();
+    public:
+        Diff_4(Model*, Input*);
+        ~Diff_4();
 
-    void setValues();
-    void exec();
+        void set_values();
+        void exec();
 
-    unsigned long getTimeLimit(unsigned long, double);
-    double get_dn(double);
+        unsigned long get_time_limit(unsigned long, double);
+        double get_dn(double);
 
-  private:
-    double dnmul;
+        #ifdef USECUDA
+        void prepare_device() {};
+        #endif
 
-    template<bool> void diffc(double * restrict, double * restrict, double * restrict, double * restrict, double);
-    template<bool> void diffw(double * restrict, double * restrict, double * restrict, double * restrict, double);
+        // Empty functions, these are allowed to pass.
+        void exec_viscosity() {}
+
+    private:
+        double dnmul;
+
+        template<bool>
+        void diff_c(double* restrict, double* restrict, double* restrict, double* restrict, double);
+        template<bool> 
+        void diff_w(double* restrict, double* restrict, double* restrict, double* restrict, double);
 };
 #endif

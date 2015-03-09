@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -28,18 +28,18 @@
 class Model;
 class Input;
 
-class BoundaryUser : public Boundary
+class Boundary_user : public Boundary
 {
   public:
-    BoundaryUser(Model *, Input *);
+    Boundary_user(Model*, Input*);
 
-    void init(Input *);
+    void init(Input*);
 
-    void setValues();
+    void set_values();
 
   private:
-    void setBcPatch(double *, double *, double *, int, double, double, double,
-                    double *, double, double); ///< Set the values for the boundary fields.
+    void set_bc_patch(double*, double*, double*, int, double, double, double,
+                      double*, double, double); ///< Set the values for the boundary fields.
 
     // Patch properties.
     int    patch_dim;

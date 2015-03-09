@@ -20,34 +20,25 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_2
-#define DIFF_2
+#include <cstdio>
+#include "master.h"
+#include "grid.h"
+#include "fields.h"
+#include "defines.h"
+#include "model.h"
+#include "thermo.h"
+#include "thermo_disabled.h"
 
-#include "diff.h"
-
-class Diff_2 : public Diff
+Thermo_disabled::Thermo_disabled(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
-    public:
-        Diff_2(Model*, Input*);
-        ~Diff_2();
+    swthermo = "0";
+}
 
-        void set_values();
-        void exec();
+Thermo_disabled::~Thermo_disabled()
+{
+}
 
-        unsigned long get_time_limit(unsigned long, double);
-        double get_dn(double);
-
-        // Empty functions, these are allowed to pass.
-        void exec_viscosity() {}
-
-        #ifdef USECUDA
-        void prepare_device() {};
-        #endif
-
-    private:
-        double dnmul;
-
-        void diff_c(double*, double*, double*, double*, double);
-        void diff_w(double*, double*, double*, double*, double);
-};
-#endif
+bool Thermo_disabled::check_field_exists(std::string name)
+{
+    return false;  // always returns error 
+}

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -29,42 +29,49 @@ class Grid;
 class Fields;
 struct Mask;
 
+/**
+ * Base class for the thermo scheme. This class is abstract and only
+ * derived classes can be instantiated. Derived classes are
+ * implemented that handle different thermodynamics.
+ */
 class Thermo
 {
-  public:
-    Thermo(Model *, Input *);
-    virtual ~Thermo();
-    static Thermo* factory(Master *, Input *, Model *); ///< Factory function for thermo class generation.
+    public:
+        Thermo(Model*, Input*);
+        virtual ~Thermo();
+        static Thermo* factory(Master*, Input*, Model*); ///< Factory function for thermo class generation.
+        std::string get_switch();
 
-    virtual void init();
-    virtual void create(Input *);
-    virtual void exec();
-    virtual void execStats(Mask *);
+        // Below are the functions that the derived class has to implement.
+        virtual void init() = 0;
+        virtual void create(Input*) = 0;
+        virtual void exec() = 0;
 
-    virtual void execCross();
-    virtual void execDump();
+        virtual void exec_stats(Mask*) = 0;
+        virtual void exec_cross() = 0;
+        virtual void exec_dump() = 0;
 
-    virtual void getMask(Field3d *, Field3d *, Mask *);
+        virtual void get_mask(Field3d*, Field3d*, Mask*) = 0;
 
-    // interfacing functions to get buoyancy properties from other classes
-    virtual bool checkThermoField(std::string name);
-    virtual void getThermoField(Field3d *, Field3d *, std::string name);
-    virtual void getBuoyancySurf(Field3d *);
-    virtual void getBuoyancyFluxbot(Field3d *);
-    virtual void getProgVars(std::vector<std::string> *);
+        // Interfacing functions to get buoyancy properties from other classes.
+        virtual bool check_field_exists(std::string name) = 0;
+        virtual void get_thermo_field(Field3d*, Field3d*, std::string name) = 0;
+        virtual void get_buoyancy_surf(Field3d*) = 0;
+        virtual void get_buoyancy_fluxbot(Field3d*) = 0;
+        virtual void get_prog_vars(std::vector<std::string>*) = 0;
 
-    std::string getSwitch();
+#ifdef USECUDA
+        // GPU functions and variables.
+        virtual void prepare_device() = 0;
+        virtual void clear_device() = 0;
+#endif
 
-    // GPU functions and variables
-    virtual void prepareDevice();
-    virtual void clearDevice();
+    protected:
+        Grid*   grid;
+        Fields* fields;
+        Master* master;
+        Model*  model;
 
-  protected:
-    Grid   *grid;
-    Fields *fields;
-    Master *master;
-    Model  *model;
-
-    std::string swthermo;
+        std::string swthermo;
 };
 #endif

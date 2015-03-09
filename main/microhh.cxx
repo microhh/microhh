@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -26,57 +26,56 @@
 
 int main(int argc, char *argv[])
 {
-  // Initialize the master class, it cannot fail.
-  Master master;
-  try
-  {
-    // Start up the master class and the Message Passing Interface.
-    master.start(argc, argv);
-
-    // Print the current version of the model.
-    master.printMessage("Microhh git-hash: " GITHASH "\n");
-
-    // Initialize the input class and read the input data from disk.
-    Input input(&master);
-
-    // Initialize the model class.
-    Model model(&master, &input);
-
-    // Initialize the master class.
-    master.init(&input);
-
-    // Initialize the model components.
-    model.init();
-
-    if (master.mode == "init")
+    // Initialize the master class, it cannot fail.
+    Master master;
+    try
     {
-      // Initialize the allocated fields and save the data.
-      model.save();
+        // Start up the master class and the Message Passing Interface.
+        master.start(argc, argv);
+
+        // Print the current version of the model.
+        master.print_message("Microhh git-hash: " GITHASH "\n");
+
+        // Initialize the input class and read the input data from disk.
+        Input input(&master);
+
+        // Initialize the model class.
+        Model model(&master, &input);
+
+        // Initialize the master class.
+        master.init(&input);
+
+        // Initialize the model components.
+        model.init();
+
+        if (master.mode == "init")
+        {
+            // Initialize the allocated fields and save the data.
+            model.save();
+        }
+        else if (master.mode == "run" || master.mode == "post")
+        {
+            // Initialize the allocated fields using data from disk.
+            model.load();
+        }
+
+        // Print warnings for input variables that are unused.
+        input.print_unused();
+
+        // Free the memory taken by the input fields.
+        input.clear();
+
+        // Run the model.
+        if (master.mode != "init")
+            model.exec();
     }
-    else if (master.mode == "run" || master.mode == "post")
+
+    // Catch any exceptions and return 1.
+    catch (...)
     {
-      // Initialize the allocated fields using data from disk.
-      model.load();
+        return 1;
     }
 
-    // Print warnings for input variables that are unused.
-    input.printUnused();
-
-    // Free the memory taken by the input fields.
-    input.clear();
-
-    // Run the model.
-    if (master.mode != "init")
-      model.exec();
-  }
-
-  // Catch any exceptions and return 1.
-  catch (...)
-  {
-    return 1;
-  }
-
-  // Return 0 in case of normal exit.
-  return 0;
+    // Return 0 in case of normal exit.
+    return 0;
 }
-

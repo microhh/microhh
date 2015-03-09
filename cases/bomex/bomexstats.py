@@ -15,7 +15,7 @@ def plotstats(name, line):
   areat  = stats.variables["area"][:,:]
   areaht = stats.variables["areah"][:,:]
   
-  st  = stats.variables["s"][:,:]
+  st  = stats.variables["thl"][:,:]
   qtt = stats.variables["qt"][:,:]*1000.
   bt  = stats.variables["b"][:,:]
   ut  = stats.variables["u"][:,:]
@@ -23,7 +23,7 @@ def plotstats(name, line):
   qlt = stats.variables["ql"][:,:]*1000.
   cft = stats.variables["cfrac"][:,:]
   
-  sfluxt = stats.variables["sflux"][:,:]
+  sfluxt = stats.variables["thlflux"][:,:]
   bfluxt = stats.variables["bflux"][:,:]
   ufluxt = stats.variables["uflux"][:,:]
   vfluxt = stats.variables["vflux"][:,:]

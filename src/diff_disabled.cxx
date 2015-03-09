@@ -25,57 +25,44 @@
 #include <algorithm>
 #include "grid.h"
 #include "fields.h"
+#include "master.h"
 #include "defines.h"
 #include "constants.h"
-#include "master.h"
 #include "model.h"
 
-#include "advec.h"
-#include "advec_disabled.h"
-#include "advec_2.h"
-#include "advec_2i4.h"
-#include "advec_4.h"
-#include "advec_4m.h"
+// diffusion schemes
+#include "diff.h"
+#include "diff_disabled.h"
+#include "diff_2.h"
+#include "diff_4.h"
+#include "diff_smag2.h"
 
-Advec::Advec(Model* modelin, Input* inputin)
+Diff_disabled::Diff_disabled(Model* modelin, Input* inputin) : Diff(modelin, inputin)
 {
     model  = modelin;
     grid   = model->grid;
     fields = model->fields;
     master = model->master;
 
+    swdiff = "0";
+
     int nerror = 0;
-    nerror += inputin->get_item(&cflmax, "advec", "cflmax", "", 1.);
+    nerror += inputin->get_item(&dnmax, "diff", "dnmax", "", 0.4);
 
     if (nerror)
         throw 1;
 }
 
-Advec::~Advec()
+Diff_disabled::~Diff_disabled()
 {
 }
 
-Advec* Advec::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
+unsigned long Diff_disabled::get_time_limit(const unsigned long idtlim, const double dt)
 {
-    std::string swadvec;
-    if (inputin->get_item(&swadvec, "advec", "swadvec", "", swspatialorder))
-        throw 1;
-
-    if (swadvec == "0")
-        return new Advec_disabled(modelin, inputin);
-    else if (swadvec == "2")
-        return new Advec_2(modelin, inputin);
-    else if (swadvec == "2i4")
-        return new Advec_2i4(modelin, inputin);
-    else if (swadvec == "4")
-        return new Advec_4(modelin, inputin);
-    else if (swadvec == "4m")
-        return new Advec_4m(modelin, inputin);
-    else
-    {
-        masterin->print_error("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
-        throw 1;
-    }
+    return static_cast<unsigned long>(Constants::dbig);
 }
 
-const double Advec::cflmin = 1.E-5;
+double Diff_disabled::get_dn(const double dt)
+{
+    return Constants::dsmall;
+}

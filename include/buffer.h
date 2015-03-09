@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -35,40 +35,40 @@ class Fields;
  */
 class Buffer
 {
-  public:
-    Buffer(Model *, Input *); ///< Constructor of the buffer class.
-    ~Buffer();                  ///< Destructor of the buffer class.
+    public:
+        Buffer(Model*, Input*); ///< Constructor of the buffer class.
+        ~Buffer();              ///< Destructor of the buffer class.
 
-    void init();           ///< Initialize the arrays that contain the profiles.
-    void create(Input *); ///< Read the profiles of the forces from the input.
-    void exec();            ///< Add the tendencies created by the damping.
+        void init();         ///< Initialize the arrays that contain the profiles.
+        void create(Input*); ///< Read the profiles of the forces from the input.
+        void exec();         ///< Add the tendencies created by the damping.
 
-    // GPU functions and variables
-    void prepareDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
-    void clearDevice(); ///< Allocate and copy buffer profiles at/to GPU                             
+        // GPU functions and variables
+        void prepare_device(); ///< Allocate and copy buffer profiles at/to GPU                             
+        void clear_device(); ///< Allocate and copy buffer profiles at/to GPU                             
 
-  private:
-    Master *master; ///< Pointer to master class.
-    Model  *model;  ///< Pointer to model class.
-    Grid   *grid;   ///< Pointer to grid class.
-    Fields *fields; ///< Pointer to fields class.
+    private:
+        Master* master; ///< Pointer to master class.
+        Model*  model;  ///< Pointer to model class.
+        Grid*   grid;   ///< Pointer to grid class.
+        Fields* fields; ///< Pointer to fields class.
 
-    double zstart; ///< Height above which the buffer layer is starting.
-    double sigma;  ///< Damping frequency.
-    double beta;   ///< Exponent for damping increase with height.
+        double zstart; ///< Height above which the buffer layer is starting.
+        double sigma;  ///< Damping frequency.
+        double beta;   ///< Exponent for damping increase with height.
 
-    int bufferkstart;  ///< Grid point at cell center at which damping starts.
-    int bufferkstarth; ///< Grid point at cell face at which damping starts.
+        int bufferkstart;  ///< Grid point at cell center at which damping starts.
+        int bufferkstarth; ///< Grid point at cell face at which damping starts.
 
-    std::map<std::string, double*> bufferprofs;   ///< Map containing the buffer profiles.
+        std::map<std::string, double*> bufferprofs;   ///< Map containing the buffer profiles.
 
-    std::string swbuffer; ///< Switch for buffer.
+        std::string swbuffer; ///< Switch for buffer.
 
-    void buffer(double * const, const double * const, 
-                const double * const, const double * const); ///< Calculate the tendency.
+        void buffer(double* const, const double* const, 
+                    const double* const, const double* const); ///< Calculate the tendency.
 
-    // GPU functions and variables
-    std::map<std::string, double*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.
+        // GPU functions and variables
+        std::map<std::string, double*> bufferprofs_g; ///< Map containing the buffer profiles at GPU.
 
 };
 #endif

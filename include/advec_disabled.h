@@ -20,34 +20,27 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DIFF_2
-#define DIFF_2
+#ifndef ADVEC_DISABLED
+#define ADVEC_DISABLED
 
-#include "diff.h"
+#include "advec.h"
 
-class Diff_2 : public Diff
+class Model;
+class Input;
+
+/**
+ * Derived class for a disabled advection scheme
+ */
+class Advec_disabled : public Advec
 {
     public:
-        Diff_2(Model*, Input*);
-        ~Diff_2();
+        Advec_disabled(Model*, Input*); ///< Constructor of the advection class.
+        ~Advec_disabled();              ///< Destructor of the advection class.
 
-        void set_values();
-        void exec();
+        void exec(); ///< Execute the advection scheme.
 
-        unsigned long get_time_limit(unsigned long, double);
-        double get_dn(double);
+        unsigned long get_time_limit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
 
-        // Empty functions, these are allowed to pass.
-        void exec_viscosity() {}
-
-        #ifdef USECUDA
-        void prepare_device() {};
-        #endif
-
-    private:
-        double dnmul;
-
-        void diff_c(double*, double*, double*, double*, double);
-        void diff_w(double*, double*, double*, double*, double);
+        double get_cfl(double); ///< Retrieve the CFL number.
 };
 #endif

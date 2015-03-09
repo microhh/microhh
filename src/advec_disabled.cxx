@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -20,30 +20,36 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MPICHECK
-#define MPICHECK
-
+#include <cstdio>
+#include <cmath>
+#include <algorithm>
 #include "grid.h"
-#include "field3d.h"
+#include "fields.h"
+#include "defines.h"
+#include "constants.h"
 #include "master.h"
+#include "model.h"
+#include "advec_disabled.h"
 
-class Mpicheck
+Advec_disabled::Advec_disabled(Model* modelin, Input* inputin) : Advec(modelin, inputin)
 {
-  public:
-    Mpicheck(Grid *, cmpi *);
-    ~Mpicheck();
-    
-    int create();
-    int checkLayout();
-    int checkBoundary();
-    int checkTranspose();
+}
 
-  private:
-    Grid   *grid;
-    cmpi    *mpi;
+Advec_disabled::~Advec_disabled()
+{
+}
 
-    Field3d *s;
-    Field3d *temp1;
-    Field3d *temp2;
-};
-#endif
+unsigned long Advec_disabled::get_time_limit(unsigned long idt, const double dt)
+{
+    unsigned long idtlim = (unsigned long) Constants::dbig;
+    return idtlim;
+}
+
+double Advec_disabled::get_cfl(const double dt)
+{
+    return cflmin;
+}
+
+void Advec_disabled::exec()
+{
+}

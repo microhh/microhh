@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,30 +33,30 @@ class Fields;
 class Input;
 
 /**
- * Base class for the advection scheme.
- * This class handles the case when advection is turned off. Derived classes are
+ * Base class for the advection scheme. This class is abstract and only
+ * derived classes can be instantiated. Derived classes are
  * implemented that handle different advection schemes.
  */
 class Advec
 {
-  public:
-    Advec(Model *, Input *); ///< Constructor of the advection class.
-    virtual ~Advec();        ///< Destructor of the advection class.
+    public:
+        Advec(Model*, Input*); ///< Constructor of the advection class.
+        virtual ~Advec();      ///< Destructor of the advection class.
 
-    static Advec* factory(Master *, Input *, Model *, const std::string); ///< Factory function for advection class generation.
+        static Advec* factory(Master*, Input*, Model*, const std::string); ///< Factory function for advection class generation.
 
-    virtual void exec(); ///< Execute the advection scheme.
+        // Pure virtual functions that have to be implemented in derived class.
+        virtual void exec() = 0; ///< Execute the advection scheme.
+        virtual unsigned long get_time_limit(unsigned long, double) = 0; ///< Get the maximum time step imposed by advection scheme
+        virtual double get_cfl(double) = 0; ///< Retrieve the CFL number.
 
-    virtual unsigned long getTimeLimit(unsigned long, double); ///< Get the maximum time step imposed by advection scheme
-    virtual double get_cfl(double);                            ///< Retrieve the CFL number.
+    protected:
+        Master* master; ///< Pointer to master class.
+        Model*  model;  ///< Pointer to model class.
+        Grid*   grid;   ///< Pointer to grid class.
+        Fields* fields; ///< Pointer to fields class.
 
-  protected:
-    Master *master; ///< Pointer to master class.
-    Model  *model;  ///< Pointer to model class.
-    Grid   *grid;   ///< Pointer to grid class.
-    Fields *fields; ///< Pointer to fields class.
-
-    double cflmax; ///< Maximum allowed value for the CFL criterion.
-    static const double cflmin; ///< Minimum value for CFL used to avoid overflows.
+        double cflmax; ///< Maximum allowed value for the CFL criterion.
+        static const double cflmin; ///< Minimum value for CFL used to avoid overflows.
 };
 #endif
