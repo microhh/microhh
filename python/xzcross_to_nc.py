@@ -14,26 +14,44 @@ sampletime = 1800
 iotimeprec = 0.01
 nxsave     = nx
 nzsave     = nz
-precision  = 'f4'
+endian     = 'little'
+savetype   = 'float'
 # End settings ---
+
+# Set the correct string for the endianness
+if (endian == 'little'):
+    en = '<'
+elif (endian == 'big'):
+    en = '>'
+else:
+    raise RuntimeError("Endianness has to be little or big")
+
+# Set the correct string for the savetype
+if (savetype == 'double'):
+    sa = 'f8'
+elif (savetype == 'float'):
+    sa = 'f4'
+else:
+    raise RuntimeError("The savetype has to be float or double")
 
 # calculate the number of iterations
 niter = int((endtime-starttime) / sampletime + 1)
 
 # load the dimensions
+n   = nx*ny*nz
 fin = open("grid.{:07d}".format(0),"rb")
 raw = fin.read(nx*8)
-x   = np.array(st.unpack('<{}d'.format(nx), raw))
+x   = np.array(st.unpack('{0}{1}d'.format(en, nx), raw))
 raw = fin.read(nx*8)
-xh  = np.array(st.unpack('<{}d'.format(nx), raw))
+xh  = np.array(st.unpack('{0}{1}d'.format(en, nx), raw))
 raw = fin.read(ny*8)
-y   = np.array(st.unpack('<{}d'.format(ny), raw))
+y   = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
 raw = fin.read(ny*8)
-yh  = np.array(st.unpack('<{}d'.format(ny), raw))
+yh  = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
 raw = fin.read(nz*8)
-z   = np.array(st.unpack('<{}d'.format(nz), raw))
+z   = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
 raw = fin.read(nz*8)
-zh  = np.array(st.unpack('<{}d'.format(nz), raw))
+zh  = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
 fin.close()
 
 # Loop over the different variables
@@ -56,17 +74,17 @@ for crossname in variables:
     dim_t  = crossfile.createDimension('time', niter)
     
     # create dimension variables
-    var_t  = crossfile.createVariable('time', precision, ('time',))
-    var_x  = crossfile.createVariable(locx,   precision, (locx,  ))
-    var_y  = crossfile.createVariable(locy,   precision, (locy,  ))
-    var_z  = crossfile.createVariable(locz,   precision, (locz,  ))
+    var_t  = crossfile.createVariable('time', sa, ('time',))
+    var_x  = crossfile.createVariable(locx,   sa, (locx,  ))
+    var_y  = crossfile.createVariable(locy,   sa, (locy,  ))
+    var_z  = crossfile.createVariable(locz,   sa, (locz,  ))
     var_t.units = "Seconds since start of experiment"
     
     # save the data
     var_x[:]  = x[:nxsave] if locx=='x' else xh[:nxsave]
     var_z[:]  = z[:nxsave] if locz=='z' else zh[:nxsave]
     
-    var_s = crossfile.createVariable(crossname, precision, ('time', locz, locx, locy,))
+    var_s = crossfile.createVariable(crossname, sa, ('time', locz, locx, locy,))
     
     for t in range(niter):
         for i in range(np.size(indexes)):
@@ -79,7 +97,7 @@ for crossname in variables:
     
             fin = open("{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
             raw = fin.read(nx*nz*8)
-            tmp = np.array(st.unpack('<{}d'.format(nx*nz), raw))
+            tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*nz), raw))
             del(raw)
             s = tmp.reshape((nz, nx))
             del(tmp)
