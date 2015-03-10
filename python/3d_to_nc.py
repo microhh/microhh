@@ -10,6 +10,7 @@ nz         = 32
 starttime  = 0
 sampletime = 1800
 endtime    = 10800
+iotimeprec = -2
 nxsave     = nx
 nysave     = ny
 nzsave     = nz
@@ -85,12 +86,12 @@ var_z[:] = z[:nxsave] if locz=='z' else zh[:nxsave]
 
 # Loop through the files and read 3d field
 for t in range(nt):
-    time = starttime + t*sampletime
+    time = int((starttime + t*sampletime) / 10**iotimeprec)
     print("Processing t={:07d}".format(time))
 
-    var_t[t] = time
+    var_t[t] = time * 10**iotimeprec
 
-    fin = open("%s.%07i"%(variable,time),"rb")
+    fin = open("%s.%07i"%(variable, time),"rb")
     for k in range(nzsave):
         raw = fin.read(nx*ny*8)
         tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*ny), raw))
