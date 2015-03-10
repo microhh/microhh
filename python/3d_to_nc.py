@@ -3,33 +3,54 @@ import struct  as st
 import netCDF4 as nc4
 
 # Settings -------
-var    = 'p'
-nx     = 32
-ny     = 32
-nz     = 32
-nt     = 5
-tstart = 0
-tstep  = 1800
-nxsave = nx
-nysave = ny
-nzsave = nz
+var      = 'w'
+nx       = 32
+ny       = 32
+nz       = 32
+tstart   = 0
+tstep    = 1800
+tend     = 10800
+nxsave   = nx
+nysave   = ny
+nzsave   = nz
+endian   = 'little'
+savetype = 'float'
 # End settings ---
+
+# Set the correct string for the endianness
+if (endian == 'little'):
+    en = '<'
+elif (endian == 'big'):
+    en = '>'
+else:
+    raise RuntimeError("Endianness has to be little or big")
+
+# Set the correct string for the savetype
+if (savetype == 'double'):
+    sa = 'f8'
+elif (savetype == 'float'):
+    sa = 'f4'
+else:
+    raise RuntimeError("The savetype has to be float or double")
+
+# Calculate the number of time steps
+nt = (tend - tstart) / tstep + 1
 
 # Read grid properties from grid.0000000
 n   = nx*ny*nz
 fin = open("grid.{:07d}".format(0),"rb")
 raw = fin.read(nx*8)
-x   = np.array(st.unpack('{}d'.format(nx), raw))
+x   = np.array(st.unpack('{0}{1}d'.format(en, nx), raw))
 raw = fin.read(nx*8)
-xh  = np.array(st.unpack('{}d'.format(nx), raw))
+xh  = np.array(st.unpack('{0}{1}d'.format(en, nx), raw))
 raw = fin.read(ny*8)
-y   = np.array(st.unpack('{}d'.format(ny), raw))
+y   = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
 raw = fin.read(ny*8)
-yh  = np.array(st.unpack('{}d'.format(ny), raw))
+yh  = np.array(st.unpack('{0}{1}d'.format(en, ny), raw))
 raw = fin.read(nz*8)
-z   = np.array(st.unpack('{}d'.format(nz), raw))
+z   = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
 raw = fin.read(nz*8)
-zh  = np.array(st.unpack('{}d'.format(nz), raw))
+zh  = np.array(st.unpack('{0}{1}d'.format(en, nz), raw))
 fin.close()
 
 # Create netCDF file
@@ -48,14 +69,14 @@ if(loc[1] == 1): dim_yh = ncfile.createDimension('yh', nysave) ; locy = 'yh'
 if(loc[2] == 1): dim_zh = ncfile.createDimension('zh', nzsave) ; locz = 'zh'
 dim_t  = ncfile.createDimension('time', nt)
 
-if(loc[0] == 0): var_x  = ncfile.createVariable('x', 'f8', (locx,))
-if(loc[1] == 0): var_y  = ncfile.createVariable('y', 'f8', (locy,))
-if(loc[2] == 0): var_z  = ncfile.createVariable('z', 'f8', (locz,))
-if(loc[0] == 1): var_xh = ncfile.createVariable('x', 'f8', (locx,))
-if(loc[1] == 1): var_yh = ncfile.createVariable('y', 'f8', (locy,))
-if(loc[2] == 1): var_zh = ncfile.createVariable('z', 'f8', (locz,))
+if(loc[0] == 0): var_x  = ncfile.createVariable('x', '{}'.format(sa), (locx,))
+if(loc[1] == 0): var_y  = ncfile.createVariable('y', '{}'.format(sa), (locy,))
+if(loc[2] == 0): var_z  = ncfile.createVariable('z', '{}'.format(sa), (locz,))
+if(loc[0] == 1): var_xh = ncfile.createVariable('xh', '{}'.format(sa), (locx,))
+if(loc[1] == 1): var_yh = ncfile.createVariable('yh', '{}'.format(sa), (locy,))
+if(loc[2] == 1): var_zh = ncfile.createVariable('zh', '{}'.format(sa), (locz,))
 var_t  = ncfile.createVariable('time', 'i4', ('time',))
-var_3d = ncfile.createVariable(var, 'f8', ('time',locz,locy,locx,))
+var_3d = ncfile.createVariable(var, '{}'.format(sa), ('time',locz,locy,locx,))
 
 var_t.units = "time units since start"
 
@@ -77,8 +98,9 @@ for t in range(nt):
     fin = open("%s.%07i"%(var,time),"rb")
     for k in range(nzsave):
         raw = fin.read(nx*ny*8)
-        tmp = np.array(st.unpack('{}d'.format(nx*ny), raw))
+        tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*ny), raw))
         var_3d[t,k,:,:] = tmp.reshape((ny, nx))[:nysave,:nxsave]
     fin.close()
+    ncfile.sync()
 
 ncfile.close()
