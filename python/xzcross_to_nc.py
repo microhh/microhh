@@ -11,7 +11,7 @@ nz         = 32
 starttime  = 0
 endtime    = 3600
 sampletime = 1800
-iotimeprec = 0.01
+iotimeprec = -2
 nxsave     = nx
 nzsave     = nz
 endian     = 'little'
@@ -89,10 +89,10 @@ for crossname in variables:
     for t in range(niter):
         for i in range(np.size(indexes)):
             index = indexes[i]
-            otime = int((starttime + t*sampletime) / iotimeprec)
+            otime = int((starttime + t*sampletime) / 10**iotimeprec)
             print("Processing %5s, time=%7i, index=%4i"%(crossname, otime, index))
     
-            var_t[t] = otime * iotimeprec
+            var_t[t] = otime * 10**iotimeprec
             var_y[i] = y[i] if locy=='y' else yh[i] 
     
             fin = open("{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
