@@ -10,10 +10,10 @@ ny         = 32
 nz         = 32
 starttime  = 0
 endtime    = 3600
-sampletime = 1800
+sampletime = 300
 iotimeprec = 0
 nxsave     = nx
-nzsave     = nz
+nysave     = ny
 endian     = 'little'
 savetype   = 'float'
 # End settings ---
@@ -56,7 +56,7 @@ fin.close()
 
 # Loop over the different variables
 for crossname in variables:
-    crossfile = nc4.Dataset("{0}.xz.nc".format(crossname), "w")
+    crossfile = nc4.Dataset("{0}.xy.nc".format(crossname), "w")
 
     if(crossname == 'u'): loc = [1,0,0]
     elif(crossname=='v'): loc = [0,1,0]
@@ -69,8 +69,8 @@ for crossname in variables:
 
     # create dimensions in netCDF file
     dim_x  = crossfile.createDimension(locx,   nxsave)
-    dim_y  = crossfile.createDimension(locy,   np.size(indexes))
-    dim_z  = crossfile.createDimension(locz,   nzsave)
+    dim_y  = crossfile.createDimension(locy,   nysave)
+    dim_z  = crossfile.createDimension(locz,   np.size(indexes))
     dim_t  = crossfile.createDimension('time', niter)
     
     # create dimension variables
@@ -82,26 +82,26 @@ for crossname in variables:
     
     # save the data
     var_x[:]  = x[:nxsave] if locx=='x' else xh[:nxsave]
-    var_z[:]  = z[:nzsave] if locz=='z' else zh[:nzsave]
+    var_y[:]  = y[:nysave] if locy=='y' else yh[:nysave]
     
     var_s = crossfile.createVariable(crossname, sa, ('time', locz, locx, locy,))
     
     for t in range(niter):
-        for i in range(np.size(indexes)):
-            index = indexes[i]
+        for k in range(np.size(indexes)):
+            index = indexes[k]
             otime = int((starttime + t*sampletime) / 10**iotimeprec)
             print("Processing %5s, time=%7i, index=%4i"%(crossname, otime, index))
     
             var_t[t] = otime * 10**iotimeprec
-            var_y[i] = y[index] if locy=='y' else yh[index] 
+            var_z[k] = z[index] if locz=='z' else zh[index] 
     
-            fin = open("{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
-            raw = fin.read(nx*nz*8)
-            tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*nz), raw))
+            fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
+            raw = fin.read(nx*ny*8)
+            tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*ny), raw))
             del(raw)
-            s = tmp.reshape((nz, nx))
+            s = tmp.reshape((ny, nx))
             del(tmp)
-            var_s[t,:,:,i] = s[:nzsave,:nxsave]
+            var_s[t,k,:,:] = s[:nysave,:nxsave]
             del(s)
     
             fin.close()
