@@ -56,10 +56,10 @@ fin.close()
 # Create netCDF file
 ncfile = nc4.Dataset("%s.nc"%var, "w")
 
-if(var=='u'): loc = [1,0,0]
-if(var=='v'): loc = [0,1,0]
-if(var=='w'): loc = [0,0,1]
-else:         loc = [0,0,0]
+if  (var=='u'): loc = [1,0,0]
+elif(var=='v'): loc = [0,1,0]
+elif(var=='w'): loc = [0,0,1]
+else:           loc = [0,0,0]
 
 if(loc[0] == 0): dim_x  = ncfile.createDimension('x',  nxsave) ; locx = 'x'
 if(loc[1] == 0): dim_y  = ncfile.createDimension('y',  nysave) ; locy = 'y'
