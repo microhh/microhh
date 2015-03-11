@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -35,36 +35,36 @@
 #include "pres_2.h"
 #include "pres_4.h"
 
-Pres::Pres(Model *modelin, Input *input)
+Pres::Pres(Model* modelin, Input* input)
 {
-  model  = modelin;
-  grid   = model->grid;
-  fields = model->fields;
-  master = model->master;
+    model  = modelin;
+    grid   = model->grid;
+    fields = model->fields;
+    master = model->master;
 
-  #ifdef USECUDA
-  iplanf = 0;
-  jplanf = 0;
-  iplanb = 0;
-  jplanb = 0;
-  #endif
+#ifdef USECUDA
+    iplanf = 0;
+    jplanf = 0;
+    iplanb = 0;
+    jplanb = 0;
+#endif
 }
 
 Pres::~Pres()
 {
-  #ifdef USECUDA
-  cufftDestroy(iplanf);
-  cufftDestroy(jplanf);
-  cufftDestroy(iplanb);
-  cufftDestroy(jplanb);
-  #endif
+#ifdef USECUDA
+    cufftDestroy(iplanf);
+    cufftDestroy(jplanf);
+    cufftDestroy(iplanb);
+    cufftDestroy(jplanb);
+#endif
 }
 
 void Pres::init()
 {
 }
 
-void Pres::setValues()
+void Pres::set_values()
 {
 }
 
@@ -72,31 +72,31 @@ void Pres::exec(double dt)
 {
 }
 
-double Pres::checkDivergence()
+double Pres::check_divergence()
 {
-  double divmax = 0.;
-  return divmax;
+    double divmax = 0.;
+    return divmax;
 }
 
-Pres* Pres::factory(Master *masterin, Input *inputin, Model *modelin, const std::string swspatialorder)
+Pres* Pres::factory(Master* masterin, Input* inputin, Model* modelin, const std::string swspatialorder)
 {
-  std::string swpres;
-  if(inputin->getItem(&swpres, "pres", "swpres", "", swspatialorder))
-    return 0;
+    std::string swpres;
+    if (inputin->get_item(&swpres, "pres", "swpres", "", swspatialorder))
+        return 0;
 
-  if(swpres == "0")
-    return new Pres(modelin, inputin);
-  else if(swpres == "2")
-    return new Pres2(modelin, inputin);
-  else if(swpres == "4")
-    return new Pres4(modelin, inputin);
-  else
-  {
-    masterin->printError("\"%s\" is an illegal value for swpres\n", swpres.c_str());
-    throw 1;
-  }
+    if (swpres == "0")
+        return new Pres(modelin, inputin);
+    else if (swpres == "2")
+        return new Pres_2(modelin, inputin);
+    else if (swpres == "4")
+        return new Pres_4(modelin, inputin);
+    else
+    {
+        masterin->print_error("\"%s\" is an illegal value for swpres\n", swpres.c_str());
+        throw 1;
+    }
 }
 
-void Pres::prepareDevice()
+void Pres::prepare_device()
 {
 }

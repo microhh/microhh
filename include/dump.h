@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -30,31 +30,30 @@ class Fields;
 
 class Dump
 {
-  public:
-    Dump(Model *, Input *);
-    ~Dump();
+    public:
+        Dump(Model*, Input*);
+        ~Dump();
 
-    void init(double);
-    void create();
+        void init(double);
+        void create();
 
-    unsigned long getTimeLimit(unsigned long);
-    std::string getSwitch();
-    std::vector<std::string> * getDumpList();
+        unsigned long get_time_limit(unsigned long);
+        std::string get_switch();
+        std::vector<std::string>* get_dumplist();
 
-    std::string swdump;
-    bool doDump();
-    void saveDump(double *, double *, std::string);
+        std::string swdump;
+        bool do_dump();
+        void save_dump(double*, double*, std::string);
 
-  private:
-    Master *master;
-    Model  *model;
-    Grid   *grid;
-    Fields *fields;
+    private:
+        Master* master;
+        Model*  model;
+        Grid*   grid;
+        Fields* fields;
 
-    std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
+        std::vector<std::string> dumplist; ///< List with all dumps from the ini file.
 
-    double sampletime;
-    unsigned long isampletime;
+        double sampletime;
+        unsigned long isampletime;
 };
 #endif
-

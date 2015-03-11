@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,81 +31,76 @@ class Input;
 class Stats;
 struct Mask;
 
-class BoundarySurface : public Boundary
+class Boundary_surface : public Boundary
 {
-  public:
-    BoundarySurface(Model *, Input *);
-    ~BoundarySurface();
+    public:
+        Boundary_surface(Model*, Input*);
+        ~Boundary_surface();
 
-    void init(Input *);
-    void create(Input *);
-    void setValues();
+        void init(Input*);
+        void create(Input*);
+        void set_values();
 
-    void execStats(Mask *); ///< Execute statistics of surface
-    void execCross();       ///< Execute cross sections of surface
+        void exec_stats(Mask*); ///< Execute statistics of surface
+        void exec_cross();      ///< Execute cross sections of surface
 
-    // Make these variables public for out-of-class usage.
-    double *obuk;
-    int    *nobuk;
-    double *ustar;
+        // Make these variables public for out-of-class usage.
+        double* obuk;
+        int*    nobuk;
+        double* ustar;
 
-    double z0m;
-    double z0h;
+        double z0m;
+        double z0h;
 
-    #ifdef USECUDA
-    // GPU functions and variables
-    void prepareDevice();
-    void clearDevice();
-    void forwardDevice();  // TMP BVS
-    void backwardDevice(); // TMP BVS 
+#ifdef USECUDA
+        // GPU functions and variables
+        void prepare_device();
+        void clear_device();
+        void forward_device();  // TMP BVS
+        void backward_device(); // TMP BVS 
 
-    double *obuk_g;
-    double *ustar_g;
-    int    *nobuk_g;
-    #endif
+        double* obuk_g;
+        double* ustar_g;
+        int*    nobuk_g;
+#endif
 
-  private:
-    // cross sections
-    std::vector<std::string> crosslist;        // List with all crosses from ini file
-    std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+    private:
+        // cross sections
+        std::vector<std::string> crosslist;        // List with all crosses from ini file
+        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
-    // surface scheme
-    void updateBcs();
-    void stability(double *, double *, double *,
-                   double *, double *, double *,
-                   double *, double *, double *,
-                   double *, double *);
-    void stabilityNeutral(double *, double *,
-                          double *, double *,
-                          double *, double *,
-                          double *, double *);
-    void surfm(double *, double *,
-               double *, double *, double *, double *,
-               double *, double *, double *, double *,
-               double, int);
-    void surfs(double *, double *, double *,
-               double *, double *, double *,
-               double, int);
+        // surface scheme
+        void update_bcs();
+        void stability(double*, double*, double*,
+                       double*, double*, double*,
+                       double*, double*, double*,
+                       double*, double*);
+        void stability_neutral(double*, double*,
+                               double*, double*,
+                               double*, double*,
+                               double*, double*);
+        void surfm(double*, double*,
+                   double*, double*, double*, double*,
+                   double*, double*, double*, double*,
+                   double, int);
+        void surfs(double*, double*, double*,
+                   double*, double*, double*,
+                   double, int);
 
-    double calcObukNoslipFlux     (const float* const, const float* const, int&, double, double, double);
-    double calcObukNoslipDirichlet(const float* const, const float* const, int&, double, double, double);
+        double calc_obuk_noslip_flux     (const float* const, const float* const, int&, double, double, double);
+        double calc_obuk_noslip_dirichlet(const float* const, const float* const, int&, double, double, double);
 
-    double ustarin;
+        double ustarin;
 
-    Stats *stats;
+        Stats* stats;
 
-    float* zL_sl;
-    float* f_sl;
+        float* zL_sl;
+        float* f_sl;
 
-    #ifdef USECUDA
-    float* zL_sl_g;
-    float* f_sl_g;
-    #endif
-
-    // typedef std::map<std::string, int> bcbotmap;
-    // int surfmbcbot;
-    // bcbotmap surfsbcbot;
-
-    int thermobc;
+#ifdef USECUDA
+        float* zL_sl_g;
+        float* f_sl_g;
+#endif
+        int thermobc;
 };
 #endif

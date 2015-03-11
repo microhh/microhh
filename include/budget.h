@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -35,62 +35,63 @@ struct Mask;
 
 class Budget
 {
-  public:
-    Budget(Model *, Input *);
-    ~Budget();
+    public:
+        Budget(Model*, Input*);
+        ~Budget();
 
-    void init();
-    void create();
+        void init();
+        void create();
 
-    void execStats(Mask *);
+        void exec_stats(Mask*);
 
-  private:
-    Model  *model;
-    Master *master;
-    Stats  *stats;
-    Grid   *grid;
-    Fields *fields;
+    private:
+        Model*  model;
+        Master* master;
+        Stats*  stats;
+        Grid*   grid;
+        Fields* fields;
 
-    std::string swbudget;
+        std::string swbudget;
 
-    double *umodel, *vmodel;
+        double* umodel;
+        double* vmodel;
 
-    void calcKe(double *, double *, double *,
-                double *, double *,
-                double, double,
-                double *, double *);
+        void calc_ke(double*, double*, double*,
+                     double*, double*,
+                     double, double,
+                     double*, double*);
 
-    void calcTkeBudget(double *, double *, double *, double *,
-                       double *, double *,
-                       double *, double *,
-                       double *, double *, double *,
-                       double *, double *, double *, double *,
-                       double *, double *, double *, double *,
-                       double *, double *, double *, double *,
-                       double *, double *,
-                       double *, double *, double *,
-                       double *, double *, double);
+        void calc_tke_budget(double*, double*, double*, double*,
+                             double*, double*,
+                             double*, double*,
+                             double*, double*, double*,
+                             double*, double*, double*, double*,
+                             double*, double*, double*, double*,
+                             double*, double*, double*, double*,
+                             double*, double*,
+                             double*, double*, double*,
+                             double*, double*, double);
 
-    void calcTkeBudgetBuoy(double *, double *, double *, double *);
+        void calc_tke_budget_buoy(double*, double*, double*, double*);
 
-    void calcPe(double *, double *, double *, double *,
-                double *,
-                double *,
-                double *, double *, double *,
-                double *);
+        void calc_pe(double*, double*, double*, double*,
+                     double*,
+                     double*,
+                     double*, double*, double*,
+                     double*);
 
-    void calcPeBudget(double *, double *, double *, double *,
-                      double *, double *, double *,
-                      double *, double *, double *, double *,
-                      double);
+        void calc_pe_budget(double*, double*, double*, double*,
+                            double*, double*, double*,
+                            double*, double*, double*, double*,
+                            double);
 
-    void calcBpeBudget(double *, double *, double *, double *, double *,
-                       double *, double *, double *,
-                       double *,
-                       double *, double *, double *,
-                       double);
+        void calc_bpe_budget(double*, double*, double*, double*, double*,
+                             double*, double*, double*,
+                             double*,
+                             double*, double*, double*,
+                             double);
 
-    double calc_zsort   (double, double *, double *, int);
-    double calc_dzstardb(double, double *, double *);
+        double calc_zsort   (double, double*, double*, int);
+        double calc_dzstardb(double, double*, double*);
 };
 #endif

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,26 +25,28 @@
 
 #include "advec.h"
 
+class Model;
+class Input;
+
 /**
  * Derived class for 2nd order advection scheme with 4th order interpolation.
  */
-class Advec2i4 : public Advec
+class Advec_2i4 : public Advec
 {
-  public:
-    Advec2i4(Model *, Input *); ///< Constructor of the advection class.
-    ~Advec2i4();                ///< Destructor of the advection class.
+    public:
+        Advec_2i4(Model*, Input*); ///< Constructor of the advection class.
+        ~Advec_2i4();              ///< Destructor of the advection class.
 
-    void exec(); ///< Execute the advection scheme.
+        void exec(); ///< Execute the advection scheme.
+        unsigned long get_time_limit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
+        double get_cfl(double); ///< Get the CFL number.
 
-    unsigned long getTimeLimit(long unsigned int, double); ///< Get the limit on the time step imposed by the advection scheme.
-    double get_cfl(double);                                ///< Get the CFL number.
+    private:
+        double calc_cfl(double*, double*, double*, double*, double); ///< Calculate the CFL number.
 
-  private:
-    double calc_cfl(double *, double *, double *, double *, double); ///< Calculate the CFL number.
-
-    void advecu(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate longitudinal velocity advection.
-    void advecv(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate latitudinal velocity advection.
-    void advecw(double *, double *, double *, double *, double *, double *, double *);           ///< Calculate vertical velocity advection.
-    void advecs(double *, double *, double *, double *, double *, double *, double *, double *); ///< Calculate scalar advection.
+        void advec_u(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate longitudinal velocity advection.
+        void advec_v(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate latitudinal velocity advection.
+        void advec_w(double*, double*, double*, double*, double*, double*, double*);          ///< Calculate vertical velocity advection.
+        void advec_s(double*, double*, double*, double*, double*, double*, double*, double*); ///< Calculate scalar advection.
 };
 #endif

@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -32,52 +32,52 @@ class Fields;
 
 class Cross
 {
-  public:
-    Cross(Model *, Input *);
-    ~Cross();
+    public:
+        Cross(Model*, Input*);
+        ~Cross();
 
-    void init(double);
-    void create();
-    std::string getSwitch();
-    std::vector<std::string> * getCrossList();
+        void init(double);
+        void create();
+        std::string get_switch();
+        std::vector<std::string>* get_crosslist();
 
-    unsigned long getTimeLimit(unsigned long);
-    //int exec(double, unsigned long, int);
+        unsigned long get_time_limit(unsigned long);
+        //int exec(double, unsigned long, int);
 
-    std::string swcross;
-    bool doCross();
+        std::string swcross;
+        bool do_cross();
 
-    int crossSimple(double *, double *, std::string);
-    int crossLngrad(double *, double *, double *, double *, std::string);
-    int crossPlane (double *, double *, std::string);
-    int crossPath  (double *, double *, double *, std::string);
+        int cross_simple(double*, double*, std::string);
+        int cross_lngrad(double*, double*, double*, double*, std::string);
+        int cross_plane (double*, double*, std::string);
+        int cross_path  (double*, double*, double*, std::string);
 
-  private:
-    Master *master;
-    Model  *model;
-    Grid   *grid;
-    Fields *fields;
+    private:
+        Master* master;
+        Model*  model;
+        Grid*   grid;
+        Fields* fields;
 
-    double sampletime;
-    unsigned long isampletime;
+        double sampletime;
+        unsigned long isampletime;
 
-    std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
+        std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
 
-    std::vector<int> jxz;   ///< Index of nearest full y position of xz input
-    std::vector<int> kxy;   ///< Index of nearest full height level of xy input
-    std::vector<int> jxzh;  ///< Index of nearest half y position of xz input
-    std::vector<int> kxyh;  ///< Index of nearest half height level of xy input
-    std::vector<double> xz; ///< Y-position [m] xz cross from ini file
-    std::vector<double> xy; ///< Z-position [m] xy cross from ini file
+        std::vector<int> jxz;   ///< Index of nearest full y position of xz input
+        std::vector<int> kxy;   ///< Index of nearest full height level of xy input
+        std::vector<int> jxzh;  ///< Index of nearest half y position of xz input
+        std::vector<int> kxyh;  ///< Index of nearest half height level of xy input
+        std::vector<double> xz; ///< Y-position [m] xz cross from ini file
+        std::vector<double> xy; ///< Z-position [m] xy cross from ini file
 
-    std::vector<std::string> simple;
-    std::vector<std::string> bot;
-    std::vector<std::string> fluxbot;
-    std::vector<std::string> lngrad;
-    std::vector<std::string> path;
+        std::vector<std::string> simple;
+        std::vector<std::string> bot;
+        std::vector<std::string> fluxbot;
+        std::vector<std::string> lngrad;
+        std::vector<std::string> path;
 
-    int checkList(std::vector<std::string> *, FieldMap *, std::string crossname);
-    int checkSave(int, char *);
+        int check_list(std::vector<std::string> *, FieldMap *, std::string crossname);
+        int check_save(int, char *);
 };
 #endif
 

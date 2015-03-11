@@ -1,8 +1,8 @@
 # 
 #  MicroHH
-#  Copyright (c) 2011-2014 Chiel van Heerwaarden
-#  Copyright (c) 2011-2014 Thijs Heus
-#  Copyright (c)      2014 Bart van Stratum
+#  Copyright (c) 2011-2015 Chiel van Heerwaarden
+#  Copyright (c) 2011-2015 Thijs Heus
+#  Copyright (c) 2014-2015 Bart van Stratum
 # 
 #  This file is part of MicroHH
 # 
@@ -125,7 +125,6 @@ set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_subdirectory(src)
 add_subdirectory(main)
-add_subdirectory(test)
 
 # Documentation generation
 add_custom_target(todo ALL)

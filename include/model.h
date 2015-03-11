@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -44,47 +44,46 @@ class Budget;
 
 class Model
 {
-  public:
-    Model(Master *, Input *);
-    ~Model();
+    public:
+        Model(Master*, Input*);
+        ~Model();
 
-    void init();
-    void load();
-    void save();
-    void exec();
+        void init();
+        void load();
+        void save();
+        void exec();
 
-    // make the pointers public for use in other classes
-    // TODO maybe it is safer to create get functions
-    Master *master;
-    Input  *input;
-    Grid   *grid;
-    Fields *fields;
+        // Make the pointers public for use in other classes.
+        // TODO maybe it is safer to create get functions
+        Master* master;
+        Input*  input;
+        Grid*   grid;
+        Fields* fields;
 
-    // model operators
-    Boundary *boundary;
-    Timeloop *timeloop;
-    Advec    *advec;
-    Diff     *diff;
-    Pres     *pres;  
-    Force    *force;   
-    Thermo   *thermo;
-    Buffer   *buffer;
+        // Model operators.
+        Boundary* boundary;
+        Timeloop* timeloop;
+        Advec*    advec;
+        Diff*     diff;
+        Pres*     pres;  
+        Force*    force;   
+        Thermo*   thermo;
+        Buffer*   buffer;
 
-    // postprocessing and output modules
-    Stats  *stats;
-    Cross  *cross;
-    Dump   *dump;
-    Budget *budget;
+        // Postprocessing and output modules.
+        Stats*  stats;
+        Cross*  cross;
+        Dump*   dump;
+        Budget* budget;
 
-  private:
+    private:
+        // list of masks for statistics
+        std::vector<std::string> masklist;
 
-    // list of masks for statistics
-    std::vector<std::string> masklist;
+        void delete_objects();
 
-    void deleteObjects();
-
-    void printStatus();
-    void calcStats(std::string);
-    void setTimeStep();
+        void print_status();
+        void calc_stats(std::string);
+        void set_time_step();
 };
 #endif

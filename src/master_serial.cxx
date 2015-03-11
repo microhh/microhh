@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -28,90 +28,88 @@
 
 Master::Master()
 {
-  initialized = false;
-  allocated   = false;
+    initialized = false;
+    allocated   = false;
 }
 
 Master::~Master()
 {
-  printMessage("Finished run on %d processes\n", nprocs);
+    print_message("Finished run on %d processes\n", nprocs);
 }
 
 void Master::start(int argc, char *argv[])
 {
-  initialized = true;
+    initialized = true;
 
-  // Set the rank of the only process to 0.
-  mpiid = 0;
-  // Set the number of processes to 1.
-  nprocs = 1;
+    // Set the rank of the only process to 0.
+    mpiid = 0;
+    // Set the number of processes to 1.
+    nprocs = 1;
 
-  // Set the wall clock time at start.
-  wallClockStart = getWallClockTime();
+    // Set the wall clock time at start.
+    wall_clock_start = get_wall_clock_time();
 
-  printMessage("Starting run on %d processes\n", nprocs);
+    print_message("Starting run on %d processes\n", nprocs);
 
-  // Process the command line options.
-  if(argc <= 1)
-  {
-    printError("Specify init, run or post mode\n");
-    throw 1;
-  }
-  else
-  {
-    // Check the execution mode.
-    mode = argv[1];
-    if(mode != "init" && mode != "run" && mode != "post")
+    // Process the command line options.
+    if (argc <= 1)
     {
-      printError("Specify init, run or post mode\n");
-      throw 1;
+        print_error("Specify init, run or post mode\n");
+        throw 1;
     }
-    // Set the name of the simulation.
-    if(argc > 2)
-      simname = argv[2];
     else
-      simname = "microhh";
-  }
+    {
+        // Check the execution mode.
+        mode = argv[1];
+        if (mode != "init" && mode != "run" && mode != "post")
+        {
+            print_error("Specify init, run or post mode\n");
+            throw 1;
+        }
+        // Set the name of the simulation.
+        if (argc > 2)
+            simname = argv[2];
+        else
+            simname = "microhh";
+    }
 }
 
 void Master::init(Input *inputin)
 {
-  int nerror = 0;
-  nerror += inputin->getItem(&npx, "master", "npx", "", 1);
-  nerror += inputin->getItem(&npy, "master", "npy", "", 1);
+    int nerror = 0;
+    nerror += inputin->get_item(&npx, "master", "npx", "", 1);
+    nerror += inputin->get_item(&npy, "master", "npy", "", 1);
 
-  // Get the wall clock limit with a default value of 1E8 hours, which will be never hit
-  double wallClockLimit;
-  nerror += inputin->getItem(&wallClockLimit, "master", "wallclocklimit", "", 1E8);
+    // Get the wall clock limit with a default value of 1E8 hours, which will be never hit
+    double wall_clock_limit;
+    nerror += inputin->get_item(&wall_clock_limit, "master", "wallclocklimit", "", 1E8);
 
-  if(nerror)
-    throw 1;
+    if (nerror)
+        throw 1;
 
-  wallClockEnd = wallClockStart + 3600.*wallClockLimit;
+    wall_clock_end = wall_clock_start + 3600.*wall_clock_limit;
 
-  if(nprocs != npx*npy)
-  {
-    printError("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
-    throw 1;
-  }
+    if (nprocs != npx*npy)
+    {
+        print_error("npx*npy = %d*%d has to be equal to 1*1 in serial mode\n", npx, npy);
+        throw 1;
+    }
 
-  // set the coordinates to 0
-  mpicoordx = 0;
-  mpicoordy = 0;
+    // set the coordinates to 0
+    mpicoordx = 0;
+    mpicoordy = 0;
 
-  allocated = true;
+    allocated = true;
 }
 
-double Master::getWallClockTime()
+double Master::get_wall_clock_time()
 {
-  timeval timestruct;
-  gettimeofday(&timestruct, NULL);
-  double time;
-  time = (double)timestruct.tv_sec + (double)timestruct.tv_usec*1.e-6;
-  return time;
+    timeval timestruct;
+    gettimeofday(&timestruct, NULL);
+    return (double)timestruct.tv_sec + (double)timestruct.tv_usec*1.e-6;
 }
 
-void  Master::waitAll()
+void  Master::wait_all()
 {
 }
 

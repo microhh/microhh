@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -31,30 +31,35 @@ class Master;
 
 class Diff
 {
-  public:
-    Diff(Model *, Input *);
-    virtual ~Diff();
-    static Diff* factory(Master *, Input *, Model *, const std::string); ///< Factory function for diff class generation.
+    public:
+        Diff(Model*, Input*);
+        virtual ~Diff();
+        static Diff* factory(Master*, Input*, Model*, const std::string); ///< Factory function for diff class generation.
 
-    virtual void setValues();
-    virtual void execViscosity();
-    virtual void exec();
+        std::string get_name();
 
-    std::string getName();
-    virtual unsigned long getTimeLimit(unsigned long, double);
-    virtual double get_dn(double);
+        // Pure virtual functions below.
+        virtual void set_values() = 0;
+        virtual void exec_viscosity() = 0;
+        virtual void exec() = 0;
 
-    double dnmax;
+        virtual unsigned long get_time_limit(unsigned long, double) = 0;
+        virtual double get_dn(double) = 0;
 
-    // GPU functions and variables
-    virtual void prepareDevice();
+        #ifdef USECUDA
+        // GPU functions and variables
+        virtual void prepare_device() = 0;
+        #endif
 
-  protected:
-    Model  *model;
-    Grid   *grid;
-    Fields *fields;
-    Master *master;
+    protected:
+        Model*  model;
+        Grid*   grid;
+        Fields* fields;
+        Master* master;
 
-    std::string swdiff;
+        std::string swdiff;
+
+        double dnmax;
+
 };
 #endif

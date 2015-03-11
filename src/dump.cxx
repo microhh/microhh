@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -33,22 +33,22 @@
 
 Dump::Dump(Model *modelin, Input *inputin)
 {
-  model  = modelin;
-  grid   = model->grid;
-  fields = model->fields;
-  master = model->master;
+    model  = modelin;
+    grid   = model->grid;
+    fields = model->fields;
+    master = model->master;
 
-  int nerror = 0;
-  nerror += inputin->getItem(&swdump, "dump", "swdump", "", "0");
+    int nerror = 0;
+    nerror += inputin->get_item(&swdump, "dump", "swdump", "", "0");
 
-  if(swdump == "1")
-  {  
-    nerror += inputin->getItem(&sampletime, "dump", "sampletime", "");
-    nerror += inputin->getList(&dumplist ,  "dump", "dumplist" ,  "");
-  }  
+    if (swdump == "1")
+    {  
+        nerror += inputin->get_item(&sampletime, "dump", "sampletime", "");
+        nerror += inputin->get_list(&dumplist ,  "dump", "dumplist" ,  "");
+    }  
 
-  if(nerror)
-    throw 1;
+    if (nerror)
+        throw 1;
 }
 
 Dump::~Dump()
@@ -57,69 +57,67 @@ Dump::~Dump()
 
 void Dump::init(double ifactor)
 {
-  if(swdump == "0")
-    return;
+    if (swdump == "0")
+        return;
 
-  isampletime = (unsigned long)(ifactor * sampletime);
+    isampletime = (unsigned long)(ifactor * sampletime);
 }
 
 void Dump::create()
 {  
-  /* All classes (fields, thermo) have removed their dump-variables from
-     dumplist by now. If it isnt empty, print warnings for invalid variables */
-  if(dumplist.size() > 0)
-  {
-    for(std::vector<std::string>::const_iterator it=dumplist.begin(); it!=dumplist.end(); ++it)
-      master->printWarning("field %s in [dump][dumplist] is illegal\n", it->c_str());
-  } 
+    /* All classes (fields, thermo) have removed their dump-variables from
+       dumplist by now. If it isnt empty, print warnings for invalid variables */
+    if (dumplist.size() > 0)
+    {
+        for (std::vector<std::string>::const_iterator it=dumplist.begin(); it!=dumplist.end(); ++it)
+            master->print_warning("field %s in [dump][dumplist] is illegal\n", it->c_str());
+    } 
 }
 
-unsigned long Dump::getTimeLimit(unsigned long itime)
+unsigned long Dump::get_time_limit(unsigned long itime)
 {
-  if(swdump == "0")
-    return constants::ulhuge;
+    if (swdump == "0")
+        return Constants::ulhuge;
 
-  unsigned long idtlim = isampletime - itime % isampletime;
-
-  return idtlim;
+    return isampletime - itime % isampletime;
 }
 
-std::string Dump::getSwitch()
+std::string Dump::get_switch()
 {
-  return swdump;
+    return swdump;
 }
 
-std::vector<std::string>* Dump::getDumpList()
+std::vector<std::string>* Dump::get_dumplist()
 {
-  return &dumplist;
+    return &dumplist;
 }
 
-bool Dump::doDump()
+bool Dump::do_dump()
 {
-  if(swdump == "0")
-    return false;
+    if (swdump == "0")
+        return false;
 
-  if(model->timeloop->get_itime() % isampletime == 0)
-    return true;
-  else
-    return false;
+    if (model->timeloop->get_itime() % isampletime == 0)
+        return true;
+    else
+        return false;
 }
 
-void Dump::saveDump(double * restrict data, double * restrict tmp, std::string varname)
+void Dump::save_dump(double * restrict data, double * restrict tmp, std::string varname)
 {
-  const double NoOffset = 0.;
-  char filename[256];
+    const double NoOffset = 0.;
+    char filename[256];
 
-  std::sprintf(filename, "%s.%07d", varname.c_str(), model->timeloop->get_iotime());
-  master->printMessage("Saving \"%s\" ... ", filename);
+    std::sprintf(filename, "%s.%07d", varname.c_str(), model->timeloop->get_iotime());
+    master->print_message("Saving \"%s\" ... ", filename);
 
-  if(grid->saveField3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))
-  {
-    master->printMessage("FAILED\n");
-    throw 1;
-  }  
-  else
-  {
-    master->printMessage("OK\n");
-  }
+    if (grid->save_field3d(data, tmp, fields->atmp["tmp2"]->data, filename, NoOffset))
+    {
+        master->print_message("FAILED\n");
+        throw 1;
+    }  
+    else
+    {
+        master->print_message("OK\n");
+    }
 }

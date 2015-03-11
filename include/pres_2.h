@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2014 Chiel van Heerwaarden
- * Copyright (c) 2011-2014 Thijs Heus
- * Copyright (c)      2014 Bart van Stratum
+ * Copyright (c) 2011-2015 Chiel van Heerwaarden
+ * Copyright (c) 2011-2015 Thijs Heus
+ * Copyright (c) 2014-2015 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -27,51 +27,54 @@
 
 class Model;
 
-class Pres2 : public Pres
+class Pres_2 : public Pres
 {
-  public:
-    Pres2(Model *, Input *);
-    ~Pres2();
+    public:
+        Pres_2(Model*, Input*);
+        ~Pres_2();
 
-    void init();
-    void setValues();
+        void init();
+        void set_values();
 
-    void exec(double);
-    double checkDivergence();
+        void exec(double);
+        double check_divergence();
 
-    #ifdef USECUDA
-    void prepareDevice();
-    void clearDevice();
-    #endif
+#ifdef USECUDA
+        void prepare_device();
+        void clear_device();
+#endif
 
-  private:
-    double *bmati, *bmatj;
-    double *a, *c;
-    double *work2d;
+    private:
+        double* bmati;
+        double* bmatj;
+        double* a;
+        double* c;
+        double* work2d;
 
-    // GPU
-    #ifdef USECUDA
-    double *bmati_g, *bmatj_g;
-    double *a_g, *c_g;
-    double *work2d_g;
-    #endif
+#ifdef USECUDA
+        double* bmati_g;
+        double* bmatj_g;
+        double* a_g;
+        double* c_g;
+        double* work2d_g;
+#endif
 
-    void input(double *, 
-               double *, double *, double *,
-               double *, double *, double *,
-               double *, double *, double *,
-               double);
+        void input(double*, 
+                   double*, double*, double*,
+                   double*, double*, double*,
+                   double*, double*, double*,
+                   double);
 
-    void solve(double *, double *, double *,
-               double *, double *,
-               double *, double *, double *, double *);
+        void solve(double*, double*, double*,
+                   double*, double*,
+                   double*, double*, double*, double*);
 
-    void output(double *, double *, double *,
-                double *, double *);
+        void output(double*, double*, double*,
+                    double*, double*);
 
-    void tdma(double *, double *, double *, double *, 
-              double *, double *);
+        void tdma(double*, double*, double*, double*, 
+                  double*, double*);
 
-    double calcDivergence(double *, double *, double *, double *, double *, double *);
+        double calc_divergence(double*, double*, double*, double*, double*, double*);
 };
 #endif
