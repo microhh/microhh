@@ -71,7 +71,7 @@ for crossname in variables:
     dim_x  = crossfile.createDimension(locx,   nxsave)
     dim_y  = crossfile.createDimension(locy,   np.size(indexes))
     dim_z  = crossfile.createDimension(locz,   nzsave)
-    dim_t  = crossfile.createDimension('time', niter)
+    dim_t  = crossfile.createDimension('time', None)
     
     # create dimension variables
     var_t  = crossfile.createVariable('time', sa, ('time',))
@@ -86,16 +86,26 @@ for crossname in variables:
     
     var_s = crossfile.createVariable(crossname, sa, ('time', locz, locx, locy,))
     
+    stop = False 
     for t in range(niter):
+        if (stop):
+            break
         for i in range(np.size(indexes)):
             index = indexes[i]
             otime = int((starttime + t*sampletime) / 10**iotimeprec)
-            print("Processing %5s, time=%7i, index=%4i"%(crossname, otime, index))
+
+            try:
+                fin = open("{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
+            except:
+                crossfile.sync()
+                stop = True
+                break
     
+            print("Processing %8s, time=%7i, index=%4i"%(crossname, otime, index))
+
             var_t[t] = otime * 10**iotimeprec
             var_y[i] = y[index] if locy=='y' else yh[index] 
     
-            fin = open("{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
             raw = fin.read(nx*nz*8)
             tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*nz), raw))
             del(raw)
@@ -103,6 +113,6 @@ for crossname in variables:
             del(tmp)
             var_s[t,:,:,i] = s[:nzsave,:nxsave]
             del(s)
-    
             fin.close()
+
     crossfile.close() 
