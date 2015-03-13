@@ -319,6 +319,9 @@ void Boundary::exec()
             calc_ghost_cells_top_4th(it->second->data, grid->z, sbc[it->first]->bctop, it->second->datatop, it->second->datagradtop);
         }
     }
+
+    // Update the boundary fields that are a slave of the boundary condition.
+    update_slave_bcs();
 }
 #endif
 
@@ -328,6 +331,95 @@ void Boundary::exec_cross()
 
 void Boundary::exec_stats(Mask* m)
 {
+}
+
+namespace
+{
+    template<int spatial_order>
+    void calc_slave_bc_bot(double* const restrict abot, double* const restrict agrad, double* const restrict aflux,
+                           const double* restrict a,
+                           const Grid* grid, const double* restrict dzhi,
+                           const Boundary::Boundary_type boundary_type, const double visc)
+    {
+        const int jj = grid->icells;
+        const int kk1 = 1*grid->ijcells;
+        const int kk2 = 2*grid->ijcells;
+
+        const int kstart = grid->kstart;
+
+        using namespace Finite_difference;
+
+        // Variable dzhi in this case is dzhi for 2nd order and dzhi4 for 4th order.
+        if (boundary_type == Boundary::Dirichlet_type)
+        {
+            for (int j=0; j<grid->jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<grid->icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk1;
+                    if (spatial_order == 2)
+                        agrad[ij] = O2::grad2x(a[ijk-kk1], a[ijk]) * dzhi[kstart];
+                    else if (spatial_order == 4)
+                        agrad[ij] = O4::grad4x(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]) * dzhi[kstart];
+                    aflux[ij] = -visc*agrad[ij];
+                }
+        }
+        else if (boundary_type == Boundary::Neumann_type || boundary_type == Boundary::Flux_type)
+        {
+            for (int j=0; j<grid->jcells; ++j)
+                #pragma ivdep
+                for (int i=0; i<grid->icells; ++i)
+                {
+                    const int ij  = i + j*jj;
+                    const int ijk = i + j*jj + kstart*kk1;
+                    if (spatial_order == 2)
+                        abot[ij] = O2::interp2(a[ijk-kk1], a[ijk]);
+                    else if (spatial_order == 4)
+                        abot[ij] = O4::interp4(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]);
+                }
+        }
+    }
+}
+
+void Boundary::update_slave_bcs()
+{
+    if (grid->swspatialorder == "2")
+    {
+        calc_slave_bc_bot<2>(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
+                             fields->u->data,
+                             grid, grid->dzhi,
+                             mbcbot, fields->u->visc);
+
+        calc_slave_bc_bot<2>(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
+                             fields->v->data,
+                             grid, grid->dzhi,
+                             mbcbot, fields->v->visc);
+
+        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+            calc_slave_bc_bot<2>(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
+                                 it->second->data,
+                                 grid, grid->dzhi,
+                                 sbc[it->first]->bcbot, it->second->visc);
+    }
+    else if (grid->swspatialorder == "4")
+    {
+        calc_slave_bc_bot<4>(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot,
+                             fields->u->data,
+                             grid, grid->dzhi4,
+                             mbcbot, fields->u->visc);
+
+        calc_slave_bc_bot<4>(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot,
+                             fields->v->data,
+                             grid, grid->dzhi4,
+                             mbcbot, fields->v->visc);
+
+        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+            calc_slave_bc_bot<4>(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
+                                 it->second->data,
+                                 grid, grid->dzhi4,
+                                 sbc[it->first]->bcbot, it->second->visc);
+    }
 }
 
 void Boundary::update_bcs()
