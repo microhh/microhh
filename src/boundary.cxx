@@ -333,12 +333,13 @@ void Boundary::exec_stats(Mask* m)
 {
 }
 
+// Computational kernel for boundary calculation.
 namespace
 {
     template<int spatial_order>
-    void calc_slave_bc_bot(double* const restrict abot, double* const restrict agrad, double* const restrict aflux,
-                           const double* restrict a,
-                           const Grid* grid, const double* restrict dzhi,
+    void calc_slave_bc_bot(double* const restrict abot, double* const restrict agradbot, double* const restrict afluxbot,
+                           const double* const restrict a,
+                           const Grid* const grid, const double* const restrict dzhi,
                            const Boundary::Boundary_type boundary_type, const double visc)
     {
         const int jj = grid->icells;
@@ -359,10 +360,10 @@ namespace
                     const int ij  = i + j*jj;
                     const int ijk = i + j*jj + kstart*kk1;
                     if (spatial_order == 2)
-                        agrad[ij] = O2::grad2x(a[ijk-kk1], a[ijk]) * dzhi[kstart];
+                        agradbot[ij] = O2::grad2x(a[ijk-kk1], a[ijk]) * dzhi[kstart];
                     else if (spatial_order == 4)
-                        agrad[ij] = O4::grad4x(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]) * dzhi[kstart];
-                    aflux[ij] = -visc*agrad[ij];
+                        agradbot[ij] = O4::grad4x(a[ijk-kk2], a[ijk-kk1], a[ijk], a[ijk+kk1]) * dzhi[kstart];
+                    afluxbot[ij] = -visc*agradbot[ij];
                 }
         }
         else if (boundary_type == Boundary::Neumann_type || boundary_type == Boundary::Flux_type)
