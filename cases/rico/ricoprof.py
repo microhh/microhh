@@ -70,6 +70,23 @@ for k in range(kmax):
     proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} {6:1.14E} {7:1.14E} {8:1.14E} {9:1.14E}\n'.format(z[k], thl[k], qt[k], u[k], ug[k], v[k], vg[k], wls[k], thlls[k], qtls[k]))
 proffile.close()
 
+# Surface settings
+def esat(T):
+    c0 = 0.6105851e+03; c1 = 0.4440316e+02; c2 = 0.1430341e+01; c3 = 0.2641412e-01 
+    c4 = 0.2995057e-03; c5 = 0.2031998e-05; c6 = 0.6936113e-08; c7 = 0.2564861e-11 
+    c8 = -.3704404e-13 
+    x  = max(-80.,T-273.15)
+    return c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*(c6+x*(c7+x*c8)))))))
+
+def qsat(p, T):
+    ep = 287.04 / 461.5 
+    return ep*esat(T)/(p-(1-ep)*esat(T))
+
+ps  = 101540.
+SST = 299.8 
+ths = SST / (ps/1.e5)**(287.04/1005.)
+qs  = qsat(ps, SST) 
+print('sbot[thl]=%f, sbot[qt]=%f'%(ths, qs))
 
 if(False):
     # TMP: sounding UCLA-LES
