@@ -120,7 +120,7 @@ namespace mp
                 }
     }
 
-    // Evaporation
+    // Evaporation: evaporation of rain drops in unsaturated environment
     void evaporation(double* const restrict qrt, double* const restrict nrt,
                      double* const restrict qtt, double* const restrict thlt,
                      const double* const restrict qr, const double* const restrict nr,
@@ -158,6 +158,51 @@ namespace mp
                     }
                 }
     }
+
+    // Accreation: growth of raindrops collecting cloud droplets
+    void accretion(double* const restrict qrt, double* const restrict qtt, double* const restrict thlt,
+                   const double* const restrict qr,  const double* const restrict ql, 
+                   const double* const restrict rho, const double* const restrict exner,
+                   const int istart, const int jstart, const int kstart,
+                   const int iend,   const int jend,   const int kend,
+                   const int jj, const int kk)
+    {
+        const double k_cr  = 5.25; // SB06, p49
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(ql[ijk] > ql_min && qr[ijk] > qr_min)
+                    {
+                        const double tau     = 1 - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
+                        const double phi_ac  = pow(tau / (tau + 5e-5), 4); // SB06, Eq 8
+                        const double ac_tend = k_cr * ql[ijk]*rho[k] *  qr[ijk]*rho[k] * phi_ac * pow(rho_0 / rho[k], 0.5) / pow(rho[k], 2); // SB06, Eq 7 
+
+                        qrt[ijk]  = ac_tend;
+                        qtt[ijk]  = -ac_tend;
+                        thlt[ijk] = Lv / (cp * exner[k]) * ac_tend; 
+                    }
+                }
+    }
+
+
+
+//def micro_accr(qrt, Nrt, thlt, qtt, qr, Nr, ql, rhoref, exner, grid): 
+//    k_cr  = 5.25 # SB06, p49
+//
+//    for k in range(grid.kstart, grid.kend):
+//        if(ql[k] > ql_min and qr[k] > qr_min):
+//            tau    = 1 - ql[k] / (ql[k] + qr[k]) # SB06, Eq 5
+//            phi_ac = pow(tau / (tau + 5e-5), 4) # SB06, Eq 8
+//            qrt[k] = k_cr * ql[k]*rhoref[k] *  qr[k]*rhoref[k] * phi_ac * pow(rho_0 / rhoref[k], 0.5) / pow(rhoref[k], 2) # SB06, Eq 7 
+//
+//            qtt[k]  = -qrt[k]
+//            thlt[k] = Lv / (cp * exner[k]) * qrt[k] 
+
+
 
 } // End namespace
 
@@ -384,7 +429,12 @@ void Thermo_moist::exec_microphysics()
                     grid->iend,   grid->jend,   grid->kend, 
                     grid->icells, grid->ijcells);
 
-
+    mp::accretion(fields->st["qr"]->data, fields->st["qt"]->data, fields->st["thl"]->data,
+                  fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                  grid->istart, grid->jstart, grid->kstart, 
+                  grid->iend,   grid->jend,   grid->kend, 
+                  grid->icells, grid->ijcells);
+    
 
 }
 
