@@ -183,14 +183,18 @@ namespace mp
                 }
     }
 
-    // Selfcollection: growth of raindrops by mutual (rain-rain) coagulation
-    void selfcollection(double* const restrict nrt, const double* const restrict qr, const double* const restrict nr, const double* const restrict rho,
-                        const int istart, const int jstart, const int kstart,
-                        const int iend,   const int jend,   const int kend,
-                        const int jj, const int kk)
+
+    // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+    void selfcollection_breakup(double* const restrict nrt, const double* const restrict qr, const double* const restrict nr, const double* const restrict rho,
+                                const int istart, const int jstart, const int kstart,
+                                const int iend,   const int jend,   const int kend,
+                                const int jj, const int kk)
     {
-        const double k_rr     = 7.12; // SB06, p49
-        const double kappa_rr = 60.7; // SB06, p49 
+        const double k_rr     = 7.12;   // SB06, p49
+        const double kappa_rr = 60.7;   // SB06, p49 
+        const double D_eq     = 0.9e-3; // SB06, list of symbols 
+        const double k_br1    = 1.0e3;  // SB06, p50, for 0.35e-3 <= Dr <= D_eq
+        const double k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -200,20 +204,32 @@ namespace mp
                     const int ijk = i + j*jj + k*kk;
                     if(qr[ijk] > qr_min)
                     {
-                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-                        xr        = std::min(std::max(xr, xr_min), xr_max);
+                        double xr       = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
+                        xr              = std::min(std::max(xr, xr_min), xr_max);
+                        const double Dr = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
 
-                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
+                        // Selfcollection
                         const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
                         const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr; 
                         const double sc_tend  = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambda_r * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
-
                         nrt[ijk] += sc_tend; 
+
+                        // Breakup
+                        const double dDr      = Dr - D_eq;
+                        if(Dr > 0.35e-3)
+                        {
+                            double phi_br;
+                            if(Dr <= D_eq)
+                                phi_br = k_br1 * dDr;
+                            else
+                                phi_br = 2. * exp(k_br2 * dDr) - 1.; 
+                            const double br_tend = -(phi_br + 1.) * sc_tend;
+                            nrt[ijk] += sc_tend; 
+                        }
+
                     }
                 }
     }
-
-
 
 
 } // End namespace
@@ -447,10 +463,10 @@ void Thermo_moist::exec_microphysics()
                   grid->iend,   grid->jend,   grid->kend, 
                   grid->icells, grid->ijcells);
    
-    mp::selfcollection(fields->st["nr"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
-                       grid->istart, grid->jstart, grid->kstart, 
-                       grid->iend,   grid->jend,   grid->kend, 
-                       grid->icells, grid->ijcells);
+    mp::selfcollection_breakup(fields->st["nr"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
+                               grid->istart, grid->jstart, grid->kstart, 
+                               grid->iend,   grid->jend,   grid->kend, 
+                               grid->icells, grid->ijcells);
    
 
 }
