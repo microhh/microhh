@@ -112,5 +112,10 @@ class Thermo_moist : public Thermo
         double* exnrefh_g;
         double* pref_g;
         double* prefh_g;
+
+
+        // Microphysics
+        std::string swmicro; ///< Microphysics scheme
+
 };
 #endif

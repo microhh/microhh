@@ -70,6 +70,14 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
     // Option to overrule the prognostic variable 
     nerror += inputin->get_item(&thvar, "thermo", "progvar", "", "thl");  // defaults to thl
 
+    // BvS:micro Get microphysics switch, and init rain and number density
+    nerror += inputin->get_item(&swmicro, "thermo", "swmicro", "", "0");
+    if(swmicro == "2mom_warm")
+    {
+        fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
+        fields->init_prognostic_field("Nr", "Number density rain", "m-3");
+    }    
+
     // Initialize the prognostic fields
     fields->init_prognostic_field(thvar, "Liquid water potential temperature", "K");
     fields->init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
