@@ -44,10 +44,6 @@ using Finite_difference::O4::interp4;
 using namespace Constants;
 using namespace Thermo_moist_functions;
 
-//thermo_buoy_slope.cu:    void calc_buoyancy_tend_b_4th_g(double* const __restrict__ bt,
-//thermo_buoy_slope.cu:                                    const double* const __restrict__ u, const double* const __restrict__ w,
-//thermo_buoy_slope.cu:                                    const double utrans, const double n2, const double sinalpha, const double cosalpha,
-
 // BvS:micro 
 namespace mp
 {
@@ -83,7 +79,6 @@ namespace mp
                 }
     }
 
-
     // Autoconversion: formation of rain drop by coagulating cloud droplets
     void autoconversion(double* const restrict qrt, double* const restrict nrt,
                         double* const restrict qtt, double* const restrict thlt,
@@ -112,10 +107,10 @@ namespace mp
                         const double au_tend = kccxs * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2) * pow(ql[k]*rho[k], 2) *
                                                pow(xc, 2) * (1. + phi_au / pow(1 - tau, 2)) * rho_0 / pow(rho[k], 2); // SB06, eq 4
 
-                        qrt[ijk]  = au_tend; 
-                        nrt[ijk]  = au_tend * rho[k] / x_star;  
-                        qtt[ijk]  = -au_tend;
-                        thlt[ijk] = Lv / (cp * exner[k]) * au_tend; 
+                        qrt[ijk]  += au_tend; 
+                        nrt[ijk]  += au_tend * rho[k] / x_star;  
+                        qtt[ijk]  += -au_tend;
+                        thlt[ijk] += Lv / (cp * exner[k]) * au_tend; 
                     }
                 }
     }
@@ -151,10 +146,10 @@ namespace mp
                         const double F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
                         const double ev_tend = 2. * pi * Dr * Glv * S * F * nr[ijk] / rho[k];             
 
-                        qrt[ijk]  = ev_tend;
-                        nrt[ijk]  = lambda_evap * ev_tend * rho[k] / xr;
-                        qtt[ijk]  = -ev_tend;
-                        thlt[ijk] = Lv / (cp * exner[k]) * ev_tend; 
+                        qrt[ijk]  += ev_tend;
+                        nrt[ijk]  += lambda_evap * ev_tend * rho[k] / xr;
+                        qtt[ijk]  += -ev_tend;
+                        thlt[ijk] += Lv / (cp * exner[k]) * ev_tend; 
                     }
                 }
     }
@@ -181,26 +176,43 @@ namespace mp
                         const double phi_ac  = pow(tau / (tau + 5e-5), 4); // SB06, Eq 8
                         const double ac_tend = k_cr * ql[ijk]*rho[k] *  qr[ijk]*rho[k] * phi_ac * pow(rho_0 / rho[k], 0.5) / pow(rho[k], 2); // SB06, Eq 7 
 
-                        qrt[ijk]  = ac_tend;
-                        qtt[ijk]  = -ac_tend;
-                        thlt[ijk] = Lv / (cp * exner[k]) * ac_tend; 
+                        qrt[ijk]  += ac_tend;
+                        qtt[ijk]  += -ac_tend;
+                        thlt[ijk] += Lv / (cp * exner[k]) * ac_tend; 
                     }
                 }
     }
 
+    // Selfcollection: growth of raindrops by mutual (rain-rain) coagulation
+    void selfcollection(double* const restrict nrt, const double* const restrict qr, const double* const restrict nr, const double* const restrict rho,
+                        const int istart, const int jstart, const int kstart,
+                        const int iend,   const int jend,   const int kend,
+                        const int jj, const int kk)
+    {
+        const double k_rr     = 7.12; // SB06, p49
+        const double kappa_rr = 60.7; // SB06, p49 
 
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(qr[ijk] > qr_min)
+                    {
+                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
+                        xr        = std::min(std::max(xr, xr_min), xr_max);
 
-//def micro_accr(qrt, Nrt, thlt, qtt, qr, Nr, ql, rhoref, exner, grid): 
-//    k_cr  = 5.25 # SB06, p49
-//
-//    for k in range(grid.kstart, grid.kend):
-//        if(ql[k] > ql_min and qr[k] > qr_min):
-//            tau    = 1 - ql[k] / (ql[k] + qr[k]) # SB06, Eq 5
-//            phi_ac = pow(tau / (tau + 5e-5), 4) # SB06, Eq 8
-//            qrt[k] = k_cr * ql[k]*rhoref[k] *  qr[k]*rhoref[k] * phi_ac * pow(rho_0 / rhoref[k], 0.5) / pow(rhoref[k], 2) # SB06, Eq 7 
-//
-//            qtt[k]  = -qrt[k]
-//            thlt[k] = Lv / (cp * exner[k]) * qrt[k] 
+                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
+                        const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
+                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr; 
+                        const double sc_tend  = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambda_r * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
+
+                        nrt[ijk] += sc_tend; 
+                    }
+                }
+    }
+
 
 
 
@@ -434,7 +446,12 @@ void Thermo_moist::exec_microphysics()
                   grid->istart, grid->jstart, grid->kstart, 
                   grid->iend,   grid->jend,   grid->kend, 
                   grid->icells, grid->ijcells);
-    
+   
+    mp::selfcollection(fields->st["nr"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
+                       grid->istart, grid->jstart, grid->kstart, 
+                       grid->iend,   grid->jend,   grid->kend, 
+                       grid->icells, grid->ijcells);
+   
 
 }
 
