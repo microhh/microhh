@@ -44,6 +44,123 @@ using Finite_difference::O4::interp4;
 using namespace Constants;
 using namespace Thermo_moist_functions;
 
+//thermo_buoy_slope.cu:    void calc_buoyancy_tend_b_4th_g(double* const __restrict__ bt,
+//thermo_buoy_slope.cu:                                    const double* const __restrict__ u, const double* const __restrict__ w,
+//thermo_buoy_slope.cu:                                    const double utrans, const double n2, const double sinalpha, const double cosalpha,
+
+// BvS:micro 
+namespace mp
+{
+    const double pi      = std::acos(-1.);
+
+    // Settings for now here for convenience....
+    const double Nc0     = 70e6;     // Fixed cloud droplet number
+    const double K_t     = 2.5e-2;   // Conductivity of heat [J/(sKm)]
+    const double D_v     = 3.e-5;    // Diffusivity of water vapor [m2/s]
+    const double rho_w   = 1.e3;     // Density water
+    const double rho_0   = 1.225;    // SB06, p48
+    const double pirhow  = pi * rho_w / 6.;
+    const double xc_min  = 4.2e-15;  // Min mean mass of cloud droplet
+    const double xc_max  = 2.6e-10;  // Max mean mass of cloud droplet
+    const double xr_min  = xc_max;   // Min mean mass of precipitation drop
+    const double xr_max  = 5e-6;     // Max mean mass of precipitation drop
+    const double ql_min  = 1.e-7;    // Min cloud liquid water for which calculations are performed 
+    const double qr_min  = 1.e-13;   // Min rain liquid water for which calculations are performed 
+
+    // Remove negative values from 3D field
+    void remove_neg_values(double* const restrict field, 
+                           const int istart, const int jstart, const int kstart,
+                           const int iend,   const int jend,   const int kend,
+                           const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    field[ijk] = std::max(0., field[ijk]);
+                }
+    }
+
+
+    // Autoconversion: formation of rain drop by coagulating cloud droplets
+    void autoconversion(double* const restrict qrt, double* const restrict nrt,
+                        double* const restrict qtt, double* const restrict thlt,
+                        const double* const restrict qr,  const double* const restrict ql, 
+                        const double* const restrict rho, const double* const restrict exner, 
+                        const int istart, const int jstart, const int kstart,
+                        const int iend,   const int jend,   const int kend,
+                        const int jj, const int kk)
+    {
+        const double x_star = 2.6e10;                // SB06, list of symbols
+        const double k_cc   = 4.44e9;                // SB06, p48 
+        const double kccxs  = k_cc / (20. * x_star); // SB06, Eq 4
+        const double nu_c   = 1.;                    // SB06, Table 1. DALES has equation for it...
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(ql[ijk] > ql_min)
+                    {
+                        const double xc      = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops
+                        const double tau     = 1 - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
+                        const double phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3); // SB06, Eq 6
+                        const double au_tend = kccxs * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2) * pow(ql[k]*rho[k], 2) *
+                                               pow(xc, 2) * (1. + phi_au / pow(1 - tau, 2)) * rho_0 / pow(rho[k], 2); // SB06, eq 4
+
+                        qrt[ijk]  = au_tend; 
+                        nrt[ijk]  = au_tend * rho[k] / x_star;  
+                        qtt[ijk]  = -au_tend;
+                        thlt[ijk] = Lv / (cp * exner[k]) * au_tend; 
+                    }
+                }
+    }
+
+    // Evaporation
+    void evaporation(double* const restrict qrt, double* const restrict nrt,
+                     double* const restrict qtt, double* const restrict thlt,
+                     const double* const restrict qr, const double* const restrict nr,
+                     const double* const restrict ql, const double* const restrict qt, const double* const restrict thl, 
+                     const double* const restrict rho, const double* const restrict exner, const double* const restrict p,
+                     const int istart, const int jstart, const int kstart,
+                     const int iend,   const int jend,   const int kend,
+                     const int jj, const int kk)
+    {
+        const double lambda_evap = 1.; // 1.0 in UCLA, 0.7 in DALES
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(qr[ijk] > qr_min)
+                    {
+                        double xr  = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
+                        xr         = std::min(std::max(xr, xr_min), xr_max);
+
+                        const double Dr  = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
+                        const double T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]);
+
+                        const double Glv = pow(Rv * T / (esat(T) * D_v) + (Lv / (K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+                        const double S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
+                        const double F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
+                        const double ev_tend = 2. * pi * Dr * Glv * S * F * nr[ijk] / rho[k];             
+
+                        qrt[ijk]  = ev_tend;
+                        nrt[ijk]  = lambda_evap * ev_tend * rho[k] / xr;
+                        qtt[ijk]  = -ev_tend;
+                        thlt[ijk] = Lv / (cp * exner[k]) * ev_tend; 
+                    }
+                }
+    }
+
+} // End namespace
+
 Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
     swthermo = "moist";
@@ -75,7 +192,7 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
     if(swmicro == "2mom_warm")
     {
         fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
-        fields->init_prognostic_field("Nr", "Number density rain", "m-3");
+        fields->init_prognostic_field("nr", "Number density rain", "m-3");
     }    
 
     // Initialize the prognostic fields
@@ -239,8 +356,37 @@ void Thermo_moist::exec()
                                &fields->atmp["tmp2"]->data[2*kk],
                                thvrefh);
     }
+
+    // BvS:micro 
+    if(swmicro == "2mom_warm")
+        exec_microphysics();
 }
 #endif
+
+// BvS:micro 
+void Thermo_moist::exec_microphysics()
+{
+    mp::remove_neg_values(fields->sp["qr"]->data, grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend, grid->icells, grid->ijcells);
+    mp::remove_neg_values(fields->sp["nr"]->data, grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend, grid->icells, grid->ijcells);
+
+    calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp["thl"]->data, fields->sp["qt"]->data, pref);
+
+    mp::autoconversion(fields->st["qr"]->data, fields->st["nr"]->data, fields->st["qt"]->data, fields->st["thl"]->data,
+                       fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                       grid->istart, grid->jstart, grid->kstart, 
+                       grid->iend,   grid->jend,   grid->kend, 
+                       grid->icells, grid->ijcells);
+
+    mp::evaporation(fields->st["qr"]->data, fields->st["nr"]->data,  fields->st["qt"]->data, fields->st["thl"]->data,
+                    fields->sp["qr"]->data, fields->sp["nr"]->data,  fields->atmp["tmp1"]->data,
+                    fields->sp["qt"]->data, fields->sp["thl"]->data, fields->rhoref, exnref, pref,
+                    grid->istart, grid->jstart, grid->kstart, 
+                    grid->iend,   grid->jend,   grid->kend, 
+                    grid->icells, grid->ijcells);
+
+
+
+}
 
 void Thermo_moist::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
