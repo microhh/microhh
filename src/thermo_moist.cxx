@@ -49,6 +49,8 @@ namespace mp
 {
     const double pi      = std::acos(-1.);
 
+    bool debug = false;
+
     // Settings for now here for convenience....
     const double Nc0     = 70e6;     // Fixed cloud droplet number
     const double K_t     = 2.5e-2;   // Conductivity of heat [J/(sKm)]
@@ -60,7 +62,7 @@ namespace mp
     const double xc_max  = 2.6e-10;  // Max mean mass of cloud droplet
     const double xr_min  = xc_max;   // Min mean mass of precipitation drop
     const double xr_max  = 5e-6;     // Max mean mass of precipitation drop
-    const double ql_min  = 1.e-7;    // Min cloud liquid water for which calculations are performed 
+    const double ql_min  = 1.e-6;    // Min cloud liquid water for which calculations are performed 
     const double qr_min  = 1.e-13;   // Min rain liquid water for which calculations are performed 
 
     // Remove negative values from 3D field
@@ -88,10 +90,10 @@ namespace mp
                         const int iend,   const int jend,   const int kend,
                         const int jj, const int kk)
     {
-        const double x_star = 2.6e10;                // SB06, list of symbols
+        const double x_star = 2.6e-10;               // SB06, list of symbols
         const double k_cc   = 4.44e9;                // SB06, p48 
+        //const double k_cc   = 9.44e9;              // UCLA-LES 
         const double kccxs  = k_cc / (20. * x_star); // SB06, Eq 4
-        const double nu_c   = 1.;                    // SB06, Table 1. DALES has equation for it...
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -101,11 +103,13 @@ namespace mp
                     const int ijk = i + j*jj + k*kk;
                     if(ql[ijk] > ql_min)
                     {
+                        //const double nu_c = 1; // SB06, Table 1.
+                        const double nu_c    = 1.58 * (rho[k] * ql[ijk]*1000.) + 0.72 - 1.; // G09a
                         const double xc      = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops
-                        const double tau     = 1 - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
+                        const double tau     = 1. - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
                         const double phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3); // SB06, Eq 6
-                        const double au_tend = kccxs * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2) * pow(ql[k]*rho[k], 2) *
-                                               pow(xc, 2) * (1. + phi_au / pow(1 - tau, 2)) * rho_0 / pow(rho[k], 2); // SB06, eq 4
+                        const double au_tend = kccxs * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2) * pow(ql[ijk]*rho[k], 2) * pow(xc, 2) *
+                                             (1. + phi_au / pow(1 - tau, 2)) * rho_0 / pow(rho[k], 2); // SB06, eq 4
 
                         qrt[ijk]  += au_tend; 
                         nrt[ijk]  += au_tend * rho[k] / x_star;  
@@ -135,8 +139,8 @@ namespace mp
                     const int ijk = i + j*jj + k*kk;
                     if(qr[ijk] > qr_min)
                     {
-                        double xr  = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-                        xr         = std::min(std::max(xr, xr_min), xr_max);
+                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
+                        xr        = std::min(std::max(xr, xr_min), xr_max);
 
                         const double Dr  = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
                         const double T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]);
@@ -215,7 +219,7 @@ namespace mp
                         nrt[ijk] += sc_tend; 
 
                         // Breakup
-                        const double dDr      = Dr - D_eq;
+                        const double dDr = Dr - D_eq;
                         if(Dr > 0.35e-3)
                         {
                             double phi_br;
@@ -231,6 +235,61 @@ namespace mp
                 }
     }
 
+
+    // Sedimentation
+    void sedimentation(double* const restrict qrt, double* const restrict nrt, 
+                       double* const restrict sqr, double* const restrict snr,
+                       const double* const restrict qr, const double* const restrict nr, 
+                       const double* const restrict rho, const double* const restrict dzi, const double* const restrict dzhi,
+                       const int istart, const int jstart, const int kstart,
+                       const int iend,   const int jend,   const int kend,
+                       const int jj, const int kk)
+    {
+        const double a_R = 9.65; // SB06, p51
+        const double b_R = 10.3; // SB06, p51
+        const double c_R = 600;  // SB06, p51
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    if(qr[ijk] > qr_min)
+                    {
+                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
+                        xr        = std::min(std::max(xr, xr_min), xr_max);
+
+                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
+                        const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
+                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
+            
+                        // SS08:
+                        const double w_qr     = std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4)));
+                        const double w_Nr     = std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+1)));
+           
+                        // Sedimentation 
+                        sqr[ijk]  = w_qr * qr[ijk] * rho[k];
+                        snr[ijk]  = w_Nr * nr[ijk];
+                    }
+                    else
+                    {
+                        sqr[ijk] = 0;
+                        snr[ijk] = 0;
+                    }
+                }
+
+        for (int k=kstart; k<kend-1; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    qrt[ijk] += (sqr[ijk+kk] - sqr[ijk]) * dzhi[k+1];
+                    nrt[ijk] += (snr[ijk+kk] - snr[ijk]) * dzhi[k+1] / rho[k]; 
+                }
+    }
 
 } // End namespace
 
@@ -467,7 +526,15 @@ void Thermo_moist::exec_microphysics()
                                grid->istart, grid->jstart, grid->kstart, 
                                grid->iend,   grid->jend,   grid->kend, 
                                grid->icells, grid->ijcells);
-   
+  
+    mp::sedimentation(fields->st["qr"]->data, fields->st["nr"]->data, 
+                      fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
+                      fields->sp["qr"]->data, fields->sp["nr"]->data, 
+                      fields->rhoref, grid->dzi, grid->dzhi,
+                      grid->istart, grid->jstart, grid->kstart, 
+                      grid->iend,   grid->jend,   grid->kend, 
+                      grid->icells, grid->ijcells);
+ 
 
 }
 
