@@ -993,6 +993,11 @@ void Thermo_moist::exec_cross()
             else if (*it == "bfluxbot")
                 nerror += cross->cross_plane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
         }
+        // BvS:micro 
+        else if (*it == "qrpath")
+        {
+            nerror += cross->cross_path(fields->sp["qr"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qrpath");
+        }
     }
 
     if (nerror)
@@ -1495,6 +1500,10 @@ void Thermo_moist::init_cross()
             allowedcrossvars.push_back("blngrad");
         allowedcrossvars.push_back("ql");
         allowedcrossvars.push_back("qlpath");
+
+        // BvS:micro 
+        if(swmicro == "2mom_warm")
+            allowedcrossvars.push_back("qrpath");
 
         // Get global cross-list from cross.cxx
         std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
