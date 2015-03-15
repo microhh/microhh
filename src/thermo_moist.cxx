@@ -82,6 +82,12 @@ namespace mp
                 }
     }
 
+    double get_mur(const double Dr)
+    {
+        return 1./3.; // SB06
+        //return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08
+    }
+
     // Autoconversion: formation of rain drop by coagulating cloud droplets
     void autoconversion(double* const restrict qrt, double* const restrict nrt,
                         double* const restrict qtt, double* const restrict thlt,
@@ -214,7 +220,7 @@ namespace mp
                         const double Dr = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
 
                         // Selfcollection
-                        const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
+                        const double mur      = get_mur(Dr);
                         const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr; 
                         const double sc_tend  = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambda_r * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
                         nrt[ijk] += sc_tend; 
@@ -234,63 +240,6 @@ namespace mp
                     }
                 }
     }
-
-
-//    // Sedimentation
-//    void sedimentation(double* const restrict qrt, double* const restrict nrt, 
-//                       double* const restrict sqr, double* const restrict snr,
-//                       const double* const restrict qr, const double* const restrict nr, 
-//                       const double* const restrict rho, const double* const restrict dzi, const double* const restrict dzhi,
-//                       const int istart, const int jstart, const int kstart,
-//                       const int iend,   const int jend,   const int kend,
-//                       const int jj, const int kk)
-//    {
-//        const double a_R = 9.65; // SB06, p51
-//        const double b_R = 10.3; // SB06, p51
-//        const double c_R = 600;  // SB06, p51
-//
-//        for (int k=kstart; k<kend; k++)
-//            for (int j=jstart; j<jend; j++)
-//                #pragma ivdep
-//                for (int i=istart; i<iend; i++)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//
-//                    if(qr[ijk] > qr_min)
-//                    {
-//                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-//                        xr        = std::min(std::max(xr, xr_min), xr_max);
-//
-//                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-//                        const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
-//                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
-//            
-//                        // SS08:
-//                        const double w_qr     = std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4)));
-//                        const double w_Nr     = std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+1)));
-//           
-//                        // Sedimentation 
-//                        sqr[ijk]  = w_qr * qr[ijk] * rho[k];
-//                        snr[ijk]  = w_Nr * nr[ijk];
-//                    }
-//                    else
-//                    {
-//                        sqr[ijk] = 0;
-//                        snr[ijk] = 0;
-//                    }
-//                }
-//
-//        for (int k=kstart; k<kend-1; k++)
-//            for (int j=jstart; j<jend; j++)
-//                #pragma ivdep
-//                for (int i=istart; i<iend; i++)
-//                {
-//                    const int ijk = i + j*jj + k*kk;
-//                    qrt[ijk] += (sqr[ijk+kk] - sqr[ijk]) * dzhi[k+1];
-//                    nrt[ijk] += (snr[ijk+kk] - snr[ijk]) * dzhi[k+1] / rho[k]; 
-//                }
-//    }
-
 
     // Get the number of substeps in the sedimentation process
     int get_sedimentation_steps(const double* const restrict qr, const double* const restrict nr, 
@@ -320,7 +269,7 @@ namespace mp
                         xr        = std::min(std::max(xr, xr_min), xr_max);
 
                         const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                        const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
+                        const double mur      = get_mur(Dr);
                         const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
             
                         // SS08:
@@ -391,7 +340,7 @@ namespace mp
                             xr        = std::min(std::max(xr, xr_min), xr_max);
 
                             const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                            const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
+                            const double mur      = get_mur(Dr);
                             const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
                 
                             // SS08:
@@ -674,16 +623,6 @@ void Thermo_moist::exec_microphysics()
                                grid->iend,   grid->jend,   grid->kend, 
                                grid->icells, grid->ijcells);
  
-    // Sedimentation without substeps 
-    //mp::sedimentation(fields->st["qr"]->data, fields->st["nr"]->data, 
-    //                  fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
-    //                  fields->sp["qr"]->data, fields->sp["nr"]->data, 
-    //                  fields->rhoref, grid->dzi, grid->dzhi,
-    //                  grid->istart, grid->jstart, grid->kstart, 
-    //                  grid->iend,   grid->jend,   grid->kend, 
-    //                  grid->icells, grid->ijcells);
- 
-    // Sedimentation with substeps
     // 1. Get number of substeps based on sedimentation with CFL=1
     const double dt = model->timeloop->get_sub_time_step();
     int nsubstep = mp::get_sedimentation_steps(fields->sp["qr"]->data, fields->sp["nr"]->data, 
