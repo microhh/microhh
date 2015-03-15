@@ -265,6 +265,10 @@ void Grid::get_max(double *var)
 {
 }
 
+void Grid::get_max(int *var)
+{
+}
+
 void Grid::get_sum(double *var)
 {
 }

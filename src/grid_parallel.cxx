@@ -439,6 +439,12 @@ void Grid::get_max(double *var)
     MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, master->commxy);
 }
 
+void Grid::get_max(int *var)
+{
+    int varl = *var;
+    MPI_Allreduce(&varl, var, 1, MPI_INT, MPI_MAX, master->commxy);
+}
+
 void Grid::get_sum(double *var)
 {
     double varl = *var;
