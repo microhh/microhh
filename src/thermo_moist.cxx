@@ -92,14 +92,13 @@ namespace mp
     void autoconversion(double* const restrict qrt, double* const restrict nrt,
                         double* const restrict qtt, double* const restrict thlt,
                         const double* const restrict qr,  const double* const restrict ql, 
-                        const double* const restrict rho, const double* const restrict exner, 
+                        const double* const restrict rho, const double* const restrict exner,
                         const int istart, const int jstart, const int kstart,
                         const int iend,   const int jend,   const int kend,
                         const int jj, const int kk)
     {
         const double x_star = 2.6e-10;               // SB06, list of symbols
         const double k_cc   = 4.44e9;                // SB06, p48 
-        //const double k_cc   = 9.44e9;              // UCLA-LES 
         const double kccxs  = k_cc / (20. * x_star); // SB06, Eq 4
 
         for (int k=kstart; k<kend; k++)
@@ -108,15 +107,15 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > ql_min)
+                    if(ql[ijk] > 0.)
                     {
-                        //const double nu_c = 1; // SB06, Table 1.
-                        const double nu_c    = 1.58 * (rho[k] * ql[ijk]*1000.) + 0.72 - 1.; // G09a
+                        const double nu_c = 1; // SB06, Table 1.
+                        //const double nu_c    = 1.58 * (rho[k] * ql[ijk]*1000.) + 0.72 - 1.; // G09a
                         const double xc      = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops
                         const double tau     = 1. - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
                         const double phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3); // SB06, Eq 6
-                        const double au_tend = kccxs * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2) * pow(ql[ijk]*rho[k], 2) * pow(xc, 2) *
-                                             (1. + phi_au / pow(1 - tau, 2)) * rho_0 / pow(rho[k], 2); // SB06, eq 4
+                        const double au_tend = kccxs * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2) * pow(ql[ijk], 2) * pow(xc, 2) *
+                                             (1. + phi_au / pow(1 - tau, 2)) * rho_0; // SB06, eq 4
 
                         qrt[ijk]  += au_tend; 
                         nrt[ijk]  += au_tend * rho[k] / x_star;  
@@ -185,7 +184,7 @@ namespace mp
                     {
                         const double tau     = 1 - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
                         const double phi_ac  = pow(tau / (tau + 5e-5), 4); // SB06, Eq 8
-                        const double ac_tend = k_cr * ql[ijk]*rho[k] *  qr[ijk]*rho[k] * phi_ac * pow(rho_0 / rho[k], 0.5) / pow(rho[k], 2); // SB06, Eq 7 
+                        const double ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(rho_0 / rho[k], 0.5); // SB06, Eq 7 
 
                         qrt[ijk]  += ac_tend;
                         qtt[ijk]  += -ac_tend;
@@ -1023,6 +1022,11 @@ namespace
         int nitermax = 30;
         double ql, tl, tnr_old = 1.e9, tnr, qs=0;
         tl = thl * exn;
+
+        // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
+        if(qt-qsat(p, tl) <= 0)
+            return 0.;
+
         tnr = tl;
         while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
         {
