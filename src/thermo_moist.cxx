@@ -237,60 +237,60 @@ namespace mp
     }
 
 
-    // Sedimentation
-    void sedimentation(double* const restrict qrt, double* const restrict nrt, 
-                       double* const restrict sqr, double* const restrict snr,
-                       const double* const restrict qr, const double* const restrict nr, 
-                       const double* const restrict rho, const double* const restrict dzi, const double* const restrict dzhi,
-                       const int istart, const int jstart, const int kstart,
-                       const int iend,   const int jend,   const int kend,
-                       const int jj, const int kk)
-    {
-        const double a_R = 9.65; // SB06, p51
-        const double b_R = 10.3; // SB06, p51
-        const double c_R = 600;  // SB06, p51
-
-        for (int k=kstart; k<kend; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    if(qr[ijk] > qr_min)
-                    {
-                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-                        xr        = std::min(std::max(xr, xr_min), xr_max);
-
-                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                        const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
-                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
-            
-                        // SS08:
-                        const double w_qr     = std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4)));
-                        const double w_Nr     = std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+1)));
-           
-                        // Sedimentation 
-                        sqr[ijk]  = w_qr * qr[ijk] * rho[k];
-                        snr[ijk]  = w_Nr * nr[ijk];
-                    }
-                    else
-                    {
-                        sqr[ijk] = 0;
-                        snr[ijk] = 0;
-                    }
-                }
-
-        for (int k=kstart; k<kend-1; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*jj + k*kk;
-                    qrt[ijk] += (sqr[ijk+kk] - sqr[ijk]) * dzhi[k+1];
-                    nrt[ijk] += (snr[ijk+kk] - snr[ijk]) * dzhi[k+1] / rho[k]; 
-                }
-    }
+//    // Sedimentation
+//    void sedimentation(double* const restrict qrt, double* const restrict nrt, 
+//                       double* const restrict sqr, double* const restrict snr,
+//                       const double* const restrict qr, const double* const restrict nr, 
+//                       const double* const restrict rho, const double* const restrict dzi, const double* const restrict dzhi,
+//                       const int istart, const int jstart, const int kstart,
+//                       const int iend,   const int jend,   const int kend,
+//                       const int jj, const int kk)
+//    {
+//        const double a_R = 9.65; // SB06, p51
+//        const double b_R = 10.3; // SB06, p51
+//        const double c_R = 600;  // SB06, p51
+//
+//        for (int k=kstart; k<kend; k++)
+//            for (int j=jstart; j<jend; j++)
+//                #pragma ivdep
+//                for (int i=istart; i<iend; i++)
+//                {
+//                    const int ijk = i + j*jj + k*kk;
+//
+//                    if(qr[ijk] > qr_min)
+//                    {
+//                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
+//                        xr        = std::min(std::max(xr, xr_min), xr_max);
+//
+//                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
+//                        const double mur      = 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08, 1/3 in SB06
+//                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
+//            
+//                        // SS08:
+//                        const double w_qr     = std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4)));
+//                        const double w_Nr     = std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+1)));
+//           
+//                        // Sedimentation 
+//                        sqr[ijk]  = w_qr * qr[ijk] * rho[k];
+//                        snr[ijk]  = w_Nr * nr[ijk];
+//                    }
+//                    else
+//                    {
+//                        sqr[ijk] = 0;
+//                        snr[ijk] = 0;
+//                    }
+//                }
+//
+//        for (int k=kstart; k<kend-1; k++)
+//            for (int j=jstart; j<jend; j++)
+//                #pragma ivdep
+//                for (int i=istart; i<iend; i++)
+//                {
+//                    const int ijk = i + j*jj + k*kk;
+//                    qrt[ijk] += (sqr[ijk+kk] - sqr[ijk]) * dzhi[k+1];
+//                    nrt[ijk] += (snr[ijk+kk] - snr[ijk]) * dzhi[k+1] / rho[k]; 
+//                }
+//    }
 
 
     // Get the number of substeps in the sedimentation process
@@ -436,9 +436,6 @@ namespace mp
                 }
         }
     }
-
-
-
 } // End namespace
 
 Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
@@ -927,6 +924,11 @@ void Thermo_moist::exec_stats(Mask *m)
 
     stats->calc_cover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
     stats->calc_path (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
+
+
+    // BvS:micro 
+    if(swmicro == "2mom_warm")
+        stats->calc_path (fields->sp["qr"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["rwp"].data);
 
     // Calculate base state in tmp array
     if (swupdatebasestate == 1)
@@ -1475,6 +1477,10 @@ void Thermo_moist::init_stat()
 
         stats->add_time_series("lwp", "Liquid water path", "kg m-2");
         stats->add_time_series("ccover", "Projected cloud cover", "-");
+
+        // BvS:micro 
+        if(swmicro == "2mom_warm")
+            stats->add_time_series("rwp", "Rain water path", "kg m-2");
     }
 }
 
