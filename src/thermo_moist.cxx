@@ -229,9 +229,8 @@ namespace mp
                             else
                                 phi_br = 2. * exp(k_br2 * dDr) - 1.; 
                             const double br_tend = -(phi_br + 1.) * sc_tend;
-                            nrt[ijk] += sc_tend; 
+                            nrt[ijk] += br_tend; 
                         }
-
                     }
                 }
     }
@@ -411,6 +410,7 @@ namespace mp
 
                 // 2.2 Integrate over substep
                 for (int k=kstart; k<kend-1; k++)
+                    #pragma ivdep
                     for (int i=istart; i<iend; i++)
                     {
                         const int ik  = i + k*icells;
@@ -426,6 +426,7 @@ namespace mp
 
             // 1. Calculate tendency backwards
             for (int k=kstart; k<kend; k++)
+                #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*icells + k*ijcells;
@@ -466,7 +467,7 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
 
     // BvS:micro Get microphysics switch, and init rain and number density
     nerror += inputin->get_item(&swmicro, "thermo", "swmicro", "", "0");
-    if(swmicro == "2mom_warm")
+    if(swmicro == "2mom_warm" || swmicro == "dummy")
     {
         fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
         fields->init_prognostic_field("nr", "Number density rain", "m-3");
