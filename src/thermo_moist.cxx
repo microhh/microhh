@@ -877,7 +877,7 @@ void Thermo_moist::exec_stats(Mask *m)
 
         if(swmicrobudget == "1")
         {
-            // Autoconversion statistics
+            // Autoconversion
             mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
             mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
             mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
@@ -889,10 +889,86 @@ void Thermo_moist::exec_stats(Mask *m)
                                grid->iend,   grid->jend,   grid->kend, 
                                grid->icells, grid->ijcells);
 
-            stats->calc_mean(m->profs["autoc_qrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
-            stats->calc_mean(m->profs["autoc_nrt" ].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
-            stats->calc_mean(m->profs["autoc_qtt" ].data, fields->atmp["tmp6"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
-            stats->calc_mean(m->profs["autoc_thlt"].data, fields->atmp["tmp7"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["auto_qrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["auto_nrt" ].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["auto_qtt" ].data, fields->atmp["tmp6"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["auto_thlt"].data, fields->atmp["tmp7"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+            // Evaporation
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp7"]->data, grid->ncells);
+
+            mp::evaporation(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data,  fields->atmp["tmp6"]->data, fields->atmp["tmp7"]->data,
+                            fields->sp["qr"]->data, fields->sp["nr"]->data,  fields->atmp["tmp1"]->data,
+                            fields->sp["qt"]->data, fields->sp["thl"]->data, fields->rhoref, exnref, pref,
+                            grid->istart, grid->jstart, grid->kstart, 
+                            grid->iend,   grid->jend,   grid->kend, 
+                            grid->icells, grid->ijcells);
+
+            stats->calc_mean(m->profs["evap_qrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["evap_nrt" ].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["evap_qtt" ].data, fields->atmp["tmp6"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["evap_thlt"].data, fields->atmp["tmp7"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+            // Accretion
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
+
+            mp::accretion(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data, fields->atmp["tmp6"]->data,
+                          fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                          grid->istart, grid->jstart, grid->kstart, 
+                          grid->iend,   grid->jend,   grid->kend, 
+                          grid->icells, grid->ijcells);
+
+            stats->calc_mean(m->profs["accr_qrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["accr_qtt" ].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["accr_thlt"].data, fields->atmp["tmp6"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+            // Selfcollection and breakup
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+
+            mp::selfcollection_breakup(fields->atmp["tmp2"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
+                                       grid->istart, grid->jstart, grid->kstart, 
+                                       grid->iend,   grid->jend,   grid->kend, 
+                                       grid->icells, grid->ijcells);
+
+            stats->calc_mean(m->profs["scbr_nrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+            // Sedimentation
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp7"]->data, grid->ncells);
+
+            // 1. Get number of substeps based on sedimentation with CFL=1
+            const double dt = model->timeloop->get_sub_time_step();
+            int nsubstep = mp::get_sedimentation_steps(fields->sp["qr"]->data, fields->sp["nr"]->data, 
+                                                       fields->rhoref, grid->dzi, dt,
+                                                       grid->istart, grid->jstart, grid->kstart, 
+                                                       grid->iend,   grid->jend,   grid->kend, 
+                                                       grid->icells, grid->ijcells);
+
+            // 2. Synchronize over all MPI processes 
+            grid->get_max(&nsubstep);
+
+            // Stay a bit further from CFL=1
+            nsubstep *= 2;
+
+            // Sedimentation in nsubstep steps:
+            mp::sedimentation_sub(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data, 
+                                  fields->atmp["tmp6"]->data, fields->atmp["tmp7"]->data,
+                                  fields->sp["qr"]->data, fields->sp["nr"]->data, 
+                                  fields->rhoref, grid->dzi, grid->dzhi, dt,
+                                  grid->istart, grid->jstart, grid->kstart, 
+                                  grid->iend,   grid->jend,   grid->kend, 
+                                  grid->icells, grid->kcells, grid->ijcells,
+                                  nsubstep);
+
+            stats->calc_mean(m->profs["sed_qrt"].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["sed_nrt"].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
         }
     }
 
@@ -1461,10 +1537,24 @@ void Thermo_moist::init_stat()
 
             if(swmicrobudget == "1")
             {
-                stats->add_prof("autoc_qrt"   , "Autoconversion tendency qr", "kg kg-1 s-1", "z");
-                stats->add_prof("autoc_nrt"   , "Autoconversion tendency nr", "m-3 s-1", "z");
-                stats->add_prof("autoc_thlt"  , "Autoconversion tendency thl", "K s-1", "z");
-                stats->add_prof("autoc_qtt"   , "Autoconversion tendency qt", "kg kg-1 s-1", "z");
+                stats->add_prof("auto_qrt" , "Autoconversion tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("auto_nrt" , "Autoconversion tendency nr", "m-3 s-1", "z");
+                stats->add_prof("auto_thlt", "Autoconversion tendency thl", "K s-1", "z");
+                stats->add_prof("auto_qtt" , "Autoconversion tendency qt", "kg kg-1 s-1", "z");
+
+                stats->add_prof("evap_qrt" , "Evaporation tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("evap_nrt" , "Evaporation tendency nr", "m-3 s-1", "z");
+                stats->add_prof("evap_thlt", "Evaporation tendency thl", "K s-1", "z");
+                stats->add_prof("evap_qtt" , "Evaporation tendency qt", "kg kg-1 s-1", "z");
+
+                stats->add_prof("accr_qrt" , "Accretion tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("accr_thlt", "Accretion tendency thl", "K s-1", "z");
+                stats->add_prof("accr_qtt" , "Accretion tendency qt", "kg kg-1 s-1", "z");
+
+                stats->add_prof("scbr_nrt" , "Selfcollection and breakup tendency nr", "m-3 s-1", "z");
+
+                stats->add_prof("sed_qrt"  , "Sedimentation tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("sed_nrt"  , "Sedimentation tendency nr", "m-3 s-1", "z");
             }
         }
     }
