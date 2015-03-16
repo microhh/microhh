@@ -115,6 +115,7 @@ class Thermo_moist : public Thermo
 
         // Microphysics
         std::string swmicro; ///< Microphysics scheme
+        std::string swmicrobudget; ///< Calculate budget statistics
         void exec_microphysics();
 
 };

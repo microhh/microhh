@@ -82,10 +82,16 @@ namespace mp
                 }
     }
 
-    double get_mur(const double Dr)
+    void zero(double* const restrict field, const int ncells)
     {
-        return 1./3.; // SB06
-        //return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08
+        for (int n=0; n<ncells; ++n)
+            field[n] = 0.;
+    }
+
+    inline double get_mur(const double Dr)
+    {
+        //return 1./3.; // SB06
+        return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08
     }
 
     // Autoconversion: formation of rain drop by coagulating cloud droplets
@@ -107,7 +113,7 @@ namespace mp
                 for (int i=istart; i<iend; i++)
                 {
                     const int ijk = i + j*jj + k*kk;
-                    if(ql[ijk] > 0.)
+                    if(ql[ijk] > ql_min)
                     {
                         const double nu_c = 1; // SB06, Table 1.
                         //const double nu_c    = 1.58 * (rho[k] * ql[ijk]*1000.) + 0.72 - 1.; // G09a
@@ -119,7 +125,7 @@ namespace mp
 
                         qrt[ijk]  += au_tend; 
                         nrt[ijk]  += au_tend * rho[k] / x_star;  
-                        qtt[ijk]  += -au_tend;
+                        qtt[ijk]  -= au_tend;
                         thlt[ijk] += Lv / (cp * exner[k]) * au_tend; 
                     }
                 }
@@ -158,7 +164,7 @@ namespace mp
 
                         qrt[ijk]  += ev_tend;
                         nrt[ijk]  += lambda_evap * ev_tend * rho[k] / xr;
-                        qtt[ijk]  += -ev_tend;
+                        qtt[ijk]  -= ev_tend;
                         thlt[ijk] += Lv / (cp * exner[k]) * ev_tend; 
                     }
                 }
@@ -187,7 +193,7 @@ namespace mp
                         const double ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(rho_0 / rho[k], 0.5); // SB06, Eq 7 
 
                         qrt[ijk]  += ac_tend;
-                        qtt[ijk]  += -ac_tend;
+                        qtt[ijk]  -= ac_tend;
                         thlt[ijk] += Lv / (cp * exner[k]) * ac_tend; 
                     }
                 }
@@ -415,6 +421,7 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
 
     // BvS:micro Get microphysics switch, and init rain and number density
     nerror += inputin->get_item(&swmicro, "thermo", "swmicro", "", "0");
+    nerror += inputin->get_item(&swmicrobudget, "thermo", "swmicrobudget", "", "0");
     if(swmicro == "2mom_warm" || swmicro == "dummy")
     {
         fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
@@ -592,7 +599,6 @@ void Thermo_moist::exec()
 // BvS:micro 
 void Thermo_moist::exec_microphysics()
 {
-
     mp::remove_neg_values(fields->sp["qr"]->data, grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend, grid->icells, grid->ijcells);
     mp::remove_neg_values(fields->sp["nr"]->data, grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend, grid->icells, grid->ijcells);
 
@@ -864,10 +870,31 @@ void Thermo_moist::exec_stats(Mask *m)
     stats->calc_cover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
     stats->calc_path (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
-
     // BvS:micro 
     if(swmicro == "2mom_warm")
+    {
         stats->calc_path (fields->sp["qr"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["rwp"].data);
+
+        if(swmicrobudget == "1")
+        {
+            // Autoconversion statistics
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp7"]->data, grid->ncells);
+
+            mp::autoconversion(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data, fields->atmp["tmp6"]->data, fields->atmp["tmp7"]->data,
+                               fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                               grid->istart, grid->jstart, grid->kstart, 
+                               grid->iend,   grid->jend,   grid->kend, 
+                               grid->icells, grid->ijcells);
+
+            stats->calc_mean(m->profs["autoc_qrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["autoc_nrt" ].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["autoc_qtt" ].data, fields->atmp["tmp6"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["autoc_thlt"].data, fields->atmp["tmp7"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+        }
+    }
 
     // Calculate base state in tmp array
     if (swupdatebasestate == 1)
@@ -1429,7 +1456,17 @@ void Thermo_moist::init_stat()
 
         // BvS:micro 
         if(swmicro == "2mom_warm")
+        {
             stats->add_time_series("rwp", "Rain water path", "kg m-2");
+
+            if(swmicrobudget == "1")
+            {
+                stats->add_prof("autoc_qrt"   , "Autoconversion tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("autoc_nrt"   , "Autoconversion tendency nr", "m-3 s-1", "z");
+                stats->add_prof("autoc_thlt"  , "Autoconversion tendency thl", "K s-1", "z");
+                stats->add_prof("autoc_qtt"   , "Autoconversion tendency qt", "kg kg-1 s-1", "z");
+            }
+        }
     }
 }
 
