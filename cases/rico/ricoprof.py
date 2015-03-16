@@ -1,5 +1,9 @@
 import numpy as np
 
+#case = 'gcss' # Original RICO
+case = 'ss08' # Moist RICO from Stevens/Seifert & Seifert/Heus
+#case = 'test' # More moist mixed-layer for testing
+
 # Get number of vertical levels and size from .ini file
 with open('rico.ini') as f:
     for line in f:
@@ -22,21 +26,40 @@ wls   = np.zeros(z.size)
 thlls = np.zeros(z.size)
 qtls  = np.zeros(z.size)
 
+print('Setup = %s'%case)
 for k in range(kmax):
 
-    # Liquid water potential temperature
+    # Liquid water potential temperature: same in GCSS and SS08
     if(z[k] < 740.):
         thl[k] = 297.9
     else:
         thl[k] = 297.9 + (317.0 - 297.9)/(4000. - 740.) * (z[k] - 740.) 
 
-    # Specific humidity
-    if(z[k] < 740.):
-        qt[k] = 16.0 + (13.8 - 16.0) / 740. * z[k]
-    elif(z[k] < 3260.):
-        qt[k] = 13.8 + (2.4 - 13.8) / (3260. - 740.) * (z[k] - 740.) 
-    else:
-        qt[k] = 2.4 + (1.8 - 2.4)/(4000. - 3260.) * (z[k] - 3260.) 
+    if(case == 'gcss'):
+        if(z[k] < 740.):
+            qt[k] = 16.0 + (13.8 - 16.0) / 740. * z[k]
+        elif(z[k] < 3260.):
+            qt[k] = 13.8 + (2.4 - 13.8) / (3260. - 740.) * (z[k] - 740.) 
+        else:
+            qt[k] = 2.4 + (1.8 - 2.4)/(4000. - 3260.) * (z[k] - 3260.) 
+
+    elif(case == 'ss08'):
+        if(z[k] < 740.):
+            qt[k] = 16.0 + (13.8 - 16.0) / 740. * z[k]
+        elif(z[k] < 3260.):
+            qt[k] = 13.8 + (4.4 - 13.8) / (3260. - 740.) * (z[k] - 740.) 
+        else:
+            qt[k] = 4.4 + (3.6 - 4.4)/(4000. - 3260.) * (z[k] - 3260.) 
+
+    elif(case == 'test'):
+        q0 = 18.
+        q1 = 15.8
+        if(z[k] < 740.):
+            qt[k] = q0 + (q1 - q0) / 740. * z[k]
+        elif(z[k] < 3260.):
+            qt[k] = q1 + (2.4 - q1) / (3260. - 740.) * (z[k] - 740.) 
+        else:
+            qt[k] = 2.4 + (1.8 - 2.4)/(4000. - 3260.) * (z[k] - 3260.) 
 
     # Subsidence
     if(z[k] < 2260):
@@ -105,7 +128,7 @@ if(False):
     pl.plot(ucla_ts, ucla_ps, 'o')
     
     pl.subplot(332)
-    pl.plot(qt, z)
+    pl.plot(qt*1000., z)
     pl.plot(ucla_rts, ucla_ps, 'o')
     
     pl.subplot(333)
