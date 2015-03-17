@@ -64,7 +64,7 @@ namespace mp
     const double xr_min  = xc_max;   // Min mean mass of precipitation drop
     const double xr_max  = 5e-6;     // Max mean mass of precipitation drop
     const double ql_min  = 1.e-6;    // Min cloud liquid water for which calculations are performed 
-    const double qr_min  = 1.e-13;   // Min rain liquid water for which calculations are performed 
+    const double qr_min  = 1.e-15;   // Min rain liquid water for which calculations are performed 
 
     // Remove negative values from 3D field
     void remove_neg_values(double* const restrict field, 
@@ -91,7 +91,10 @@ namespace mp
     inline double get_mur(const double Dr)
     {
         //return 1./3.; // SB06
-        return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08
+        //return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08
+
+        // Taylor expansion SS08, around Dr=0.0002. Accurate to within 1% for Dr<0.001, 10% for Dr<0.0015
+        return 0.670565+Dr*(Dr*(1.61878e9*Dr+1.61937e6)+1573.65);
     }
 
     // Autoconversion: formation of rain drop by coagulating cloud droplets
@@ -155,9 +158,10 @@ namespace mp
                         xr        = std::min(std::max(xr, xr_min), xr_max);
 
                         const double Dr  = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                        const double T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]);
-
+                        const double T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
                         const double Glv = pow(Rv * T / (esat(T) * D_v) + (Lv / (K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+
+
                         const double S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
                         const double F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
                         const double ev_tend = 2. * pi * Dr * Glv * S * F * nr[ijk] / rho[k];             
@@ -391,6 +395,8 @@ namespace mp
                 }
         }
     }
+
+
 } // End namespace
 
 Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
