@@ -88,10 +88,10 @@ namespace mp
             field[n] = 0.;
     }
 
-    inline double get_mur(const double Dr)
+    inline double calc_mu_r(const double Dr)
     {
         //return 1./3.; // SB06
-        //return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08
+        //return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
 
         // Taylor expansion SS08, around Dr=0.0002. Accurate to within 1% for Dr<0.001, 10% for Dr<0.0015
         return 0.670565+Dr*(Dr*(1.61878e9*Dr+1.61937e6)+1573.65);
@@ -229,7 +229,7 @@ namespace mp
                         const double Dr = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
 
                         // Selfcollection
-                        const double mur      = get_mur(Dr);
+                        const double mur      = calc_mu_r(Dr);
                         const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr; 
                         const double sc_tend  = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambda_r * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
                         nrt[ijk] += sc_tend; 
@@ -278,7 +278,7 @@ namespace mp
                         xr        = std::min(std::max(xr, xr_min), xr_max);
 
                         const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                        const double mur      = get_mur(Dr);
+                        const double mur      = calc_mu_r(Dr);
                         const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
             
                         // SS08:
@@ -299,14 +299,14 @@ namespace mp
     }
 
     // Execute sedimentation in nsubstep steps
-    int sedimentation_sub(double* const restrict qrt, double* const restrict nrt, 
-                          double* const restrict tmp1, double* const restrict tmp2,
-                          const double* const restrict qr, const double* const restrict nr, 
-                          const double* const restrict rho, const double* const restrict dzi, 
-                          const double* const restrict dzhi, const double dt,
-                          const int istart, const int jstart, const int kstart,
-                          const int iend,   const int jend,   const int kend,
-                          const int icells, const int kcells, const int ijcells, const int nsubsteps)
+    void sedimentation_sub(double* const restrict qrt, double* const restrict nrt, 
+                           double* const restrict tmp1, double* const restrict tmp2,
+                           const double* const restrict qr, const double* const restrict nr, 
+                           const double* const restrict rho, const double* const restrict dzi, 
+                           const double* const restrict dzhi, const double dt,
+                           const int istart, const int jstart, const int kstart,
+                           const int iend,   const int jend,   const int kend,
+                           const int icells, const int kcells, const int ijcells, const int nsubsteps)
     {
         const double w_max = 9.65; // SS08, appendix A
         const double a_R = 9.65;   // SB06, p51
@@ -349,12 +349,18 @@ namespace mp
                             xr        = std::min(std::max(xr, xr_min), xr_max);
 
                             const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                            const double mur      = get_mur(Dr);
+                            const double mur      = calc_mu_r(Dr);
                             const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
                 
                             // SS08:
                             const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4))));
                             const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+1))));
+
+                            const double c_qr = w_qr * subdt * dzi[k];
+                            const double c_nr = w_nr * subdt * dzi[k];
+
+                            //if(c_qr > 1.0 || c_nr > 1.0)
+                            //    printf("w_qr = %e, w_nr = %e, c_qr = %f, c_nr = %f\n",w_qr, w_nr, c_qr, c_nr);
 
                             sed_qr[ik] = w_qr * qr_sub[ik] * rho[k];
                             sed_nr[ik] = w_nr * nr_sub[ik];
