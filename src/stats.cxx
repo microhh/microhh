@@ -479,14 +479,17 @@ void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double
 
     // check in which bin each value falls and increment the bin count
     for (int k=grid->kstart; k<grid->kend; ++k)
+    {
+        const double dzslice = grid->dz[k] / nslice;
         for (int j=grid->jstart; j<grid->jend; ++j)
             // do not add a ivdep pragma here, because multiple instances could write the same bin[index]
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 const int index = (int)((data[ijk] - minval) / dbin);
-                bin[index] += grid->dz[k] / nslice;
+                bin[index] += dzslice;
             }
+    }
 
     // get the bin count
     master->sum(bin, bins);
@@ -508,8 +511,16 @@ void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double
             ++index;
         }
 
-        const double dzfrac = (zbin-grid->z[k]) / (0.5*(bin[index-1]+bin[index]));
-        prof[k] = profval - dzfrac*dbin;
+        // In case the first bin is larger than the grid spacing, which can happen
+        // in the inital phase of an MPI run, make sure that no out-of-bounds reads
+        // happen.
+        if (index == 0)
+            prof[k] = profval;
+        else
+        {
+            const double dzfrac = (zbin-grid->z[k]) / (0.5*(bin[index-1]+bin[index]));
+            prof[k] = profval - dzfrac*dbin;
+        }
     }
 
     // now calculate the ghost cells

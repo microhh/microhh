@@ -37,6 +37,11 @@ namespace Finite_difference
         {
             return 0.5 * (a + b);
         }
+
+        CUDA_MACRO inline double grad2x(const double a, const double b)
+        {
+            return (b - a);
+        }
     }
 
     namespace O4
@@ -95,12 +100,12 @@ namespace Finite_difference
             return ti0*a + ti1*b + ti2*c + ti3*d;
         }
 
-        CUDA_MACRO inline double grad4(double a, double b, double c, double d, double dxi)
+        CUDA_MACRO inline double grad4(const double a, const double b, const double c, const double d, const double dxi)
         {
             return ( -(1./24.)*(d-a) + (27./24.)*(c-b) ) * dxi;
         }
 
-        CUDA_MACRO inline double grad4x(double a, double b, double c, double d)
+        CUDA_MACRO inline double grad4x(const double a, const double b, const double c, const double d)
         {
             return (-(d-a) + 27.*(c-b)); 
         }

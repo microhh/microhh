@@ -3,18 +3,17 @@ import struct  as st
 import netCDF4 as nc4
 
 # Settings -------
-variables  = ['u','v','w','th','p']
-indexes    = [0,4]
-nx         = 32
-ny         = 32
-nz         = 32
-starttime  = 0
-endtime    = 3600
-sampletime = 300
-iotimeprec = 0
+variables  = ['bfluxbot']
+nx         = 2048
+ny         = 2048
+nz         = 1024
+starttime  = 0.
+endtime    = 10.
+sampletime = 0.1
+iotimeprec = -1
 nxsave     = nx
 nysave     = ny
-endian     = 'little'
+endian     = 'big'
 savetype   = 'float'
 # End settings ---
 
@@ -68,52 +67,44 @@ for crossname in variables:
     locz = 'z' if loc[2] == 0 else 'zh'
 
     # create dimensions in netCDF file
-    dim_x  = crossfile.createDimension(locx,   nxsave)
-    dim_y  = crossfile.createDimension(locy,   nysave)
-    dim_z  = crossfile.createDimension(locz,   np.size(indexes))
-    dim_t  = crossfile.createDimension('time', None)
+    dim_x = crossfile.createDimension(locx,   nxsave)
+    dim_y = crossfile.createDimension(locy,   nysave)
+    dim_t = crossfile.createDimension('time', None)
     
     # create dimension variables
-    var_t  = crossfile.createVariable('time', sa, ('time',))
-    var_x  = crossfile.createVariable(locx,   sa, (locx,  ))
-    var_y  = crossfile.createVariable(locy,   sa, (locy,  ))
-    var_z  = crossfile.createVariable(locz,   sa, (locz,  ))
+    var_t = crossfile.createVariable('time', sa, ('time',))
+    var_x = crossfile.createVariable(locx,   sa, (locx,  ))
+    var_y = crossfile.createVariable(locy,   sa, (locy,  ))
     var_t.units = "Seconds since start of experiment"
     
     # save the data
-    var_x[:]  = x[:nxsave] if locx=='x' else xh[:nxsave]
-    var_y[:]  = y[:nysave] if locy=='y' else yh[:nysave]
+    var_x[:] = x[:nxsave] if locx=='x' else xh[:nxsave]
+    var_y[:] = y[:nysave] if locy=='y' else yh[:nysave]
     
-    var_s = crossfile.createVariable(crossname, sa, ('time', locz, locx, locy,))
+    var_s = crossfile.createVariable(crossname, sa, ('time', locx, locy,))
     
     stop = False 
     for t in range(niter):
-        if (stop):
+        otime = int((starttime + t*sampletime) / 10**iotimeprec)
+    
+        try:
+            fin = open("{0:}.xy.{1:07d}".format(crossname, otime), "rb")
+        except:
+            crossfile.sync()
             break
-        for k in range(np.size(indexes)):
-            index = indexes[k]
-            otime = int((starttime + t*sampletime) / 10**iotimeprec)
     
-            try:
-                fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
-            except:
-                crossfile.sync()
-                stop = True
-                break
-    
-            print("Processing %8s, time=%7i, index=%4i"%(crossname, otime, index))
+        print("Processing %8s, time=%7i"%(crossname, otime))
 
-            var_t[t] = otime * 10**iotimeprec
-            var_z[k] = z[index] if locz=='z' else zh[index] 
+        var_t[t] = otime * 10**iotimeprec
     
-            fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
-            raw = fin.read(nx*ny*8)
-            tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*ny), raw))
-            del(raw)
-            s = tmp.reshape((ny, nx))
-            del(tmp)
-            var_s[t,k,:,:] = s[:nysave,:nxsave]
-            del(s)
+        raw = fin.read(nx*ny*8)
+        tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*ny), raw))
+        del(raw)
+        s = tmp.reshape((ny, nx))
+        del(tmp)
+        var_s[t,:,:] = s[:nysave,:nxsave]
+        del(s)
     
-            fin.close()
+        fin.close()
+
     crossfile.close() 

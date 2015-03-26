@@ -71,6 +71,8 @@ class Boundary_surface : public Boundary
 
         // surface scheme
         void update_bcs();
+        void update_slave_bcs();
+
         void stability(double*, double*, double*,
                        double*, double*, double*,
                        double*, double*, double*,

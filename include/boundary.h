@@ -101,7 +101,8 @@ class Boundary
         void set_bc_g(double*, double*, double*, Boundary_type, double, double, double); ///< Set the values for the boundary fields.
 
     private:
-        virtual void update_bcs(); ///< Update the boundary values.
+        virtual void update_bcs();       ///< Update the boundary values.
+        virtual void update_slave_bcs(); ///< Update the slave boundary values.
 
         void calc_ghost_cells_bot_2nd(double*, double*, Boundary_type, double*, double*); ///< Calculate the bottom ghost cells with 2nd-order accuracy.
         void calc_ghost_cells_top_2nd(double*, double*, Boundary_type, double*, double*); ///< Calculate the top ghost cells with 2nd-order accuracy.
