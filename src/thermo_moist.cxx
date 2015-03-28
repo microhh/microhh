@@ -563,7 +563,76 @@ namespace mp
                 }
         }
     }
+
+    // Calculate maximum sedimentation velocity
+    double calc_max_sedimentation_cfl(double* const restrict w_qr,
+                                      const double* const restrict qr, const double* const restrict nr, 
+                                      const double* const restrict rho, const double* const restrict dzi,
+                                      const double dt,
+                                      const int istart, const int jstart, const int kstart,
+                                      const int iend,   const int jend,   const int kend,
+                                      const int icells, const int ijcells)
+    {
+        const double w_max = 9.65; // SS08, appendix A
+        const double a_R = 9.65;   // SB06, p51
+        const double b_R = 10.3;   // SB06, p51
+        const double c_R = 600;    // SB06, p51
+
+        // 1. Calculate sedimentation velocity in tmp fields
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    if(qr[ijk] > qr_min)
+                    {
+                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
+                        xr        = std::min(std::max(xr, xr_min), xr_max);
+
+                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
+                        const double mur      = calc_mu_r(Dr);
+                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
+                
+                        w_qr[ijk] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4))));
+                    }
+                    else
+                    {
+                        w_qr[ijk] = 0.;
+                    }
+                }
+
+        // Set ghost cells
+        for (int j=jstart; j<jend; j++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk1 = i + j*icells + (kstart-1)*ijcells;
+                const int ijk2 = i + j*icells + (kend    )*ijcells;
+
+                w_qr[ijk1] = w_qr[ijk1+ijcells];
+                w_qr[ijk2] = 0.;
+            }
+
+        double cfl_max = 1e-5;
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    
+                    const double cfl_qr = 0.25 * (w_qr[ijk-ijcells] + 2.*w_qr[ijk] + w_qr[ijk+ijcells]) * dzi[k] * dt;
+                    cfl_max = std::max(cfl_max, cfl_qr);
+                }
+
+        return cfl_max;
+    }
+
 } // End namespace
+
 
 Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
@@ -593,9 +662,11 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
 
     // BvS:micro Get microphysics switch, and init rain and number density
     nerror += inputin->get_item(&swmicro, "thermo", "swmicro", "", "0");
-    nerror += inputin->get_item(&swmicrobudget, "thermo", "swmicrobudget", "", "0");
     if(swmicro == "2mom_warm" || swmicro == "dummy")
     {
+        nerror += inputin->get_item(&swmicrobudget, "thermo", "swmicrobudget", "", "0");
+        nerror += inputin->get_item(&swmicrobudget, "thermo", "swmicrobudget", "", "0");
+        nerror += inputin->get_item(&cflmax_micro,  "thermo", "cflmax_micro",  "", 2.);
         fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
         fields->init_prognostic_field("nr", "Number density rain", "m-3");
     }    
@@ -770,7 +841,20 @@ void Thermo_moist::exec()
 
 unsigned long Thermo_moist::get_time_limit(unsigned long idt, const double dt)
 {
-    return Constants::ulhuge;
+    if(swmicro == "2mom_warm")
+    {
+        const double cfl = mp::calc_max_sedimentation_cfl(fields->atmp["tmp1"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data,
+                                                          fields->rhoref, grid->dzi, dt,
+                                                          grid->istart, grid->jstart, grid->kstart,
+                                                          grid->iend,   grid->jend,   grid->kend,
+                                                          grid->icells, grid->ijcells);
+
+        return idt * cflmax_micro / cfl;
+    }
+    else
+    {
+        return Constants::ulhuge;
+    }
 }
 
 // BvS:micro 
@@ -829,7 +913,8 @@ void Thermo_moist::exec_microphysics()
 //                          grid->icells, grid->kcells, grid->ijcells,
 //                          nsubstep);
 
-    const double dt = model->timeloop->get_sub_time_step();
+    const double dt = model->timeloop->get_dt();
+
     mp::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
                            fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
                            fields->sp["qr"]->data, fields->sp["nr"]->data, 

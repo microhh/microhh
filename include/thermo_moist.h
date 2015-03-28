@@ -119,6 +119,7 @@ class Thermo_moist : public Thermo
         // Microphysics
         std::string swmicro; ///< Microphysics scheme
         std::string swmicrobudget; ///< Calculate budget statistics
+        double cflmax_micro; ///< Maximum allowed CFL for sedimentation.
         void exec_microphysics();
 
 };
