@@ -161,6 +161,11 @@ void Thermo_dry::exec()
 }
 #endif
 
+unsigned long Thermo_dry::get_time_limit(unsigned long idt, const double dt)
+{
+    return Constants::ulhuge;
+}
+
 void Thermo_dry::exec_stats(Mask *m)
 {
     const double NoOffset = 0.;

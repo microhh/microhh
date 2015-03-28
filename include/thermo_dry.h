@@ -45,6 +45,9 @@ class Thermo_dry : public Thermo
         void init();
         void create(Input*);
         void exec();                ///< Add the tendencies belonging to the buoyancy.
+        unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_dry)
+
+
         void exec_stats(Mask*);
         void exec_cross();
         void exec_dump();

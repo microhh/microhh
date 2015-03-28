@@ -768,6 +768,11 @@ void Thermo_moist::exec()
 }
 #endif
 
+unsigned long Thermo_moist::get_time_limit(unsigned long idt, const double dt)
+{
+    return Constants::ulhuge;
+}
+
 // BvS:micro 
 void Thermo_moist::exec_microphysics()
 {

@@ -26,6 +26,7 @@
 #include "fields.h"
 #include "thermo_buoy_slope.h"
 #include "defines.h"
+#include "constants.h"
 #include "finite_difference.h"
 #include "model.h"
 #include "master.h"
@@ -74,6 +75,11 @@ void Thermo_buoy_slope::exec()
     }
 }
 #endif
+
+unsigned long Thermo_buoy_slope::get_time_limit(unsigned long idt, const double dt)
+{
+    return Constants::ulhuge;
+}
 
 bool Thermo_buoy_slope::check_field_exists(std::string name)
 {

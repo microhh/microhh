@@ -42,6 +42,7 @@ class Thermo_buoy_slope : public Thermo
         virtual ~Thermo_buoy_slope();        ///< Destructor of the dry thermodynamics class.
 
         void exec(); ///< Add the tendencies belonging to the buoyancy.
+        unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy_slope)
 
         bool check_field_exists(std::string name);
         void get_buoyancy_surf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.

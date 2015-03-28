@@ -48,6 +48,8 @@ class Thermo_disabled : public Thermo
         void get_mask(Field3d*, Field3d*, Mask*) {}
         void get_prog_vars(std::vector<std::string>*) {}
 
+        unsigned long get_time_limit(unsigned long, double);
+
 #ifdef USECUDA
         void prepare_device() {};
         void clear_device() {};

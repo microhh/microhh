@@ -25,6 +25,7 @@
 #include "fields.h"
 #include "thermo_buoy.h"
 #include "defines.h"
+#include "constants.h"
 #include "finite_difference.h"
 
 using Finite_difference::O2::interp2;
@@ -57,6 +58,11 @@ void Thermo_buoy::exec()
         calc_buoyancy_tend_4th(fields->wt->data, fields->sp["b"]->data);
 }
 #endif
+
+unsigned long Thermo_buoy::get_time_limit(unsigned long idt, const double dt)
+{
+    return Constants::ulhuge;
+}
 
 void Thermo_buoy::get_buoyancy(Field3d* bfield, Field3d* tmp)
 {
