@@ -918,7 +918,7 @@ int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filen
     const int kk  = icells*jcells;
     const int jjb = imax;
 
-    // in case the field to save is 2d, then the ghostcells need to be subtracted
+    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
     if (kslice == -1)
         kslice = -kgc;
 
@@ -966,7 +966,7 @@ int Grid::load_xy_slice(double* restrict data, double* restrict tmp, char* filen
     const int kk  = icells*jcells;
     const int jjb = imax;
 
-    // in case the field to save is 2d, then the ghostcells need to be subtracted
+    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
     if (kslice == -1)
         kslice = -kgc;
 

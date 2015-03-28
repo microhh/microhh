@@ -340,6 +340,12 @@ void Boundary_surface::update_bcs()
               grid->z[grid->kstart], sbc[it->first]->bcbot);
     }
 }
+
+void Boundary_surface::update_slave_bcs()
+{
+    // This function does nothing when the surface model is enabled, because 
+    // the fields are computed by the surface model in update_bcs.
+}
 #endif
 
 void Boundary_surface::stability(double* restrict ustar, double* restrict obuk, double* restrict bfluxbot,

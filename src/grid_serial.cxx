@@ -622,6 +622,10 @@ int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filen
 
     const int count = imax*jmax;
 
+    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
+    if (kslice == -1)
+        kslice = -kgc;
+
     for (int j=0; j<jmax; j++)
 #pragma ivdep
         for (int i=0; i<imax; i++)
@@ -654,6 +658,10 @@ int Grid::load_xy_slice(double* restrict data, double* restrict tmp, char* filen
 
     fread(tmp, sizeof(double), count, pFile);
     fclose(pFile);
+
+    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
+    if (kslice == -1)
+        kslice = -kgc;
 
     // put the data back into a field with ghost cells
     const int jj  = icells;

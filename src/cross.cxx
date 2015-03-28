@@ -279,7 +279,7 @@ int Cross::cross_plane(double * restrict data, double * restrict tmp, std::strin
     char filename[256];
 
     std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", model->timeloop->get_iotime());
-    nerror += check_save(grid->save_xy_slice(data, tmp, filename),filename);
+    nerror += check_save(grid->save_xy_slice(data, tmp, filename), filename);
 
     return nerror;
 } 
