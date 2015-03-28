@@ -41,8 +41,7 @@ Advec_disabled::~Advec_disabled()
 
 unsigned long Advec_disabled::get_time_limit(unsigned long idt, const double dt)
 {
-    unsigned long idtlim = (unsigned long) Constants::dbig;
-    return idtlim;
+    return Constants::ulhuge;
 }
 
 double Advec_disabled::get_cfl(const double dt)
