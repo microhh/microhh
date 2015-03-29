@@ -92,7 +92,6 @@ namespace mp
     {
         //return 1./3.; // SB06
         return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-
         // Taylor expansion SS08, around Dr=0.0002. Accurate to within 1% for Dr<0.001, 10% for Dr<0.0015
         //return 0.670565+Dr*(Dr*(1.61878e9*Dr+1.61937e6)+1573.65);
     }
@@ -399,6 +398,11 @@ namespace mp
         }
     }
 
+    inline double minmod(const double a, const double b)
+    {
+        return copysign(1., a) * std::max(0., std::min(std::abs(a), copysign(1., a)*b));
+    }
+
     // Sedimentation from Stevens and Seifert (2008)
     void sedimentation_ss08(double* const restrict qrt, double* const restrict nrt, 
                             double* const restrict tmp1, double* const restrict tmp2,
@@ -419,8 +423,8 @@ namespace mp
         for (int j=jstart; j<jend; j++)
         {
             // 1. Calculate sedimentation velocity at cell center
-            double* w_qr = &tmp1[0*ikcells];
-            double* w_nr = &tmp1[1*ikcells];
+            double* restrict w_qr = &tmp1[0*ikcells];
+            double* restrict w_nr = &tmp1[1*ikcells];
 
             for (int k=kstart; k<kend; k++)
                 #pragma ivdep
@@ -461,8 +465,8 @@ namespace mp
             } 
 
              // 2. Calculate CFL number using interpolated sedimentation velocity
-            double* c_qr = &tmp1[2*ikcells];
-            double* c_nr = &tmp2[0*ikcells];
+            double* restrict c_qr = &tmp1[2*ikcells];
+            double* restrict c_nr = &tmp2[0*ikcells];
 
             for (int k=kstart; k<kend; k++)
                 #pragma ivdep
@@ -474,8 +478,8 @@ namespace mp
                 }
 
             // 3. Calculate slopes
-            double* slope_qr = &tmp1[0*ikcells];
-            double* slope_nr = &tmp1[1*ikcells];
+            double* restrict slope_qr = &tmp1[0*ikcells];
+            double* restrict slope_nr = &tmp1[1*ikcells];
 
             for (int k=kstart; k<kend; k++)
                 #pragma ivdep
@@ -484,20 +488,25 @@ namespace mp
                     const int ijk = i + j*icells + k*ijcells;
                     const int ik  = i + k*icells;
 
-                    const double mid_slope_qr = 0.5 * (qr[ijk+ijcells] - qr[ijk-ijcells]);
-                    const double max_qr = std::max(qr[ijk-ijcells], std::max(qr[ijk], qr[ijk+ijcells]));
-                    const double min_qr = std::min(qr[ijk-ijcells], std::min(qr[ijk], qr[ijk+ijcells]));
-                    slope_qr[ik] = copysign(1., mid_slope_qr) * std::min(std::abs(mid_slope_qr), std::min((qr[ijk]-min_qr), (max_qr-qr[ijk]))); 
+                    //const double mid_slope_qr = 0.5 * (qr[ijk+ijcells] - qr[ijk-ijcells]);
+                    //const double max_qr = std::max(qr[ijk-ijcells], std::max(qr[ijk], qr[ijk+ijcells]));
+                    //const double min_qr = std::min(qr[ijk-ijcells], std::min(qr[ijk], qr[ijk+ijcells]));
+                    //slope_qr[ik] = copysign(1., mid_slope_qr) * std::min(std::abs(mid_slope_qr), std::min((qr[ijk]-min_qr), (max_qr-qr[ijk]))); 
 
-                    const double mid_slope_nr = 0.5 * (nr[ijk+ijcells] - nr[ijk-ijcells]);
-                    const double max_nr = std::max(nr[ijk-ijcells], std::max(nr[ijk], nr[ijk+ijcells]));
-                    const double min_nr = std::min(nr[ijk-ijcells], std::min(nr[ijk], nr[ijk+ijcells]));
-                    slope_nr[ik] = copysign(1., mid_slope_nr) * std::min(std::abs(mid_slope_nr), std::min((nr[ijk]-min_nr), (max_nr-nr[ijk]))); 
+                    //printf("slope=%e, minmod=%e\n",slope_qr[ik], minmod(qr[ijk]-qr[ijk-ijcells], qr[ijk+ijcells]-qr[ijk]));
+
+                    //const double mid_slope_nr = 0.5 * (nr[ijk+ijcells] - nr[ijk-ijcells]);
+                    //const double max_nr = std::max(nr[ijk-ijcells], std::max(nr[ijk], nr[ijk+ijcells]));
+                    //const double min_nr = std::min(nr[ijk-ijcells], std::min(nr[ijk], nr[ijk+ijcells]));
+                    //slope_nr[ik] = copysign(1., mid_slope_nr) * std::min(std::abs(mid_slope_nr), std::min((nr[ijk]-min_nr), (max_nr-nr[ijk]))); 
+
+                    slope_qr[ik] = minmod(qr[ijk]-qr[ijk-ijcells], qr[ijk+ijcells]-qr[ijk]);
+                    slope_nr[ik] = minmod(nr[ijk]-nr[ijk-ijcells], nr[ijk+ijcells]-nr[ijk]);
                 }
 
             // Calculate flux
-            double* flux_qr = &tmp2[1*ikcells];
-            double* flux_nr = &tmp2[2*ikcells];
+            double* restrict flux_qr = &tmp2[1*ikcells];
+            double* restrict flux_nr = &tmp2[2*ikcells];
 
             for (int k=kend-1; k>kstart-1; k--)
                 #pragma ivdep
