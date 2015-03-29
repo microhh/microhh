@@ -59,10 +59,10 @@ namespace mp
     const double rho_w   = 1.e3;     // Density water
     const double rho_0   = 1.225;    // SB06, p48
     const double pirhow  = pi * rho_w / 6.;
-    const double xc_min  = 4.2e-15;  // Min mean mass of cloud droplet
-    const double xc_max  = 2.6e-10;  // Max mean mass of cloud droplet
-    const double xr_min  = xc_max;   // Min mean mass of precipitation drop
-    const double xr_max  = 5e-6;     // Max mean mass of precipitation drop
+    const double mc_min  = 4.2e-15;  // Min mean mass of cloud droplet
+    const double mc_max  = 2.6e-10;  // Max mean mass of cloud droplet
+    const double mr_min  = mc_max;   // Min mean mass of precipitation drop
+    const double mr_max  = 5e-6;     // Max mean mass of precipitation drop
     const double ql_min  = 1.e-6;    // Min cloud liquid water for which calculations are performed 
     const double qr_min  = 1.e-15;   // Min rain liquid water for which calculations are performed 
 
@@ -88,13 +88,36 @@ namespace mp
             field[n] = 0.;
     }
 
-    inline double calc_mu_r(const double Dr)
+    // Given rain water content (qr), number density (nr) and density (rho)
+    // calculate mean mass of rain drop
+    inline double calc_rain_mass(const double qr, const double nr, const double rho)
+    {
+        double mr = rho * qr / (nr + dsmall);
+        mr        = std::min(std::max(mr, mr_min), mr_max);
+        return mr;
+    }
+
+    // Given mean mass rain drop, calculate mean diameter
+    inline double calc_rain_diameter(const double mr)
+    {
+        return pow(mr/pirhow, 1./3.);
+    }
+
+    // Shape parameter mu_r
+    inline double calc_mu_r(const double dr)
     {
         //return 1./3.; // SB06
-        return 10. * (1. + tanh(1200 * (Dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-        // Taylor expansion SS08, around Dr=0.0002. Accurate to within 1% for Dr<0.001, 10% for Dr<0.0015
-        //return 0.670565+Dr*(Dr*(1.61878e9*Dr+1.61937e6)+1573.65);
+        return 10. * (1. + tanh(1200 * (dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        // Taylor expansion SS08, around dr=0.0002. Accurate to within 1% for dr<0.001, 10% for dr<0.0015
+        //return 0.670565+dr*(dr*(1.61878e9*dr+1.61937e6)+1573.65);
     }
+
+    // Slope parameter lambda_r
+    inline double calc_lambda_r(const double mur, const double dr)
+    {
+        return pow((mur+3)*(mur+2)*(mur+1), 1./3.) / dr;
+    }
+
 
     // Autoconversion: formation of rain drop by coagulating cloud droplets
     void autoconversion(double* const restrict qrt, double* const restrict nrt,
@@ -153,20 +176,20 @@ namespace mp
                     const int ijk = i + j*jj + k*kk;
                     if(qr[ijk] > qr_min)
                     {
-                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-                        xr        = std::min(std::max(xr, xr_min), xr_max);
+                        // Calculate mean rain drop mass and diameter
+                        const double mr  = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr  = calc_rain_diameter(mr);
 
-                        const double Dr  = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
                         const double T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
                         const double Glv = pow(Rv * T / (esat(T) * D_v) + (Lv / (K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
 
-
                         const double S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
                         const double F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
-                        const double ev_tend = 2. * pi * Dr * Glv * S * F * nr[ijk] / rho[k];             
+
+                        const double ev_tend = 2. * pi * dr * Glv * S * F * nr[ijk] / rho[k];             
 
                         qrt[ijk]  += ev_tend;
-                        nrt[ijk]  += lambda_evap * ev_tend * rho[k] / xr;
+                        nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
                         qtt[ijk]  -= ev_tend;
                         thlt[ijk] += Lv / (cp * exner[k]) * ev_tend; 
                     }
@@ -223,22 +246,23 @@ namespace mp
                     const int ijk = i + j*jj + k*kk;
                     if(qr[ijk] > qr_min)
                     {
-                        double xr       = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-                        xr              = std::min(std::max(xr, xr_min), xr_max);
-                        const double Dr = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
+                        // Calculate mean rain drop mass and diameter
+                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr      = calc_rain_diameter(mr);
+
+                        const double mur     = calc_mu_r(dr);
+                        const double lambdar = calc_lambda_r(mur, dr);
 
                         // Selfcollection
-                        const double mur      = calc_mu_r(Dr);
-                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr; 
-                        const double sc_tend  = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambda_r * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
+                        const double sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambdar * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
                         nrt[ijk] += sc_tend; 
 
                         // Breakup
-                        const double dDr = Dr - D_eq;
-                        if(Dr > 0.35e-3)
+                        const double dDr = dr - D_eq;
+                        if(dr > 0.35e-3)
                         {
                             double phi_br;
-                            if(Dr <= D_eq)
+                            if(dr <= D_eq)
                                 phi_br = k_br1 * dDr;
                             else
                                 phi_br = 2. * exp(k_br2 * dDr) - 1.; 
@@ -273,16 +297,16 @@ namespace mp
                     const int ijk = i + j*icells + k*ijcells;
                     if(qr[ijk] > qr_min)
                     {
-                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-                        xr        = std::min(std::max(xr, xr_min), xr_max);
+                        // Calculate mean rain drop mass and diameter
+                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr      = calc_rain_diameter(mr);
 
-                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                        const double mur      = calc_mu_r(Dr);
-                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
+                        const double mur     = calc_mu_r(dr);
+                        const double lambdar = calc_lambda_r(mur, dr);
             
-                        // SS08:
-                        const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4))));
-                        const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+1))));
+                        // Sedimentation velocity SS08
+                        const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+                        const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
 
                         // Calculate CFL based on full level grid spacing and sedimentation velocity
                         maxcfl_qr  = std::max(maxcfl_qr, w_qr * dt * dzi[k]);
@@ -344,16 +368,16 @@ namespace mp
 
                         if(qr_sub[ik] > qr_min)
                         {
-                            double xr = rho[k] * qr_sub[ik] / (nr_sub[ik] + dsmall); // Mean mass of prec. drops (kg)
-                            xr        = std::min(std::max(xr, xr_min), xr_max);
+                            // Calculate mean rain drop mass and diameter
+                            const double mr      = calc_rain_mass(qr_sub[ik], nr_sub[ik], rho[k]);
+                            const double dr      = calc_rain_diameter(mr);
 
-                            const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                            const double mur      = calc_mu_r(Dr);
-                            const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
+                            const double mur     = calc_mu_r(dr);
+                            const double lambdar = calc_lambda_r(mur, dr);
                 
                             // SS08:
-                            const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4))));
-                            const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+1))));
+                            const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+                            const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
 
                             const double c_qr = w_qr * subdt * dzi[k];
                             const double c_nr = w_nr * subdt * dzi[k];
@@ -435,16 +459,15 @@ namespace mp
                   
                     if(qr[ijk] > qr_min)
                     {
-                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-                        xr        = std::min(std::max(xr, xr_min), xr_max);
-
-                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                        const double mur      = calc_mu_r(Dr);
-                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
+                        // Calculate mean rain drop mass and diameter
+                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr      = calc_rain_diameter(mr);
+                        const double mur     = calc_mu_r(dr);
+                        const double lambdar = calc_lambda_r(mur, dr);
                 
                         // SS08:
-                        w_qr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4))));
-                        w_nr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+1))));
+                        w_qr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+                        w_nr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
                     }
                     else
                     {
@@ -487,18 +510,6 @@ namespace mp
                 {
                     const int ijk = i + j*icells + k*ijcells;
                     const int ik  = i + k*icells;
-
-                    //const double mid_slope_qr = 0.5 * (qr[ijk+ijcells] - qr[ijk-ijcells]);
-                    //const double max_qr = std::max(qr[ijk-ijcells], std::max(qr[ijk], qr[ijk+ijcells]));
-                    //const double min_qr = std::min(qr[ijk-ijcells], std::min(qr[ijk], qr[ijk+ijcells]));
-                    //slope_qr[ik] = copysign(1., mid_slope_qr) * std::min(std::abs(mid_slope_qr), std::min((qr[ijk]-min_qr), (max_qr-qr[ijk]))); 
-
-                    //printf("slope=%e, minmod=%e\n",slope_qr[ik], minmod(qr[ijk]-qr[ijk-ijcells], qr[ijk+ijcells]-qr[ijk]));
-
-                    //const double mid_slope_nr = 0.5 * (nr[ijk+ijcells] - nr[ijk-ijcells]);
-                    //const double max_nr = std::max(nr[ijk-ijcells], std::max(nr[ijk], nr[ijk+ijcells]));
-                    //const double min_nr = std::min(nr[ijk-ijcells], std::min(nr[ijk], nr[ijk+ijcells]));
-                    //slope_nr[ik] = copysign(1., mid_slope_nr) * std::min(std::abs(mid_slope_nr), std::min((nr[ijk]-min_nr), (max_nr-nr[ijk]))); 
 
                     slope_qr[ik] = minmod(qr[ijk]-qr[ijk-ijcells], qr[ijk+ijcells]-qr[ijk]);
                     slope_nr[ik] = minmod(nr[ijk]-nr[ijk-ijcells], nr[ijk+ijcells]-nr[ijk]);
@@ -597,14 +608,13 @@ namespace mp
 
                     if(qr[ijk] > qr_min)
                     {
-                        double xr = rho[k] * qr[ijk] / (nr[ijk] + dsmall); // Mean mass of prec. drops (kg)
-                        xr        = std::min(std::max(xr, xr_min), xr_max);
-
-                        const double Dr       = pow(xr / pirhow, 1./3.); // Mean diameter of prec. drops (m)
-                        const double mur      = calc_mu_r(Dr);
-                        const double lambda_r = pow((mur+3)*(mur+2)*(mur+1), 1./3.) / Dr;
+                        // Calculate mean rain drop mass and diameter
+                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr      = calc_rain_diameter(mr);
+                        const double mur     = calc_mu_r(dr);
+                        const double lambdar = calc_lambda_r(mur, dr);
                 
-                        w_qr[ijk] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambda_r, -1.*(mur+4))));
+                        w_qr[ijk] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
                     }
                     else
                     {
