@@ -59,7 +59,7 @@ Diff_disabled::~Diff_disabled()
 
 unsigned long Diff_disabled::get_time_limit(const unsigned long idtlim, const double dt)
 {
-    return static_cast<unsigned long>(Constants::dbig);
+    return Constants::ulhuge;
 }
 
 double Diff_disabled::get_dn(const double dt)
