@@ -206,8 +206,12 @@ swpres        & swspatialorder        & 0 & disable pressure solver \\
 \tabletail{\hline \multicolumn{4}{l}{\small\sl Continued on next page ...} \\} 
 \tablelasttail{\hline}
 \begin{supertabular}{|L{\wname} C{\wdef} C{\wopt} L{\wdesc}|}
-swstats       & 0     & 0   & disable statistics \\
-sampletime    & n/a   &     & sampling time step [s] \\
+swstats       & 0     & 0      & disable statistics \\
+sampletime    & n/a   &        & sampling time step [s] \\
+masklist      & empty & wplus  & conditional statistics $w$ > 0 \\
+              &       & wmin   & conditional statistics $w$ < 0\\
+              &       & ql     & conditional statistics $q_\mathrm{l}$ > 0\\
+              &       & qlcore & conditional statistics $q_\mathrm{l}$ > 0 and $B$ > 0\\
 \end{supertabular}
 
 \subsection*{[thermo] Thermodynamics}
