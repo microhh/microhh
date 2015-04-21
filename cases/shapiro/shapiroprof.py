@@ -2,7 +2,7 @@ import numpy
 
 # set the height
 kmax  = 256
-zsize = 4.
+zsize = 10.24
 N2 = 0.0004
 
 # define the variables
