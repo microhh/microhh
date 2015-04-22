@@ -2,9 +2,9 @@ import numpy as np
 import struct as st
 import pylab as pl
 
-nx = 128
+nx = 64
 ny = 1
-nz = 256
+nz = 128
 
 N2 = 0.0004
 
@@ -24,7 +24,7 @@ raw = fin.read(nz*8)
 zh  = np.array(st.unpack('{0}d'.format(nz), raw))
 fin.close()
 
-fin = open("u.0020000", "rb")
+fin = open("u.0010000", "rb")
 raw = fin.read(nx*nz*8)
 tmp = np.array(st.unpack('{0}d'.format(nx*nz), raw))
 del(raw)
@@ -32,7 +32,7 @@ tmp = tmp.reshape((nz, nx))
 u = np.roll(tmp, nx/4, 1)
 del(tmp)
  
-fin = open("w.0020000", "rb")
+fin = open("w.0010000", "rb")
 raw = fin.read(nx*nz*8)
 tmp = np.array(st.unpack('{0}d'.format(nx*nz), raw))
 del(raw)
@@ -40,7 +40,7 @@ tmp = tmp.reshape((nz, nx))
 w = np.roll(tmp, nx/4, 1)
 del(tmp)
  
-fin = open("b.0020000", "rb")
+fin = open("b.0010000", "rb")
 raw = fin.read(nx*nz*8)
 tmp = np.array(st.unpack('{0}d'.format(nx*nz), raw))
 del(raw)
