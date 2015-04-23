@@ -12,3 +12,10 @@ rm -f *.0* shapiro.out
 ../microhh init shapiro
 ../microhh run shapiro
 cd ..
+
+cd 128x256
+python shapiroprof.py 
+rm -f *.0* shapiro.out 
+../microhh init shapiro
+../microhh run shapiro
+cd ..

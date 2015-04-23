@@ -98,16 +98,18 @@ class Data:
         self.b_error = self.b_error / self.z.size
 
 N2 = 0.0004
-data32 = Data("32x64" , 32,  64, N2)
-data64 = Data("64x128", 64, 128, N2)
+data32  = Data(  "32x64",  32,  64, N2)
+data64  = Data( "64x128",  64, 128, N2)
+data128 = Data("128x256", 128, 256, N2)
 
-sl = [data32, data64]
+sl = [data32, data64, data128]
 
-print('errors 32 x  64: ', data32.u_error, data32.w_error, data32.b_error)
-print('errors 64 x 128: ', data64.u_error, data64.w_error, data64.b_error)
-print('convergence u', (np.log(data64.u_error)-np.log(data32.u_error)) / (np.log(data64.dx)-np.log(data32.dx)) )
-print('convergence w', (np.log(data64.w_error)-np.log(data32.w_error)) / (np.log(data64.dx)-np.log(data32.dx)) )
-print('convergence p', (np.log(data64.b_error)-np.log(data32.b_error)) / (np.log(data64.dx)-np.log(data32.dx)) )
+print('errors  32 x  64: ', data32.u_error, data32.w_error, data32.b_error)
+print('errors  64 x 128: ', data64.u_error, data64.w_error, data64.b_error)
+print('errors 128 x 256: ', data128.u_error, data128.w_error, data128.b_error)
+print('convergence u', (np.log(data128.u_error)-np.log(data32.u_error)) / (np.log(data128.dx)-np.log(data32.dx)) )
+print('convergence w', (np.log(data128.w_error)-np.log(data32.w_error)) / (np.log(data128.dx)-np.log(data32.dx)) )
+print('convergence p', (np.log(data128.b_error)-np.log(data32.b_error)) / (np.log(data128.dx)-np.log(data32.dx)) )
 
 # Visualisation of fields.
 pl.close('all')
