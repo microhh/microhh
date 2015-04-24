@@ -60,7 +60,7 @@ if(True):
     kmax  = 500
     zsize = 1000
     dz1   = 2.
-    dz2   = 50.
+    dz2   = 40.
     z1    = 450
     z2    = 600
     z3    = 700
@@ -109,7 +109,7 @@ for t in range(s3.t.size):
 timefile.close()
 
 # Plot
-if(False):
+if(True):
     zh_fleur = np.loadtxt('grille_stretche')
     z_fleur  = 0.5 * (zh_fleur[1:] + zh_fleur[:-1])
     dz_fleur = zh_fleur[1:] - zh_fleur[:-1]
