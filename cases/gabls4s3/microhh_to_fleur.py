@@ -39,6 +39,29 @@ def add_global_attr(nc):
     nc.setncattr('Advection', 'momentum and scalar: 2nd order centered with 4th order interpolations')
     nc.setncattr('Time step', 'variable, to maintain CFL=1.2')
 
+def interpol(field, z, height):
+    k = key_nearest(z, height)
+    if(z[k] > height): k -= 1
+
+    frac = (height - z[k]) / (z[k+1] - z[k])
+
+    return (1.-frac) * field[:,k] + frac * field[:,k+1]
+
+def interpol_tke(u2, v2, w2, zf, zh, height):
+    kf  = key_nearest(zf, height)
+    if(zf[kf] > height): kf -= 1
+    kh = key_nearest(zh, height)
+    if(zh[kh] > height): kh -= 1
+
+    fracf = (height - zf[kf]) / (zf[kf+1] - zf[kf])
+    frach = (height - zh[kh]) / (zh[kh+1] - zh[kh])
+
+    u2i = (1.-fracf) * u2[:,kf] + fracf * u2[:,kf+1]
+    v2i = (1.-fracf) * v2[:,kf] + fracf * v2[:,kf+1]
+    w2i = (1.-frach) * w2[:,kh] + frach * w2[:,kh+1]
+
+    return 0.5 * (u2i + v2i + w2i)
+
 class read_stat:
     def __init__(self, ncfile):
         self.nc      = Dataset(ncfile)
@@ -91,7 +114,63 @@ class read_stat:
         self.z0m_ts[:]     = z0m
         self.z0h_ts[:]     = z0h
 
-        # What to do with the requested heights which dont match the grid....?
+        # theta at: 2, 3.3, 8.8, 17.9, 25.3, 32.7 and 41.9 m
+        # u,v at:  10, "    "    " etc.
+        # turbulence  at: 3.3, 7.03, 15.43, 22.79, 30.15, 37.51
+
+        self.th2m_ts[:]    = interpol(self.th,     self.z, 2.0 )
+        self.th3m_ts[:]    = interpol(self.th,     self.z, 3.3 )
+        self.th9m_ts[:]    = interpol(self.th,     self.z, 8.8 )
+        self.th18m_ts[:]   = interpol(self.th,     self.z, 17.9)
+        self.th25m_ts[:]   = interpol(self.th,     self.z, 25.3)
+        self.th33m_ts[:]   = interpol(self.th,     self.z, 32.7)
+        self.th42m_ts[:]   = interpol(self.th,     self.z, 41.9)
+
+        self.u10m_ts[:]    = interpol(self.u,      self.z, 10. )
+        self.u3m_ts[:]     = interpol(self.u,      self.z, 3.3 )
+        self.u9m_ts[:]     = interpol(self.u,      self.z, 8.8 )
+        self.u18m_ts[:]    = interpol(self.u,      self.z, 17.9)
+        self.u25m_ts[:]    = interpol(self.u,      self.z, 25.3)
+        self.u33m_ts[:]    = interpol(self.u,      self.z, 32.7)
+        self.u42m_ts[:]    = interpol(self.u,      self.z, 41.9)
+
+        self.v10m_ts[:]    = interpol(self.v,      self.z, 10. )
+        self.v3m_ts[:]     = interpol(self.v,      self.z, 3.3 )
+        self.v9m_ts[:]     = interpol(self.v,      self.z, 8.8 )
+        self.v18m_ts[:]    = interpol(self.v,      self.z, 17.9)
+        self.v25m_ts[:]    = interpol(self.v,      self.z, 25.3)
+        self.v33m_ts[:]    = interpol(self.v,      self.z, 32.7)
+        self.v42m_ts[:]    = interpol(self.v,      self.z, 41.9)
+
+        self.uw_3m_ts[:]   = interpol(self.uflux,  self.zh, 3.3)
+        self.vw_3m_ts[:]   = interpol(self.vflux,  self.zh, 3.3)
+        self.wth_3m_ts[:]  = interpol(self.thflux, self.zh, 3.3)
+        self.TKE_3m_ts[:]  = interpol_tke(self.u2, self.v2, self.w2, self.z, self.zh, 3.3)
+
+        self.uw_7m_ts[:]   = interpol(self.uflux,  self.zh, 7.03)
+        self.vw_7m_ts[:]   = interpol(self.vflux,  self.zh, 7.03)
+        self.wth_7m_ts[:]  = interpol(self.thflux, self.zh, 7.03)
+        self.TKE_7m_ts[:]  = interpol_tke(self.u2, self.v2, self.w2, self.z, self.zh, 7.03)
+
+        self.uw_15m_ts[:]  = interpol(self.uflux,  self.zh, 15.43)
+        self.vw_15m_ts[:]  = interpol(self.vflux,  self.zh, 15.43)
+        self.wth_15m_ts[:] = interpol(self.thflux, self.zh, 15.43)
+        self.TKE_15m_ts[:] = interpol_tke(self.u2, self.v2, self.w2, self.z, self.zh, 15.43)
+
+        self.uw_23m_ts[:]  = interpol(self.uflux,  self.zh, 22.79)
+        self.vw_23m_ts[:]  = interpol(self.vflux,  self.zh, 22.79)
+        self.wth_23m_ts[:] = interpol(self.thflux, self.zh, 22.79)
+        self.TKE_23m_ts[:] = interpol_tke(self.u2, self.v2, self.w2, self.z, self.zh, 22.79)
+
+        self.uw_30m_ts[:]  = interpol(self.uflux,  self.zh, 30.15)
+        self.vw_30m_ts[:]  = interpol(self.vflux,  self.zh, 30.15)
+        self.wth_30m_ts[:] = interpol(self.thflux, self.zh, 30.15)
+        self.TKE_30m_ts[:] = interpol_tke(self.u2, self.v2, self.w2, self.z, self.zh, 30.15)
+
+        self.uw_38m_ts[:]  = interpol(self.uflux,  self.zh, 37.51)
+        self.vw_38m_ts[:]  = interpol(self.vflux,  self.zh, 37.51)
+        self.wth_38m_ts[:] = interpol(self.thflux, self.zh, 37.51)
+        self.TKE_38m_ts[:] = interpol_tke(self.u2, self.v2, self.w2, self.z, self.zh, 37.51)
 
         nc_ts.close()
 

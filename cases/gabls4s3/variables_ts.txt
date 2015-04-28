@@ -52,27 +52,27 @@ rh42m,   relative humidity at 41.90 meter above the surface, 0-100
 u42m,    u-component wind at 41.90 meter above the surface, m/s
 v42m,    v-component wind at 41.90 meter above the surface, m/s
 cc,      total cloudcover fraction, 0-1
-uw_3m,   vertical flux u-component momentum at 3.30 meter above the surface, m2/s2 
-vw_3m,   vertical flux v-component momentum at 3.30 meter above the surface, m2/s2 
-wth_3m,  vertical potential temperature flux at 3.30 meter above the surface, Km/s
-TKE_3m,  turbulent kinetic energy at 3.30 meter above the surface, m2/s2
-uw_7m,   vertical flux u-component momentum at 7.03 meter above the surface, m2/s2 
-vw_7m,   vertical flux v-component momentum at 7.03 meter above the surface, m2/s2 
-wth_7m,  vertical potential temperature flux at 7.03 meter above the surface, Km/s
-TKE_7m,  turbulent kinetic energy at 7.03 meter above the surface, m2/s2
-uw_15m,  vertical flux u-component momentum at 15.43 meter above the surface, m2/s2
-vw_15m,  vertical flux v-component momentum at 15.43 meter above the surface, m2/s2 
-wth_15m, vertical potential temperature flux at 15.43 meter above the surface, Km/s
-TKE_15m, turbulent kinetic energy at 15.43 meter above the surface, m2/s2
-uw_23m,  vertical flux u-component momentum at 22.79 meter above the surface, m2/s2 
-vw_23m,  vertical flux v-component momentum at 22.79 meter above the surface, m2/s2 
-wth_23m, vertical potential temperature flux at 22.79 meter above the surface, Km/s
-TKE_23m, turbulent kinetic energy at 22.79 meter above the surface, m2/s2
-uw_30m,  vertical flux u-component momentum at 30.15 meter above the surface, m2/s2 
-vw_30m,  vertical flux v-component momentum at 30.15 meter above the surface, m2/s2 
-wth_30m, vertical potential temperature flux at 30.15 meter above the surface, Km/s
-TKE_30m, turbulent kinetic energy at 30.15 meter above the surface, m2/s2
-uw_38m,  vertical flux u-component momentum at 37.51 meter above the surface, m2/s2 
-vw_38m,  vertical flux v-component momentum at 37.51 meter above the surface, m2/s2 
-wth_38m, vertical potential temperature flux at 37.51 meter above the surface, Km/s
-TKE_38m, turbulent kinetic energy at 37.51 meter above the surface, m2/s2
+uw_3m,   total vertical flux u-component momentum at 3.30 meter above the surface, m2/s2 
+vw_3m,   total vertical flux v-component momentum at 3.30 meter above the surface, m2/s2 
+wth_3m,  total vertical potential temperature flux at 3.30 meter above the surface, Km/s
+TKE_3m,  resolved turbulent kinetic energy at 3.30 meter above the surface, m2/s2
+uw_7m,   total vertical flux u-component momentum at 7.03 meter above the surface, m2/s2 
+vw_7m,   total vertical flux v-component momentum at 7.03 meter above the surface, m2/s2 
+wth_7m,  total vertical potential temperature flux at 7.03 meter above the surface, Km/s
+TKE_7m,  resolved turbulent kinetic energy at 7.03 meter above the surface, m2/s2
+uw_15m,  total vertical flux u-component momentum at 15.43 meter above the surface, m2/s2
+vw_15m,  total vertical flux v-component momentum at 15.43 meter above the surface, m2/s2 
+wth_15m, total vertical potential temperature flux at 15.43 meter above the surface, Km/s
+TKE_15m, resolved turbulent kinetic energy at 15.43 meter above the surface, m2/s2
+uw_23m,  total vertical flux u-component momentum at 22.79 meter above the surface, m2/s2 
+vw_23m,  total vertical flux v-component momentum at 22.79 meter above the surface, m2/s2 
+wth_23m, total vertical potential temperature flux at 22.79 meter above the surface, Km/s
+TKE_23m, resolved turbulent kinetic energy at 22.79 meter above the surface, m2/s2
+uw_30m,  total vertical flux u-component momentum at 30.15 meter above the surface, m2/s2 
+vw_30m,  total vertical flux v-component momentum at 30.15 meter above the surface, m2/s2 
+wth_30m, total vertical potential temperature flux at 30.15 meter above the surface, Km/s
+TKE_30m, resolved turbulent kinetic energy at 30.15 meter above the surface, m2/s2
+uw_38m,  total vertical flux u-component momentum at 37.51 meter above the surface, m2/s2 
+vw_38m,  total vertical flux v-component momentum at 37.51 meter above the surface, m2/s2 
+wth_38m, total vertical potential temperature flux at 37.51 meter above the surface, Km/s
+TKE_38m, resolved turbulent kinetic energy at 37.51 meter above the surface, m2/s2
