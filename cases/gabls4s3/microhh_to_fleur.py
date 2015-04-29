@@ -5,6 +5,7 @@
 import numpy as np
 from netCDF4 import Dataset
 import struct  as st
+from pylab import * ## TMP
 
 # load the init script to get variables like ug, vg, Ts
 from gabls4s3init import *
@@ -109,15 +110,15 @@ class read_stat:
         self.shf_ts[:]     = self.thflux[:,0] * rho * cp
         self.ustar_ts[:]   = self.ustar
         self.psurf_ts[:]   = ps
+        self.thsurf_ts[:]  = np.interp(self.t, s3.t, s3.ths) # interpolated from model input 
+
         #self.hpbl_ts[:]    = 
-        #self.thsurf_ts[:]  = 
         self.z0m_ts[:]     = z0m
         self.z0h_ts[:]     = z0h
 
         # theta at: 2, 3.3, 8.8, 17.9, 25.3, 32.7 and 41.9 m
         # u,v at:  10, "    "    " etc.
         # turbulence  at: 3.3, 7.03, 15.43, 22.79, 30.15, 37.51
-
         self.th2m_ts[:]    = interpol(self.th,     self.z, 2.0 )
         self.th3m_ts[:]    = interpol(self.th,     self.z, 3.3 )
         self.th9m_ts[:]    = interpol(self.th,     self.z, 8.8 )
@@ -302,11 +303,11 @@ def convert_3d(times):
         nc.close()
 
 # Convert time series and profile statistics
-r1 = read_stat('gabls4s3.default.0000000.nc')
+r1 = read_stat('gabls4s3.default.nc')
 r1.write_time_series()
-r1.write_profiles(average=False)
-r1.write_profiles(average=True)
-
-# Convert 3D files
-times = np.array([5,7,9,11,13,15,17,19,21,23])*3600.
-convert_3d(times)
+#r1.write_profiles(average=False)
+#r1.write_profiles(average=True)
+#
+## Convert 3D files
+#times = np.array([5,7,9,11,13,15,17,19,21,23])*3600.
+#convert_3d(times)
