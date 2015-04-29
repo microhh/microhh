@@ -112,13 +112,17 @@ class read_stat:
         self.psurf_ts[:]   = ps
         self.thsurf_ts[:]  = np.interp(self.t, s3.t, s3.ths) # interpolated from model input 
 
-        #self.hpbl_ts[:]    = 
+        # Calculate ABL depth based on bulk Richardson number (no moisture):
+        figure()
+        for t in range(self.t.size):
+            Rib = 9.81 * self.z / self.thsurf_ts[t] * (self.th[t,:] - self.thsurf_ts[t]) / (self.u[t,:]**2. + self.v[t,:]**2.)
+            kzi = np.where(Rib > 0.25)[0][0]
+            self.hpbl_ts[t] = self.z[kzi]
+
         self.z0m_ts[:]     = z0m
         self.z0h_ts[:]     = z0h
 
-        # theta at: 2, 3.3, 8.8, 17.9, 25.3, 32.7 and 41.9 m
-        # u,v at:  10, "    "    " etc.
-        # turbulence  at: 3.3, 7.03, 15.43, 22.79, 30.15, 37.51
+        # Quantities interpolated to SCM grid
         self.th2m_ts[:]    = interpol(self.th,     self.z, 2.0 )
         self.th3m_ts[:]    = interpol(self.th,     self.z, 3.3 )
         self.th9m_ts[:]    = interpol(self.th,     self.z, 8.8 )
@@ -264,13 +268,7 @@ class read_stat:
 
         nc_ps.close()
 
-def convert_3d(times):
-    # Settings
-    itot   = 16
-    jtot   = 16
-    ktot   = 300
-    ksave  = 246  # 246 = ~500 m
-
+def convert_3d(times, itot=608, jtot=608, ktot=304, ksave=246):
     # Read grid properties from grid.0000000
     n   = itot*jtot*ktot
     fin = open("grid.{:07d}".format(0),"rb")
@@ -293,21 +291,87 @@ def convert_3d(times):
 
         add_global_attr(nc)
 
-        #dim_x  = ncfile.createDimension('lon',  itot)
-        #dim_y  = ncfile.createDimension('lat',  jtot)
-        #dim_z  = ncfile.createDimension('levf', ksave)
-        #dim_t  = ncfile.createDimension('time', 1)
+        # Create dimensions
+        dim_t  = nc.createDimension('time', 1)
+        dim_z  = nc.createDimension('lev',  ksave)
+        dim_zh = nc.createDimension('levh', ksave)
+        dim_y  = nc.createDimension('lat',  jtot)
+        dim_yh = nc.createDimension('lath', jtot)
+        dim_x  = nc.createDimension('lon',  itot)
+        dim_xh = nc.createDimension('lonh', itot)
 
-        # Case specification only requests cell centers.. What about u and v....?
+        # Create grid and time variables:
+        var_t  = nc.createVariable('time', 'f4', 'time')
+        var_t.setncattr('units', 's')
+        var_t.setncattr('long_name', 'seconds since start of experiment')
+
+        var_x  = nc.createVariable('lon',  'f4', 'lon')
+        var_x.setncattr('units', 'm')
+        var_x.setncattr('long_name', 'x-location cell center')
+
+        var_y  = nc.createVariable('lat',  'f4', 'lat')
+        var_y.setncattr('units', 'm')
+        var_y.setncattr('long_name', 'y-location cell center')
+        
+        var_z  = nc.createVariable('lev', 'f4', 'lev')
+        var_z.setncattr('units', 'm')
+        var_z.setncattr('long_name', 'z-location cell center')
+ 
+        var_xh = nc.createVariable('lonh', 'f4', 'lonh')
+        var_xh.setncattr('units', 'm')
+        var_xh.setncattr('long_name', 'x-location cell edge')
+
+        var_yh = nc.createVariable('lath', 'f4', 'lath')
+        var_yh.setncattr('units', 'm')
+        var_yh.setncattr('long_name', 'y-location cell edge')
+
+        var_zh = nc.createVariable('levh', 'f4', 'levh')
+        var_zh.setncattr('units', 'm')
+        var_zh.setncattr('long_name', 'z-location cell edge')
+
+        # Create 3D variables:
+        var_u  = nc.createVariable('u',     'f4', ('time','lev','lat','lonh',))
+        var_u.setncattr('units', 'm/s')
+        var_u.setncattr('long_name', 'zonal wind')
+
+        var_v  = nc.createVariable('v',     'f4', ('time','lev','lath','lon',))
+        var_v.setncattr('units', 'm/s')
+        var_v.setncattr('long_name', 'meridional wind')
+
+        var_w  = nc.createVariable('w',     'f4', ('time','levh','lat','lon',))
+        var_w.setncattr('units', 'm/s')
+        var_w.setncattr('long_name', 'vertical velocity')
+
+        var_th = nc.createVariable('theta', 'f4', ('time','lev','lat','lon',))
+        var_w.setncattr('units', 'K')
+        var_w.setncattr('long_name', 'potential temperature')
+
+        # Write grid and time variables:
+        var_t[:]  = time
+        var_x[:]  = x
+        var_y[:]  = y
+        var_z[:]  = z[:ksave]
+        var_zh[:] = zh[:ksave]
+
+        # Write 3D fields:
+        for var,field in zip(['u','v','w','th'],[var_u, var_v, var_w, var_th]):
+            fin = open("%s.%07i"%(var,time),"rb")
+            for k in range(ksave):
+                raw = fin.read(itot*jtot*8)
+                tmp = np.array(st.unpack('{0}{1}d'.format('<', itot*jtot), raw))
+                field[0,k,:,:] = tmp.reshape((jtot, itot))
+            fin.close()
 
         nc.close()
 
-# Convert time series and profile statistics
-r1 = read_stat('gabls4s3.default.nc')
-r1.write_time_series()
-#r1.write_profiles(average=False)
-#r1.write_profiles(average=True)
-#
-## Convert 3D files
-#times = np.array([5,7,9,11,13,15,17,19,21,23])*3600.
-#convert_3d(times)
+if(True):
+    # Convert time series and profile statistics
+    r1 = read_stat('gabls4s3.default.nc')
+    r1.write_time_series()
+    r1.write_profiles(average=False)
+    r1.write_profiles(average=True)
+
+# Convert 3D files
+if(True):
+    times = np.array([5,7,9,11,13,15,17,19,21,23])*3600.
+    convert_3d(times)
