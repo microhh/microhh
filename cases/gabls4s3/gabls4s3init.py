@@ -57,15 +57,26 @@ if(False):
 # stretched grid
 # ----------------
 if(True):
-    kmax  = 500
-    zsize = 1000
-    dz1   = 2.
-    dz2   = 40.
-    z1    = 450
-    z2    = 600
-    z3    = 700
-    fac   = (z3 - z1) / 10.
-    
+    # dz = 2m
+    if(False):
+        kmax  = 500
+        zsize = 1000
+        dz1   = 2.
+        dz2   = 40.
+        z1    = 450
+        z2    = 600
+        z3    = 700
+        fac   = (z3 - z1) / 10.
+    if(True):
+        kmax  = 1000
+        zsize = 1000
+        dz1   = 1.
+        dz2   = 80.
+        z1    = 400
+        z2    = 500
+        z3    = 700
+        fac   = (z3 - z1) / 15.
+
     dz0   = zsize / kmax
     z0    = np.linspace(0.5 * dz0, zsize - 0.5*dz0, kmax)
     dz    = dz1 + (dz2 - dz1) / (1. + np.exp(-(z0 - z2) / fac))
