@@ -20,9 +20,7 @@ cmp w.0003600 w.0003600ref
 diffw=$?
 cmp th.0003600 th.0003600ref
 diffs=$?
-cmp obuk.0003600 obuk.0003600ref
-diffobuk=$?
-error=$(($diffu + $diffv + $diffw + $diffs + $diffobuk))
+error=$(($diffu + $diffv + $diffw + $diffs))
 if [ $error = 0 ]; then
   echo "TEST PASSED!"
 else
