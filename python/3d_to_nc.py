@@ -81,8 +81,8 @@ var_t.units = "time units since start"
 
 # Write grid properties to netCDF
 var_x[:] = x[:nxsave] if locx=='x' else xh[:nxsave]
-var_y[:] = y[:nxsave] if locy=='y' else yh[:nxsave]
-var_z[:] = z[:nxsave] if locz=='z' else zh[:nxsave]
+var_y[:] = y[:nysave] if locy=='y' else yh[:nysave]
+var_z[:] = z[:nzsave] if locz=='z' else zh[:nzsave]
 
 # Loop through the files and read 3d field
 for t in range(nt):

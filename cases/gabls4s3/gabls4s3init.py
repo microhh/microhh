@@ -2,6 +2,11 @@ import numpy as np
 import pylab as pl
 import netCDF4 as nc4
 
+# load the init script to get variables like ug, vg, ts
+from gabls4s3init import *
+
+pl.close('all')
+
 # Read the stage 3 driver file
 class read_driver:
     def __init__(self):
@@ -35,51 +40,58 @@ s3 = read_driver()
 # ----------------
 # non-stretched grid
 # ----------------
-# Get number of vertical levels and size from .ini file
-#with open('gabls4s3.ini') as f:
-#    for line in f:
-#        if(line.split('=')[0]=='ktot'):
-#            kmax = int(line.split('=')[1])
-#        if(line.split('=')[0]=='zsize'):
-#            zsize = float(line.split('=')[1])
-
-#print('kmax = %i, zsize = %.1f m'%(kmax, zsize))
-# set the height
-# Non-stretched
-#dz = zsize / kmax
-#z  = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
+if(False):
+   # Get number of vertical levels and size from .ini file
+   with open('gabls4s3.ini') as f:
+       for line in f:
+           if(line.split('=')[0]=='ktot'):
+               kmax = int(line.split('=')[1])
+           if(line.split('=')[0]=='zsize'):
+               zsize = float(line.split('=')[1])
+   
+   print('kmax = %i, zsize = %.1f m'%(kmax, zsize))
+   dz = zsize / kmax
+   z  = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
 
 # ----------------
-# non-stretched grid
+# stretched grid
 # ----------------
-kmax  = 500
-zsize = 1000
-dz1   = 2.
-dz2   = 5.
-z1    = 200
-z2    = 400
-z3    = 500
-fac   = (z3 - z1) / 10.
+if(True):
+    # dz = 2m
+    if(False):
+        kmax  = 500
+        zsize = 1000
+        dz1   = 2.
+        dz2   = 40.
+        z1    = 450
+        z2    = 600
+        z3    = 700
+        fac   = (z3 - z1) / 10.
+    if(True):
+        kmax  = 1000
+        zsize = 1000
+        dz1   = 1.
+        dz2   = 80.
+        z1    = 400
+        z2    = 500
+        z3    = 700
+        fac   = (z3 - z1) / 15.
 
-dz0   = zsize / kmax
-z0    = np.linspace(0.5 * dz0, zsize - 0.5*dz0, kmax)
-dz    = dz1 + (dz2 - dz1) / (1. + np.exp(-(z0 - z2) / fac))
-
-z = [0.5 * dz1]
-for k in range(kmax):
-    if(z[-1] + dz[k] >= zsize):
-        break
-    z.append(z[-1] + dz[k])
-
-zsize = z[-1] + 0.5*(z[-1] - z[-2])
-kmax  = np.size(z) 
+    dz0   = zsize / kmax
+    z0    = np.linspace(0.5 * dz0, zsize - 0.5*dz0, kmax)
+    dz    = dz1 + (dz2 - dz1) / (1. + np.exp(-(z0 - z2) / fac))
+    
+    z = [0.5 * dz1]
+    for k in range(kmax):
+        if(z[-1] + dz[k] >= zsize):
+            break
+        z.append(z[-1] + dz[k])
+    
+    zsize = z[-1] + 0.5*(z[-1] - z[-2])
+    z = np.array(z)
+    kmax  = np.size(z) 
 
 print('kmax = %i, zsize = %f'%(kmax, zsize))
-
-#pl.figure()
-#pl.plot(dz[:kmax], z, 'k-o', mfc='none')
-#pl.xlabel('dz [m]')
-#pl.ylabel('z [m]')
 
 th = np.zeros(np.size(z))
 u  = np.zeros(np.size(z))
@@ -108,34 +120,44 @@ for t in range(s3.t.size):
 timefile.close()
 
 # Plot
-pl.close('all')
+if(True):
+    zh_fleur = np.loadtxt('grille_stretche')
+    z_fleur  = 0.5 * (zh_fleur[1:] + zh_fleur[:-1])
+    dz_fleur = zh_fleur[1:] - zh_fleur[:-1]
 
-pl.figure()
-pl.subplot(221)
-pl.plot(th, z, 'k-', label='mhh')
-pl.plot(s3.th, s3.z, 'go', mfc='none', label='s3')
-pl.ylim(0,1100)
-pl.xlim(270,285)
-pl.legend(frameon=False, loc=2)
+    pl.figure()
+    pl.plot(dz[:kmax], z, 'k-o', mfc='none')
+    pl.plot(dz_fleur, z_fleur, 'g-x', mfc='none')
+    pl.xlabel('dz [m]')
+    pl.ylabel('z [m]')
 
-pl.subplot(222)
-pl.plot(u, z, 'k-', label='mhh')
-pl.plot(s3.u, s3.z, 'go', mfc='none', label='s3')
-pl.plot(ug, z, 'k--', label='mhh')
-pl.plot(s3.ug, s3.z, 'bo', mfc='none', label='s3')
-pl.ylim(0,1100)
-pl.xlim(0,10)
-pl.legend(frameon=False, loc=2)
-
-pl.subplot(223)
-pl.plot(v, z, 'k-', label='mhh')
-pl.plot(s3.v, s3.z, 'go', mfc='none', label='s3')
-pl.plot(vg, z, 'k--', label='mhh')
-pl.plot(s3.vg, s3.z, 'bo', mfc='none', label='s3')
-pl.ylim(0,1100)
-pl.xlim(0,10)
-pl.legend(frameon=False, loc=2)
-
-pl.subplot(224)
-pl.plot(s3.t, s3.ths, 'k-', label='s3')
-pl.legend(frameon=False, loc=2)
+if(False):
+    pl.figure()
+    pl.subplot(221)
+    pl.plot(th, z, 'k-', label='mhh')
+    pl.plot(s3.th, s3.z, 'go', mfc='none', label='s3')
+    pl.ylim(0,1100)
+    pl.xlim(270,285)
+    pl.legend(frameon=False, loc=2)
+    
+    pl.subplot(222)
+    pl.plot(u, z, 'k-', label='mhh')
+    pl.plot(s3.u, s3.z, 'go', mfc='none', label='s3')
+    pl.plot(ug, z, 'k--', label='mhh')
+    pl.plot(s3.ug, s3.z, 'bo', mfc='none', label='s3')
+    pl.ylim(0,1100)
+    pl.xlim(0,10)
+    pl.legend(frameon=False, loc=2)
+    
+    pl.subplot(223)
+    pl.plot(v, z, 'k-', label='mhh')
+    pl.plot(s3.v, s3.z, 'go', mfc='none', label='s3')
+    pl.plot(vg, z, 'k--', label='mhh')
+    pl.plot(s3.vg, s3.z, 'bo', mfc='none', label='s3')
+    pl.ylim(0,1100)
+    pl.xlim(0,10)
+    pl.legend(frameon=False, loc=2)
+    
+    pl.subplot(224)
+    pl.plot(s3.t, s3.ths, 'k-', label='s3')
+    pl.legend(frameon=False, loc=2)
