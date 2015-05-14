@@ -49,10 +49,10 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-        const int ibc_istart = istart + (iend-istart) / 4;
-        const int ibc_iend   = istart + 3 * (iend-istart) / 4;
-        const int ibc_kstart = kstart;
-        const int ibc_kend   = kstart + (kstart-kend) / 4;
+        const int ibc_istart = istart + 7 * (iend-istart) / 32;
+        const int ibc_iend   = istart + 9 * (iend-istart) / 32;
+        const int ibc_kstart = kstart + 3 * (kend-kstart) / 8;
+        const int ibc_kend   = kstart + 5 * (kend-kstart) / 8;
 
         // Set the u ghost cells
         for (int k=ibc_kstart; k<ibc_kend; ++k)
@@ -68,7 +68,9 @@ namespace
         for (int j=jstart; j<jend; ++j)
             for (int i=ibc_istart; i<ibc_iend; ++i)
             {
-                const int ijk_top = i + j*jj + ibc_kend*kk;
+                const int ijk_bot = i + j*jj + ibc_kstart*kk;
+                const int ijk_top = i + j*jj + ibc_kend  *kk;
+                w[ijk_bot] = 0.;
                 w[ijk_top] = 0.;
             }
     }
