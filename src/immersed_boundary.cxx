@@ -49,30 +49,28 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
-        const int ibc_istart = istart + 7 * (iend-istart) / 32;
-        const int ibc_iend   = istart + 9 * (iend-istart) / 32;
-        const int ibc_kstart = kstart + 3 * (kend-kstart) / 8;
-        const int ibc_kend   = kstart + 5 * (kend-kstart) / 8;
+        const int ibc_istart = istart + 7 * (iend-istart) / 64;
+        const int ibc_iend   = istart + 9 * (iend-istart) / 64;
+        const int ibc_kstart = kstart + 7 * (kend-kstart) / 16;
+        const int ibc_kend   = kstart + 9 * (kend-kstart) / 16;
 
         // Set the u ghost cells
         for (int k=ibc_kstart; k<ibc_kend; ++k)
             for (int j=jstart; j<jend; ++j)
-            {
-                const int ijk_left  = ibc_istart + j*jj + k*kk;
-                const int ijk_right = ibc_iend   + j*jj + k*kk;
-                u[ijk_left ] = 0.;
-                u[ijk_right] = 0.;
-            }
+                for (int i=ibc_istart; i<ibc_iend+1; ++i)
+                {
+                    const int ijk  = i + j*jj + k*kk;
+                    u[ijk] = 0.;
+                }
 
         // Set the w ghost cells
-        for (int j=jstart; j<jend; ++j)
-            for (int i=ibc_istart; i<ibc_iend; ++i)
-            {
-                const int ijk_bot = i + j*jj + ibc_kstart*kk;
-                const int ijk_top = i + j*jj + ibc_kend  *kk;
-                w[ijk_bot] = 0.;
-                w[ijk_top] = 0.;
-            }
+        for (int k=ibc_kstart; k<ibc_kend+1; ++k)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=ibc_istart; i<ibc_iend; ++i)
+                {
+                    const int ijk  = i + j*jj + k*kk;
+                    w[ijk] = 0.;
+                }
     }
 }
 
