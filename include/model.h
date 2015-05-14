@@ -42,6 +42,8 @@ class Cross;
 class Dump;
 class Budget;
 
+class Immersed_boundary;
+
 class Model
 {
     public:
@@ -69,6 +71,8 @@ class Model
         Force*    force;   
         Thermo*   thermo;
         Buffer*   buffer;
+
+        Immersed_boundary* immersed_boundary;
 
         // Postprocessing and output modules.
         Stats*  stats;

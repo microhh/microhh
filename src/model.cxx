@@ -35,6 +35,7 @@
 #include "thermo.h"
 #include "boundary.h"
 #include "buffer.h"
+#include "immersed_boundary.h"
 #include "force.h"
 #include "stats.h"
 #include "cross.h"
@@ -84,6 +85,8 @@ Model::Model(Master *masterin, Input *inputin)
         timeloop = new Timeloop(this, input);
         force    = new Force   (this, input);
         buffer   = new Buffer  (this, input);
+
+        immersed_boundary = new Immersed_boundary(*master, *grid);
 
         // Create instances of the statistics classes.
         stats  = new Stats (this, input);
@@ -238,6 +241,9 @@ void Model::exec()
     // Set the boundary conditions.
     boundary->exec();
 
+    // Set the immersed boundary ghost cells.
+    immersed_boundary->set_ghost_cells(*fields);
+
     // Calculate the field means, in case needed.
     fields->exec();
 
@@ -373,6 +379,9 @@ void Model::exec()
 
         // Set the boundary conditions.
         boundary->exec();
+
+        // Set the immersed boundary ghost cells.
+        immersed_boundary->set_ghost_cells(*fields);
 
         // Calculate the field means, in case needed.
         fields->exec();
