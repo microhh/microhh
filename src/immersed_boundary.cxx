@@ -49,12 +49,14 @@ namespace
         const int jj = icells;
         const int kk = ijcells;
 
+        // Put an solid block at 1/4 of the horizontal dimension in the
+        // middle of the channel.
         const int ibc_istart = istart + 7 * (iend-istart) / 64;
         const int ibc_iend   = istart + 9 * (iend-istart) / 64;
         const int ibc_kstart = kstart + 7 * (kend-kstart) / 16;
         const int ibc_kend   = kstart + 9 * (kend-kstart) / 16;
 
-        // Set the u ghost cells
+        // Set the u ghost cells, no flow in the block.
         for (int k=ibc_kstart; k<ibc_kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 for (int i=ibc_istart; i<ibc_iend+1; ++i)
@@ -63,7 +65,7 @@ namespace
                     u[ijk] = 0.;
                 }
 
-        // Set the w ghost cells
+        // Set the w ghost cells, no flow in the block.
         for (int k=ibc_kstart; k<ibc_kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
                 for (int i=ibc_istart; i<ibc_iend; ++i)
