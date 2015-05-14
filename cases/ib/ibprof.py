@@ -13,10 +13,12 @@ dz = zsize / kmax
 # Set the height.
 z = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
 u = 0.1*np.ones(np.size(z))
+s = np.zeros(np.size(z))
+s[kmax/2::] = 1.
 
 # Write the data to a file.
 proffile = open('ib.prof','w')
-proffile.write('{0:^20s} {1:^20s}\n'.format('z','u'))
+proffile.write('{0:^20s} {1:^20s} {2:^20s}\n'.format('z','u','s'))
 for k in range(kmax):
-    proffile.write('{0:1.14E} {1:1.14E}\n'.format(z[k], u[k]))
+    proffile.write('{0:1.14E} {1:1.14E} {2:1.14E}\n'.format(z[k], u[k], s[k]))
 proffile.close()
