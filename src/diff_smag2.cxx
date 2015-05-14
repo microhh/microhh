@@ -52,7 +52,7 @@ Diff_smag_2::Diff_smag_2(Model* modelin, Input* inputin) : Diff(modelin, inputin
     int nerror = 0;
     nerror += inputin->get_item(&dnmax, "diff", "dnmax", "", 0.5  );
     nerror += inputin->get_item(&cs   , "diff", "cs"   , "", 0.23 );
-    nerror += inputin->get_item(&tPr  , "diff", "tPr"  , "", 1./3.);
+    nerror += inputin->get_item(&tPr  , "diff", "tpr"  , "", 1./3.);
 
     if (nerror)
         throw 1;
