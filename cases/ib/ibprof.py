@@ -13,8 +13,7 @@ dz = zsize / kmax
 # Set the height.
 z = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
 u = 0.1*np.ones(np.size(z))
-s = np.zeros(np.size(z))
-s[kmax/2::] = 1.
+s = z.copy() * 0.25
 
 # Write the data to a file.
 proffile = open('ib.prof','w')
