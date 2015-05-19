@@ -129,13 +129,13 @@ namespace
         for (int j=jstart; j<jend; ++j)
             for (int i=ibc_istart; i<ibc_iend+1; ++i)
             {
-                int k = ibc_kstart;
+                int k = ibc_kstart-1;
                 int ijk = i + j*jj + k*kk;
                 ut[ijk] +=
                         + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk   ], u[ijk+kk]) ) / rhoref[k] * dzi[k];
                         - visc * ( (u[ijk+kk] - u[ijk   ]) * dzhi[k+1]) * dzi[k];
 
-                k = ibc_kend+1;
+                k = ibc_kend;
                 ijk = i + j*jj + k*kk;
                 ut[ijk] +=
                         - ( rhorefh[k] * interp2(w[ijk-ii], w[ijk]) * interp2(u[ijk-kk], u[ijk]) ) / rhoref[k] * dzi[k];
