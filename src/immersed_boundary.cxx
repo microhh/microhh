@@ -59,20 +59,22 @@ namespace
         // Set the u ghost cells, no flow in the block.
         for (int k=ibc_kstart; k<ibc_kend; ++k)
             for (int j=jstart; j<jend; ++j)
-                for (int i=ibc_istart; i<ibc_iend+1; ++i)
-                {
-                    const int ijk  = i + j*jj + k*kk;
-                    u[ijk] = 0.;
-                }
+            {
+                const int ijk_istart  = ibc_istart + j*jj + k*kk;
+                const int ijk_iend    = ibc_iend+1 + j*jj + k*kk;
+                u[ijk_istart] = 0.;
+                u[ijk_iend  ] = 0.;
+            }
 
         // Set the w ghost cells, no flow in the block.
-        for (int k=ibc_kstart; k<ibc_kend+1; ++k)
-            for (int j=jstart; j<jend; ++j)
-                for (int i=ibc_istart; i<ibc_iend; ++i)
-                {
-                    const int ijk  = i + j*jj + k*kk;
-                    w[ijk] = 0.;
-                }
+        for (int j=jstart; j<jend; ++j)
+            for (int i=ibc_istart; i<ibc_iend; ++i)
+            {
+                const int ijk_kstart = i + j*jj + ibc_kstart  *kk;
+                const int ijk_kend   = i + j*jj + (ibc_kend+1)*kk;
+                w[ijk_kstart] = 0.;
+                w[ijk_kend  ] = 0.;
+            }
     }
 }
 
