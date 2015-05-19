@@ -241,9 +241,6 @@ void Model::exec()
     // Set the boundary conditions.
     boundary->exec();
 
-    // Set the immersed boundary ghost cells.
-    immersed_boundary->set_ghost_cells(*fields);
-
     // Calculate the field means, in case needed.
     fields->exec();
 
@@ -274,20 +271,23 @@ void Model::exec()
         // Apply the large scale forcings. Keep this one always right before the pressure.
         force->exec(timeloop->get_sub_time_step());
 
+        // Set the immersed boundary conditions
+        immersed_boundary->exec(*fields);
+
         // Solve the poisson equation for pressure.
         pres->exec(timeloop->get_sub_time_step());
 
         // Allow only for statistics when not in substep and not directly after restart.
         if (timeloop->is_stats_step())
         {
-#ifdef USECUDA
+            #ifdef USECUDA
             // Copy fields from device to host
             if (stats->doStats() || cross->do_cross() || dump->do_dump())
             {
                 fields  ->backward_device();
                 boundary->backward_device();
             }
-#endif
+            #endif
 
             // Do the statistics.
             if (stats->doStats())
@@ -347,10 +347,10 @@ void Model::exec()
             // Save the data for restarts.
             if (timeloop->do_save())
             {
-#ifdef USECUDA
+                #ifdef USECUDA
                 fields  ->backward_device();
                 boundary->backward_device();
-#endif
+                #endif
 
                 // Save data to disk.
                 timeloop->save(timeloop->get_iotime());
@@ -379,9 +379,6 @@ void Model::exec()
 
         // Set the boundary conditions.
         boundary->exec();
-
-        // Set the immersed boundary ghost cells.
-        immersed_boundary->set_ghost_cells(*fields);
 
         // Calculate the field means, in case needed.
         fields->exec();

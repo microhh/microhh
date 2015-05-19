@@ -33,7 +33,7 @@ class Immersed_boundary
         Immersed_boundary(Master&, Grid&); ///< Constructor of the class.
         ~Immersed_boundary();              ///< Destructor of the class.
 
-        void set_ghost_cells(Fields&);
+        void exec(Fields&);
 
     private:
         Master& master; ///< Pointer to master class.
