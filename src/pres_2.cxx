@@ -65,21 +65,28 @@ Pres_2::~Pres_2()
 #ifndef USECUDA
 void Pres_2::exec(double dt)
 {
-    // create the input for the pressure solver
-    input(fields->sd["p"]->data,
+    // Get the pressure tendencies from the previous pressure field.
+    output(fields->ut->data, fields->vt->data, fields->wt->data,
+           fields->sd["p"]->data, grid->dzhi);
+
+    // Create the input for the pressure solver.
+    input(fields->atmp["tmp3"]->data,
           fields->u ->data, fields->v ->data, fields->w ->data,
           fields->ut->data, fields->vt->data, fields->wt->data,
           grid->dzi, fields->rhoref, fields->rhorefh,
           dt);
 
-    // solve the system
-    solve(fields->sd["p"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data,
+    // Solve the system.
+    solve(fields->atmp["tmp3"]->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data,
           grid->dz, fields->rhoref,
           grid->fftini, grid->fftouti, grid->fftinj, grid->fftoutj);
 
-    // get the pressure tendencies from the pressure field
+    // Get the pressure tendencies from the pressure field.
     output(fields->ut->data, fields->vt->data, fields->wt->data, 
-           fields->sd["p"]->data, grid->dzhi);
+           fields->atmp["tmp3"]->data, grid->dzhi);
+
+    // Increment the pressure with the correction.
+    add_correction(fields->sd["p"]->data, fields->atmp["tmp3"]->data);
 }
 #endif
 
@@ -300,6 +307,12 @@ void Pres_2::output(double* restrict ut, double* restrict vt, double* restrict w
                 vt[ijk] -= (p[ijk] - p[ijk-jj]) * dyi;
                 wt[ijk] -= (p[ijk] - p[ijk-kk]) * dzhi[k];
             }
+}
+
+void Pres_2::add_correction(double* restrict p, double* restrict pp)
+{
+    for (int n=0; n<grid->ncells; ++n)
+        p[n] += pp[n];
 }
 
 // tridiagonal matrix solver, taken from Numerical Recipes, Press
