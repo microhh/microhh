@@ -42,7 +42,9 @@ class Pres
         virtual void init();
         virtual void set_values();
 
+        virtual void exec_0();
         virtual void exec(double);
+
         virtual double check_divergence();
 
         virtual void prepare_device();

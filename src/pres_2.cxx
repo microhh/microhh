@@ -63,12 +63,15 @@ Pres_2::~Pres_2()
 }
 
 #ifndef USECUDA
-void Pres_2::exec(double dt)
+void Pres_2::exec_0()
 {
     // Get the pressure tendencies from the previous pressure field.
     output(fields->ut->data, fields->vt->data, fields->wt->data,
            fields->sd["p"]->data, grid->dzhi);
+}
 
+void Pres_2::exec(double dt)
+{
     // Create the input for the pressure solver.
     input(fields->atmp["tmp3"]->data,
           fields->u ->data, fields->v ->data, fields->w ->data,
