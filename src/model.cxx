@@ -275,7 +275,7 @@ void Model::exec()
         pres->exec_0();
 
         // Set the immersed boundary conditions
-        // immersed_boundary->exec(*fields);
+        immersed_boundary->exec(*fields);
 
         // Solve the poisson equation for pressure.
         pres->exec(timeloop->get_sub_time_step());
