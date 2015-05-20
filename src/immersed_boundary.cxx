@@ -110,19 +110,21 @@ namespace
         const int ibc_kend   = kstart + 5 * (kend-kstart) / 8;
 
         // Set the w no slip at the vertical walls, by reverting the advection 
-        // and diffusion towards the wall.
+        // and diffusion towards the wall and adding the proper diffusion
         for (int k=ibc_kstart; k<ibc_kend+1; ++k)
             for (int j=jstart; j<jend; ++j)
             {
                 int ijk = ibc_istart-1 + j*jj + k*kk;
                 wt[ijk] +=
                         + ( interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk], w[ijk+ii]) ) * dxi
-                        - visc * ( (w[ijk+ii] - w[ijk]) ) * dxidxi;
+                        - visc * ( (w[ijk+ii] - w[ijk]) ) * dxidxi
+                        + visc * ( -2.*w[ijk] ) * dxidxi;
 
                 ijk = ibc_iend + j*jj + k*kk;
                 wt[ijk] +=
                         - ( interp2(u[ijk-kk], u[ijk]) * interp2(w[ijk-ii], w[ijk]) ) * dxi
-                        + visc * ( (w[ijk] - w[ijk-ii]) ) * dxidxi;
+                        + visc * ( (w[ijk] - w[ijk-ii]) ) * dxidxi
+                        - visc * ( 2.*w[ijk] ) * dxidxi;
             }
 
         // Set the u no slip at the horizontal walls
@@ -132,14 +134,75 @@ namespace
                 int k = ibc_kstart-1;
                 int ijk = i + j*jj + k*kk;
                 ut[ijk] +=
-                        + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk   ], u[ijk+kk]) ) / rhoref[k] * dzi[k];
-                        - visc * ( (u[ijk+kk] - u[ijk   ]) * dzhi[k+1]) * dzi[k];
+                        + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk], u[ijk+kk]) ) / rhoref[k] * dzi[k];
+                        - visc * ( (u[ijk+kk] - u[ijk]) * dzhi[k+1]) * dzi[k];
+                        + visc * ( -2.*u[ijk] * dzhi[k+1] ) * dzi[k];
 
                 k = ibc_kend;
                 ijk = i + j*jj + k*kk;
                 ut[ijk] +=
                         - ( rhorefh[k] * interp2(w[ijk-ii], w[ijk]) * interp2(u[ijk-kk], u[ijk]) ) / rhoref[k] * dzi[k];
                         + visc * ( (u[ijk] - u[ijk-kk]) * dzhi[k] ) * dzi[k];
+                        - visc * ( 2.*u[ijk] * dzhi[k] ) * dzi[k];
+            }
+    }
+
+    void set_scalar(double* const restrict st, double* const restrict s,
+                    const double* const restrict u, const double* const restrict w,
+                    const double* const restrict rhoref, const double* const restrict rhorefh,
+                    const double* const restrict dzi, const double* const restrict dzhi,
+                    const double dxi,
+                    const double visc,
+                    const int istart, const int iend,
+                    const int jstart, const int jend,
+                    const int kstart, const int kend,
+                    const int icells, const int ijcells)
+    {
+        using namespace Finite_difference::O2;
+
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        const double dxidxi = dxi*dxi;
+
+        // Put an solid block at 1/2 of the horizontal dimension in the
+        // middle of the channel.
+        const int ibc_istart = istart + 7 * (iend-istart) / 16;
+        const int ibc_iend   = istart + 9 * (iend-istart) / 16;
+        const int ibc_kstart = kstart + 3 * (kend-kstart) / 8;
+        const int ibc_kend   = kstart + 5 * (kend-kstart) / 8;
+
+        // Set no flow through the object at the vertical wall and a neumann BC.
+        for (int k=ibc_kstart; k<ibc_kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+            {
+                int ijk = ibc_istart-1 + j*jj + k*kk;
+                st[ijk] +=
+                         // + ( u[ijk+ii] * interp2(s[ijk], s[ijk+ii]) ) * dxi
+                         - visc * ( s[ijk+ii] - s[ijk] ) * dxidxi;
+
+                ijk = ibc_iend + j*jj + k*kk;
+                st[ijk] +=
+                         // - ( u[ijk] * interp2(s[ijk-ii], s[ijk]) ) * dxi
+                         + visc * ( (s[ijk] - s[ijk-ii]) ) * dxidxi;
+            }
+
+        // Set no flow through the object at the horizontal wall
+        for (int j=jstart; j<jend; ++j)
+            for (int i=ibc_istart; i<ibc_iend; ++i)
+            {
+                int k = ibc_kstart-1;
+                int ijk = i + j*jj + k*kk;
+                st[ijk] +=
+                         // + ( rhorefh[k+1] * w[ijk+kk] * interp2(s[ijk], s[ijk+kk]) ) / rhoref[k] * dzi[k]
+                         - visc * (s[ijk+kk] - s[ijk]) * dzhi[k+1] * dzi[k];
+
+                k = ibc_kend;
+                ijk = i + j*jj + k*kk;
+                st[ijk] +=
+                         // - ( rhorefh[k] * w[ijk] * interp2(s[ijk-kk], s[ijk]) ) / rhoref[k] * dzi[k];
+                         + visc * (s[ijk] - s[ijk-kk]) * dzhi[k] * dzi[k];
             }
     }
 
@@ -164,4 +227,16 @@ void Immersed_boundary::exec(Fields& fields)
                 grid.jstart, grid.jend,
                 grid.kstart, grid.kend,
                 grid.icells, grid.ijcells);
+
+    for (FieldMap::const_iterator it = fields.st.begin(); it!=fields.st.end(); it++)
+        set_scalar(it->second->data, fields.sp[it->first]->data,
+                   fields.u->data, fields.w->data,
+                   fields.rhoref, fields.rhorefh,
+                   grid.dzi, grid.dzhi,
+                   grid.dxi,
+                   fields.sp[it->first]->visc,
+                   grid.istart, grid.iend,
+                   grid.jstart, grid.jend,
+                   grid.kstart, grid.kend,
+                   grid.icells, grid.ijcells);
 }
