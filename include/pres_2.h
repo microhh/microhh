@@ -72,6 +72,8 @@ class Pres_2 : public Pres
         void output(double*, double*, double*,
                     double*, double*);
 
+        void add_correction(double*, double*);
+
         void tdma(double*, double*, double*, double*, 
                   double*, double*);
 
