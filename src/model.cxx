@@ -271,8 +271,11 @@ void Model::exec()
         // Apply the large scale forcings. Keep this one always right before the pressure.
         force->exec(timeloop->get_sub_time_step());
 
+        // Add the previous pressure gradient.
+        pres->exec_0();
+
         // Set the immersed boundary conditions
-        immersed_boundary->exec(*fields);
+        // immersed_boundary->exec(*fields);
 
         // Solve the poisson equation for pressure.
         pres->exec(timeloop->get_sub_time_step());

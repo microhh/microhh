@@ -36,7 +36,9 @@ class Pres_2 : public Pres
         void init();
         void set_values();
 
+        void exec_0();
         void exec(double);
+
         double check_divergence();
 
 #ifdef USECUDA
