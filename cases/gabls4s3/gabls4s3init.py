@@ -7,6 +7,33 @@ from gabls4s3init import *
 
 pl.close('all')
 
+# Create stretched grid
+class Grid:
+    def __init__(self, kmax, nloc1, nbuf1,dz1, dz2):
+        dn         = 1./kmax
+        n          = np.linspace(dn, 1.-dn, kmax)
+        nloc1     *= dn
+        nbuf1     *= dn
+        dzdn1      = dz1/dn
+        dzdn2      = dz2/dn
+
+        dzdn       = dzdn1 + 0.5*(dzdn2-dzdn1)*(1. + np.tanh((n-nloc1)/nbuf1))
+        self.dz    = dzdn*dn
+
+        self.kmax  = kmax
+        self.z     = np.zeros(self.dz.size)
+        stretch    = np.zeros(self.dz.size)
+
+        self.z[0]  = 0.5*self.dz[0]
+        stretch[0] = 1.
+
+        for k in range(1, self.kmax):
+              self.z [k] = self.z[k-1] + 0.5*(self.dz[k-1]+self.dz[k])
+              stretch[k] = self.dz[k]/self.dz[k-1]
+
+        zsize = self.z[kmax-1] + 0.5*self.dz[kmax-1]
+        print('kmax=%i, zsize=%f\n'%(kmax,zsize))
+
 # Read the stage 3 driver file
 class read_driver:
     def __init__(self):
@@ -37,79 +64,27 @@ class read_driver:
 
 s3 = read_driver()
 
-# ----------------
-# non-stretched grid
-# ----------------
-if(False):
-   # Get number of vertical levels and size from .ini file
-   with open('gabls4s3.ini') as f:
-       for line in f:
-           if(line.split('=')[0]=='ktot'):
-               kmax = int(line.split('=')[1])
-           if(line.split('=')[0]=='zsize'):
-               zsize = float(line.split('=')[1])
-   
-   print('kmax = %i, zsize = %.1f m'%(kmax, zsize))
-   dz = zsize / kmax
-   z  = np.linspace(0.5*dz, zsize-0.5*dz, kmax)
+#g = Grid(300, 250, 20, 2, 10) # 2 m 
+#g = Grid(550, 500, 20, 1, 10) # 1 m
+g = Grid(80, 50, 10, 10, 20) # 10 m
 
-# ----------------
-# stretched grid
-# ----------------
-if(True):
-    # dz = 2m
-    if(False):
-        kmax  = 500
-        zsize = 1000
-        dz1   = 2.
-        dz2   = 40.
-        z1    = 450
-        z2    = 600
-        z3    = 700
-        fac   = (z3 - z1) / 10.
-    if(True):
-        kmax  = 1000
-        zsize = 1000
-        dz1   = 1.
-        dz2   = 80.
-        z1    = 400
-        z2    = 500
-        z3    = 700
-        fac   = (z3 - z1) / 15.
+th = np.zeros(g.z.size)
+u  = np.zeros(g.z.size)
+ug = np.zeros(g.z.size)
+v  = np.zeros(g.z.size)
+vg = np.zeros(g.z.size)
 
-    dz0   = zsize / kmax
-    z0    = np.linspace(0.5 * dz0, zsize - 0.5*dz0, kmax)
-    dz    = dz1 + (dz2 - dz1) / (1. + np.exp(-(z0 - z2) / fac))
-    
-    z = [0.5 * dz1]
-    for k in range(kmax):
-        if(z[-1] + dz[k] >= zsize):
-            break
-        z.append(z[-1] + dz[k])
-    
-    zsize = z[-1] + 0.5*(z[-1] - z[-2])
-    z = np.array(z)
-    kmax  = np.size(z) 
-
-print('kmax = %i, zsize = %f'%(kmax, zsize))
-
-th = np.zeros(np.size(z))
-u  = np.zeros(np.size(z))
-ug = np.zeros(np.size(z))
-v  = np.zeros(np.size(z))
-vg = np.zeros(np.size(z))
-
-th = np.interp(z, s3.z, s3.th)
-u  = np.interp(z, s3.z, s3.u)
-v  = np.interp(z, s3.z, s3.v)
-ug = np.interp(z, s3.z, s3.ug)
-vg = np.interp(z, s3.z, s3.vg)
+th = np.interp(g.z, s3.z, s3.th)
+u  = np.interp(g.z, s3.z, s3.u)
+v  = np.interp(g.z, s3.z, s3.v)
+ug = np.interp(g.z, s3.z, s3.ug)
+vg = np.interp(g.z, s3.z, s3.vg)
 
 # write the data to a file
 proffile = open('gabls4s3.prof','w')
 proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s} {4:^20s} {5:^20s}\n'.format('z','th','u','ug','v','vg'))
-for k in range(kmax):
-    proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} \n'.format(z[k], th[k], u[k], ug[k], v[k], vg[k]))
+for k in range(g.kmax):
+    proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} \n'.format(g.z[k], th[k], u[k], ug[k], v[k], vg[k]))
 proffile.close()
 
 # write surface temperature
@@ -120,13 +95,13 @@ for t in range(s3.t.size):
 timefile.close()
 
 # Plot
-if(True):
+if(False):
     zh_fleur = np.loadtxt('grille_stretche')
     z_fleur  = 0.5 * (zh_fleur[1:] + zh_fleur[:-1])
     dz_fleur = zh_fleur[1:] - zh_fleur[:-1]
 
     pl.figure()
-    pl.plot(dz[:kmax], z, 'k-o', mfc='none')
+    pl.plot(g.dz[:kmax], g.z, 'k-o', mfc='none')
     pl.plot(dz_fleur, z_fleur, 'g-x', mfc='none')
     pl.xlabel('dz [m]')
     pl.ylabel('z [m]')
@@ -134,25 +109,25 @@ if(True):
 if(False):
     pl.figure()
     pl.subplot(221)
-    pl.plot(th, z, 'k-', label='mhh')
+    pl.plot(th, g.z, 'k-', label='mhh')
     pl.plot(s3.th, s3.z, 'go', mfc='none', label='s3')
     pl.ylim(0,1100)
     pl.xlim(270,285)
     pl.legend(frameon=False, loc=2)
     
     pl.subplot(222)
-    pl.plot(u, z, 'k-', label='mhh')
+    pl.plot(u, g.z, 'k-', label='mhh')
     pl.plot(s3.u, s3.z, 'go', mfc='none', label='s3')
-    pl.plot(ug, z, 'k--', label='mhh')
+    pl.plot(ug, g.z, 'k--', label='mhh')
     pl.plot(s3.ug, s3.z, 'bo', mfc='none', label='s3')
     pl.ylim(0,1100)
     pl.xlim(0,10)
     pl.legend(frameon=False, loc=2)
     
     pl.subplot(223)
-    pl.plot(v, z, 'k-', label='mhh')
+    pl.plot(v, g.z, 'k-', label='mhh')
     pl.plot(s3.v, s3.z, 'go', mfc='none', label='s3')
-    pl.plot(vg, z, 'k--', label='mhh')
+    pl.plot(vg, g.z, 'k--', label='mhh')
     pl.plot(s3.vg, s3.z, 'bo', mfc='none', label='s3')
     pl.ylim(0,1100)
     pl.xlim(0,10)
