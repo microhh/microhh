@@ -98,7 +98,7 @@ for t in range(s3.t.size):
 timefile.close()
 
 # Plot
-if(True):
+if(False):
     zh_fleur = np.loadtxt('grille_stretche')
     z_fleur  = 0.5 * (zh_fleur[1:] + zh_fleur[:-1])
     dz_fleur = zh_fleur[1:] - zh_fleur[:-1]
