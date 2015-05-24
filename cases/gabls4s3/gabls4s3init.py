@@ -62,11 +62,14 @@ class read_driver:
         # Calculate theta_s
         self.ths = self.Ts / (self.ps / 1.e5)**(287.04/1005.)
 
+outname = 'gabls4s3_restart'
+
 s3 = read_driver()
 
 #g = Grid(300, 250, 20, 2, 10) # 2 m 
 #g = Grid(550, 500, 20, 1, 10) # 1 m
-g = Grid(80, 50, 10, 10, 20) # 10 m
+#g = Grid(80, 50, 10, 10, 20) # 10 m
+g = Grid(144, 110, 10, 1, 3) # restart grid
 
 th = np.zeros(g.z.size)
 u  = np.zeros(g.z.size)
@@ -81,27 +84,27 @@ ug = np.interp(g.z, s3.z, s3.ug)
 vg = np.interp(g.z, s3.z, s3.vg)
 
 # write the data to a file
-proffile = open('gabls4s3.prof','w')
+proffile = open(outname+'.prof','w')
 proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s} {4:^20s} {5:^20s}\n'.format('z','th','u','ug','v','vg'))
 for k in range(g.kmax):
     proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E} \n'.format(g.z[k], th[k], u[k], ug[k], v[k], vg[k]))
 proffile.close()
 
 # write surface temperature
-timefile = open('gabls4s3.time','w')
+timefile = open(outname+'.time','w')
 timefile.write('{0:^20s} {1:^20s} \n'.format('t','sbot[th]'))
 for t in range(s3.t.size):
     timefile.write('{0:1.14E} {1:1.14E} \n'.format(s3.t[t], s3.ths[t]))
 timefile.close()
 
 # Plot
-if(False):
+if(True):
     zh_fleur = np.loadtxt('grille_stretche')
     z_fleur  = 0.5 * (zh_fleur[1:] + zh_fleur[:-1])
     dz_fleur = zh_fleur[1:] - zh_fleur[:-1]
 
     pl.figure()
-    pl.plot(g.dz[:kmax], g.z, 'k-o', mfc='none')
+    pl.plot(g.dz[:g.kmax], g.z, 'k-o', mfc='none')
     pl.plot(dz_fleur, z_fleur, 'g-x', mfc='none')
     pl.xlabel('dz [m]')
     pl.ylabel('z [m]')
