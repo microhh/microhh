@@ -134,35 +134,30 @@ if(__name__ == "__main__"):
     pl.close('all')
 
     # Settings of INPUT files
-    dir_in  = os.getcwd()
-    time_in = 29700
+    dir_in  = '../'
+    time_in = 3600
     nx_in   = 32
     ny_in   = 32
-    nz_in   = 70
+    nz_in   = 128
  
-    # Settings of OUTPUT files
-    dir_out = 'restart/'
-
     # Read settings from restart .ini file
-    nx_out = int(read_ini(dir_out+'gabls4s3.ini', 'itot'))
-    ny_out = int(read_ini(dir_out+'gabls4s3.ini', 'jtot'))
-    nz_out = int(read_ini(dir_out+'gabls4s3.ini', 'ktot'))
+    nx_out = int(read_ini('gabls4s3.ini', 'itot'))
+    ny_out = int(read_ini('gabls4s3.ini', 'jtot'))
+    nz_out = int(read_ini('gabls4s3.ini', 'ktot'))
 
     # Re-run init mode to create grid file and FFTW plan
-    os.chdir(dir_out)
     execute('./microhh init gabls4s3')
-    os.chdir(dir_in)
 
     # Read input and output grid:
-    grid_in  = Read_grid('grid.0000000',         nx_in,  ny_in,  nz_in )  
-    grid_out = Read_grid(dir_out+'grid.0000000', nx_out, ny_out, nz_out)  
+    grid_in  = Read_grid(dir_in+'grid.0000000',  nx_in,  ny_in,  nz_in )  
+    grid_out = Read_grid('grid.0000000',         nx_out, ny_out, nz_out)  
 
     # Read input fields:
     fields_in     = Empty()
-    fields_in.u   = Read_field('', 'u',  time_in, nx_in, ny_in, nz_in)
-    fields_in.v   = Read_field('', 'v',  time_in, nx_in, ny_in, nz_in)
-    fields_in.w   = Read_field('', 'w',  time_in, nx_in, ny_in, nz_in)
-    fields_in.th  = Read_field('', 'th', time_in, nx_in, ny_in, nz_in)
+    fields_in.u   = Read_field(dir_in, 'u',  time_in, nx_in, ny_in, nz_in)
+    fields_in.v   = Read_field(dir_in, 'v',  time_in, nx_in, ny_in, nz_in)
+    fields_in.w   = Read_field(dir_in, 'w',  time_in, nx_in, ny_in, nz_in)
+    fields_in.th  = Read_field(dir_in, 'th', time_in, nx_in, ny_in, nz_in)
 
     # Create new empty fields:
     fields_out    = Empty()
@@ -221,13 +216,13 @@ if(__name__ == "__main__"):
         fields_out.w[k,:,:] = 0.
 
     # Write interpolated field to binary restart file
-    Write_field(fields_out.th, '%s%s.%07i'%(dir_out, 'th', time_in))
-    Write_field(fields_out.u,  '%s%s.%07i'%(dir_out, 'u',  time_in))
-    Write_field(fields_out.v,  '%s%s.%07i'%(dir_out, 'v',  time_in))
-    Write_field(fields_out.w,  '%s%s.%07i'%(dir_out, 'w',  time_in))
+    Write_field(fields_out.th, '%s.%07i'%('th', time_in))
+    Write_field(fields_out.u,  '%s.%07i'%('u',  time_in))
+    Write_field(fields_out.v,  '%s.%07i'%('v',  time_in))
+    Write_field(fields_out.w,  '%s.%07i'%('w',  time_in))
 
     # Overwrite input sounding as the buffer acts on the initial profiles:
-    snd = Sounding(dir_out+'gabls4s3.prof') 
+    snd = Sounding('gabls4s3.prof') 
  
     for k in range(snd.z.size):
         snd.th[k] = fields_out.th[k,:,:].mean() 
