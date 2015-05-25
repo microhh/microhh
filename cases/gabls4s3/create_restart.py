@@ -67,12 +67,17 @@ class Read_field:
         self.data[:,:,0]  = self.data[:,:,-2]
         self.data[:,:,-1] = self.data[:,:,1]
 
+        # Calculate mean profiles
+        self.mean = np.zeros(nz+2)
+        for k in range(nz+2):
+            self.mean[k] = self.data[k,1:-1,1:-1].mean()
+
 # Class to write field to restart file
 def Write_field(data, path):
     tmp  = data.reshape(data.size)
     tmp2 = st.pack('{0}{1}d'.format('<', tmp.size), *tmp) 
     fout = open(path, "wb")
-    fout.write(tmp2*8)
+    fout.write(tmp2)
     fout.close()  
 
 # Class to read grid.0000000 file
@@ -130,10 +135,10 @@ if(__name__ == "__main__"):
 
     # Settings of INPUT files
     dir_in  = os.getcwd()
-    time_in = 32400
-    nx_in   = 256
-    ny_in   = 256
-    nz_in   = 304
+    time_in = 29700
+    nx_in   = 32
+    ny_in   = 32
+    nz_in   = 70
  
     # Settings of OUTPUT files
     dir_out = 'restart/'
@@ -202,9 +207,18 @@ if(__name__ == "__main__"):
     
     # Interpolate fields. Change to trilin_python if Cython isn't installed
     trilin_cython(fields_in.th.data, fields_out.th, xi,  yi,  zi,  xo,  yo,  zo )
-    trilin_cython(fields_in.u.data,  fields_out.u,  xhi, yi,  zi,  xho, yo,  zo )
-    trilin_cython(fields_in.v.data,  fields_out.v,  xi,  yhi, zi,  xo,  yho, zo )
-    trilin_cython(fields_in.w.data,  fields_out.w,  xi,  yi,  zhi, xo,  yo,  zho)
+    #trilin_cython(fields_in.u.data,  fields_out.u,  xhi, yi,  zi,  xho, yo,  zo )
+    #trilin_cython(fields_in.v.data,  fields_out.v,  xi,  yhi, zi,  xo,  yho, zo )
+    #trilin_cython(fields_in.w.data,  fields_out.w,  xi,  yi,  zhi, xo,  yo,  zho)
+
+    # Interpolate mean velocity field to new grid:
+    umean_out = np.interp(grid_out.z, grid_in.z_p, fields_in.u.mean)
+    vmean_out = np.interp(grid_out.z, grid_in.z_p, fields_in.v.mean)
+
+    for k in range(nz_out):
+        fields_out.u[k,:,:] = umean_out[k]
+        fields_out.v[k,:,:] = vmean_out[k]
+        fields_out.w[k,:,:] = 0.
 
     # Write interpolated field to binary restart file
     Write_field(fields_out.th, '%s%s.%07i'%(dir_out, 'th', time_in))
