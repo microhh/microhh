@@ -2,9 +2,6 @@ import numpy as np
 import pylab as pl
 import netCDF4 as nc4
 
-# load the init script to get variables like ug, vg, ts
-from gabls4s3init import *
-
 pl.close('all')
 
 # Create stretched grid
@@ -32,7 +29,7 @@ class Grid:
               stretch[k] = self.dz[k]/self.dz[k-1]
 
         zsize = self.z[kmax-1] + 0.5*self.dz[kmax-1]
-        print('kmax=%i, zsize=%f\n'%(kmax,zsize))
+        print('kmax=%i, zsize=%f'%(kmax,zsize))
 
 # Read the stage 3 driver file
 class read_driver:
@@ -62,14 +59,21 @@ class read_driver:
         # Calculate theta_s
         self.ths = self.Ts / (self.ps / 1.e5)**(287.04/1005.)
 
-outname = 'gabls4s3_restart'
+outname = 'gabls4s3'
 
 s3 = read_driver()
 
-#g = Grid(300, 250, 20, 2, 10) # 2 m 
-#g = Grid(550, 500, 20, 1, 10) # 1 m
-#g = Grid(80, 50, 10, 10, 20) # 10 m
-g = Grid(144, 110, 10, 1, 3) # restart grid
+# Large domain (~1 km high):
+g20l = Grid(288, 250, 20, 2, 12) # dz = 2 m 
+g10l = Grid(512, 470, 30, 1, 12) # dz = 1 m
+
+# Restart domain (~200 m high):
+g10s = Grid(144, 135, 20, 1.0,  5) # dz = 1 m
+g05s = Grid(256, 245, 30, 0.5,  5) # dz = 0.5 m
+g02s = Grid(448, 440, 40, 0.25, 5) # dz = 0.25 m
+
+# Switch between vertical grids:
+g = g20l
 
 th = np.zeros(g.z.size)
 u  = np.zeros(g.z.size)
@@ -97,18 +101,18 @@ for t in range(s3.t.size):
     timefile.write('{0:1.14E} {1:1.14E} \n'.format(s3.t[t], s3.ths[t]))
 timefile.close()
 
-# Plot
+# Plot the different vertical grids:
 if(False):
-    zh_fleur = np.loadtxt('grille_stretche')
-    z_fleur  = 0.5 * (zh_fleur[1:] + zh_fleur[:-1])
-    dz_fleur = zh_fleur[1:] - zh_fleur[:-1]
-
     pl.figure()
-    pl.plot(g.dz[:g.kmax], g.z, 'k-o', mfc='none')
-    pl.plot(dz_fleur, z_fleur, 'g-x', mfc='none')
+    pl.plot(g20l.dz, g20l.z, '-x', linewidth=1.5)
+    pl.plot(g10l.dz, g10l.z, '-x', linewidth=1.5)
+    pl.plot(g10s.dz, g10s.z, '-x', linewidth=1.5)
+    pl.plot(g05s.dz, g05s.z, '-x', linewidth=1.5)
+    pl.plot(g02s.dz, g02s.z, '-x', linewidth=1.5)
     pl.xlabel('dz [m]')
     pl.ylabel('z [m]')
 
+# Visual check of interpolations from GABLS4 driver file:
 if(False):
     pl.figure()
     pl.subplot(221)
