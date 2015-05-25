@@ -134,11 +134,11 @@ if(__name__ == "__main__"):
     pl.close('all')
 
     # Settings of INPUT files
-    dir_in  = '../'
-    time_in = 3600
-    nx_in   = 32
-    ny_in   = 32
-    nz_in   = 128
+    dir_in  = '../1km_5m/'
+    time_in = 30600
+    nx_in   = 256
+    ny_in   = 256
+    nz_in   = 288
  
     # Read settings from restart .ini file
     nx_out = int(read_ini('gabls4s3.ini', 'itot'))
@@ -230,3 +230,6 @@ if(__name__ == "__main__"):
         snd.v[k]  = fields_out.v [k,:,:].mean() 
   
     snd.write_back() 
+
+    # Copy the time file from the original run:
+    execute('cp %s/time.%07i .'%(dir_in, time_in))
