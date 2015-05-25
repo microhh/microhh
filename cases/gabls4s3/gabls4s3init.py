@@ -68,6 +68,7 @@ g20l = Grid(288, 250, 20, 2, 12) # dz = 2 m
 g10l = Grid(512, 470, 30, 1, 12) # dz = 1 m
 
 # Restart domain (~200 m high):
+g20s = Grid(80,  65,  10, 2.0,  5) # dz = 2 m
 g10s = Grid(144, 135, 20, 1.0,  5) # dz = 1 m
 g05s = Grid(256, 245, 30, 0.5,  5) # dz = 0.5 m
 g02s = Grid(448, 440, 40, 0.25, 5) # dz = 0.25 m
@@ -106,6 +107,7 @@ if(False):
     pl.figure()
     pl.plot(g20l.dz, g20l.z, '-x', linewidth=1.5)
     pl.plot(g10l.dz, g10l.z, '-x', linewidth=1.5)
+    pl.plot(g20s.dz, g20s.z, '-x', linewidth=1.5)
     pl.plot(g10s.dz, g10s.z, '-x', linewidth=1.5)
     pl.plot(g05s.dz, g05s.z, '-x', linewidth=1.5)
     pl.plot(g02s.dz, g02s.z, '-x', linewidth=1.5)
