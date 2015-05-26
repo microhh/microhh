@@ -68,10 +68,10 @@ g20l = Grid(288, 250, 20, 2, 12) # dz = 2 m
 g10l = Grid(512, 470, 30, 1, 12) # dz = 1 m
 
 # Restart domain (~200 m high):
-g20s = Grid(80,  65,  10, 2.0,  5) # dz = 2 m
-g10s = Grid(144, 135, 20, 1.0,  5) # dz = 1 m
-g05s = Grid(256, 245, 30, 0.5,  5) # dz = 0.5 m
-g02s = Grid(448, 440, 40, 0.25, 5) # dz = 0.25 m
+g20s = Grid(128, 65,  10, 2.0,  8) # dz = 2 m
+g10s = Grid(192, 135, 20, 1.0,  8) # dz = 1 m
+g05s = Grid(320, 245, 30, 0.5,  8) # dz = 0.5 m
+g02s = Grid(512, 440, 40, 0.25, 8) # dz = 0.25 m
 
 # Switch between vertical grids:
 g = g20l
