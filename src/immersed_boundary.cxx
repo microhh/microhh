@@ -53,17 +53,17 @@ namespace
 
         // Put an solid block at 1/2 of the horizontal dimension in the
         // middle of the channel.
-        const int ibc_istart = istart + 7 * (iend-istart) / 16;
-        const int ibc_iend   = istart + 9 * (iend-istart) / 16;
-        const int ibc_kstart = kstart + 3 * (kend-kstart) / 8;
-        const int ibc_kend   = kstart + 5 * (kend-kstart) / 8;
+        const int ibc_istart = istart +  4 * (iend-istart) / 16;
+        const int ibc_iend   = istart + 12 * (iend-istart) / 16;
+        const int ibc_kstart = kstart +  3 * (kend-kstart) / 8;
+        const int ibc_kend   = kstart +  5 * (kend-kstart) / 8;
 
         // Set the u ghost cells, no flow in the block.
         for (int k=ibc_kstart; k<ibc_kend; ++k)
             for (int j=jstart; j<jend; ++j)
             {
                 const int ijk_istart  = ibc_istart + j*jj + k*kk;
-                const int ijk_iend    = ibc_iend+1 + j*jj + k*kk;
+                const int ijk_iend    = ibc_iend   + j*jj + k*kk;
                 u [ijk_istart] = 0.;
                 u [ijk_iend  ] = 0.;
                 ut[ijk_istart] = 0.;
@@ -74,8 +74,8 @@ namespace
         for (int j=jstart; j<jend; ++j)
             for (int i=ibc_istart; i<ibc_iend; ++i)
             {
-                const int ijk_kstart = i + j*jj + ibc_kstart  *kk;
-                const int ijk_kend   = i + j*jj + (ibc_kend+1)*kk;
+                const int ijk_kstart = i + j*jj + ibc_kstart*kk;
+                const int ijk_kend   = i + j*jj + ibc_kend  *kk;
                 w [ijk_kstart] = 0.;
                 w [ijk_kend  ] = 0.;
                 wt[ijk_kstart] = 0.;
@@ -104,10 +104,10 @@ namespace
 
         // Put an solid block at 1/2 of the horizontal dimension in the
         // middle of the channel.
-        const int ibc_istart = istart + 7 * (iend-istart) / 16;
-        const int ibc_iend   = istart + 9 * (iend-istart) / 16;
-        const int ibc_kstart = kstart + 3 * (kend-kstart) / 8;
-        const int ibc_kend   = kstart + 5 * (kend-kstart) / 8;
+        const int ibc_istart = istart +  4 * (iend-istart) / 16;
+        const int ibc_iend   = istart + 12 * (iend-istart) / 16;
+        const int ibc_kstart = kstart +  3 * (kend-kstart) / 8;
+        const int ibc_kend   = kstart +  5 * (kend-kstart) / 8;
 
         // Set the w no slip at the vertical walls, by reverting the advection 
         // and diffusion towards the wall and adding the proper diffusion
@@ -168,10 +168,10 @@ namespace
 
         // Put an solid block at 1/2 of the horizontal dimension in the
         // middle of the channel.
-        const int ibc_istart = istart + 7 * (iend-istart) / 16;
-        const int ibc_iend   = istart + 9 * (iend-istart) / 16;
-        const int ibc_kstart = kstart + 3 * (kend-kstart) / 8;
-        const int ibc_kend   = kstart + 5 * (kend-kstart) / 8;
+        const int ibc_istart = istart +  4 * (iend-istart) / 16;
+        const int ibc_iend   = istart + 12 * (iend-istart) / 16;
+        const int ibc_kstart = kstart +  3 * (kend-kstart) / 8;
+        const int ibc_kend   = kstart +  5 * (kend-kstart) / 8;
 
         // Set no flow through the object at the vertical wall and a neumann BC.
         for (int k=ibc_kstart; k<ibc_kend; ++k)
