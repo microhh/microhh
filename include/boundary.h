@@ -31,20 +31,20 @@ class Fields;
 struct Mask;
 
 /**
- * Base class for the advection scheme.
- * This class handles the case when advection is turned off. Derived classes are
- * implemented that handle different advection schemes.
+ * Base class for the boundary scheme.
+ * This class handles the case when the boundary is turned off. Derived classes are
+ * implemented that handle different boundary schemes.
  */
 class Boundary
 {
     public:
         Boundary(Model*, Input*); ///< Constuctor of the boundary class.
-        virtual ~Boundary();        ///< Destructor of the boundary class.
+        virtual ~Boundary();      ///< Destructor of the boundary class.
 
         static Boundary* factory(Master*, Input*, Model*); ///< Factory function for boundary class generation.
 
-        virtual void init(Input*);     ///< Initialize the fields.
-        virtual void create(Input*);   ///< Create the fields.
+        virtual void init(Input*);   ///< Initialize the fields.
+        virtual void create(Input*); ///< Create the fields.
 
         virtual void update_time_dependent(); ///< Update the time dependent parameters.
 
@@ -85,7 +85,7 @@ class Boundary
         typedef std::map<std::string, Field3dBc*> BcMap;
         BcMap sbc;
 
-        // time dependent variables
+        // Variables to handle time dependency.
         std::string swtimedep;
         std::vector<double> timedeptime;
         std::vector<std::string> timedeplist;
