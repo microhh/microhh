@@ -430,6 +430,17 @@ int Cross::cross_path(double* restrict data, double* restrict tmp, double* restr
     return nerror;
 }
 
+/**
+ * This routine calculates the lowest or highest height where data > threshold, 
+ * and writes a cross-section of the resulting height field
+ * @param data Pointer to input data 
+ * @param height Pointer to 2D temporary field to store the height 
+ * @param tmp1 Pointer to temporary field for writing the cross-section  
+ * @param z Pointer to 1D field containing the levels of data 
+ * @param threshold Threshold value  
+ * @param Direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom) 
+ * @param name String containing the output name of the cross-section 
+ */
 int Cross::cross_height_threshold(double* restrict data, double* restrict height, double* restrict tmp1, double* restrict z, double threshold, Direction direction, std::string name)
 {
     const int jj = grid->icells;
@@ -448,9 +459,9 @@ int Cross::cross_height_threshold(double* restrict data, double* restrict height
             height[ij] = NC_FILL_DOUBLE;
         }
 
-    if(direction == Bottom_to_top)
+    if(direction == Bottom_to_top) // Find lowest grid level where data > threshold
     {
-        // Find lowest grid level where data > threshold
+        
         for (int j=grid->jstart; j<grid->jend; j++)
             for (int i=grid->istart; i<grid->iend; i++)
                 for (int k=kstart; k<grid->kend; k++)
@@ -465,9 +476,8 @@ int Cross::cross_height_threshold(double* restrict data, double* restrict height
                     }
                 }
     }
-    else if(direction == Top_to_bottom)
+    else if(direction == Top_to_bottom) // Find highest grid level where data > threshold
     {
-        // Find highest grid level where data > threshold
         for (int j=grid->jstart; j<grid->jend; j++)
             for (int i=grid->istart; i<grid->iend; i++)
                 for (int k=grid->kend-1; k>grid->kstart-1; k--)
