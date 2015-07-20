@@ -425,8 +425,46 @@ int Cross::cross_path(double * restrict data, double * restrict tmp, double * re
                 tmp[ijk1] += fields->rhoref[k] * data[ijk] * grid->dz[k];       
             }
 
-    std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", model->timeloop->get_iotime());
-    nerror += check_save(grid->save_xy_slice(&tmp[kstart*kk], tmp1, filename),filename);
+    nerror += cross_plane(&tmp[kstart*kk], tmp1, name);
 
     return nerror;
 }
+
+int Cross::cross_base(double* restrict data, double* restrict databot, double* restrict tmp1, double threshold, std::string name)
+{
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+    const int kstart = grid->kstart;
+
+    int nerror = 0;
+    char filename[256];
+
+    // Set databot to NetCDF fill value
+    for (int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+        for (int i=grid->istart; i<grid->iend; i++)
+        {
+            const int ij = i + j*jj;
+            databot[ij] = NC_FILL_DOUBLE;
+        }
+
+    // Find lowest grid level where data > threshold
+    for (int j=grid->jstart; j<grid->jend; j++)
+        for (int i=grid->istart; i<grid->iend; i++)
+            for (int k=kstart; k<grid->kend; k++)
+            {
+                const int ij   = i + j*jj;
+                const int ijk  = i + j*jj + k*kk;
+
+                if(data[ijk] > threshold)
+                {
+                    databot[ij] = grid->z[k];
+                    break;
+                }
+            }
+
+    nerror += cross_plane(databot, tmp1, name);
+
+    return nerror;
+}
+

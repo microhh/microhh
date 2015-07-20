@@ -504,6 +504,12 @@ void Thermo_moist::exec_cross()
             // Note: tmp1 twice used as argument -> overwritten in crosspath()
             nerror += cross->cross_path(fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qlpath");
         }
+        else if (*it == "qlbase")
+        {
+            const double ql_threshold = 0.;
+            calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
+            nerror += cross->cross_base(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->atmp["tmp2"]->data, ql_threshold, "qlbase");
+        }
         else if (*it == "bbot" or *it == "bfluxbot")
         {
             calc_buoyancy_bot(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->sp[thvar ]->data, fields->sp[thvar]->databot, fields->sp["qt"]->data, fields->sp["qt"]->databot, thvref, thvrefh);
@@ -1012,6 +1018,7 @@ void Thermo_moist::init_cross()
             allowedcrossvars.push_back("blngrad");
         allowedcrossvars.push_back("ql");
         allowedcrossvars.push_back("qlpath");
+        allowedcrossvars.push_back("qlbase");
 
         // Get global cross-list from cross.cxx
         std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 

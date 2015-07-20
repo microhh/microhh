@@ -51,6 +51,7 @@ class Cross
         int cross_lngrad(double*, double*, double*, double*, std::string);
         int cross_plane (double*, double*, std::string);
         int cross_path  (double*, double*, double*, std::string);
+        int cross_base  (double*, double*, double*, double, std::string);
 
     private:
         Master* master;
