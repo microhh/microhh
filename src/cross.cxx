@@ -76,7 +76,7 @@ Cross::~Cross()
 }
 
 // check whether saving the slice was successful and print appropriate message
-int Cross::check_save(int error, char * filename)
+int Cross::check_save(int error, char* filename)
 {
     master->print_message("Saving \"%s\" ... ", filename);
     if (error == 0)
@@ -229,7 +229,7 @@ bool Cross::do_cross()
         return false;
 }
 
-int Cross::cross_simple(double * restrict data, double * restrict tmp, std::string name)
+int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string name)
 {
     int nerror = 0;
     char filename[256];
@@ -273,7 +273,7 @@ int Cross::cross_simple(double * restrict data, double * restrict tmp, std::stri
     return nerror;
 }
 
-int Cross::cross_plane(double * restrict data, double * restrict tmp, std::string name)
+int Cross::cross_plane(double* restrict data, double* restrict tmp, std::string name)
 {
     int nerror = 0;
     char filename[256];
@@ -284,7 +284,7 @@ int Cross::cross_plane(double * restrict data, double * restrict tmp, std::strin
     return nerror;
 } 
 
-int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
+int Cross::cross_lngrad(double* restrict a, double* restrict lngrad, double* restrict tmp, double* restrict dzi4, std::string name)
 {
     using namespace Finite_difference::O4;
 
@@ -396,7 +396,7 @@ int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * 
     return nerror;
 }
 
-int Cross::cross_path(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name)
+int Cross::cross_path(double* restrict data, double* restrict tmp, double* restrict tmp1, std::string name)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
@@ -430,7 +430,7 @@ int Cross::cross_path(double * restrict data, double * restrict tmp, double * re
     return nerror;
 }
 
-int Cross::cross_base(double* restrict data, double* restrict databot, double* restrict tmp1, double threshold, std::string name)
+int Cross::cross_height_threshold(double* restrict data, double* restrict height, double* restrict tmp1, double* restrict z, double threshold, Direction direction, std::string name)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
@@ -439,31 +439,51 @@ int Cross::cross_base(double* restrict data, double* restrict databot, double* r
     int nerror = 0;
     char filename[256];
 
-    // Set databot to NetCDF fill value
+    // Set height to NetCDF fill value
     for (int j=grid->jstart; j<grid->jend; j++)
 #pragma ivdep
         for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ij = i + j*jj;
-            databot[ij] = NC_FILL_DOUBLE;
+            height[ij] = NC_FILL_DOUBLE;
         }
 
-    // Find lowest grid level where data > threshold
-    for (int j=grid->jstart; j<grid->jend; j++)
-        for (int i=grid->istart; i<grid->iend; i++)
-            for (int k=kstart; k<grid->kend; k++)
-            {
-                const int ij   = i + j*jj;
-                const int ijk  = i + j*jj + k*kk;
-
-                if(data[ijk] > threshold)
+    if(direction == Bottom_to_top)
+    {
+        // Find lowest grid level where data > threshold
+        for (int j=grid->jstart; j<grid->jend; j++)
+            for (int i=grid->istart; i<grid->iend; i++)
+                for (int k=kstart; k<grid->kend; k++)
                 {
-                    databot[ij] = grid->z[k];
-                    break;
-                }
-            }
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
 
-    nerror += cross_plane(databot, tmp1, name);
+                    if(data[ijk] > threshold)
+                    {
+                        height[ij] = z[k];
+                        break;
+                    }
+                }
+    }
+    else if(direction == Top_to_bottom)
+    {
+        // Find highest grid level where data > threshold
+        for (int j=grid->jstart; j<grid->jend; j++)
+            for (int i=grid->istart; i<grid->iend; i++)
+                for (int k=grid->kend-1; k>grid->kstart-1; k--)
+                {
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
+
+                    if(data[ijk] > threshold)
+                    {
+                        height[ij] = z[k];
+                        break;
+                    }
+                }
+    }
+
+    nerror += cross_plane(height, tmp1, name);
 
     return nerror;
 }

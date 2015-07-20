@@ -508,7 +508,13 @@ void Thermo_moist::exec_cross()
         {
             const double ql_threshold = 0.;
             calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
-            nerror += cross->cross_base(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->atmp["tmp2"]->data, ql_threshold, "qlbase");
+            nerror += cross->cross_height_threshold(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->atmp["tmp2"]->data, grid->z, ql_threshold, Bottom_to_top, "qlbase");
+        }
+        else if (*it == "qltop")
+        {
+            const double ql_threshold = 0.;
+            calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
+            nerror += cross->cross_height_threshold(fields->atmp["tmp1"]->data, fields->atmp["tmp1"]->databot, fields->atmp["tmp2"]->data, grid->z, ql_threshold, Top_to_bottom, "qltop");
         }
         else if (*it == "bbot" or *it == "bfluxbot")
         {
@@ -1019,6 +1025,7 @@ void Thermo_moist::init_cross()
         allowedcrossvars.push_back("ql");
         allowedcrossvars.push_back("qlpath");
         allowedcrossvars.push_back("qlbase");
+        allowedcrossvars.push_back("qltop");
 
         // Get global cross-list from cross.cxx
         std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
