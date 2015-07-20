@@ -84,6 +84,7 @@ class Thermo_moist : public Thermo
         void calc_N2(double*, double*, double*, double*); ///< Calculation of the Brunt-Vaissala frequency.
         void calc_base_state(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
 
+        void calc_maximum_thv_perturbation_cloud(double*, double*, double*, double*, double*, double*, double*);
         void calc_liquid_water(double*, double*, double*, double*);
         void calc_buoyancy_bot(double*, double*,
                                double*, double*,
