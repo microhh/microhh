@@ -687,7 +687,7 @@ int Fields::randomize(Input* inputin, std::string fld, double* restrict data)
 {
     int nerror = 0;
 
-    // set mpiid as random seed to avoid having the same field at all procs
+    // Set mpiid as random seed to avoid having the same field at all procs
     int static seed = 0;
 
     if (!seed)
@@ -697,39 +697,36 @@ int Fields::randomize(Input* inputin, std::string fld, double* restrict data)
         std::srand(seed);
     }
 
-    int ijk,jj,kk;
-    int kendrnd;
-    double rndfac;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
 
-    jj = grid->icells;
-    kk = grid->ijcells;
-
-    // look up the specific randomizer variables
+    // Look up the specific randomizer variables.
     nerror += inputin->get_item(&rndamp, "fields", "rndamp", fld, 0.);
     nerror += inputin->get_item(&rndz  , "fields", "rndz"  , fld, 0.);
     nerror += inputin->get_item(&rndexp, "fields", "rndexp", fld, 0.);
 
-    // find the location of the randomizer height
-    kendrnd = grid->kstart;
-    while (grid->zh[kendrnd+1] < rndz)
+    // Find the location of the randomizer height.
+    int kendrnd = grid->kstart;
+    while (grid->z[kendrnd] < rndz)
         ++kendrnd;
 
-    if (kendrnd > grid->kend)
+    if (rndz > grid->zsize)
     {
-        master->print_error("randomizer height rndz (%f) higher than domain top (%f)\n", grid->z[kendrnd],grid->zsize);
+        master->print_error("randomizer height rndz (%f) higher than domain top (%f)\n", rndz, grid->zsize);
         return 1;
     }
 
-    if (kendrnd == grid->kstart)
-        kendrnd = grid->kend;
+    // Issue a warning if the randomization depth is larger than zero, but less than the first model level.
+    if (kendrnd == grid->kstart && rndz > 0.)
+        master->print_warning("randomization depth is less than the height of the first model level\n");
 
     for (int k=grid->kstart; k<kendrnd; ++k)
     {
-        rndfac = std::pow((rndz-grid->z [k])/rndz, rndexp);
+        const double rndfac = std::pow((rndz-grid->z [k])/rndz, rndexp);
         for (int j=grid->jstart; j<grid->jend; ++j)
             for (int i=grid->istart; i<grid->iend; ++i)
             {
-                ijk = i + j*jj + k*kk;
+                const int ijk = i + j*jj + k*kk;
                 data[ijk] = rndfac * rndamp * ((double) std::rand() / (double) RAND_MAX - 0.5);
             }
     }

@@ -42,7 +42,7 @@ Thermo_buoy_slope::Thermo_buoy_slope(Model *modelin, Input *inputin) : Thermo(mo
 
     int nerror = 0;
     nerror += inputin->get_item(&alpha, "thermo", "alpha", "");
-    nerror += inputin->get_item(&n2   , "thermo", "n2"   , "");
+    nerror += inputin->get_item(&n2   , "thermo", "N2"   , "");
     nerror += inputin->get_item(&fields->sp["b"]->visc, "fields", "svisc", "b");
 
     if (grid->swspatialorder == "2")

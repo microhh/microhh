@@ -8,7 +8,7 @@ evap,    evaporation+sublimation flux, mm/day
 ustar,   friction velocity, m/s
 rain,    precipitation (liq+sol) rate, mm/day
 psurf,   surface pressure, Pa
-hpbl,    boundary layer height XXXX, m
+hpbl,    boundary layer height, full height where Rib>0.25, m
 thsurf,  surface potential temperature, K
 trad,    radiative temperature, K
 alb,     surface albedo, 0-1

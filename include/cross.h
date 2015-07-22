@@ -30,6 +30,8 @@ class Model;
 class Grid;
 class Fields;
 
+enum Direction {Top_to_bottom, Bottom_to_top};
+
 class Cross
 {
     public:
@@ -51,6 +53,7 @@ class Cross
         int cross_lngrad(double*, double*, double*, double*, std::string);
         int cross_plane (double*, double*, std::string);
         int cross_path  (double*, double*, double*, std::string);
+        int cross_height_threshold(double*, double*, double*, double*, double, Direction, std::string);
 
     private:
         Master* master;
