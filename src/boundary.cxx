@@ -35,6 +35,7 @@
 // Boundary schemes.
 #include "boundary.h"
 #include "boundary_surface.h"
+#include "boundary_bulk.h"
 #include "boundary_user.h"
 
 Boundary::Boundary(Model* modelin, Input* inputin)
@@ -435,6 +436,8 @@ Boundary* Boundary::factory(Master* masterin, Input* inputin, Model* modelin)
 
     if (swboundary == "surface")
         return new Boundary_surface(modelin, inputin);
+    if (swboundary == "bulk")
+        return new Boundary_bulk(modelin, inputin);
     else if (swboundary == "user")
         return new Boundary_user(modelin, inputin);
     else if (swboundary == "default")
