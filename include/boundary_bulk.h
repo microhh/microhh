@@ -41,12 +41,12 @@ class Boundary_bulk : public Boundary_surface
         void set_values();
 
     private:
-        // cross sections
-        std::vector<std::string> crosslist;        // List with all crosses from ini file
-        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
-
         // surface scheme
         void update_bcs();
+        void calculate_du(double*, double*, double*, double*, double*);
+        void momentum_fluxgrad(double*, double*, double*, double*, double*, double*, double*, double*, double*, double, double);
+        void scalar_fluxgrad(double*, double*, double*, double*, double*, double, double);
+        void surface_scaling(double*, double*, double*, double*, double);
 
         // transfer coefficients
         double bulk_cm;

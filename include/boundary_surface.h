@@ -65,9 +65,6 @@ class Boundary_surface : public Boundary
 #endif
 
     private:
-        // cross sections
-        std::vector<std::string> crosslist;        // List with all crosses from ini file
-        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
         // surface scheme
         void update_bcs();
@@ -104,6 +101,10 @@ class Boundary_surface : public Boundary
         int thermobc;
 
     protected:
+        // cross sections
+        std::vector<std::string> crosslist;        // List with all crosses from ini file
+        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+
         Stats* stats;
         void update_slave_bcs();
 };
