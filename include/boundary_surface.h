@@ -37,9 +37,9 @@ class Boundary_surface : public Boundary
         Boundary_surface(Model*, Input*);
         ~Boundary_surface();
 
-        void init(Input*);
+        virtual void init(Input*);
         void create(Input*);
-        void set_values();
+        virtual void set_values();
 
         void exec_stats(Mask*); ///< Execute statistics of surface
         void exec_cross();      ///< Execute cross sections of surface
