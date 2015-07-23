@@ -92,6 +92,11 @@ namespace
     {
         return pow((mur+3)*(mur+2)*(mur+1), 1./3.) / dr;
     }
+
+    inline double minmod(const double a, const double b)
+    {
+        return copysign(1., a) * std::max(0., std::min(std::abs(a), copysign(1., a)*b));
+    }
 }
 
 // Microphysics per 2D (xz) slices
@@ -194,11 +199,6 @@ namespace mp2d
                 if(qr[ijk] > qr_min)
                 {
                     // Calculate mean rain drop mass and diameter
-                    //const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
-                    //const double dr      = calc_rain_diameter(mr);
-                    //const double mur     = calc_mu_r(dr);
-                    //const double lambdar = calc_lambda_r(mur, dr);
-
                     const double mr      = rain_mass[ik];
                     const double dr      = rain_diameter[ik];
                     const double lambdar = lambda_r[ik];
@@ -223,10 +223,159 @@ namespace mp2d
             }
     }
 
+    // Sedimentation from Stevens and Seifert (2008)
+    void sedimentation_ss08(double* const restrict qrt, double* const restrict nrt, 
+                            double* const restrict tmp2d1, double* const restrict tmp2d2,
+                            double* const restrict tmp2d3, double* const restrict tmp2d4,
+                            double* const restrict tmp2d5, double* const restrict tmp2d6,
+                            const double* const restrict rain_mass, const double* const restrict rain_diameter,
+                            const double* const restrict mu_r, const double* const restrict lambda_r,
+                            const double* const restrict qr, const double* const restrict nr, 
+                            const double* const restrict rho, const double* const restrict dzi,
+                            const double* const restrict dz, const double dt,
+                            const int istart, const int iend,
+                            const int kstart, const int kend,
+                            const int icells, const int kcells, const int ijcells, const int j)
+    {
+        const double w_max = 9.65; // SS08, appendix A
+        const double a_R = 9.65;   // SB06, p51
+        const double b_R = 10.3;   // SB06, p51
+        const double c_R = 600;    // SB06, p51
 
+        const int ikcells = icells * kcells;
+
+        // 1. Calculate sedimentation velocity at cell center
+        double* restrict w_qr = tmp2d1;
+        double* restrict w_nr = tmp2d2;
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+              
+                if(qr[ijk] > qr_min)
+                {
+                    // SS08:
+                    w_qr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+4))));
+                    w_nr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+1))));
+                }
+                else
+                {
+                    w_qr[ik] = 0.;
+                    w_nr[ik] = 0.;
+                }
+            }
+
+        // 1.1 Set one ghost cell to zero
+        for (int i=istart; i<iend; i++)
+        {
+            const int ik1  = i + (kstart-1)*icells;
+            const int ik2  = i + (kend    )*icells;
+            w_qr[ik1] = w_qr[ik1+icells];
+            w_nr[ik1] = w_nr[ik1+icells];
+            w_qr[ik2] = 0;
+            w_nr[ik2] = 0;
+        } 
+
+         // 2. Calculate CFL number using interpolated sedimentation velocity
+        double* restrict c_qr = tmp2d3;
+        double* restrict c_nr = tmp2d4;
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik  = i + k*icells;
+                c_qr[ik] = 0.25 * (w_qr[ik-icells] + 2.*w_qr[ik] + w_qr[ik+icells]) * dzi[k] * dt; 
+                c_nr[ik] = 0.25 * (w_nr[ik-icells] + 2.*w_nr[ik] + w_nr[ik+icells]) * dzi[k] * dt; 
+            }
+
+        // 3. Calculate slopes
+        double* restrict slope_qr = tmp2d1;
+        double* restrict slope_nr = tmp2d2;
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                slope_qr[ik] = minmod(qr[ijk]-qr[ijk-ijcells], qr[ijk+ijcells]-qr[ijk]);
+                slope_nr[ik] = minmod(nr[ijk]-nr[ijk-ijcells], nr[ijk+ijcells]-nr[ijk]);
+            }
+
+        // Calculate flux
+        double* restrict flux_qr = tmp2d5;
+        double* restrict flux_nr = tmp2d6;
+
+        for (int k=kend-1; k>kstart-1; k--)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {    
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                int kk;
+                double ftot, dzz, cc;
+
+                // q_rain
+                kk    = k;  // current grid level
+                ftot  = 0;  // cumulative 'flux' (kg m-2) 
+                dzz   = 0;  // distance from zh[k]
+                cc    = std::min(1., c_qr[ik]);
+                while (cc > 0 && kk < kend)
+                {
+                    const int ikk  = i + kk*icells;
+                    const int ijkk = i + j*icells + kk*ijcells;
+
+                    ftot  += rho[kk] * (qr[ijkk] + 0.5 * slope_qr[ikk] * (1.-cc)) * cc * dz[kk];
+                    dzz   += dz[kk];
+                    kk    += 1;
+                    cc     = std::min(1., c_qr[ikk] - dzz*dzi[kk]);
+                }
+
+                // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
+                ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * dt);
+                flux_qr[ik] = -ftot / dt;
+
+                // number density
+                kk    = k;  // current grid level
+                ftot  = 0;  // cumulative 'flux'
+                dzz   = 0;  // distance from zh[k]
+                cc    = std::min(1., c_nr[ik]);
+                while (cc > 0 && kk < kend)
+                {    
+                    const int ikk  = i + kk*icells;
+                    const int ijkk = i + j*icells + kk*ijcells;
+
+                    ftot += rho[kk] * (nr[ijkk] + 0.5 * slope_nr[ikk] * (1.-cc)) * cc * dz[kk];
+                    dzz   += dz[kk];
+                    kk    += 1;
+                    cc     = std::min(1., c_nr[ikk] - dzz*dzi[k]);
+                }
+
+                // Given flux at top, limit bottom flux such that the number density stays >= 0.
+                ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * dt);
+                flux_nr[ik] = -ftot / dt;
+            }
+
+        // Calculate tendency
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {    
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                qrt[ijk] += -(flux_qr[ik+icells] - flux_qr[ik]) / rho[k] * dzi[k]; 
+                nrt[ijk] += -(flux_nr[ik+icells] - flux_nr[ik]) / rho[k] * dzi[k]; 
+            }
+    }
 }
 
-// BvS:micro 
 namespace mp
 {
     bool debug = false;
@@ -557,10 +706,6 @@ namespace mp
         }
     }
 
-    inline double minmod(const double a, const double b)
-    {
-        return copysign(1., a) * std::max(0., std::min(std::abs(a), copysign(1., a)*b));
-    }
 
     // Sedimentation from Stevens and Seifert (2008)
     void sedimentation_ss08(double* const restrict qrt, double* const restrict nrt, 
@@ -1025,6 +1170,28 @@ void Thermo_moist::exec_microphysics()
     double* mu_r      = &fields->atmp["tmp2"]->data[2*ikslice]; 
     double* lambda_r  = &fields->atmp["tmp3"]->data[0*ikslice]; 
 
+    // xz tmp slices for intermediate calculations
+    double* tmpxz1    = &fields->atmp["tmp3"]->data[1*ikslice];
+    double* tmpxz2    = &fields->atmp["tmp3"]->data[2*ikslice];
+    double* tmpxz3    = &fields->atmp["tmp4"]->data[0*ikslice];
+    double* tmpxz4    = &fields->atmp["tmp4"]->data[1*ikslice];
+    double* tmpxz5    = &fields->atmp["tmp4"]->data[2*ikslice];
+    double* tmpxz6    = &fields->atmp["tmp5"]->data[0*ikslice];
+
+    const double dt = model->timeloop->get_dt();
+
+    mp::autoconversion(fields->st["qr"]->data, fields->st["nr"]->data, fields->st["qt"]->data, fields->st["thl"]->data,
+                       fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                       grid->istart, grid->jstart, grid->kstart, 
+                       grid->iend,   grid->jend,   grid->kend, 
+                       grid->icells, grid->ijcells);
+
+    mp::accretion(fields->st["qr"]->data, fields->st["qt"]->data, fields->st["thl"]->data,
+                  fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                  grid->istart, grid->jstart, grid->kstart, 
+                  grid->iend,   grid->jend,   grid->kend, 
+                  grid->icells, grid->ijcells);
+
     for (int j=grid->jstart; j<grid->jend; ++j)
     {
         mp2d::prepare_microphysics_slice(rain_mass, rain_diam, mu_r, lambda_r, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
@@ -1043,14 +1210,18 @@ void Thermo_moist::exec_microphysics()
                                      grid->istart, grid->jstart, grid->kstart, 
                                      grid->iend,   grid->jend,   grid->kend, 
                                      grid->icells, grid->ijcells, j);
+
+
+        mp2d::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
+                                 tmpxz1, tmpxz2, tmpxz3, tmpxz4, tmpxz5, tmpxz6,
+                                 rain_mass, rain_diam, mu_r, lambda_r,
+                                 fields->sp["qr"]->data, fields->sp["nr"]->data, 
+                                 fields->rhoref, grid->dzi, grid->dz, dt,
+                                 grid->istart, grid->iend, 
+                                 grid->kstart, grid->kend, 
+                                 grid->icells, grid->kcells, grid->ijcells, j);
     }
 
-
-    mp::autoconversion(fields->st["qr"]->data, fields->st["nr"]->data, fields->st["qt"]->data, fields->st["thl"]->data,
-                       fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
-                       grid->istart, grid->jstart, grid->kstart, 
-                       grid->iend,   grid->jend,   grid->kend, 
-                       grid->icells, grid->ijcells);
 
     //mp::evaporation(fields->st["qr"]->data, fields->st["nr"]->data,  fields->st["qt"]->data, fields->st["thl"]->data,
     //                fields->sp["qr"]->data, fields->sp["nr"]->data,  fields->atmp["tmp1"]->data,
@@ -1059,26 +1230,21 @@ void Thermo_moist::exec_microphysics()
     //                grid->iend,   grid->jend,   grid->kend, 
     //                grid->icells, grid->ijcells);
 
-    mp::accretion(fields->st["qr"]->data, fields->st["qt"]->data, fields->st["thl"]->data,
-                  fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
-                  grid->istart, grid->jstart, grid->kstart, 
-                  grid->iend,   grid->jend,   grid->kend, 
-                  grid->icells, grid->ijcells);
    
     //mp::selfcollection_breakup(fields->st["nr"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
     //                           grid->istart, grid->jstart, grid->kstart, 
     //                           grid->iend,   grid->jend,   grid->kend, 
     //                           grid->icells, grid->ijcells);
  
-    const double dt = model->timeloop->get_dt();
+    //const double dt = model->timeloop->get_dt();
 
-    mp::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
-                           fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
-                           fields->sp["qr"]->data, fields->sp["nr"]->data, 
-                           fields->rhoref, grid->dzi, grid->dz, dt,
-                           grid->istart, grid->jstart, grid->kstart, 
-                           grid->iend,   grid->jend,   grid->kend, 
-                           grid->icells, grid->kcells, grid->ijcells);
+    //mp::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
+    //                       fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
+    //                       fields->sp["qr"]->data, fields->sp["nr"]->data, 
+    //                       fields->rhoref, grid->dzi, grid->dz, dt,
+    //                       grid->istart, grid->jstart, grid->kstart, 
+    //                       grid->iend,   grid->jend,   grid->kend, 
+    //                       grid->icells, grid->kcells, grid->ijcells);
 
 //    // 1. Get number of substeps based on sedimentation with CFL=1
 //    const double dt = model->timeloop->get_sub_time_step();
