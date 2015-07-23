@@ -65,13 +65,9 @@ class Boundary_surface : public Boundary
 #endif
 
     private:
-        // cross sections
-        std::vector<std::string> crosslist;        // List with all crosses from ini file
-        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
         // surface scheme
         void update_bcs();
-        void update_slave_bcs();
 
         void stability(double*, double*, double*,
                        double*, double*, double*,
@@ -94,7 +90,6 @@ class Boundary_surface : public Boundary
 
         double ustarin;
 
-        Stats* stats;
 
         float* zL_sl;
         float* f_sl;
@@ -104,5 +99,13 @@ class Boundary_surface : public Boundary
         float* f_sl_g;
 #endif
         int thermobc;
+
+    protected:
+        // cross sections
+        std::vector<std::string> crosslist;        // List with all crosses from ini file
+        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+
+        Stats* stats;
+        void update_slave_bcs();
 };
 #endif
