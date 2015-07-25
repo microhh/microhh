@@ -42,7 +42,6 @@ class Thermo_moist : public Thermo
         void exec();
         unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (only for sw_micro=1)
 
-
         void get_mask(Field3d*, Field3d*, Mask*);
         void exec_stats(Mask*);
         void exec_cross();
