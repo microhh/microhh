@@ -480,7 +480,7 @@ void Thermo_dry::init_base_state(double* restrict rho,    double* restrict rhoh,
 
 void Thermo_dry::init_stat()
 {
-    if (stats->getSwitch() == "1")
+    if (stats->get_switch() == "1")
     {
         // Add base state profiles to statistics
         stats->add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);
