@@ -85,11 +85,12 @@ Model::Model(Master *masterin, Input *inputin)
         force    = new Force   (this, input);
         buffer   = new Buffer  (this, input);
 
-        // Create instances of the statistics classes.
+        // Create instances of the statistics classes. First create stats as it is required for init of derived stats.
         stats  = new Stats (this, input);
         cross  = new Cross (this, input);
         dump   = new Dump  (this, input);
-        budget = new Budget(this, input);
+
+        budget = new Budget(input, master, grid, fields, thermo, stats);
 
         // Get the list of masks.
         // TODO Make an interface that takes this out of the main loop.
