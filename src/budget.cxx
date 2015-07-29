@@ -64,7 +64,7 @@ void Budget::init()
     master = model->master;
 
     // if the stats is disabled, also disable the budget stats
-    if (stats->getSwitch() == "0")
+    if (stats->get_switch() == "0")
         swbudget = "0";
 
     umodel = new double[grid->kcells];

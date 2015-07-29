@@ -822,7 +822,7 @@ void Fields::create_stats()
     int nerror = 0;
 
     // add the profiles to te statistics
-    if (stats->getSwitch() == "1")
+    if (stats->get_switch() == "1")
     {
         // add variables to the statistics
         stats->add_prof(u->name, u->longname, u->unit, "z" );

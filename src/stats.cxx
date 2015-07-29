@@ -222,7 +222,7 @@ void Stats::exec(int iteration, double time, unsigned long itime)
     ++nstats;
 }
 
-std::string Stats::getSwitch()
+std::string Stats::get_switch()
 {
     return swstats;
 }
