@@ -748,8 +748,8 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
     tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
 
     // Calculate the viscous transport of vertical velocity variance.
-    const double dzhi4biasbot = grid.dzhi4biasbot;
-    const double dzhi4biastop = grid.dzhi4biastop;
+    const double dzhi4bot = grid.dzhi4bot;
+    const double dzhi4top = grid.dzhi4top;
 
     // Bottom boundary.
     k = grid.kstart;
@@ -762,7 +762,7 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
             w2_visc[k] += visc * ( bg0*((bg0*std::pow(w[ijk-kk1],2) + bg1*std::pow(w[ijk    ],2) + bg2*std::pow(w[ijk+kk1],2) + bg3*std::pow(w[ijk+kk2],2)) * dzi4[k-1])
                                  + bg1*((cg0*std::pow(w[ijk-kk1],2) + cg1*std::pow(w[ijk    ],2) + cg2*std::pow(w[ijk+kk1],2) + cg3*std::pow(w[ijk+kk2],2)) * dzi4[k  ])
                                  + bg2*((cg0*std::pow(w[ijk    ],2) + cg1*std::pow(w[ijk+kk1],2) + cg2*std::pow(w[ijk+kk2],2) + cg3*std::pow(w[ijk+kk3],2)) * dzi4[k+1])
-                                 + bg3*((cg0*std::pow(w[ijk+kk1],2) + cg1*std::pow(w[ijk+kk2],2) + cg2*std::pow(w[ijk+kk3],2) + cg3*std::pow(w[ijk+kk4],2)) * dzi4[k+2]) ) * dzhi4biasbot;
+                                 + bg3*((cg0*std::pow(w[ijk+kk1],2) + cg1*std::pow(w[ijk+kk2],2) + cg2*std::pow(w[ijk+kk3],2) + cg3*std::pow(w[ijk+kk4],2)) * dzi4[k+2]) ) * dzhi4bot;
         }
 
     // Bottom boundary + 1.
@@ -820,7 +820,7 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
             w2_visc[k] += visc * ( tg0*((cg0*std::pow(w[ijk-kk4],2) + cg1*std::pow(w[ijk-kk3],2) + cg2*std::pow(w[ijk-kk2],2) + cg3*std::pow(w[ijk-kk1],2)) * dzi4[k-3])
                                  + tg1*((cg0*std::pow(w[ijk-kk3],2) + cg1*std::pow(w[ijk-kk2],2) + cg2*std::pow(w[ijk-kk1],2) + cg3*std::pow(w[ijk    ],2)) * dzi4[k-2])
                                  + tg2*((cg0*std::pow(w[ijk-kk2],2) + cg1*std::pow(w[ijk-kk1],2) + cg2*std::pow(w[ijk    ],2) + cg3*std::pow(w[ijk+kk1],2)) * dzi4[k-1])
-                                 + tg3*((tg0*std::pow(w[ijk-kk2],2) + tg1*std::pow(w[ijk-kk1],2) + tg2*std::pow(w[ijk    ],2) + tg3*std::pow(w[ijk+kk1],2)) * dzi4[k  ]) ) * dzhi4biastop;
+                                 + tg3*((tg0*std::pow(w[ijk-kk2],2) + tg1*std::pow(w[ijk-kk1],2) + tg2*std::pow(w[ijk    ],2) + tg3*std::pow(w[ijk+kk1],2)) * dzi4[k  ]) ) * dzhi4top;
         }
 
     master.sum(u2_visc , grid.kcells);
