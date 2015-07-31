@@ -84,14 +84,18 @@ void Budget::create()
     stats.add_prof("tke", "Turbulent kinetic energy" , "m2 s-2", "z");
 
     // add the profiles for the kinetic energy budget to the statistics
-    stats.add_prof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z");
-    stats.add_prof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z");
-    stats.add_prof("tke_shear", "Shear production term in TKE budget", "m2 s-3", "z");
+    stats.add_prof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z" );
+    stats.add_prof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z" );
+    stats.add_prof("tke_shear", "Shear production term in TKE budget", "m2 s-3", "z" );
+    stats.add_prof("uw_shear" , "Shear production term in UW budget" , "m2 s-3", "zh");
+    stats.add_prof("vw_shear" , "Shear production term in VW budget ", "m2 s-3", "zh");
 
     stats.add_prof("u2_turb" , "Turbulent transport term in U2 budget" , "m2 s-3", "z" );
     stats.add_prof("v2_turb" , "Turbulent transport term in V2 budget" , "m2 s-3", "z" );
     stats.add_prof("w2_turb" , "Turbulent transport term in W2 budget" , "m2 s-3", "zh");
     stats.add_prof("tke_turb", "Turbulent transport term in TKE budget", "m2 s-3", "z" );
+    stats.add_prof("uw_turb" , "Turbulent transport term in UW budget" , "m2 s-3", "zh");
+    stats.add_prof("vw_turb" , "Turbulent transport term in VW budget" , "m2 s-3", "zh");
 
     stats.add_prof("u2_visc" , "Viscous transport term in U2 budget" , "m2 s-3", "z" );
     stats.add_prof("v2_visc" , "Viscous transport term in V2 budget" , "m2 s-3", "z" );
@@ -157,8 +161,8 @@ void Budget::exec_stats(Mask* m)
         calc_tke_budget(fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data,
                         fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
                         umodel, vmodel,
-                        m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data,
-                        m->profs["u2_turb"].data, m->profs["v2_turb"].data, m->profs["w2_turb"].data, m->profs["tke_turb"].data,
+                        m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data, m->profs["uw_shear"].data, m->profs["vw_shear"].data, 
+                        m->profs["u2_turb"].data, m->profs["v2_turb"].data, m->profs["w2_turb"].data, m->profs["tke_turb"].data, m->profs["uw_turb"].data, m->profs["vw_turb"].data,
                         m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data,
                         m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data,
                         m->profs["w2_pres"].data, m->profs["tke_pres"].data,
@@ -267,8 +271,8 @@ void Budget::calc_ke(double* restrict u, double* restrict v, double* restrict w,
 void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* restrict w, double* restrict p,
                              double* restrict wx, double* restrict wy,
                              double* restrict umean, double* restrict vmean,
-                             double* restrict u2_shear, double* restrict v2_shear, double* restrict tke_shear,
-                             double* restrict u2_turb, double* restrict v2_turb, double* restrict w2_turb, double* restrict tke_turb,
+                             double* restrict u2_shear, double* restrict v2_shear, double* restrict tke_shear, double* restrict uw_shear, double* restrict vw_shear,
+                             double* restrict u2_turb, double* restrict v2_turb, double* restrict w2_turb, double* restrict tke_turb, double* restrict uw_turb, double* restrict vw_turb,
                              double* restrict u2_visc, double* restrict v2_visc, double* restrict w2_visc, double* restrict tke_visc,
                              double* restrict u2_diss, double* restrict v2_diss, double* restrict w2_diss, double* restrict tke_diss,
                              double* restrict w2_pres, double* restrict tke_pres,
