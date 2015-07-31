@@ -16,7 +16,6 @@ Moserv2   = numpy.loadtxt("chan180.wwbal", skiprows=25)
 Moserw2   = numpy.loadtxt("chan180.vvbal", skiprows=25)
 Mosertke  = numpy.loadtxt("chan180.kbal" , skiprows=25)
 Moseruw   = numpy.loadtxt("chan180.uvbal", skiprows=21)
-Moservw   = numpy.loadtxt("chan180.vwbal", skiprows=21)
 
 yplusMoser = Mosermean[:,1]
 uavgMoser  = Mosermean[:,2]
