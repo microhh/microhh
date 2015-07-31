@@ -15,6 +15,8 @@ Moseru2   = numpy.loadtxt("chan180.uubal", skiprows=25)
 Moserv2   = numpy.loadtxt("chan180.wwbal", skiprows=25)
 Moserw2   = numpy.loadtxt("chan180.vvbal", skiprows=25)
 Mosertke  = numpy.loadtxt("chan180.kbal" , skiprows=25)
+Moseruw   = numpy.loadtxt("chan180.uvbal", skiprows=21)
+Moservw   = numpy.loadtxt("chan180.vwbal", skiprows=21)
 
 yplusMoser = Mosermean[:,1]
 uavgMoser  = Mosermean[:,2]
@@ -44,6 +46,18 @@ tke_turbMoser  = Mosertke[:,6]
 tke_viscMoser  = Mosertke[:,7]
 tke_dissMoser  = Mosertke[:,2]
 tke_presMoser  = Mosertke[:,5]
+
+uw_shearMoser = Moseruw[:,3]
+uw_turbMoser  = Moseruw[:,6]
+uw_viscMoser  = Moseruw[:,7]
+uw_dissMoser  = Moseruw[:,2]
+uw_rdstrMoser = Moseruw[:,4]
+
+vw_shearMoser = Moservw[:,3]
+vw_turbMoser  = Moservw[:,6]
+vw_viscMoser  = Moservw[:,7]
+vw_dissMoser  = Moservw[:,2]
+vw_rdstrMoser = Moservw[:,4]
 
 stats = netCDF4.Dataset("moser180.default.0000000.nc","r")
 t  = stats.variables["t"] [start:end]
@@ -272,6 +286,56 @@ ylabel('tke')
 legend(loc=0, frameon=False)
 grid()
 axis([0, 200, -0.3, 0.3])
+
+figure()
+#if(plotens):
+#  for n in range(end-start):
+#    plot(yplus[starty:endy], uw_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
+#    plot(yplus[starty:endy], uw_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+#    plot(yplus[starty:endy], uw_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
+#    plot(yplus[starty:endy], uw_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+#    plot(yplus[starty:endy], uw_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+#plot(yplus[starty:endy], uw_shear[starty:endy] * visc / ustar**4., 'b-', label='S')
+#plot(yplus[starty:endy], uw_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
+#plot(yplus[starty:endy], uw_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
+#plot(yplus[starty:endy], uw_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
+#plot(yplus[starty:endy], uw_rdstr[starty:endy] * visc / ustar**4., 'm-', label='P')
+#plot(yplus[starty:endy], uw_resid[starty:endy] * visc / ustar**4., 'k-', label='resid')
+plot(yplusMoser, uw_shearMoser, 'k--', label="Moser")
+plot(yplusMoser, uw_turbMoser , 'k--')
+plot(yplusMoser, uw_viscMoser , 'k--')
+plot(yplusMoser, uw_dissMoser , 'k--')
+plot(yplusMoser, uw_rdstrMoser, 'k--')
+xlabel('y+')
+ylabel('Rxz')
+legend(loc=0, frameon=False)
+grid()
+axis([0, 200, -0.1, 0.1])
+
+figure()
+#if(plotens):
+#  for n in range(end-start):
+#    plot(yplus[starty:endy], vw_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
+#    plot(yplus[starty:endy], vw_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+#    plot(yplus[starty:endy], vw_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
+#    plot(yplus[starty:endy], vw_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+#    plot(yplus[starty:endy], vw_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+#plot(yplus[starty:endy], vw_shear[starty:endy] * visc / ustar**4., 'b-', label='S')
+#plot(yplus[starty:endy], vw_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
+#plot(yplus[starty:endy], vw_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
+#plot(yplus[starty:endy], vw_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
+#plot(yplus[starty:endy], vw_rdstr[starty:endy] * visc / ustar**4., 'm-', label='P')
+#plot(yplus[starty:endy], vw_resid[starty:endy] * visc / ustar**4., 'k-', label='resid')
+plot(yplusMoser, vw_shearMoser, 'k--', label="Moser")
+plot(yplusMoser, vw_turbMoser , 'k--')
+plot(yplusMoser, vw_viscMoser , 'k--')
+plot(yplusMoser, vw_dissMoser , 'k--')
+plot(yplusMoser, vw_rdstrMoser, 'k--')
+xlabel('y+')
+ylabel('Rxz')
+legend(loc=0, frameon=False)
+grid()
+axis([0, 200, -0.1, 0.1])
 
 figure()
 if(plotens):
