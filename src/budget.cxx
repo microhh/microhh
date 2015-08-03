@@ -301,6 +301,9 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
     const int kstart = grid.kstart;
     const int kend   = grid.kend;
 
+    const double dzhi4bot = grid.dzhi4bot;
+    const double dzhi4top = grid.dzhi4top;
+
     double n = grid.itot*grid.jtot;
 
     // 2. CALCULATE THE SHEAR TERM u'w*dumean/dz
@@ -399,6 +402,8 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
     u2_turb [k] = 0.;
     v2_turb [k] = 0.;
     tke_turb[k] = 0.;
+    uw_turb [k] = 0.;
+    vw_turb [k] = 0.;
 
     for (int j=grid.jstart; j<grid.jend; ++j)
 #pragma ivdep
@@ -472,7 +477,7 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
         }
     tke_turb[k] += 0.5*(u2_turb[k] + v2_turb[k]);
 
-    // calculate the vertical velocity term
+    // calculate the vertical velocity term and the vertical reynold stresses
     k = grid.kstart;
     w2_turb[k] = 0.;
     for (int j=grid.jstart; j<grid.jend; ++j)
@@ -484,6 +489,18 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
                           + cg1*(ci0*std::pow(w[ijk-kk2],3) + ci1*std::pow(w[ijk-kk1],3) + ci2*std::pow(w[ijk    ],3) + ci3*std::pow(w[ijk+kk1],3))
                           + cg2*(ci0*std::pow(w[ijk-kk1],3) + ci1*std::pow(w[ijk    ],3) + ci2*std::pow(w[ijk+kk1],3) + ci3*std::pow(w[ijk+kk2],3))
                           + cg3*(ci0*std::pow(w[ijk    ],3) + ci1*std::pow(w[ijk+kk1],3) + ci2*std::pow(w[ijk+kk2],3) + ci3*std::pow(w[ijk+kk3],3)) ) * dzhi4[k];
+
+            uw_turb[k] -= ( ( cg0*( std::pow(bi0*wx[ijk-kk2] + bi1*wx[ijk-kk1] + bi2*wx[ijk    ] + bi3*wx[ijk+kk1], 2) * (u[ijk-kk2]-umean[k-2]) )
+                            + cg1*( std::pow(ci0*wx[ijk-kk2] + ci1*wx[ijk-kk1] + ci2*wx[ijk    ] + ci3*wx[ijk+kk1], 2) * (u[ijk-kk1]-umean[k-1]) )
+                            + cg2*( std::pow(ci0*wx[ijk-kk1] + ci1*wx[ijk    ] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2], 2) * (u[ijk    ]-umean[k  ]) )
+                            + cg3*( std::pow(ci0*wx[ijk    ] + ci1*wx[ijk+kk1] + ci2*wx[ijk+kk2] + ci3*wx[ijk+kk3], 2) * (u[ijk+kk1]-umean[k+1]) ) )
+                          * dzhi4[k  ] );
+
+            vw_turb[k] -= ( ( cg0*( std::pow(bi0*wy[ijk-kk2] + bi1*wy[ijk-kk1] + bi2*wy[ijk    ] + bi3*wy[ijk+kk1], 2) * (v[ijk-kk2]-vmean[k-2]) )
+                            + cg1*( std::pow(ci0*wy[ijk-kk2] + ci1*wy[ijk-kk1] + ci2*wy[ijk    ] + ci3*wy[ijk+kk1], 2) * (v[ijk-kk1]-vmean[k-1]) )
+                            + cg2*( std::pow(ci0*wy[ijk-kk1] + ci1*wy[ijk    ] + ci2*wy[ijk+kk1] + ci3*wy[ijk+kk2], 2) * (v[ijk    ]-vmean[k  ]) )
+                            + cg3*( std::pow(ci0*wy[ijk    ] + ci1*wy[ijk+kk1] + ci2*wy[ijk+kk2] + ci3*wy[ijk+kk3], 2) * (v[ijk+kk1]-vmean[k+1]) ) )
+                          * dzhi4[k  ] );
         }
 
     for (int k=grid.kstart+1; k<grid.kend; ++k)
@@ -498,6 +515,18 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
                               + cg1*(ci0*std::pow(w[ijk-kk2],3) + ci1*std::pow(w[ijk-kk1],3) + ci2*std::pow(w[ijk    ],3) + ci3*std::pow(w[ijk+kk1],3))
                               + cg2*(ci0*std::pow(w[ijk-kk1],3) + ci1*std::pow(w[ijk    ],3) + ci2*std::pow(w[ijk+kk1],3) + ci3*std::pow(w[ijk+kk2],3))
                               + cg3*(ci0*std::pow(w[ijk    ],3) + ci1*std::pow(w[ijk+kk1],3) + ci2*std::pow(w[ijk+kk2],3) + ci3*std::pow(w[ijk+kk3],3)) ) * dzhi4[k];
+
+                uw_turb[k] -= ( ( cg0*( std::pow(ci0*wx[ijk-kk3] + ci1*wx[ijk-kk2] + ci2*wx[ijk-kk1] + ci3*wx[ijk    ], 2) * (u[ijk-kk2]-umean[k-2]) )
+                                + cg1*( std::pow(ci0*wx[ijk-kk2] + ci1*wx[ijk-kk1] + ci2*wx[ijk    ] + ci3*wx[ijk+kk1], 2) * (u[ijk-kk1]-umean[k-1]) )
+                                + cg2*( std::pow(ci0*wx[ijk-kk1] + ci1*wx[ijk    ] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2], 2) * (u[ijk    ]-umean[k  ]) )
+                                + cg3*( std::pow(ci0*wx[ijk    ] + ci1*wx[ijk+kk1] + ci2*wx[ijk+kk2] + ci3*wx[ijk+kk3], 2) * (u[ijk+kk1]-umean[k+1]) ) )
+                              * dzhi4[k  ] );
+
+                vw_turb[k] -= ( ( cg0*( std::pow(ci0*wy[ijk-kk3] + ci1*wy[ijk-kk2] + ci2*wy[ijk-kk1] + ci3*wy[ijk    ], 2) * (v[ijk-kk2]-vmean[k-2]) )
+                                + cg1*( std::pow(ci0*wy[ijk-kk2] + ci1*wy[ijk-kk1] + ci2*wy[ijk    ] + ci3*wy[ijk+kk1], 2) * (v[ijk-kk1]-vmean[k-1]) )
+                                + cg2*( std::pow(ci0*wy[ijk-kk1] + ci1*wy[ijk    ] + ci2*wy[ijk+kk1] + ci3*wy[ijk+kk2], 2) * (v[ijk    ]-vmean[k  ]) )
+                                + cg3*( std::pow(ci0*wy[ijk    ] + ci1*wy[ijk+kk1] + ci2*wy[ijk+kk2] + ci3*wy[ijk+kk3], 2) * (v[ijk+kk1]-vmean[k+1]) ) )
+                              * dzhi4[k  ] );
             }
     }
 
@@ -512,6 +541,18 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
                           + cg1*(ci0*std::pow(w[ijk-kk2],3) + ci1*std::pow(w[ijk-kk1],3) + ci2*std::pow(w[ijk    ],3) + ci3*std::pow(w[ijk+kk1],3))
                           + cg2*(ci0*std::pow(w[ijk-kk1],3) + ci1*std::pow(w[ijk    ],3) + ci2*std::pow(w[ijk+kk1],3) + ci3*std::pow(w[ijk+kk2],3))
                           + cg3*(ti0*std::pow(w[ijk-kk1],3) + ti1*std::pow(w[ijk    ],3) + ti2*std::pow(w[ijk+kk1],3) + ti3*std::pow(w[ijk+kk2],3)) ) * dzhi4[k];
+
+            uw_turb[k] -= ( ( cg0*( ( ci0*wx[ijk-kk3] + ci1*wx[ijk-kk2] + ci2*wx[ijk-kk1] + ci3*wx[ijk    ] ) * ( u[ijk-kk2] - umean[k-2] ) )
+                            + cg1*( ( ci0*wx[ijk-kk2] + ci1*wx[ijk-kk1] + ci2*wx[ijk    ] + ci3*wx[ijk+kk1] ) * ( u[ijk-kk1] - umean[k-1] ) )
+                            + cg2*( ( ci0*wx[ijk-kk1] + ci1*wx[ijk    ] + ci2*wx[ijk+kk1] + ci3*wx[ijk+kk2] ) * ( u[ijk    ] - umean[k  ] ) )
+                            + cg3*( ( ti0*wx[ijk-kk1] + ti1*wx[ijk    ] + ti2*wx[ijk+kk1] + ti3*wx[ijk+kk2] ) * ( u[ijk+kk1] - umean[k+1] ) ) )
+                          * dzhi4[k  ] );
+
+            vw_turb[k] -= ( ( cg0*( ( ci0*wy[ijk-kk3] + ci1*wy[ijk-kk2] + ci2*wy[ijk-kk1] + ci3*wy[ijk    ] ) * ( v[ijk-kk2] - vmean[k-2] ) )
+                            + cg1*( ( ci0*wy[ijk-kk2] + ci1*wy[ijk-kk1] + ci2*wy[ijk    ] + ci3*wy[ijk+kk1] ) * ( v[ijk-kk1] - vmean[k-1] ) )
+                            + cg2*( ( ci0*wy[ijk-kk1] + ci1*wy[ijk    ] + ci2*wy[ijk+kk1] + ci3*wy[ijk+kk2] ) * ( v[ijk    ] - vmean[k  ] ) )
+                            + cg3*( ( ti0*wy[ijk-kk1] + ti1*wy[ijk    ] + ti2*wy[ijk+kk1] + ti3*wy[ijk+kk2] ) * ( v[ijk+kk1] - vmean[k+1] ) ) )
+                          * dzhi4[k  ] );
         }
 
     // calculate the profiles
@@ -519,6 +560,8 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
     master.sum(v2_turb , grid.kcells);
     master.sum(w2_turb , grid.kcells);
     master.sum(tke_turb, grid.kcells);
+    master.sum(uw_turb , grid.kcells);
+    master.sum(vw_turb , grid.kcells);
 
     for (k=grid.kstart; k<grid.kend; ++k)
     {
@@ -528,7 +571,11 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
     }
 
     for (k=grid.kstart; k<grid.kend+1; ++k)
+    {
         w2_turb [k] /= n;
+        uw_turb [k] /= n;
+        vw_turb [k] /= n;
+    }
 
     // 4. CALCULATE THE PRESSURE TRANSPORT TERM
     // bottom boundary
@@ -752,8 +799,6 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
     tke_visc[k] += 0.5*(u2_visc[k] + v2_visc[k]);
 
     // Calculate the viscous transport of vertical velocity variance.
-    const double dzhi4bot = grid.dzhi4bot;
-    const double dzhi4top = grid.dzhi4top;
 
     // Bottom boundary.
     k = grid.kstart;
