@@ -63,6 +63,12 @@ namespace
     const double ql_min  = 1.e-6;    // Min cloud liquid water for which calculations are performed 
     const double qr_min  = 1.e-15;   // Min rain liquid water for which calculations are performed 
 
+    // Rational tanh approximation  
+    inline double tanh2(const double x)
+    {
+        return x * (27 + x * x) / (27 + 9 * x * x);
+    }
+
     // Given rain water content (qr), number density (nr) and density (rho)
     // calculate mean mass of rain drop
     inline double calc_rain_mass(const double qr, const double nr, const double rho)
@@ -75,14 +81,15 @@ namespace
     // Given mean mass rain drop, calculate mean diameter
     inline double calc_rain_diameter(const double mr)
     {
-        return pow(mr/pirhow, 1./3.);
+        return pow(mr/pirhow, 0.333333);
     }
 
     // Shape parameter mu_r
     inline double calc_mu_r(const double dr)
     {
         //return 1./3.; // SB06
-        return 10. * (1. + tanh(1200 * (dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        //return 10. * (1. + tanh(1200 * (dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return 10. * (1. + tanh2(1200 * (dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
         // Taylor expansion SS08, around dr=0.0002. Accurate to within 1% for dr<0.001, 10% for dr<0.0015
         //return 0.670565+dr*(dr*(1.61878e9*dr+1.61937e6)+1573.65);
     }
@@ -90,7 +97,7 @@ namespace
     // Slope parameter lambda_r
     inline double calc_lambda_r(const double mur, const double dr)
     {
-        return pow((mur+3)*(mur+2)*(mur+1), 1./3.) / dr;
+        return pow((mur+3)*(mur+2)*(mur+1), 0.333333) / dr;
     }
 
     inline double minmod(const double a, const double b)
@@ -155,6 +162,7 @@ namespace mp2d
             {
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
+
                 if(qr[ijk] > qr_min)
                 {
                     const double mr  = rain_mass[ik];
@@ -196,6 +204,7 @@ namespace mp2d
             {
                 const int ik  = i + k*jj;
                 const int ijk = i + j*jj + k*kk;
+
                 if(qr[ijk] > qr_min)
                 {
                     // Calculate mean rain drop mass and diameter
@@ -543,7 +552,6 @@ namespace mp
                         // Calculate mean rain drop mass and diameter
                         const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
                         const double dr      = calc_rain_diameter(mr);
-
                         const double mur     = calc_mu_r(dr);
                         const double lambdar = calc_lambda_r(mur, dr);
 
@@ -594,7 +602,6 @@ namespace mp
                         // Calculate mean rain drop mass and diameter
                         const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
                         const double dr      = calc_rain_diameter(mr);
-
                         const double mur     = calc_mu_r(dr);
                         const double lambdar = calc_lambda_r(mur, dr);
             
@@ -665,7 +672,6 @@ namespace mp
                             // Calculate mean rain drop mass and diameter
                             const double mr      = calc_rain_mass(qr_sub[ik], nr_sub[ik], rho[k]);
                             const double dr      = calc_rain_diameter(mr);
-
                             const double mur     = calc_mu_r(dr);
                             const double lambdar = calc_lambda_r(mur, dr);
                 
