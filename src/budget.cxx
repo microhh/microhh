@@ -115,6 +115,7 @@ void Budget::create()
     stats.add_prof("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" );
     stats.add_prof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
     stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
+    stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh");
 
     if (thermo.get_switch() != "0")
     {
@@ -173,7 +174,7 @@ void Budget::exec_stats(Mask* m)
                         m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data,
                         m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data, m->profs["uw_diss"].data, m->profs["vw_diss"].data,
                         m->profs["w2_pres"].data, m->profs["tke_pres"].data,
-                        m->profs["u2_rdstr"].data, m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data,
+                        m->profs["u2_rdstr"].data, m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data, m->profs["uw_rdstr"].data,
                         grid.dzi4, grid.dzhi4, fields.visc);
 
         // calculate the buoyancy term of the TKE budget
@@ -615,7 +616,7 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
                              double* restrict u2_visc, double* restrict v2_visc, double* restrict w2_visc, double* restrict tke_visc,
                              double* restrict u2_diss, double* restrict v2_diss, double* restrict w2_diss, double* restrict tke_diss, double* restrict uw_diss, double* restrict vw_diss,
                              double* restrict w2_pres, double* restrict tke_pres,
-                             double* restrict u2_rdstr, double* restrict v2_rdstr, double* restrict w2_rdstr,
+                             double* restrict u2_rdstr, double* restrict v2_rdstr, double* restrict w2_rdstr, double* restrict uw_rdstr,
                              double* restrict dzi4, double* restrict dzhi4, double visc)
 {
     const int ii1 = 1;
@@ -1316,15 +1317,38 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
             }
     }
 
-    master.sum(u2_rdstr , grid.kcells);
-    master.sum(v2_rdstr , grid.kcells);
-    master.sum(w2_rdstr , grid.kcells);
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        uw_rdstr[k] = 0.;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+#pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj1 + k*kk1;
+                uw_rdstr[k] += ( ( ci0*( ci0*p[ijk-ii2-kk2] + ci1*p[ijk-ii1-kk2] + ci2*p[ijk-kk2] + ci3*p[ijk+ii1-kk2] )
+                                 + ci1*( ci0*p[ijk-ii2-kk1] + ci1*p[ijk-ii1-kk1] + ci2*p[ijk-kk1] + ci3*p[ijk+ii1-kk1] )
+                                 + ci2*( ci0*p[ijk-ii2    ] + ci1*p[ijk-ii1    ] + ci2*p[ijk    ] + ci3*p[ijk+ii1    ] )
+                                 + ci3*( ci0*p[ijk-ii2+kk1] + ci1*p[ijk-ii1+kk1] + ci2*p[ijk+kk1] + ci3*p[ijk+ii1+kk1] ) )
+                
+                               * ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk] - umean[k] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] ) + ( ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk] + cg3*w[ijk+ii1] ) * cgi*dxi ) ) );
+            }
+    }
+
+    master.sum(u2_rdstr, grid.kcells);
+    master.sum(v2_rdstr, grid.kcells);
+    master.sum(w2_rdstr, grid.kcells);
+    master.sum(uw_rdstr, grid.kcells);
 
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
         u2_rdstr[k] /= n;
         v2_rdstr[k] /= n;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
         w2_rdstr[k] /= n;
+        uw_rdstr[k] /= n;
     }
 }
 
