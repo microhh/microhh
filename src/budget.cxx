@@ -160,11 +160,16 @@ void Budget::exec_stats(Mask* m)
                 grid.utrans, grid.vtrans,
                 m->profs["ke"].data, m->profs["tke"].data);
 
+        calc_tke_budget_shear_turb(fields.u->data, fields.v->data, fields.w->data,
+                                   fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
+                                   umodel, vmodel,
+                                   m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data, m->profs["uw_shear"].data, m->profs["vw_shear"].data, 
+                                   m->profs["u2_turb"].data, m->profs["v2_turb"].data, m->profs["w2_turb"].data, m->profs["tke_turb"].data, m->profs["uw_turb"].data, m->profs["vw_turb"].data,
+                                   grid.dzi4, grid.dzhi4);
+
         calc_tke_budget(fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data,
                         fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
                         umodel, vmodel,
-                        m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data, m->profs["uw_shear"].data, m->profs["vw_shear"].data, 
-                        m->profs["u2_turb"].data, m->profs["v2_turb"].data, m->profs["w2_turb"].data, m->profs["tke_turb"].data, m->profs["uw_turb"].data, m->profs["vw_turb"].data,
                         m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data,
                         m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data, m->profs["uw_diss"].data, m->profs["vw_diss"].data,
                         m->profs["w2_pres"].data, m->profs["tke_pres"].data,
@@ -270,16 +275,12 @@ void Budget::calc_ke(double* restrict u, double* restrict v, double* restrict w,
     }
 }
 
-void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* restrict w, double* restrict p,
-                             double* restrict wx, double* restrict wy,
-                             double* restrict umean, double* restrict vmean,
-                             double* restrict u2_shear, double* restrict v2_shear, double* restrict tke_shear, double* restrict uw_shear, double* restrict vw_shear,
-                             double* restrict u2_turb, double* restrict v2_turb, double* restrict w2_turb, double* restrict tke_turb, double* restrict uw_turb, double* restrict vw_turb,
-                             double* restrict u2_visc, double* restrict v2_visc, double* restrict w2_visc, double* restrict tke_visc,
-                             double* restrict u2_diss, double* restrict v2_diss, double* restrict w2_diss, double* restrict tke_diss, double* restrict uw_diss, double* restrict vw_diss,
-                             double* restrict w2_pres, double* restrict tke_pres,
-                             double* restrict u2_rdstr, double* restrict v2_rdstr, double* restrict w2_rdstr,
-                             double* restrict dzi4, double* restrict dzhi4, double visc)
+void Budget::calc_tke_budget_shear_turb(double* restrict u, double* restrict v, double* restrict w,
+                                        double* restrict wx, double* restrict wy,
+                                        double* restrict umean, double* restrict vmean,
+                                        double* restrict u2_shear, double* restrict v2_shear, double* restrict tke_shear, double* restrict uw_shear, double* restrict vw_shear,
+                                        double* restrict u2_turb, double* restrict v2_turb, double* restrict w2_turb, double* restrict tke_turb, double* restrict uw_turb, double* restrict vw_turb,
+                                        double* restrict dzi4, double* restrict dzhi4)
 {
     // 1. INTERPOLATE THE VERTICAL VELOCITY TO U AND V LOCATION
     const int wloc [3] = {0,0,1};
@@ -606,10 +607,39 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
         uw_turb [k] /= n;
         vw_turb [k] /= n;
     }
+}
+
+void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* restrict w, double* restrict p,
+                             double* restrict wx, double* restrict wy,
+                             double* restrict umean, double* restrict vmean,
+                             double* restrict u2_visc, double* restrict v2_visc, double* restrict w2_visc, double* restrict tke_visc,
+                             double* restrict u2_diss, double* restrict v2_diss, double* restrict w2_diss, double* restrict tke_diss, double* restrict uw_diss, double* restrict vw_diss,
+                             double* restrict w2_pres, double* restrict tke_pres,
+                             double* restrict u2_rdstr, double* restrict v2_rdstr, double* restrict w2_rdstr,
+                             double* restrict dzi4, double* restrict dzhi4, double visc)
+{
+    const int ii1 = 1;
+    const int ii2 = 2;
+    const int ii3 = 3;
+    const int jj1 = 1*grid.icells;
+    const int jj2 = 2*grid.icells;
+    const int jj3 = 3*grid.icells;
+    const int kk1 = 1*grid.ijcells;
+    const int kk2 = 2*grid.ijcells;
+    const int kk3 = 3*grid.ijcells;
+    const int kk4 = 4*grid.ijcells;
+
+    const int kstart = grid.kstart;
+    const int kend   = grid.kend;
+
+    const double dzhi4bot = grid.dzhi4bot;
+    const double dzhi4top = grid.dzhi4top;
+
+    double n = grid.itot*grid.jtot;
 
     // 4. CALCULATE THE PRESSURE TRANSPORT TERM
     // bottom boundary
-    k = grid.kstart;
+    int k = grid.kstart;
     tke_pres[k] = 0.;
 
     for (int j=grid.jstart; j<grid.jend; ++j)
