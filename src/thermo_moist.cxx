@@ -2207,7 +2207,7 @@ void Thermo_moist::calc_buoyancy_fluxbot(double* restrict bfluxbot, double* rest
 void Thermo_moist::init_stat()
 {
     // Add variables to the statistics
-    if (stats->getSwitch() == "1")
+    if (stats->get_switch() == "1")
     {
         /* Add fixed base-state density and temperature profiles. Density should probably be in fields (?), but
            there the statistics are initialized before thermo->create() is called */
