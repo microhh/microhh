@@ -4,8 +4,8 @@ import netCDF4
 
 from pylab import *
 
-start = 50
-end   = 74
+start = 30
+end   = 36
 plotens = False
 
 # read Moser's data
@@ -15,7 +15,7 @@ Moseru2   = numpy.loadtxt("chan180.uubal", skiprows=25)
 Moserv2   = numpy.loadtxt("chan180.wwbal", skiprows=25)
 Moserw2   = numpy.loadtxt("chan180.vvbal", skiprows=25)
 Mosertke  = numpy.loadtxt("chan180.kbal" , skiprows=25)
-Moseruw   = numpy.loadtxt("chan180.uvbal", skiprows=21)
+Moseruw   = numpy.loadtxt("chan180.uvbal", skiprows=25)
 
 yplusMoser = Mosermean[:,1]
 uavgMoser  = Mosermean[:,2]
