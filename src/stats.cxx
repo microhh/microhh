@@ -969,7 +969,7 @@ void Stats::calc_path(double* restrict data, double* restrict maskbot, int* rest
                     }
             }
         *path /= (double)*nmaskbot;
-        grid->get_prof(path,1);
+        master->sum(path, 1);
     }
     else
         *path = NC_FILL_DOUBLE;
