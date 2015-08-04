@@ -4,8 +4,8 @@ import netCDF4
 
 from pylab import *
 
-start = 50
-end   = 70
+start = 60
+end   = 121
 plotens = False
 
 # read Moser's data
@@ -96,6 +96,7 @@ tke_prest  = stats.variables["tke_pres"] [start:end,:]
 uw_sheart = stats.variables["uw_shear"][start:end,:]
 uw_turbt  = stats.variables["uw_turb"] [start:end,:]
 uw_disst  = stats.variables["uw_diss"] [start:end,:]
+uw_prest  = stats.variables["uw_pres"] [start:end,:]
 uw_rdstrt = stats.variables["uw_rdstr"][start:end,:]
 
 utotavgt = (uavgt**2. + vavgt**2.)**.5
@@ -143,8 +144,9 @@ tke_resid = tke_shear + tke_turb + tke_visc + tke_diss + tke_pres
 uw_shear = numpy.mean(uw_sheart,0)
 uw_turb  = numpy.mean(uw_turbt ,0)
 uw_diss  = numpy.mean(uw_disst ,0)
+uw_pres  = numpy.mean(uw_prest ,0)
 uw_rdstr = numpy.mean(uw_rdstrt,0)
-uw_resid = uw_shear + uw_turb + uw_diss + uw_rdstr
+uw_resid = uw_shear + uw_turb + uw_diss + uw_pres + uw_rdstr
 
 utotavg = numpy.mean(utotavgt,0)
 ustar   = numpy.mean(ustart)
@@ -300,17 +302,20 @@ if(plotens):
     plot(yplus[starty:endy], uw_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
 #    plot(yplus[starty:endy], uw_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
     plot(yplus[starty:endy], uw_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+    plot(yplus[starty:endy], uw_prest [n,starty:endy] * visc / ustar**4., color='#cccccc')
     plot(yplus[starty:endy], uw_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
 plot(yplus[starty:endy], uw_shear[starty:endy] * visc / ustar**4., 'b-', label='S')
 plot(yplus[starty:endy], uw_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
 #plot(yplus[starty:endy], uw_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
 plot(yplus[starty:endy], uw_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
+plot(yplus[starty:endy], uw_pres [starty:endy] * visc / ustar**4., 'y-', label='Tp')
 plot(yplus[starty:endy], uw_rdstr[starty:endy] * visc / ustar**4., 'm-', label='P')
 plot(yplus[starty:endy], uw_resid[starty:endy] * visc / ustar**4., 'k-', label='resid')
 plot(yplusMoser, uw_shearMoser, 'k--', label="Moser")
 plot(yplusMoser, uw_turbMoser , 'k--')
 #plot(yplusMoser, uw_viscMoser , 'k--')
 plot(yplusMoser, uw_dissMoser , 'k--')
+plot(yplusMoser, uw_presMoser , 'k--')
 plot(yplusMoser, uw_rdstrMoser, 'k--')
 xlabel('y+')
 ylabel('Rxz')

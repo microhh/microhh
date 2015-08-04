@@ -111,6 +111,7 @@ void Budget::create()
 
     stats.add_prof("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh");
     stats.add_prof("tke_pres", "Pressure transport term in TKE budget", "m2 s-3", "z" );
+    stats.add_prof("uw_pres" , "Pressure transport term in UW budget" , "m2 s-3", "zh");
 
     stats.add_prof("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" );
     stats.add_prof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
@@ -173,7 +174,7 @@ void Budget::exec_stats(Mask* m)
                         umodel, vmodel,
                         m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data,
                         m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data, m->profs["uw_diss"].data, m->profs["vw_diss"].data,
-                        m->profs["w2_pres"].data, m->profs["tke_pres"].data,
+                        m->profs["w2_pres"].data, m->profs["tke_pres"].data, m->profs["uw_pres"].data,
                         m->profs["u2_rdstr"].data, m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data, m->profs["uw_rdstr"].data,
                         grid.dzi4, grid.dzhi4, fields.visc);
 
@@ -615,7 +616,7 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
                              double* restrict umean, double* restrict vmean,
                              double* restrict u2_visc, double* restrict v2_visc, double* restrict w2_visc, double* restrict tke_visc,
                              double* restrict u2_diss, double* restrict v2_diss, double* restrict w2_diss, double* restrict tke_diss, double* restrict uw_diss, double* restrict vw_diss,
-                             double* restrict w2_pres, double* restrict tke_pres,
+                             double* restrict w2_pres, double* restrict tke_pres, double* restrict uw_pres,
                              double* restrict u2_rdstr, double* restrict v2_rdstr, double* restrict w2_rdstr, double* restrict uw_rdstr,
                              double* restrict dzi4, double* restrict dzhi4, double visc)
 {
@@ -632,6 +633,9 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
 
     const int kstart = grid.kstart;
     const int kend   = grid.kend;
+
+    const double dxi = 1./grid.dx;
+    const double dyi = 1./grid.dy;
 
     const double dzhi4bot = grid.dzhi4bot;
     const double dzhi4top = grid.dzhi4top;
@@ -732,14 +736,43 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
                              + cg3*((ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2])*p[ijk+kk1]) ) * dzhi4[k];
         }
 
+    // UW term
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        uw_pres[k] = 0.;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+#pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj1 + k*kk1;
+                uw_pres[k] -= ( ( ( cg0*( ( u[ijk        -kk2] - umean[k-2] ) * ( ci0*p[ijk-ii2    -kk2] + ci1*p[ijk-ii1    -kk2] + ci2*p[ijk        -kk2] + ci3*p[ijk+ii1    -kk2] ) )
+                                  + cg1*( ( u[ijk        -kk1] - umean[k-1] ) * ( ci0*p[ijk-ii2    -kk1] + ci1*p[ijk-ii1    -kk1] + ci2*p[ijk        -kk1] + ci3*p[ijk+ii1    -kk1] ) )
+                                  + cg2*( ( u[ijk            ] - umean[k  ] ) * ( ci0*p[ijk-ii2        ] + ci1*p[ijk-ii1        ] + ci2*p[ijk            ] + ci3*p[ijk+ii1        ] ) )
+                                  + cg3*( ( u[ijk        +kk1] - umean[k+1] ) * ( ci0*p[ijk-ii2    +kk1] + ci1*p[ijk-ii1    +kk1] + ci2*p[ijk        +kk1] + ci3*p[ijk+ii1    +kk1] ) ) )
+                
+                                * dzhi4[k  ] )
+                
+                              + ( ( cg0*( w[ijk-ii2        ] * ( ci0*p[ijk-ii2    -kk2] + ci1*p[ijk-ii2    -kk1] + ci2*p[ijk-ii2        ] + ci3*p[ijk-ii2    +kk1] ) )
+                                  + cg1*( w[ijk-ii1        ] * ( ci0*p[ijk-ii1    -kk2] + ci1*p[ijk-ii1    -kk1] + ci2*p[ijk-ii1        ] + ci3*p[ijk-ii1    +kk1] ) )
+                                  + cg2*( w[ijk            ] * ( ci0*p[ijk        -kk2] + ci1*p[ijk        -kk1] + ci2*p[ijk            ] + ci3*p[ijk        +kk1] ) )
+                                  + cg3*( w[ijk+ii1        ] * ( ci0*p[ijk+ii1    -kk2] + ci1*p[ijk+ii1    -kk1] + ci2*p[ijk+ii1        ] + ci3*p[ijk+ii1    +kk1] ) ) )
+                
+                                * cgi*dxi ) );
+            }
+    }
+
     master.sum(w2_pres , grid.kcells);
     master.sum(tke_pres, grid.kcells);
+    master.sum(uw_pres , grid.kcells);
 
     for (int k=grid.kstart; k<grid.kend; ++k)
         tke_pres[k] /= n;
 
     for (int k=grid.kstart; k<grid.kend+1; ++k)
-        w2_pres [k] /= n;
+    {
+        w2_pres[k] /= n;
+        uw_pres[k] /= n;
+    }
 
     // 5. CALCULATE THE VISCOUS TRANSPORT TERM
     // first, interpolate the vertical velocity to the scalar levels using temporary array wx
@@ -947,10 +980,8 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
     for (int k=grid.kstart; k<grid.kend+1; ++k)
         w2_visc [k] /= n;
 
+
     // 6. CALCULATE THE DISSIPATION TERM
-    double dxi,dyi;
-    dxi = 1./grid.dx;
-    dyi = 1./grid.dy;
 
     // bottom boundary
     k = grid.kstart;

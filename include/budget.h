@@ -73,7 +73,7 @@ class Budget
                              double*, double*,
                              double*, double*, double*, double*,
                              double*, double*, double*, double*, double*, double*,
-                             double*, double*,
+                             double*, double*, double*,
                              double*, double*, double*, double*,
                              double*, double*, double);
 
