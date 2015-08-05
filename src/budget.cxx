@@ -124,6 +124,11 @@ void Budget::create()
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
         stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
         stats.add_prof("uw_buoy" , "Buoyancy production/destruction term in UW budget" , "m2 s-3", "zh");
+
+        stats.add_prof("b2_shear", "Shear production term in B2 budget"   , "m2 s-5", "z");
+        stats.add_prof("b2_turb" , "Turbulent transport term in B2 budget", "m2 s-5", "z");
+        stats.add_prof("b2_visc" , "Viscous transport term in B2 budget"  , "m2 s-5", "z");
+        stats.add_prof("b2_diss" , "Dissipation term in B2 budget"        , "m2 s-5", "z");
     }
 
     if (thermo.get_switch() != "0")
@@ -188,6 +193,11 @@ void Budget::exec_stats(Mask* m)
             calc_tke_budget_buoy(fields.u->data, fields.w->data, fields.atmp["tmp1"]->data,
                                  umodel,
                                  m->profs["w2_buoy"].data, m->profs["tke_buoy"].data, m->profs["uw_buoy"].data);
+
+            calc_b2_budget(fields.w->data, fields.atmp["tmp1"]->data,
+                           fields.atmp["tmp1"]->datamean,
+                           m->profs["b2_shear"].data, m->profs["b2_turb"].data, m->profs["b2_visc"].data, m->profs["b2_diss"].data,
+                           grid.dzi4, grid.dzhi4);
         }
 
         // calculate the potential energy budget
@@ -1660,6 +1670,167 @@ void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double
     grid.get_prof(w2_buoy , grid.kcells);
     grid.get_prof(tke_buoy, grid.kcells);
     grid.get_prof(uw_buoy , grid.kcells);
+}
+
+void Budget::calc_b2_budget(double* restrict w, double* restrict b,
+                            double* restrict bmean,
+                            double* restrict b2_shear, double* restrict b2_turb, double* restrict b2_visc, double* restrict b2_diss,
+                            double* restrict dzi4, double* restrict dzhi4)
+{
+    const int jj1 = 1*grid.icells;
+    const int kk1 = 1*grid.ijcells;
+    const int kk2 = 2*grid.ijcells;
+    const int kk3 = 3*grid.ijcells;
+
+    // 1. CALCULATE THE GRADIENT PRODUCTION TERM
+    int k = grid.kstart;
+    b2_shear[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+            b2_shear[k] -= 2.*( ( ( ( b[ijk            ] - bmean[k  ] ) * ( ci0*w[ijk        -kk1] + ci1*w[ijk            ] + ci2*w[ijk        +kk1] + ci3*w[ijk        +kk2] ) )
+            
+                             * ( cg0*( bi0*bmean[k-2] + bi1*bmean[k-1] + bi2*bmean[k  ] + bi3*bmean[k+1] )
+                               + cg1*( ci0*bmean[k-2] + ci1*bmean[k-1] + ci2*bmean[k  ] + ci3*bmean[k+1] )
+                               + cg2*( ci0*bmean[k-1] + ci1*bmean[k  ] + ci2*bmean[k+1] + ci3*bmean[k+2] )
+                               + cg3*( ci0*bmean[k  ] + ci1*bmean[k+1] + ci2*bmean[k+2] + ci3*bmean[k+3] ) ) )
+            
+                           * dzi4[k  ] );
+
+        }
+
+    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    {
+        b2_shear[k] = 0;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj1 + k*kk1;
+                b2_shear[k] -= 2.*( ( ( ( b[ijk            ] - bmean[k  ] ) * ( ci0*w[ijk        -kk1] + ci1*w[ijk            ] + ci2*w[ijk        +kk1] + ci3*w[ijk        +kk2] ) )
+                
+                                 * ( cg0*( ci0*bmean[k-3] + ci1*bmean[k-2] + ci2*bmean[k-1] + ci3*bmean[k  ] )
+                                   + cg1*( ci0*bmean[k-2] + ci1*bmean[k-1] + ci2*bmean[k  ] + ci3*bmean[k+1] )
+                                   + cg2*( ci0*bmean[k-1] + ci1*bmean[k  ] + ci2*bmean[k+1] + ci3*bmean[k+2] )
+                                   + cg3*( ci0*bmean[k  ] + ci1*bmean[k+1] + ci2*bmean[k+2] + ci3*bmean[k+3] ) ) )
+                
+                               * dzi4[k  ] );
+            }
+    }
+
+    k = grid.kend-1;
+    b2_shear[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+            b2_shear[k] -= 2.*( ( ( ( b[ijk            ] - bmean[k  ] ) * ( ci0*w[ijk        -kk1] + ci1*w[ijk            ] + ci2*w[ijk        +kk1] + ci3*w[ijk        +kk2] ) )
+            
+                             * ( cg0*( ci0*bmean[k-3] + ci1*bmean[k-2] + ci2*bmean[k-1] + ci3*bmean[k  ] )
+                               + cg1*( ci0*bmean[k-2] + ci1*bmean[k-1] + ci2*bmean[k  ] + ci3*bmean[k+1] )
+                               + cg2*( ci0*bmean[k-1] + ci1*bmean[k  ] + ci2*bmean[k+1] + ci3*bmean[k+2] )
+                               + cg3*( ti0*bmean[k-1] + ti1*bmean[k  ] + ti2*bmean[k+1] + ti3*bmean[k+2] ) ) )
+            
+                           * dzi4[k  ] );
+        }
+
+
+    // 2. CALCULATE THE TURBULENT TRANSPORT TERM
+    k = grid.kstart;
+    b2_turb[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    {
+        b2_turb[k] = 0;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj1 + k*kk1;
+            }
+    }
+
+    k = grid.kend-1;
+    b2_turb[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+
+    // 3. CALCULATE THE VISCOUS TRANSPORT TERM
+    k = grid.kstart;
+    b2_visc[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    {
+        b2_visc[k] = 0;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj1 + k*kk1;
+            }
+    }
+
+    k = grid.kend-1;
+    b2_visc[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+
+    // 4. CALCULATE THE DISSIPATION TERM
+    k = grid.kstart;
+    b2_diss[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    {
+        b2_diss[k] = 0;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj1 + k*kk1;
+            }
+    }
+
+    k = grid.kend-1;
+    b2_diss[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+
 }
 
 void Budget::calc_pe(double* restrict b, double* restrict zsort, double* restrict zsortbot, double* restrict zsorttop,

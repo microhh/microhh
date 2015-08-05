@@ -81,6 +81,11 @@ class Budget
                                   double*,
                                   double*, double*, double*);
 
+        void calc_b2_budget(double*, double*,
+                            double*,
+                            double*, double*, double*, double*,
+                            double*, double*);
+
         void calc_pe(double*, double*, double*, double*,
                      double*,
                      double*,
