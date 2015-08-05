@@ -1622,7 +1622,7 @@ void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double
     const int kk1 = 1*grid.ijcells;
     const int kk2 = 2*grid.ijcells;
 
-    const double n = grid.imax*grid.jmax;
+    const double n = grid.itot*grid.jtot;
 
     // calculate the buoyancy term
     for (int k=grid.kstart; k<grid.kend; ++k)
@@ -1658,6 +1658,10 @@ void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double
             }
     }
 
+    master.sum(tke_buoy, grid.kcells);
+    master.sum(w2_buoy , grid.kcells);
+    master.sum(uw_buoy , grid.kcells);
+
     for (int k=grid.kstart; k<grid.kend; ++k)
         tke_buoy[k] /= n;
 
@@ -1666,10 +1670,6 @@ void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double
         w2_buoy[k] /= n;
         uw_buoy[k] /= n;
     }
-
-    grid.get_prof(w2_buoy , grid.kcells);
-    grid.get_prof(tke_buoy, grid.kcells);
-    grid.get_prof(uw_buoy , grid.kcells);
 }
 
 void Budget::calc_b2_budget(double* restrict w, double* restrict b,
@@ -1681,6 +1681,8 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
     const int kk1 = 1*grid.ijcells;
     const int kk2 = 2*grid.ijcells;
     const int kk3 = 3*grid.ijcells;
+
+    const double n = grid.itot*grid.jtot;
 
     // 1. CALCULATE THE GRADIENT PRODUCTION TERM
     int k = grid.kstart;
@@ -1830,6 +1832,18 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
             const int ijk = i + j*jj1 + k*kk1;
         }
 
+    master.sum(b2_shear, grid.kcells);
+    master.sum(b2_turb , grid.kcells);
+    master.sum(b2_visc , grid.kcells);
+    master.sum(b2_diss , grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        b2_shear[k] /= n;
+        b2_turb [k] /= n;
+        b2_visc [k] /= n;
+        b2_diss [k] /= n;
+    }
 
 }
 
