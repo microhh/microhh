@@ -88,8 +88,8 @@ namespace
     inline double calc_mu_r(const double dr)
     {
         //return 1./3.; // SB06
-        //return 10. * (1. + tanh(1200 * (dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-        return 10. * (1. + tanh2(1200 * (dr - 0.0014))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return 10. * (1. + tanh2(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
         // Taylor expansion SS08, around dr=0.0002. Accurate to within 1% for dr<0.001, 10% for dr<0.0015
         //return 0.670565+dr*(dr*(1.61878e9*dr+1.61937e6)+1573.65);
     }
@@ -245,7 +245,7 @@ namespace mp2d
                             const int iend,   const int jend,   const int kend,
                             const int icells, const int kcells, const int ijcells, const int j)
     {
-        const double w_max = 9.65; // SS08, appendix A
+        const double w_max = 20.; //9.65; // SS08, appendix A
         const double a_R = 9.65;   // SB06, p51
         const double b_R = 10.3;   // SB06, p51
         const double c_R = 600;    // SB06, p51
@@ -431,9 +431,10 @@ namespace mp
                         const int iend,   const int jend,   const int kend,
                         const int jj, const int kk)
     {
-        const double x_star = 2.6e-10;               // SB06, list of symbols
-        const double k_cc   = 4.44e9;                // SB06, p48 
-        const double kccxs  = k_cc / (20. * x_star); // SB06, Eq 4
+        const double x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES
+        const double k_cc   = 9.44e9;        // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
+        const double nu_c   = 1;             // SB06, Table 1., same as UCLA-LES
+        const double kccxs  = k_cc / (20. * x_star) * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2); 
 
         for (int k=kstart; k<kend; k++)
             for (int j=jstart; j<jend; j++)
@@ -443,16 +444,15 @@ namespace mp
                     const int ijk = i + j*jj + k*kk;
                     if(ql[ijk] > ql_min)
                     {
-                        const double nu_c = 1; // SB06, Table 1.
-                        //const double nu_c    = 1.58 * (rho[k] * ql[ijk]*1000.) + 0.72 - 1.; // G09a
-                        const double xc      = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops
+                        const double xc      = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops [kg]
                         const double tau     = 1. - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
-                        const double phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3); // SB06, Eq 6
-                        const double au_tend = kccxs * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2) * pow(ql[ijk], 2) * pow(xc, 2) *
-                                             (1. + phi_au / pow(1 - tau, 2)) * rho_0; // SB06, eq 4
+                        const double phi_au  = 600. * pow(tau, 0.68) * pow(1. - pow(tau, 0.68), 3); // UCLA-LES
+                        //const double phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3); // SB06, Eq 6
+                        const double au_tend = rho[k] * kccxs * pow(ql[ijk], 2) * pow(xc, 2) *
+                                               (1. + phi_au / pow(1-tau, 2)); // SB06, eq 4
 
                         qrt[ijk]  += au_tend; 
-                        nrt[ijk]  += au_tend * rho[k] / x_star;  
+                        nrt[ijk]  += au_tend * rho[k] / x_star;
                         qtt[ijk]  -= au_tend;
                         thlt[ijk] += Lv / (cp * exner[k]) * au_tend; 
                     }
@@ -733,7 +733,7 @@ namespace mp
                             const int iend,   const int jend,   const int kend,
                             const int icells, const int kcells, const int ijcells)
     {
-        const double w_max = 9.65; // SS08, appendix A
+        const double w_max = 20.; //9.65; // SS08, appendix A
         const double a_R = 9.65;   // SB06, p51
         const double b_R = 10.3;   // SB06, p51
         const double c_R = 600;    // SB06, p51
@@ -897,7 +897,7 @@ namespace mp
                                       const int iend,   const int jend,   const int kend,
                                       const int icells, const int ijcells)
     {
-        const double w_max = 9.65; // SS08, appendix A
+        const double w_max = 20.; //9.65; // SS08, appendix A
         const double a_R = 9.65;   // SB06, p51
         const double b_R = 10.3;   // SB06, p51
         const double c_R = 600;    // SB06, p51
