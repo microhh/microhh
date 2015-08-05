@@ -197,7 +197,8 @@ void Budget::exec_stats(Mask* m)
             calc_b2_budget(fields.w->data, fields.atmp["tmp1"]->data,
                            fields.atmp["tmp1"]->datamean,
                            m->profs["b2_shear"].data, m->profs["b2_turb"].data, m->profs["b2_visc"].data, m->profs["b2_diss"].data,
-                           grid.dzi4, grid.dzhi4);
+                           grid.dzi4, grid.dzhi4,
+                           fields.visc);
         }
 
         // calculate the potential energy budget
@@ -1675,7 +1676,8 @@ void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double
 void Budget::calc_b2_budget(double* restrict w, double* restrict b,
                             double* restrict bmean,
                             double* restrict b2_shear, double* restrict b2_turb, double* restrict b2_visc, double* restrict b2_diss,
-                            double* restrict dzi4, double* restrict dzhi4)
+                            double* restrict dzi4, double* restrict dzhi4,
+                            const double visc)
 {
     const int jj1 = 1*grid.icells;
     const int kk1 = 1*grid.ijcells;
@@ -1748,6 +1750,12 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            b2_turb[k] -= ( ( cg0*( ( bi0*( b[ijk        -kk2] - bmean[k-2] ) + bi1*( b[ijk        -kk1] - bmean[k-1] ) + bi2*( b[ijk            ] - bmean[k  ] ) + bi3*( b[ijk        +kk1] - bmean[k+1] ) ) * w[ijk        -kk1] )
+                            + cg1*( ( ci0*( b[ijk        -kk2] - bmean[k-2] ) + ci1*( b[ijk        -kk1] - bmean[k-1] ) + ci2*( b[ijk            ] - bmean[k  ] ) + ci3*( b[ijk        +kk1] - bmean[k+1] ) ) * w[ijk            ] )
+                            + cg2*( ( ci0*( b[ijk        -kk1] - bmean[k-1] ) + ci1*( b[ijk            ] - bmean[k  ] ) + ci2*( b[ijk        +kk1] - bmean[k+1] ) + ci3*( b[ijk        +kk2] - bmean[k+2] ) ) * w[ijk        +kk1] )
+                            + cg3*( ( ci0*( b[ijk            ] - bmean[k  ] ) + ci1*( b[ijk        +kk1] - bmean[k+1] ) + ci2*( b[ijk        +kk2] - bmean[k+2] ) + ci3*( b[ijk        +kk3] - bmean[k+3] ) ) * w[ijk        +kk2] ) )
+            
+                          * dzi4[k  ] );
         }
 
     for (int k=grid.kstart+1; k<grid.kend-1; ++k)
@@ -1758,6 +1766,12 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
+                b2_turb[k] -= ( ( cg0*( ( ci0*( b[ijk        -kk3] - bmean[k-3] ) + ci1*( b[ijk        -kk2] - bmean[k-2] ) + ci2*( b[ijk        -kk1] - bmean[k-1] ) + ci3*( b[ijk            ] - bmean[k  ] ) ) * w[ijk        -kk1] )
+                                + cg1*( ( ci0*( b[ijk        -kk2] - bmean[k-2] ) + ci1*( b[ijk        -kk1] - bmean[k-1] ) + ci2*( b[ijk            ] - bmean[k  ] ) + ci3*( b[ijk        +kk1] - bmean[k+1] ) ) * w[ijk            ] )
+                                + cg2*( ( ci0*( b[ijk        -kk1] - bmean[k-1] ) + ci1*( b[ijk            ] - bmean[k  ] ) + ci2*( b[ijk        +kk1] - bmean[k+1] ) + ci3*( b[ijk        +kk2] - bmean[k+2] ) ) * w[ijk        +kk1] )
+                                + cg3*( ( ci0*( b[ijk            ] - bmean[k  ] ) + ci1*( b[ijk        +kk1] - bmean[k+1] ) + ci2*( b[ijk        +kk2] - bmean[k+2] ) + ci3*( b[ijk        +kk3] - bmean[k+3] ) ) * w[ijk        +kk2] ) )
+                
+                              * dzi4[k  ] );
             }
     }
 
@@ -1768,6 +1782,12 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            b2_turb[k] -= ( ( cg0*( ( ci0*( b[ijk        -kk3] - bmean[k-3] ) + ci1*( b[ijk        -kk2] - bmean[k-2] ) + ci2*( b[ijk        -kk1] - bmean[k-1] ) + ci3*( b[ijk            ] - bmean[k  ] ) ) * w[ijk        -kk1] )
+                            + cg1*( ( ci0*( b[ijk        -kk2] - bmean[k-2] ) + ci1*( b[ijk        -kk1] - bmean[k-1] ) + ci2*( b[ijk            ] - bmean[k  ] ) + ci3*( b[ijk        +kk1] - bmean[k+1] ) ) * w[ijk            ] )
+                            + cg2*( ( ci0*( b[ijk        -kk1] - bmean[k-1] ) + ci1*( b[ijk            ] - bmean[k  ] ) + ci2*( b[ijk        +kk1] - bmean[k+1] ) + ci3*( b[ijk        +kk2] - bmean[k+2] ) ) * w[ijk        +kk1] )
+                            + cg3*( ( ti0*( b[ijk        -kk1] - bmean[k-1] ) + ti1*( b[ijk            ] - bmean[k  ] ) + ti2*( b[ijk        +kk1] - bmean[k+1] ) + ti3*( b[ijk        +kk2] - bmean[k+2] ) ) * w[ijk        +kk2] ) )
+            
+                          * dzi4[k  ] );
         }
 
 
@@ -1779,6 +1799,14 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            b2_visc[k] += ( ( visc
+            
+                            * ( cg0*( ( bg0*( b[ijk        -kk2] - bmean[k-2] ) + bg1*( b[ijk        -kk1] - bmean[k-1] ) + bg2*( b[ijk            ] - bmean[k  ] ) + bg3*( b[ijk        +kk1] - bmean[k+1] ) ) * dzhi4[k-1] )
+                              + cg1*( ( cg0*( b[ijk        -kk2] - bmean[k-2] ) + cg1*( b[ijk        -kk1] - bmean[k-1] ) + cg2*( b[ijk            ] - bmean[k  ] ) + cg3*( b[ijk        +kk1] - bmean[k+1] ) ) * dzhi4[k  ] )
+                              + cg2*( ( cg0*( b[ijk        -kk1] - bmean[k-1] ) + cg1*( b[ijk            ] - bmean[k  ] ) + cg2*( b[ijk        +kk1] - bmean[k+1] ) + cg3*( b[ijk        +kk2] - bmean[k+2] ) ) * dzhi4[k+1] )
+                              + cg3*( ( cg0*( b[ijk            ] - bmean[k  ] ) + cg1*( b[ijk        +kk1] - bmean[k+1] ) + cg2*( b[ijk        +kk2] - bmean[k+2] ) + cg3*( b[ijk        +kk3] - bmean[k+3] ) ) * dzhi4[k+2] ) ) )
+            
+                          * dzi4[k  ] );
         }
 
     for (int k=grid.kstart+1; k<grid.kend-1; ++k)
@@ -1789,6 +1817,14 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
+                b2_visc[k] += ( ( visc
+                
+                                * ( cg0*( ( cg0*( b[ijk        -kk3] - bmean[k-3] ) + cg1*( b[ijk        -kk2] - bmean[k-2] ) + cg2*( b[ijk        -kk1] - bmean[k-1] ) + cg3*( b[ijk            ] - bmean[k  ] ) ) * dzhi4[k-1] )
+                                  + cg1*( ( cg0*( b[ijk        -kk2] - bmean[k-2] ) + cg1*( b[ijk        -kk1] - bmean[k-1] ) + cg2*( b[ijk            ] - bmean[k  ] ) + cg3*( b[ijk        +kk1] - bmean[k+1] ) ) * dzhi4[k  ] )
+                                  + cg2*( ( cg0*( b[ijk        -kk1] - bmean[k-1] ) + cg1*( b[ijk            ] - bmean[k  ] ) + cg2*( b[ijk        +kk1] - bmean[k+1] ) + cg3*( b[ijk        +kk2] - bmean[k+2] ) ) * dzhi4[k+1] )
+                                  + cg3*( ( cg0*( b[ijk            ] - bmean[k  ] ) + cg1*( b[ijk        +kk1] - bmean[k+1] ) + cg2*( b[ijk        +kk2] - bmean[k+2] ) + cg3*( b[ijk        +kk3] - bmean[k+3] ) ) * dzhi4[k+2] ) ) )
+                
+                              * dzi4[k  ] );
             }
     }
 
@@ -1799,6 +1835,14 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            b2_visc[k] += ( ( visc
+            
+                            * ( cg0*( ( cg0*( b[ijk        -kk3] - bmean[k-3] ) + cg1*( b[ijk        -kk2] - bmean[k-2] ) + cg2*( b[ijk        -kk1] - bmean[k-1] ) + cg3*( b[ijk            ] - bmean[k  ] ) ) * dzhi4[k-1] )
+                              + cg1*( ( cg0*( b[ijk        -kk2] - bmean[k-2] ) + cg1*( b[ijk        -kk1] - bmean[k-1] ) + cg2*( b[ijk            ] - bmean[k  ] ) + cg3*( b[ijk        +kk1] - bmean[k+1] ) ) * dzhi4[k  ] )
+                              + cg2*( ( cg0*( b[ijk        -kk1] - bmean[k-1] ) + cg1*( b[ijk            ] - bmean[k  ] ) + cg2*( b[ijk        +kk1] - bmean[k+1] ) + cg3*( b[ijk        +kk2] - bmean[k+2] ) ) * dzhi4[k+1] )
+                              + cg3*( ( tg0*( b[ijk        -kk1] - bmean[k-1] ) + tg1*( b[ijk            ] - bmean[k  ] ) + tg2*( b[ijk        +kk1] - bmean[k+1] ) + tg3*( b[ijk        +kk2] - bmean[k+2] ) ) * dzhi4[k+2] ) ) )
+            
+                          * dzi4[k  ] );
         }
 
 
@@ -1810,6 +1854,14 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            b2_diss[k] -= ( ( ( 2. * visc )
+            
+                            * ( cg0*( bi0*( b[ijk        -kk2] - bmean[k-2] ) + bi1*( b[ijk        -kk1] - bmean[k-1] ) + bi2*( b[ijk            ] - bmean[k  ] ) + bi3*( b[ijk        +kk1] - bmean[k+1] ) )
+                              + cg1*( ci0*( b[ijk        -kk2] - bmean[k-2] ) + ci1*( b[ijk        -kk1] - bmean[k-1] ) + ci2*( b[ijk            ] - bmean[k  ] ) + ci3*( b[ijk        +kk1] - bmean[k+1] ) )
+                              + cg2*( ci0*( b[ijk        -kk1] - bmean[k-1] ) + ci1*( b[ijk            ] - bmean[k  ] ) + ci2*( b[ijk        +kk1] - bmean[k+1] ) + ci3*( b[ijk        +kk2] - bmean[k+2] ) )
+                              + cg3*( ci0*( b[ijk            ] - bmean[k  ] ) + ci1*( b[ijk        +kk1] - bmean[k+1] ) + ci2*( b[ijk        +kk2] - bmean[k+2] ) + ci3*( b[ijk        +kk3] - bmean[k+3] ) ) ) )
+            
+                          * dzi4[k  ] );
         }
 
     for (int k=grid.kstart+1; k<grid.kend-1; ++k)
@@ -1820,6 +1872,14 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
+                b2_diss[k] -= ( ( ( 2. * visc )
+                
+                                * ( cg0*( ci0*( b[ijk        -kk3] - bmean[k-3] ) + ci1*( b[ijk        -kk2] - bmean[k-2] ) + ci2*( b[ijk        -kk1] - bmean[k-1] ) + ci3*( b[ijk            ] - bmean[k  ] ) )
+                                  + cg1*( ci0*( b[ijk        -kk2] - bmean[k-2] ) + ci1*( b[ijk        -kk1] - bmean[k-1] ) + ci2*( b[ijk            ] - bmean[k  ] ) + ci3*( b[ijk        +kk1] - bmean[k+1] ) )
+                                  + cg2*( ci0*( b[ijk        -kk1] - bmean[k-1] ) + ci1*( b[ijk            ] - bmean[k  ] ) + ci2*( b[ijk        +kk1] - bmean[k+1] ) + ci3*( b[ijk        +kk2] - bmean[k+2] ) )
+                                  + cg3*( ci0*( b[ijk            ] - bmean[k  ] ) + ci1*( b[ijk        +kk1] - bmean[k+1] ) + ci2*( b[ijk        +kk2] - bmean[k+2] ) + ci3*( b[ijk        +kk3] - bmean[k+3] ) ) ) )
+                
+                              * dzi4[k  ] );
             }
     }
 
@@ -1830,6 +1890,14 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            b2_diss[k] -= ( ( ( 2. * visc )
+            
+                            * ( cg0*( ci0*( b[ijk        -kk3] - bmean[k-3] ) + ci1*( b[ijk        -kk2] - bmean[k-2] ) + ci2*( b[ijk        -kk1] - bmean[k-1] ) + ci3*( b[ijk            ] - bmean[k  ] ) )
+                              + cg1*( ci0*( b[ijk        -kk2] - bmean[k-2] ) + ci1*( b[ijk        -kk1] - bmean[k-1] ) + ci2*( b[ijk            ] - bmean[k  ] ) + ci3*( b[ijk        +kk1] - bmean[k+1] ) )
+                              + cg2*( ci0*( b[ijk        -kk1] - bmean[k-1] ) + ci1*( b[ijk            ] - bmean[k  ] ) + ci2*( b[ijk        +kk1] - bmean[k+1] ) + ci3*( b[ijk        +kk2] - bmean[k+2] ) )
+                              + cg3*( ti0*( b[ijk        -kk1] - bmean[k-1] ) + ti1*( b[ijk            ] - bmean[k  ] ) + ti2*( b[ijk        +kk1] - bmean[k+1] ) + ti3*( b[ijk        +kk2] - bmean[k+2] ) ) ) )
+            
+                          * dzi4[k  ] );
         }
 
     master.sum(b2_shear, grid.kcells);
