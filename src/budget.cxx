@@ -123,6 +123,7 @@ void Budget::create()
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
         stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
+        stats.add_prof("uw_buoy" , "Buoyancy production/destruction term in UW budget" , "m2 s-3", "zh");
     }
 
     if (thermo.get_switch() != "0")
@@ -184,8 +185,9 @@ void Budget::exec_stats(Mask* m)
         {
             // store the buoyancy in the tmp1 field
             thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b");
-            calc_tke_budget_buoy(fields.w->data, fields.atmp["tmp1"]->data,
-                                 m->profs["w2_buoy"].data, m->profs["tke_buoy"].data);
+            calc_tke_budget_buoy(fields.u->data, fields.w->data, fields.atmp["tmp1"]->data,
+                                 umodel,
+                                 m->profs["w2_buoy"].data, m->profs["tke_buoy"].data, m->profs["uw_buoy"].data);
         }
 
         // calculate the potential energy budget
@@ -1600,9 +1602,12 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
     }
 }
 
-void Budget::calc_tke_budget_buoy(double* restrict w, double* restrict b,
-                                  double* restrict w2_buoy, double* restrict tke_buoy)
+void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double* restrict b,
+                                  double* restrict umean,
+                                  double* restrict w2_buoy, double* restrict tke_buoy, double* restrict uw_buoy)
 {
+    const int ii1 = 1;
+    const int ii2 = 2;
     const int jj1 = 1*grid.icells;
     const int kk1 = 1*grid.ijcells;
     const int kk2 = 2*grid.ijcells;
@@ -1612,7 +1617,6 @@ void Budget::calc_tke_budget_buoy(double* restrict w, double* restrict b,
     // calculate the buoyancy term
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
-        w2_buoy [k] = 0.;
         tke_buoy[k] = 0.;
 
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -1623,23 +1627,39 @@ void Budget::calc_tke_budget_buoy(double* restrict w, double* restrict b,
                 tke_buoy[k] += (ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*b[ijk];
             }
     }
-    for (int k=grid.kstart+1; k<grid.kend; ++k)
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        w2_buoy[k] = 0.;
+        uw_buoy[k] = 0.;
         for (int j=grid.jstart; j<grid.jend; ++j)
 #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
                 w2_buoy[k] += 2.*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1])*w[ijk];
+
+
+                uw_buoy[k] += ( ( ci0*( u[ijk        -kk2] - umean[k-2] ) + ci1*( u[ijk        -kk1] - umean[k-1] ) + ci2*( u[ijk            ] - umean[k  ] ) + ci3*( u[ijk        +kk1] - umean[k+1] ) )
+                
+                              * ( ci0*( ci0*b[ijk-ii2    -kk2] + ci1*b[ijk-ii1    -kk2] + ci2*b[ijk        -kk2] + ci3*b[ijk+ii1    -kk2] )
+                                + ci1*( ci0*b[ijk-ii2    -kk1] + ci1*b[ijk-ii1    -kk1] + ci2*b[ijk        -kk1] + ci3*b[ijk+ii1    -kk1] )
+                                + ci2*( ci0*b[ijk-ii2        ] + ci1*b[ijk-ii1        ] + ci2*b[ijk            ] + ci3*b[ijk+ii1        ] )
+                                + ci3*( ci0*b[ijk-ii2    +kk1] + ci1*b[ijk-ii1    +kk1] + ci2*b[ijk        +kk1] + ci3*b[ijk+ii1    +kk1] ) ) );
             }
+    }
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        tke_buoy[k] /= n;
 
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
-        w2_buoy [k] /= n;
-        tke_buoy[k] /= n;
+        w2_buoy[k] /= n;
+        uw_buoy[k] /= n;
     }
 
     grid.get_prof(w2_buoy , grid.kcells);
     grid.get_prof(tke_buoy, grid.kcells);
+    grid.get_prof(uw_buoy , grid.kcells);
 }
 
 void Budget::calc_pe(double* restrict b, double* restrict zsort, double* restrict zsortbot, double* restrict zsorttop,

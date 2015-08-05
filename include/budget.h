@@ -77,7 +77,9 @@ class Budget
                              double*, double*, double*, double*,
                              double*, double*, double);
 
-        void calc_tke_budget_buoy(double*, double*, double*, double*);
+        void calc_tke_budget_buoy(double*, double*, double*,
+                                  double*,
+                                  double*, double*, double*);
 
         void calc_pe(double*, double*, double*, double*,
                      double*,
