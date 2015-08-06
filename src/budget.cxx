@@ -190,6 +190,7 @@ void Budget::exec_stats(Mask* m)
         {
             // store the buoyancy in the tmp1 field
             thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b");
+            grid.calc_mean(fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->data, grid.kcells); 
             calc_tke_budget_buoy(fields.u->data, fields.w->data, fields.atmp["tmp1"]->data,
                                  umodel,
                                  m->profs["w2_buoy"].data, m->profs["tke_buoy"].data, m->profs["uw_buoy"].data);
@@ -1808,10 +1809,10 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
             const int ijk = i + j*jj1 + k*kk1;
             b2_visc[k] += ( ( visc
             
-                            * ( cg0*( ( bg0*( b[ijk-kk2] - bmean[k-2] ) + bg1*( b[ijk-kk1] - bmean[k-1] ) + bg2*( b[ijk    ] - bmean[k  ] ) + bg3*( b[ijk+kk1] - bmean[k+1] ) ) * dzhi4[k-1] )
-                              + cg1*( ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) * dzhi4[k  ] )
-                              + cg2*( ( cg0*( b[ijk-kk1] - bmean[k-1] ) + cg1*( b[ijk    ] - bmean[k  ] ) + cg2*( b[ijk+kk1] - bmean[k+1] ) + cg3*( b[ijk+kk2] - bmean[k+2] ) ) * dzhi4[k+1] )
-                              + cg3*( ( cg0*( b[ijk    ] - bmean[k  ] ) + cg1*( b[ijk+kk1] - bmean[k+1] ) + cg2*( b[ijk+kk2] - bmean[k+2] ) + cg3*( b[ijk+kk3] - bmean[k+3] ) ) * dzhi4[k+2] ) ) )
+                            * ( cg0*( ( bg0*std::pow( ( b[ijk-kk2] - bmean[k-2] ), 2 ) + bg1*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + bg2*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + bg3*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) ) * dzhi4[k-1] )
+                              + cg1*( ( cg0*std::pow( ( b[ijk-kk2] - bmean[k-2] ), 2 ) + cg1*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + cg2*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + cg3*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) ) * dzhi4[k  ] )
+                              + cg2*( ( cg0*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + cg1*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + cg2*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) + cg3*std::pow( ( b[ijk+kk2] - bmean[k+2] ), 2 ) ) * dzhi4[k+1] )
+                              + cg3*( ( cg0*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + cg1*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) + cg2*std::pow( ( b[ijk+kk2] - bmean[k+2] ), 2 ) + cg3*std::pow( ( b[ijk+kk3] - bmean[k+3] ), 2 ) ) * dzhi4[k+2] ) ) )
             
                           * dzi4[k] );
         }
@@ -1826,10 +1827,10 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
                 const int ijk = i + j*jj1 + k*kk1;
                 b2_visc[k] += ( ( visc
                 
-                                * ( cg0*( ( cg0*( b[ijk-kk3] - bmean[k-3] ) + cg1*( b[ijk-kk2] - bmean[k-2] ) + cg2*( b[ijk-kk1] - bmean[k-1] ) + cg3*( b[ijk    ] - bmean[k  ] ) ) * dzhi4[k-1] )
-                                  + cg1*( ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) * dzhi4[k  ] )
-                                  + cg2*( ( cg0*( b[ijk-kk1] - bmean[k-1] ) + cg1*( b[ijk    ] - bmean[k  ] ) + cg2*( b[ijk+kk1] - bmean[k+1] ) + cg3*( b[ijk+kk2] - bmean[k+2] ) ) * dzhi4[k+1] )
-                                  + cg3*( ( cg0*( b[ijk    ] - bmean[k  ] ) + cg1*( b[ijk+kk1] - bmean[k+1] ) + cg2*( b[ijk+kk2] - bmean[k+2] ) + cg3*( b[ijk+kk3] - bmean[k+3] ) ) * dzhi4[k+2] ) ) )
+                                * ( cg0*( ( cg0*std::pow( ( b[ijk-kk3] - bmean[k-3] ), 2 ) + cg1*std::pow( ( b[ijk-kk2] - bmean[k-2] ), 2 ) + cg2*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + cg3*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) ) * dzhi4[k-1] )
+                                  + cg1*( ( cg0*std::pow( ( b[ijk-kk2] - bmean[k-2] ), 2 ) + cg1*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + cg2*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + cg3*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) ) * dzhi4[k  ] )
+                                  + cg2*( ( cg0*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + cg1*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + cg2*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) + cg3*std::pow( ( b[ijk+kk2] - bmean[k+2] ), 2 ) ) * dzhi4[k+1] )
+                                  + cg3*( ( cg0*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + cg1*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) + cg2*std::pow( ( b[ijk+kk2] - bmean[k+2] ), 2 ) + cg3*std::pow( ( b[ijk+kk3] - bmean[k+3] ), 2 ) ) * dzhi4[k+2] ) ) )
                 
                               * dzi4[k] );
             }
@@ -1844,10 +1845,10 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
             const int ijk = i + j*jj1 + k*kk1;
             b2_visc[k] += ( ( visc
             
-                            * ( cg0*( ( cg0*( b[ijk-kk3] - bmean[k-3] ) + cg1*( b[ijk-kk2] - bmean[k-2] ) + cg2*( b[ijk-kk1] - bmean[k-1] ) + cg3*( b[ijk    ] - bmean[k  ] ) ) * dzhi4[k-1] )
-                              + cg1*( ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) * dzhi4[k  ] )
-                              + cg2*( ( cg0*( b[ijk-kk1] - bmean[k-1] ) + cg1*( b[ijk    ] - bmean[k  ] ) + cg2*( b[ijk+kk1] - bmean[k+1] ) + cg3*( b[ijk+kk2] - bmean[k+2] ) ) * dzhi4[k+1] )
-                              + cg3*( ( tg0*( b[ijk-kk1] - bmean[k-1] ) + tg1*( b[ijk    ] - bmean[k  ] ) + tg2*( b[ijk+kk1] - bmean[k+1] ) + tg3*( b[ijk+kk2] - bmean[k+2] ) ) * dzhi4[k+2] ) ) )
+                            * ( cg0*( ( cg0*std::pow( ( b[ijk-kk3] - bmean[k-3] ), 2 ) + cg1*std::pow( ( b[ijk-kk2] - bmean[k-2] ), 2 ) + cg2*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + cg3*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) ) * dzhi4[k-1] )
+                              + cg1*( ( cg0*std::pow( ( b[ijk-kk2] - bmean[k-2] ), 2 ) + cg1*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + cg2*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + cg3*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) ) * dzhi4[k  ] )
+                              + cg2*( ( cg0*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + cg1*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + cg2*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) + cg3*std::pow( ( b[ijk+kk2] - bmean[k+2] ), 2 ) ) * dzhi4[k+1] )
+                              + cg3*( ( tg0*std::pow( ( b[ijk-kk1] - bmean[k-1] ), 2 ) + tg1*std::pow( ( b[ijk    ] - bmean[k  ] ), 2 ) + tg2*std::pow( ( b[ijk+kk1] - bmean[k+1] ), 2 ) + tg3*std::pow( ( b[ijk+kk2] - bmean[k+2] ), 2 ) ) * dzhi4[k+2] ) ) )
             
                           * dzi4[k] );
         }
