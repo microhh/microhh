@@ -192,7 +192,7 @@ void Budget::exec_stats(Mask* m)
             thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b");
             grid.calc_mean(fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->data, grid.kcells); 
             calc_tke_budget_buoy(fields.u->data, fields.w->data, fields.atmp["tmp1"]->data,
-                                 umodel,
+                                 umodel, fields.atmp["tmp1"]->datamean,
                                  m->profs["w2_buoy"].data, m->profs["tke_buoy"].data, m->profs["uw_buoy"].data);
 
             calc_b2_budget(fields.w->data, fields.atmp["tmp1"]->data,
@@ -1615,7 +1615,7 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
 }
 
 void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double* restrict b,
-                                  double* restrict umean,
+                                  double* restrict umean, double* restrict bmean,
                                   double* restrict w2_buoy, double* restrict tke_buoy, double* restrict uw_buoy)
 {
     const int ii1 = 1;
@@ -1636,7 +1636,7 @@ void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                tke_buoy[k] += (ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*b[ijk];
+                tke_buoy[k] += (ci0*w[ijk-kk1] + ci1*w[ijk] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2])*( b[ijk] - bmean[k] );
             }
     }
     for (int k=grid.kstart; k<grid.kend+1; ++k)
@@ -1650,13 +1650,12 @@ void Budget::calc_tke_budget_buoy(double* restrict u, double* restrict w, double
                 const int ijk = i + j*jj1 + k*kk1;
                 w2_buoy[k] += 2.*(ci0*b[ijk-kk2] + ci1*b[ijk-kk1] + ci2*b[ijk] + ci3*b[ijk+kk1])*w[ijk];
 
-
-                uw_buoy[k] += ( ( ci0*( u[ijk        -kk2] - umean[k-2] ) + ci1*( u[ijk        -kk1] - umean[k-1] ) + ci2*( u[ijk            ] - umean[k  ] ) + ci3*( u[ijk        +kk1] - umean[k+1] ) )
+                uw_buoy[k] += ( ( ci0*( u[ijk-kk2] - umean[k-2] ) + ci1*( u[ijk-kk1] - umean[k-1] ) + ci2*( u[ijk    ] - umean[k  ] ) + ci3*( u[ijk+kk1] - umean[k+1] ) )
                 
-                              * ( ci0*( ci0*b[ijk-ii2    -kk2] + ci1*b[ijk-ii1    -kk2] + ci2*b[ijk        -kk2] + ci3*b[ijk+ii1    -kk2] )
-                                + ci1*( ci0*b[ijk-ii2    -kk1] + ci1*b[ijk-ii1    -kk1] + ci2*b[ijk        -kk1] + ci3*b[ijk+ii1    -kk1] )
-                                + ci2*( ci0*b[ijk-ii2        ] + ci1*b[ijk-ii1        ] + ci2*b[ijk            ] + ci3*b[ijk+ii1        ] )
-                                + ci3*( ci0*b[ijk-ii2    +kk1] + ci1*b[ijk-ii1    +kk1] + ci2*b[ijk        +kk1] + ci3*b[ijk+ii1    +kk1] ) ) );
+                              * ( ci0*( ci0*( b[ijk-ii2-kk2] - bmean[k-2] ) + ci1*( b[ijk-ii1-kk2] - bmean[k-2] ) + ci2*( b[ijk    -kk2] - bmean[k-2] ) + ci3*( b[ijk+ii1-kk2] - bmean[k-2] ) )
+                                + ci1*( ci0*( b[ijk-ii2-kk1] - bmean[k-1] ) + ci1*( b[ijk-ii1-kk1] - bmean[k-1] ) + ci2*( b[ijk    -kk1] - bmean[k-1] ) + ci3*( b[ijk+ii1-kk1] - bmean[k-1] ) )
+                                + ci2*( ci0*( b[ijk-ii2    ] - bmean[k  ] ) + ci1*( b[ijk-ii1    ] - bmean[k  ] ) + ci2*( b[ijk        ] - bmean[k  ] ) + ci3*( b[ijk+ii1    ] - bmean[k  ] ) )
+                                + ci3*( ci0*( b[ijk-ii2+kk1] - bmean[k+1] ) + ci1*( b[ijk-ii1+kk1] - bmean[k+1] ) + ci2*( b[ijk    +kk1] - bmean[k+1] ) + ci3*( b[ijk+ii1+kk1] - bmean[k+1] ) ) ) );
             }
     }
 

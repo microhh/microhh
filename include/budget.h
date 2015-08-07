@@ -78,7 +78,7 @@ class Budget
                              double*, double*, double);
 
         void calc_tke_budget_buoy(double*, double*, double*,
-                                  double*,
+                                  double*, double*,
                                   double*, double*, double*);
 
         void calc_b2_budget(double*, double*,
