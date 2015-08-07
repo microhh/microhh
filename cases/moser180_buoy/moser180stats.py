@@ -4,8 +4,8 @@ import netCDF4
 
 from pylab import *
 
-start = 0
-end   = 10
+start = 10
+end   = 12
 plotens = True
 
 stats = netCDF4.Dataset("moser180.default.0000000.nc","r")
@@ -162,7 +162,7 @@ xlabel('y+')
 ylabel('u+')
 legend(loc=2, frameon=False)
 grid()
-xlim(0, 200)
+xlim(0, 100)
 
 figure()
 if(plotens):
@@ -179,7 +179,7 @@ xlabel('y+')
 ylabel('rms')
 legend(loc=0, frameon=False)
 grid()
-xlim(0, 200)
+xlim(0, 100)
 
 figure()
 if(plotens):
@@ -197,9 +197,9 @@ plot(yplus[starty:endy], u2_rdstr[starty:endy] * visc / ustar**4., 'm-', label='
 plot(yplus[starty:endy], u2_resid[starty:endy] * visc / ustar**4., 'k--', label='resid')
 xlabel('y+')
 ylabel('Rxx')
-legend(loc=0, frameon=False)
+legend(loc=0, ncol=2, frameon=False)
 grid()
-xlim(0, 200)
+xlim(0, 100)
 
 figure()
 if(plotens):
@@ -215,9 +215,9 @@ plot(yplus[starty:endy], v2_rdstr[starty:endy] * visc / ustar**4., 'm-', label='
 plot(yplus[starty:endy], v2_resid[starty:endy] * visc / ustar**4., 'k--', label='resid')
 xlabel('y+')
 ylabel('Ryy')
-legend(loc=0, frameon=False)
+legend(loc=0, ncol=2, frameon=False)
 grid()
-xlim(0, 200)
+xlim(0, 100)
 
 figure()
 if(plotens):
@@ -237,9 +237,9 @@ plot(yplush[starty:endy], w2_buoy [starty:endy] * visc / ustar**4., 'k-', label=
 plot(yplush[starty:endy], w2_resid[starty:endy] * visc / ustar**4., 'k--', label='resid')
 xlabel('y+')
 ylabel('Rzz')
-legend(loc=0, frameon=False)
+legend(loc=0, ncol=2, frameon=False)
 grid()
-xlim(0, 200)
+xlim(0, 100)
 
 figure()
 if(plotens):
@@ -259,9 +259,9 @@ plot(yplus[starty:endy], tke_buoy [starty:endy] * visc / ustar**4., 'k-', label=
 plot(yplus[starty:endy], tke_resid[starty:endy] * visc / ustar**4., 'k--', label='resid')
 xlabel('y+')
 ylabel('tke')
-legend(loc=0, frameon=False)
+legend(loc=0, ncol=2, frameon=False)
 grid()
-xlim(0, 200)
+xlim(0, 100)
 
 figure()
 if(plotens):
@@ -283,9 +283,9 @@ plot(yplus[starty:endy], uw_buoy [starty:endy] * visc / ustar**4., 'k-', label='
 plot(yplus[starty:endy], uw_resid[starty:endy] * visc / ustar**4., 'k--', label='resid')
 xlabel('y+')
 ylabel('Rxz')
-legend(loc=0, frameon=False)
+legend(loc=0, ncol=2, frameon=False)
 grid()
-xlim(0, 200)
+xlim(0, 100)
 
 figure()
 if(plotens):
@@ -301,9 +301,9 @@ plot(yplus[starty:endy], b2_diss [starty:endy] / (bflux[0]/ustar)**2, 'r-', labe
 plot(yplus[starty:endy], b2_resid[starty:endy] / (bflux[0]/ustar)**2, 'k--', label='resid')
 xlabel('y+')
 ylabel('B2')
-legend(loc=0, frameon=False)
+legend(loc=0, ncol=2, frameon=False)
 grid()
-xlim(0, 200)
+xlim(0, 100)
 
 
 figure()
