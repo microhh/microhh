@@ -2119,6 +2119,39 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_visc[k] -= ( ( visc
+            
+            
+                            * ( bg0*( ( bg0*( w[ijk-kk1] * ( bi0*( b[ijk-kk2] - bmean[k-2] ) + bi1*( b[ijk-kk1] - bmean[k-1] ) + bi2*( b[ijk    ] - bmean[k  ] ) + bi3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + bg1*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + bg2*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + bg3*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) ) )
+            
+                                    * dzi4[k-1] )
+            
+                              + bg1*( ( cg0*( w[ijk-kk1] * ( bi0*( b[ijk-kk2] - bmean[k-2] ) + bi1*( b[ijk-kk1] - bmean[k-1] ) + bi2*( b[ijk    ] - bmean[k  ] ) + bi3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg1*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg2*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg3*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) ) )
+            
+                                    * dzi4[k  ] )
+            
+                              + bg2*( ( cg0*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg1*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg2*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) )
+                                      + cg3*( w[ijk+kk3] * ( ci0*( b[ijk+kk1] - bmean[k+1] ) + ci1*( b[ijk+kk2] - bmean[k+2] ) + ci2*( b[ijk+kk3] - bmean[k+3] ) + ci3*( b[ijk+kk4] - bmean[k+4] ) ) ) )
+            
+                                    * dzi4[k+1] )
+            
+                              + bg3*( ( cg0*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg1*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) )
+                                      + cg2*( w[ijk+kk3] * ( ci0*( b[ijk+kk1] - bmean[k+1] ) + ci1*( b[ijk+kk2] - bmean[k+2] ) + ci2*( b[ijk+kk3] - bmean[k+3] ) + ci3*( b[ijk+kk4] - bmean[k+4] ) ) )
+                                      + cg3*( w[ijk+kk4] * ( ci0*( b[ijk+kk2] - bmean[k+2] ) + ci1*( b[ijk+kk3] - bmean[k+3] ) + ci2*( b[ijk+kk4] - bmean[k+4] ) + ci3*( b[ijk+kk5] - bmean[k+5] ) ) ) )
+            
+                                    * dzi4[k+2] ) ) )
+            
+            
+                          * dzhi4bot );
         }
 
     k = grid.kstart+1;
@@ -2128,6 +2161,39 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_visc[k] -= ( ( visc
+            
+            
+                            * ( cg0*( ( bg0*( w[ijk-kk2] * ( bi0*( b[ijk-kk3] - bmean[k-3] ) + bi1*( b[ijk-kk2] - bmean[k-2] ) + bi2*( b[ijk-kk1] - bmean[k-1] ) + bi3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + bg1*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + bg2*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + bg3*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) ) )
+            
+                                    * dzi4[k-2] )
+            
+                              + cg1*( ( cg0*( w[ijk-kk2] * ( bi0*( b[ijk-kk3] - bmean[k-3] ) + bi1*( b[ijk-kk2] - bmean[k-2] ) + bi2*( b[ijk-kk1] - bmean[k-1] ) + bi3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg1*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg2*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg3*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) ) )
+            
+                                    * dzi4[k-1] )
+            
+                              + cg2*( ( cg0*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg1*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg2*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg3*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) ) )
+            
+                                    * dzi4[k  ] )
+            
+                              + cg3*( ( cg0*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg1*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg2*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) )
+                                      + cg3*( w[ijk+kk3] * ( ci0*( b[ijk+kk1] - bmean[k+1] ) + ci1*( b[ijk+kk2] - bmean[k+2] ) + ci2*( b[ijk+kk3] - bmean[k+3] ) + ci3*( b[ijk+kk4] - bmean[k+4] ) ) ) )
+            
+                                    * dzi4[k+1] ) ) )
+            
+            
+                          * dzhi4[k] );
         }
 
     k = grid.kstart+2;
@@ -2137,6 +2203,39 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_visc[k] -= ( ( visc
+            
+            
+                            * ( cg0*( ( cg0*( w[ijk-kk3] * ( bi0*( b[ijk-kk4] - bmean[k-4] ) + bi1*( b[ijk-kk3] - bmean[k-3] ) + bi2*( b[ijk-kk2] - bmean[k-2] ) + bi3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg1*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg2*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg3*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) ) )
+            
+                                    * dzi4[k-2] )
+            
+                              + cg1*( ( cg0*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg1*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg2*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg3*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) ) )
+            
+                                    * dzi4[k-1] )
+            
+                              + cg2*( ( cg0*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg1*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg2*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg3*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) ) )
+            
+                                    * dzi4[k  ] )
+            
+                              + cg3*( ( cg0*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg1*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg2*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) )
+                                      + cg3*( w[ijk+kk3] * ( ci0*( b[ijk+kk1] - bmean[k+1] ) + ci1*( b[ijk+kk2] - bmean[k+2] ) + ci2*( b[ijk+kk3] - bmean[k+3] ) + ci3*( b[ijk+kk4] - bmean[k+4] ) ) ) )
+            
+                                    * dzi4[k+1] ) ) )
+            
+            
+                          * dzhi4[k] );
         }
 
     for (int k=grid.kstart+3; k<grid.kend-2; ++k)
@@ -2147,6 +2246,39 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
+                bw_visc[k] -= ( ( visc
+                
+                
+                                * ( cg0*( ( cg0*( w[ijk-kk3] * ( ci0*( b[ijk-kk5] - bmean[k-5] ) + ci1*( b[ijk-kk4] - bmean[k-4] ) + ci2*( b[ijk-kk3] - bmean[k-3] ) + ci3*( b[ijk-kk2] - bmean[k-2] ) ) )
+                                          + cg1*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                          + cg2*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                          + cg3*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) ) )
+                
+                                        * dzi4[k-2] )
+                
+                                  + cg1*( ( cg0*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                          + cg1*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                          + cg2*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                          + cg3*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) ) )
+                
+                                        * dzi4[k-1] )
+                
+                                  + cg2*( ( cg0*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                          + cg1*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                          + cg2*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                          + cg3*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) ) )
+                
+                                        * dzi4[k  ] )
+                
+                                  + cg3*( ( cg0*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                          + cg1*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                          + cg2*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) )
+                                          + cg3*( w[ijk+kk3] * ( ci0*( b[ijk+kk1] - bmean[k+1] ) + ci1*( b[ijk+kk2] - bmean[k+2] ) + ci2*( b[ijk+kk3] - bmean[k+3] ) + ci3*( b[ijk+kk4] - bmean[k+4] ) ) ) )
+                
+                                        * dzi4[k+1] ) ) )
+                
+                
+                              * dzhi4[k] );
             }
     }
 
@@ -2157,6 +2289,39 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_visc[k] -= ( ( visc
+            
+            
+                            * ( cg0*( ( cg0*( w[ijk-kk3] * ( ci0*( b[ijk-kk5] - bmean[k-5] ) + ci1*( b[ijk-kk4] - bmean[k-4] ) + ci2*( b[ijk-kk3] - bmean[k-3] ) + ci3*( b[ijk-kk2] - bmean[k-2] ) ) )
+                                      + cg1*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg2*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg3*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) ) )
+            
+                                    * dzi4[k-2] )
+            
+                              + cg1*( ( cg0*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg1*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg2*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg3*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) ) )
+            
+                                    * dzi4[k-1] )
+            
+                              + cg2*( ( cg0*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg1*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg2*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg3*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) ) )
+            
+                                    * dzi4[k  ] )
+            
+                              + cg3*( ( cg0*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg1*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg2*( w[ijk+kk2] * ( ci0*( b[ijk    ] - bmean[k  ] ) + ci1*( b[ijk+kk1] - bmean[k+1] ) + ci2*( b[ijk+kk2] - bmean[k+2] ) + ci3*( b[ijk+kk3] - bmean[k+3] ) ) )
+                                      + cg3*( w[ijk+kk3] * ( ti0*( b[ijk    ] - bmean[k  ] ) + ti1*( b[ijk+kk1] - bmean[k+1] ) + ti2*( b[ijk+kk2] - bmean[k+2] ) + ti3*( b[ijk+kk3] - bmean[k+3] ) ) ) )
+            
+                                    * dzi4[k+1] ) ) )
+            
+            
+                          * dzhi4[k] );
         }
 
     k = grid.kend-1;
@@ -2166,6 +2331,39 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_visc[k] -= ( ( visc
+            
+            
+                            * ( cg0*( ( cg0*( w[ijk-kk3] * ( ci0*( b[ijk-kk5] - bmean[k-5] ) + ci1*( b[ijk-kk4] - bmean[k-4] ) + ci2*( b[ijk-kk3] - bmean[k-3] ) + ci3*( b[ijk-kk2] - bmean[k-2] ) ) )
+                                      + cg1*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg2*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg3*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) ) )
+            
+                                    * dzi4[k-2] )
+            
+                              + cg1*( ( cg0*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg1*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg2*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg3*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) ) )
+            
+                                    * dzi4[k-1] )
+            
+                              + cg2*( ( cg0*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg1*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg2*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + cg3*( w[ijk+kk2] * ( ti0*( b[ijk-kk1] - bmean[k-1] ) + ti1*( b[ijk    ] - bmean[k  ] ) + ti2*( b[ijk+kk1] - bmean[k+1] ) + ti3*( b[ijk+kk2] - bmean[k+2] ) ) ) )
+            
+                                    * dzi4[k  ] )
+            
+                              + cg3*( ( tg0*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + tg1*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + tg2*( w[ijk+kk1] * ( ci0*( b[ijk-kk1] - bmean[k-1] ) + ci1*( b[ijk    ] - bmean[k  ] ) + ci2*( b[ijk+kk1] - bmean[k+1] ) + ci3*( b[ijk+kk2] - bmean[k+2] ) ) )
+                                      + tg3*( w[ijk+kk2] * ( ti0*( b[ijk-kk1] - bmean[k-1] ) + ti1*( b[ijk    ] - bmean[k  ] ) + ti2*( b[ijk+kk1] - bmean[k+1] ) + ti3*( b[ijk+kk2] - bmean[k+2] ) ) ) )
+            
+                                    * dzi4[k+1] ) ) )
+            
+            
+                          * dzhi4[k] );
         }
 
     k = grid.kend;
@@ -2175,6 +2373,39 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_visc[k] -= ( ( visc
+            
+            
+                            * ( tg0*( ( cg0*( w[ijk-kk4] * ( ci0*( b[ijk-kk6] - bmean[k-6] ) + ci1*( b[ijk-kk5] - bmean[k-5] ) + ci2*( b[ijk-kk4] - bmean[k-4] ) + ci3*( b[ijk-kk3] - bmean[k-3] ) ) )
+                                      + cg1*( w[ijk-kk3] * ( ci0*( b[ijk-kk5] - bmean[k-5] ) + ci1*( b[ijk-kk4] - bmean[k-4] ) + ci2*( b[ijk-kk3] - bmean[k-3] ) + ci3*( b[ijk-kk2] - bmean[k-2] ) ) )
+                                      + cg2*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg3*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) ) )
+            
+                                    * dzi4[k-3] )
+            
+                              + tg1*( ( cg0*( w[ijk-kk3] * ( ci0*( b[ijk-kk5] - bmean[k-5] ) + ci1*( b[ijk-kk4] - bmean[k-4] ) + ci2*( b[ijk-kk3] - bmean[k-3] ) + ci3*( b[ijk-kk2] - bmean[k-2] ) ) )
+                                      + cg1*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg2*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg3*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) ) )
+            
+                                    * dzi4[k-2] )
+            
+                              + tg2*( ( cg0*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + cg1*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + cg2*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + cg3*( w[ijk+kk1] * ( ti0*( b[ijk-kk2] - bmean[k-2] ) + ti1*( b[ijk-kk1] - bmean[k-1] ) + ti2*( b[ijk    ] - bmean[k  ] ) + ti3*( b[ijk+kk1] - bmean[k+1] ) ) ) )
+            
+                                    * dzi4[k-1] )
+            
+                              + tg3*( ( tg0*( w[ijk-kk2] * ( ci0*( b[ijk-kk4] - bmean[k-4] ) + ci1*( b[ijk-kk3] - bmean[k-3] ) + ci2*( b[ijk-kk2] - bmean[k-2] ) + ci3*( b[ijk-kk1] - bmean[k-1] ) ) )
+                                      + tg1*( w[ijk-kk1] * ( ci0*( b[ijk-kk3] - bmean[k-3] ) + ci1*( b[ijk-kk2] - bmean[k-2] ) + ci2*( b[ijk-kk1] - bmean[k-1] ) + ci3*( b[ijk    ] - bmean[k  ] ) ) )
+                                      + tg2*( w[ijk    ] * ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ) )
+                                      + tg3*( w[ijk+kk1] * ( ti0*( b[ijk-kk2] - bmean[k-2] ) + ti1*( b[ijk-kk1] - bmean[k-1] ) + ti2*( b[ijk    ] - bmean[k  ] ) + ti3*( b[ijk+kk1] - bmean[k+1] ) ) ) )
+            
+                                    * dzi4[k  ] ) ) )
+            
+            
+                          * dzhi4top );
         }
 
 
