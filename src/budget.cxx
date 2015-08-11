@@ -2019,16 +2019,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
     const double dyi = grid.dyi;
 
     // 1. CALCULATE THE GRADIENT PRODUCTION TERM
-    int k = grid.kstart;
-    bw_shear[k] = 0;
-    for (int j=grid.jstart; j<grid.jend; ++j)
-        #pragma ivdep
-        for (int i=grid.istart; i<grid.iend; ++i)
-        {
-            const int ijk = i + j*jj1 + k*kk1;
-        }
-
-    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
     {
         bw_shear[k] = 0;
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -2039,18 +2030,9 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             }
     }
 
-    k = grid.kend-1;
-    bw_shear[k] = 0;
-    for (int j=grid.jstart; j<grid.jend; ++j)
-        #pragma ivdep
-        for (int i=grid.istart; i<grid.iend; ++i)
-        {
-            const int ijk = i + j*jj1 + k*kk1;
-        }
-
 
     // 2. CALCULATE THE TURBULENT TRANSPORT TERM
-    k = grid.kstart;
+    int k = grid.kstart;
     bw_turb[k] = 0;
     for (int j=grid.jstart; j<grid.jend; ++j)
         #pragma ivdep
@@ -2059,7 +2041,16 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             const int ijk = i + j*jj1 + k*kk1;
         }
 
-    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    k = grid.kstart+1;
+    bw_turb[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+    for (int k=grid.kstart+2; k<grid.kend-1; ++k)
     {
         bw_turb[k] = 0;
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -2079,6 +2070,15 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             const int ijk = i + j*jj1 + k*kk1;
         }
 
+    k = grid.kend;
+    bw_turb[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
 
     // 3. CALCULATE THE VISCOUS TRANSPORT TERM
     k = grid.kstart;
@@ -2090,7 +2090,25 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             const int ijk = i + j*jj1 + k*kk1;
         }
 
-    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    k = grid.kstart+1;
+    bw_visc[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+    k = grid.kstart+2;
+    bw_visc[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+    for (int k=grid.kstart+3; k<grid.kend-2; ++k)
     {
         bw_visc[k] = 0;
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -2101,6 +2119,15 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             }
     }
 
+    k = grid.kend-2;
+    bw_visc[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
     k = grid.kend-1;
     bw_visc[k] = 0;
     for (int j=grid.jstart; j<grid.jend; ++j)
@@ -2110,29 +2137,8 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             const int ijk = i + j*jj1 + k*kk1;
         }
 
-    // 4. CALCULATE THE REDISTRIBUTION TERM
-    k = grid.kstart;
-    bw_rdstr[k] = 0;
-    for (int j=grid.jstart; j<grid.jend; ++j)
-        #pragma ivdep
-        for (int i=grid.istart; i<grid.iend; ++i)
-        {
-            const int ijk = i + j*jj1 + k*kk1;
-        }
-
-    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
-    {
-        bw_rdstr[k] = 0;
-        for (int j=grid.jstart; j<grid.jend; ++j)
-            #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj1 + k*kk1;
-            }
-    }
-
-    k = grid.kend-1;
-    bw_rdstr[k] = 0;
+    k = grid.kend;
+    bw_visc[k] = 0;
     for (int j=grid.jstart; j<grid.jend; ++j)
         #pragma ivdep
         for (int i=grid.istart; i<grid.iend; ++i)
@@ -2141,17 +2147,8 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         }
 
 
-    // 5. CALCULATE THE DISSIPATION TERM
-    k = grid.kstart;
-    bw_buoy[k] = 0;
-    for (int j=grid.jstart; j<grid.jend; ++j)
-        #pragma ivdep
-        for (int i=grid.istart; i<grid.iend; ++i)
-        {
-            const int ijk = i + j*jj1 + k*kk1;
-        }
-
-    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    // 4. CALCULATE THE BUOYANCY TERM
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
     {
         bw_buoy[k] = 0;
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -2162,14 +2159,17 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             }
     }
 
-    k = grid.kend-1;
-    bw_buoy[k] = 0;
-    for (int j=grid.jstart; j<grid.jend; ++j)
-        #pragma ivdep
-        for (int i=grid.istart; i<grid.iend; ++i)
-        {
-            const int ijk = i + j*jj1 + k*kk1;
-        }
+    // 5. CALCULATE THE REDISTRIBUTION TERM
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        bw_rdstr[k] = 0;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj1 + k*kk1;
+            }
+    }
 
 
     // 6. CALCULATE THE DISSIPATION TERM
@@ -2182,7 +2182,16 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             const int ijk = i + j*jj1 + k*kk1;
         }
 
-    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    k = grid.kstart+1;
+    bw_diss[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+    for (int k=grid.kstart+2; k<grid.kend-1; ++k)
     {
         bw_diss[k] = 0;
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -2194,6 +2203,15 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
     }
 
     k = grid.kend-1;
+    bw_diss[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+        }
+
+    k = grid.kend;
     bw_diss[k] = 0;
     for (int j=grid.jstart; j<grid.jend; ++j)
         #pragma ivdep
