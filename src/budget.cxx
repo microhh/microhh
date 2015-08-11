@@ -136,6 +136,7 @@ void Budget::create()
         stats.add_prof("bw_rdstr", "Redistribution term in BW budget"     , "m2 s-4", "zh");
         stats.add_prof("bw_buoy" , "Buoyancy term in BW budget"           , "m2 s-4", "zh");
         stats.add_prof("bw_diss" , "Dissipation term in BW budget"        , "m2 s-4", "zh");
+        stats.add_prof("bw_pres" , "Pressure transport term in BW budget" , "m2 s-4", "zh");
     }
 
     if (thermo.get_switch() != "0")
