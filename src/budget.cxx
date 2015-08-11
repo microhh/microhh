@@ -2027,6 +2027,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
+                bw_shear[k] -= ( ( w[ijk] * ( cg0*bmean[k-2] + cg1*bmean[k-1] + cg2*bmean[k  ] + cg3*bmean[k+1] ) ) * dzhi4[k] );
             }
     }
 
@@ -2039,6 +2040,12 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_turb[k] -= ( ( bg0*( std::pow( ( bi0*w[ijk-kk1] + bi1*w[ijk    ] + bi2*w[ijk+kk1] + bi3*w[ijk+kk2] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                            + bg1*( std::pow( ( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
+                            + bg2*( std::pow( ( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) )
+                            + bg3*( std::pow( ( ci0*w[ijk+kk1] + ci1*w[ijk+kk2] + ci2*w[ijk+kk3] + ci3*w[ijk+kk4] ), 2 ) * ( b[ijk+kk2] - bmean[k+2] ) ) )
+            
+                          * dzhi4bot );
         }
 
     k = grid.kstart+1;
@@ -2048,6 +2055,12 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_turb[k] -= ( ( cg0*( std::pow( ( bi0*w[ijk-kk2] + bi1*w[ijk-kk1] + bi2*w[ijk    ] + bi3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
+                            + cg1*( std::pow( ( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                            + cg2*( std::pow( ( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
+                            + cg3*( std::pow( ( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
+            
+                          * dzhi4[k] );
         }
 
     for (int k=grid.kstart+2; k<grid.kend-1; ++k)
@@ -2058,6 +2071,12 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
+                bw_turb[k] -= ( ( cg0*( std::pow( ( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
+                                + cg1*( std::pow( ( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                                + cg2*( std::pow( ( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
+                                + cg3*( std::pow( ( ci0*w[ijk    ] + ci1*w[ijk+kk1] + ci2*w[ijk+kk2] + ci3*w[ijk+kk3] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
+                
+                              * dzhi4[k] );
             }
     }
 
@@ -2068,6 +2087,12 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_turb[k] -= ( ( cg0*( std::pow( ( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
+                            + cg1*( std::pow( ( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                            + cg2*( std::pow( ( ci0*w[ijk-kk1] + ci1*w[ijk    ] + ci2*w[ijk+kk1] + ci3*w[ijk+kk2] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) )
+                            + cg3*( std::pow( ( ti0*w[ijk-kk1] + ti1*w[ijk    ] + ti2*w[ijk+kk1] + ti3*w[ijk+kk2] ), 2 ) * ( b[ijk+kk1] - bmean[k+1] ) ) )
+            
+                          * dzhi4[k] );
         }
 
     k = grid.kend;
@@ -2077,6 +2102,12 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
+            bw_turb[k] -= ( ( tg0*( std::pow( ( ci0*w[ijk-kk4] + ci1*w[ijk-kk3] + ci2*w[ijk-kk2] + ci3*w[ijk-kk1] ), 2 ) * ( b[ijk-kk3] - bmean[k-3] ) )
+                            + tg1*( std::pow( ( ci0*w[ijk-kk3] + ci1*w[ijk-kk2] + ci2*w[ijk-kk1] + ci3*w[ijk    ] ), 2 ) * ( b[ijk-kk2] - bmean[k-2] ) )
+                            + tg2*( std::pow( ( ci0*w[ijk-kk2] + ci1*w[ijk-kk1] + ci2*w[ijk    ] + ci3*w[ijk+kk1] ), 2 ) * ( b[ijk-kk1] - bmean[k-1] ) )
+                            + tg3*( std::pow( ( ti0*w[ijk-kk2] + ti1*w[ijk-kk1] + ti2*w[ijk    ] + ti3*w[ijk+kk1] ), 2 ) * ( b[ijk    ] - bmean[k  ] ) ) )
+            
+                          * dzhi4top );
         }
 
 
