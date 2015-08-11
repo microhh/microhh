@@ -211,7 +211,7 @@ void Budget::exec_stats(Mask* m)
             calc_bw_budget(fields.w->data, fields.sd["p"]->data, fields.atmp["tmp1"]->data,
                            fields.atmp["tmp1"]->datamean,
                            m->profs["bw_shear"].data, m->profs["bw_turb"].data, m->profs["bw_visc"].data,
-                           m->profs["bw_rdstr"].data, m->profs["bw_buoy"].data, m->profs["bw_diss"].data,
+                           m->profs["bw_buoy"].data, m->profs["bw_rdstr"].data, m->profs["bw_diss"].data,
                            grid.dzi4, grid.dzhi4,
                            fields.visc);
         }
@@ -1987,7 +1987,7 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
 void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* restrict b,
                             double* restrict bmean,
                             double* restrict bw_shear, double* restrict bw_turb, double* restrict bw_visc,
-                            double* restrict bw_rdstr, double* restrict bw_buoy, double* restrict bw_diss,
+                            double* restrict bw_buoy, double* restrict bw_rdstr, double* restrict bw_diss,
                             double* restrict dzi4, double* restrict dzhi4,
                             const double visc)
 {
@@ -2021,7 +2021,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_shear[k] -= ( ( w[ijk] * ( cg0*bmean[k-2] + cg1*bmean[k-1] + cg2*bmean[k  ] + cg3*bmean[k+1] ) ) * dzhi4[k] );
+                bw_shear[k] -= ( ( std::pow( w[ijk], 2 ) * ( cg0*bmean[k-2] + cg1*bmean[k-1] + cg2*bmean[k  ] + cg3*bmean[k+1] ) ) * dzhi4[k] );
             }
     }
 
@@ -2113,7 +2113,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            bw_visc[k] -= ( ( visc
+            bw_visc[k] += ( ( visc
 
 
                             * ( bg0*( ( bg0*( w[ijk-kk1] * ( bi0*( b[ijk-kk2] - bmean[k-2] ) + bi1*( b[ijk-kk1] - bmean[k-1] ) + bi2*( b[ijk    ] - bmean[k  ] ) + bi3*( b[ijk+kk1] - bmean[k+1] ) ) )
@@ -2155,7 +2155,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            bw_visc[k] -= ( ( visc
+            bw_visc[k] += ( ( visc
 
 
                             * ( cg0*( ( bg0*( w[ijk-kk2] * ( bi0*( b[ijk-kk3] - bmean[k-3] ) + bi1*( b[ijk-kk2] - bmean[k-2] ) + bi2*( b[ijk-kk1] - bmean[k-1] ) + bi3*( b[ijk    ] - bmean[k  ] ) ) )
@@ -2197,7 +2197,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            bw_visc[k] -= ( ( visc
+            bw_visc[k] += ( ( visc
 
 
                             * ( cg0*( ( cg0*( w[ijk-kk3] * ( bi0*( b[ijk-kk4] - bmean[k-4] ) + bi1*( b[ijk-kk3] - bmean[k-3] ) + bi2*( b[ijk-kk2] - bmean[k-2] ) + bi3*( b[ijk-kk1] - bmean[k-1] ) ) )
@@ -2240,7 +2240,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_visc[k] -= ( ( visc
+                bw_visc[k] += ( ( visc
 
 
                                 * ( cg0*( ( cg0*( w[ijk-kk3] * ( ci0*( b[ijk-kk5] - bmean[k-5] ) + ci1*( b[ijk-kk4] - bmean[k-4] ) + ci2*( b[ijk-kk3] - bmean[k-3] ) + ci3*( b[ijk-kk2] - bmean[k-2] ) ) )
@@ -2283,7 +2283,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            bw_visc[k] -= ( ( visc
+            bw_visc[k] += ( ( visc
 
 
                             * ( cg0*( ( cg0*( w[ijk-kk3] * ( ci0*( b[ijk-kk5] - bmean[k-5] ) + ci1*( b[ijk-kk4] - bmean[k-4] ) + ci2*( b[ijk-kk3] - bmean[k-3] ) + ci3*( b[ijk-kk2] - bmean[k-2] ) ) )
@@ -2325,7 +2325,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            bw_visc[k] -= ( ( visc
+            bw_visc[k] += ( ( visc
 
 
                             * ( cg0*( ( cg0*( w[ijk-kk3] * ( ci0*( b[ijk-kk5] - bmean[k-5] ) + ci1*( b[ijk-kk4] - bmean[k-4] ) + ci2*( b[ijk-kk3] - bmean[k-3] ) + ci3*( b[ijk-kk2] - bmean[k-2] ) ) )
@@ -2367,7 +2367,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            bw_visc[k] -= ( ( visc
+            bw_visc[k] += ( ( visc
 
 
                             * ( tg0*( ( cg0*( w[ijk-kk4] * ( ci0*( b[ijk-kk6] - bmean[k-6] ) + ci1*( b[ijk-kk5] - bmean[k-5] ) + ci2*( b[ijk-kk4] - bmean[k-4] ) + ci3*( b[ijk-kk3] - bmean[k-3] ) ) )
