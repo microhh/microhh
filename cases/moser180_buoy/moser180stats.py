@@ -69,10 +69,17 @@ b2_turbt  = stats.variables["b2_turb"] [start:end,:]
 b2_visct  = stats.variables["b2_visc"] [start:end,:]
 b2_disst  = stats.variables["b2_diss"] [start:end,:]
 
+# buoyancy flux budgets
+bw_sheart = stats.variables["bw_shear"][start:end,:]
+bw_turbt  = stats.variables["bw_turb"] [start:end,:]
+bw_visct  = stats.variables["bw_visc"] [start:end,:]
+bw_buoyt  = stats.variables["bw_buoy"] [start:end,:]
+bw_rdstrt = stats.variables["bw_rdstr"][start:end,:]
+bw_disst  = stats.variables["bw_diss"] [start:end,:]
+
 utotavgt = (uavgt**2. + vavgt**2.)**.5
-visc   = 1.0e-5
-#ustart = (visc * utotavgt[:,0] / z[0])**0.5
 ustart = (ufluxt[:,0]**2.)**.25
+visc = 1.e-5
 
 uavg = numpy.mean(uavgt,0)
 vavg = numpy.mean(vavgt,0)
@@ -132,6 +139,15 @@ b2_turb  = numpy.mean(b2_turbt ,0)
 b2_visc  = numpy.mean(b2_visct ,0)
 b2_diss  = numpy.mean(b2_disst ,0)
 b2_resid = b2_shear + b2_turb + b2_visc + b2_diss
+
+bw_shear = numpy.mean(bw_sheart,0)
+bw_turb  = numpy.mean(bw_turbt ,0)
+bw_visc  = numpy.mean(bw_visct ,0)
+bw_buoy  = numpy.mean(bw_buoyt ,0)
+bw_rdstr = numpy.mean(bw_rdstrt,0)
+bw_diss  = numpy.mean(bw_disst ,0)
+bw_resid = bw_shear + bw_turb + bw_visc + bw_buoy + bw_rdstr + bw_diss
+
 
 utotavg = numpy.mean(utotavgt,0)
 ustar   = numpy.mean(ustart)
@@ -290,10 +306,10 @@ xlim(0, 100)
 figure()
 if(plotens):
   for n in range(end-start):
-    plot(yplus[starty:endy], b2_sheart[n,starty:endy] / (bflux[0]/ustar)**2, color='#cccccc')
-    plot(yplus[starty:endy], b2_turbt [n,starty:endy] / (bflux[0]/ustar)**2, color='#cccccc')
-    plot(yplus[starty:endy], b2_visct [n,starty:endy] / (bflux[0]/ustar)**2, color='#cccccc')
-    plot(yplus[starty:endy], b2_disst [n,starty:endy] / (bflux[0]/ustar)**2, color='#cccccc')
+    plot(yplus[starty:endy], b2_sheart[n,starty:endy] / (bfluxt[n,0]/ustar)**2, color='#cccccc')
+    plot(yplus[starty:endy], b2_turbt [n,starty:endy] / (bfluxt[n,0]/ustar)**2, color='#cccccc')
+    plot(yplus[starty:endy], b2_visct [n,starty:endy] / (bfluxt[n,0]/ustar)**2, color='#cccccc')
+    plot(yplus[starty:endy], b2_disst [n,starty:endy] / (bfluxt[n,0]/ustar)**2, color='#cccccc')
 plot(yplus[starty:endy], b2_shear[starty:endy] / (bflux[0]/ustar)**2, 'b-', label='S')
 plot(yplus[starty:endy], b2_turb [starty:endy] / (bflux[0]/ustar)**2, 'g-', label='Tt')
 plot(yplus[starty:endy], b2_visc [starty:endy] / (bflux[0]/ustar)**2, 'c-', label='Tv')
@@ -305,6 +321,27 @@ legend(loc=0, ncol=2, frameon=False)
 grid()
 xlim(0, 100)
 
+figure()
+if(plotens):
+  for n in range(end-start):
+    plot(yplus[starty:endy], bw_sheart[n,starty:endy] / bfluxt[n,0], color='#cccccc')
+    plot(yplus[starty:endy], bw_turbt [n,starty:endy] / bfluxt[n,0], color='#cccccc')
+    plot(yplus[starty:endy], bw_visct [n,starty:endy] / bfluxt[n,0], color='#cccccc')
+    plot(yplus[starty:endy], bw_buoyt [n,starty:endy] / bfluxt[n,0], color='#cccccc')
+    plot(yplus[starty:endy], bw_rdstrt[n,starty:endy] / bfluxt[n,0], color='#cccccc')
+    plot(yplus[starty:endy], bw_disst [n,starty:endy] / bfluxt[n,0], color='#cccccc')
+plot(yplus[starty:endy], bw_shear[starty:endy] / bflux[0], 'b-', label='S')
+plot(yplus[starty:endy], bw_turb [starty:endy] / bflux[0], 'g-', label='Tt')
+plot(yplus[starty:endy], bw_visc [starty:endy] / bflux[0], 'c-', label='Tv')
+plot(yplus[starty:endy], bw_buoy [starty:endy] / bflux[0], 'k-', label='B')
+plot(yplus[starty:endy], bw_rdstr[starty:endy] / bflux[0], 'm-', label='P')
+plot(yplus[starty:endy], bw_diss [starty:endy] / bflux[0], 'r-', label='D')
+plot(yplus[starty:endy], bw_resid[starty:endy] / bflux[0], 'k--', label='resid')
+xlabel('y+')
+ylabel('bw')
+legend(loc=0, ncol=2, frameon=False)
+grid()
+xlim(0, 100)
 
 figure()
 if(plotens):
