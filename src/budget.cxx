@@ -213,7 +213,7 @@ void Budget::exec_stats(Mask* m)
             calc_bw_budget(fields.w->data, fields.sd["p"]->data, fields.atmp["tmp1"]->data,
                            fields.sd["p"]->datamean, fields.atmp["tmp1"]->datamean,
                            m->profs["bw_shear"].data, m->profs["bw_turb"].data, m->profs["bw_visc"].data,
-                           m->profs["bw_buoy"].data, m->profs["bw_rdstr"].data, m->profs["bw_diss"].data,
+                           m->profs["bw_buoy"].data, m->profs["bw_rdstr"].data, m->profs["bw_diss"].data, m->profs["bw_pres"].data,
                            grid.dzi4, grid.dzhi4,
                            fields.visc);
         }
@@ -1989,7 +1989,7 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
 void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* restrict b,
                             double* restrict pmean, double* restrict bmean,
                             double* restrict bw_shear, double* restrict bw_turb, double* restrict bw_visc,
-                            double* restrict bw_buoy, double* restrict bw_rdstr, double* restrict bw_diss,
+                            double* restrict bw_buoy, double* restrict bw_rdstr, double* restrict bw_diss, double* restrict bw_pres,
                             double* restrict dzi4, double* restrict dzhi4,
                             const double visc)
 {
@@ -2867,12 +2867,27 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
                               * dzhi4top ) ) );
         }
 
+    // 7. CALCULATE THE PRESSURE TRANSPORT TERM
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        bw_pres[k] = 0;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj1 + k*kk1;
+                bw_pres[k] -= ( ( cg0*( ( p[ijk-kk2] - pmean[k-2] ) * ( b[ijk-kk2] - bmean[k-2] ) ) + cg1*( ( p[ijk-kk1] - pmean[k-1] ) * ( b[ijk-kk1] - bmean[k-1] ) ) + cg2*( ( p[ijk    ] - pmean[k  ] ) * ( b[ijk    ] - bmean[k  ] ) ) + cg3*( ( p[ijk+kk1] - pmean[k+1] ) * ( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
+            }
+    }
+
+
     master.sum(bw_shear, grid.kcells);
     master.sum(bw_turb , grid.kcells);
     master.sum(bw_visc , grid.kcells);
     master.sum(bw_rdstr, grid.kcells);
     master.sum(bw_buoy , grid.kcells);
     master.sum(bw_diss , grid.kcells);
+    master.sum(bw_pres , grid.kcells);
 
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
@@ -2882,6 +2897,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         bw_rdstr[k] /= n;
         bw_buoy [k] /= n;
         bw_diss [k] /= n;
+        bw_pres [k] /= n;
     }
 }
 
