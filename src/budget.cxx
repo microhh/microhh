@@ -198,6 +198,8 @@ void Budget::exec_stats(Mask* m)
             // store the buoyancy in the tmp1 field
             thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b");
             grid.calc_mean(fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->data, grid.kcells);
+            grid.calc_mean(fields.sd["p"]->datamean, fields.sd["p"]->data, grid.kcells);
+
             calc_tke_budget_buoy(fields.u->data, fields.w->data, fields.atmp["tmp1"]->data,
                                  umodel, fields.atmp["tmp1"]->datamean,
                                  m->profs["w2_buoy"].data, m->profs["tke_buoy"].data, m->profs["uw_buoy"].data);
@@ -209,7 +211,7 @@ void Budget::exec_stats(Mask* m)
                            fields.visc);
 
             calc_bw_budget(fields.w->data, fields.sd["p"]->data, fields.atmp["tmp1"]->data,
-                           fields.atmp["tmp1"]->datamean,
+                           fields.sd["p"]->datamean, fields.atmp["tmp1"]->datamean,
                            m->profs["bw_shear"].data, m->profs["bw_turb"].data, m->profs["bw_visc"].data,
                            m->profs["bw_buoy"].data, m->profs["bw_rdstr"].data, m->profs["bw_diss"].data,
                            grid.dzi4, grid.dzhi4,
@@ -1985,7 +1987,7 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
 }
 
 void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* restrict b,
-                            double* restrict bmean,
+                            double* restrict pmean, double* restrict bmean,
                             double* restrict bw_shear, double* restrict bw_turb, double* restrict bw_visc,
                             double* restrict bw_buoy, double* restrict bw_rdstr, double* restrict bw_diss,
                             double* restrict dzi4, double* restrict dzhi4,
@@ -2425,7 +2427,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_rdstr[k] += ( ( ( ci0*p[ijk-kk2] + ci1*p[ijk-kk1] + ci2*p[ijk    ] + ci3*p[ijk+kk1] ) * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
+                bw_rdstr[k] += ( ( ( ci0*( p[ijk-kk2] - pmean[k-2] ) + ci1*( p[ijk-kk1] - pmean[k-1] ) + ci2*( p[ijk    ] - pmean[k  ] ) + ci3*( p[ijk+kk1] - pmean[k+1] ) ) * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
             }
     }
 

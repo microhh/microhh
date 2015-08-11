@@ -88,7 +88,7 @@ class Budget
                             double);
 
         void calc_bw_budget(double*, double*, double*,
-                            double*,
+                            double*, double*,
                             double*, double*, double*,
                             double*, double*, double*,
                             double*, double*,
