@@ -321,22 +321,10 @@ void Budget::calc_tke_budget_shear_turb(double* restrict u, double* restrict v, 
     grid.interpolate_4th(wx, w, wloc, wxloc);
     grid.interpolate_4th(wy, w, wloc, wyloc);
 
-    const int ii1 = 1;
-    const int ii2 = 2;
-    const int ii3 = 3;
     const int jj1 = 1*grid.icells;
-    const int jj2 = 2*grid.icells;
-    const int jj3 = 3*grid.icells;
     const int kk1 = 1*grid.ijcells;
     const int kk2 = 2*grid.ijcells;
     const int kk3 = 3*grid.ijcells;
-    const int kk4 = 4*grid.ijcells;
-
-    const int kstart = grid.kstart;
-    const int kend   = grid.kend;
-
-    const double dzhi4bot = grid.dzhi4bot;
-    const double dzhi4top = grid.dzhi4top;
 
     double n = grid.itot*grid.jtot;
 
@@ -835,7 +823,7 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
         }
 
     // first, interpolate the vertical velocity to the scalar levels using temporary array wz
-    k == kstart-1;
+    k = kstart-1;
     for (int j=grid.jstart; j<grid.jend; ++j)
         #pragma ivdep
         for (int i=grid.istart; i<grid.iend; ++i)
@@ -855,7 +843,7 @@ void Budget::calc_tke_budget(double* restrict u, double* restrict v, double* res
             }
 
     // first, interpolate the vertical velocity to the scalar levels using temporary array wz
-    k == kend;
+    k = kend;
     for (int j=grid.jstart; j<grid.jend; ++j)
         #pragma ivdep
         for (int i=grid.istart; i<grid.iend; ++i)
