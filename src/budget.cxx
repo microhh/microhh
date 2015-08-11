@@ -208,7 +208,7 @@ void Budget::exec_stats(Mask* m)
                            grid.dzi4, grid.dzhi4,
                            fields.visc);
 
-            calc_bw_budget(fields.w->data, fields.atmp["tmp1"]->data,
+            calc_bw_budget(fields.w->data, fields.sd["p"]->data, fields.atmp["tmp1"]->data,
                            fields.atmp["tmp1"]->datamean,
                            m->profs["bw_shear"].data, m->profs["bw_turb"].data, m->profs["bw_visc"].data,
                            m->profs["bw_rdstr"].data, m->profs["bw_buoy"].data, m->profs["bw_diss"].data,
@@ -1996,7 +1996,7 @@ void Budget::calc_b2_budget(double* restrict w, double* restrict b,
 
 }
 
-void Budget::calc_bw_budget(double* restrict w, double* restrict b,
+void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* restrict b,
                             double* restrict bmean,
                             double* restrict bw_shear, double* restrict bw_turb, double* restrict bw_visc,
                             double* restrict bw_rdstr, double* restrict bw_buoy, double* restrict bw_diss,
@@ -2012,11 +2012,17 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
     const int kk1 = 1*grid.ijcells;
     const int kk2 = 2*grid.ijcells;
     const int kk3 = 3*grid.ijcells;
+    const int kk4 = 4*grid.ijcells;
+    const int kk5 = 5*grid.ijcells;
+    const int kk6 = 6*grid.ijcells;
 
     const double n = grid.itot*grid.jtot;
 
     const double dxi = grid.dxi;
     const double dyi = grid.dyi;
+
+    const double dzhi4bot = grid.dzhi4bot;
+    const double dzhi4top = grid.dzhi4top;
 
     // 1. CALCULATE THE GRADIENT PRODUCTION TERM
     for (int k=grid.kstart; k<grid.kend+1; ++k)
@@ -2418,6 +2424,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
+                bw_buoy[k] += std::pow( ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) ), 2 );
             }
     }
 
@@ -2430,6 +2437,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict b,
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
+                bw_rdstr[k] += ( ( ( ci0*p[ijk-kk2] + ci1*p[ijk-kk1] + ci2*p[ijk    ] + ci3*p[ijk+kk1] ) * ( cg0*( b[ijk-kk2] - bmean[k-2] ) + cg1*( b[ijk-kk1] - bmean[k-1] ) + cg2*( b[ijk    ] - bmean[k  ] ) + cg3*( b[ijk+kk1] - bmean[k+1] ) ) ) * dzhi4[k] );
             }
     }
 
