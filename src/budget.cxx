@@ -2523,7 +2523,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
     master.sum(bw_diss , grid.kcells);
     master.sum(bw_pres , grid.kcells);
 
-    for (int k=grid.kstart; k<grid.kend; ++k)
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
     {
         bw_shear[k] /= n;
         bw_turb [k] /= n;
