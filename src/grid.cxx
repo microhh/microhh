@@ -494,10 +494,10 @@ void Grid::calc_mean(double* restrict prof, const double* restrict data, const i
             }
     }
 
-    double n = imax*jmax;
+    master->sum(prof, krange);
+
+    const double n = itot*jtot;
 
     for (int k=0; k<krange; ++k)
         prof[k] /= n;
-
-    get_prof(prof, krange);
 }
