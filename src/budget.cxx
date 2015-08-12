@@ -2019,7 +2019,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            bz[k] = ( bi0*( b[ijk-kk1] - bmean[k-1] ) + bi1*( b[ijk    ] - bmean[k  ] ) + bi2*( b[ijk+kk1] - bmean[k+1] ) + bi3*( b[ijk+kk2] - bmean[k+2] ) );
+            bz[ijk] = ( bi0*( b[ijk-kk1] - bmean[k-1] ) + bi1*( b[ijk    ] - bmean[k  ] ) + bi2*( b[ijk+kk1] - bmean[k+1] ) + bi3*( b[ijk+kk2] - bmean[k+2] ) );
         }
 
     for (int k=grid.kstart; k<grid.kend+1; ++k)
@@ -2028,7 +2028,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bz[k] = ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) );
+                bz[ijk] = ( ci0*( b[ijk-kk2] - bmean[k-2] ) + ci1*( b[ijk-kk1] - bmean[k-1] ) + ci2*( b[ijk    ] - bmean[k  ] ) + ci3*( b[ijk+kk1] - bmean[k+1] ) );
             }
 
     k = grid.kend+1;
@@ -2037,7 +2037,7 @@ void Budget::calc_bw_budget(double* restrict w, double* restrict p, double* rest
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            bz[k] = ( ti0*( b[ijk-kk3] - bmean[k-3] ) + ti1*( b[ijk-kk2] - bmean[k-2] ) + ti2*( b[ijk-kk1] - bmean[k-1] ) + ti3*( b[ijk    ] - bmean[k  ] ) );
+            bz[ijk] = ( ti0*( b[ijk-kk3] - bmean[k-3] ) + ti1*( b[ijk-kk2] - bmean[k-2] ) + ti2*( b[ijk-kk1] - bmean[k-1] ) + ti3*( b[ijk    ] - bmean[k  ] ) );
         }
 
 
