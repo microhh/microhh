@@ -323,6 +323,23 @@ void Boundary::exec()
     // Update the boundary fields that are a slave of the boundary condition.
     update_slave_bcs();
 }
+
+void Boundary::set_ghost_cells_w_diff(const bool sw)
+{
+    if (grid->swspatialorder == "4")
+    {
+        if (sw)
+        {
+            calc_ghost_cells_botw_diff_4th(fields->w->data);
+            calc_ghost_cells_topw_diff_4th(fields->w->data);
+        }
+        else
+        {
+            calc_ghost_cells_botw_4th(fields->w->data);
+            calc_ghost_cells_topw_4th(fields->w->data);
+        }
+    }
+}
 #endif
 
 void Boundary::exec_cross()
@@ -664,6 +681,40 @@ void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
             const int ijk = i + j*jj + kend*kk1;
             w[ijk+kk1] = -w[ijk-kk1];
             w[ijk+kk2] = -w[ijk-kk2];
+        }
+}
+
+void Boundary::calc_ghost_cells_botw_diff_4th(double* restrict w)
+{
+    const int jj  = grid->icells;
+    const int kk1 = 1*grid->ijcells;
+    const int kk2 = 2*grid->ijcells;
+
+    const int kstart = grid->kstart;
+
+    for (int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ijk = i + j*jj + kstart*kk1;
+            w[ijk-kk1] = -3.*w[ijk+kk1] + w[ijk+kk2];
+        }
+}
+
+void Boundary::calc_ghost_cells_topw_diff_4th(double* restrict w)
+{
+    const int jj  = grid->icells;
+    const int kk1 = 1*grid->ijcells;
+    const int kk2 = 2*grid->ijcells;
+
+    const int kend = grid->kend;
+
+    for (int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ijk = i + j*jj + kend*kk1;
+            w[ijk+kk1] = -3.*w[ijk-kk1] + w[ijk-kk2];
         }
 }
 

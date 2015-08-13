@@ -259,8 +259,12 @@ void Model::exec()
 
         // Calculate the advection tendency.
         advec->exec();
+
         // Calculate the diffusion tendency.
+        boundary->set_ghost_cells_w_diff(true);
         diff->exec();
+        boundary->set_ghost_cells_w_diff(false);
+
         // Calculate the thermodynamics and the buoyancy tendency.
         thermo->exec();
         // Calculate the tendency due to damping in the buffer layer.
