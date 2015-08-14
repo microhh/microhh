@@ -689,6 +689,7 @@ void Boundary::calc_ghost_cells_botw_diff_4th(double* restrict w)
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
     const int kk2 = 2*grid->ijcells;
+    const int kk3 = 3*grid->ijcells;
 
     const int kstart = grid->kstart;
 
@@ -697,7 +698,7 @@ void Boundary::calc_ghost_cells_botw_diff_4th(double* restrict w)
         for (int i=0; i<grid->icells; ++i)
         {
             const int ijk = i + j*jj + kstart*kk1;
-            w[ijk-kk1] = -3.*w[ijk+kk1] + w[ijk+kk2];
+            w[ijk-kk1] = -6.*w[ijk+kk1] + 4.*w[ijk+kk2] - w[ijk+kk3];
         }
 }
 
@@ -706,6 +707,7 @@ void Boundary::calc_ghost_cells_topw_diff_4th(double* restrict w)
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
     const int kk2 = 2*grid->ijcells;
+    const int kk3 = 3*grid->ijcells;
 
     const int kend = grid->kend;
 
@@ -714,7 +716,7 @@ void Boundary::calc_ghost_cells_topw_diff_4th(double* restrict w)
         for (int i=0; i<grid->icells; ++i)
         {
             const int ijk = i + j*jj + kend*kk1;
-            w[ijk+kk1] = -3.*w[ijk-kk1] + w[ijk-kk2];
+            w[ijk+kk1] = -6.*w[ijk-kk1] + 4.*w[ijk-kk2] - w[ijk-kk3];
         }
 }
 

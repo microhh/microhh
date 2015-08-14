@@ -291,6 +291,8 @@ void Model::exec()
             // Do the statistics.
             if (stats->doStats())
             {
+                boundary->set_ghost_cells_w_diff(true);
+
                 // Always process the default mask (the full field)
                 stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
                 calc_stats("default");
@@ -312,6 +314,8 @@ void Model::exec()
 
                 // Store the stats data.
                 stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
+
+                boundary->set_ghost_cells_w_diff(false);
             }
 
             // Save the selected cross sections to disk, cross sections are handled on CPU.
