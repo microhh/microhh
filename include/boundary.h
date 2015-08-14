@@ -51,6 +51,7 @@ class Boundary
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
         virtual void exec(); ///< Update the boundary conditions.
+        virtual void set_ghost_cells_w_diff(bool); ///< Update the boundary conditions.
 
         virtual void exec_stats(Mask*); ///< Execute statistics of surface
         virtual void exec_cross();       ///< Execute cross sections of surface
@@ -111,5 +112,8 @@ class Boundary
 
         void calc_ghost_cells_botw_4th(double*); ///< Calculate the bottom ghost cells for the vertical velocity with 4th order accuracy.
         void calc_ghost_cells_topw_4th(double*); ///< Calculate the top ghost cells for the vertical velocity with 4th order accuracy.
+
+        void calc_ghost_cells_botw_diff_4th(double*); ///< Calculate the bottom ghost cells for the vertical velocity with 4th order accuracy.
+        void calc_ghost_cells_topw_diff_4th(double*); ///< Calculate the top ghost cells for the vertical velocity with 4th order accuracy.
 };
 #endif

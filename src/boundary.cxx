@@ -323,6 +323,23 @@ void Boundary::exec()
     // Update the boundary fields that are a slave of the boundary condition.
     update_slave_bcs();
 }
+
+void Boundary::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
+{
+    if (grid->swspatialorder == "4")
+    {
+        if (boundary_w_type == Normal_type)
+        {
+            calc_ghost_cells_botw_4th(fields->w->data);
+            calc_ghost_cells_topw_4th(fields->w->data);
+        }
+        else if (boundary_w_type == Conservation_type)
+        {
+            calc_ghost_cells_botw_cons_4th(fields->w->data);
+            calc_ghost_cells_topw_cons_4th(fields->w->data);
+        }
+    }
+}
 #endif
 
 void Boundary::exec_cross()
@@ -631,7 +648,7 @@ void Boundary::calc_ghost_cells_top_4th(double* restrict a, double* restrict z, 
 }
 
 // BOUNDARY CONDITIONS FOR THE VERTICAL VELOCITY (NO PENETRATION)
-void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
+void Boundary::calc_ghost_cells_botw_cons_4th(double* restrict w)
 {
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -649,7 +666,7 @@ void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
         }
 }
 
-void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
+void Boundary::calc_ghost_cells_topw_cons_4th(double* restrict w)
 {
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -664,6 +681,42 @@ void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
             const int ijk = i + j*jj + kend*kk1;
             w[ijk+kk1] = -w[ijk-kk1];
             w[ijk+kk2] = -w[ijk-kk2];
+        }
+}
+
+void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
+{
+    const int jj  = grid->icells;
+    const int kk1 = 1*grid->ijcells;
+    const int kk2 = 2*grid->ijcells;
+    const int kk3 = 3*grid->ijcells;
+
+    const int kstart = grid->kstart;
+
+    for (int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ijk = i + j*jj + kstart*kk1;
+            w[ijk-kk1] = -6.*w[ijk+kk1] + 4.*w[ijk+kk2] - w[ijk+kk3];
+        }
+}
+
+void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
+{
+    const int jj  = grid->icells;
+    const int kk1 = 1*grid->ijcells;
+    const int kk2 = 2*grid->ijcells;
+    const int kk3 = 3*grid->ijcells;
+
+    const int kend = grid->kend;
+
+    for (int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ijk = i + j*jj + kend*kk1;
+            w[ijk+kk1] = -6.*w[ijk-kk1] + 4.*w[ijk-kk2] - w[ijk-kk3];
         }
 }
 
