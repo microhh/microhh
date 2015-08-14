@@ -258,12 +258,12 @@ void Model::exec()
         set_time_step();
 
         // Calculate the advection tendency.
+        boundary->set_ghost_cells_w(Boundary::Conservation_type);
         advec->exec();
+        boundary->set_ghost_cells_w(Boundary::Normal_type);
 
         // Calculate the diffusion tendency.
-        boundary->set_ghost_cells_w_diff(true);
         diff->exec();
-        boundary->set_ghost_cells_w_diff(false);
 
         // Calculate the thermodynamics and the buoyancy tendency.
         thermo->exec();
@@ -274,25 +274,25 @@ void Model::exec()
         force->exec(timeloop->get_sub_time_step());
 
         // Solve the poisson equation for pressure.
+        boundary->set_ghost_cells_w(Boundary::Conservation_type);
         pres->exec(timeloop->get_sub_time_step());
+        boundary->set_ghost_cells_w(Boundary::Normal_type);
 
         // Allow only for statistics when not in substep and not directly after restart.
         if (timeloop->is_stats_step())
         {
-#ifdef USECUDA
+            #ifdef USECUDA
             // Copy fields from device to host
             if (stats->doStats() || cross->do_cross() || dump->do_dump())
             {
                 fields  ->backward_device();
                 boundary->backward_device();
             }
-#endif
+            #endif
 
             // Do the statistics.
             if (stats->doStats())
             {
-                boundary->set_ghost_cells_w_diff(true);
-
                 // Always process the default mask (the full field)
                 stats->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks["default"]);
                 calc_stats("default");
@@ -314,8 +314,6 @@ void Model::exec()
 
                 // Store the stats data.
                 stats->exec(timeloop->get_iteration(), timeloop->get_time(), timeloop->get_itime());
-
-                boundary->set_ghost_cells_w_diff(false);
             }
 
             // Save the selected cross sections to disk, cross sections are handled on CPU.
@@ -350,10 +348,10 @@ void Model::exec()
             // Save the data for restarts.
             if (timeloop->do_save())
             {
-#ifdef USECUDA
+                #ifdef USECUDA
                 fields  ->backward_device();
                 boundary->backward_device();
-#endif
+                #endif
 
                 // Save data to disk.
                 timeloop->save(timeloop->get_iotime());
@@ -459,7 +457,11 @@ void Model::print_status()
         iter = timeloop->get_iteration();
         time = timeloop->get_time();
         dt   = timeloop->get_dt();
+
+        boundary->set_ghost_cells_w(Boundary::Conservation_type);
         div  = pres->check_divergence();
+        boundary->set_ghost_cells_w(Boundary::Normal_type);
+
         mom  = fields->check_momentum();
         tke  = fields->check_tke();
         mass = fields->check_mass();

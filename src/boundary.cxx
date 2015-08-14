@@ -324,19 +324,19 @@ void Boundary::exec()
     update_slave_bcs();
 }
 
-void Boundary::set_ghost_cells_w_diff(const bool sw)
+void Boundary::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
 {
     if (grid->swspatialorder == "4")
     {
-        if (sw)
-        {
-            calc_ghost_cells_botw_diff_4th(fields->w->data);
-            calc_ghost_cells_topw_diff_4th(fields->w->data);
-        }
-        else
+        if (boundary_w_type == Normal_type)
         {
             calc_ghost_cells_botw_4th(fields->w->data);
             calc_ghost_cells_topw_4th(fields->w->data);
+        }
+        else if (boundary_w_type == Conservation_type)
+        {
+            calc_ghost_cells_botw_cons_4th(fields->w->data);
+            calc_ghost_cells_topw_cons_4th(fields->w->data);
         }
     }
 }
@@ -648,7 +648,7 @@ void Boundary::calc_ghost_cells_top_4th(double* restrict a, double* restrict z, 
 }
 
 // BOUNDARY CONDITIONS FOR THE VERTICAL VELOCITY (NO PENETRATION)
-void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
+void Boundary::calc_ghost_cells_botw_cons_4th(double* restrict w)
 {
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -666,7 +666,7 @@ void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
         }
 }
 
-void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
+void Boundary::calc_ghost_cells_topw_cons_4th(double* restrict w)
 {
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -684,7 +684,7 @@ void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
         }
 }
 
-void Boundary::calc_ghost_cells_botw_diff_4th(double* restrict w)
+void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
 {
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -702,7 +702,7 @@ void Boundary::calc_ghost_cells_botw_diff_4th(double* restrict w)
         }
 }
 
-void Boundary::calc_ghost_cells_topw_diff_4th(double* restrict w)
+void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
 {
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
