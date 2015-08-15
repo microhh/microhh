@@ -59,7 +59,7 @@ namespace
     const double mc_min  = 4.2e-15;  // Min mean mass of cloud droplet
     const double mc_max  = 2.6e-10;  // Max mean mass of cloud droplet
     const double mr_min  = mc_max;   // Min mean mass of precipitation drop
-    const double mr_max  = 5e-6;     // Max mean mass of precipitation drop
+    const double mr_max  = 3e-6;     // Max mean mass of precipitation drop // as in UCLA-LES
     const double ql_min  = 1.e-6;    // Min cloud liquid water for which calculations are performed 
     const double qr_min  = 1.e-15;   // Min rain liquid water for which calculations are performed 
 
@@ -81,15 +81,15 @@ namespace
     // Given mean mass rain drop, calculate mean diameter
     inline double calc_rain_diameter(const double mr)
     {
-        return pow(mr/pirhow, 0.333333);
+        return pow(mr/pirhow, 1./3.);
     }
 
     // Shape parameter mu_r
     inline double calc_mu_r(const double dr)
     {
         //return 1./3.; // SB06
-        //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
-        return 10. * (1. + tanh2(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        //return 10. * (1. + tanh2(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
         // Taylor expansion SS08, around dr=0.0002. Accurate to within 1% for dr<0.001, 10% for dr<0.0015
         //return 0.670565+dr*(dr*(1.61878e9*dr+1.61937e6)+1573.65);
     }
@@ -97,12 +97,22 @@ namespace
     // Slope parameter lambda_r
     inline double calc_lambda_r(const double mur, const double dr)
     {
-        return pow((mur+3)*(mur+2)*(mur+1), 0.333333) / dr;
+        return pow((mur+3)*(mur+2)*(mur+1), 1./3.) / dr;
     }
 
     inline double minmod(const double a, const double b)
     {
         return copysign(1., a) * std::max(0., std::min(std::abs(a), copysign(1., a)*b));
+    }
+
+    inline double min3(const double a, const double b, const double c)
+    {
+        return std::min(a,std::min(b,c));
+    }
+
+    inline double max3(const double a, const double b, const double c)
+    {
+        return std::max(a,std::max(b,c));
     }
 }
 
@@ -247,7 +257,8 @@ namespace mp2d
     {
         const double w_max = 20.; //9.65; // SS08, appendix A
         const double a_R = 9.65;   // SB06, p51
-        const double b_R = 10.3;   // SB06, p51
+        //const double b_R = 10.3;   // SB06, p51
+        const double b_R = 9.8;   // UCLA-LES
         const double c_R = 600;    // SB06, p51
 
         const int ikcells = icells * kcells;
@@ -260,6 +271,8 @@ namespace mp2d
         double* restrict w_nr = tmpxz2;
 
         for (int k=kstart; k<kend; k++)
+        {
+            const double rho_n = pow(1.2 / rho[k], 0.5);
             #pragma ivdep
             for (int i=istart; i<iend; i++)
             {
@@ -269,8 +282,8 @@ namespace mp2d
                 if(qr[ijk] > qr_min)
                 {
                     // SS08:
-                    w_qr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+4))));
-                    w_nr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+1))));
+                    w_qr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+4))));
+                    w_nr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+1))));
                 }
                 else
                 {
@@ -278,6 +291,7 @@ namespace mp2d
                     w_nr[ik] = 0.;
                 }
             }
+        }
 
         // 1.1 Set one ghost cell to zero
         for (int i=istart; i<iend; i++)
@@ -575,154 +589,6 @@ namespace mp
                 }
     }
 
-    // Get the number of substeps in the sedimentation process
-    int get_sedimentation_steps(const double* const restrict qr, const double* const restrict nr, 
-                                const double* const restrict rho, const double* const restrict dzi, 
-                                const double dt,
-                                const int istart, const int jstart, const int kstart,
-                                const int iend,   const int jend,   const int kend,
-                                const int icells, const int ijcells)
-    {
-        const double w_max = 9.65; // SS08, appendix A
-        const double a_R = 9.65;   // SB06, p51
-        const double b_R = 10.3;   // SB06, p51
-        const double c_R = 600;    // SB06, p51
-
-        // Get the max CFL number from both sedimentation processes 
-        double maxcfl_qr = 0;
-        double maxcfl_nr = 0; 
-        for (int k=kstart; k<kend-1; k++)
-            for (int j=jstart; j<jend; j++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*icells + k*ijcells;
-                    if(qr[ijk] > qr_min)
-                    {
-                        // Calculate mean rain drop mass and diameter
-                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
-                        const double dr      = calc_rain_diameter(mr);
-                        const double mur     = calc_mu_r(dr);
-                        const double lambdar = calc_lambda_r(mur, dr);
-            
-                        // Sedimentation velocity SS08
-                        const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
-                        const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
-
-                        // Calculate CFL based on full level grid spacing and sedimentation velocity
-                        maxcfl_qr  = std::max(maxcfl_qr, w_qr * dt * dzi[k]);
-                        maxcfl_nr  = std::max(maxcfl_qr, w_nr * dt * dzi[k]);
-                    }
-                }
-
-        // Calculate number of substeps to keep CFL number below 1.0
-        const double maxcfl = std::max(maxcfl_qr, maxcfl_nr);
-        const int nsubstep  = (int)maxcfl + 1; 
-
-        return nsubstep;
-    }
-
-    // Execute sedimentation in nsubstep steps
-    void sedimentation_sub(double* const restrict qrt, double* const restrict nrt, 
-                           double* const restrict tmp1, double* const restrict tmp2,
-                           const double* const restrict qr, const double* const restrict nr, 
-                           const double* const restrict rho, const double* const restrict dzi, 
-                           const double* const restrict dzhi, const double dt,
-                           const int istart, const int jstart, const int kstart,
-                           const int iend,   const int jend,   const int kend,
-                           const int icells, const int kcells, const int ijcells, const int nsubsteps)
-    {
-        const double w_max = 9.65; // SS08, appendix A
-        const double a_R = 9.65;   // SB06, p51
-        const double b_R = 10.3;   // SB06, p51
-        const double c_R = 600;    // SB06, p51
-
-        // XZ slices from tmp field. Use 2 tmp fields in case of 2D run
-        const int ikcells = icells * kcells; 
-        double *qr_sub = &tmp1[0*ikcells];
-        double *nr_sub = &tmp1[1*ikcells];
-        double *sed_qr = &tmp2[0*ikcells];
-        double *sed_nr = &tmp2[1*ikcells]; 
-    
-        const double subdt  = dt / (double)nsubsteps;
-
-        for (int j=jstart; j<jend; j++)
-        {
-            // 1. Fill slices
-            for (int k=kstart; k<kend; k++)
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*icells + k*ijcells;
-                    const int ik  = i + k*icells;
-                    qr_sub[ik] = qr[ijk];
-                    nr_sub[ik] = nr[ijk]; 
-                }
-
-            // 2. Loop over substeps
-            for (int n=0; n<nsubsteps; n++)
-            {   
-                // 2.1 Calculate sedimentation fluxes 
-                for (int k=kstart; k<kend; k++)
-                    for (int i=istart; i<iend; i++)
-                    {
-                        const int ik  = i + k*icells;
-
-                        if(qr_sub[ik] > qr_min)
-                        {
-                            // Calculate mean rain drop mass and diameter
-                            const double mr      = calc_rain_mass(qr_sub[ik], nr_sub[ik], rho[k]);
-                            const double dr      = calc_rain_diameter(mr);
-                            const double mur     = calc_mu_r(dr);
-                            const double lambdar = calc_lambda_r(mur, dr);
-                
-                            // SS08:
-                            const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
-                            const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
-
-                            const double c_qr = w_qr * subdt * dzi[k];
-                            const double c_nr = w_nr * subdt * dzi[k];
-
-                            sed_qr[ik] = w_qr * qr_sub[ik] * rho[k];
-                            sed_nr[ik] = w_nr * nr_sub[ik];
-                        }
-                        else
-                        {
-                            sed_qr[ik] = 0.;
-                            sed_nr[ik] = 0.;
-                        }
-                    }
-
-                // 2.2 Integrate over substep
-                for (int k=kstart; k<kend-1; k++)
-                    #pragma ivdep
-                    for (int i=istart; i<iend; i++)
-                    {
-                        const int ik  = i + k*icells;
-
-                        qr_sub[ik] += (sed_qr[ik+icells] - sed_qr[ik]) * dzhi[k+1] * subdt / rho[k];
-                        nr_sub[ik] += (sed_nr[ik+icells] - sed_nr[ik]) * dzhi[k+1] * subdt;
-                     
-                        // Limit at zero 
-                        qr_sub[ik] = std::max(0., qr_sub[ik]);
-                        nr_sub[ik] = std::max(0., nr_sub[ik]);
-                    }
-            }
-
-            // 1. Calculate tendency backwards
-            for (int k=kstart; k<kend; k++)
-                #pragma ivdep
-                for (int i=istart; i<iend; i++)
-                {
-                    const int ijk = i + j*icells + k*ijcells;
-                    const int ik  = i + k*icells;
-
-                    qrt[ijk] += (qr_sub[ik] - qr[ijk]) / dt;
-                    nrt[ijk] += (nr_sub[ik] - nr[ijk]) / dt;
-                }
-        }
-    }
-
-
     // Sedimentation from Stevens and Seifert (2008)
     void sedimentation_ss08(double* const restrict qrt, double* const restrict nrt, 
                             double* const restrict tmp1, double* const restrict tmp2,
@@ -735,8 +601,10 @@ namespace mp
     {
         const double w_max = 20.; //9.65; // SS08, appendix A
         const double a_R = 9.65;   // SB06, p51
-        const double b_R = 10.3;   // SB06, p51
         const double c_R = 600;    // SB06, p51
+        const double Dv  = 25.0e-6;
+        //const double b_R = 10.3;   // SB06, p51
+        const double b_R = a_R * exp(c_R*Dv); // UCLA-LES
 
         const int ikcells = icells * kcells;
 
@@ -747,6 +615,8 @@ namespace mp
             double* restrict w_nr = &tmp1[1*ikcells];
 
             for (int k=kstart; k<kend; k++)
+            {
+                const double rho_n = pow(1.2 / rho[k], 0.5);
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
@@ -760,10 +630,10 @@ namespace mp
                         const double dr      = calc_rain_diameter(mr);
                         const double mur     = calc_mu_r(dr);
                         const double lambdar = calc_lambda_r(mur, dr);
-                
+              
                         // SS08:
-                        w_qr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
-                        w_nr[ik] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
+                        w_qr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+                        w_nr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
                     }
                     else
                     {
@@ -771,6 +641,7 @@ namespace mp
                         w_nr[ik] = 0.;
                     }
                 }
+            }
 
             // 1.1 Set one ghost cell to zero
             for (int i=istart; i<iend; i++)
@@ -796,11 +667,21 @@ namespace mp
                     c_nr[ik] = 0.25 * (w_nr[ik-icells] + 2.*w_nr[ik] + w_nr[ik+icells]) * dzi[k] * dt; 
                 }
 
-            // 3. Calculate slopes
+            // 3. Calculate slopes with slope limiter to prevent forming new maxima/minima using slopes
             double* restrict slope_qr = &tmp1[0*ikcells];
             double* restrict slope_nr = &tmp1[1*ikcells];
 
-            for (int k=kstart; k<kend; k++)
+            // Dissable slope limiter near surface, i.e. assume that e.g. qr[kstart]-qr[kstart-1] == qr[kstart+1]-qr[kstart] 
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*icells + kstart*ijcells;
+                const int ik  = i + kstart*icells;
+
+                slope_qr[ik] = qr[ijk+ijcells] - qr[ijk];
+                slope_nr[ik] = nr[ijk+ijcells] - nr[ijk];
+            }
+
+            for (int k=kstart+1; k<kend; k++)
                 #pragma ivdep
                 for (int i=istart; i<iend; i++)
                 {
@@ -850,7 +731,7 @@ namespace mp
                     }
 
                     // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
-                    ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * dt);
+                    ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * dt - dsmall);
                     flux_qr[ik] = -ftot / dt;
 
                     // number density
@@ -866,11 +747,11 @@ namespace mp
                         ftot += rho[kk] * (nr[ijkk] + 0.5 * slope_nr[ikk] * (1.-cc)) * cc * dz[kk];
                         dzz   += dz[kk];
                         kk    += 1;
-                        cc     = std::min(1., c_nr[ikk] - dzz*dzi[k]);
+                        cc     = std::min(1., c_nr[ikk] - dzz*dzi[kk]);
                     }
 
                     // Given flux at top, limit bottom flux such that the number density stays >= 0.
-                    ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * dt);
+                    ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * dt - dsmall);
                     flux_nr[ik] = -ftot / dt;
                 }
 
@@ -1189,6 +1070,7 @@ void Thermo_moist::exec_microphysics()
     calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp["thl"]->data, fields->sp["qt"]->data, pref);
 
     const double dt = model->timeloop->get_dt();
+    //const double dt = model->timeloop->get_sub_time_step();
 
     // xz tmp slices for quantities which are used by multiple microphysics routines
     const int ikslice = grid->icells * grid->kcells;
@@ -1236,14 +1118,13 @@ void Thermo_moist::exec_microphysics()
                                      grid->iend,   grid->jend,   grid->kend, 
                                      grid->icells, grid->ijcells, j);
 
-        mp2d::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
-                                 tmpxz1, tmpxz2, tmpxz3, tmpxz4, tmpxz5, tmpxz6,
-                                 mu_r, lambda_r,
-                                 fields->sp["qr"]->data, fields->sp["nr"]->data, 
-                                 fields->rhoref, grid->dzi, grid->dz, dt,
-                                 grid->istart, grid->jstart, grid->kstart, 
-                                 grid->iend,   grid->jend,   grid->kend, 
-                                 grid->icells, grid->kcells, grid->ijcells, j);
+        //mp2d::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
+        //                         tmpxz1, tmpxz2, tmpxz3, tmpxz4, tmpxz5, tmpxz6, mu_r, lambda_r,
+        //                         fields->sp["qr"]->data, fields->sp["nr"]->data, 
+        //                         fields->rhoref, grid->dzi, grid->dz, dt,
+        //                         grid->istart, grid->jstart, grid->kstart, 
+        //                         grid->iend,   grid->jend,   grid->kend, 
+        //                         grid->icells, grid->kcells, grid->ijcells, j);
     }
 
 //    mp::evaporation(fields->st["qr"]->data, fields->st["nr"]->data,  fields->st["qt"]->data, fields->st["thl"]->data,
@@ -1258,13 +1139,13 @@ void Thermo_moist::exec_microphysics()
 //                               grid->iend,   grid->jend,   grid->kend, 
 //                               grid->icells, grid->ijcells);
 //
-//    mp::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
-//                           fields->atmp["tmp4"]->data, fields->atmp["tmp5"]->data,
-//                           fields->sp["qr"]->data, fields->sp["nr"]->data, 
-//                           fields->rhoref, grid->dzi, grid->dz, dt,
-//                           grid->istart, grid->jstart, grid->kstart, 
-//                           grid->iend,   grid->jend,   grid->kend, 
-//                           grid->icells, grid->kcells, grid->ijcells);
+    mp::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
+                           fields->atmp["tmp4"]->data, fields->atmp["tmp5"]->data,
+                           fields->sp["qr"]->data, fields->sp["nr"]->data, 
+                           fields->rhoref, grid->dzi, grid->dz, dt,
+                           grid->istart, grid->jstart, grid->kstart, 
+                           grid->iend,   grid->jend,   grid->kend, 
+                           grid->icells, grid->kcells, grid->ijcells);
 //
 //    // Old sedimentation routine
 //    // 1. Get number of substeps based on sedimentation with CFL=1
@@ -2342,3 +2223,155 @@ void Thermo_moist::init_dump()
         }
     }
 }
+
+
+
+
+// Bart's archive......
+//    // Get the number of substeps in the sedimentation process
+//    int get_sedimentation_steps(const double* const restrict qr, const double* const restrict nr, 
+//                                const double* const restrict rho, const double* const restrict dzi, 
+//                                const double dt,
+//                                const int istart, const int jstart, const int kstart,
+//                                const int iend,   const int jend,   const int kend,
+//                                const int icells, const int ijcells)
+//    {
+//        const double w_max = 9.65; // SS08, appendix A
+//        const double a_R = 9.65;   // SB06, p51
+//        const double b_R = 10.3;   // SB06, p51
+//        const double c_R = 600;    // SB06, p51
+//
+//        // Get the max CFL number from both sedimentation processes 
+//        double maxcfl_qr = 0;
+//        double maxcfl_nr = 0; 
+//        for (int k=kstart; k<kend-1; k++)
+//            for (int j=jstart; j<jend; j++)
+//                #pragma ivdep
+//                for (int i=istart; i<iend; i++)
+//                {
+//                    const int ijk = i + j*icells + k*ijcells;
+//                    if(qr[ijk] > qr_min)
+//                    {
+//                        // Calculate mean rain drop mass and diameter
+//                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+//                        const double dr      = calc_rain_diameter(mr);
+//                        const double mur     = calc_mu_r(dr);
+//                        const double lambdar = calc_lambda_r(mur, dr);
+//            
+//                        // Sedimentation velocity SS08
+//                        const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+//                        const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
+//
+//                        // Calculate CFL based on full level grid spacing and sedimentation velocity
+//                        maxcfl_qr  = std::max(maxcfl_qr, w_qr * dt * dzi[k]);
+//                        maxcfl_nr  = std::max(maxcfl_qr, w_nr * dt * dzi[k]);
+//                    }
+//                }
+//
+//        // Calculate number of substeps to keep CFL number below 1.0
+//        const double maxcfl = std::max(maxcfl_qr, maxcfl_nr);
+//        const int nsubstep  = (int)maxcfl + 1; 
+//
+//        return nsubstep;
+//    }
+//
+//    // Execute sedimentation in nsubstep steps
+//    void sedimentation_sub(double* const restrict qrt, double* const restrict nrt, 
+//                           double* const restrict tmp1, double* const restrict tmp2,
+//                           const double* const restrict qr, const double* const restrict nr, 
+//                           const double* const restrict rho, const double* const restrict dzi, 
+//                           const double* const restrict dzhi, const double dt,
+//                           const int istart, const int jstart, const int kstart,
+//                           const int iend,   const int jend,   const int kend,
+//                           const int icells, const int kcells, const int ijcells, const int nsubsteps)
+//    {
+//        const double w_max = 9.65; // SS08, appendix A
+//        const double a_R = 9.65;   // SB06, p51
+//        const double b_R = 10.3;   // SB06, p51
+//        const double c_R = 600;    // SB06, p51
+//
+//        // XZ slices from tmp field. Use 2 tmp fields in case of 2D run
+//        const int ikcells = icells * kcells; 
+//        double *qr_sub = &tmp1[0*ikcells];
+//        double *nr_sub = &tmp1[1*ikcells];
+//        double *sed_qr = &tmp2[0*ikcells];
+//        double *sed_nr = &tmp2[1*ikcells]; 
+//    
+//        const double subdt  = dt / (double)nsubsteps;
+//
+//        for (int j=jstart; j<jend; j++)
+//        {
+//            // 1. Fill slices
+//            for (int k=kstart; k<kend; k++)
+//                for (int i=istart; i<iend; i++)
+//                {
+//                    const int ijk = i + j*icells + k*ijcells;
+//                    const int ik  = i + k*icells;
+//                    qr_sub[ik] = qr[ijk];
+//                    nr_sub[ik] = nr[ijk]; 
+//                }
+//
+//            // 2. Loop over substeps
+//            for (int n=0; n<nsubsteps; n++)
+//            {   
+//                // 2.1 Calculate sedimentation fluxes 
+//                for (int k=kstart; k<kend; k++)
+//                    for (int i=istart; i<iend; i++)
+//                    {
+//                        const int ik  = i + k*icells;
+//
+//                        if(qr_sub[ik] > qr_min)
+//                        {
+//                            // Calculate mean rain drop mass and diameter
+//                            const double mr      = calc_rain_mass(qr_sub[ik], nr_sub[ik], rho[k]);
+//                            const double dr      = calc_rain_diameter(mr);
+//                            const double mur     = calc_mu_r(dr);
+//                            const double lambdar = calc_lambda_r(mur, dr);
+//                
+//                            // SS08:
+//                            const double w_qr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+//                            const double w_nr = std::min(w_max, std::max(0., a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
+//
+//                            const double c_qr = w_qr * subdt * dzi[k];
+//                            const double c_nr = w_nr * subdt * dzi[k];
+//
+//                            sed_qr[ik] = w_qr * qr_sub[ik] * rho[k];
+//                            sed_nr[ik] = w_nr * nr_sub[ik];
+//                        }
+//                        else
+//                        {
+//                            sed_qr[ik] = 0.;
+//                            sed_nr[ik] = 0.;
+//                        }
+//                    }
+//
+//                // 2.2 Integrate over substep
+//                for (int k=kstart; k<kend-1; k++)
+//                    #pragma ivdep
+//                    for (int i=istart; i<iend; i++)
+//                    {
+//                        const int ik  = i + k*icells;
+//
+//                        qr_sub[ik] += (sed_qr[ik+icells] - sed_qr[ik]) * dzhi[k+1] * subdt / rho[k];
+//                        nr_sub[ik] += (sed_nr[ik+icells] - sed_nr[ik]) * dzhi[k+1] * subdt;
+//                     
+//                        // Limit at zero 
+//                        qr_sub[ik] = std::max(0., qr_sub[ik]);
+//                        nr_sub[ik] = std::max(0., nr_sub[ik]);
+//                    }
+//            }
+//
+//            // 1. Calculate tendency backwards
+//            for (int k=kstart; k<kend; k++)
+//                #pragma ivdep
+//                for (int i=istart; i<iend; i++)
+//                {
+//                    const int ijk = i + j*icells + k*ijcells;
+//                    const int ik  = i + k*icells;
+//
+//                    qrt[ijk] += (qr_sub[ik] - qr[ijk]) / dt;
+//                    nrt[ijk] += (nr_sub[ik] - nr[ijk]) / dt;
+//                }
+//        }
+//    }
+
