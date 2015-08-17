@@ -68,13 +68,14 @@ g20l = Grid(288, 250, 20, 2, 12) # dz = 2 m
 g10l = Grid(512, 470, 30, 1, 12) # dz = 1 m
 
 # Restart domain (~200 m high):
-g20s = Grid(128, 65,  10, 2.0,  8) # dz = 2 m
-g10s = Grid(192, 135, 20, 1.0,  8) # dz = 1 m
-g05s = Grid(320, 245, 30, 0.5,  8) # dz = 0.5 m
-g02s = Grid(512, 440, 40, 0.25, 8) # dz = 0.25 m
+g20s  = Grid(128, 65,  10, 2.0,  8) # dz = 2 m
+g10s  = Grid(192, 135, 20, 1.0,  8) # dz = 1 m
+g05s  = Grid(320, 245, 30, 0.5,  8) # dz = 0.5 m
+g02s  = Grid(512, 440, 40, 0.25, 8) # dz = 0.25 m
+g02s2 = Grid(480, 410, 30, 0.25, 8) # dz = 0.25 m # mistral
 
 # Switch between vertical grids:
-g = g20l
+g = g02s2
 
 th = np.zeros(g.z.size)
 u  = np.zeros(g.z.size)
@@ -103,14 +104,15 @@ for t in range(s3.t.size):
 timefile.close()
 
 # Plot the different vertical grids:
-if(False):
+if(True):
     pl.figure()
-    pl.plot(g20l.dz, g20l.z, '-x', linewidth=1.5)
-    pl.plot(g10l.dz, g10l.z, '-x', linewidth=1.5)
-    pl.plot(g20s.dz, g20s.z, '-x', linewidth=1.5)
-    pl.plot(g10s.dz, g10s.z, '-x', linewidth=1.5)
-    pl.plot(g05s.dz, g05s.z, '-x', linewidth=1.5)
-    pl.plot(g02s.dz, g02s.z, '-x', linewidth=1.5)
+    pl.plot(g20l.dz,  g20l.z, '-x', linewidth=1.5)
+    pl.plot(g10l.dz,  g10l.z, '-x', linewidth=1.5)
+    pl.plot(g20s.dz,  g20s.z, '-x', linewidth=1.5)
+    pl.plot(g10s.dz,  g10s.z, '-x', linewidth=1.5)
+    pl.plot(g05s.dz,  g05s.z, '-x', linewidth=1.5)
+    pl.plot(g02s.dz,  g02s.z, '-x', linewidth=1.5)
+    pl.plot(g02s2.dz, g02s2.z, '--x', linewidth=1.5)
     pl.xlabel('dz [m]')
     pl.ylabel('z [m]')
 
