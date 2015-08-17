@@ -214,6 +214,20 @@ void Grid::init()
     iend   = imax + igc;
     jend   = jmax + jgc;
     kend   = kmax + kgc;
+    
+    // check whether the size per patch is larger than number of ghost cells
+    if ((iend-istart) < igc)
+    {
+	    master->print_error("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(iend-istart),igc);
+	    master->print_error("Either increase itot or decrease npx.\n");
+        throw 1;
+    }
+    if ((jend-jstart) < jgc)
+    {
+	    master->print_error("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(jend-jstart),jgc);
+	    master->print_error("Either increase jtot or decrease npy.\n");
+        throw 1;
+    }
 
     // allocate all arrays
     x     = new double[imax+2*igc];
