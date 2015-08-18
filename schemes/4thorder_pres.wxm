@@ -66,7 +66,7 @@ sol_bc2 : subst( sol_bc1, bc2 );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-expand( subst(sol_bc1, eq_bias) );
+expand( subst(sol_bc1, d2pdz2) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
@@ -80,7 +80,7 @@ sol_bc2 : subst( sol_bc1, bc2 );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-expand( subst(sol_bc2, (subst(sol_bc1, eq_bias)) ) );
+expand( subst(sol_bc2, (subst(sol_bc1, d2pdz2)) ) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
@@ -95,10 +95,6 @@ dwdz : grad(w[i-1], w[i  ], w[i+1], w[i+2]) * dzi[i];
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-eq_bias : d2pdz2bias = dwdz;
-/* [wxMaxima: input   end   ] */
-
-/* [wxMaxima: input   start ] */
 bc1 : grad(p[i-2], p[i-1], p[i  ], p[i+1]) * dzhi[i] = w[i];
 bc2 : p[i-2] = p[i+1] - 3*p[i] + 3*p[i-1];
 /* [wxMaxima: input   end   ] */
@@ -109,7 +105,7 @@ sol_bc2 : subst( sol_bc1, bc2 );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-expand( subst(sol_bc2, (subst(sol_bc1, eq_bias)) ) );
+expand( subst(sol_bc2, (subst(sol_bc1, d2pdz2bias)) ) );
 /* [wxMaxima: input   end   ] */
 
 /* Maxima can't load/batch files which end with a comment! */
