@@ -1,0 +1,116 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 0.8.5 ] */
+
+/* [wxMaxima: input   start ] */
+f(x) := f0 + f1*x/1! + f2*x^2/2! + f3*x^3/3! + f4*x^4/4! + f5*x^5/5! + f6*x^6/6!;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-3/2] = f(-3/2*h)$
+eq2 : f[-1/2] = f(-1/2*h)$
+eq3 : f[ 1/2] = f( 1/2*h)$
+eq4 : f[ 3/2] = f( 3/2*h)$
+sol1 : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
+kill(eq1,eq2,eq3,eq4)$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], sol1) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc0 : solve(sol1[4], f[-3/2]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f3=0, f4=0,f5=0,f6=0], bc0) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+interp(x1,x2,x3,x4) := (- x1 +  9*x2 +  9*x3 - x4) / 16 $
+grad  (x1,x2,x3,x4) := (  x1 - 27*x2 + 27*x3 - x4)$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq1 : f[-1/2] = f(-1/2*h)$
+eq2 : f[ 1/2] = f( 1/2*h)$
+eq3 : f[ 3/2] = f( 3/2*h)$
+eq4 : f[ 5/2] = f( 5/2*h)$
+sol2 : linsolve([eq1,eq2,eq3,eq4],[f0,f1,f2,f3]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ratsimp( subst([f4=0,f5=0,f6=0], sol2) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+interpbias(x1,x2,x3,x4) := (  5*x1 + 15*x2 - 5*x3 + x4) / 16 $
+gradbias  (x1,x2,x3,x4) := (-23*x1 + 21*x2 + 3*x3 - x4) $
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2pdz2 : ratsimp( grad(grad(p[i-3], p[i-2], p[i-1], p[i  ]) * dzhi[i-1],
+                       grad(p[i-2], p[i-1], p[i  ], p[i+1]) * dzhi[i  ],
+                       grad(p[i-1], p[i  ], p[i+1], p[i+2]) * dzhi[i+1],
+                       grad(p[i  ], p[i+1], p[i+2], p[i+3]) * dzhi[i+2]) * dzi[i]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1 : grad(p[i-4], p[i-3], p[i-2], p[i-1]) * dzhi[i-2] = w[i-2];
+bc2 : p[i-4] = p[i-1] - 3*p[i-2] + 3*p[i-3];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol_bc1 : solve( subst(bc2, bc1), p[i-3]);
+sol_bc2 : subst( sol_bc1, bc2 );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+expand( subst(sol_bc1, eq_bias) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1 : grad(p[i-3], p[i-2], p[i-1], p[i ]) * dzhi[i-1] = w[i-1];
+bc2 : p[i-3] = p[i] - 3*p[i-1] + 3*p[i-2];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol_bc1 : solve( subst(bc2, bc1), p[i-2]);
+sol_bc2 : subst( sol_bc1, bc2 );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+expand( subst(sol_bc2, (subst(sol_bc1, eq_bias)) ) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2pdz2bias : ratsimp( grad(gradbias(p[i-2], p[i-1], p[i  ], p[i+1]) * dzhi[i-1],
+                           grad    (p[i-2], p[i-1], p[i  ], p[i+1]) * dzhi[i  ],
+                           grad    (p[i-1], p[i  ], p[i+1], p[i+2]) * dzhi[i+1],
+                           grad    (p[i  ], p[i+1], p[i+2], p[i+3]) * dzhi[i+2]) * dzi[k]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+dwdz : grad(w[i-1], w[i  ], w[i+1], w[i+2]) * dzi[i];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq_bias : d2pdz2bias = dwdz;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1 : grad(p[i-2], p[i-1], p[i  ], p[i+1]) * dzhi[i] = w[i];
+bc2 : p[i-2] = p[i+1] - 3*p[i] + 3*p[i-1];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol_bc1 : solve( subst(bc2, bc1), p[i-1]);
+sol_bc2 : subst( sol_bc1, bc2 );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+expand( subst(sol_bc2, (subst(sol_bc1, eq_bias)) ) );
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$
