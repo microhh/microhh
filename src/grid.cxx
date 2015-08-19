@@ -214,20 +214,8 @@ void Grid::init()
     iend   = imax + igc;
     jend   = jmax + jgc;
     kend   = kmax + kgc;
-    
-    // check whether the size per patch is larger than number of ghost cells for 3D runs
-    if (imax < igc)
-    {
-	    master->print_error("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(iend-istart),igc);
-	    master->print_error("Either increase itot or decrease npx.\n");
-        throw 1;
-    }
-    if (jtot > 1 && jmax < jgc)
-    {
-	    master->print_error("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(jend-jstart),jgc);
-	    master->print_error("Either increase jtot or decrease npy.\n");
-        throw 1;
-    }
+
+    check_ghost_cells();
 
     // allocate all arrays
     x     = new double[imax+2*igc];
@@ -412,6 +400,28 @@ void Grid::calculate()
 }
 
 /**
+ * This function checks whether the number of ghost cells does not exceed the slice thickness.
+ */
+void Grid::check_ghost_cells()
+{
+    // Check whether the size per patch is larger than number of ghost cells for 3D runs.
+    if (imax < igc)
+    {
+	    master->print_error("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(iend-istart),igc);
+	    master->print_error("Either increase itot or decrease npx.\n");
+        throw 1;
+    }
+
+    // Check the jtot > 1 condition, to still allow for 2d runs.
+    if (jtot > 1 && jmax < jgc)
+    {
+	    master->print_error("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(jend-jstart),jgc);
+	    master->print_error("Either increase jtot or decrease npy.\n");
+        throw 1;
+    }
+}
+
+/**
  * This function increases the number of ghost cells in case necessary.
  * @param igc Ghost cells in the x-direction.
  * @param jgc Ghost cells in the y-direction.
@@ -422,20 +432,8 @@ void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int k
     igc = std::max(igc, igcin);
     jgc = std::max(jgc, jgcin);
     kgc = std::max(kgc, kgcin);
-    
-    // check whether the size per patch is larger than number of ghost cells for 3D runs
-    if (imax < igc)
-    {
-	    master->print_error("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",imax,igc);
-	    master->print_error("Either increase itot or decrease npx.\n");
-        throw 1;
-    }
-    if (jtot > 1 && jmax < jgc)
-    {
-	    master->print_error("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",jmax,jgc);
-	    master->print_error("Either increase jtot or decrease npy.\n");
-        throw 1;
-    } 
+
+    check_ghost_cells();
 }
 
 /**

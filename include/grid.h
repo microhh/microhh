@@ -185,6 +185,7 @@ class Grid
         bool fftwplan;  ///< Boolean to check whether FFTW3 plans are created.
 
         void calculate(); ///< Computation of dimensions, faces and ghost cells.
+        void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
 
 #ifdef USEMPI
         // MPI Datatypes
