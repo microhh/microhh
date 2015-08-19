@@ -64,15 +64,15 @@ class Budget
         void calc_tke_budget_shear_turb(double*, double*, double*,
                                         double*, double*,
                                         double*, double*,
+                                        double*, double*, double*, double*,
                                         double*, double*, double*, double*, double*,
-                                        double*, double*, double*, double*, double*, double*,
                                         double*, double*);
 
         void calc_tke_budget(double*, double*, double*, double*,
                              double*, double*,
                              double*, double*,
                              double*, double*, double*, double*, double*,
-                             double*, double*, double*, double*, double*, double*,
+                             double*, double*, double*, double*, double*,
                              double*, double*, double*,
                              double*, double*, double*, double*,
                              double*, double*, double);
