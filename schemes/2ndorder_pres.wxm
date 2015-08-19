@@ -7,8 +7,8 @@ grad  (x1,x2) := ( x2 -  x1 ) $
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-d2pdz2 : ratsimp( grad(grad(p[k-1], p[k  ]) * gh[k-1],
-                       grad(p[k  ], p[k+1]) * gh[k  ]) * g[k]) $
+d2pdz2 : ratsimp( grad(grad(p[k-1], p[k  ]) * gh[k  ],
+                       grad(p[k  ], p[k+1]) * gh[k+1]) * g[k]) $
 
 dwdz : grad(w[k  ], w[k+1]) * g[k] $
 /* [wxMaxima: input   end   ] */
