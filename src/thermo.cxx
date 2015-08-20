@@ -30,7 +30,6 @@
 // thermo schemes
 #include "thermo.h"
 #include "thermo_buoy.h"
-#include "thermo_buoy_slope.h"
 #include "thermo_dry.h"
 #include "thermo_moist.h"
 #include "thermo_disabled.h"
@@ -64,8 +63,6 @@ Thermo* Thermo::factory(Master* masterin, Input* inputin, Model* modelin)
         return new Thermo_buoy(modelin, inputin);
     else if (swthermo == "dry")
         return new Thermo_dry(modelin, inputin);
-    else if (swthermo == "buoy_slope")
-        return new Thermo_buoy_slope(modelin, inputin);
     else if (swthermo == "0")
         return new Thermo_disabled(modelin, inputin);
     else
