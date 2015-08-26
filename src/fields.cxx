@@ -543,12 +543,20 @@ void Fields::exec_stats(Mask *m)
     stats->calc_moment(sd["p"]->data, m->profs["p"].data, m->profs["p2"].data, 2, sloc,
                       atmp["tmp1"]->data, stats->nmask);
     if (grid->swspatialorder == "2")
+    {
+        stats->calc_grad_2nd(sd["p"]->data, m->profs["pgrad"].data, grid->dzhi, sloc,
+                             atmp["tmp4"]->data, stats->nmaskh);
         stats->calc_flux_2nd(sd["p"]->data, m->profs["p"].data, w->data, m->profs["w"].data,
                             m->profs["pw"].data, atmp["tmp1"]->data, sloc,
                             atmp["tmp4"]->data, stats->nmaskh);
+    }
     else if (grid->swspatialorder == "4")
+    {
+        stats->calc_grad_4th(sd["p"]->data, m->profs["pgrad"].data, grid->dzhi4, sloc,
+                             atmp["tmp4"]->data, stats->nmaskh);
         stats->calc_flux_4th(sd["p"]->data, w->data, m->profs["pw"].data, atmp["tmp1"]->data, sloc,
-                            atmp["tmp4"]->data, stats->nmaskh);
+                             atmp["tmp4"]->data, stats->nmaskh);
+    }
 
     // calculate the total fluxes
     stats->add_fluxes(m->profs["uflux"].data, m->profs["uw"].data, m->profs["udiff"].data);
@@ -836,6 +844,7 @@ void Fields::create_stats()
         std::string sn("2");
         stats->add_prof(sd["p"]->name + sn,"Moment "+ sn + " of the " + sd["p"]->longname,"(" + sd["p"]->unit + ")"+sn, "z" );
         stats->add_prof(sd["p"]->name +"w", "Turbulent flux of the " + sd["p"]->longname, sd["p"]->unit + " m s-1", "zh");
+        stats->add_prof(sd["p"]->name +"grad", "Gradient of the " + sd["p"]->longname, sd["p"]->unit + " m-1", "zh");
 
         // CvH, shouldn't this call be in the diffusion class?
         if (model->diff->get_name() == "smag2")

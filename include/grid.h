@@ -97,8 +97,8 @@ class Grid
         double* dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
         double* dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
 
-        double dzhi4biasbot;
-        double dzhi4biastop;
+        double dzhi4bot;
+        double dzhi4top;
 
         double* x;  ///< Grid coordinate of cell center in x-direction.
         double* y;  ///< Grid coordinate of cell center in y-direction.
@@ -185,6 +185,7 @@ class Grid
         bool fftwplan;  ///< Boolean to check whether FFTW3 plans are created.
 
         void calculate(); ///< Computation of dimensions, faces and ghost cells.
+        void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
 
 #ifdef USEMPI
         // MPI Datatypes

@@ -1,0 +1,97 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 0.8.5 ] */
+
+/* [wxMaxima: input   start ] */
+interp(x1,x2,x3,x4) := (- x1 +  9*x2 +  9*x3 - x4) / 16 $
+grad  (x1,x2,x3,x4) := (  x1 - 27*x2 + 27*x3 - x4) $
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+interpbias(x1,x2,x3,x4) := (  5*x1 + 15*x2 - 5*x3 + x4) / 16 $
+gradbias  (x1,x2,x3,x4) := (-23*x1 + 21*x2 + 3*x3 - x4) $
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2pdz2 : ratsimp( grad(grad(p[k-3], p[k-2], p[k-1], p[k  ]) * gh[k-1],
+                       grad(p[k-2], p[k-1], p[k  ], p[k+1]) * gh[k  ],
+                       grad(p[k-1], p[k  ], p[k+1], p[k+2]) * gh[k+1],
+                       grad(p[k  ], p[k+1], p[k+2], p[k+3]) * gh[k+2]) * g[k]) $
+
+d2pdz2bias : ratsimp( grad(gradbias(p[k-2], p[k-1], p[k  ], p[k+1]) * gh[k-1],
+                           grad    (p[k-2], p[k-1], p[k  ], p[k+1]) * gh[k  ],
+                           grad    (p[k-1], p[k  ], p[k+1], p[k+2]) * gh[k+1],
+                           grad    (p[k  ], p[k+1], p[k+2], p[k+3]) * gh[k+2]) * g[k]) $
+
+dwdz : grad(w[k-1], w[k  ], w[k+1], w[k+2]) * g[k] $
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq : d2pdz2 = dwdz $
+ratexpand(eq);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+facsum( subst([p[k-3]=0, p[k-2]=0, p[k-1]=0, p[k]=0, p[k+1]=0, p[k+2]=0, p[k+3]=0], eq) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1 : grad(p[k-4], p[k-3], p[k-2], p[k-1]) * gh[k-2] = w[k-2];
+bc2 : p[k-4] = p[k-1] - 3*p[k-2] + 3*p[k-3];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol_bc1 : solve( subst(bc2, bc1), p[k-3]);
+sol_bc2 : subst( sol_bc1, bc2 );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq_p3 : expand( subst(sol_bc1, eq) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+facsum( subst([p[k-3]=0, p[k-2]=0, p[k-1]=0, p[k]=0, p[k+1]=0, p[k+2]=0, p[k+3]=0], eq_p3) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1 : grad(p[k-3], p[k-2], p[k-1], p[k ]) * gh[k-1] = w[k-1];
+bc2 : p[k-3] = p[k] - 3*p[k-1] + 3*p[k-2];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol_bc1 : solve( subst(bc2, bc1), p[k-2]);
+sol_bc2 : subst( sol_bc1, bc2 );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq_p2 : expand( subst(sol_bc2, (subst(sol_bc1, eq)) ) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+facsum( subst([p[k-3]=0, p[k-2]=0, p[k-1]=0, p[k]=0, p[k+1]=0, p[k+2]=0, p[k+3]=0], eq_p2) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq_bot : d2pdz2bias = dwdz $
+ratsimp(eq_bot);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc1 : grad(p[k-2], p[k-1], p[k  ], p[k+1]) * gh[k] = w[k];
+bc2 : p[k-2] = p[k+1] - 3*p[k] + 3*p[k-1];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol_bc1 : solve( subst(bc2, bc1), p[k-1]);
+sol_bc2 : subst( sol_bc1, bc2 );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq_p1 : expand( subst(sol_bc2, (subst(sol_bc1, eq_bot)) ) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+facsum( subst([p[k-3]=0, p[k-2]=0, p[k-1]=0, p[k]=0, p[k+1]=0, p[k+2]=0, p[k+3]=0], eq_p1) );
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$

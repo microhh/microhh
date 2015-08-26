@@ -8,7 +8,7 @@ stats = netCDF4.Dataset("drycbl.default.0000000.nc","r")
 
 t = stats.variables["t"][:]
 end   = t.size
-start = t.size-1
+start = t.size-5
 dt = t[1] - t[0]
 
 z  = stats.variables["z"][:]
@@ -53,6 +53,22 @@ tke_pres = average(stats.variables["tke_pres"][start:end,:], 0)
 tke_diss = average(stats.variables["tke_diss"][start:end,:], 0)
 tke_buoy = average(stats.variables["tke_buoy"][start:end,:], 0)
 tke_sum = tke_turb + tke_visc + tke_pres + tke_diss + tke_buoy
+
+b2_shear = average(stats.variables["b2_shear"][start:end,:], 0)
+b2_turb  = average(stats.variables["b2_turb" ][start:end,:], 0)
+b2_visc  = average(stats.variables["b2_visc" ][start:end,:], 0)
+b2_diss  = average(stats.variables["b2_diss" ][start:end,:], 0)
+b2_sum = b2_shear + b2_turb + b2_visc + b2_diss
+
+bw_shear = average(stats.variables["bw_shear"][start:end,:], 0)
+bw_turb  = average(stats.variables["bw_turb" ][start:end,:], 0)
+bw_visc  = average(stats.variables["bw_visc" ][start:end,:], 0)
+bw_buoy  = average(stats.variables["bw_buoy" ][start:end,:], 0)
+bw_rdstr = average(stats.variables["bw_rdstr"][start:end,:], 0)
+bw_diss  = average(stats.variables["bw_diss" ][start:end,:], 0)
+bw_pres  = average(stats.variables["bw_pres" ][start:end,:], 0)
+bw_sum = bw_shear + bw_turb + bw_visc + bw_buoy + bw_rdstr + bw_diss + bw_pres
+
 
 # enable LaTeX plotting
 rc('font',**{'family':'serif','serif':['Palatino']})
@@ -104,6 +120,31 @@ plot(tke_pres/B0, z/henc, 'm-', label='pres')
 plot(tke_buoy/B0, z/henc, 'c-', label='buoy')
 plot(tke_sum /B0, z/henc, 'k:', label='sum' )
 xlabel(r'$de_k/dt / B_0$')
+ylabel(r'$z/h_{enc}$')
+legend(loc=0, frameon=False)
+ylim(0,zlim)
+
+figure()
+plot(b2_shear/B0, z/henc, 'c-', label='shear')
+plot(b2_turb /B0, z/henc, 'b-', label='turb' )
+plot(b2_visc /B0, z/henc, 'g-', label='visc' )
+plot(b2_diss /B0, z/henc, 'r-', label='diss' )
+plot(b2_sum  /B0, z/henc, 'k:', label='sum'  )
+xlabel(r'$db^2/dt / B_0$')
+ylabel(r'$z/h_{enc}$')
+legend(loc=0, frameon=False)
+ylim(0,zlim)
+
+figure()
+plot(bw_shear/B0, zh/henc, 'c-', label='shear' )
+plot(bw_turb /B0, zh/henc, 'b-', label='turb' )
+plot(bw_visc /B0, zh/henc, 'g-', label='visc' )
+plot(bw_buoy /B0, zh/henc, 'k-', label='buoy' )
+plot(bw_rdstr/B0, zh/henc, 'y-', label='rdstr')
+plot(bw_diss /B0, zh/henc, 'r-', label='diss' )
+plot(bw_pres /B0, zh/henc, 'm-', label='pres' )
+plot(bw_sum  /B0, zh/henc, 'k:', label='sum'  )
+xlabel(r'$dw^\prime b^\prime /dt / B_0$')
 ylabel(r'$z/h_{enc}$')
 legend(loc=0, frameon=False)
 ylim(0,zlim)

@@ -25,18 +25,18 @@
 
 #include <string>
 
-class Model;
-class Master;
 class Input;
+class Master;
 class Stats;
 class Grid;
 class Fields;
+class Thermo;
 struct Mask;
 
 class Budget
 {
     public:
-        Budget(Model*, Input*);
+        Budget(Input*, Master*, Grid*, Fields*, Thermo*, Stats*);
         ~Budget();
 
         void init();
@@ -45,11 +45,11 @@ class Budget
         void exec_stats(Mask*);
 
     private:
-        Model*  model;
-        Master* master;
-        Stats*  stats;
-        Grid*   grid;
-        Fields* fields;
+        Master& master;
+        Grid&   grid;
+        Fields& fields;
+        Thermo& thermo;
+        Stats&  stats;
 
         std::string swbudget;
 
@@ -61,18 +61,38 @@ class Budget
                      double, double,
                      double*, double*);
 
+        void calc_tke_budget_shear_turb(double*, double*, double*,
+                                        double*, double*,
+                                        double*, double*,
+                                        double*, double*, double*, double*,
+                                        double*, double*, double*, double*, double*,
+                                        double*, double*);
+
         void calc_tke_budget(double*, double*, double*, double*,
                              double*, double*,
                              double*, double*,
+                             double*, double*, double*, double*, double*,
+                             double*, double*, double*, double*, double*,
                              double*, double*, double*,
                              double*, double*, double*, double*,
-                             double*, double*, double*, double*,
-                             double*, double*, double*, double*,
-                             double*, double*,
-                             double*, double*, double*,
                              double*, double*, double);
 
-        void calc_tke_budget_buoy(double*, double*, double*, double*);
+        void calc_tke_budget_buoy(double*, double*, double*,
+                                  double*, double*,
+                                  double*, double*, double*);
+
+        void calc_b2_budget(double*, double*,
+                            double*,
+                            double*, double*, double*, double*,
+                            double*, double*,
+                            double);
+
+        void calc_bw_budget(double*, double*, double*, double*,
+                            double*, double*,
+                            double*, double*, double*,
+                            double*, double*, double*, double*,
+                            double*, double*,
+                            double);
 
         void calc_pe(double*, double*, double*, double*,
                      double*,

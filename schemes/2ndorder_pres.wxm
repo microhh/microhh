@@ -1,0 +1,38 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 0.8.5 ] */
+
+/* [wxMaxima: input   start ] */
+interp(x1,x2) := ( x1 +  x2 ) / 2 $
+grad  (x1,x2) := ( x2 -  x1 ) $
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+d2pdz2 : ratsimp( grad(grad(p[k-1], p[k  ]) * gh[k  ],
+                       grad(p[k  ], p[k+1]) * gh[k+1]) * g[k]) $
+
+dwdz : grad(w[k  ], w[k+1]) * g[k] $
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq : d2pdz2 = dwdz $
+ratexpand(eq);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bc : grad(p[k-1], p[k  ]) * gh[k] = w[k];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol_bc : solve(bc, p[k-1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+eq_p1 : expand( subst(sol_bc, eq) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+facsum( subst([p[k-1]=0, p[k]=0, p[k+1]=0], eq_p1) );
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$
