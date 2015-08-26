@@ -428,14 +428,14 @@ void Thermo_moist::exec_stats(Mask *m)
         }
         else
         {
-            stats->calc_diff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+            stats->calc_diff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp[thvar]->visc, sloc,
                                  fields->atmp["tmp4"]->data, stats->nmaskh);
         }
     }
     else if (grid->swspatialorder == "4")
     {
         // take the diffusivity of temperature for that of buoyancy
-        stats->calc_diff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+        stats->calc_diff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp[thvar]->visc, sloc,
                              fields->atmp["tmp4"]->data, stats->nmaskh);
     }
 
