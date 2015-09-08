@@ -46,7 +46,8 @@ Thermo_buoy::Thermo_buoy(Model *modelin, Input *inputin) : Thermo(modelin, input
     nerror += inputin->get_item(&n2   , "thermo", "N2"   , "");
     nerror += inputin->get_item(&fields->sp["b"]->visc, "fields", "svisc", "b");
 	
-	slope = alpha > 0;
+	hasSlope = alpha != 0;
+	hasN2 = n2 != 0;
 
     if (nerror)
         throw 1;
@@ -61,7 +62,7 @@ void Thermo_buoy::exec()
 {
     if (grid->swspatialorder == "2") 
     {
-	    if (slope) 
+	    if (hasSlope || hasN2) 
 	    {
             calc_buoyancy_tend_u_2nd(fields->ut->data, fields->sp["b"]->data);
             calc_buoyancy_tend_w_2nd(fields->wt->data, fields->sp["b"]->data);
@@ -74,7 +75,7 @@ void Thermo_buoy::exec()
     } 
     else if (grid->swspatialorder == "4") 
     {    
-	    if (slope) 
+	    if (hasSlope || hasN2) 
 	    {
 		    calc_buoyancy_tend_u_4th(fields->ut->data, fields->sp["b"]->data);
             calc_buoyancy_tend_w_4th(fields->wt->data, fields->sp["b"]->data);

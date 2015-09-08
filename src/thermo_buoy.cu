@@ -228,11 +228,12 @@ void Thermo_buoy::exec()
 
     const int offs = grid->memoffset;
     
-    bool slope = this->alpha > 0
+    bool hasSlope = this->alpha != 0
+    bool hasN2 = this->n2 != 0
 
     if (grid->swspatialorder== "2")
     {
-        if (slope)
+        if (hasSlope || hasN2)
         {
 	        const double sinalpha = std::sin(this->alpha);
             const double cosalpha = std::cos(this->alpha);
@@ -277,7 +278,7 @@ void Thermo_buoy::exec()
         const double sinalpha = std::sin(this->alpha);
         const double cosalpha = std::cos(this->alpha);
         
-        if (slope)
+        if (hasSlope || hasN2)
         {
             calc_buoyancy_tend_u_4th_g<<<gridGPU, blockGPU>>>(
                 &fields->ut->data_g[offs], &fields->sp["b"]->data_g[offs],

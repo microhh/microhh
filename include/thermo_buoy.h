@@ -75,8 +75,9 @@ private:
         void calc_buoyancy_tend_u_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
         void calc_buoyancy_tend_w_4th(double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
         void calc_buoyancy_tend_b_4th(double *, double *, double *); ///< Calculation of the buoyancy tendency with 4th order accuracy.
-        double alpha; ///< Slope angle in radians.
-        double n2;    ///< Background stratification.
-        bool slope;   ///< Boolean switch for slope flows
+        double alpha;  ///< Slope angle in radians.
+        double n2;     ///< Background stratification.
+        bool hasSlope; ///< Boolean switch for slope flows
+        bool hasN2;    ///< Boolean switch for imposed stratification
 };
 #endif
