@@ -42,12 +42,15 @@ Thermo_buoy::Thermo_buoy(Model *modelin, Input *inputin) : Thermo(modelin, input
     fields->init_prognostic_field("b", "Buoyancy", "m s-2");
 
     int nerror = 0;
-    nerror += inputin->get_item(&alpha, "thermo", "alpha", "");
-    nerror += inputin->get_item(&n2   , "thermo", "N2"   , "");
+    nerror += inputin->get_item(&alpha, "thermo", "alpha", "", 0.);
+    nerror += inputin->get_item(&n2   , "thermo", "N2"   , "", 0.);
     nerror += inputin->get_item(&fields->sp["b"]->visc, "fields", "svisc", "b");
 	
-	hasSlope = alpha != 0;
-	hasN2 = n2 != 0;
+	has_slope = std::abs(alpha) > 0.;
+	has_N2 = std::abs(n2) > 0.;
+
+    if (has_slope || has_N2)
+        master->print_message("Slope-enabled thermodynamics is activated\n");
 
     if (nerror)
         throw 1;
@@ -62,7 +65,7 @@ void Thermo_buoy::exec()
 {
     if (grid->swspatialorder == "2") 
     {
-	    if (hasSlope || hasN2) 
+	    if (has_slope || has_N2) 
 	    {
             calc_buoyancy_tend_u_2nd(fields->ut->data, fields->sp["b"]->data);
             calc_buoyancy_tend_w_2nd(fields->wt->data, fields->sp["b"]->data);
@@ -75,7 +78,7 @@ void Thermo_buoy::exec()
     } 
     else if (grid->swspatialorder == "4") 
     {    
-	    if (hasSlope || hasN2) 
+	    if (has_slope || has_N2) 
 	    {
 		    calc_buoyancy_tend_u_4th(fields->ut->data, fields->sp["b"]->data);
             calc_buoyancy_tend_w_4th(fields->wt->data, fields->sp["b"]->data);
@@ -133,7 +136,7 @@ void Thermo_buoy::calc_buoyancy_bot(double* restrict b  , double* restrict bbot,
     const int kstart = grid->kstart;
 
     for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<grid->icells; ++i)
         {
             const int ij  = i + j*jj;
@@ -148,7 +151,7 @@ void Thermo_buoy::calc_buoyancy_fluxbot(double* restrict bfluxbot, double* restr
     const int jj = grid->icells;
 
     for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<grid->icells; ++i)
         {
             const int ij  = i + j*jj;
@@ -163,7 +166,7 @@ void Thermo_buoy::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict b
 
     for (int k=grid->kstart+1; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -181,7 +184,7 @@ void Thermo_buoy::calc_buoyancy_tend_u_2nd(double* restrict ut, double* restrict
     
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -198,7 +201,7 @@ void Thermo_buoy::calc_buoyancy_tend_w_2nd(double* restrict wt, double* restrict
     
     for (int k=grid->kstart+1; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk1;
@@ -219,7 +222,7 @@ void Thermo_buoy::calc_buoyancy_tend_b_2nd(double* restrict bt, double* restrict
     
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk1;
@@ -236,7 +239,7 @@ void Thermo_buoy::calc_buoyancy_tend_4th(double* restrict wt, double* restrict b
 
     for (int k=grid->kstart+1; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk1;
@@ -255,7 +258,7 @@ void Thermo_buoy::calc_buoyancy_tend_u_4th(double* restrict ut, double* restrict
     
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -273,7 +276,7 @@ void Thermo_buoy::calc_buoyancy_tend_w_4th(double* restrict wt, double* restrict
     
     for (int k=grid->kstart+1; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk1;
@@ -296,7 +299,7 @@ void Thermo_buoy::calc_buoyancy_tend_b_4th(double* restrict bt, double* restrict
     
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk1;
