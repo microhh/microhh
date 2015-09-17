@@ -609,6 +609,36 @@ int Grid::save_xz_slice(double* restrict data, double* restrict tmp, char* filen
     return 0;
 }
 
+int Grid::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
+{
+    // extract the data from the 3d field without the ghost cells
+    const int ii  = jcells;
+    const int kk  = icells*jcells;
+    const int kkb = jmax;
+
+    const int count = jmax*kmax;
+
+    for (int k=0; k<kmax; k++)
+#pragma ivdep
+        for (int j=0; j<jmax; j++)
+        {
+            // take the modulus of jslice and jmax to have the right offset within proc
+            const int ijk  = j+jgc + (islice+igc)*ii + (k+kgc)*kk;
+            const int ijkb = j + k*kkb;
+            tmp[ijkb] = data[ijk];
+        }
+
+    FILE *pFile;
+    pFile = fopen(filename, "wbx");
+    if (pFile == NULL)
+        return 1;
+
+    fwrite(tmp, sizeof(double), count, pFile);
+    fclose(pFile);
+
+    return 0;
+}
+
 int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 {
     // extract the data from the 3d field without the ghost cells

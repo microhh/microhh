@@ -136,6 +136,7 @@ class Grid
         int load_field3d(double*, double*, double*, char*, double); ///< Loads a full 3d field.
 
         int save_xz_slice(double*, double*, char*, int);           ///< Saves a xz-slice from a 3d field.
+        int save_yz_slice(double*, double*, char*, int);           ///< Saves a yz-slice from a 3d field.
         int save_xy_slice(double*, double*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
         int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
 
@@ -205,6 +206,7 @@ class Grid
         MPI_Datatype subj;       ///< MPI datatype containing a subset of the entire y-axis.
         MPI_Datatype subarray;   ///< MPI datatype containing the dimensions of the total array that is contained in one process.
         MPI_Datatype subxzslice; ///< MPI datatype containing only one xz-slice.
+        MPI_Datatype subyzslice; ///< MPI datatype containing only one yz-slice.
         MPI_Datatype subxyslice; ///< MPI datatype containing only one xy-slice.
 
         double* profl; ///< Help array used in profile writing.

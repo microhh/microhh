@@ -128,6 +128,13 @@ void Grid::init_mpi()
     int subxzstart[2] = {0, master->mpicoordx*imax};
     MPI_Type_create_subarray(2, totxzsize, subxzsize, subxzstart, MPI_ORDER_C, MPI_DOUBLE, &subxzslice);
     MPI_Type_commit(&subxzslice);
+    
+    // save mpitype for a yz-slice for cross section processing
+    int totyzsize [2] = {kmax, jtot};
+    int subyzsize [2] = {kmax, jmax};
+    int subyzstart[2] = {0, master->mpicoordy*jmax};
+    MPI_Type_create_subarray(2, totyzsize, subyzsize, subyzstart, MPI_ORDER_C, MPI_DOUBLE, &subyzslice);
+    MPI_Type_commit(&subyzslice);
 
     // save mpitype for a xy-slice for cross section processing
     int totxysize [2] = {jtot, itot};
@@ -160,6 +167,7 @@ void Grid::exit_mpi()
         MPI_Type_free(&subj);
         MPI_Type_free(&subarray);
         MPI_Type_free(&subxzslice);
+        MPI_Type_free(&subyzslice);
         MPI_Type_free(&subxyslice);
 
         delete[] profl;
@@ -882,6 +890,62 @@ int Grid::save_xz_slice(double* restrict data, double* restrict tmp, char* filen
 
         if (!nerror)
             if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
+                ++nerror;
+
+        // only write at the procs that contain the slice
+        if (!nerror)
+            if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+                ++nerror;
+
+        if (!nerror)
+            MPI_File_sync(fh);
+
+        if (!nerror)
+            if (MPI_File_close(&fh))
+                ++nerror;
+    }
+
+    // Gather errors from other processes
+    master->sum(&nerror,1);
+
+    MPI_Barrier(master->commxy);
+
+    return nerror;
+}
+
+int Grid::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
+{
+    // extract the data from the 3d field without the ghost cells
+    int nerror=0;
+
+    const int ii  = jcells;
+    const int kk  = icells*jcells;
+    const int kkb = jmax;
+
+    int count = jmax*kmax;
+
+    for (int k=0; k<kmax; k++)
+#pragma ivdep
+        for (int j=0; j<jmax; j++)
+        {
+            // take the modulus of jslice and jmax to have the right offset within proc
+            const int ijk  = j+jgc + ((islice%imax)+igc)*ii + (k+kgc)*kk;
+            const int ijkb = j + k*kkb;
+            tmp[ijkb] = data[ijk];
+        }
+
+    if (master->mpicoordx == islice/imax)
+    {
+        MPI_File fh;
+        if (MPI_File_open(master->commy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+            ++nerror;
+
+        // select noncontiguous part of 3d array to store the selected data
+        MPI_Offset fileoff = 0; // the offset within the file (header size)
+        char name[] = "native";
+
+        if (!nerror)
+            if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subyzslice, name, MPI_INFO_NULL))
                 ++nerror;
 
         // only write at the procs that contain the slice

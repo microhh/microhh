@@ -64,6 +64,7 @@ Cross::Cross(Model* modelin, Input* inputin)
 
         // get the list of indices at which to take cross sections
         nerror += inputin->get_list(&xz, "cross", "xz", "");
+        nerror += inputin->get_list(&yz, "cross", "yz", "");
         nerror += inputin->get_list(&xy, "cross", "xy", "");
     }
 
@@ -125,7 +126,7 @@ void Cross::create()
             else // Add to cross-list
             {
                 jxz.push_back(temploc);
-                master->print_message("Addex XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],temploc,*it);
+                master->print_message("Added XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],temploc,*it);
             } 
 
             if (std::find(jxzh.begin(), jxzh.end(), temploch) != jxzh.end()) // Check for duplicate entries
@@ -133,7 +134,41 @@ void Cross::create()
             else // Add to cross-list
             {
                 jxzh.push_back(temploch);
-                master->print_message("Addex XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],temploch,*it);
+                master->print_message("Added XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],temploch,*it);
+            } 
+        }
+    }
+    
+    // Find nearest full and half grid locations of yz cross-sections.
+    for (std::vector<double>::iterator it=yz.begin(); it<yz.end(); ++it)
+    {
+        temploc  = (int) floor(*it/(grid->dx));
+        temploch = (int) floor((*it+(grid->dx/2.))/(grid->dx));
+
+        if (*it < 0 || *it > grid->xsize) // Check if cross location is inside domain
+        {
+            master->print_error("ERROR %f in [cross][yz] is outside domain\n", *it);
+            ++nerror;
+        }
+        else
+        {
+            if (*it == grid->xsize) // Exception for full level when requesting domain size
+                --temploc;
+
+            if (std::find(ixz.begin(), ixz.end(), temploc) != ixz.end()) // Check for duplicate entries
+                master->print_warning("removed duplicate entry x=%f for [cross][yz]=%f\n", grid->x[temploc+grid->igc],*it);
+            else // Add to cross-list
+            {
+                ixz.push_back(temploc);
+                master->print_message("Added YZ cross at x=%f (i=%i) for [cross][yz]=%f\n", grid->x[temploc+grid->igc],temploc,*it);
+            } 
+
+            if (std::find(ixzh.begin(), ixzh.end(), temploch) != ixzh.end()) // Check for duplicate entries
+                master->print_warning("removed duplicate entry xh=%f for [cross][yz]=%f\n", grid->xh[temploch+grid->igc],*it);
+            else // Add to cross-list
+            {
+                ixzh.push_back(temploch);
+                master->print_message("Added YZ cross at xh=%f (i=%i) for [cross][yz]=%f\n", grid->xh[temploch+grid->igc],temploch,*it);
             } 
         }
     }
@@ -249,6 +284,24 @@ int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
             nerror += check_save(grid->save_xz_slice(data, tmp, filename, *it), filename);    
+        }
+    }
+    
+    // loop over the index arrays to save all yz cross sections
+    if (name == "u")
+    {
+        for (std::vector<int>::iterator it=ixzh.begin(); it<ixzh.end(); ++it)
+        {
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+            nerror += check_save(grid->save_yz_slice(data, tmp, filename, *it), filename);    
+        }
+    }
+    else
+    {
+        for (std::vector<int>::iterator it=ixz.begin(); it<ixz.end(); ++it)
+        {
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+            nerror += check_save(grid->save_yz_slice(data, tmp, filename, *it), filename);    
         }
     }
 
@@ -384,6 +437,13 @@ int Cross::cross_lngrad(double* restrict a, double* restrict lngrad, double* res
     {
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
         nerror += check_save(grid->save_xz_slice(lngrad, tmp, filename, *it),filename);
+    }
+    
+    // loop over the index arrays to save all yz cross sections
+    for (std::vector<int>::iterator it=ixz.begin(); it<ixz.end(); ++it)
+    {
+        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+        nerror += check_save(grid->save_yz_slice(lngrad, tmp, filename, *it),filename);
     }
 
     // loop over the index arrays to save all xy cross sections
