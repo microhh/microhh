@@ -108,6 +108,7 @@ void Cross::create()
     // Find nearest full and half grid locations of xz cross-sections.
     for (std::vector<double>::iterator it=xz.begin(); it<xz.end(); ++it)
     {
+        // Find the index of the slice.
         temploc  = (int) floor(*it/(grid->dy));
         temploch = (int) floor((*it+(grid->dy/2.))/(grid->dy));
 
@@ -121,21 +122,32 @@ void Cross::create()
             if (*it == grid->ysize) // Exception for full level when requesting domain size
                 --temploc;
 
+            // Find the corresponding index, make sure to handle MPI properly.
+            double ycross = -1.;
+            if (temploc / grid->jmax == master->mpicoordy)
+                ycross = grid->y[temploc % grid->jmax + grid->jgc];
+            master->max(&ycross, 1);
+
+            double ycrossh = -1.;
+            if (temploch / grid->jmax == master->mpicoordy)
+                ycrossh = grid->y[temploch % grid->jmax + grid->jgc];
+            master->max(&ycrossh, 1);
+
             if (std::find(jxz.begin(), jxz.end(), temploc) != jxz.end()) // Check for duplicate entries
-                master->print_warning("removed duplicate entry y=%f for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],*it);
+                master->print_warning("Removed duplicate entry y=%f for [cross][xz]=%f\n", ycross, *it);
             else // Add to cross-list
             {
                 jxz.push_back(temploc);
-                master->print_message("Added XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],temploc,*it);
-            } 
+                master->print_message("Added XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", ycross, temploc, *it);
+            }
 
             if (std::find(jxzh.begin(), jxzh.end(), temploch) != jxzh.end()) // Check for duplicate entries
-                master->print_warning("removed duplicate entry yh=%f for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],*it);
+                master->print_warning("removed duplicate entry yh=%f for [cross][xz]=%f\n", ycrossh, *it);
             else // Add to cross-list
             {
                 jxzh.push_back(temploch);
-                master->print_message("Added XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],temploch,*it);
-            } 
+                master->print_message("Added XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", ycrossh, temploch, *it);
+            }
         }
     }
     
@@ -155,20 +167,31 @@ void Cross::create()
             if (*it == grid->xsize) // Exception for full level when requesting domain size
                 --temploc;
 
+            // Find the corresponding index, make sure to handle MPI properly.
+            double xcross = -1.;
+            if (temploc / grid->imax == master->mpicoordx)
+                xcross = grid->x[temploc % grid->imax + grid->igc];
+            master->max(&xcross, 1);
+
+            double xcrossh = -1.;
+            if (temploch / grid->imax == master->mpicoordx)
+                xcrossh = grid->x[temploch % grid->imax + grid->igc];
+            master->max(&xcrossh, 1);
+
             if (std::find(ixz.begin(), ixz.end(), temploc) != ixz.end()) // Check for duplicate entries
-                master->print_warning("removed duplicate entry x=%f for [cross][yz]=%f\n", grid->x[temploc+grid->igc],*it);
+                master->print_warning("Removed duplicate entry x=%f for [cross][yz]=%f\n", xcross, *it);
             else // Add to cross-list
             {
                 ixz.push_back(temploc);
-                master->print_message("Added YZ cross at x=%f (i=%i) for [cross][yz]=%f\n", grid->x[temploc+grid->igc],temploc,*it);
+                master->print_message("Added YZ cross at x=%f (i=%i) for [cross][yz]=%f\n", xcross, temploc, *it);
             } 
 
             if (std::find(ixzh.begin(), ixzh.end(), temploch) != ixzh.end()) // Check for duplicate entries
-                master->print_warning("removed duplicate entry xh=%f for [cross][yz]=%f\n", grid->xh[temploch+grid->igc],*it);
+                master->print_warning("Removed duplicate entry xh=%f for [cross][yz]=%f\n", xcrossh, *it);
             else // Add to cross-list
             {
                 ixzh.push_back(temploch);
-                master->print_message("Added YZ cross at xh=%f (i=%i) for [cross][yz]=%f\n", grid->xh[temploch+grid->igc],temploch,*it);
+                master->print_message("Added YZ cross at xh=%f (i=%i) for [cross][yz]=%f\n", xcrossh, temploch, *it);
             } 
         }
     }
