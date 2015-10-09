@@ -918,18 +918,20 @@ int Grid::save_yz_slice(double* restrict data, double* restrict tmp, char* filen
     // extract the data from the 3d field without the ghost cells
     int nerror=0;
 
-    const int ii  = jcells;
-    const int kk  = icells*jcells;
+    const int jj = icells;
+    const int kk = ijcells;
+
     const int kkb = jmax;
 
     int count = jmax*kmax;
 
+    // Strip off the ghost cells
     for (int k=0; k<kmax; k++)
-#pragma ivdep
+        #pragma ivdep
         for (int j=0; j<jmax; j++)
         {
             // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = j+jgc + ((islice%imax)+igc)*ii + (k+kgc)*kk;
+            const int ijk  = (islice%imax)+igc + (j+jgc)*jj + (k+kgc)*kk;
             const int ijkb = j + k*kkb;
             tmp[ijkb] = data[ijk];
         }
