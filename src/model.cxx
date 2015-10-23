@@ -86,7 +86,7 @@ Model::Model(Master *masterin, Input *inputin)
         force    = new Force   (this, input);
         buffer   = new Buffer  (this, input);
 
-        immersed_boundary = new Immersed_boundary(*master, *grid);
+        immersed_boundary = new Immersed_boundary(this, input);
 
         // Create instances of the statistics classes.
         stats  = new Stats (this, input);
@@ -275,7 +275,7 @@ void Model::exec()
         pres->exec_0();
 
         // Set the immersed boundary conditions
-        immersed_boundary->exec(*fields);
+        immersed_boundary->exec();
 
         // Solve the poisson equation for pressure.
         pres->exec(timeloop->get_sub_time_step());

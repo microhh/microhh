@@ -30,13 +30,14 @@ class Master;
 class Immersed_boundary
 {
     public:
-        Immersed_boundary(Master&, Grid&); ///< Constructor of the class.
+        Immersed_boundary(Model*, Input*); ///< Constructor of the class.
         ~Immersed_boundary();              ///< Destructor of the class.
 
-        void exec(Fields&);
+        void exec();
 
     private:
-        Master& master; ///< Pointer to master class.
-        Grid&   grid;   ///< Pointer to grid class.
+        Model*  model;  ///< Pointer to model class.
+        Fields* fields; ///< Pointer to fields class.
+        Grid*   grid;   ///< Pointer to grid class.
 };
 #endif

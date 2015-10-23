@@ -22,16 +22,18 @@
 
 #include <cstdio>
 #include "master.h"
+#include "model.h"
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
 #include "finite_difference.h"
 #include "immersed_boundary.h"
 
-Immersed_boundary::Immersed_boundary(Master& masterin, Grid& gridin) : 
-    master(masterin),
-    grid(gridin)
+Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 {
+    model  = modelin;
+    fields = model->fields;
+    grid   = model->grid;
 }
 
 Immersed_boundary::~Immersed_boundary()
@@ -208,35 +210,35 @@ namespace
 
 }
 
-void Immersed_boundary::exec(Fields& fields)
+void Immersed_boundary::exec()
 {
-    set_no_penetration(fields.ut->data, fields.wt->data,
-                       fields.u->data, fields.w->data,
-                       grid.istart, grid.iend,
-                       grid.jstart, grid.jend,
-                       grid.kstart, grid.kend,
-                       grid.icells, grid.ijcells);
+    set_no_penetration(fields->ut->data, fields->wt->data,
+                       fields->u->data, fields->w->data,
+                       grid->istart, grid->iend,
+                       grid->jstart, grid->jend,
+                       grid->kstart, grid->kend,
+                       grid->icells, grid->ijcells);
 
-    set_no_slip(fields.ut->data, fields.wt->data,
-                fields.u->data, fields.w->data,
-                fields.rhoref, fields.rhorefh,
-                grid.dzi, grid.dzhi,
-                grid.dxi,
-                fields.visc,
-                grid.istart, grid.iend,
-                grid.jstart, grid.jend,
-                grid.kstart, grid.kend,
-                grid.icells, grid.ijcells);
+    set_no_slip(fields->ut->data, fields->wt->data,
+                fields->u->data, fields->w->data,
+                fields->rhoref, fields->rhorefh,
+                grid->dzi, grid->dzhi,
+                grid->dxi,
+                fields->visc,
+                grid->istart, grid->iend,
+                grid->jstart, grid->jend,
+                grid->kstart, grid->kend,
+                grid->icells, grid->ijcells);
 
-    for (FieldMap::const_iterator it = fields.st.begin(); it!=fields.st.end(); it++)
-        set_scalar(it->second->data, fields.sp[it->first]->data,
-                   fields.u->data, fields.w->data,
-                   fields.rhoref, fields.rhorefh,
-                   grid.dzi, grid.dzhi,
-                   grid.dxi,
-                   fields.sp[it->first]->visc,
-                   grid.istart, grid.iend,
-                   grid.jstart, grid.jend,
-                   grid.kstart, grid.kend,
-                   grid.icells, grid.ijcells);
+    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+        set_scalar(it->second->data, fields->sp[it->first]->data,
+                   fields->u->data, fields->w->data,
+                   fields->rhoref, fields->rhorefh,
+                   grid->dzi, grid->dzhi,
+                   grid->dxi,
+                   fields->sp[it->first]->visc,
+                   grid->istart, grid->iend,
+                   grid->jstart, grid->jend,
+                   grid->kstart, grid->kend,
+                   grid->icells, grid->ijcells);
 }
