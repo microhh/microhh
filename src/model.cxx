@@ -161,11 +161,12 @@ void Model::init()
     grid  ->init();
     fields->init();
 
-    boundary->init(input);
-    buffer  ->init();
-    force   ->init();
-    pres    ->init();
-    thermo  ->init();
+    boundary         ->init(input);
+    immersed_boundary->init();
+    buffer           ->init();
+    force            ->init();
+    pres             ->init();
+    thermo           ->init();
 
     stats ->init(timeloop->get_ifactor());
     cross ->init(timeloop->get_ifactor());

@@ -23,9 +23,22 @@
 #ifndef IMMERSED_BOUNDARY
 #define IMMERSED_BOUNDARY
 
+#include <vector>
+#include <bitset>
+
+class Model;
 class Grid;
 class Fields;
-class Master;
+
+struct IB_cell
+{
+    int i;
+    int j;
+    int k;
+    std::bitset<6> sw_outer_wall;
+};
+
+enum IB_edge {Bottom_edge, Top_edge, West_edge, East_edge, South_edge, North_edge};
 
 class Immersed_boundary
 {
@@ -33,11 +46,14 @@ class Immersed_boundary
         Immersed_boundary(Model*, Input*); ///< Constructor of the class.
         ~Immersed_boundary();              ///< Destructor of the class.
 
+        void init();
         void exec();
 
     private:
         Model*  model;  ///< Pointer to model class.
         Fields* fields; ///< Pointer to fields class.
         Grid*   grid;   ///< Pointer to grid class.
+
+        std::vector<IB_cell> IB_cells;
 };
 #endif

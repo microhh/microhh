@@ -21,6 +21,7 @@
  */
 
 #include <cstdio>
+#include <iostream>
 #include "master.h"
 #include "model.h"
 #include "grid.h"
@@ -40,8 +41,116 @@ Immersed_boundary::~Immersed_boundary()
 {
 }
 
+void Immersed_boundary::init()
+{
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    // Put a solid block at 1/2 of the horizontal dimension in the
+    // middle of the channel.
+    const int ibc_istart = grid->istart +  4 * (grid->iend-grid->istart) / 16;
+    const int ibc_iend   = grid->istart + 12 * (grid->iend-grid->istart) / 16;
+    const int ibc_kstart = grid->kstart +  3 * (grid->kend-grid->kstart) / 8;
+    const int ibc_kend   = grid->kstart +  5 * (grid->kend-grid->kstart) / 8;
+
+    IB_cell tmp;
+
+    // Set the outer left and right walls
+    for (int k=ibc_kstart; k<ibc_kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+        {
+            tmp.sw_outer_wall.reset();
+            tmp.i = ibc_istart;
+            tmp.j = j;
+            tmp.k = k;
+            tmp.sw_outer_wall.set(West_edge);
+
+            if (k == ibc_kstart)
+                tmp.sw_outer_wall.set(Bottom_edge);
+            else if (k == ibc_kend-1)
+                tmp.sw_outer_wall.set(Top_edge);
+
+            IB_cells.push_back(tmp);
+
+            tmp.sw_outer_wall.reset();
+            tmp.i = ibc_iend-1;
+            tmp.j = j;
+            tmp.k = k;
+            tmp.sw_outer_wall.set(East_edge);
+
+            if (k == ibc_kstart)
+                tmp.sw_outer_wall.set(Bottom_edge);
+            else if (k == ibc_kend-1)
+                tmp.sw_outer_wall.set(Top_edge);
+
+            IB_cells.push_back(tmp);
+        }
+
+    // Set the top and bottom walls
+    for (int j=grid->jstart; j<grid->jend; ++j)
+        for (int i=ibc_istart+1; i<ibc_iend-1; ++i)
+        {
+            tmp.sw_outer_wall.reset();
+            tmp.i = i;
+            tmp.j = j;
+            tmp.k = ibc_kstart;
+            tmp.sw_outer_wall.set(Bottom_edge);
+
+            IB_cells.push_back(tmp);
+
+            tmp.sw_outer_wall.reset();
+            tmp.i = i;
+            tmp.j = j;
+            tmp.k = ibc_kend-1;
+            tmp.sw_outer_wall.set(Top_edge);
+
+            IB_cells.push_back(tmp);
+        }
+}
+
 namespace
 {
+    void set_no_penetration_new(double* const restrict ut, double* const restrict wt,
+                                double* const restrict u,  double* const restrict w,
+                                std::vector<IB_cell> IB_cells,
+                                const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        for (std::vector<IB_cell>::iterator it=IB_cells.begin(); it<IB_cells.end(); ++it) // c++11 :(
+        {
+            const int ijk = it->i + it->j*jj + it->k*kk;
+
+            if (it->sw_outer_wall[West_edge])
+            {
+                u [ijk] = 0;
+                ut[ijk] = 0;
+            }
+
+            if (it->sw_outer_wall[East_edge])
+            {
+                u [ijk+ii] = 0;
+                ut[ijk+ii] = 0;
+            }
+
+            if (it->sw_outer_wall[Bottom_edge])
+            {
+                w [ijk] = 0;
+                wt[ijk] = 0;
+            }
+
+            if (it->sw_outer_wall[Top_edge])
+            {
+                w [ijk+kk] = 0;
+                wt[ijk+kk] = 0;
+            }
+        }
+    }
+
+
     void set_no_penetration(double* const restrict ut, double* const restrict wt,
                             double* const restrict u, double* const restrict w,
                             const int istart, const int iend,
@@ -212,12 +321,16 @@ namespace
 
 void Immersed_boundary::exec()
 {
-    set_no_penetration(fields->ut->data, fields->wt->data,
-                       fields->u->data, fields->w->data,
-                       grid->istart, grid->iend,
-                       grid->jstart, grid->jend,
-                       grid->kstart, grid->kend,
-                       grid->icells, grid->ijcells);
+    //set_no_penetration(fields->ut->data, fields->wt->data,
+    //                   fields->u->data, fields->w->data,
+    //                   grid->istart, grid->iend,
+    //                   grid->jstart, grid->jend,
+    //                   grid->kstart, grid->kend,
+    //                   grid->icells, grid->ijcells);
+
+    set_no_penetration_new(fields->ut->data, fields->wt->data,
+                           fields->u->data, fields->w->data, IB_cells,
+                           grid->icells, grid->ijcells);
 
     set_no_slip(fields->ut->data, fields->wt->data,
                 fields->u->data, fields->w->data,
