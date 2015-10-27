@@ -114,7 +114,7 @@ namespace
     }
 
     void set_no_penetration(double* const restrict ut, double* const restrict wt,
-                            double* const restrict u, double* const restrict w,
+                            double* const restrict u,  double* const restrict w,
                             const int istart, const int iend,
                             const int jstart, const int jend,
                             const int kstart, const int kend,
@@ -154,6 +154,122 @@ namespace
                 wt[ijk_kstart] = 0.;
                 wt[ijk_kend  ] = 0.;
             }
+    }
+
+    void set_no_slip_new(double* const restrict ut, double* const restrict wt,
+                         const double* const restrict u, const double* const restrict w,
+                         const double* const restrict rhoref, const double* const restrict rhorefh,
+                         const double* const restrict dzi, const double* const restrict dzhi,
+                         const double dxi,
+                         const double visc,
+                         std::vector<IB_cell> IB_cells,
+                         const int icells, const int ijcells)
+    {
+        using namespace Finite_difference::O2;
+
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        const double dxidxi = dxi*dxi;
+
+        for (std::vector<IB_cell>::iterator it=IB_cells.begin(); it<IB_cells.end(); ++it) // c++11 :(
+        {
+            // Adjust u-component directly below cell
+            if (it->sw_outer_wall[Bottom_edge])
+            {
+                const int k   = it->k-1;
+                const int ijk = it->i + it->j*jj + k*kk; 
+
+                ut[ijk] +=
+                        + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk], u[ijk+kk]) ) / rhoref[k] * dzi[k];
+                        - visc * ( (u[ijk+kk] - u[ijk]) * dzhi[k+1]) * dzi[k];
+                        + visc * ( -2.*u[ijk] * dzhi[k+1] ) * dzi[k];
+
+
+                // For the bottom-right corner, also adjust u-component
+                if(it->sw_outer_wall[East_edge])
+                {
+                    const int ijk = it->i+1 + it->j*jj + k*kk;
+
+                    ut[ijk] +=
+                            + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk], u[ijk+kk]) ) / rhoref[k] * dzi[k];
+                            - visc * ( (u[ijk+kk] - u[ijk]) * dzhi[k+1]) * dzi[k];
+                            + visc * ( -2.*u[ijk] * dzhi[k+1] ) * dzi[k];
+                }
+            }
+
+            // Adjust u-component directly above cell
+            if (it->sw_outer_wall[Top_edge])
+            {
+                const int k   = it->k+1;
+                const int ijk = it->i + it->j*jj + k*kk; 
+
+                ut[ijk] +=
+                        - ( rhorefh[k] * interp2(w[ijk-ii], w[ijk]) * interp2(u[ijk-kk], u[ijk]) ) / rhoref[k] * dzi[k];
+                        + visc * ( (u[ijk] - u[ijk-kk]) * dzhi[k] ) * dzi[k];
+                        - visc * ( 2.*u[ijk] * dzhi[k] ) * dzi[k];
+
+                // For the top-right corner, also adjust u-component
+                if(it->sw_outer_wall[East_edge])
+                {
+                    const int ijk = it->i+1 + it->j*jj + k*kk; 
+
+                    ut[ijk] +=
+                            - ( rhorefh[k] * interp2(w[ijk-ii], w[ijk]) * interp2(u[ijk-kk], u[ijk]) ) / rhoref[k] * dzi[k];
+                            + visc * ( (u[ijk] - u[ijk-kk]) * dzhi[k] ) * dzi[k];
+                            - visc * ( 2.*u[ijk] * dzhi[k] ) * dzi[k];
+                }
+            }
+
+            // Adjust w-component west of cell  
+            if (it->sw_outer_wall[West_edge])
+            {
+                const int k   = it->k;
+                const int ijk = it->i-1 + it->j*jj + k*kk; 
+
+                wt[ijk] +=
+                        + ( interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk], w[ijk+ii]) ) * dxi
+                        - visc * ( (w[ijk+ii] - w[ijk]) ) * dxidxi
+                        + visc * ( -2.*w[ijk] ) * dxidxi;
+                
+                // For the top-left corner, also adjust w-component
+                if (it->sw_outer_wall[Top_edge])
+                {
+                    const int k   = it->k+1;
+                    const int ijk = it->i-1 + it->j*jj + k*kk; 
+
+                    wt[ijk] +=
+                            + ( interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk], w[ijk+ii]) ) * dxi
+                            - visc * ( (w[ijk+ii] - w[ijk]) ) * dxidxi
+                            + visc * ( -2.*w[ijk] ) * dxidxi;
+                }
+            }
+
+            // Adjust w-component east of cell  
+            if (it->sw_outer_wall[East_edge])
+            {
+                const int k   = it->k;
+                const int ijk = it->i+1 + it->j*jj + k*kk; 
+
+                wt[ijk] +=
+                        - ( interp2(u[ijk-kk], u[ijk]) * interp2(w[ijk-ii], w[ijk]) ) * dxi
+                        + visc * ( (w[ijk] - w[ijk-ii]) ) * dxidxi
+                        - visc * ( 2.*w[ijk] ) * dxidxi;
+                
+                // For the top-right corner, also adjust w-component
+                if (it->sw_outer_wall[Top_edge])
+                {
+                    const int k   = it->k+1;
+                    const int ijk = it->i+1 + it->j*jj + k*kk; 
+
+                    wt[ijk] +=
+                            - ( interp2(u[ijk-kk], u[ijk]) * interp2(w[ijk-ii], w[ijk]) ) * dxi
+                            + visc * ( (w[ijk] - w[ijk-ii]) ) * dxidxi
+                            - visc * ( 2.*w[ijk] ) * dxidxi;
+                }
+            }
+        }
     }
 
     void set_no_slip(double* const restrict ut, double* const restrict wt,
@@ -218,6 +334,53 @@ namespace
                         + visc * ( (u[ijk] - u[ijk-kk]) * dzhi[k] ) * dzi[k];
                         - visc * ( 2.*u[ijk] * dzhi[k] ) * dzi[k];
             }
+    }
+
+    void set_scalar_new(double* const restrict st, double* const restrict s,
+                        const double* const restrict u, const double* const restrict w,
+                        const double* const restrict rhoref, const double* const restrict rhorefh,
+                        const double* const restrict dzi, const double* const restrict dzhi,
+                        const double dxi,
+                        const double visc,
+                        std::vector<IB_cell> IB_cells,
+                        const int icells, const int ijcells)
+    {
+        using namespace Finite_difference::O2;
+
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        const double dxidxi = dxi*dxi;
+
+        for (std::vector<IB_cell>::iterator it=IB_cells.begin(); it<IB_cells.end(); ++it) // c++11 :(
+        {
+            if (it->sw_outer_wall[West_edge])
+            {
+                const int ijk = it->i-1 + it->j*jj + it->k*kk;
+                st[ijk] -= visc * ( s[ijk+ii] - s[ijk] ) * dxidxi;
+            }
+       
+            if (it->sw_outer_wall[East_edge])
+            {
+                const int ijk = it->i+1 + it->j*jj + it->k*kk;
+                st[ijk] += visc * ( (s[ijk] - s[ijk-ii]) ) * dxidxi;
+            }
+      
+            if(it->sw_outer_wall[Bottom_edge])
+            {
+                const int k   = it->k-1;
+                const int ijk = it->i + it->j*jj + k*kk;
+                st[ijk] -= visc * (s[ijk+kk] - s[ijk]) * dzhi[k+1] * dzi[k];
+            }
+
+            if(it->sw_outer_wall[Top_edge])
+            {
+                const int k   = it->k+1;
+                const int ijk = it->i + it->j*jj + k*kk;
+                st[ijk] += visc * (s[ijk] - s[ijk-kk]) * dzhi[k] * dzi[k];
+            }
+        } 
     }
 
     void set_scalar(double* const restrict st, double* const restrict s,
@@ -294,26 +457,47 @@ void Immersed_boundary::exec()
                            fields->u->data, fields->w->data, IB_cells,
                            grid->icells, grid->ijcells);
 
-    set_no_slip(fields->ut->data, fields->wt->data,
-                fields->u->data, fields->w->data,
-                fields->rhoref, fields->rhorefh,
-                grid->dzi, grid->dzhi,
-                grid->dxi,
-                fields->visc,
-                grid->istart, grid->iend,
-                grid->jstart, grid->jend,
-                grid->kstart, grid->kend,
-                grid->icells, grid->ijcells);
+    //set_no_slip(fields->ut->data, fields->wt->data,
+    //            fields->u->data, fields->w->data,
+    //            fields->rhoref, fields->rhorefh,
+    //            grid->dzi, grid->dzhi,
+    //            grid->dxi,
+    //            fields->visc,
+    //            grid->istart, grid->iend,
+    //            grid->jstart, grid->jend,
+    //            grid->kstart, grid->kend,
+    //            grid->icells, grid->ijcells);
+
+    set_no_slip_new(fields->ut->data, fields->wt->data,
+                    fields->u->data, fields->w->data,
+                    fields->rhoref, fields->rhorefh,
+                    grid->dzi, grid->dzhi,
+                    grid->dxi,
+                    fields->visc,
+                    IB_cells,
+                    grid->icells, grid->ijcells);
+
+
+    //for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+    //    set_scalar(it->second->data, fields->sp[it->first]->data,
+    //               fields->u->data, fields->w->data,
+    //               fields->rhoref, fields->rhorefh,
+    //               grid->dzi, grid->dzhi,
+    //               grid->dxi,
+    //               fields->sp[it->first]->visc,
+    //               grid->istart, grid->iend,
+    //               grid->jstart, grid->jend,
+    //               grid->kstart, grid->kend,
+    //               grid->icells, grid->ijcells);
+
 
     for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-        set_scalar(it->second->data, fields->sp[it->first]->data,
-                   fields->u->data, fields->w->data,
-                   fields->rhoref, fields->rhorefh,
-                   grid->dzi, grid->dzhi,
-                   grid->dxi,
-                   fields->sp[it->first]->visc,
-                   grid->istart, grid->iend,
-                   grid->jstart, grid->jend,
-                   grid->kstart, grid->kend,
-                   grid->icells, grid->ijcells);
+        set_scalar_new(it->second->data, fields->sp[it->first]->data,
+                       fields->u->data, fields->w->data,
+                       fields->rhoref, fields->rhorefh,
+                       grid->dzi, grid->dzhi,
+                       grid->dxi,
+                       fields->sp[it->first]->visc,
+                       IB_cells,
+                       grid->icells, grid->ijcells);
 }
