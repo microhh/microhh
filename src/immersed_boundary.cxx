@@ -41,7 +41,6 @@ Immersed_boundary::~Immersed_boundary()
 {
 }
 
-
 namespace
 {
     void add_IB_block(std::vector<IB_cell> &IB_cells,
@@ -87,10 +86,22 @@ namespace
         {
             const int ijk = it->i + it->j*jj + it->k*kk;
 
-            u [ijk] = 0;
-            w [ijk] = 0;
-            ut[ijk] = 0;
-            wt[ijk] = 0;
+            //u [ijk] = 0;
+            //w [ijk] = 0;
+            //ut[ijk] = 0;
+            //wt[ijk] = 0;
+
+            if (it->sw_outer_wall[West_edge])
+            {
+                u [ijk] = 0;
+                ut[ijk] = 0;
+            }
+
+            if (it->sw_outer_wall[Bottom_edge])
+            {
+                w [ijk] = 0;
+                wt[ijk] = 0;
+            }
 
             if (it->sw_outer_wall[East_edge])
             {
@@ -103,6 +114,7 @@ namespace
                 w [ijk+kk] = 0;
                 wt[ijk+kk] = 0;
             }
+
         }
     }
 
@@ -178,7 +190,6 @@ namespace
                         + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk], u[ijk+kk]) ) / rhoref[k] * dzi[k];
                         - visc * ( (u[ijk+kk] - u[ijk]) * dzhi[k+1]) * dzi[k];
                         + visc * ( -2.*u[ijk] * dzhi[k+1] ) * dzi[k];
-
 
                 // For the bottom-right corner, also adjust u-component
                 if(it->sw_outer_wall[East_edge])
@@ -446,23 +457,40 @@ void Immersed_boundary::init()
     const int ibc_kstart = grid->kstart +  3 * (grid->kend-grid->kstart) / 8;
     const int ibc_kend   = grid->kstart +  5 * (grid->kend-grid->kstart) / 8;
 
-    IB_cell tmp;
-
     add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend, ibc_kstart, ibc_kend);
 }
 
 void Immersed_boundary::exec()
 {
+    set_no_penetration_new(fields->ut->data, fields->wt->data,
+                           fields->u->data, fields->w->data, IB_cells,
+                           grid->icells, grid->ijcells);
+
+    set_no_slip_new(fields->ut->data, fields->wt->data,
+                    fields->u->data, fields->w->data,
+                    fields->rhoref, fields->rhorefh,
+                    grid->dzi, grid->dzhi,
+                    grid->dxi,
+                    fields->visc,
+                    IB_cells,
+                    grid->icells, grid->ijcells);
+
+    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+        set_scalar_new(it->second->data, fields->sp[it->first]->data,
+                       fields->u->data, fields->w->data,
+                       fields->rhoref, fields->rhorefh,
+                       grid->dzi, grid->dzhi,
+                       grid->dxi,
+                       fields->sp[it->first]->visc,
+                       IB_cells,
+                       grid->icells, grid->ijcells);
+
     //set_no_penetration(fields->ut->data, fields->wt->data,
     //                   fields->u->data, fields->w->data,
     //                   grid->istart, grid->iend,
     //                   grid->jstart, grid->jend,
     //                   grid->kstart, grid->kend,
     //                   grid->icells, grid->ijcells);
-
-    set_no_penetration_new(fields->ut->data, fields->wt->data,
-                           fields->u->data, fields->w->data, IB_cells,
-                           grid->icells, grid->ijcells);
 
     //set_no_slip(fields->ut->data, fields->wt->data,
     //            fields->u->data, fields->w->data,
@@ -475,16 +503,6 @@ void Immersed_boundary::exec()
     //            grid->kstart, grid->kend,
     //            grid->icells, grid->ijcells);
 
-    set_no_slip_new(fields->ut->data, fields->wt->data,
-                    fields->u->data, fields->w->data,
-                    fields->rhoref, fields->rhorefh,
-                    grid->dzi, grid->dzhi,
-                    grid->dxi,
-                    fields->visc,
-                    IB_cells,
-                    grid->icells, grid->ijcells);
-
-
     //for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
     //    set_scalar(it->second->data, fields->sp[it->first]->data,
     //               fields->u->data, fields->w->data,
@@ -496,15 +514,4 @@ void Immersed_boundary::exec()
     //               grid->jstart, grid->jend,
     //               grid->kstart, grid->kend,
     //               grid->icells, grid->ijcells);
-
-
-    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-        set_scalar_new(it->second->data, fields->sp[it->first]->data,
-                       fields->u->data, fields->w->data,
-                       fields->rhoref, fields->rhorefh,
-                       grid->dzi, grid->dzhi,
-                       grid->dxi,
-                       fields->sp[it->first]->visc,
-                       IB_cells,
-                       grid->icells, grid->ijcells);
 }
