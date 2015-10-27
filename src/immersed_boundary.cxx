@@ -61,6 +61,7 @@ void Immersed_boundary::init()
             for (int i=ibc_istart; i<ibc_iend; ++i)
             {
                 tmp.sw_outer_wall.reset();  // Set all walls to false
+
                 tmp.i = i;
                 tmp.j = j;
                 tmp.k = k;
@@ -93,22 +94,15 @@ namespace
         {
             const int ijk = it->i + it->j*jj + it->k*kk;
 
-            if (it->sw_outer_wall[West_edge])
-            {
-                u [ijk] = 0;
-                ut[ijk] = 0;
-            }
+            u [ijk] = 0;
+            w [ijk] = 0;
+            ut[ijk] = 0;
+            wt[ijk] = 0;
 
             if (it->sw_outer_wall[East_edge])
             {
                 u [ijk+ii] = 0;
                 ut[ijk+ii] = 0;
-            }
-
-            if (it->sw_outer_wall[Bottom_edge])
-            {
-                w [ijk] = 0;
-                wt[ijk] = 0;
             }
 
             if (it->sw_outer_wall[Top_edge])
