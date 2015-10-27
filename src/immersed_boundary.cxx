@@ -41,46 +41,39 @@ Immersed_boundary::~Immersed_boundary()
 {
 }
 
-void Immersed_boundary::init()
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    // Put a solid block at 1/2 of the horizontal dimension in the
-    // middle of the channel.
-    const int ibc_istart = grid->istart +  4 * (grid->iend-grid->istart) / 16;
-    const int ibc_iend   = grid->istart + 12 * (grid->iend-grid->istart) / 16;
-    const int ibc_kstart = grid->kstart +  3 * (grid->kend-grid->kstart) / 8;
-    const int ibc_kend   = grid->kstart +  5 * (grid->kend-grid->kstart) / 8;
-
-    IB_cell tmp;
-
-    for (int k=ibc_kstart; k<ibc_kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            for (int i=ibc_istart; i<ibc_iend; ++i)
-            {
-                tmp.sw_outer_wall.reset();  // Set all walls to false
-
-                tmp.i = i;
-                tmp.j = j;
-                tmp.k = k;
-
-                if(i == ibc_istart)
-                    tmp.sw_outer_wall.set(West_edge);
-                if(i == ibc_iend-1)
-                    tmp.sw_outer_wall.set(East_edge);
-                if(k == ibc_kstart)
-                    tmp.sw_outer_wall.set(Bottom_edge);
-                if(k == ibc_kend-1)
-                    tmp.sw_outer_wall.set(Top_edge);
-
-                IB_cells.push_back(tmp);
-            }
-}
 
 namespace
 {
+    void add_IB_block(std::vector<IB_cell> &IB_cells,
+                      const int istart, const int iend,
+                      const int jstart, const int jend,
+                      const int kstart, const int kend)
+    {
+        IB_cell tmp;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                for (int i=istart; i<iend; ++i)
+                {
+                    tmp.sw_outer_wall.reset();  // Set all walls to false
+
+                    tmp.i = i;
+                    tmp.j = j;
+                    tmp.k = k;
+
+                    if(i == istart)
+                        tmp.sw_outer_wall.set(West_edge);
+                    if(i == iend-1)
+                        tmp.sw_outer_wall.set(East_edge);
+                    if(k == kstart)
+                        tmp.sw_outer_wall.set(Bottom_edge);
+                    if(k == kend-1)
+                        tmp.sw_outer_wall.set(Top_edge);
+
+                    IB_cells.push_back(tmp);
+                }
+        }
+
     void set_no_penetration_new(double* const restrict ut, double* const restrict wt,
                                 double* const restrict u,  double* const restrict w,
                                 std::vector<IB_cell> IB_cells,
@@ -442,6 +435,20 @@ namespace
             }
     }
 
+}
+
+void Immersed_boundary::init()
+{
+    // Put a solid block at 1/2 of the horizontal dimension in the
+    // middle of the channel.
+    const int ibc_istart = grid->istart +  4 * (grid->iend-grid->istart) / 16;
+    const int ibc_iend   = grid->istart + 12 * (grid->iend-grid->istart) / 16;
+    const int ibc_kstart = grid->kstart +  3 * (grid->kend-grid->kstart) / 8;
+    const int ibc_kend   = grid->kstart +  5 * (grid->kend-grid->kstart) / 8;
+
+    IB_cell tmp;
+
+    add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend, ibc_kstart, ibc_kend);
 }
 
 void Immersed_boundary::exec()
