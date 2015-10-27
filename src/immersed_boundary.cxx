@@ -56,57 +56,26 @@ void Immersed_boundary::init()
 
     IB_cell tmp;
 
-    // Set the outer left and right walls
     for (int k=ibc_kstart; k<ibc_kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-        {
-            tmp.sw_outer_wall.reset();
-            tmp.i = ibc_istart;
-            tmp.j = j;
-            tmp.k = k;
-            tmp.sw_outer_wall.set(West_edge);
+            for (int i=ibc_istart; i<ibc_iend; ++i)
+            {
+                tmp.sw_outer_wall.reset();  // Set all walls to false
+                tmp.i = i;
+                tmp.j = j;
+                tmp.k = k;
 
-            if (k == ibc_kstart)
-                tmp.sw_outer_wall.set(Bottom_edge);
-            else if (k == ibc_kend-1)
-                tmp.sw_outer_wall.set(Top_edge);
+                if(i == ibc_istart)
+                    tmp.sw_outer_wall.set(West_edge);
+                if(i == ibc_iend-1)
+                    tmp.sw_outer_wall.set(East_edge);
+                if(k == ibc_kstart)
+                    tmp.sw_outer_wall.set(Bottom_edge);
+                if(k == ibc_kend-1)
+                    tmp.sw_outer_wall.set(Top_edge);
 
-            IB_cells.push_back(tmp);
-
-            tmp.sw_outer_wall.reset();
-            tmp.i = ibc_iend-1;
-            tmp.j = j;
-            tmp.k = k;
-            tmp.sw_outer_wall.set(East_edge);
-
-            if (k == ibc_kstart)
-                tmp.sw_outer_wall.set(Bottom_edge);
-            else if (k == ibc_kend-1)
-                tmp.sw_outer_wall.set(Top_edge);
-
-            IB_cells.push_back(tmp);
-        }
-
-    // Set the top and bottom walls
-    for (int j=grid->jstart; j<grid->jend; ++j)
-        for (int i=ibc_istart+1; i<ibc_iend-1; ++i)
-        {
-            tmp.sw_outer_wall.reset();
-            tmp.i = i;
-            tmp.j = j;
-            tmp.k = ibc_kstart;
-            tmp.sw_outer_wall.set(Bottom_edge);
-
-            IB_cells.push_back(tmp);
-
-            tmp.sw_outer_wall.reset();
-            tmp.i = i;
-            tmp.j = j;
-            tmp.k = ibc_kend-1;
-            tmp.sw_outer_wall.set(Top_edge);
-
-            IB_cells.push_back(tmp);
-        }
+                IB_cells.push_back(tmp);
+            }
 }
 
 namespace
@@ -149,7 +118,6 @@ namespace
             }
         }
     }
-
 
     void set_no_penetration(double* const restrict ut, double* const restrict wt,
                             double* const restrict u, double* const restrict w,
