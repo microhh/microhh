@@ -22,11 +22,13 @@
 
 #include <cstdio>
 #include <iostream>
+#include <cmath>
 #include "master.h"
 #include "model.h"
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
+#include "stats.h"
 #include "finite_difference.h"
 #include "immersed_boundary.h"
 
@@ -86,10 +88,10 @@ namespace
         {
             const int ijk = it->i + it->j*jj + it->k*kk;
 
-            //u [ijk] = 0;
-            //w [ijk] = 0;
-            //ut[ijk] = 0;
-            //wt[ijk] = 0;
+            u [ijk] = 0;
+            w [ijk] = 0;
+            ut[ijk] = 0;
+            wt[ijk] = 0;
 
             if (it->sw_outer_wall[West_edge])
             {
@@ -446,22 +448,78 @@ namespace
             }
     }
 
+    void check_no_penetration(double* u_max, double* w_max, 
+                              const double* const restrict u, const double* const restrict w, 
+                              std::vector<IB_cell> IB_cells,
+                              const int icells, const int ijcells)
+    {
+        const int ii = 1;
+        const int jj = icells;
+        const int kk = ijcells;
+
+        *u_max = 0;
+        *w_max = 0;
+
+        for (std::vector<IB_cell>::iterator it=IB_cells.begin(); it<IB_cells.end(); ++it) // c++11 :(
+        {
+            const int ijk = it->i + it->j*jj + it->k*kk;
+
+            if (it->sw_outer_wall[West_edge])
+                if(std::abs(u[ijk]) > *u_max)
+                    *u_max = std::abs(u[ijk]);
+
+            if (it->sw_outer_wall[East_edge])
+                if(std::abs(u[ijk+ii]) > *u_max)
+                    *u_max = std::abs(u[ijk+ii]);
+
+            if (it->sw_outer_wall[Bottom_edge])
+                if(std::abs(w[ijk]) > *w_max)
+                    *w_max = std::abs(w[ijk]);
+
+            if (it->sw_outer_wall[Top_edge])
+                if(std::abs(w[ijk+kk]) > *w_max)
+                    *w_max = std::abs(w[ijk+kk]);
+        }
+    }
 }
 
 void Immersed_boundary::init()
 {
+    stats = model->stats;
+
     // Put a solid block at 1/2 of the horizontal dimension in the
     // middle of the channel.
     const int ibc_istart = grid->istart +  4 * (grid->iend-grid->istart) / 16;
     const int ibc_iend   = grid->istart + 12 * (grid->iend-grid->istart) / 16;
     const int ibc_kstart = grid->kstart +  3 * (grid->kend-grid->kstart) / 8;
     const int ibc_kend   = grid->kstart +  5 * (grid->kend-grid->kstart) / 8;
-
     add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend, ibc_kstart, ibc_kend);
+}
+
+void Immersed_boundary::create()
+{
+    if (stats->getSwitch() == "1")
+    {
+        stats->add_time_series("IB_u_max", "Maximum u-component flow through IB walls", "m s-1");
+        stats->add_time_series("IB_w_max", "Maximum w-component flow through IB walls", "m s-1");
+    }
+}
+
+void Immersed_boundary::exec_stats(Mask *m)
+{
+    // Temporary hack (BvS) to get wall velocities in statistics, 
+    // Doesn't account for mask!!
+    m->tseries["IB_u_max"].data = boundary_u_max;
+    m->tseries["IB_w_max"].data = boundary_w_max;
 }
 
 void Immersed_boundary::exec()
 {
+    if (stats->getSwitch() == "1")
+    {
+        check_no_penetration(&boundary_u_max, &boundary_w_max, fields->u->data, fields->w->data, IB_cells, grid->icells, grid->ijcells);
+    }
+
     set_no_penetration_new(fields->ut->data, fields->wt->data,
                            fields->u->data, fields->w->data, IB_cells,
                            grid->icells, grid->ijcells);
@@ -515,3 +573,5 @@ void Immersed_boundary::exec()
     //               grid->kstart, grid->kend,
     //               grid->icells, grid->ijcells);
 }
+
+

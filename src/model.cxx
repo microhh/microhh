@@ -191,6 +191,7 @@ void Model::load()
 
     // Initialize data or load data from disk.
     boundary->create(input);
+    immersed_boundary->create();
 
     buffer->create(input);
     force ->create(input);
@@ -423,10 +424,11 @@ void Model::set_time_step()
 // Calculate the statistics for all classes that have a statistics function.
 void Model::calc_stats(std::string maskname)
 {
-    fields  ->exec_stats(&stats->masks[maskname]);
-    thermo  ->exec_stats(&stats->masks[maskname]);
-    budget  ->exec_stats(&stats->masks[maskname]);
-    boundary->exec_stats(&stats->masks[maskname]);
+    fields           ->exec_stats(&stats->masks[maskname]);
+    thermo           ->exec_stats(&stats->masks[maskname]);
+    budget           ->exec_stats(&stats->masks[maskname]);
+    boundary         ->exec_stats(&stats->masks[maskname]);
+    immersed_boundary->exec_stats(&stats->masks[maskname]);
 }
 
 // Print the status information to the .out file.
