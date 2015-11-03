@@ -29,6 +29,9 @@
 class Model;
 class Grid;
 class Fields;
+class Input;
+class Stats;
+struct Mask;
 
 struct IB_cell
 {
@@ -47,13 +50,21 @@ class Immersed_boundary
         ~Immersed_boundary();              ///< Destructor of the class.
 
         void init();
+        void create();
         void exec();
+
+        void exec_stats(Mask*); ///< Execute statistics of immersed boundaries
 
     private:
         Model*  model;  ///< Pointer to model class.
         Fields* fields; ///< Pointer to fields class.
         Grid*   grid;   ///< Pointer to grid class.
+        Stats*  stats;  ///< Pointer to grid class.
 
         std::vector<IB_cell> IB_cells;
+
+        // Some (temporary?) statistics walls
+        double boundary_u_max;
+        double boundary_w_max;
 };
 #endif
