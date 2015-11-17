@@ -71,6 +71,6 @@ Thermo* Thermo::factory(Master* masterin, Input* inputin, Model* modelin)
     else
     {
         masterin->print_error("\"%s\" is an illegal value for swthermo\n", swthermo.c_str());
-        return 0;
+        throw 1;
     }
 }
