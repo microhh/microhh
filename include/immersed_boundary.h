@@ -66,5 +66,7 @@ class Immersed_boundary
         // Some (temporary?) statistics walls
         double boundary_u_max;
         double boundary_w_max;
+
+        std::string sw_ib;
 };
 #endif
