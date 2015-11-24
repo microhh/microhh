@@ -109,23 +109,40 @@ void Budget_2::exec_stats(Mask* m)
     grid.calc_mean(vmodel, fields.v->data, grid.kcells);
 
     // Calculate kinetic and turbulent kinetic energy
-    calc_ke(m->profs["ke"].data, m->profs["tke"].data,
-            fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, grid.utrans, grid.vtrans);
+    calc_kinetic_energy(m->profs["ke"].data, m->profs["tke"].data,
+                        fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, grid.utrans, grid.vtrans);
+
+    // Calculate the shear production and turbulent transport terms
+    calc_advection_terms(m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data, 
+                         m->profs["u2_turb"].data,  m->profs["v2_turb"].data,  m->profs["w2_turb"].data, m->profs["tke_turb"].data, 
+                         fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, 
+                         fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, grid.dzi, grid.dzhi);
+
 }
 
-void Budget_2::calc_ke(double* const restrict ke, double* const restrict tke,
-                       const double* const restrict u, const double* const restrict v, const double* const restrict w,
-                       const double* const restrict umodel, const double* const restrict vmodel,
-                       const double utrans, const double vtrans)
+/**
+ * Calculate the kinetic and turbulence kinetic energy
+ * @param TO-DO 
+ */
+void Budget_2::calc_kinetic_energy(double* const restrict ke, double* const restrict tke,
+                                   const double* const restrict u, const double* const restrict v, const double* const restrict w,
+                                   const double* const restrict umodel, const double* const restrict vmodel,
+                                   const double utrans, const double vtrans)
 {
     const int ii = 1;
     const int jj = grid.icells;
     const int kk = grid.ijcells;
 
+    const int ijtot = grid.itot*grid.jtot;
+
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
         ke[k]  = 0;
         tke[k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
         for (int j=grid.jstart; j<grid.jend; ++j)
             #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
@@ -153,13 +170,122 @@ void Budget_2::calc_ke(double* const restrict ke, double* const restrict tke,
             }
     }
 
+    // Calculate sum over all processes, and calc mean profiles
     master.sum(ke , grid.kcells);
     master.sum(tke, grid.kcells);
 
-    const int n = grid.itot*grid.jtot;
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
-       ke[k]  /= n;
-       tke[k] /= n;
+       ke[k]  /= ijtot;
+       tke[k] /= ijtot;
     }
+}
+
+/**
+ * Calculate the budget terms arrising from the advection term:
+ * shear production (-2 u_i*u_j * d<u_i>/dx_j) and turbulent transport (-d(u_i^2*u_j)/dx_j)
+ * @param TO-DO
+ */
+void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* const restrict v2_shear, double* const restrict tke_shear,
+                                    double* const restrict u2_turb,  double* const restrict v2_turb,  double* const restrict w2_turb, double* const restrict tke_turb,
+                                    const double* const restrict u, const double* const restrict v, const double* const restrict w,
+                                    const double* const restrict umean, const double* const restrict vmean,
+                                    double* const restrict wx, double* const restrict wy,
+                                    const double* const restrict dzi, const double* const restrict dzhi)
+{
+    // Interpolate the vertical velocity to {xh,y,zh} (wx, below u) and {x,yh,zh} (wy, below v) 
+    const int wloc [3] = {0,0,1};
+    const int wxloc[3] = {1,0,1};
+    const int wyloc[3] = {0,1,1};
+
+    grid.interpolate_2nd(wx, w, wloc, wxloc);
+    grid.interpolate_2nd(wy, w, wloc, wyloc);
+
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+
+    const int ijtot = grid.itot * grid.jtot;
+  
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        u2_shear [k] = 0;
+        v2_shear [k] = 0;
+        tke_shear[k] = 0;
+        u2_turb  [k] = 0;
+        v2_turb  [k] = 0;
+        w2_turb  [k] = 0;
+        tke_turb [k] = 0;
+    }
+   
+    // Calculate shear terms (-2u_iw d<u_i>/dz) 
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        const double dudz = (interp2(umean[k], umean[k+1]) - interp2(umean[k-1], umean[k]) ) * dzi[k];
+        const double dvdz = (interp2(vmean[k], vmean[k+1]) - interp2(vmean[k-1], vmean[k]) ) * dzi[k];
+        
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                u2_shear[k] -= 2 * (u[ijk]-umean[k]) * interp2(wx[ijk], wx[ijk+kk]) * dudz;
+                v2_shear[k] -= 2 * (v[ijk]-vmean[k]) * interp2(wy[ijk], wy[ijk+kk]) * dvdz;
+            }
+
+        tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
+    }
+
+    // Calculate turbulent transport terms (-d(u_i^2*w)/dz)
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                
+                u2_turb[k]  -= ( (interp2(pow(u[ijk]-umean[k], 2), pow(u[ijk+kk]-umean[k+1], 2)) * wx[ijk+kk]) - 
+                                (interp2(pow(u[ijk]-umean[k], 2), pow(u[ijk-kk]-umean[k-1], 2)) * wx[ijk   ]) ) * dzi[k];
+
+                v2_turb[k]  -= ( (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk+kk]-vmean[k+1], 2)) * wy[ijk+kk]) - 
+                                (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk-kk]-vmean[k-1], 2)) * wy[ijk   ]) ) * dzi[k];
+
+                tke_turb[k] -= 0.5 * ( pow(w[ijk+kk], 3) - pow(w[ijk], 3) ) * dzi[k];                
+            }
+        tke_turb[k] += 0.5 * (u2_turb[k] + v2_turb[k]);
+    }
+
+    // TODO: how to calculate w2 at boundary (kstart, kend)? 
+    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    {
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                
+                w2_turb[k] -= ( interp2(pow(w[ijk], 3), pow(w[ijk+kk], 3)) - 
+                                interp2(pow(w[ijk], 3), pow(w[ijk-kk], 3)) ) * dzhi[k];
+            }
+    }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(u2_shear,  grid.kcells);
+    master.sum(v2_shear,  grid.kcells);
+    master.sum(tke_shear, grid.kcells);
+    master.sum(u2_turb,   grid.kcells);
+    master.sum(v2_turb,   grid.kcells);
+    master.sum(w2_turb,   grid.kcells);
+    master.sum(tke_turb,  grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        u2_shear [k] /= ijtot;
+        v2_shear [k] /= ijtot;
+        tke_shear[k] /= ijtot;
+        u2_turb  [k] /= ijtot;
+        v2_turb  [k] /= ijtot;
+        w2_turb  [k] /= ijtot;
+        tke_turb [k] /= ijtot;
+    }
+
 }
