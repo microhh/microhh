@@ -48,8 +48,17 @@ class Budget_2 : public Budget
         double* vmodel;
 
         void calc_kinetic_energy(double*, double*, const double*, const double*, const double*, const double*, const double*, const double, const double);
+
         void calc_advection_terms(double*, double*, double*, double*, double*, double*, double*,
                                   const double*, const double*, const double*, const double*, const double*,
                                   double*, double*, const double*, const double*); 
+
+        void calc_pressure_terms(double*, double*, double*, double*, double*,
+                                 const double*, const double*, const double*, const double*,
+                                 const double*, const double*, const double*, const double*,
+                                 const double, const double);
+
+
+
 };
 #endif

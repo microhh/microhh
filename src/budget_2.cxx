@@ -118,6 +118,12 @@ void Budget_2::exec_stats(Mask* m)
                          fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, 
                          fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, grid.dzi, grid.dzhi);
 
+    calc_pressure_terms(m->profs["w2_pres"].data, m->profs["tke_pres"].data, m->profs["u2_rdstr"].data, 
+                        m->profs["v2_rdstr"].data,  m->profs["w2_rdstr"].data, 
+                        fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data, umodel, vmodel, 
+                        grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
+
+
 }
 
 /**
@@ -132,7 +138,6 @@ void Budget_2::calc_kinetic_energy(double* const restrict ke, double* const rest
     const int ii = 1;
     const int jj = grid.icells;
     const int kk = grid.ijcells;
-
     const int ijtot = grid.itot*grid.jtot;
 
     for (int k=grid.kstart; k<grid.kend; ++k)
@@ -204,7 +209,6 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
     const int ii = 1;
     const int jj = grid.icells;
     const int kk = grid.ijcells;
-
     const int ijtot = grid.itot * grid.jtot;
   
     for (int k=grid.kstart; k<grid.kend; ++k)
@@ -245,18 +249,18 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
                 const int ijk = i + j*jj + k*kk;
                 
                 u2_turb[k]  -= ( (interp2(pow(u[ijk]-umean[k], 2), pow(u[ijk+kk]-umean[k+1], 2)) * wx[ijk+kk]) - 
-                                (interp2(pow(u[ijk]-umean[k], 2), pow(u[ijk-kk]-umean[k-1], 2)) * wx[ijk   ]) ) * dzi[k];
+                                 (interp2(pow(u[ijk]-umean[k], 2), pow(u[ijk-kk]-umean[k-1], 2)) * wx[ijk   ]) ) * dzi[k];
 
                 v2_turb[k]  -= ( (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk+kk]-vmean[k+1], 2)) * wy[ijk+kk]) - 
-                                (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk-kk]-vmean[k-1], 2)) * wy[ijk   ]) ) * dzi[k];
+                                 (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk-kk]-vmean[k-1], 2)) * wy[ijk   ]) ) * dzi[k];
 
                 tke_turb[k] -= 0.5 * ( pow(w[ijk+kk], 3) - pow(w[ijk], 3) ) * dzi[k];                
             }
         tke_turb[k] += 0.5 * (u2_turb[k] + v2_turb[k]);
     }
 
-    // TODO: how to calculate w2 at boundary (kstart, kend)? 
-    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+    // w2_turb = zero at lower and top boundary
+    for (int k=grid.kstart+1; k<grid.kend; ++k)
     {
         for (int j=grid.jstart; j<grid.jend; ++j)
             for (int i=grid.istart; i<grid.iend; ++i)
@@ -287,5 +291,96 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
         w2_turb  [k] /= ijtot;
         tke_turb [k] /= ijtot;
     }
+}
 
+/**
+ * Calculate the budget terms arrising from pressure:
+ * pressure transport (-2*dpu_i/dxi) and redistribution (2p*dui/dxi)
+ * @param TO-DO
+ */
+void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* const restrict tke_pres,
+                                   double* const restrict u2_rdstr, double* const restrict v2_rdstr, double* const restrict w2_rdstr,
+                                   const double* const restrict u, const double* const restrict v, 
+                                   const double* const restrict w, const double* const restrict p,
+                                   const double* const restrict umean, const double* const restrict vmean,
+                                   const double* const restrict dzi, const double* const restrict dzhi, const double dxi, const double dyi)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int ijtot = grid.itot * grid.jtot;
+  
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        w2_pres [k] = 0;
+        tke_pres[k] = 0;
+        u2_rdstr[k] = 0;
+        v2_rdstr[k] = 0;
+        w2_rdstr[k] = 0;
+    }
+  
+    // Pressure transport term (-2*dpu_i/dxi) 
+    // w2_pres is assumed to be zero at the surface, top?
+    for (int k=grid.kstart+1; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+            
+                w2_pres[k] -= 2 * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] - 
+                                    interp2(w[ijk], w[ijk-kk]) * p[ijk-kk] ) * dzhi[k];
+            }
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+            
+                tke_pres[k] -= ( interp2(p[ijk], p[ijk+kk]) * w[ijk+kk] - 
+                                 interp2(p[ijk], p[ijk-kk]) * w[ijk   ] ) * dzi[k];
+            }
+
+    // Pressure redistribution term (2p*dui/dxi)
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+            
+                u2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-ii]) * 
+                                 ( interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k]) -  
+                                   interp2(u[ijk]-umean[k], u[ijk-ii]-umean[k]) ) * dxi;  
+
+                v2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-jj]) * 
+                                 ( interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k]) -  
+                                   interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k]) ) * dyi;  
+            }
+
+    // Exclude bottom and top boundary from w2 for now (..)
+    for (int k=grid.kstart+1; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+            
+                w2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-kk]) * 
+                                 ( interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk]) ) * dzhi[k];  
+            }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(w2_pres,  grid.kcells);
+    master.sum(tke_pres, grid.kcells);
+    master.sum(u2_rdstr, grid.kcells);
+    master.sum(v2_rdstr, grid.kcells);
+    master.sum(w2_rdstr, grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        w2_pres [k] /= ijtot;
+        tke_pres[k] /= ijtot;
+        u2_rdstr[k] /= ijtot;
+        v2_rdstr[k] /= ijtot;
+        w2_rdstr[k] /= ijtot;
+    }
 }
