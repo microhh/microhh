@@ -29,6 +29,7 @@
 
 #include "budget.h"
 #include "budget_disabled.h"
+#include "budget_2.h"
 #include "budget_4.h"
 
 Budget::Budget(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Stats* statsin):
@@ -56,6 +57,8 @@ Budget* Budget::factory(Input* inputin, Master* masterin, Grid* gridin, Fields* 
 
     if (swbudget == "0")
         return new Budget_disabled(inputin, masterin, gridin, fieldsin, thermoin, statsin);
+    else if (swbudget == "2")
+        return new Budget_2(inputin, masterin, gridin, fieldsin, thermoin, statsin);
     else if (swbudget == "4")
         return new Budget_4(inputin, masterin, gridin, fieldsin, thermoin, statsin);
     else

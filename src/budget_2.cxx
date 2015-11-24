@@ -35,6 +35,8 @@
 #include "budget.h"
 #include "budget_2.h"
 
+using namespace Finite_difference::O2;
+
 Budget_2::Budget_2(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Stats* statsin) :
     Budget(inputin, masterin, gridin, fieldsin, thermoin, statsin)
 {
@@ -105,4 +107,59 @@ void Budget_2::exec_stats(Mask* m)
     // calculate the mean of the fields
     grid.calc_mean(umodel, fields.u->data, grid.kcells);
     grid.calc_mean(vmodel, fields.v->data, grid.kcells);
+
+    // Calculate kinetic and turbulent kinetic energy
+    calc_ke(m->profs["ke"].data, m->profs["tke"].data,
+            fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, grid.utrans, grid.vtrans);
+}
+
+void Budget_2::calc_ke(double* const restrict ke, double* const restrict tke,
+                       const double* const restrict u, const double* const restrict v, const double* const restrict w,
+                       const double* const restrict umodel, const double* const restrict vmodel,
+                       const double utrans, const double vtrans)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        ke[k]  = 0;
+        tke[k] = 0;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                const double u2 = interp2(pow(u[ijk]+utrans, 2), pow(u[ijk+ii]+utrans, 2));
+                const double v2 = interp2(pow(v[ijk]+vtrans, 2), pow(v[ijk+jj]+vtrans, 2));
+                const double w2 = interp2(pow(w[ijk],        2), pow(w[ijk+ii],        2));
+
+                ke[k] += 0.5 * (u2 + v2 + w2);
+            }
+
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                const double u2 = interp2(pow(u[ijk]-umodel[k], 2), pow(u[ijk+ii]-umodel[k], 2));
+                const double v2 = interp2(pow(v[ijk]-vmodel[k], 2), pow(v[ijk+jj]-vmodel[k], 2));
+                const double w2 = interp2(pow(w[ijk],           2), pow(w[ijk+ii],           2));
+
+                tke[k] += 0.5 * (u2 + v2 + w2);
+            }
+    }
+
+    master.sum(ke , grid.kcells);
+    master.sum(tke, grid.kcells);
+
+    const int n = grid.itot*grid.jtot;
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+       ke[k]  /= n;
+       tke[k] /= n;
+    }
 }

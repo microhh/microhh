@@ -46,5 +46,7 @@ class Budget_2 : public Budget
     private:
         double* umodel;
         double* vmodel;
+
+        void calc_ke(double*, double*, const double*, const double*, const double*, const double*, const double*, const double, const double);
 };
 #endif
