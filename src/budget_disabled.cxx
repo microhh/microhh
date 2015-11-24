@@ -23,7 +23,7 @@
 #include "budget_disabled.h"
 
 Budget_disabled::Budget_disabled(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Stats* statsin) :
-                 Budget(inputin, masterin, gridin, fieldsin, thermoin, statsin)
+    Budget(inputin, masterin, gridin, fieldsin, thermoin, statsin)
 {
 }
 
