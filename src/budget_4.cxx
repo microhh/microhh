@@ -234,9 +234,9 @@ void Budget_4::exec_stats(Mask* m)
 }
 
 void Budget_4::calc_ke(double* restrict u, double* restrict v, double* restrict w,
-                     double* restrict umodel, double* restrict vmodel,
-                     double utrans, double vtrans,
-                     double* restrict ke, double* restrict tke)
+                       double* restrict umodel, double* restrict vmodel,
+                       double utrans, double vtrans,
+                       double* restrict ke, double* restrict tke)
 {
     double u2,v2,w2;
 
@@ -290,11 +290,11 @@ void Budget_4::calc_ke(double* restrict u, double* restrict v, double* restrict 
 }
 
 void Budget_4::calc_tke_budget_shear_turb(double* restrict u, double* restrict v, double* restrict w,
-                                        double* restrict wx, double* restrict wy,
-                                        double* restrict umean, double* restrict vmean,
-                                        double* restrict u2_shear, double* restrict v2_shear, double* restrict tke_shear, double* restrict uw_shear,
-                                        double* restrict u2_turb, double* restrict v2_turb, double* restrict w2_turb, double* restrict tke_turb, double* restrict uw_turb,
-                                        double* restrict dzi4, double* restrict dzhi4)
+                                          double* restrict wx, double* restrict wy,
+                                          double* restrict umean, double* restrict vmean,
+                                          double* restrict u2_shear, double* restrict v2_shear, double* restrict tke_shear, double* restrict uw_shear,
+                                          double* restrict u2_turb, double* restrict v2_turb, double* restrict w2_turb, double* restrict tke_turb, double* restrict uw_turb,
+                                          double* restrict dzi4, double* restrict dzhi4)
 {
     // 1. INTERPOLATE THE VERTICAL VELOCITY TO U AND V LOCATION
     const int wloc [3] = {0,0,1};
@@ -586,13 +586,13 @@ void Budget_4::calc_tke_budget_shear_turb(double* restrict u, double* restrict v
 }
 
 void Budget_4::calc_tke_budget(double* restrict u, double* restrict v, double* restrict w, double* restrict p,
-                             double* restrict wz, double* restrict uz,
-                             double* restrict umean, double* restrict vmean,
-                             double* restrict u2_visc, double* restrict v2_visc, double* restrict w2_visc, double* restrict tke_visc, double* restrict uw_visc,
-                             double* restrict u2_diss, double* restrict v2_diss, double* restrict w2_diss, double* restrict tke_diss, double* restrict uw_diss,
-                             double* restrict w2_pres, double* restrict tke_pres, double* restrict uw_pres,
-                             double* restrict u2_rdstr, double* restrict v2_rdstr, double* restrict w2_rdstr, double* restrict uw_rdstr,
-                             double* restrict dzi4, double* restrict dzhi4, double visc)
+                               double* restrict wz, double* restrict uz,
+                               double* restrict umean, double* restrict vmean,
+                               double* restrict u2_visc, double* restrict v2_visc, double* restrict w2_visc, double* restrict tke_visc, double* restrict uw_visc,
+                               double* restrict u2_diss, double* restrict v2_diss, double* restrict w2_diss, double* restrict tke_diss, double* restrict uw_diss,
+                               double* restrict w2_pres, double* restrict tke_pres, double* restrict uw_pres,
+                               double* restrict u2_rdstr, double* restrict v2_rdstr, double* restrict w2_rdstr, double* restrict uw_rdstr,
+                               double* restrict dzi4, double* restrict dzhi4, double visc)
 {
     const int ii1 = 1;
     const int ii2 = 2;
@@ -2026,8 +2026,8 @@ void Budget_4::calc_tke_budget(double* restrict u, double* restrict v, double* r
 }
 
 void Budget_4::calc_tke_budget_buoy(double* restrict u, double* restrict w, double* restrict b,
-                                  double* restrict umean, double* restrict bmean,
-                                  double* restrict w2_buoy, double* restrict tke_buoy, double* restrict uw_buoy)
+                                    double* restrict umean, double* restrict bmean,
+                                    double* restrict w2_buoy, double* restrict tke_buoy, double* restrict uw_buoy)
 {
     const int ii1 = 1;
     const int ii2 = 2;
@@ -2085,10 +2085,10 @@ void Budget_4::calc_tke_budget_buoy(double* restrict u, double* restrict w, doub
 }
 
 void Budget_4::calc_b2_budget(double* restrict w, double* restrict b,
-                            double* restrict bmean,
-                            double* restrict b2_shear, double* restrict b2_turb, double* restrict b2_visc, double* restrict b2_diss,
-                            double* restrict dzi4, double* restrict dzhi4,
-                            const double visc)
+                              double* restrict bmean,
+                              double* restrict b2_shear, double* restrict b2_turb, double* restrict b2_visc, double* restrict b2_diss,
+                              double* restrict dzi4, double* restrict dzhi4,
+                              const double visc)
 {
     const int ii1 = 1;
     const int ii2 = 2;
@@ -2394,11 +2394,11 @@ void Budget_4::calc_b2_budget(double* restrict w, double* restrict b,
 }
 
 void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* restrict b, double* restrict bz,
-                            double* restrict pmean, double* restrict bmean,
-                            double* restrict bw_shear, double* restrict bw_turb, double* restrict bw_visc,
-                            double* restrict bw_buoy, double* restrict bw_rdstr, double* restrict bw_diss, double* restrict bw_pres,
-                            double* restrict dzi4, double* restrict dzhi4,
-                            const double visc)
+                              double* restrict pmean, double* restrict bmean,
+                              double* restrict bw_shear, double* restrict bw_turb, double* restrict bw_visc,
+                              double* restrict bw_buoy, double* restrict bw_rdstr, double* restrict bw_diss, double* restrict bw_pres,
+                              double* restrict dzi4, double* restrict dzhi4,
+                              const double visc)
 {
     const int ii1 = 1;
     const int ii2 = 2;
@@ -2942,10 +2942,10 @@ void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* re
 }
 
 void Budget_4::calc_pe(double* restrict b, double* restrict zsort, double* restrict zsortbot, double* restrict zsorttop,
-                     double* restrict z,
-                     double* restrict bsort,
-                     double* restrict pe_total, double* restrict pe_avail, double* restrict pe_bg,
-                     double* restrict zsortprof)
+                       double* restrict z,
+                       double* restrict bsort,
+                       double* restrict pe_total, double* restrict pe_avail, double* restrict pe_bg,
+                       double* restrict zsortprof)
 {
     const int jj = grid.icells;
     const int kk1 = 1*grid.ijcells;
@@ -3134,9 +3134,9 @@ double Budget_4::calc_dzstardb(double b, double* restrict bsort, double* restric
 
 
 void Budget_4::calc_pe_budget(double* restrict w, double* restrict b, double* restrict bz, double* restrict bztop,
-                            double* restrict pe_turb, double* restrict pe_visc, double* restrict pe_bous,
-                            double* restrict z, double* restrict zh, double* restrict dzi4, double* restrict dzhi4,
-                            double visc)
+                              double* restrict pe_turb, double* restrict pe_visc, double* restrict pe_bous,
+                              double* restrict z, double* restrict zh, double* restrict dzi4, double* restrict dzhi4,
+                              double visc)
 {
     const int jj1 = 1*grid.icells;
     const int kk1 = 1*grid.ijcells;
