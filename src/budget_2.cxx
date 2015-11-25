@@ -126,8 +126,8 @@ void Budget_2::exec_stats(Mask* m)
                          fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, grid.dzi, grid.dzhi);
 
     // Calculate the pressure transport and redistribution terms
-    calc_pressure_terms(m->profs["w2_pres"].data, m->profs["tke_pres"].data, m->profs["u2_rdstr"].data, 
-                        m->profs["v2_rdstr"].data,  m->profs["w2_rdstr"].data, 
+    calc_pressure_terms(m->profs["w2_pres"].data,  m->profs["tke_pres"].data, m->profs["uw_pres"].data, 
+                        m->profs["u2_rdstr"].data, m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data, m->profs["uw_rdstr"].data,
                         fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data, umodel, vmodel, 
                         grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
 
@@ -139,6 +139,15 @@ void Budget_2::exec_stats(Mask* m)
                                  grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.visc);
     else if(diff.get_name() == "smag2")
         std::cout << "Ha! not implemented yet" << std::endl; 
+}
+
+namespace
+{
+    // Double linear interpolation
+    inline double interp2_4(const double a, const double b, const double c, const double d)
+    {
+        return 0.25 * (a + b + c + d);
+    }
 }
 
 /**
@@ -330,8 +339,8 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
  * pressure transport (-2*dpu_i/dxi) and redistribution (2p*dui/dxi)
  * @param TO-DO
  */
-void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* const restrict tke_pres,
-                                   double* const restrict u2_rdstr, double* const restrict v2_rdstr, double* const restrict w2_rdstr,
+void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* const restrict tke_pres, double* const restrict uw_pres,
+                                   double* const restrict u2_rdstr, double* const restrict v2_rdstr, double* const restrict w2_rdstr, double* const restrict uw_rdstr,
                                    const double* const restrict u, const double* const restrict v, 
                                    const double* const restrict w, const double* const restrict p,
                                    const double* const restrict umean, const double* const restrict vmean,
@@ -346,9 +355,11 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
     {
         w2_pres [k] = 0;
         tke_pres[k] = 0;
+        uw_pres [k] = 0;
         u2_rdstr[k] = 0;
         v2_rdstr[k] = 0;
         w2_rdstr[k] = 0;
+        uw_rdstr[k] = 0;
     }
   
     // Pressure transport term (-2*dpu_i/dxi) 
@@ -373,6 +384,11 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
             
                 tke_pres[k] -= ( interp2(p[ijk], p[ijk+kk]) * w[ijk+kk] - 
                                  interp2(p[ijk], p[ijk-kk]) * w[ijk   ] ) * dzi[k];
+
+                uw_pres[k]  -= ( interp2(p[ijk   ], p[ijk-kk   ]) * w[ijk   ] - 
+                                 interp2(p[ijk-ii], p[ijk-ii-kk]) * w[ijk-ii] ) * dxi +
+                               ( interp2(p[ijk   ], p[ijk-ii   ]) * u[ijk   ] - 
+                                 interp2(p[ijk-kk], p[ijk-ii-kk]) * u[ijk-kk] ) * dzhi[k];
             }
 
     // Pressure redistribution term (2p*dui/dxi)
@@ -389,7 +405,10 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
 
                 v2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-jj]) * 
                                  ( interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k]) -  
-                                   interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k]) ) * dyi;  
+                                   interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k]) ) * dyi;
+
+                uw_rdstr[k] += interp2_4(p[ijk], p[ijk-kk], p[ijk-ii-kk], p[ijk-ii]) * 
+                                 ( (u[ijk] - u[ijk-kk]) * dzhi[k] + (w[ijk] - w[ijk-ii]) * dxi );
             }
 
     // TODO Exclude bottom and top boundary from w2 for now (..)
@@ -407,26 +426,21 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
     // Calculate sum over all processes, and calc mean profiles
     master.sum(w2_pres,  grid.kcells);
     master.sum(tke_pres, grid.kcells);
+    master.sum(uw_pres,  grid.kcells);
     master.sum(u2_rdstr, grid.kcells);
     master.sum(v2_rdstr, grid.kcells);
     master.sum(w2_rdstr, grid.kcells);
+    master.sum(uw_rdstr, grid.kcells);
 
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
         w2_pres [k] /= ijtot;
         tke_pres[k] /= ijtot;
+        uw_pres [k] /= ijtot;
         u2_rdstr[k] /= ijtot;
         v2_rdstr[k] /= ijtot;
         w2_rdstr[k] /= ijtot;
-    }
-}
-
-namespace
-{
-    // Double linear interpolation
-    inline double interp2_4(const double a, const double b, const double c, const double d)
-    {
-        return 0.25 * (a + b + c + d);
+        uw_rdstr[k] /= ijtot;
     }
 }
 
