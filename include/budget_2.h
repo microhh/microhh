@@ -29,6 +29,7 @@ class Stats;
 class Grid;
 class Fields;
 class Thermo;
+class Diff;
 struct Mask;
 
 #include "budget.h"
@@ -36,7 +37,7 @@ struct Mask;
 class Budget_2 : public Budget
 {
     public:
-        Budget_2(Input*, Master*, Grid*, Fields*, Thermo*, Stats*);
+        Budget_2(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Stats*);
         ~Budget_2();
 
         void init();
@@ -58,7 +59,10 @@ class Budget_2 : public Budget
                                  const double*, const double*, const double*, const double*,
                                  const double, const double);
 
-
-
+        void calc_diffusion_terms_DNS(double*, double*, double*, double*,
+                                      double*, double*, double*, double*, double*,
+                                      const double*, const double*, const double*, const double*,
+                                      const double*, const double*, const double*,
+                                      const double, const double, const double);
 };
 #endif

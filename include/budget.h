@@ -31,6 +31,7 @@ class Stats;
 class Grid;
 class Fields;
 class Thermo;
+class Diff;
 struct Mask;
 
 /**
@@ -41,10 +42,10 @@ struct Mask;
 class Budget
 {
     public:
-        Budget(Input*, Master*, Grid*, Fields*, Thermo*, Stats*);
+        Budget(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Stats*);
         virtual ~Budget();
 
-        static Budget* factory(Input*, Master*, Grid*, Fields*, Thermo*, Stats*); ///< Factory function for budget class generation.
+        static Budget* factory(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Stats*); ///< Factory function for budget class generation.
 
         virtual void init() = 0;
         virtual void create() = 0;
@@ -55,6 +56,7 @@ class Budget
         Grid&   grid;
         Fields& fields;
         Thermo& thermo;
+        Diff&   diff;
         Stats&  stats;
 
         std::string swbudget;

@@ -29,6 +29,7 @@ class Stats;
 class Grid;
 class Fields;
 class Thermo;
+class Diff;
 struct Mask;
 
 #include "budget.h"
@@ -36,7 +37,7 @@ struct Mask;
 class Budget_4 : public Budget
 {
     public:
-        Budget_4(Input*, Master*, Grid*, Fields*, Thermo*, Stats*);
+        Budget_4(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Stats*);
         ~Budget_4();
 
         void init();

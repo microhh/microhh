@@ -29,6 +29,7 @@
 #include "finite_difference.h"
 #include "model.h"
 #include "thermo.h"
+#include "diff.h"
 #include "stats.h"
 #include <netcdfcpp.h>
 
@@ -37,8 +38,8 @@
 
 using namespace Finite_difference::O2;
 
-Budget_2::Budget_2(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Stats* statsin) :
-    Budget(inputin, masterin, gridin, fieldsin, thermoin, statsin)
+Budget_2::Budget_2(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Stats* statsin) :
+    Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, statsin)
 {
     umodel = 0;
     vmodel = 0;
@@ -118,12 +119,20 @@ void Budget_2::exec_stats(Mask* m)
                          fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, 
                          fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, grid.dzi, grid.dzhi);
 
+    // Calculate the pressure transport and redistribution terms
     calc_pressure_terms(m->profs["w2_pres"].data, m->profs["tke_pres"].data, m->profs["u2_rdstr"].data, 
                         m->profs["v2_rdstr"].data,  m->profs["w2_rdstr"].data, 
                         fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data, umodel, vmodel, 
                         grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
 
 
+    if(diff.get_name() == "2" || diff.get_name() == "4")
+        calc_diffusion_terms_DNS(m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data,
+                                 m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data,
+                                 fields.atmp["tmp1"]->data, fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, 
+                                 grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.visc);
+    else if(diff.get_name() == "smag2")
+        std::cout << "Ha! not implemented yet" << std::endl; 
 }
 
 /**
@@ -229,6 +238,7 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
         const double dvdz = (interp2(vmean[k], vmean[k+1]) - interp2(vmean[k-1], vmean[k]) ) * dzi[k];
         
         for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -244,6 +254,7 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
         for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -263,6 +274,7 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
     for (int k=grid.kstart+1; k<grid.kend; ++k)
     {
         for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -323,6 +335,7 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
     // w2_pres is assumed to be zero at the surface, top?
     for (int k=grid.kstart+1; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -333,6 +346,7 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
 
     for (int k=grid.kstart; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -344,6 +358,7 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
     // Pressure redistribution term (2p*dui/dxi)
     for (int k=grid.kstart; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -357,9 +372,10 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
                                    interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k]) ) * dyi;  
             }
 
-    // Exclude bottom and top boundary from w2 for now (..)
+    // TODO Exclude bottom and top boundary from w2 for now (..)
     for (int k=grid.kstart+1; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -384,3 +400,117 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
         w2_rdstr[k] /= ijtot;
     }
 }
+
+/**
+ * Calculate the budget terms arrising from diffusion, for a fixed viscosity
+ * molecular diffusion (nu*d/dxj(dui^2/dxj)) and dissipation (-2*nu*(dui/dxj)^2) 
+ * @param TO-DO
+ */
+void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* const restrict v2_visc,
+                                        double* const restrict w2_visc, double* const restrict tke_visc,
+                                        double* const restrict u2_diss, double* const restrict v2_diss,
+                                        double* const restrict w2_diss, double* const restrict tke_diss,
+                                        double* const restrict wz,
+                                        const double* const restrict u, const double* const restrict v,
+                                        const double* const restrict w, const double* const restrict umean, const double* const restrict vmean,
+                                        const double* const restrict dzi, const double* const restrict dzhi,
+                                        const double dxi, const double dyi, const double visc)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int ijtot = grid.itot * grid.jtot;
+  
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        u2_visc [k] = 0;
+        v2_visc [k] = 0;
+        w2_visc [k] = 0;
+        tke_visc[k] = 0;
+        u2_diss [k] = 0;
+        v2_diss [k] = 0;
+        w2_diss [k] = 0;
+        tke_diss[k] = 0;
+    }
+  
+    // Calculate w at full levels
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                wz[ijk] = interp2(w[ijk], w[ijk+kk]);
+            }
+
+    // Set ghost cells such that the velocity interpolated to the boundaries is zero    
+    int ks = grid.kstart;
+    int ke = grid.kend-1;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijks = i + j*jj + ks*kk;
+            const int ijke = i + j*jj + ke*kk;
+            wz[ijks-kk] = -wz[ijks];
+            wz[ijke+kk] = -wz[ijke]; 
+        }
+  
+    // Molecular diffusion term (nu*d/dxj(dui^2/dxj))
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+           
+                u2_visc[k] += visc * ( (pow(u[ijk+kk]-umean[k+1], 2) - pow(u[ijk   ]-umean[k  ], 2)) * dzhi[k+1] - 
+                                       (pow(u[ijk   ]-umean[k  ], 2) - pow(u[ijk-kk]-umean[k-1], 2)) * dzhi[k  ] ) * dzi[k]; 
+
+                v2_visc[k] += visc * ( (pow(v[ijk+kk]-vmean[k+1], 2) - pow(v[ijk   ]-vmean[k  ], 2)) * dzhi[k+1] - 
+                                       (pow(v[ijk   ]-vmean[k  ], 2) - pow(v[ijk-kk]-vmean[k-1], 2)) * dzhi[k  ] ) * dzi[k]; 
+
+                tke_visc[k] += 0.5 * visc * ( (pow(wz[ijk+kk], 2) - pow(wz[ijk   ], 2)) * dzhi[k+1] - 
+                                              (pow(wz[ijk   ], 2) - pow(wz[ijk-kk], 2)) * dzhi[k  ] ) * dzi[k]; 
+            }
+        tke_visc[k] += 0.5 * (u2_visc[k] + v2_visc[k]);
+    }
+
+    // TODO How to calculate second derivative w at boundaries?
+    for (int k=grid.kstart+1; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+           
+                w2_visc[k] += visc * ( (pow(w[ijk+kk], 2) - pow(w[ijk   ], 2)) * dzi[k  ] - 
+                                       (pow(w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1] ) * dzhi[k]; 
+            }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(u2_visc,  grid.kcells);
+    master.sum(v2_visc,  grid.kcells);
+    master.sum(w2_visc,  grid.kcells);
+    master.sum(tke_visc, grid.kcells);
+    master.sum(u2_diss,  grid.kcells);
+    master.sum(v2_diss,  grid.kcells);
+    master.sum(w2_diss,  grid.kcells);
+    master.sum(tke_diss, grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        u2_visc[k]  /= ijtot;
+        v2_visc[k]  /= ijtot;
+        w2_visc[k]  /= ijtot;
+        tke_visc[k] /= ijtot;
+        u2_diss[k]  /= ijtot;
+        v2_diss[k]  /= ijtot;
+        w2_diss[k]  /= ijtot;
+        tke_diss[k] /= ijtot;
+    }
+
+}
+
+
