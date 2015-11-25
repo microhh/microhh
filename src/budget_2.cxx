@@ -133,9 +133,9 @@ void Budget_2::exec_stats(Mask* m)
 
     // Calculate the diffusive transport and dissipation terms
     if(diff.get_name() == "2" || diff.get_name() == "4")
-        calc_diffusion_terms_DNS(m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data,
-                                 m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data,
-                                 fields.atmp["tmp1"]->data, fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, 
+        calc_diffusion_terms_DNS(m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data, m->profs["uw_visc"].data,
+                                 m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data, m->profs["uw_diss"].data,
+                                 fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data, fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, 
                                  grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.visc);
     else if(diff.get_name() == "smag2")
         std::cout << "Ha! not implemented yet" << std::endl; 
@@ -421,21 +421,38 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
     }
 }
 
+namespace
+{
+    // Double linear interpolation
+    inline double interp2_4(const double a, const double b, const double c, const double d)
+    {
+        return 0.25 * (a + b + c + d);
+    }
+}
+
 /**
  * Calculate the budget terms arrising from diffusion, for a fixed viscosity
  * molecular diffusion (nu*d/dxj(dui^2/dxj)) and dissipation (-2*nu*(dui/dxj)^2) 
  * @param TO-DO
  */
 void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* const restrict v2_visc,
-                                        double* const restrict w2_visc, double* const restrict tke_visc,
+                                        double* const restrict w2_visc, double* const restrict tke_visc, double* const restrict uw_visc,
                                         double* const restrict u2_diss, double* const restrict v2_diss,
-                                        double* const restrict w2_diss, double* const restrict tke_diss,
-                                        double* const restrict wz,
+                                        double* const restrict w2_diss, double* const restrict tke_diss, double* const restrict uw_diss,
+                                        double* const restrict wz, double* const restrict wx, double* const restrict wy,
                                         const double* const restrict u, const double* const restrict v,
                                         const double* const restrict w, const double* const restrict umean, const double* const restrict vmean,
                                         const double* const restrict dzi, const double* const restrict dzhi,
                                         const double dxi, const double dyi, const double visc)
 {
+    // Interpolate the vertical velocity to {xh,y,zh} (wx, below u) and {x,yh,zh} (wy, below v)
+    const int wloc [3] = {0,0,1};
+    const int wxloc[3] = {1,0,1};
+    const int wyloc[3] = {0,1,1};
+
+    grid.interpolate_2nd(wx, w, wloc, wxloc);
+    grid.interpolate_2nd(wy, w, wloc, wyloc);
+
     const int ii = 1;
     const int jj = grid.icells;
     const int kk = grid.ijcells;
@@ -447,13 +464,15 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
         v2_visc [k] = 0;
         w2_visc [k] = 0;
         tke_visc[k] = 0;
+        uw_visc [k] = 0;
         u2_diss [k] = 0;
         v2_diss [k] = 0;
         w2_diss [k] = 0;
         tke_diss[k] = 0;
+        uw_diss [k] = 0;
     }
   
-    // Calculate w at full levels
+    // Calculate w at full levels (grid center)
     for (int k=grid.kstart; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
             #pragma ivdep
@@ -475,7 +494,7 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
             wz[ijks-kk] = -wz[ijks];
             wz[ijke+kk] = -wz[ijke]; 
         }
-  
+ 
     // Molecular diffusion term (nu*d/dxj(dui^2/dxj))
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
@@ -493,6 +512,11 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
 
                 tke_visc[k] += 0.5 * visc * ( (pow(wz[ijk+kk], 2) - pow(wz[ijk   ], 2)) * dzhi[k+1] - 
                                               (pow(wz[ijk   ], 2) - pow(wz[ijk-kk], 2)) * dzhi[k  ] ) * dzi[k]; 
+
+                uw_visc[k] += visc *  ( ( u[ijk+kk] * interp2(wz[ijk+kk], wz[ijk-ii+kk]) -
+                                          u[ijk   ] * interp2(wz[ijk   ], wz[ijk-ii   ]) ) * dzhi[k+1] -
+                                        ( u[ijk   ] * interp2(wz[ijk   ], wz[ijk-ii   ]) -
+                                          u[ijk-kk] * interp2(wz[ijk-kk], wz[ijk-ii-kk]) ) * dzhi[k  ] ) * dzi[k];
             }
         tke_visc[k] += 0.5 * (u2_visc[k] + v2_visc[k]);
     }
@@ -529,6 +553,22 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
                 tke_diss[k] -=    visc * ( pow( (w[ijk+ii] - w[ijk]) * dxi,    2) + 
                                            pow( (w[ijk+jj] - w[ijk]) * dyi,    2) +
                                            pow( (w[ijk+kk] - w[ijk]) * dzi[k], 2) );
+
+                // du/dx * dw/dx
+                uw_diss[k] -= 2 * visc * ( interp2_4(u[ijk]-umean[k], u[ijk+ii]-umean[k], u[ijk+ii-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) -
+                                           interp2_4(u[ijk]-umean[k], u[ijk-ii]-umean[k], u[ijk-ii-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) ) * dxi *
+                                         ( w[ijk] - w[ijk-ii] ) * dxi;
+
+                // du/dy * dw/dy
+                uw_diss[k] -= 2 * visc * ( interp2_4(u[ijk]-umean[k], u[ijk+jj]-umean[k], u[ijk+jj-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) -
+                                           interp2_4(u[ijk]-umean[k], u[ijk-jj]-umean[k], u[ijk-jj-kk]-umean[k-1], u[ijk-kk]-umean[k-1]) ) * dyi *
+                                         ( interp2_4(w[ijk]         , w[ijk+jj]         , w[ijk+jj-ii]           , w[ijk-ii]           ) -
+                                           interp2_4(w[ijk]         , w[ijk-jj]         , w[ijk-jj-ii]           , w[ijk-ii]           ) ) * dyi;
+
+                // du/dz * dw/dz
+                uw_diss[k] -= 2 * visc *   (u[ijk] - u[ijk-kk]) * dzhi[k] *
+                                         ( interp2_4(w[ijk]         , w[ijk+kk]         , w[ijk+kk-ii]           , w[ijk-ii]           ) -
+                                           interp2_4(w[ijk]         , w[ijk-kk]         , w[ijk-kk-ii]           , w[ijk-ii]           ) ) * dzhi[k];
             }
             tke_diss[k] += 0.5 * (u2_diss[k] + v2_diss[k]);
     }
@@ -551,10 +591,12 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
     master.sum(v2_visc,  grid.kcells);
     master.sum(w2_visc,  grid.kcells);
     master.sum(tke_visc, grid.kcells);
+    master.sum(uw_visc,  grid.kcells);
     master.sum(u2_diss,  grid.kcells);
     master.sum(v2_diss,  grid.kcells);
     master.sum(w2_diss,  grid.kcells);
     master.sum(tke_diss, grid.kcells);
+    master.sum(uw_diss,  grid.kcells);
 
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
@@ -562,10 +604,12 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
         v2_visc[k]  /= ijtot;
         w2_visc[k]  /= ijtot;
         tke_visc[k] /= ijtot;
+        uw_visc[k]  /= ijtot;
         u2_diss[k]  /= ijtot;
         v2_diss[k]  /= ijtot;
         w2_diss[k]  /= ijtot;
         tke_diss[k] /= ijtot;
+        uw_diss[k]  /= ijtot;
     }
 
 }
