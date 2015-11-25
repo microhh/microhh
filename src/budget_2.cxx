@@ -489,6 +489,51 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
                                        (pow(w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1] ) * dzhi[k]; 
             }
 
+    // Dissipation term (-2*nu*(dui/dxj)^2)
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                u2_diss[k] -= 2 * visc * (
+                                            pow( (interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k  ]) - interp2(u[ijk]-umean[k], u[ijk-ii]-umean[k  ])) * dxi,    2) +
+                                            pow( (interp2(u[ijk]-umean[k], u[ijk+jj]-umean[k  ]) - interp2(u[ijk]-umean[k], u[ijk-jj]-umean[k  ])) * dyi,    2) +
+                                            pow( (interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]) - interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1])) * dzi[k], 2) 
+                                         );
+
+                v2_diss[k] -= 2 * visc * (
+                                            pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-ii]-vmean[k  ])) * dxi,    2) +
+                                            pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k  ])) * dyi,    2) +
+                                            pow( (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1])) * dzi[k], 2) 
+                                         );
+
+                tke_diss[k] -=    visc * (
+                                           pow( (w[ijk+ii] - w[ijk]) * dxi,    2) + 
+                                           pow( (w[ijk+jj] - w[ijk]) * dyi,    2) +
+                                           pow( (w[ijk+kk] - w[ijk]) * dzi[k], 2)
+                                         );
+            }
+            tke_diss[k] += 0.5 * (u2_diss[k] + v2_diss[k]);
+    }
+
+    // TODO: dw/dz at lower boundary (is zero?)? 
+    for (int k=grid.kstart+1; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                w2_diss[k] -= 2 * visc * (
+                                            pow( (interp2(w[ijk], w[ijk+ii]) - interp2(w[ijk], w[ijk-ii])) * dxi,     2) +
+                                            pow( (interp2(w[ijk], w[ijk+jj]) - interp2(w[ijk], w[ijk-jj])) * dyi,     2) +
+                                            pow( (interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk])) * dzhi[k], 2) 
+                                         );
+            }
+
     // Calculate sum over all processes, and calc mean profiles
     master.sum(u2_visc,  grid.kcells);
     master.sum(v2_visc,  grid.kcells);
