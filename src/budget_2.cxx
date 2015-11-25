@@ -73,28 +73,34 @@ void Budget_2::create()
     stats.add_prof("u2_shear" , "Shear production term in U2 budget" , "m2 s-3", "z" );
     stats.add_prof("v2_shear" , "Shear production term in V2 budget" , "m2 s-3", "z" );
     stats.add_prof("tke_shear", "Shear production term in TKE budget", "m2 s-3", "z" );
+    stats.add_prof("uw_shear" , "Shear production term in UW budget" , "m2 s-3", "zh");
 
     stats.add_prof("u2_turb" , "Turbulent transport term in U2 budget" , "m2 s-3", "z" );
     stats.add_prof("v2_turb" , "Turbulent transport term in V2 budget" , "m2 s-3", "z" );
     stats.add_prof("w2_turb" , "Turbulent transport term in W2 budget" , "m2 s-3", "zh");
     stats.add_prof("tke_turb", "Turbulent transport term in TKE budget", "m2 s-3", "z" );
+    stats.add_prof("uw_turb" , "Turbulent transport term in UW budget" , "m2 s-3", "zh");
 
     stats.add_prof("u2_visc" , "Viscous transport term in U2 budget" , "m2 s-3", "z" );
     stats.add_prof("v2_visc" , "Viscous transport term in V2 budget" , "m2 s-3", "z" );
     stats.add_prof("w2_visc" , "Viscous transport term in W2 budget" , "m2 s-3", "zh");
     stats.add_prof("tke_visc", "Viscous transport term in TKE budget", "m2 s-3", "z" );
+    stats.add_prof("uw_visc" , "Viscous transport term in UW budget" , "m2 s-3", "zh");
 
     stats.add_prof("u2_diss" , "Dissipation term in U2 budget" , "m2 s-3", "z" );
     stats.add_prof("v2_diss" , "Dissipation term in V2 budget" , "m2 s-3", "z" );
     stats.add_prof("w2_diss" , "Dissipation term in W2 budget" , "m2 s-3", "zh");
     stats.add_prof("tke_diss", "Dissipation term in TKE budget", "m2 s-3", "z" );
+    stats.add_prof("uw_diss" , "Dissipation term in UW budget" , "m2 s-3", "zh");
 
     stats.add_prof("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh");
     stats.add_prof("tke_pres", "Pressure transport term in TKE budget", "m2 s-3", "z" );
+    stats.add_prof("uw_pres" , "Pressure transport term in UW budget" , "m2 s-3", "zh");
 
     stats.add_prof("u2_rdstr", "Pressure redistribution term in U2 budget", "m2 s-3", "z" );
     stats.add_prof("v2_rdstr", "Pressure redistribution term in V2 budget", "m2 s-3", "z" );
     stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
+    stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh");
 
     if (thermo.get_switch() != "0")
     {
@@ -114,8 +120,8 @@ void Budget_2::exec_stats(Mask* m)
                         fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, grid.utrans, grid.vtrans);
 
     // Calculate the shear production and turbulent transport terms
-    calc_advection_terms(m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data, 
-                         m->profs["u2_turb"].data,  m->profs["v2_turb"].data,  m->profs["w2_turb"].data, m->profs["tke_turb"].data, 
+    calc_advection_terms(m->profs["u2_shear"].data, m->profs["v2_shear"].data, m->profs["tke_shear"].data, m->profs["uw_shear"].data,
+                         m->profs["u2_turb"].data,  m->profs["v2_turb"].data,  m->profs["w2_turb"].data, m->profs["tke_turb"].data, m->profs["uw_turb"].data, 
                          fields.u->data, fields.v->data, fields.w->data, umodel, vmodel, 
                          fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, grid.dzi, grid.dzhi);
 
@@ -125,7 +131,7 @@ void Budget_2::exec_stats(Mask* m)
                         fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data, umodel, vmodel, 
                         grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
 
-
+    // Calculate the diffusive transport and dissipation terms
     if(diff.get_name() == "2" || diff.get_name() == "4")
         calc_diffusion_terms_DNS(m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data,
                                  m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data,
@@ -200,8 +206,10 @@ void Budget_2::calc_kinetic_energy(double* const restrict ke, double* const rest
  * shear production (-2 u_i*u_j * d<u_i>/dx_j) and turbulent transport (-d(u_i^2*u_j)/dx_j)
  * @param TO-DO
  */
-void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* const restrict v2_shear, double* const restrict tke_shear,
-                                    double* const restrict u2_turb,  double* const restrict v2_turb,  double* const restrict w2_turb, double* const restrict tke_turb,
+void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* const restrict v2_shear, 
+                                    double* const restrict tke_shear, double* const restrict uw_shear,
+                                    double* const restrict u2_turb,  double* const restrict v2_turb, 
+                                    double* const restrict w2_turb, double* const restrict tke_turb, double* const restrict uw_turb,
                                     const double* const restrict u, const double* const restrict v, const double* const restrict w,
                                     const double* const restrict umean, const double* const restrict vmean,
                                     double* const restrict wx, double* const restrict wy,
@@ -225,10 +233,12 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
         u2_shear [k] = 0;
         v2_shear [k] = 0;
         tke_shear[k] = 0;
+        uw_shear [k] = 0;
         u2_turb  [k] = 0;
         v2_turb  [k] = 0;
         w2_turb  [k] = 0;
         tke_turb [k] = 0;
+        uw_turb  [k] = 0;
     }
    
     // Calculate shear terms (-2u_iw d<u_i>/dz) 
@@ -244,7 +254,10 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
                 const int ijk = i + j*jj + k*kk;
 
                 u2_shear[k] -= 2 * (u[ijk]-umean[k]) * interp2(wx[ijk], wx[ijk+kk]) * dudz;
+
                 v2_shear[k] -= 2 * (v[ijk]-vmean[k]) * interp2(wy[ijk], wy[ijk+kk]) * dvdz;
+
+                uw_shear[k] -= pow(wx[ijk], 2) * (umean[k] - umean[k-1]) * dzhi[k];
             }
 
         tke_shear[k] += 0.5*(u2_shear[k] + v2_shear[k]);
@@ -264,6 +277,9 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
 
                 v2_turb[k]  -= ( (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk+kk]-vmean[k+1], 2)) * wy[ijk+kk]) - 
                                  (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk-kk]-vmean[k-1], 2)) * wy[ijk   ]) ) * dzi[k];
+
+                uw_turb[k]  -= ( (u[ijk]   -umean[k  ]) * interp2(pow(wx[ijk],2), pow(wx[ijk+kk],2)) - 
+                                 (u[ijk-kk]-umean[k-1]) * interp2(pow(wx[ijk],2), pow(wx[ijk-kk],2)) ) * dzhi[k];
 
                 tke_turb[k] -= 0.5 * ( pow(w[ijk+kk], 3) - pow(w[ijk], 3) ) * dzi[k];                
             }
@@ -288,20 +304,24 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
     master.sum(u2_shear,  grid.kcells);
     master.sum(v2_shear,  grid.kcells);
     master.sum(tke_shear, grid.kcells);
+    master.sum(uw_shear,  grid.kcells);
     master.sum(u2_turb,   grid.kcells);
     master.sum(v2_turb,   grid.kcells);
     master.sum(w2_turb,   grid.kcells);
     master.sum(tke_turb,  grid.kcells);
+    master.sum(uw_turb,   grid.kcells);
 
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
         u2_shear [k] /= ijtot;
         v2_shear [k] /= ijtot;
         tke_shear[k] /= ijtot;
+        uw_shear [k] /= ijtot;
         u2_turb  [k] /= ijtot;
         v2_turb  [k] /= ijtot;
         w2_turb  [k] /= ijtot;
         tke_turb [k] /= ijtot;
+        uw_turb  [k] /= ijtot;
     }
 }
 
@@ -498,23 +518,17 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
             {
                 const int ijk = i + j*jj + k*kk;
 
-                u2_diss[k] -= 2 * visc * (
-                                            pow( (interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k  ]) - interp2(u[ijk]-umean[k], u[ijk-ii]-umean[k  ])) * dxi,    2) +
-                                            pow( (interp2(u[ijk]-umean[k], u[ijk+jj]-umean[k  ]) - interp2(u[ijk]-umean[k], u[ijk-jj]-umean[k  ])) * dyi,    2) +
-                                            pow( (interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]) - interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1])) * dzi[k], 2) 
-                                         );
+                u2_diss[k] -= 2 * visc * ( pow( (interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k  ]) - interp2(u[ijk]-umean[k], u[ijk-ii]-umean[k  ])) * dxi,    2) +
+                                           pow( (interp2(u[ijk]-umean[k], u[ijk+jj]-umean[k  ]) - interp2(u[ijk]-umean[k], u[ijk-jj]-umean[k  ])) * dyi,    2) +
+                                           pow( (interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]) - interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1])) * dzi[k], 2) );
 
-                v2_diss[k] -= 2 * visc * (
-                                            pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-ii]-vmean[k  ])) * dxi,    2) +
-                                            pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k  ])) * dyi,    2) +
-                                            pow( (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1])) * dzi[k], 2) 
-                                         );
+                v2_diss[k] -= 2 * visc * ( pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-ii]-vmean[k  ])) * dxi,    2) +
+                                           pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k  ])) * dyi,    2) +
+                                           pow( (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1])) * dzi[k], 2) );
 
-                tke_diss[k] -=    visc * (
-                                           pow( (w[ijk+ii] - w[ijk]) * dxi,    2) + 
+                tke_diss[k] -=    visc * ( pow( (w[ijk+ii] - w[ijk]) * dxi,    2) + 
                                            pow( (w[ijk+jj] - w[ijk]) * dyi,    2) +
-                                           pow( (w[ijk+kk] - w[ijk]) * dzi[k], 2)
-                                         );
+                                           pow( (w[ijk+kk] - w[ijk]) * dzi[k], 2) );
             }
             tke_diss[k] += 0.5 * (u2_diss[k] + v2_diss[k]);
     }
@@ -527,11 +541,9 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
             {
                 const int ijk = i + j*jj + k*kk;
 
-                w2_diss[k] -= 2 * visc * (
-                                            pow( (interp2(w[ijk], w[ijk+ii]) - interp2(w[ijk], w[ijk-ii])) * dxi,     2) +
-                                            pow( (interp2(w[ijk], w[ijk+jj]) - interp2(w[ijk], w[ijk-jj])) * dyi,     2) +
-                                            pow( (interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk])) * dzhi[k], 2) 
-                                         );
+                w2_diss[k] -= 2 * visc * ( pow( (interp2(w[ijk], w[ijk+ii]) - interp2(w[ijk], w[ijk-ii])) * dxi,     2) +
+                                           pow( (interp2(w[ijk], w[ijk+jj]) - interp2(w[ijk], w[ijk-jj])) * dyi,     2) +
+                                           pow( (interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk])) * dzhi[k], 2) );
             }
 
     // Calculate sum over all processes, and calc mean profiles
