@@ -281,33 +281,63 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
             {
                 const int ijk = i + j*jj + k*kk;
                 
-                u2_turb[k]  -= ( (interp2(pow(u[ijk]-umean[k], 2), pow(u[ijk+kk]-umean[k+1], 2)) * wx[ijk+kk]) - 
-                                 (interp2(pow(u[ijk]-umean[k], 2), pow(u[ijk-kk]-umean[k-1], 2)) * wx[ijk   ]) ) * dzi[k];
+                u2_turb[k]  -= ( pow(interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]), 2) * wx[ijk+kk] - 
+                                 pow(interp2(u[ijk]-umean[k], u[ijk-kk]-umean[k-1]), 2) * wx[ijk   ] ) * dzi[k];
 
-                v2_turb[k]  -= ( (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk+kk]-vmean[k+1], 2)) * wy[ijk+kk]) - 
-                                 (interp2(pow(v[ijk]-vmean[k], 2), pow(v[ijk-kk]-vmean[k-1], 2)) * wy[ijk   ]) ) * dzi[k];
-
-                uw_turb[k]  -= ( (u[ijk]   -umean[k  ]) * interp2(pow(wx[ijk],2), pow(wx[ijk+kk],2)) - 
-                                 (u[ijk-kk]-umean[k-1]) * interp2(pow(wx[ijk],2), pow(wx[ijk-kk],2)) ) * dzhi[k];
+                v2_turb[k]  -= ( pow(interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]), 2) * wy[ijk+kk] - 
+                                 pow(interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1]), 2) * wy[ijk   ] ) * dzi[k];
 
                 tke_turb[k] -= 0.5 * ( pow(w[ijk+kk], 3) - pow(w[ijk], 3) ) * dzi[k];                
             }
         tke_turb[k] += 0.5 * (u2_turb[k] + v2_turb[k]);
     }
 
-    // w2_turb = zero at lower and top boundary
+    // Lower boundary kstart (z=0)
+    int k = grid.kstart;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+           
+            // w^3 @ full level below sfc == -w^3 @ full level above sfc
+            w2_turb[k] -= 2 * pow(interp2(w[ijk], w[ijk+kk]), 3) * dzhi[k];
+
+            // w^2 @ full level below sfc == w^2 @ full level above sfc
+            uw_turb[k] -= ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2) - 
+                             (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2) ) * dzhi[k];
+        }
+    
+    // Top boundary kstart (z=zsize)
+    k = grid.kend;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+           
+            // w^3 @ full level above top == -w^3 @ full level below top
+            w2_turb[k] -= -2 * pow(interp2(w[ijk], w[ijk-kk]), 3) * dzhi[k];
+
+            // w^2 @ full level above top == w^2 @ full level below top
+            uw_turb[k] -= ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) - 
+                            (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
+        }
+
+    // Inner domain
     for (int k=grid.kstart+1; k<grid.kend; ++k)
-    {
         for (int j=grid.jstart; j<grid.jend; ++j)
             #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
                 
-                w2_turb[k] -= ( interp2(pow(w[ijk], 3), pow(w[ijk+kk], 3)) - 
-                                interp2(pow(w[ijk], 3), pow(w[ijk-kk], 3)) ) * dzhi[k];
+                w2_turb[k] -= ( pow(interp2(w[ijk], w[ijk+kk]), 3) - 
+                                pow(interp2(w[ijk], w[ijk-kk]), 3) ) * dzhi[k];
+
+                uw_turb[k] -= ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2) - 
+                                (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk-kk]), 2) ) * dzhi[k];
             }
-    }
 
     // Calculate sum over all processes, and calc mean profiles
     master.sum(u2_shear,  grid.kcells);
