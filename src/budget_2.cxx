@@ -393,18 +393,6 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
     }
   
     // Pressure transport term (-2*dpu_i/dxi) 
-    // w2_pres is assumed to be zero at the surface, top?
-    for (int k=grid.kstart+1; k<grid.kend; ++k)
-        for (int j=grid.jstart; j<grid.jend; ++j)
-            #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-            
-                w2_pres[k] -= 2 * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] - 
-                                    interp2(w[ijk], w[ijk-kk]) * p[ijk-kk] ) * dzhi[k];
-            }
-
     for (int k=grid.kstart; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
             #pragma ivdep
@@ -419,6 +407,34 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
                                  interp2(p[ijk-ii], p[ijk-ii-kk]) * w[ijk-ii] ) * dxi +
                                ( interp2(p[ijk   ], p[ijk-ii   ]) * u[ijk   ] - 
                                  interp2(p[ijk-kk], p[ijk-ii-kk]) * u[ijk-kk] ) * dzhi[k];
+            }
+
+    // Lower boundary (z=0)
+    int k = grid.kstart;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            // w @ full level below sfc == -w @ full level above sfc
+            w2_pres[k] -= 2 * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] -
+                              - interp2(w[ijk], w[ijk+kk]) * p[ijk-kk] ) * dzhi[k];
+        }
+
+    // Top boundary (z=zsize)
+    // TODO: what to do with w2_pres and uw_pres at the top boundary? Pressure at k=kend is undefined?
+
+    // Inner domain
+    for (int k=grid.kstart+1; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                w2_pres[k] -= 2 * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] - 
+                                    interp2(w[ijk], w[ijk-kk]) * p[ijk-kk] ) * dzhi[k];
             }
 
     // Pressure redistribution term (2p*dui/dxi)
@@ -438,17 +454,31 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
                                    interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k]) ) * dyi;
 
                 uw_rdstr[k] += interp2_4(p[ijk], p[ijk-kk], p[ijk-ii-kk], p[ijk-ii]) * 
-                                 ( (u[ijk] - u[ijk-kk]) * dzhi[k] + (w[ijk] - w[ijk-ii]) * dxi );
+                                 ( ((u[ijk]-umean[k]) - (u[ijk-kk]-umean[k-1])) * dzhi[k] + (w[ijk] - w[ijk-ii]) * dxi );
             }
 
-    // TODO Exclude bottom and top boundary from w2 for now (..)
+    // Lower boundary (z=0)
+    k = grid.kstart;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            // with w[kstart] == 0, dw/dz at surface equals (w[kstart+1] - w[kstart]) / dzi
+            w2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-kk]) * (w[ijk+kk] - w[ijk]) * dzi[k];
+        }
+
+    // Top boundary (z=zsize)
+    // TODO: what to do with w2_rdstr at the top boundary? Pressure at k=kend is undefined?
+
     for (int k=grid.kstart+1; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
             #pragma ivdep
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
-            
+
                 w2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-kk]) * 
                                  ( interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk]) ) * dzhi[k];  
             }
