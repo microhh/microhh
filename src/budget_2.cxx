@@ -106,6 +106,7 @@ void Budget_2::create()
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
         stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
+        stats.add_prof("uw_buoy" , "Buoyancy production/destruction term in UW budget" , "m2 s-3", "zh");
     }
 }
 
@@ -139,6 +140,21 @@ void Budget_2::exec_stats(Mask* m)
                                  grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.visc);
     else if(diff.get_name() == "smag2")
         std::cout << "Ha! not implemented yet" << std::endl;
+
+    if(thermo.get_switch() != "0")
+    {
+        // Store the buoyancy in the tmp1 field
+        thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b");
+
+        // Calculate mean fields
+        grid.calc_mean(fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->data, grid.kcells);
+        grid.calc_mean(fields.sd["p"]->datamean, fields.sd["p"]->data, grid.kcells);
+
+        // Calculate buoyancy terms
+        calc_buoyancy_terms(m->profs["w2_buoy"].data, m->profs["tke_buoy"].data, m->profs["uw_buoy"].data,
+                            fields.u->data, fields.w->data, fields.atmp["tmp1"]->data,
+                            umodel, fields.atmp["tmp1"]->datamean);
+    }
 }
 
 namespace
@@ -805,3 +821,67 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
         uw_diss[k]  /= ijtot;
     }
 }
+
+/**
+ * Calculate the budget terms arrising from buoyancy
+ * @param TO-DO
+ */
+void Budget_2::calc_buoyancy_terms(double* const restrict w2_buoy, double* const restrict tke_buoy, double* const restrict uw_buoy,
+                                   const double* const restrict u, const double* const restrict w, const double* const restrict b,
+                                   const double* const restrict umean, const double* const restrict bmean)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int ijtot = grid.itot * grid.jtot;
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        tke_buoy[k] = 0;
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        w2_buoy [k] = 0;
+        uw_buoy [k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                // w'b'
+                tke_buoy[k] += interp2(w[ijk], w[ijk+kk]) * (b[ijk] - bmean[k]);
+            }
+
+    for (int k=grid.kstart+1; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                // w'b'
+                w2_buoy[k] += 2 * interp2(b[ijk], b[ijk-kk]) * w[ijk];
+
+                // u'b'
+                uw_buoy[k] += interp2  (u[ijk]-umean[k], u[ijk-kk]-umean[k]) *
+                              interp2_4(b[ijk]-bmean[k], b[ijk-ii]-bmean[k], b[ijk-ii-kk]-bmean[k-1], b[ijk-kk]-bmean[k-1]);
+            }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(w2_buoy,  grid.kcells);
+    master.sum(tke_buoy, grid.kcells);
+    master.sum(uw_buoy,  grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        tke_buoy[k] /= ijtot;
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        w2_buoy[k] /= ijtot;
+        uw_buoy[k] /= ijtot;
+    }
+}
+
