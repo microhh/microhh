@@ -178,9 +178,9 @@ void Budget_2::calc_kinetic_energy(double* const restrict ke, double* const rest
             {
                 const int ijk = i + j*jj + k*kk;
 
-                const double u2 = interp2(pow(u[ijk]+utrans, 2), pow(u[ijk+ii]+utrans, 2));
-                const double v2 = interp2(pow(v[ijk]+vtrans, 2), pow(v[ijk+jj]+vtrans, 2));
-                const double w2 = interp2(pow(w[ijk],        2), pow(w[ijk+ii],        2));
+                const double u2 = pow(interp2(u[ijk]+utrans, u[ijk+ii]+utrans), 2);
+                const double v2 = pow(interp2(v[ijk]+vtrans, v[ijk+jj]+vtrans), 2);
+                const double w2 = pow(interp2(w[ijk]       , w[ijk+ii]       ), 2);
 
                 ke[k] += 0.5 * (u2 + v2 + w2);
             }
@@ -191,9 +191,9 @@ void Budget_2::calc_kinetic_energy(double* const restrict ke, double* const rest
             {
                 const int ijk = i + j*jj + k*kk;
 
-                const double u2 = interp2(pow(u[ijk]-umodel[k], 2), pow(u[ijk+ii]-umodel[k], 2));
-                const double v2 = interp2(pow(v[ijk]-vmodel[k], 2), pow(v[ijk+jj]-vmodel[k], 2));
-                const double w2 = interp2(pow(w[ijk],           2), pow(w[ijk+ii],           2));
+                const double u2 = pow(interp2(u[ijk]-umodel[k], u[ijk+ii]-umodel[k]), 2);
+                const double v2 = pow(interp2(v[ijk]-vmodel[k], v[ijk+jj]-vmodel[k]), 2);
+                const double w2 = pow(interp2(w[ijk]          , w[ijk+ii]          ), 2);
 
                 tke[k] += 0.5 * (u2 + v2 + w2);
             }
