@@ -242,11 +242,15 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
         u2_shear [k] = 0;
         v2_shear [k] = 0;
         tke_shear[k] = 0;
-        uw_shear [k] = 0;
         u2_turb  [k] = 0;
         v2_turb  [k] = 0;
-        w2_turb  [k] = 0;
         tke_turb [k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        uw_shear [k] = 0;
+        w2_turb  [k] = 0;
         uw_turb  [k] = 0;
     }
    
@@ -305,7 +309,7 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
 
             // w^2 @ full level below sfc == w^2 @ full level above sfc
             uw_turb[k] -= ( (u[ijk]   -umean[k  ]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2) - 
-                             (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2) ) * dzhi[k];
+                            (u[ijk-kk]-umean[k-1]) * pow(interp2(wx[ijk], wx[ijk+kk]), 2) ) * dzhi[k];
         }
     
     // Top boundary kstart (z=zsize)
@@ -355,11 +359,15 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
         u2_shear [k] /= ijtot;
         v2_shear [k] /= ijtot;
         tke_shear[k] /= ijtot;
-        uw_shear [k] /= ijtot;
         u2_turb  [k] /= ijtot;
         v2_turb  [k] /= ijtot;
-        w2_turb  [k] /= ijtot;
         tke_turb [k] /= ijtot;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        uw_shear [k] /= ijtot;
+        w2_turb  [k] /= ijtot;
         uw_turb  [k] /= ijtot;
     }
 }
@@ -383,11 +391,15 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
   
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
-        w2_pres [k] = 0;
         tke_pres[k] = 0;
-        uw_pres [k] = 0;
         u2_rdstr[k] = 0;
         v2_rdstr[k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        w2_pres [k] = 0;
+        uw_pres [k] = 0;
         w2_rdstr[k] = 0;
         uw_rdstr[k] = 0;
     }
@@ -494,11 +506,15 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
 
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
-        w2_pres [k] /= ijtot;
         tke_pres[k] /= ijtot;
-        uw_pres [k] /= ijtot;
         u2_rdstr[k] /= ijtot;
         v2_rdstr[k] /= ijtot;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        w2_pres [k] /= ijtot;
+        uw_pres [k] /= ijtot;
         w2_rdstr[k] /= ijtot;
         uw_rdstr[k] /= ijtot;
     }
@@ -536,13 +552,17 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
     {
         u2_visc [k] = 0;
         v2_visc [k] = 0;
-        w2_visc [k] = 0;
         tke_visc[k] = 0;
-        uw_visc [k] = 0;
         u2_diss [k] = 0;
         v2_diss [k] = 0;
-        w2_diss [k] = 0;
         tke_diss[k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        w2_visc [k] = 0;
+        uw_visc [k] = 0;
+        w2_diss [k] = 0;
         uw_diss [k] = 0;
     }
   
@@ -586,16 +606,53 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
 
                 tke_visc[k] += 0.5 * visc * ( (pow(wz[ijk+kk], 2) - pow(wz[ijk   ], 2)) * dzhi[k+1] - 
                                               (pow(wz[ijk   ], 2) - pow(wz[ijk-kk], 2)) * dzhi[k  ] ) * dzi[k]; 
-
-                uw_visc[k] += visc *  ( ( u[ijk+kk] * interp2(wz[ijk+kk], wz[ijk-ii+kk]) -
-                                          u[ijk   ] * interp2(wz[ijk   ], wz[ijk-ii   ]) ) * dzhi[k+1] -
-                                        ( u[ijk   ] * interp2(wz[ijk   ], wz[ijk-ii   ]) -
-                                          u[ijk-kk] * interp2(wz[ijk-kk], wz[ijk-ii-kk]) ) * dzhi[k  ] ) * dzi[k];
             }
         tke_visc[k] += 0.5 * (u2_visc[k] + v2_visc[k]);
     }
 
-    // TODO How to calculate second derivative w at boundaries?
+    // Lower boundary (z=0)
+    int k = grid.kstart;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            // w[kstart-1] = -w[kstart+1] 
+            w2_visc[k] += visc * ( (pow(w[ijk+kk], 2) - pow( w[ijk   ], 2)) * dzi[k  ] - 
+                                   (pow(w[ijk   ], 2) - pow(-w[ijk+kk], 2)) * dzi[k-1] ) * dzhi[k]; 
+
+            // wx[kstart-1] = -wx[kstart+1] 
+            // Calculate u at dz below surface, extrapolating gradient between u[kstart] and u[kstart-1]
+            const double utmp = 1.5*(u[ijk-kk]-umean[k-1]) - 0.5*(u[ijk]-umean[k]);
+            uw_visc[k] += visc * ( ( interp2(u[ijk   ]-umean[k  ], u[ijk+kk   ]-umean[k+1]) *  wx[ijk+kk] - 
+                                     interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] ) * dzi[k  ] - 
+                                   ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] - 
+                                     utmp                                                   * -wx[ijk+kk] ) * dzi[k-1] ) * dzhi[k];
+        }
+
+    // Top boundary (z=zsize)
+    k = grid.kend;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+    
+            // w[kend+1] = -w[kend-1] 
+            w2_visc[k] += visc * ( (pow(-w[ijk-kk], 2) - pow(w[ijk   ], 2)) * dzi[k  ] - 
+                                   (pow( w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1] ) * dzhi[k]; 
+
+            // wx[kend+1] = -wx[kend-1] 
+            // Calculate u at dz above top, extrapolating gradient between u[kend] and u[kend-1]
+            const double utmp = 1.5*(u[ijk]-umean[k]) - 0.5*(u[ijk-kk]-umean[k-1]);
+            uw_visc[k] += visc * ( ( utmp                                                   * -wx[ijk-kk] - 
+                                     interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] ) * dzi[k  ] - 
+                                   ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) *  wx[ijk   ] - 
+                                     interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) *  wx[ijk-kk] ) * dzi[k-1] ) * dzhi[k];
+        }
+
+    // Interior
     for (int k=grid.kstart+1; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
             #pragma ivdep
@@ -605,6 +662,11 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
            
                 w2_visc[k] += visc * ( (pow(w[ijk+kk], 2) - pow(w[ijk   ], 2)) * dzi[k  ] - 
                                        (pow(w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1] ) * dzhi[k]; 
+
+                uw_visc[k] += visc * ( ( interp2(u[ijk   ]-umean[k  ], u[ijk+kk   ]-umean[k+1]) * wx[ijk+kk] - 
+                                         interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * wx[ijk   ] ) * dzi[k  ] - 
+                                       ( interp2(u[ijk   ]-umean[k  ], u[ijk-kk   ]-umean[k-1]) * wx[ijk   ] - 
+                                         interp2(u[ijk-kk]-umean[k-1], u[ijk-kk-kk]-umean[k-2]) * wx[ijk-kk] ) * dzi[k-1] ) * dzhi[k];
             }
 
     // Dissipation term (-2*nu*(dui/dxj)^2)
@@ -676,13 +738,17 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
     {
         u2_visc[k]  /= ijtot;
         v2_visc[k]  /= ijtot;
-        w2_visc[k]  /= ijtot;
         tke_visc[k] /= ijtot;
-        uw_visc[k]  /= ijtot;
         u2_diss[k]  /= ijtot;
         v2_diss[k]  /= ijtot;
-        w2_diss[k]  /= ijtot;
         tke_diss[k] /= ijtot;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        w2_visc[k]  /= ijtot;
+        uw_visc[k]  /= ijtot;
+        w2_diss[k]  /= ijtot;
         uw_diss[k]  /= ijtot;
     }
 
