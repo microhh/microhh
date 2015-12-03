@@ -6,7 +6,7 @@ elseif()
 endif()
 
 set(USER_CXX_FLAGS "-restrict -DMPICH_IGNORE_CXX_SEEK")
-set(USER_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -xHOST -fno-alias -restrict -vec-report1 -no-prec-div")
+set(USER_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -xHOST -fno-alias -restrict")
 set(USER_CXX_FLAGS_DEBUG "-traceback -check=conversions,stack,uninit -check-pointers=rw -check-pointers-dangling=all-check-pointers-undimensioned -fp-stack-check -fp-trap=common -fp-trap-all=common")
 
 set(FFTW_INCLUDE_DIR   "/hpc/sw/fftw3avx-3.3.3-intel-impi/include")
