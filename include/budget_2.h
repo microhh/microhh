@@ -65,6 +65,12 @@ class Budget_2 : public Budget
                                       const double*, const double*, const double*,
                                       const double, const double, const double);
 
+        void calc_diffusion_terms_LES(double*, double*, double*, double*, double*, double*,
+                                      double*, double*, double*, double*, double*, double*, double*,
+                                      const double*, const double*, const double*, const double*,
+                                      const double*, const double*, const double*, const double*,
+                                      const double, const double);
+
         void calc_buoyancy_terms(double*, double*, double*,
                                  const double*, const double*, const double*, const double*, const double*);
 };
