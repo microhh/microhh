@@ -67,6 +67,11 @@ void Boundary::process_bcs(Input* inputin)
     nerror += inputin->get_item(&swbot, "boundary", "mbcbot", "");
     nerror += inputin->get_item(&swtop, "boundary", "mbctop", "");
 
+    nerror += inputin->get_item(&ubot, "boundary", "ubot", "", 0.);
+    nerror += inputin->get_item(&utop, "boundary", "utop", "", 0.);
+    nerror += inputin->get_item(&vbot, "boundary", "vbot", "", 0.);
+    nerror += inputin->get_item(&vtop, "boundary", "vtop", "", 0.);
+
     // set the bottom bc
     if (swbot == "noslip")
         mbcbot = Dirichlet_type;
