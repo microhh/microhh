@@ -49,6 +49,7 @@ class Diff_smag_2 : public Diff
         void set_values() {}
 
     private:
+        template<bool>
         void calc_strain2(double*,
                           double*, double*, double*,
                           double*, double*,

@@ -93,11 +93,18 @@ void Diff_smag_2::exec_viscosity()
     // Do a cast because the base boundary class does not have the MOST related variables.
     Boundary_surface* boundaryptr = static_cast<Boundary_surface*>(model->boundary);
 
-    calc_strain2(fields->sd["evisc"]->data,
-                 fields->u->data, fields->v->data, fields->w->data,
-                 fields->u->datafluxbot, fields->v->datafluxbot,
-                 boundaryptr->ustar, boundaryptr->obuk,
-                 grid->z, grid->dzi, grid->dzhi);
+    if(model->boundary->get_switch() == "surface")
+        calc_strain2<false>(fields->sd["evisc"]->data,
+                            fields->u->data, fields->v->data, fields->w->data,
+                            fields->u->datafluxbot, fields->v->datafluxbot,
+                            boundaryptr->ustar, boundaryptr->obuk,
+                            grid->z, grid->dzi, grid->dzhi);
+    else
+        calc_strain2<true>(fields->sd["evisc"]->data,
+                           fields->u->data, fields->v->data, fields->w->data,
+                           fields->u->datafluxbot, fields->v->datafluxbot,
+                           boundaryptr->ustar, boundaryptr->obuk,
+                           grid->z, grid->dzi, grid->dzhi);
 
     // start with retrieving the stability information
     if (model->thermo->get_switch() == "0")
@@ -142,6 +149,7 @@ void Diff_smag_2::exec()
 }
 #endif
 
+template <bool resolved_wall> 
 void Diff_smag_2::calc_strain2(double* restrict strain2,
                                double* restrict u, double* restrict v, double* restrict w,
                                double* restrict ufluxbot, double* restrict vfluxbot,
@@ -156,23 +164,60 @@ void Diff_smag_2::calc_strain2(double* restrict strain2,
     const double dxi = 1./grid->dx;
     const double dyi = 1./grid->dy;
 
-    for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            strain2[ijk] = 2.*(
-                           // du/dz
-                           + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
-                           // dv/dz
-                           + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2) );
+    int k_offset = 0;
 
-            // add a small number to avoid zero divisions
-            strain2[ijk] += Constants::dsmall;
-        }
+    // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
+    if(!resolved_wall)
+    {
+        k_offset = 1;
 
-    for (int k=grid->kstart+1; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+        #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+
+                strain2[ijk] = 2.*(
+                               // du/dx + du/dx
+                               + std::pow((u[ijk+ii]-u[ijk])*dxi, 2)
+
+                               // dv/dy + dv/dy
+                               + std::pow((v[ijk+jj]-v[ijk])*dyi, 2)
+
+                               // dw/dz + dw/dz
+                               + std::pow((w[ijk+kk]-w[ijk])*dzi[kstart], 2)
+
+                               // du/dy + dv/dx
+                               + 0.125*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2)
+                               + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2)
+                               + 0.125*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2)
+                               + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2)
+
+                               // du/dz
+                               + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
+
+                               // dw/dx
+                               + 0.125*std::pow((w[ijk      ]-w[ijk-ii   ])*dxi, 2)
+                               + 0.125*std::pow((w[ijk+ii   ]-w[ijk      ])*dxi, 2)
+                               + 0.125*std::pow((w[ijk   +kk]-w[ijk-ii+kk])*dxi, 2)
+                               + 0.125*std::pow((w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2)
+
+                               // dv/dz
+                               + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
+
+                               // dw/dy
+                               + 0.125*std::pow((w[ijk      ]-w[ijk-jj   ])*dyi, 2)
+                               + 0.125*std::pow((w[ijk+jj   ]-w[ijk      ])*dyi, 2)
+                               + 0.125*std::pow((w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2)
+                               + 0.125*std::pow((w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2) );
+
+                // add a small number to avoid zero divisions
+                strain2[ijk] += Constants::dsmall;
+            }
+    }
+
+    for (int k=grid->kstart+k_offset; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
 #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
