@@ -87,6 +87,7 @@ double Diff_smag_2::get_dn(const double dt)
 #endif
 
 #ifndef USECUDA
+
 void Diff_smag_2::exec_viscosity()
 {
     // Do a cast because the base boundary class does not have the MOST related variables.

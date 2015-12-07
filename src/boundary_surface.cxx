@@ -47,6 +47,8 @@ namespace
 
 Boundary_surface::Boundary_surface(Model* modelin, Input* inputin) : Boundary(modelin, inputin)
 {
+    swboundary = "surface";
+
     ustar = 0;
     obuk  = 0;
     nobuk = 0;
