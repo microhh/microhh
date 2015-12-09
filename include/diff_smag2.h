@@ -63,14 +63,18 @@ class Diff_smag_2 : public Diff
                         double*, double*, double*,
                         double);
 
+        template<bool>
         void calc_evisc_neutral(double*,
                                 double*, double*, double*,
                                 double*, double*,
                                 double*, double*,
-                                double);
+                                double, double);
 
+        template<bool>
         void diff_u(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
+        template<bool>
         void diff_v(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
+
         void diff_w(double*, double*, double*, double*, double*, double*, double*, double*, double*);
         void diff_c(double*, double*, double*, double*, double*, double*, double*, double*, double*, double);
 
