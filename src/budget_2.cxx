@@ -712,6 +712,12 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
                                              ( pow( (interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k  ]) - interp2(u[ijk   ]-umean[k], u[ijk-ii   ]-umean[k  ])) * dxi,    2) +
                                                pow( (interp2(u[ijk]-umean[k], u[ijk+jj]-umean[k  ]) - interp2(u[ijk   ]-umean[k], u[ijk-jj   ]-umean[k  ])) * dyi,    2) +
                                                pow( (interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]) - interp2(u[ijk   ]-umean[k], u[ijk-kk   ]-umean[k-1])) * dzi[k], 2) );
+                    
+                    // -2 * visc * ((dv/dx)^2 + (dv/dy)^2 + (dv/dz)^2)
+                    v2_diss[k] -= 2 * interp2(evisc[ijk], evisc[ijk-jj]) *
+                                             ( pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk   ]-vmean[k], v[ijk-ii   ]-vmean[k  ])) * dxi,    2) +
+                                               pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk   ]-vmean[k], v[ijk-jj   ]-vmean[k  ])) * dyi,    2) +
+                                               pow( (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk   ]-vmean[k], v[ijk-kk   ]-vmean[k-1])) * dzi[k], 2) );
 
                     // -2 * visc * (du/dx*du/dx + du/dy*dv/dx + du/dz*dw/dx)
                     // TODO first term (du/dx*du/dx) could be moved to previous u2_diss term
@@ -722,12 +728,6 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
                                                     (interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]) - interp2(u[ijk   ]-umean[k], u[ijk-kk   ]-umean[k-1])) * dzi[k]  *
                                                     (wz[ijk]                                        - wz[ijk-ii]                                          ) * dxi );
 
-                    // -2 * visc * ((dv/dx)^2 + (dv/dy)^2 + (dv/dz)^2)
-                    v2_diss[k] -= 2 * interp2(evisc[ijk], evisc[ijk-jj]) *
-                                             ( pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-ii]-vmean[k  ])) * dxi,    2) +
-                                               pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk]-vmean[k], v[ijk-jj]-vmean[k  ])) * dyi,    2) +
-                                               pow( (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk]-vmean[k], v[ijk-kk]-vmean[k-1])) * dzi[k], 2) );
-
                     // -2 * visc * (dv/dx*du/dy + dv/dy*dv/dy + dv/dz*dw/dy)
                     // TODO second term (dv/dy*dv/dy) could be moved to previous v2_diss term
                     v2_diss[k] -= 2 * interp2(evisc[ijk], evisc[ijk-jj]) *
@@ -735,7 +735,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
                                                     (interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k  ]) - interp2(u[ijk-jj]-umean[k], u[ijk+ii-jj]-umean[k  ])) * dyi     +
                                                pow( (interp2(v[ijk]-vmean[k], v[ijk+jj]-vmean[k  ]) - interp2(v[ijk   ]-vmean[k], v[ijk-jj   ]-vmean[k  ])) * dyi, 2) +
                                                     (interp2(v[ijk]-vmean[k], v[ijk+kk]-vmean[k+1]) - interp2(v[ijk   ]-vmean[k], v[ijk-kk   ]-vmean[k-1])) * dzi[k]  *
-                                                    (wz[ijk]                                        - wx[ijk-jj]                                          ) * dyi );
+                                                    (wz[ijk]                                        - wz[ijk-jj]                                          ) * dyi );
 
                     // -2 * visc * ((dw/dx)^2 + (dw/dy)^2 + (dw/dz)^2)
                     tke_diss[k] -= evisc[ijk] * ( pow( (interp2(wz[ijk+ii], wz[ijk]) - interp2(wz[ijk], wz[ijk-ii])) * dxi, 2) +
