@@ -142,7 +142,7 @@ void Budget_2::exec_stats(Mask* m)
         calc_diffusion_terms_LES(m->profs["u2_visc"].data, m->profs["v2_visc"].data, m->profs["w2_visc"].data, m->profs["tke_visc"].data, m->profs["uw_visc"].data,
                                  m->profs["u2_diss"].data, m->profs["v2_diss"].data, m->profs["w2_diss"].data, m->profs["tke_diss"].data, m->profs["uw_diss"].data,
                                  fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data, fields.u->data, fields.v->data,
-                                 fields.w->data, fields.sd["evisc"]->data, umodel, vmodel,
+                                 fields.w->data, fields.u->datafluxbot, fields.v->datafluxbot, fields.sd["evisc"]->data, umodel, vmodel,
                                  grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
 
     if(thermo.get_switch() != "0")
@@ -551,7 +551,9 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
                                         double* const restrict w2_diss, double* const restrict tke_diss, double* const restrict uw_diss,
                                         double* const restrict wz, double* const restrict wx, double* const restrict wy,
                                         const double* const restrict u, const double* const restrict v,
-                                        const double* const restrict w, const double* const restrict evisc,
+                                        const double* const restrict w,
+                                        const double* const restrict ufluxbot, const double* const restrict vfluxbot,
+                                        const double* const restrict evisc,
                                         const double* const restrict umean, const double* const restrict vmean,
                                         const double* const restrict dzi, const double* const restrict dzhi,
                                         const double dxi, const double dyi)
@@ -602,13 +604,92 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
             wz[ijke+kk] = -wz[ijke];
         }
 
-    if(false)
+    if(true)
     {
         // -----------------------------
-        // Test Test Test
-        // Put everything in diss; visc=0
+        // Test: directly calculate diffusion terms as 2 ui * d/dxj(visc * dui/dx + visc * duj/dxi)
+        // Term is stored in xx_diss; xx_visc=0
         // -----------------------------
-        for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+        for (int k=grid.kstart; k<grid.kend; ++k)
+            for (int j=grid.jstart; j<grid.jend; ++j)
+                #pragma ivdep
+                for (int i=grid.istart; i<grid.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
+                    const double evisc_ubot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-ii-kk], evisc[ijk-ii]);
+                    const double evisc_unorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-ii], evisc[ijk-ii]);
+                    const double evisc_usouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-ii], evisc[ijk-ii]);
+
+                    const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
+                    const double evisc_vbot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-jj-kk], evisc[ijk-jj]);
+                    const double evisc_veast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-jj], evisc[ijk-jj]);
+                    const double evisc_vwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-jj], evisc[ijk-jj]);
+
+                    const double evisc_weast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-kk], evisc[ijk-kk]);
+                    const double evisc_wwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-kk], evisc[ijk-kk]);
+                    const double evisc_wnorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-kk], evisc[ijk-kk]);
+                    const double evisc_wsouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-kk], evisc[ijk-kk]);
+
+                    // -----------------------------------------
+                    // 2 * u * d/dx( visc * du/dx + visc * du/dx )
+                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc[ijk   ] * (u[ijk+ii] - u[ijk   ]) * dxi -
+                                                            evisc[ijk-ii] * (u[ijk   ] - u[ijk-ii]) * dxi ) * 2 * dxi;
+
+                    // 2 * u * d/dy( visc * du/dy + visc * dv/dx)
+                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_unorth * (u[ijk+jj] - u[ijk      ]) * dyi -
+                                                            evisc_usouth * (u[ijk   ] - u[ijk-jj   ]) * dyi +
+                                                            evisc_unorth * (v[ijk+jj] - v[ijk+jj-ii]) * dxi -
+                                                            evisc_usouth * (v[ijk   ] - v[ijk-ii   ]) * dxi ) * dyi;
+
+                    // 2 * u * d/dz( visc * dw/dx )
+                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * (w[ijk+kk] - w[ijk-ii+kk]) * dxi -
+                                                            evisc_ubot * (w[ijk   ] - w[ijk-ii   ]) * dxi ) * dzi[k];
+
+                    // -----------------------------------------
+                    // 2 * v * d/dy( visc * dv/dy + visc * dv/dy )
+                    v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc[ijk   ] * (v[ijk+jj] - v[ijk   ]) * dyi -
+                                                            evisc[ijk-jj] * (v[ijk   ] - v[ijk-jj]) * dyi ) * 2 * dyi;
+
+                    // 2 * v * d/dx( visc * dv/dx + visc * du/dy )
+                    v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_veast * (v[ijk+ii] - v[ijk      ]) * dxi -
+                                                            evisc_vwest * (v[ijk   ] - v[ijk-ii   ]) * dxi +
+                                                            evisc_veast * (u[ijk+ii] - u[ijk+ii-jj]) * dyi -
+                                                            evisc_vwest * (u[ijk   ] - u[ijk-jj   ]) * dyi ) * dxi;
+
+                    // 2 * v * d/dz( visc * dw/dy )
+                    v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * (w[ijk+kk] - w[ijk-jj+kk]) * dyi -
+                                                            evisc_vbot * (w[ijk   ] - w[ijk-jj   ]) * dyi ) * dzi[k];
+
+                    // -----------------------------------------
+                    // 2 * w * d/dx( visc * dw/dx )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc_weast * (w[ijk+ii] - w[ijk   ]) * dxi -
+                                                 evisc_wwest * (w[ijk   ] - w[ijk-ii]) * dxi ) * dxi;
+
+                    // 2 * w * d/dy( visc * dw/dy )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc_wnorth * (w[ijk+jj] - w[ijk   ]) * dyi -
+                                                 evisc_wsouth * (w[ijk   ] - w[ijk-jj]) * dyi ) * dyi;
+
+                    // -----------------------------------------
+                    // 2 * w * d/dx( visc * dw/dx )
+                    tke_diss[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+ii]) * (wz[ijk+ii] - wz[ijk   ]) * dxi -
+                                               interp2(evisc[ijk], evisc[ijk-ii]) * (wz[ijk   ] - wz[ijk-ii]) * dxi ) * dxi;
+
+                    // 2 * w * d/dx( visc * du/dz )
+                    tke_diss[k] += wz[ijk] * ( (interp2(u[ijk+ii], u[ijk+ii+kk]) - interp2(u[ijk+ii], u[ijk+ii-kk])) * dzi[k] -
+                                               (interp2(u[ijk   ], u[ijk   +kk]) - interp2(u[ijk   ], u[ijk   -kk])) * dzi[k] ) * dxi;
+
+                    // 2 * w * d/dy( visc * dw/dy )
+                    tke_diss[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (wz[ijk+jj] - wz[ijk   ]) * dyi -
+                                               interp2(evisc[ijk], evisc[ijk-jj]) * (wz[ijk   ] - wz[ijk-jj]) * dyi ) * dyi;
+
+                    // 2 * w * d/dy( visc * dv/dz )
+                    tke_diss[k] += wz[ijk] * ( (interp2(v[ijk+jj], v[ijk+jj+kk]) - interp2(v[ijk+jj], v[ijk+jj-kk])) * dzi[k] -
+                                               (interp2(v[ijk   ], v[ijk   +kk]) - interp2(v[ijk   ], v[ijk   -kk])) * dzi[k] ) * dyi;
+                }
+
+        for (int k=grid.kstart+1; k<grid.kend; ++k)
         {
             for (int j=grid.jstart; j<grid.jend; ++j)
                 #pragma ivdep
@@ -616,32 +697,231 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    const double evisc_utop = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
-                    const double evisc_ubot = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-ii-kk], evisc[ijk-ii]);
+                    const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
+                    const double evisc_ubot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-ii-kk], evisc[ijk-ii]);
 
-                    // 2 u * d/dz( visc * du/dz )
-                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * ((u[ijk+kk]-umean[k+1]) - (u[ijk   ]-umean[k  ])) * dzhi[k+1] -
-                                                            evisc_ubot * ((u[ijk   ]-umean[k  ]) - (u[ijk-kk]-umean[k-1])) * dzhi[k  ] ) * dzi[k];
+                    const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
+                    const double evisc_vbot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-jj-kk], evisc[ijk-jj]);
 
-                    // 2 u * d/dz( visc * dw/dx )
-                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * (w[ijk+kk] - w[ijk-ii+kk]) * dxi -
-                                                            evisc_ubot * (w[ijk   ] - w[ijk-ii   ]) * dxi ) * dzi[k];
+                    const double evisc_weast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-kk], evisc[ijk-kk]);
+                    const double evisc_wwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-kk], evisc[ijk-kk]);
+                    const double evisc_wnorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-kk], evisc[ijk-kk]);
+                    const double evisc_wsouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-kk], evisc[ijk-kk]);
 
-                    // 4 u * d/dx( visc * du/dx )
-                    u2_diss[k] += 4 * (u[ijk]-umean[k]) * ( evisc[ijk   ] * ((u[ijk+ii]-umean[k]) - (u[ijk   ]-umean[k])) * dxi -
-                                                            evisc[ijk-ii] * ((u[ijk   ]-umean[k]) - (u[ijk-ii]-umean[k])) * dxi ) * dxi;
+                    // 2 * u * d/dz( visc * du/dz )
+                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * (u[ijk+kk] - u[ijk   ]) * dzhi[k+1] -
+                                                            evisc_ubot * (u[ijk   ] - u[ijk-kk]) * dzhi[k  ] ) * dzi[k];
 
+                    // 2 * v * d/dz( visc * dv/dz )
+                    v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * (v[ijk+kk] - v[ijk   ]) * dzhi[k+1] -
+                                                            evisc_vbot * (v[ijk   ] - v[ijk-kk]) * dzhi[k  ] ) * dzi[k];
+
+                    // 2 * w * d/dx( visc * du/dz )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc_weast * (u[ijk+ii] - u[ijk+ii-kk]) * dzhi[k] -
+                                                 evisc_wwest * (u[ijk   ] - u[ijk   -kk]) * dzhi[k] ) * dxi;
+
+                    // 2 * w * d/dy( visc * dv/dz )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc_wnorth * (v[ijk+jj] - v[ijk+jj-kk]) * dzhi[k] -
+                                                 evisc_wsouth * (v[ijk   ] - v[ijk   -kk]) * dzhi[k] ) * dyi;
+
+                    // 2 * w * d/dz( visc * dw/dz )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc[ijk   ] * (w[ijk+kk] - w[ijk   ]) * dzi[k  ] -
+                                                 evisc[ijk-kk] * (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * 2 * dzhi[k];
+
+                    // 2 * w * d/dz( 2 * visc * dw/dz )
+                    tke_diss[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+kk]) * (wz[ijk+kk] - wz[ijk   ]) * dzhi[k+1] -
+                                               interp2(evisc[ijk], evisc[ijk-kk]) * (wz[ijk   ] - wz[ijk-kk]) * dzhi[k  ] ) * 2 * dzi[k];
+                }
+            tke_diss[k] += 0.5 * (u2_diss[k] + v2_diss[k]);
+        }
+
+        int k = grid.kstart;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                const int ij  = i + j*jj;
+
+                const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
+                const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
+
+                // 2 u * d/dz( visc * du/dz )
+                u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * (u[ijk+kk] - u[ijk   ]) * dzhi[k+1] + ufluxbot[ij]) * dzi[k];
+
+                // 2 v * d/dz( visc * dv/dz )
+                v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * (v[ijk+kk] - v[ijk   ]) * dzhi[k+1] + vfluxbot[ij]) * dzi[k];
+
+                // 2 * w * d/dz( visc * dw/dz )
+                // What to do with evisc at surface (term visc * dw/dz at surface)?
+                tke_diss[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+kk]) * (wz[ijk+kk] - wz[ijk   ]) * dzhi[k+1] -
+                                           evisc[ijk]                         * (wz[ijk   ] - wz[ijk-kk]) * dzhi[k  ] ) * 2 * dzi[k];
+            }
+        tke_diss[k] += 0.5 * (u2_diss[k] + v2_diss[k]);
+    }
+
+    if(false)
+    {
+        // -----------------------------
+        // Test: directly calculate diffusion terms as 2 ui * d/dxj(visc * dui/dx + visc * duj/dxi)
+        // Term is stored in xx_diss; xx_visc=0
+        // -----------------------------
+        for (int k=grid.kstart; k<grid.kend; ++k)
+            for (int j=grid.jstart; j<grid.jend; ++j)
+                #pragma ivdep
+                for (int i=grid.istart; i<grid.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
+                    const double evisc_ubot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-ii-kk], evisc[ijk-ii]);
                     const double evisc_unorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-ii], evisc[ijk-ii]);
                     const double evisc_usouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-ii], evisc[ijk-ii]);
 
-                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_unorth * ((u[ijk+jj]-umean[k]) - (u[ijk   ]-umean[k])) * dyi -
-                                                            evisc_usouth * ((u[ijk   ]-umean[k]) - (u[ijk-jj]-umean[k])) * dyi ) * dyi;
+                    const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
+                    const double evisc_vbot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-jj-kk], evisc[ijk-jj]);
+                    const double evisc_veast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-jj], evisc[ijk-jj]);
+                    const double evisc_vwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-jj], evisc[ijk-jj]);
+
+                    const double evisc_weast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-kk], evisc[ijk-kk]);
+                    const double evisc_wwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-kk], evisc[ijk-kk]);
+                    const double evisc_wnorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-kk], evisc[ijk-kk]);
+                    const double evisc_wsouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-kk], evisc[ijk-kk]);
+
+                    // -----------------------------------------
+                    // 2 * u * d/dx( visc * du/dx + visc * du/dx )
+                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc[ijk   ] * ((u[ijk+ii]-umean[k]) - (u[ijk   ]-umean[k])) * dxi -
+                                                            evisc[ijk-ii] * ((u[ijk   ]-umean[k]) - (u[ijk-ii]-umean[k])) * dxi ) * 2 * dxi;
+
+                    // 2 * u * d/dy( visc * du/dy + visc * dv/dx)
+                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_unorth * ((u[ijk+jj]-umean[k]) - (u[ijk      ]-umean[k])) * dyi -
+                                                            evisc_usouth * ((u[ijk   ]-umean[k]) - (u[ijk-jj   ]-umean[k])) * dyi +
+                                                            evisc_unorth * ((v[ijk+jj]-vmean[k]) - (v[ijk+jj-ii]-vmean[k])) * dxi -
+                                                            evisc_usouth * ((v[ijk   ]-vmean[k]) - (v[ijk-ii   ]-vmean[k])) * dxi ) * dyi;
+
+                    // 2 * u * d/dz( visc * dw/dx )
+                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * (w[ijk+kk] - w[ijk-ii+kk]) * dxi -
+                                                            evisc_ubot * (w[ijk   ] - w[ijk-ii   ]) * dxi ) * dzi[k];
+
+                    // -----------------------------------------
+                    // 2 * v * d/dy( visc * dv/dy + visc * dv/dy )
+                    v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc[ijk   ] * ((v[ijk+jj]-vmean[k]) - (v[ijk   ]-vmean[k])) * dyi -
+                                                            evisc[ijk-jj] * ((v[ijk   ]-vmean[k]) - (v[ijk-jj]-vmean[k])) * dyi ) * 2 * dyi;
+
+                    // 2 * v * d/dx( visc * dv/dx + visc * du/dy )
+                    v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_veast * ((v[ijk+ii]-vmean[k]) - (v[ijk      ]-vmean[k])) * dxi -
+                                                            evisc_vwest * ((v[ijk   ]-vmean[k]) - (v[ijk-ii   ]-vmean[k])) * dxi +
+                                                            evisc_veast * ((u[ijk+ii]-umean[k]) - (u[ijk+ii-jj]-umean[k])) * dyi -
+                                                            evisc_vwest * ((u[ijk   ]-umean[k]) - (u[ijk-jj   ]-umean[k])) * dyi ) * dxi;
+
+                    // 2 * v * d/dz( visc * dw/dy )
+                    v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * (w[ijk+kk] - w[ijk-jj+kk]) * dyi -
+                                                            evisc_vbot * (w[ijk   ] - w[ijk-jj   ]) * dyi ) * dzi[k];
+
+                    // -----------------------------------------
+                    // 2 * w * d/dx( visc * dw/dx )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc_weast * (w[ijk+ii] - w[ijk   ]) * dxi -
+                                                 evisc_wwest * (w[ijk   ] - w[ijk-ii]) * dxi ) * dxi;
+
+                    // 2 * w * d/dy( visc * dw/dy )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc_wnorth * (w[ijk+jj] - w[ijk   ]) * dyi -
+                                                 evisc_wsouth * (w[ijk   ] - w[ijk-jj]) * dyi ) * dyi;
                 }
-        }
+
+        for (int k=grid.kstart+1; k<grid.kend; ++k)
+            for (int j=grid.jstart; j<grid.jend; ++j)
+                #pragma ivdep
+                for (int i=grid.istart; i<grid.iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+
+                    const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
+                    const double evisc_ubot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-ii-kk], evisc[ijk-ii]);
+
+                    const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
+                    const double evisc_vbot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-jj-kk], evisc[ijk-jj]);
+
+                    const double evisc_weast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-kk], evisc[ijk-kk]);
+                    const double evisc_wwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-kk], evisc[ijk-kk]);
+                    const double evisc_wnorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-kk], evisc[ijk-kk]);
+                    const double evisc_wsouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-kk], evisc[ijk-kk]);
+
+                    // 2 * u * d/dz( visc * du/dz )
+                    u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * ((u[ijk+kk]-umean[k+1]) - (u[ijk   ]-umean[k  ])) * dzhi[k+1] -
+                                                            evisc_ubot * ((u[ijk   ]-umean[k  ]) - (u[ijk-kk]-umean[k-1])) * dzhi[k  ] ) * dzi[k];
+
+                    // 2 * v * d/dz( visc * dv/dz )
+                    v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * ((v[ijk+kk]-vmean[k+1]) - (v[ijk   ]-vmean[k  ])) * dzhi[k+1] -
+                                                            evisc_vbot * ((v[ijk   ]-vmean[k  ]) - (v[ijk-kk]-vmean[k-1])) * dzhi[k  ] ) * dzi[k];
+
+                    // 2 * w * d/dx( visc * du/dz )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc_weast * ((u[ijk+ii]-umean[k]) - (u[ijk+ii-kk]-umean[k-1])) * dzhi[k] -
+                                                 evisc_wwest * ((u[ijk   ]-umean[k]) - (u[ijk   -kk]-umean[k-1])) * dzhi[k] ) * dxi;
+
+                    // 2 * w * d/dy( visc * dv/dz )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc_wnorth * ((v[ijk+jj]-vmean[k]) - (v[ijk+jj-kk]-vmean[k-1])) * dzhi[k] -
+                                                 evisc_wsouth * ((v[ijk   ]-vmean[k]) - (v[ijk   -kk]-vmean[k-1])) * dzhi[k] ) * dyi;
+
+                    // 2 * w * d/dz( visc * dw/dz )
+                    w2_diss[k] += 2 * w[ijk] * ( evisc[ijk   ] * (w[ijk+kk] - w[ijk   ]) * dzi[k  ] -
+                                                 evisc[ijk-kk] * (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * 2 * dzhi[k];
+                }
+
+        int k = grid.kstart;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                const int ij  = i + j*jj;
+
+                const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
+                const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
+
+                // 2 u * d/dz( visc * du/dz )
+                u2_diss[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * ((u[ijk+kk]-umean[k+1]) - (u[ijk   ]-umean[k  ])) * dzhi[k+1] + ufluxbot[ij]) * dzi[k];
+
+                // 2 v * d/dz( visc * dv/dz )
+                v2_diss[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * ((v[ijk+kk]-vmean[k+1]) - (v[ijk   ]-vmean[k  ])) * dzhi[k+1] + vfluxbot[ij]) * dzi[k];
+            }
     }
 
-    if(true)
+    // Calculate diffusion terms by splitting them into transport and dissipation.
+    if(false)
     {
+        // Diffusion term (d/dxj(nu * dui^2/dxj))
+        // Lower boundary
+        int k = grid.kstart;
+        for (int j=grid.jstart; j<grid.jend; ++j)
+        {
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                const double evisc_utop = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
+                const double evisc_vtop = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
+
+                // d/dz(visc * du^2/dz)
+                u2_visc[k] +=  ( evisc_utop * (pow(u[ijk+kk]-umean[k+1], 2) - pow(u[ijk   ]-umean[k  ], 2)) * dzhi[k+1] ) * dzi[k];
+
+                // d/dz(visc * duw/dx)
+                u2_visc[k] += 2* ( evisc_utop * (interp2_4(u[ijk]-umean[k], u[ijk+ii]-umean[k], u[ijk+ii+kk]-umean[k+1], u[ijk+kk]-umean[k+1]) * w[ijk+kk   ] -
+                                                 interp2_4(u[ijk]-umean[k], u[ijk-ii]-umean[k], u[ijk-ii+kk]-umean[k+1], u[ijk+kk]-umean[k+1]) * w[ijk-ii+kk] ) * dxi ) * dzi[k];
+
+                // d/dz(visc * dv^2/dz)
+                v2_visc[k] +=  ( evisc_vtop * (pow(v[ijk+kk]-vmean[k+1], 2) - pow(v[ijk   ]-vmean[k  ], 2)) * dzhi[k+1] ) * dzi[k];
+
+                // d/dz(visc * dvw/dy)
+                v2_visc[k] += 2* ( evisc_vtop * (interp2_4(v[ijk]-vmean[k], v[ijk+jj]-vmean[k], v[ijk+jj+kk]-vmean[k+1], v[ijk+kk]-vmean[k+1]) * w[ijk+kk   ] -
+                                                 interp2_4(v[ijk]-vmean[k], v[ijk-jj]-vmean[k], v[ijk-jj+kk]-vmean[k+1], v[ijk+kk]-vmean[k+1]) * w[ijk-jj+kk] ) * dyi ) * dzi[k];
+
+                // d/dz(visc * dw^2/dz)
+                tke_visc[k] += 1.5 * ( interp2(evisc[ijk], evisc[ijk+kk]) * (pow(wz[ijk+kk], 2) - pow(wz[ijk   ], 2)) * dzhi[k+1] ) * dzi[k];
+            }
+            tke_visc[k] += 0.5 * (u2_visc[k] + v2_visc[k]);
+        }
+
         // TODO what to do with terms that require interpolated evisc at surface?
         // Diffusion term (d/dxj(nu * dui^2/dxj))
         for (int k=grid.kstart+1; k<grid.kend-1; ++k)
@@ -678,18 +958,6 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
                                        evisc_vbot * (interp2_4(v[ijk]-vmean[k], v[ijk+jj]-vmean[k], v[ijk+jj-kk]-vmean[k-1], v[ijk-kk]-vmean[k-1]) * w[ijk      ] -
                                                      interp2_4(v[ijk]-vmean[k], v[ijk-jj]-vmean[k], v[ijk-jj-kk]-vmean[k-1], v[ijk-kk]-vmean[k-1]) * w[ijk-jj   ] ) * dyi ) * dzi[k];
 
-                }
-            tke_visc[k] += 0.5 * (u2_visc[k] + v2_visc[k]);
-        }
-
-        // TODO What to do with w2_visc and tke_visc at kstart?
-        for (int k=grid.kstart+1; k<grid.kend-1; ++k)
-            for (int j=grid.jstart; j<grid.jend; ++j)
-                #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
                     // d/dz(visc * dw^2/dz)
                     w2_visc[k] += 3 * (evisc[ijk   ] * (pow(w[ijk+kk], 2) - pow(w[ijk   ], 2)) * dzi[k  ] -
                                        evisc[ijk-kk] * (pow(w[ijk   ], 2) - pow(w[ijk-kk], 2)) * dzi[k-1]) * dzhi[k];
@@ -698,6 +966,8 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
                     tke_visc[k] += 1.5 * ( interp2(evisc[ijk], evisc[ijk+kk]) * (pow(wz[ijk+kk], 2) - pow(wz[ijk   ], 2)) * dzhi[k+1] -
                                            interp2(evisc[ijk], evisc[ijk-kk]) * (pow(wz[ijk   ], 2) - pow(wz[ijk-kk], 2)) * dzhi[k  ] ) * dzi[k];
                 }
+            tke_visc[k] += 0.5 * (u2_visc[k] + v2_visc[k]);
+        }
 
         for (int k=grid.kstart; k<grid.kend; ++k)
         {
@@ -709,10 +979,10 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_visc, double* 
 
                     // -2 * visc * ((du/dx)^2 + (du/dy)^2 + (du/dz)^2)
                     u2_diss[k] -= 2 * interp2(evisc[ijk], evisc[ijk-ii]) *
-                                             ( pow( (interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k  ]) - interp2(u[ijk   ]-umean[k], u[ijk-ii   ]-umean[k  ])) * dxi,    2) +
+                                             ( 2* pow( (interp2(u[ijk]-umean[k], u[ijk+ii]-umean[k  ]) - interp2(u[ijk   ]-umean[k], u[ijk-ii   ]-umean[k  ])) * dxi,    2) +
                                                pow( (interp2(u[ijk]-umean[k], u[ijk+jj]-umean[k  ]) - interp2(u[ijk   ]-umean[k], u[ijk-jj   ]-umean[k  ])) * dyi,    2) +
                                                pow( (interp2(u[ijk]-umean[k], u[ijk+kk]-umean[k+1]) - interp2(u[ijk   ]-umean[k], u[ijk-kk   ]-umean[k-1])) * dzi[k], 2) );
-                    
+
                     // -2 * visc * ((dv/dx)^2 + (dv/dy)^2 + (dv/dz)^2)
                     v2_diss[k] -= 2 * interp2(evisc[ijk], evisc[ijk-jj]) *
                                              ( pow( (interp2(v[ijk]-vmean[k], v[ijk+ii]-vmean[k  ]) - interp2(v[ijk   ]-vmean[k], v[ijk-ii   ]-vmean[k  ])) * dxi,    2) +
