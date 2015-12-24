@@ -30,6 +30,7 @@ class Grid;
 class Fields;
 class Thermo;
 class Diff;
+class Advec;
 struct Mask;
 
 #include "budget.h"
@@ -37,7 +38,7 @@ struct Mask;
 class Budget_2 : public Budget
 {
     public:
-        Budget_2(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Stats*);
+        Budget_2(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Stats*);
         ~Budget_2();
 
         void init();
@@ -67,8 +68,8 @@ class Budget_2 : public Budget
 
         void calc_diffusion_terms_LES(double*, double*, double*, double*, double*, double*,
                                       double*, double*, double*, double*, double*, double*, double*,
-                                      const double*, const double*, const double*, const double*,
-                                      const double*, const double*, const double*, const double*,
+                                      const double*, const double*, const double*, const double*, const double*,
+                                      const double*, const double*, const double*, const double*, const double*,
                                       const double, const double);
 
         void calc_buoyancy_terms(double*, double*, double*,

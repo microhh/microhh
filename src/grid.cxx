@@ -31,6 +31,8 @@
 #include "finite_difference.h"
 #include "model.h"
 
+#include <iostream> // REMOVE ME BvS
+
 /**
  * This function constructs the grid class.
  * @param modelin Pointer to the model class.
@@ -94,7 +96,6 @@ Grid::Grid(Model *modelin, Input *inputin)
         master->print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
         throw 1;
     }
-
     // 2nd order scheme requires only 1 ghost cell
     if (swspatialorder == "2")
     {
@@ -432,8 +433,10 @@ void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int k
     igc = std::max(igc, igcin);
     jgc = std::max(jgc, jgcin);
     kgc = std::max(kgc, kgcin);
-
-    check_ghost_cells();
+    
+    // BvS: this doesn't work; imax is undefined if this routine is called from a class constructor
+    // Removed it since this check is anyhow always performed from the init() of grid (after defining imax)
+    //check_ghost_cells(); 
 }
 
 /**

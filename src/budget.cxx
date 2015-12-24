@@ -33,12 +33,13 @@
 #include "budget_2.h"
 #include "budget_4.h"
 
-Budget::Budget(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Stats* statsin):
+Budget::Budget(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Stats* statsin):
     master(*masterin),
     grid  (*gridin  ),
     fields(*fieldsin),
     thermo(*thermoin),
     diff  (*diffin  ),
+    advec (*advecin ),
     stats (*statsin )
 {
 }
@@ -47,7 +48,7 @@ Budget::~Budget()
 {
 }
 
-Budget* Budget::factory(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Stats* statsin)
+Budget* Budget::factory(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Stats* statsin)
 {
     std::string swbudget;
     if (inputin->get_item(&swbudget, "budget", "swbudget", "", "0"))
@@ -58,11 +59,11 @@ Budget* Budget::factory(Input* inputin, Master* masterin, Grid* gridin, Fields* 
         swbudget = "0";
 
     if (swbudget == "0")
-        return new Budget_disabled(inputin, masterin, gridin, fieldsin, thermoin, diffin, statsin);
+        return new Budget_disabled(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, statsin);
     else if (swbudget == "2")
-        return new Budget_2(inputin, masterin, gridin, fieldsin, thermoin, diffin, statsin);
+        return new Budget_2(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, statsin);
     else if (swbudget == "4")
-        return new Budget_4(inputin, masterin, gridin, fieldsin, thermoin, diffin, statsin);
+        return new Budget_4(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, statsin);
     else
     {
         masterin->print_error("\"%s\" is an illegal value for swbudget\n", swbudget.c_str());
