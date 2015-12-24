@@ -35,6 +35,7 @@ using namespace Finite_difference::O4;
 
 Advec_4::Advec_4(Model* modelin, Input* inputin) : Advec(modelin, inputin)
 {
+    swadvec = "4";
 }
 
 Advec_4::~Advec_4()

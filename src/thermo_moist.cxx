@@ -419,7 +419,7 @@ void Thermo_moist::exec_stats(Mask *m)
     // calculate diffusive fluxes
     if (grid->swspatialorder == "2")
     {
-        if (model->diff->get_name() == "smag2")
+        if (model->diff->get_switch() == "smag2")
         {
             Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
             stats->calc_diff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,

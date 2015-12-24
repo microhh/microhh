@@ -92,7 +92,7 @@ Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std:
     }
 }
 
-std::string Diff::get_name()
+std::string Diff::get_switch()
 {
     return swdiff;
 }

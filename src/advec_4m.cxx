@@ -38,6 +38,7 @@ using Finite_difference::O4::grad4x;
 
 Advec_4m::Advec_4m(Model* modelin, Input* inputin) : Advec(modelin, inputin)
 {
+    swadvec = "4m";
 }
 
 Advec_4m::~Advec_4m()
