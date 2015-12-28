@@ -31,6 +31,7 @@
 #include "thermo.h"
 #include "diff.h"
 #include "advec.h"
+#include "force.h"
 #include "stats.h"
 #include <netcdfcpp.h>
 
@@ -39,8 +40,8 @@
 
 using namespace Finite_difference::O2;
 
-Budget_2::Budget_2(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Stats* statsin) :
-    Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, statsin)
+Budget_2::Budget_2(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Force* forcein, Stats* statsin) :
+    Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin)
 {
     umodel = 0;
     vmodel = 0;
@@ -119,6 +120,11 @@ void Budget_2::create()
     stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh");
     stats.add_prof("vw_rdstr", "Pressure redistribution term in VW budget", "m2 s-3", "zh");
 
+    stats.add_prof("u2_cor", "Coriolis term in U2 budget", "m2 s-3", "z" );
+    stats.add_prof("v2_cor", "Coriolis term in V2 budget", "m2 s-3", "z" );
+    stats.add_prof("uw_cor", "Coriolis term in UW budget", "m2 s-3", "zh");
+    stats.add_prof("vw_cor", "Coriolis term in VW budget", "m2 s-3", "zh");
+
     if (thermo.get_switch() != "0")
     {
         stats.add_prof("w2_buoy" , "Buoyancy production/destruction term in W2 budget" , "m2 s-3", "zh");
@@ -190,6 +196,15 @@ void Budget_2::exec_stats(Mask* m)
                             fields.u->data, fields.v->data, fields.w->data, fields.atmp["tmp1"]->data,
                             umodel, vmodel, fields.atmp["tmp1"]->datamean);
     }
+
+    if(force.get_switch_lspres() == "geo")
+    {
+        const double fc = force.get_coriolis_parameter();
+        calc_coriolis_terms(m->profs["u2_cor"].data, m->profs["v2_cor"].data, 
+                            m->profs["uw_cor"].data, m->profs["vw_cor"].data,
+                            fields.u->data, fields.v->data, fields.w->data, 
+                            umodel, vmodel, fc);
+    }
 }
 
 namespace
@@ -200,6 +215,8 @@ namespace
         return 0.25 * (a + b + c + d);
     }
 }
+
+
 
 /**
  * Calculate the kinetic and turbulence kinetic energy
@@ -1541,5 +1558,78 @@ void Budget_2::calc_buoyancy_terms(double* const restrict w2_buoy, double* const
         w2_buoy[k] /= ijtot;
         uw_buoy[k] /= ijtot;
         vw_buoy[k] /= ijtot;
+    }
+}
+
+/**
+ * Calculate the budget terms arrising from coriolis force
+ * @param TO-DO
+ */
+void Budget_2::calc_coriolis_terms(double* const restrict u2_cor, double* const restrict v2_cor,
+                                   double* const restrict uw_cor, double* const restrict vw_cor,
+                                   const double* const restrict u, const double* const restrict v, const double* const restrict w,
+                                   const double* const restrict umean, const double* const restrict vmean,
+                                   const double fc)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int ijtot = grid.itot * grid.jtot;
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        u2_cor[k] = 0;
+        v2_cor[k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        uw_cor[k] = 0;
+        vw_cor[k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                u2_cor[k] += 2 * (u[ijk]-umean[k]) * (interp2_4(v[ijk-ii], v[ijk], v[ijk-ii+jj], v[ijk+jj])-vmean[k]) * fc;
+                v2_cor[k] -= 2 * (v[ijk]-vmean[k]) * (interp2_4(u[ijk-jj], u[ijk], u[ijk+ii-jj], u[ijk+ii])-umean[k]) * fc;
+            }
+
+    for (int k=grid.kstart+1; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                uw_cor[k] += interp2(w[ijk], w[ijk-ii]) * 
+                                interp2(interp2_4(v[ijk   ]-vmean[k], v[ijk-ii   ]-vmean[k], v[ijk-ii-kk   ]-vmean[k-1], v[ijk-kk   ]-vmean[k-1]),  
+                                        interp2_4(v[ijk+jj]-vmean[k], v[ijk-ii+jj]-vmean[k], v[ijk-ii+jj-kk]-vmean[k-1], v[ijk+jj-kk]-vmean[k-1])) * fc;
+
+                vw_cor[k] -= interp2(w[ijk], w[ijk-jj]) * 
+                                interp2(interp2_4(u[ijk   ]-umean[k], u[ijk-jj   ]-umean[k], u[ijk-jj-kk   ]-umean[k-1], u[ijk-kk   ]-umean[k-1]),  
+                                        interp2_4(u[ijk+ii]-umean[k], u[ijk+ii-jj]-umean[k], u[ijk+ii-jj-kk]-umean[k-1], u[ijk+ii-kk]-umean[k-1])) * fc;  
+            }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(u2_cor, grid.kcells);
+    master.sum(v2_cor, grid.kcells);
+    master.sum(uw_cor, grid.kcells);
+    master.sum(vw_cor, grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        u2_cor[k] /= ijtot;
+        v2_cor[k] /= ijtot;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        uw_cor[k] /= ijtot;
+        vw_cor[k] /= ijtot;
     }
 }

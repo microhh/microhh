@@ -41,7 +41,7 @@ struct Mask;
 class Budget_disabled : public Budget
 {
     public:
-        Budget_disabled(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Stats*);
+        Budget_disabled(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Force*, Stats*);
         virtual ~Budget_disabled();
 
         void init();

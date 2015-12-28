@@ -22,8 +22,8 @@
 
 #include "budget_disabled.h"
 
-Budget_disabled::Budget_disabled(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Stats* statsin) :
-    Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, statsin)
+Budget_disabled::Budget_disabled(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Force* forcein, Stats* statsin) :
+    Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin)
 {
 }
 

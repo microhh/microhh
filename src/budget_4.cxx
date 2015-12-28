@@ -37,8 +37,8 @@
 
 using namespace Finite_difference::O4;
 
-Budget_4::Budget_4(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Stats* statsin) :
-    Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, statsin)
+Budget_4::Budget_4(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Force* forcein, Stats* statsin) :
+    Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin)
 {
     umodel = 0;
     vmodel = 0;

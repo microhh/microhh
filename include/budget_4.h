@@ -38,7 +38,7 @@ struct Mask;
 class Budget_4 : public Budget
 {
     public:
-        Budget_4(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Stats*);
+        Budget_4(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Force*, Stats*);
         ~Budget_4();
 
         void init();

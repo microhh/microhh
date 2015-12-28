@@ -38,7 +38,7 @@ struct Mask;
 class Budget_2 : public Budget
 {
     public:
-        Budget_2(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Stats*);
+        Budget_2(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Force*, Stats*);
         ~Budget_2();
 
         void init();
@@ -76,5 +76,9 @@ class Budget_2 : public Budget
         void calc_buoyancy_terms(double*, double*, double*, double*,
                                  const double*, const double*, const double*, const double*, 
                                  const double*, const double*, const double*);
+
+        void calc_coriolis_terms(double*, double*, double*, double*,
+                                 const double*, const double*, const double*, 
+                                 const double*, const double*, const double);
 };
 #endif

@@ -90,7 +90,7 @@ Model::Model(Master *masterin, Input *inputin)
         cross  = new Cross (this, input);
         dump   = new Dump  (this, input);
 
-        budget = Budget::factory(input, master, grid, fields, thermo, diff, advec, stats);
+        budget = Budget::factory(input, master, grid, fields, thermo, diff, advec, force, stats);
 
         // Get the list of masks.
         // TODO Make an interface that takes this out of the main loop.
