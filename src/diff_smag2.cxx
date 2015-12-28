@@ -130,7 +130,7 @@ void Diff_smag_2::exec_viscosity()
         // store the buoyancyflux in tmp1
         model->thermo->get_buoyancy_fluxbot(fields->atmp["tmp1"]);
         // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-        model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
+        model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2", false);
         // model->thermo->getThermoField(fields->sd["tmp1"], fields->sd["tmp2"], "b");
 
         calc_evisc(fields->sd["evisc"]->data,

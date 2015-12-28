@@ -178,7 +178,7 @@ void Budget_2::exec_stats(Mask* m)
     if(thermo.get_switch() != "0")
     {
         // Store the buoyancy in the tmp1 field
-        thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b");
+        thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b", true);
 
         // Calculate mean fields
         grid.calc_mean(fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->data, grid.kcells);

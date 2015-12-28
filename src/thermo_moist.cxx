@@ -565,7 +565,7 @@ bool Thermo_moist::check_field_exists(const std::string name)
 }
 
 #ifndef USECUDA
-void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::string name)
+void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::string name, bool cyclic)
 {
     const int kcells = grid->kcells;
 
@@ -584,6 +584,9 @@ void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::strin
         calc_N2(fld->data, fields->sp[thvar]->data, grid->dzi, thvref);
     else
         throw 1;
+
+    if (cyclic)
+        grid->boundary_cyclic(fld->data);
 }
 #endif
 

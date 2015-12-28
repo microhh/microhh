@@ -92,9 +92,11 @@ void Thermo_buoy::exec()
 }
 #endif
 
-void Thermo_buoy::get_thermo_field(Field3d* field, Field3d* tmp, const std::string name)
+void Thermo_buoy::get_thermo_field(Field3d* field, Field3d* tmp, const std::string name, bool cyclic)
 {
     calc_buoyancy(field->data, fields->sp["b"]->data);
+
+    // Note: calc_buoyancy already handles the lateral ghost cells
 }
 
 void Thermo_buoy::get_prog_vars(std::vector<std::string>* list)

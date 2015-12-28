@@ -296,7 +296,7 @@ bool Thermo_dry::check_field_exists(std::string name)
 }
 
 #ifndef USECUDA
-void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name, bool cyclic)
 {
     if (name == "b")
         calc_buoyancy(fld->data, fields->sp["th"]->data, thref);
@@ -304,6 +304,9 @@ void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
         calc_N2(fld->data, fields->sp["th"]->data, grid->dzi, thref);
     else
         throw 1;
+
+    if (cyclic)
+        grid->boundary_cyclic(fld->data);
 }
 #endif
 
@@ -341,8 +344,6 @@ void Thermo_dry::calc_buoyancy(double* restrict b, double* restrict th, double* 
                 const int ijk = i + j*jj + k*kk;
                 b[ijk] = grav/thref[k] * (th[ijk] - thref[k]);
             }
-
-    grid->boundary_cyclic(b);
 }
 
 void Thermo_dry::calc_N2(double* restrict N2, double* restrict th, double* restrict dzi, double* restrict thref)
