@@ -875,6 +875,8 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
                 b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ij], thvref[k]);
             }
     }
+
+    grid->boundary_cyclic(b);
 }
 
 // Calculate the maximum in-cloud virtual temperature perturbation (thv - <thv>) with height

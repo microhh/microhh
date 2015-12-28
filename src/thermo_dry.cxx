@@ -341,6 +341,8 @@ void Thermo_dry::calc_buoyancy(double* restrict b, double* restrict th, double* 
                 const int ijk = i + j*jj + k*kk;
                 b[ijk] = grav/thref[k] * (th[ijk] - thref[k]);
             }
+
+    grid->boundary_cyclic(b);
 }
 
 void Thermo_dry::calc_N2(double* restrict N2, double* restrict th, double* restrict dzi, double* restrict thref)
