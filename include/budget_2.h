@@ -55,11 +55,18 @@ class Budget_2 : public Budget
                                   const double*, const double*, const double*, const double*, const double*,
                                   double*, double*, const double*, const double*); 
 
+        void calc_advection_terms_scalar(double*, double*, double*, double*,
+                                         const double*, const double*, const double*, const double*, const double*);
+
         void calc_pressure_terms(double*, double*, double*, double*, double*, 
                                  double*, double*, double*, double*,
                                  const double*, const double*, const double*, const double*,
                                  const double*, const double*, const double*, const double*,
                                  const double, const double);
+
+        void calc_pressure_terms_scalar(double*, double*, 
+                                        const double*, const double*, const double*, 
+                                        const double*, const double*, const double*);
 
         void calc_diffusion_terms_DNS(double*, double*, double*, double*, double*, double*,
                                       double*, double*, double*, double*, double*, double*, double*,
@@ -76,6 +83,8 @@ class Budget_2 : public Budget
         void calc_buoyancy_terms(double*, double*, double*, double*,
                                  const double*, const double*, const double*, const double*, 
                                  const double*, const double*, const double*);
+
+        void calc_buoyancy_terms_scalar(double*, const double*, const double*, const double*, const double*);
 
         void calc_coriolis_terms(double*, double*, double*, double*,
                                  const double*, const double*, const double*, 

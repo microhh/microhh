@@ -132,6 +132,25 @@ void Budget_2::create()
         stats.add_prof("tke_buoy", "Buoyancy production/destruction term in TKE budget", "m2 s-3", "z" );
         stats.add_prof("uw_buoy" , "Buoyancy production/destruction term in UW budget" , "m2 s-3", "zh");
         stats.add_prof("vw_buoy" , "Buoyancy production/destruction term in VW budget" , "m2 s-3", "zh");
+
+        if(advec.get_switch() != "0")
+        {
+            stats.add_prof("b2_shear", "Shear production term in B2 budget", "m2 s-5", "z");
+            stats.add_prof("b2_turb" , "Turbulent transport term in B2 budget", "m2 s-5", "z");
+
+            stats.add_prof("bw_shear", "Shear production term in B2 budget",    "m2 s-4", "zh");
+            stats.add_prof("bw_turb" , "Turbulent transport term in B2 budget", "m2 s-4", "zh");
+        }
+
+        if(diff.get_switch() != "0")
+        {
+            stats.add_prof("b2_diss" , "Dissipation term in B2 budget", "m2 s-5", "z");
+            stats.add_prof("bw_diss" , "Dissipation term in BW budget", "m2 s-4", "zh");
+        }
+
+        stats.add_prof("bw_rdstr", "Redistribution term in BW budget"     , "m2 s-4", "zh");
+        stats.add_prof("bw_buoy" , "Buoyancy term in BW budget"           , "m2 s-4", "zh");
+        stats.add_prof("bw_pres" , "Pressure transport term in BW budget" , "m2 s-4", "zh");
     }
 
     stats.add_prof("w2_pres" , "Pressure transport term in W2 budget" , "m2 s-3", "zh");
@@ -198,6 +217,22 @@ void Budget_2::exec_stats(Mask* m)
                             m->profs["uw_buoy"].data, m->profs["vw_buoy"].data,
                             fields.u->data, fields.v->data, fields.w->data, fields.atmp["tmp1"]->data,
                             umodel, vmodel, fields.atmp["tmp1"]->datamean);
+
+        // Buoyancy variance and flux budgets
+        calc_buoyancy_terms_scalar(m->profs["bw_buoy"].data,
+                                   fields.atmp["tmp1"]->data, fields.atmp["tmp1"]->data,
+                                   fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->datamean);
+
+        if(advec.get_switch() != "0")
+            calc_advection_terms_scalar(m->profs["b2_shear"].data, m->profs["b2_turb"].data,
+                                        m->profs["bw_shear"].data, m->profs["bw_turb"].data,
+                                        fields.atmp["tmp1"]->data, fields.w->data, fields.atmp["tmp1"]->datamean,
+                                        grid.dzi, grid.dzhi);
+
+        calc_pressure_terms_scalar(m->profs["bw_pres"].data,  m->profs["bw_rdstr"].data,
+                                   fields.atmp["tmp1"]->data, fields.sd["p"]->data, 
+                                   fields.atmp["tmp1"]->datamean, fields.sd["p"]->datamean,
+                                   grid.dzi, grid.dzhi);
     }
 
     if(force.get_switch_lspres() == "geo")
@@ -259,7 +294,7 @@ void Budget_2::calc_kinetic_energy(double* const restrict ke, double* const rest
 
                 const double u2 = pow(interp2(u[ijk]+utrans, u[ijk+ii]+utrans), 2);
                 const double v2 = pow(interp2(v[ijk]+vtrans, v[ijk+jj]+vtrans), 2);
-                const double w2 = pow(interp2(w[ijk]       , w[ijk+ii]       ), 2);
+                const double w2 = pow(interp2(w[ijk]       , w[ijk+kk]       ), 2);
 
                 ke[k] += 0.5 * (u2 + v2 + w2);
             }
@@ -272,7 +307,7 @@ void Budget_2::calc_kinetic_energy(double* const restrict ke, double* const rest
 
                 const double u2 = pow(interp2(u[ijk]-umodel[k], u[ijk+ii]-umodel[k]), 2);
                 const double v2 = pow(interp2(v[ijk]-vmodel[k], v[ijk+jj]-vmodel[k]), 2);
-                const double w2 = pow(interp2(w[ijk]          , w[ijk+ii]          ), 2);
+                const double w2 = pow(interp2(w[ijk]          , w[ijk+kk]          ), 2);
 
                 tke[k] += 0.5 * (u2 + v2 + w2);
             }
@@ -472,6 +507,67 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
 }
 
 /**
+ * Calculate the scalar budget terms arrising from the advection term
+ * @param TO-DO
+ */
+void Budget_2::calc_advection_terms_scalar(double* const restrict s2_shear, double* const restrict s2_turb,
+                                           double* const restrict sw_shear, double* const restrict sw_turb,
+                                           const double* const restrict s, const double* const restrict w,
+                                           const double* const restrict smean,
+                                           const double* const restrict dzi, const double* const restrict dzhi)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int ijtot = grid.itot * grid.jtot;
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        s2_shear[k] = 0;
+        s2_turb [k] = 0;
+        sw_shear[k] = 0;
+        sw_turb [k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        const double dsdz  = (interp2(smean[k], smean[k+1]) - interp2(smean[k], smean[k-1])) * dzi[k];
+        const double dsdzh = (smean[k] - smean[k-1]) * dzhi[k];
+
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                s2_shear[k] -= 2 * (s[ijk] - smean[k]) * interp2(w[ijk], w[ijk+kk]) * dsdz;
+
+                s2_turb[k]  -= ((pow(interp2(s[ijk]-smean[k], s[ijk+kk]-smean[k+1]), 2) * w[ijk+kk]) -
+                                (pow(interp2(s[ijk]-smean[k], s[ijk-kk]-smean[k-1]), 2) * w[ijk   ])) * dzi[k];
+
+                sw_shear[k] -= pow(w[ijk], 2) * dsdzh;
+
+                sw_turb[k]  -= ((pow(interp2(w[ijk], w[ijk+kk]), 2) * (s[ijk   ]-smean[k  ]))-
+                                (pow(interp2(w[ijk], w[ijk-kk]), 2) * (s[ijk-kk]-smean[k-1]))) * dzhi[k];
+            }
+    }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(s2_shear, grid.kcells);
+    master.sum(s2_turb,  grid.kcells);
+    master.sum(sw_shear, grid.kcells);
+    master.sum(sw_turb,  grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        s2_shear[k] /= ijtot;
+        s2_turb [k] /= ijtot;
+        sw_shear[k] /= ijtot;
+        sw_turb [k] /= ijtot;
+    }
+}
+
+/**
  * Calculate the budget terms arrising from pressure:
  * pressure transport (-2*dpu_i/dxi) and redistribution (2p*dui/dxi)
  * @param TO-DO
@@ -632,6 +728,49 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
         w2_rdstr[k] /= ijtot;
         uw_rdstr[k] /= ijtot;
         vw_rdstr[k] /= ijtot;
+    }
+}
+
+/**
+ * Calculate the scalar budget terms arrising from pressure
+ * @param TO-DO
+ */
+void Budget_2::calc_pressure_terms_scalar(double* const restrict sw_pres, double* const restrict sw_rdstr,
+                                          const double* const restrict s, const double* const restrict p,
+                                          const double* const restrict smean, const double* const restrict pmean, 
+                                          const double* const restrict dzi, const double* const restrict dzhi)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int ijtot = grid.itot * grid.jtot;
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        sw_pres [k] = 0;
+        sw_rdstr[k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                sw_pres[k] -= ((p[ijk]-pmean[k]) * (s[ijk]-smean[k]) - (p[ijk-kk]-pmean[k-1]) * (s[ijk-kk]-smean[k-1])) * dzhi[k];
+
+                sw_rdstr[k] += interp2(p[ijk]-pmean[k], p[ijk-kk]-pmean[k-1]) * ((s[ijk]-smean[k])-(s[ijk-kk]-smean[k-1])) * dzhi[k]; 
+            }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(sw_pres,  grid.kcells);
+    master.sum(sw_rdstr, grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        sw_pres [k] /= ijtot;
+        sw_rdstr[k] /= ijtot;
     }
 }
 
@@ -1388,6 +1527,39 @@ void Budget_2::calc_buoyancy_terms(double* const restrict w2_buoy, double* const
         uw_buoy[k] /= ijtot;
         vw_buoy[k] /= ijtot;
     }
+}
+
+/**
+ * Calculate the scalar budget terms arrising from buoyancy
+ * @param TO-DO
+ */
+void Budget_2::calc_buoyancy_terms_scalar(double* const restrict sw_buoy,
+                                          const double* const restrict s, const double* const restrict b,
+                                          const double* const restrict smean, const double* const restrict bmean)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int ijtot = grid.itot * grid.jtot;
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+        sw_buoy[k] = 0;
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                sw_buoy[k] += interp2(s[ijk]-smean[k], s[ijk-kk]-smean[k-1]) * interp2(b[ijk]-bmean[k], b[ijk-kk]-bmean[k-1]);
+            }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(sw_buoy, grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+        sw_buoy[k] /= ijtot;
 }
 
 /**
