@@ -39,6 +39,7 @@
 #include "budget_2.h"
 
 using namespace Finite_difference::O2;
+using namespace Finite_difference::O4;
 
 Budget_2::Budget_2(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Force* forcein, Stats* statsin) :
     Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin)
@@ -642,7 +643,6 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
 
                 u2_pres_tot[k]  -= 2 * (u[ijk]-umean[k]) * (p[ijk] - p[ijk-ii]) * dxi;
                 v2_pres_tot[k]  -= 2 * (v[ijk]-vmean[k]) * (p[ijk] - p[ijk-jj]) * dyi;
-                tke_pres_tot[k] -= interp2(w[ijk], w[ijk+kk]) * (interp2(p[ijk], p[ijk+kk]) - interp2(p[ijk], p[ijk-kk])) * dzi[k];
             }
         tke_pres_tot[k] += 0.5 * (u2_pres_tot[k] + v2_pres_tot[k]);
     }
@@ -710,10 +710,30 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
 
             // with w[kstart] == 0, dw/dz at surface equals (w[kstart+1] - w[kstart]) / dzi
             w2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-kk]) * (w[ijk+kk] - w[ijk]) * dzi[k];
+
+            tke_pres_tot[k] -= interp2(w[ijk], w[ijk+kk]) * (interp2(p[ijk], p[ijk+kk]) - interp2(p[ijk], p[ijk-kk])) * dzi[k];
         }
 
-    // Top boundary (z=zsize)
-    // TODO: what to do with w2_rdstr at the top boundary? Pressure at k=kend is undefined?
+    k = grid.kend-1;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            // BvS, for now (incorrectly) assume zero pressure gradient at top
+            tke_pres_tot[k] -= interp2(w[ijk], w[ijk+kk]) * (p[ijk] - interp2(p[ijk], p[ijk-kk])) * dzi[k];
+        }
+
+    k = grid.kend-2;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            tke_pres_tot[k] -= interp2(w[ijk], w[ijk+kk]) * (interp2(p[ijk], p[ijk+kk]) - interp2(p[ijk], p[ijk-kk])) * dzi[k];
+        }
 
     for (int k=grid.kstart+1; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -724,6 +744,18 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
 
                 w2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-kk]) *
                                  ( interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk]) ) * dzhi[k];
+            }
+
+    for (int k=grid.kstart+1; k<grid.kend-2; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                tke_pres_tot[k] -= interp4(w[ijk-kk], w[ijk], w[ijk+kk], w[ijk+kk+kk]) * 
+                                    (interp4(p[ijk-kk], p[ijk], p[ijk+kk], p[ijk+kk+kk]) - 
+                                     interp4(p[ijk-kk-kk], p[ijk-kk], p[ijk], p[ijk+kk])) * dzi[k];
             }
 
     // Calculate sum over all processes, and calc mean profiles
