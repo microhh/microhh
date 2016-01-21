@@ -88,7 +88,7 @@ Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std:
     else
     {
         masterin->print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
-        return 0;
+        throw 1;
     }
 }
 

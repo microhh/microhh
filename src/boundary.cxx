@@ -67,6 +67,11 @@ void Boundary::process_bcs(Input* inputin)
     nerror += inputin->get_item(&swbot, "boundary", "mbcbot", "");
     nerror += inputin->get_item(&swtop, "boundary", "mbctop", "");
 
+    nerror += inputin->get_item(&ubot, "boundary", "ubot", "", 0.);
+    nerror += inputin->get_item(&utop, "boundary", "utop", "", 0.);
+    nerror += inputin->get_item(&vbot, "boundary", "vbot", "", 0.);
+    nerror += inputin->get_item(&vtop, "boundary", "vtop", "", 0.);
+
     // set the bottom bc
     if (swbot == "noslip")
         mbcbot = Dirichlet_type;
@@ -258,14 +263,13 @@ void Boundary::update_time_dependent()
 
 void Boundary::set_values()
 {
-    const double noVelocity = 0.;
     const double noOffset = 0.;
 
-    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
-    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
+    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, ubot, fields->visc, grid->utrans);
+    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, vbot, fields->visc, grid->vtrans);
 
-    set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
-    set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
+    set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, utop, fields->visc, grid->utrans);
+    set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, vtop, fields->visc, grid->vtrans);
 
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
