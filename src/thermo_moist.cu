@@ -442,7 +442,7 @@ void Thermo_moist::exec()
 #endif
 
 #ifdef USECUDA
-void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name, bool cyclic )
 {
     const int blocki = grid->ithread_block;
     const int blockj = grid->jthread_block;
@@ -520,6 +520,9 @@ void Thermo_moist::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name
         master->print_error("get_thermo_field \"%s\" not supported\n",name.c_str());
         throw 1;
     }
+
+    if (cyclic)
+        grid->boundary_cyclic_g(&fld->data_g[offs]);
 }
 #endif
 
