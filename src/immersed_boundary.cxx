@@ -95,10 +95,10 @@ namespace
             const int ijk = it->i + it->j*jj + it->k*kk;
 
             u [ijk] = 0;
-            v [ijk] = 0;
+            //v [ijk] = 0;
             w [ijk] = 0;
             ut[ijk] = 0;
-            vt[ijk] = 0;
+            //vt[ijk] = 0;
             wt[ijk] = 0;
 
             if (it->sw_outer_wall[West_edge])
@@ -113,17 +113,17 @@ namespace
                 ut[ijk+ii] = 0;
             }
 
-            if (it->sw_outer_wall[South_edge])
-            {
-                v [ijk] = 0;
-                vt[ijk] = 0;
-            }
+            //if (it->sw_outer_wall[South_edge])
+            //{
+            //    v [ijk] = 0;
+            //    vt[ijk] = 0;
+            //}
 
-            if (it->sw_outer_wall[North_edge])
-            {
-                v [ijk+jj] = 0;
-                vt[ijk+jj] = 0;
-            }
+            //if (it->sw_outer_wall[North_edge])
+            //{
+            //    v [ijk+jj] = 0;
+            //    vt[ijk+jj] = 0;
+            //}
 
             if (it->sw_outer_wall[Bottom_edge])
             {
@@ -510,18 +510,53 @@ void Immersed_boundary::init()
     if (sw_ib != "1")
         return;
 
-    //const int ibc_istart = grid->istart +  4 * (grid->iend-grid->istart) / 16;
-    //const int ibc_iend   = grid->istart + 12 * (grid->iend-grid->istart) / 16;
-    //const int ibc_kstart = grid->kstart +  3 * (grid->kend-grid->kstart) / 8;
-    //const int ibc_kend   = grid->kstart +  5 * (grid->kend-grid->kstart) / 8;
-    //add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend, ibc_kstart, ibc_kend);
+    int ibc_istart;
+    int ibc_iend;
+    int ibc_jstart;
+    int ibc_jend;
+    int ibc_kstart;
+    int ibc_kend;
 
-    const int ibc_istart = grid->istart +  6 * (grid->iend-grid->istart) / 16;
-    const int ibc_iend   = grid->istart + 10 * (grid->iend-grid->istart) / 16;
-    const int ibc_jstart = grid->jstart +  6 * (grid->jend-grid->jstart) / 16;
-    const int ibc_jend   = grid->jstart + 10 * (grid->jend-grid->jstart) / 16;
-    const int ibc_kstart = grid->kstart;
-    const int ibc_kend   = grid->kstart+10;
+    // Inflow grid
+    //const int nvert=16;
+    //for (int k=0; k<grid->ktot/nvert; ++k)
+    //{
+    //    if(k%2==0)
+    //    {
+    //        ibc_kstart = grid->kstart + k*nvert+nvert/2;
+    //        ibc_kend   = grid->kstart + (k+1)*nvert+nvert/2;
+    //        add_IB_block(IB_cells, 64, 70, grid->jstart, grid->jend+1, ibc_kstart, ibc_kend);
+    //    }
+    //}
+
+    // Set of 2d building...
+    //const int w = grid->itot/15;
+
+    //ibc_istart = grid->istart + 0.3*grid->itot - w/2;
+    //ibc_iend   = grid->istart + 0.3*grid->itot + w/2;
+    //ibc_kstart = grid->kstart;
+    //ibc_kend   = grid->kstart + grid->ktot/5;
+    //add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend+1, ibc_kstart, ibc_kend);
+
+    //ibc_istart = grid->istart + 0.5*grid->itot - w/2;
+    //ibc_iend   = grid->istart + 0.5*grid->itot + w/2;
+    //ibc_kstart = grid->kstart;
+    //ibc_kend   = grid->kstart + grid->ktot/3;
+    //add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend+1, ibc_kstart, ibc_kend);
+
+    //ibc_istart = grid->istart + 0.7*grid->itot - w/2;
+    //ibc_iend   = grid->istart + 0.7*grid->itot + w/2;
+    //ibc_kstart = grid->kstart;
+    //ibc_kend   = grid->kstart + grid->ktot/5;
+    //add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend+1, ibc_kstart, ibc_kend);
+
+    // Block in channel
+    ibc_istart = grid->istart +  6 * (grid->iend-grid->istart) / 16;
+    ibc_iend   = grid->istart + 10 * (grid->iend-grid->istart) / 16;
+    ibc_jstart = grid->jstart;
+    ibc_jend   = grid->jend+1;
+    ibc_kstart = grid->kstart;
+    ibc_kend   = grid->kstart+ 0.2 * (grid->kend-grid->kstart);
     add_IB_block(IB_cells, ibc_istart, ibc_iend, ibc_jstart, ibc_jend, ibc_kstart, ibc_kend);
 }
 
