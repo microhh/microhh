@@ -84,7 +84,7 @@ for crossname in variables:
     var_x[:]  = x[:nxsave] if locx=='x' else xh[:nxsave]
     var_y[:]  = y[:nysave] if locy=='y' else yh[:nysave]
     
-    var_s = crossfile.createVariable(crossname, sa, ('time', locz, locx, locy,))
+    var_s = crossfile.createVariable(crossname, sa, ('time', locz, locy, locx,))
     
     stop = False 
     for t in range(niter):
