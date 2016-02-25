@@ -432,8 +432,6 @@ void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int k
     igc = std::max(igc, igcin);
     jgc = std::max(jgc, jgcin);
     kgc = std::max(kgc, kgcin);
-
-    check_ghost_cells();
 }
 
 /**
