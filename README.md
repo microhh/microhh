@@ -15,7 +15,7 @@ In order to compile MicroHH you need:
 * CMake
 * MPI2/3 implementation (optional for MPI support)
 * CUDA (optional for GPU support)
-* Doxygen (optional for creating automatic documentation)
+* Doxygen + Graphviz (optional for creating automatic documentation)
 * Python + numpy (optional for running example cases)
 * Ipython + python-netcdf4 + matplotlib (optional for plotting results example cases)
 

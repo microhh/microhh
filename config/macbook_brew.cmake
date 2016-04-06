@@ -25,7 +25,7 @@ set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_
 
 if(USECUDA)
   set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-  set(LIBS ${LIBS} -rdynamic /usr/local/cuda/lib64/libcufft.so)
+  set(LIBS ${LIBS} -rdynamic /usr/local/cuda/lib/libcufft.dylib)
   set(USER_CUDA_NVCC_FLAGS "-arch=sm_20")
 endif()
 
