@@ -38,6 +38,7 @@
 Stats::Stats(Model* modelin, Input* inputin)
 {
     model = modelin;
+    master = model->master;
 
     // set the pointers to zero
     nmask  = 0;
@@ -49,7 +50,7 @@ Stats::Stats(Model* modelin, Input* inputin)
     if (swstats == "1")
         nerror += inputin->get_item(&sampletime, "stats", "sampletime", "");
 
-    if (!(swstats == "0" || swstats == "1" ))
+    if (!(swstats == "0" || swstats == "1"))
     {
         ++nerror;
         master->print_error("\"%s\" is an illegal value for swstats\n", swstats.c_str());
