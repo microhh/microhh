@@ -244,23 +244,32 @@ void Boundary_surface::set_values()
 
     // in case the momentum has a fixed ustar, set the value to that of the input
     if (mbcbot == Ustar_type)
-    {
-        const int jj = grid->icells;
+        set_ustar();
 
-        set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Dirichlet_type, ubot, fields->visc, grid->utrans);
-        set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Dirichlet_type, vbot, fields->visc, grid->vtrans);
+    // Prepare the lookup table for the surface solver
+    init_solver();
+}
 
-        for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+void Boundary_surface::set_ustar()
+{
+    const int jj = grid->icells;
+
+    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Dirichlet_type, ubot, fields->visc, grid->utrans);
+    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Dirichlet_type, vbot, fields->visc, grid->vtrans);
+
+    for (int j=0; j<grid->jcells; ++j)
+            #pragma ivdep
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
                 // Limit ustar at 1e-4 to avoid zero divisions.
                 ustar[ij] = std::max(0.0001, ustarin);
             }
-    }
+}
 
-    // Prepare the surface layer solver.
+// Prepare the surface layer solver.
+void Boundary_surface::init_solver()
+{
     zL_sl = new float[nzL];
     f_sl  = new float[nzL];
 
