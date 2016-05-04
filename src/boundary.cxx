@@ -35,7 +35,7 @@
 // Boundary schemes.
 #include "boundary.h"
 #include "boundary_surface.h"
-#include "boundary_user.h"
+#include "boundary_patch.h"
 
 Boundary::Boundary(Model* modelin, Input* inputin)
 {
@@ -456,8 +456,8 @@ Boundary* Boundary::factory(Master* masterin, Input* inputin, Model* modelin)
 
     if (swboundary == "surface")
         return new Boundary_surface(modelin, inputin);
-    else if (swboundary == "user")
-        return new Boundary_user(modelin, inputin);
+    else if (swboundary == "patch")
+        return new Boundary_patch(modelin, inputin);
     else if (swboundary == "default")
         return new Boundary(modelin, inputin);
     else

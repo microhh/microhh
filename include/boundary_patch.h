@@ -20,18 +20,18 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_USER
-#define BOUNDARY_USER
+#ifndef BOUNDARY_PATCH
+#define BOUNDARY_PATCH
 
 #include "boundary.h"
 
 class Model;
 class Input;
 
-class Boundary_user : public Boundary
+class Boundary_patch : public Boundary
 {
   public:
-    Boundary_user(Model*, Input*);
+    Boundary_patch(Model*, Input*);
 
     void init(Input*);
 

@@ -25,15 +25,15 @@
 #include "input.h"
 #include "grid.h"
 #include "fields.h"
-#include "boundary_user.h"
+#include "boundary_patch.h"
 #include "defines.h"
 #include "model.h"
 
-Boundary_user::Boundary_user(Model* modelin, Input* inputin) : Boundary(modelin, inputin)
+Boundary_patch::Boundary_patch(Model* modelin, Input* inputin) : Boundary(modelin, inputin)
 {
 }
 
-void Boundary_user::init(Input* inputin)
+void Boundary_patch::init(Input* inputin)
 {
     int nerror = 0;
 
@@ -51,7 +51,7 @@ void Boundary_user::init(Input* inputin)
         throw 1;
 }
 
-void Boundary_user::set_values()
+void Boundary_patch::set_values()
 {
     const double no_offset = 0.;
 
@@ -70,7 +70,7 @@ void Boundary_user::set_values()
     }
 }
 
-void Boundary_user::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, int sw, double aval, double visc, double offset,
+void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, int sw, double aval, double visc, double offset,
                                  double* restrict tmp, double facl, double facr)
 {
     const int jj = grid->icells;
