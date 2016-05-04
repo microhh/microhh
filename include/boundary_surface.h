@@ -64,6 +64,10 @@ class Boundary_surface : public Boundary
         int*    nobuk_g;
 #endif
 
+    protected:
+        void process_input(Input *);   // Process and check the surface input 
+        void init_surface();           // Allocate and initialize the surface arrays
+
     private:
         // cross sections
         std::vector<std::string> crosslist;        // List with all crosses from ini file
