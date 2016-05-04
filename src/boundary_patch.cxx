@@ -29,7 +29,7 @@
 #include "defines.h"
 #include "model.h"
 
-Boundary_patch::Boundary_patch(Model* modelin, Input* inputin) : Boundary(modelin, inputin)
+Boundary_patch::Boundary_patch(Model* modelin, Input* inputin) : Boundary_surface(modelin, inputin)
 {
 }
 
@@ -37,6 +37,7 @@ void Boundary_patch::init(Input* inputin)
 {
     int nerror = 0;
 
+    // 1. Process the boundary conditions now all fields are registered
     process_bcs(inputin);
 
     // Patch type.
@@ -49,6 +50,12 @@ void Boundary_patch::init(Input* inputin)
 
     if (nerror)
         throw 1;
+
+    // 2. Read and check the boundary_surface specific settings
+    process_input(inputin);
+
+    // 3. Allocate and initialize the 2D surface fields
+    init_surface();
 }
 
 void Boundary_patch::set_values()
@@ -68,10 +75,17 @@ void Boundary_patch::set_values()
         set_bc      (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
                      sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, no_offset);
     }
+
+    // in case the momentum has a fixed ustar, set the value to that of the input
+    if (mbcbot == Ustar_type)
+        set_ustar();
+
+    // Prepare the lookup table for the surface solver
+    init_solver();
 }
 
 void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, int sw, double aval, double visc, double offset,
-                                 double* restrict tmp, double facl, double facr)
+                                  double* restrict tmp, double facl, double facr)
 {
     const int jj = grid->icells;
 

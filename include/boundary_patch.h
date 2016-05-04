@@ -23,12 +23,12 @@
 #ifndef BOUNDARY_PATCH
 #define BOUNDARY_PATCH
 
-#include "boundary.h"
+#include "boundary_surface.h"
 
 class Model;
 class Input;
 
-class Boundary_patch : public Boundary
+class Boundary_patch : public Boundary_surface
 {
   public:
     Boundary_patch(Model*, Input*);
