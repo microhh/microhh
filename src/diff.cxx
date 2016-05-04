@@ -81,7 +81,7 @@ Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std:
         if (swboundary != "surface")
         {
             masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
-            return 0;
+            throw 1;
         }
         return new Diff_smag_2(modelin, inputin);
     }
