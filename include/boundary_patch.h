@@ -27,26 +27,29 @@
 
 class Model;
 class Input;
+class Fields;
 
 class Boundary_patch : public Boundary_surface
 {
-  public:
-    Boundary_patch(Model*, Input*);
+    public:
+        Boundary_patch(Model*, Input*);
 
-    void init(Input*);
+        void init(Input*);
 
-    void set_values();
+        void set_values();
 
-  private:
-    void set_bc_patch(double*, double*, double*, int, double, double, double,
-                      double*, double, double); ///< Set the values for the boundary fields.
+        void get_patch(Field3d*);
 
-    // Patch properties.
-    int    patch_dim;
-    double patch_xh;
-    double patch_xr;
-    double patch_xi;
-    double patch_facr;
-    double patch_facl;
+    private:
+        void calc_patch(double*, const double*, const double*, int, double, double, double, double, double);  ///< Calculate the patches
+        void set_bc_patch(double*, double*, double*, double*, int, double, double, double);       ///< Set the values for the boundary fields.
+
+        // Patch properties.
+        int    patch_dim;
+        double patch_xh;
+        double patch_xr;
+        double patch_xi;
+        double patch_facr;
+        double patch_facl;
 };
 #endif

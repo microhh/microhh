@@ -68,10 +68,12 @@ void Boundary_patch::set_values()
     set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, utop, fields->visc, grid->utrans);
     set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, vtop, fields->visc, grid->vtrans);
 
+    calc_patch(fields->atmp["tmp1"]->databot, grid->x, grid->y, patch_dim, patch_xh, patch_xr, patch_xi, patch_facr, patch_facl);
+
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-        set_bc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot,
-                     sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, no_offset, fields->atmp["tmp1"]->data, patch_facl, patch_facr);
+        set_bc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot, fields->atmp["tmp1"]->databot,
+                     sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, no_offset);
         set_bc      (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
                      sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, no_offset);
     }
@@ -84,24 +86,25 @@ void Boundary_patch::set_values()
     init_solver();
 }
 
-void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, int sw, double aval, double visc, double offset,
-                                  double* restrict tmp, double facl, double facr)
+void Boundary_patch::get_patch(Field3d* field)
+{
+    calc_patch(field->databot, grid->x, grid->y, patch_dim, patch_xh, patch_xr, patch_xi, patch_facr, patch_facl);
+}
+
+void Boundary_patch::calc_patch(double* const restrict patch, const double* const restrict x, const double* const restrict y,
+                                const int patch_dim, const double patch_xh, const double patch_xr, const double patch_xi,
+                                const double patch_facr, const double patch_facl) 
 {
     const int jj = grid->icells;
-
-    const double avall = facl*aval;
-    const double avalr = facr*aval;
-
     double errvalx, errvaly;
 
-    // save the pattern
     for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; ++i)
         {
             const int ij = i + j*jj;
-            const double xmod = fmod(grid->x[i], patch_xh);
-            const double ymod = fmod(grid->y[j], patch_xh);
+            const double xmod = fmod(x[i], patch_xh);
+            const double ymod = fmod(y[j], patch_xh);
 
             errvalx = 0.5 - 0.5*erf(2.*(std::abs(2.*xmod - patch_xh) - patch_xr) / patch_xi);
 
@@ -110,8 +113,17 @@ void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, do
             else
                 errvaly = 1.;
 
-            tmp[ij] = errvalx*errvaly;
+            patch[ij] = errvalx*errvaly;
         }
+}
+
+void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, double* restrict patch, 
+                                  int sw, double aval, double visc, double offset)
+{
+    const int jj = grid->icells;
+
+    const double avall = patch_facl*aval;
+    const double avalr = patch_facr*aval;
 
     if (sw == Dirichlet_type)
     {
@@ -120,7 +132,7 @@ void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, do
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
-                a[ij] = avall + (avalr-avall)*tmp[ij] - offset;
+                a[ij] = avall + (avalr-avall)*patch[ij] - offset;
             }
     }
     else if (sw == Neumann_type)
@@ -130,7 +142,7 @@ void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, do
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
-                agrad[ij] = avall + (avalr-avall)*tmp[ij];
+                agrad[ij] = avall + (avalr-avall)*patch[ij];
                 aflux[ij] = -agrad[ij]*visc;
             }
     }
@@ -141,7 +153,7 @@ void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, do
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
-                aflux[ij] = avall + (avalr-avall)*tmp[ij];
+                aflux[ij] = avall + (avalr-avall)*patch[ij];
                 agrad[ij] = -aflux[ij]/visc;
             }
     }
