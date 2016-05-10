@@ -35,10 +35,8 @@ class Boundary_patch : public Boundary_surface
         Boundary_patch(Model*, Input*);
 
         void init(Input*);
-
         void set_values();
-
-        void get_patch(Field3d*);
+        void get_surface_mask(Field3d*);
 
     private:
         void calc_patch(double*, const double*, const double*, int, double, double, double, double, double);  ///< Calculate the patches

@@ -22,6 +22,7 @@
 
 #include <cstdio>
 #include <algorithm>
+#include <iostream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -30,6 +31,7 @@
 #include "finite_difference.h"
 #include "model.h"
 #include "timeloop.h"
+#include "boundary.h"
 
 Force::Force(Model* modelin, Input* inputin)
 {
@@ -50,6 +52,7 @@ Force::Force(Model* modelin, Input* inputin)
     nerror += inputin->get_item(&swlspres, "force", "swlspres", "", "0");
     nerror += inputin->get_item(&swls    , "force", "swls"    , "", "0");
     nerror += inputin->get_item(&swwls   , "force", "swwls"   , "", "0");
+    nerror += inputin->get_item(&swurban , "force", "swurban" , "", "0");
 
     if (swlspres != "0")
     {
@@ -212,8 +215,15 @@ void Force::exec(double dt)
         for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
             advec_wls_2nd(it->second->data, fields->sp[it->first]->datamean, wls, grid->dzhi);
     }
+
+    if (swurban == "1")
+    {
+        // Get surface mask and store in tmp1->databot 
+        model->boundary->get_surface_mask(fields->atmp["tmp1"]);
+    }
 }
 #endif
+
 
 void Force::update_time_dependent()
 {

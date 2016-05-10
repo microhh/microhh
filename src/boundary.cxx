@@ -724,6 +724,19 @@ void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
         }
 }
 
+void Boundary::get_surface_mask(Field3d* field)
+{
+    const int jj  = grid->icells;
+
+    for (int j=0; j<grid->jcells; ++j)
+        #pragma ivdep
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ij = i + j*jj;
+            field->databot[ij] = 1;
+        }
+}
+
 void Boundary::prepare_device()
 {
 }

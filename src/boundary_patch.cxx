@@ -86,7 +86,7 @@ void Boundary_patch::set_values()
     init_solver();
 }
 
-void Boundary_patch::get_patch(Field3d* field)
+void Boundary_patch::get_surface_mask(Field3d* field)
 {
     calc_patch(field->databot, grid->x, grid->y, patch_dim, patch_xh, patch_xr, patch_xi, patch_facr, patch_facl);
 }
