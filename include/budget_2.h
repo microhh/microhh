@@ -60,7 +60,6 @@ class Budget_2 : public Budget
 
         void calc_pressure_terms(double*, double*, double*, double*, double*, 
                                  double*, double*, double*, double*,
-                                 double*, double*, double*, double*,
                                  const double*, const double*, const double*, const double*,
                                  const double*, const double*, const double*, const double*,
                                  const double, const double);

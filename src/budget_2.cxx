@@ -164,13 +164,6 @@ void Budget_2::create()
     stats.add_prof("w2_rdstr", "Pressure redistribution term in W2 budget", "m2 s-3", "zh");
     stats.add_prof("uw_rdstr", "Pressure redistribution term in UW budget", "m2 s-3", "zh");
     stats.add_prof("vw_rdstr", "Pressure redistribution term in VW budget", "m2 s-3", "zh");
-
-    // For variance and TKE, also calculate total pressure term, which requires less interpolations 
-    // than the method split into transport / redistribution
-    stats.add_prof("u2_pres_tot",  "Total pressure term in U2 budget", "m2 s-3", "z" );
-    stats.add_prof("v2_pres_tot",  "Total pressure term in V2 budget", "m2 s-3", "z" );
-    stats.add_prof("w2_pres_tot",  "Total pressure term in W2 budget", "m2 s-3", "zh");
-    stats.add_prof("tke_pres_tot", "Total pressure term in W2 budget", "m2 s-3", "z" );
 }
 
 void Budget_2::exec_stats(Mask* m)
@@ -257,8 +250,6 @@ void Budget_2::exec_stats(Mask* m)
                         m->profs["uw_pres"].data,     m->profs["vw_pres"].data,
                         m->profs["u2_rdstr"].data,    m->profs["v2_rdstr"].data, m->profs["w2_rdstr"].data,
                         m->profs["uw_rdstr"].data,    m->profs["vw_rdstr"].data,
-                        m->profs["u2_pres_tot"].data, m->profs["v2_pres_tot"].data,
-                        m->profs["w2_pres_tot"].data, m->profs["tke_pres_tot"].data,
                         fields.u->data, fields.v->data, fields.w->data, fields.sd["p"]->data, umodel, vmodel,
                         grid.dzi, grid.dzhi, grid.dxi, grid.dyi);
 }
@@ -586,8 +577,6 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
                                    double* const restrict uw_pres,  double* const restrict vw_pres,
                                    double* const restrict u2_rdstr, double* const restrict v2_rdstr, double* const restrict w2_rdstr,
                                    double* const restrict uw_rdstr, double* const restrict vw_rdstr,
-                                   double* const restrict u2_pres_tot, double* const restrict v2_pres_tot, 
-                                   double* const restrict w2_pres_tot, double* const restrict tke_pres_tot, 
                                    const double* const restrict u, const double* const restrict v,
                                    const double* const restrict w, const double* const restrict p,
                                    const double* const restrict umean, const double* const restrict vmean,
@@ -603,9 +592,6 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
         tke_pres[k]     = 0;
         u2_rdstr[k]     = 0;
         v2_rdstr[k]     = 0;
-        u2_pres_tot[k]  = 0;
-        v2_pres_tot[k]  = 0;
-        tke_pres_tot[k] = 0;
     }
 
     for (int k=grid.kstart; k<grid.kend+1; ++k)
@@ -616,7 +602,6 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
         w2_rdstr[k]    = 0;
         uw_rdstr[k]    = 0;
         vw_rdstr[k]    = 0;
-        w2_pres_tot[k] = 0;
     }
 
     // Pressure transport term (-2*dpu_i/dxi)
@@ -641,10 +626,7 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
                                ( interp2(p[ijk-jj   ], p[ijk   ]) * (v[ijk   ]-vmean[k  ]) -
                                  interp2(p[ijk-jj-kk], p[ijk-kk]) * (v[ijk-kk]-vmean[k-1]) ) * dzhi[k];
 
-                u2_pres_tot[k]  -= 2 * (u[ijk]-umean[k]) * (p[ijk] - p[ijk-ii]) * dxi;
-                v2_pres_tot[k]  -= 2 * (v[ijk]-vmean[k]) * (p[ijk] - p[ijk-jj]) * dyi;
             }
-        tke_pres_tot[k] += 0.5 * (u2_pres_tot[k] + v2_pres_tot[k]);
     }
 
     // Lower boundary (z=0)
@@ -673,8 +655,6 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
 
                 w2_pres[k] -= 2 * ( interp2(w[ijk], w[ijk+kk]) * p[ijk   ] -
                                     interp2(w[ijk], w[ijk-kk]) * p[ijk-kk] ) * dzhi[k];
-
-                w2_pres_tot[k] -= 2 * w[ijk] * (p[ijk] - p[ijk-kk]) * dzhi[k];
             }
 
     // Pressure redistribution term (2p*dui/dxi)
@@ -710,30 +690,8 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
 
             // with w[kstart] == 0, dw/dz at surface equals (w[kstart+1] - w[kstart]) / dzi
             w2_rdstr[k] += 2 * interp2(p[ijk], p[ijk-kk]) * (w[ijk+kk] - w[ijk]) * dzi[k];
-
-            tke_pres_tot[k] -= interp2(w[ijk], w[ijk+kk]) * (interp2(p[ijk], p[ijk+kk]) - interp2(p[ijk], p[ijk-kk])) * dzi[k];
         }
 
-    k = grid.kend-1;
-    for (int j=grid.jstart; j<grid.jend; ++j)
-        #pragma ivdep
-        for (int i=grid.istart; i<grid.iend; ++i)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            // BvS, for now (incorrectly) assume zero pressure gradient at top
-            tke_pres_tot[k] -= interp2(w[ijk], w[ijk+kk]) * (p[ijk] - interp2(p[ijk], p[ijk-kk])) * dzi[k];
-        }
-
-    k = grid.kend-2;
-    for (int j=grid.jstart; j<grid.jend; ++j)
-        #pragma ivdep
-        for (int i=grid.istart; i<grid.iend; ++i)
-        {
-            const int ijk = i + j*jj + k*kk;
-
-            tke_pres_tot[k] -= interp2(w[ijk], w[ijk+kk]) * (interp2(p[ijk], p[ijk+kk]) - interp2(p[ijk], p[ijk-kk])) * dzi[k];
-        }
 
     for (int k=grid.kstart+1; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -746,17 +704,6 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
                                  ( interp2(w[ijk], w[ijk+kk]) - interp2(w[ijk], w[ijk-kk]) ) * dzhi[k];
             }
 
-    for (int k=grid.kstart+1; k<grid.kend-2; ++k)
-        for (int j=grid.jstart; j<grid.jend; ++j)
-            #pragma ivdep
-            for (int i=grid.istart; i<grid.iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-
-                tke_pres_tot[k] -= interp4(w[ijk-kk], w[ijk], w[ijk+kk], w[ijk+kk+kk]) * 
-                                    (interp4(p[ijk-kk], p[ijk], p[ijk+kk], p[ijk+kk+kk]) - 
-                                     interp4(p[ijk-kk-kk], p[ijk-kk], p[ijk], p[ijk+kk])) * dzi[k];
-            }
 
     // Calculate sum over all processes, and calc mean profiles
     master.sum(w2_pres,      grid.kcells);
@@ -768,19 +715,12 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
     master.sum(w2_rdstr,     grid.kcells);
     master.sum(uw_rdstr,     grid.kcells);
     master.sum(vw_rdstr,     grid.kcells);
-    master.sum(u2_pres_tot,  grid.kcells);
-    master.sum(v2_pres_tot,  grid.kcells);
-    master.sum(w2_pres_tot,  grid.kcells);
-    master.sum(tke_pres_tot, grid.kcells);
 
     for (int k=grid.kstart; k<grid.kend; ++k)
     {
         tke_pres[k]     /= ijtot;
         u2_rdstr[k]     /= ijtot;
         v2_rdstr[k]     /= ijtot;
-        u2_pres_tot [k] /= ijtot;
-        v2_pres_tot [k] /= ijtot;
-        tke_pres_tot[k] /= ijtot;
     }
 
     for (int k=grid.kstart; k<grid.kend+1; ++k)
@@ -791,7 +731,6 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
         w2_rdstr[k]    /= ijtot;
         uw_rdstr[k]    /= ijtot;
         vw_rdstr[k]    /= ijtot;
-        w2_pres_tot[k] /= ijtot;
     }
 }
 
