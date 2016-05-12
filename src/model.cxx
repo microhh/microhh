@@ -99,9 +99,10 @@ Model::Model(Master *masterin, Input *inputin)
         for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
         {
             if (*it != "wplus" &&
-                    *it != "wmin"  &&
-                    *it != "ql"    &&
-                    *it != "qlcore")
+                *it != "wmin"  &&
+                *it != "ql"    &&
+                *it != "qlcore"&&
+                *it != "patch")
             {
                 master->print_warning("%s is an undefined mask for conditional statistics\n", it->c_str());
             }
@@ -308,6 +309,11 @@ void Model::exec()
                     else if (*it == "ql" || *it == "qlcore")
                     {
                         thermo->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+                        calc_stats(*it);
+                    }
+                    else if (*it == "patch")
+                    {
+                        boundary->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
                         calc_stats(*it);
                     }
                 }

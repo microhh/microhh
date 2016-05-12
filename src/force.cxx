@@ -219,7 +219,7 @@ void Force::exec(double dt)
     if (swurban == "1")
     {
         // Get surface mask and store in tmp1->databot 
-        model->boundary->get_surface_mask(fields->atmp["tmp1"]);
+        //model->boundary->get_mask(fields->atmp["tmp1"]);
     }
 }
 #endif

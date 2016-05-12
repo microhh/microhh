@@ -59,7 +59,7 @@ class Boundary
         virtual void exec_stats(Mask*); ///< Execute statistics of surface
         virtual void exec_cross();       ///< Execute cross sections of surface
 
-        virtual void get_surface_mask(Field3d*); ///< Calculate a surface mask
+        virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate a surface mask
 
         // GPU functions and variables
         virtual void prepare_device();

@@ -28,6 +28,7 @@
 class Model;
 class Input;
 class Fields;
+struct Mask;
 
 class Boundary_patch : public Boundary_surface
 {
@@ -36,7 +37,7 @@ class Boundary_patch : public Boundary_surface
 
         void init(Input*);
         void set_values();
-        void get_surface_mask(Field3d*);
+        void get_mask(Field3d*, Field3d*, Mask*);
 
     private:
         void calc_patch(double*, const double*, const double*, int, double, double, double, double, double);  ///< Calculate the patches

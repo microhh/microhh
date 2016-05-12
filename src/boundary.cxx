@@ -724,17 +724,22 @@ void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
         }
 }
 
-void Boundary::get_surface_mask(Field3d* field)
+void Boundary::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
 {
     const int jj  = grid->icells;
 
-    for (int j=0; j<grid->jcells; ++j)
-        #pragma ivdep
-        for (int i=0; i<grid->icells; ++i)
-        {
-            const int ij = i + j*jj;
-            field->databot[ij] = 1;
-        }
+    // Set surface mask
+    for (int i=0; i<grid->ijcells; ++i)
+        fieldh->databot[i] = 1;
+
+    // Set atmospheric mask
+    for (int i=0; i<grid->ncells; ++i)
+    {
+        field ->data[i] = 1;
+        fieldh->data[i] = 1;
+    }
+
+
 }
 
 void Boundary::prepare_device()
