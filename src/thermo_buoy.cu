@@ -114,7 +114,7 @@ namespace
         {
             const int ijk = i + j*jj + k*kk;
             bt[ijk] -= n2 * ( sinalpha * ( interp2(u[ijk], u[ijk+ii1]) + utrans )
-                            + cosalpha * ( interp2(w[ijk], w[ijk+kk1]) );
+                            + cosalpha * ( interp2(w[ijk], w[ijk+kk1]) ) );
         }
     }
     
