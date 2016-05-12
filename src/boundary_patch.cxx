@@ -92,11 +92,15 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
     const int jj = grid->icells;
     const int kk = grid->ijcells;
 
+    // Switch between patch - no patch
+    int sw;
+    m->name == "patch_high" ? sw = 1 : sw = 0;
+
     // Calculate surface pattern
     calc_patch(fieldh->databot, grid->x, grid->y, patch_dim, patch_xh, patch_xr, patch_xi, patch_facr, patch_facl);
 
     // Set the values ranging between 0....1 to 0 or 1
-    model->stats->nmaskbot = 0;
+    model->stats->nmaskh[grid->kstart] = 0;
     for (int j=grid->jstart; j<grid->jend; ++j)
         #pragma ivdep
         for (int i=grid->istart; i<grid->iend; ++i)
@@ -105,19 +109,27 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
 
             if(fieldh->databot[ij] >= 0.5)
             {
-                fieldh->databot[ij] = 1;
-                model->stats->nmaskbot += 1;
+                fieldh->databot[ij] = sw;
             }
             else
-                fieldh->databot[ij] = 0;
+                fieldh->databot[ij] = 1-sw;
+
+            if (fieldh->databot[ij] == 1)
+                model->stats->nmaskh[grid->kstart] += 1;
         }
+
+    // Sum the area, and propagate info
+    master->sum(&model->stats->nmaskh[grid->kstart], 1);
+
+
+    for (int k=grid->kstart+1; k<grid->kend; ++k)
+        model->stats->nmaskh[k] = model->stats->nmaskh[grid->kstart];
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        model->stats->nmask[k]  = model->stats->nmaskh[grid->kstart];
+    model->stats->nmaskbot = model->stats->nmaskh[grid->kstart]; 
 
     // Set the atmospheric values
     for (int k=grid->kstart; k<grid->kend; ++k)
-    {
-        model->stats->nmask [k] = 0;
-        model->stats->nmaskh[k] = 0;
-
         for (int j=grid->jstart; j<grid->jend; ++j)
             #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
@@ -125,28 +137,13 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
                 const int ij  = i + j*jj;
                 const int ijk = i + j*jj + k*kk;
 
-                if (fieldh->databot[ij] == 0)
-                {
-                    fieldh->data[ijk] = 0;
-                    field ->data[ijk] = 0;
-                }
-                else
-                {
-                    fieldh->data[ijk] = 1;
-                    field ->data[ijk] = 1;
-
-                    model->stats->nmask [k] += 1;
-                    model->stats->nmaskh[k] += 1;
-                }
+                field ->data[ijk] = fieldh->databot[ij];
+                fieldh->data[ijk] = fieldh->databot[ij];
             }
-    }
 
     grid->boundary_cyclic   (field->data    );
     grid->boundary_cyclic   (fieldh->data   );
     grid->boundary_cyclic_2d(fieldh->databot);
-
-    master->sum(model->stats->nmask , grid->kcells);
-    master->sum(model->stats->nmaskh, grid->kcells);
 }
 
 void Boundary_patch::calc_patch(double* const restrict patch, const double* const restrict x, const double* const restrict y,
