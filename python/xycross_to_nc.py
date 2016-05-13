@@ -1,16 +1,20 @@
 import numpy   as np
 import struct  as st
 import netCDF4 as nc4
+from microhh_tools import *
+
+# Read namelist
+n = Read_namelist()
 
 # Settings -------
-variables  = ['u','v','w','th','p']
-indexes    = [0,4]
-nx         = 32
-ny         = 32
-nz         = 32
+variables  = n.cross.crosslist
+indexes    = None # None for automatic detection, or manually specify a list
+nx         = n.grid.itot
+ny         = n.grid.jtot
+nz         = n.grid.ktot
 starttime  = 0
-endtime    = 3600
-sampletime = 300
+endtime    = 10800
+sampletime = n.cross.sampletime
 iotimeprec = 0
 nxsave     = nx
 nysave     = ny
@@ -56,6 +60,11 @@ fin.close()
 
 # Loop over the different variables
 for crossname in variables:
+    if (indexes is None):
+        indexes_2 = get_cross_indices(crossname, 'xy')
+    else:
+        indexes_2 = indexes
+
     crossfile = nc4.Dataset("{0}.xy.nc".format(crossname), "w")
 
     if(crossname == 'u'): loc = [1,0,0]
@@ -70,7 +79,7 @@ for crossname in variables:
     # create dimensions in netCDF file
     dim_x  = crossfile.createDimension(locx,   nxsave)
     dim_y  = crossfile.createDimension(locy,   nysave)
-    dim_z  = crossfile.createDimension(locz,   np.size(indexes))
+    dim_z  = crossfile.createDimension(locz,   np.size(indexes_2))
     dim_t  = crossfile.createDimension('time', None)
     
     # create dimension variables
@@ -90,8 +99,8 @@ for crossname in variables:
     for t in range(niter):
         if (stop):
             break
-        for k in range(np.size(indexes)):
-            index = indexes[k]
+        for k in range(np.size(indexes_2)):
+            index = indexes_2[k]
             otime = int((starttime + t*sampletime) / 10**iotimeprec)
     
             try:
