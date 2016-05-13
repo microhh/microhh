@@ -100,6 +100,7 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
     calc_patch(fieldh->databot, grid->x, grid->y, patch_dim, patch_xh, patch_xr, patch_xi, patch_facr, patch_facl);
 
     // Set the values ranging between 0....1 to 0 or 1
+    const double threshold = 0.5 * (patch_facr + patch_facl);
     model->stats->nmaskh[grid->kstart] = 0;
     for (int j=grid->jstart; j<grid->jend; ++j)
         #pragma ivdep
@@ -107,10 +108,8 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
         {
             const int ij = i + j*jj;
 
-            if(fieldh->databot[ij] >= 0.5)
-            {
+            if (fieldh->databot[ij] >= threshold)
                 fieldh->databot[ij] = sw;
-            }
             else
                 fieldh->databot[ij] = 1-sw;
 
@@ -120,7 +119,6 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
 
     // Sum the area, and propagate info
     master->sum(&model->stats->nmaskh[grid->kstart], 1);
-
 
     for (int k=grid->kstart+1; k<grid->kend; ++k)
         model->stats->nmaskh[k] = model->stats->nmaskh[grid->kstart];
