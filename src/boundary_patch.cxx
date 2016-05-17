@@ -144,6 +144,28 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
     grid->boundary_cyclic_2d(fieldh->databot);
 }
 
+void Boundary_patch::get_surface_mask(Field3d* field)
+{
+    const int jj = grid->icells;
+
+    calc_patch(field->databot, grid->x, grid->y, patch_dim, patch_xh, patch_xr, patch_xi, patch_facr, patch_facl);
+
+    // Set the values ranging between 0....1 to 0 or 1
+    const double threshold = 0.5 * (patch_facr + patch_facl);
+
+    for (int j=grid->jstart; j<grid->jend; ++j)
+        #pragma ivdep
+        for (int i=grid->istart; i<grid->iend; ++i)
+        {
+            const int ij = i + j*jj;
+
+            if (field->databot[ij] >= threshold)
+                field->databot[ij] = 1;
+            else
+                field->databot[ij] = 0;
+        }
+}
+
 void Boundary_patch::calc_patch(double* const restrict patch, const double* const restrict x, const double* const restrict y,
                                 const int patch_dim, const double patch_xh, const double patch_xr, const double patch_xi,
                                 const double patch_facr, const double patch_facl) 

@@ -738,8 +738,15 @@ void Boundary::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
         field ->data[i] = 1;
         fieldh->data[i] = 1;
     }
+}
 
+void Boundary::get_surface_mask(Field3d* field)
+{
+    const int jj  = grid->icells;
 
+    // Set surface mask
+    for (int i=0; i<grid->ijcells; ++i)
+        field->databot[i] = 1;
 }
 
 void Boundary::prepare_device()
