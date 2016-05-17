@@ -103,11 +103,16 @@ class Force
         void advec_wls_2nd(double* const, const double* const,
                            const double* const, const double* const); ///< Calculates the large-scale vertical transport.
 
+        void calc_building_drag(double* const, double* const, double* const,
+                                const double* const, const double* const, const double* const,
+                                const double* const, const double* const, const double* const,
+                                const double, const double, const double, 
+                                const double, const double); ///< Calculate urban building drag
+
         // GPU functions and variables
         double* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
         double* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
         double* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         std::map<std::string, double*> timedepdata_g;
-
 };
 #endif

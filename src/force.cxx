@@ -33,6 +33,8 @@
 #include "timeloop.h"
 #include "boundary.h"
 
+using namespace Finite_difference::O2;
+
 Force::Force(Model* modelin, Input* inputin)
 {
     model  = modelin;
@@ -218,12 +220,22 @@ void Force::exec(double dt)
 
     if (swurban == "1")
     {
+        // BvS: for now hard coded here for testing......
+        const double hb = 20.;   // Canopy / building height
+        const double Cd = 0.15;  // Drag coefficient walls
+        const double fr = 0.2;   // Roof fraction
+
         // Get surface mask and store in tmp1->databot 
-        //model->boundary->get_mask(fields->atmp["tmp1"]);
+        model->boundary->get_surface_mask(fields->atmp["tmp1"]);
+
+        // Calculate bulk building drag
+        calc_building_drag(fields->ut->data, fields->vt->data, fields->wt->data,
+                           fields->u->data,  fields->v->data,  fields->w->data,
+                           grid->z, grid->zh, fields->atmp["tmp1"]->databot,
+                           grid->utrans, grid->vtrans, fr, Cd, hb);
     }
 }
 #endif
-
 
 void Force::update_time_dependent()
 {
@@ -437,5 +449,68 @@ void Force::advec_wls_2nd(double* const restrict st, const double* const restric
                     st[ijk] -=  wls[k] * (s[k+1]-s[k])*dzhi[k+1];
                 }
         }
+    }
+}
+
+void Force::calc_building_drag(double* const restrict ut, double* const restrict vt, double* const restrict wt,
+                               const double* const restrict u, const double* const restrict v, const double* const restrict w,
+                               const double* const restrict z, const double* const restrict zh,
+                               const double* const restrict surface_mask,
+                               const double utrans, const double vtrans,
+                               const double fr, const double Cd, const double hc)
+{
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    // Calculate level of building/canopy top
+    int kmax_b, kmaxh_b;
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        if(z[k] > hc)
+        {
+            kmax_b = k;
+            break;
+        }
+    grid->zh[kmax_b] < hc ? kmaxh_b = kmax_b+1 : kmaxh_b = kmax_b;
+
+    for (int k=grid->kstart; k<kmax_b; ++k)
+    {
+        const double a = 1. - (z[k] / hc);
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k*kk;
+
+                const double uabs_at_u = pow(pow(u[ijk] + utrans, 2) +
+                                         pow(interp24(v[ijk], v[ijk+jj], v[ijk+jj-ii], v[ijk-ii]) + vtrans, 2) +
+                                         pow(interp24(w[ijk], w[ijk+kk], w[ijk+kk-ii], w[ijk-ii]),          2), 0.5);
+
+                const double uabs_at_v = pow(pow(v[ijk] + vtrans, 2) +
+                                         pow(interp24(u[ijk], u[ijk+ii], u[ijk+ii-jj], u[ijk-jj]) + utrans, 2) +
+                                         pow(interp24(w[ijk], w[ijk+kk], w[ijk+kk-jj], w[ijk-jj]),          2), 0.5);
+
+                ut[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_u * (u[ijk] + utrans);
+                vt[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_v * (v[ijk] + vtrans);
+            }
+    }
+
+    for (int k=grid->kstart+1; k<kmaxh_b; ++k)
+    {
+        const double a = 1. - (zh[k] / hc);
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k*kk;
+
+                const double uabs_at_w = pow(pow(w[ijk], 2) +
+                                         pow(interp24(u[ijk], u[ijk+ii], u[ijk+ii-kk], u[ijk-kk]) + utrans, 2) +
+                                         pow(interp24(v[ijk], v[ijk+jj], v[ijk+jj-kk], v[ijk-jj]) + vtrans, 2), 0.5);
+
+                wt[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_w * w[ijk];
+            }
     }
 }
