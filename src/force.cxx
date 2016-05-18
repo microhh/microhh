@@ -92,13 +92,13 @@ Force::Force(Model* modelin, Input* inputin)
 
     if (swurban == "1")
     {
-        nerror += inputin->get_item(&canopy_top,       "force", "canopy_top" ,      "", 0.);
-        nerror += inputin->get_item(&canopy_frac,      "force", "canopy_frac",      "", 0.);
-        nerror += inputin->get_item(&roof_frac,        "force", "roof_frac",        "", 0.);
-        nerror += inputin->get_item(&drag_coeff,       "force", "drag_coeff",       "", 0.);
-        nerror += inputin->get_item(&extinction_coeff, "force", "extinction_coeff", "", 0.);
-        nerror += inputin->get_item(&roof_heat_flux,   "force", "roof_heat_flux",   "", 0.);
-        nerror += inputin->get_item(&canopy_heat_flux, "force", "canopy_heat_flux", "", 0.);
+        nerror += inputin->get_item(&canopy_top,          "force", "canopy_top" ,         "", 0.);
+        nerror += inputin->get_item(&canopy_frac,         "force", "canopy_frac",         "", 0.);
+        nerror += inputin->get_item(&roof_frac,           "force", "roof_frac",           "", 0.);
+        nerror += inputin->get_item(&drag_coeff,          "force", "drag_coeff",          "", 0.);
+        nerror += inputin->get_item(&extinction_coeff,    "force", "extinction_coeff",    "", 0.);
+        nerror += inputin->get_item(&rooftop_heat_flux,   "force", "rooftop_heat_flux",   "", 0.);
+        nerror += inputin->get_item(&canopytop_heat_flux, "force", "canopytop_heat_flux", "", 0.);
     }
 
     if (nerror)
@@ -145,13 +145,13 @@ void Force::init()
 
     if (swurban == "1")
     {
-        Rc   = new double[grid->kcells];
-        s_th = new double[grid->kcells];
+        canopy_heat_flux = new double[grid->kcells];
+        canopy_heat_tend = new double[grid->kcells];
 
         for (int k=0; k<grid->kcells; ++k)
         {
-            Rc[k]   = 0;
-            s_th[k] = 0;
+            canopy_heat_flux[k] = 0;
+            canopy_heat_tend[k] = 0;
         }
     }
 }
@@ -226,11 +226,11 @@ void Force::create(Input *inputin)
 
         // Calculate canopy heat flux at half level
         for (int k=grid->kstart; k<kmaxh_canopy; ++k)
-            Rc[k] = -canopy_heat_flux * exp(-extinction_coeff * pow(grid->zh[k]-canopy_top, 2) / (2 * canopy_top)); 
+            canopy_heat_flux[k] = -canopytop_heat_flux * exp(-extinction_coeff * pow(grid->zh[k]-canopy_top, 2) / (2 * canopy_top)); 
 
         // Calculate canopy heating tendency at full levels
         for (int k=grid->kstart; k<kmaxh_canopy-1; ++k)
-            s_th[k] = -canopy_frac * (Rc[k+1] - Rc[k]) * grid->dzi[k];
+            canopy_heat_tend[k] = -canopy_frac * (canopy_heat_flux[k+1] - canopy_heat_flux[k]) * grid->dzi[k];
     }
 
     if (nerror)
@@ -276,7 +276,7 @@ void Force::exec(double dt)
                              roof_frac, drag_coeff, canopy_top);
 
         // Calculate heating or cooling by roofs and walls
-        calc_bulk_urban_heating(fields->at["th"]->data, fields->atmp["tmp1"]->databot, s_th);
+        calc_bulk_urban_heating(fields->at["th"]->data, fields->atmp["tmp1"]->databot, canopy_heat_tend);
     }
 }
 #endif

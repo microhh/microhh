@@ -80,18 +80,19 @@ class Force
         double* wls; ///< Pointer to array large-scale vertical velocity.
 
         // Data and settings bulk urban parameterization
-        double* Rc;              ///< Pointer to array canopy heat flux
-        double* s_th;            ///< Pointer to array heating/cooling tendency bulk urban parameterization
-        double canopy_top;       ///< Top of urban canopy
-        double canopy_frac;      ///< Canopy fraction
-        double roof_frac;        ///< Roof fraction
-        double drag_coeff;       ///< Drag coefficient walls/roof
-        double extinction_coeff; ///< Extinction coefficient
-        double roof_heat_flux;   ///< Heat flux at roof top
-        double canopy_heat_flux; ///< Heat flux at top of urban canopy
+        double canopy_top;          ///< Top of urban canopy
+        double canopy_frac;         ///< Canopy fraction
+        double roof_frac;           ///< Roof fraction
+        double drag_coeff;          ///< Drag coefficient walls/roof
+        double extinction_coeff;    ///< Extinction coefficient
+        double rooftop_heat_flux;   ///< Heat flux at roof top
+        double canopytop_heat_flux; ///< Heat flux at top of urban canopy
 
-        int kmax_canopy;  ///<
-        int kmaxh_canopy; ///<
+        int kmax_canopy;  ///< Maximum level of canopy (full level)
+        int kmaxh_canopy; ///< Maximum level of canopy (half level)
+
+        double* canopy_heat_flux;   ///< Pointer to array canopy heat flux
+        double* canopy_heat_tend; ///< Pointer to array heating/cooling tendency bulk urban parameterization
 
         // time dependent variables
         std::string swtimedep;
