@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <iostream>
+#include <math.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -89,6 +90,17 @@ Force::Force(Model* modelin, Input* inputin)
     nerror += inputin->get_item(&swtimedep  , "force", "swtimedep"  , "", "0");
     nerror += inputin->get_list(&timedeplist, "force", "timedeplist", "");
 
+    if (swurban == "1")
+    {
+        nerror += inputin->get_item(&canopy_top,       "force", "canopy_top" ,      "", 0.);
+        nerror += inputin->get_item(&canopy_frac,      "force", "canopy_frac",      "", 0.);
+        nerror += inputin->get_item(&roof_frac,        "force", "roof_frac",        "", 0.);
+        nerror += inputin->get_item(&drag_coeff,       "force", "drag_coeff",       "", 0.);
+        nerror += inputin->get_item(&extinction_coeff, "force", "extinction_coeff", "", 0.);
+        nerror += inputin->get_item(&roof_heat_flux,   "force", "roof_heat_flux",   "", 0.);
+        nerror += inputin->get_item(&canopy_heat_flux, "force", "canopy_heat_flux", "", 0.);
+    }
+
     if (nerror)
         throw 1;
 }
@@ -130,6 +142,18 @@ void Force::init()
 
     if (swwls == "1")
         wls = new double[grid->kcells];
+
+    if (swurban == "1")
+    {
+        Rc   = new double[grid->kcells];
+        s_th = new double[grid->kcells];
+
+        for (int k=0; k<grid->kcells; ++k)
+        {
+            Rc[k]   = 0;
+            s_th[k] = 0;
+        }
+    }
 }
 
 void Force::create(Input *inputin)
@@ -188,6 +212,27 @@ void Force::create(Input *inputin)
             master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
 
+    // Pre-calculate the (in time) fixed urban heating/cooling
+    if (swurban == "1")
+    {
+        // 1. Calculate max half/full levels to consider for buildings
+        for (int k=grid->kstart; k<grid->kend; ++k)
+            if(grid->z[k] > canopy_top)
+            {
+                kmax_canopy = k;
+                break;
+            }
+        grid->zh[kmax_canopy] < canopy_top ? kmaxh_canopy = kmax_canopy+1 : kmaxh_canopy = kmax_canopy;
+
+        // Calculate canopy heat flux at half level
+        for (int k=grid->kstart; k<kmaxh_canopy; ++k)
+            Rc[k] = -canopy_heat_flux * exp(-extinction_coeff * pow(grid->zh[k]-canopy_top, 2) / (2 * canopy_top)); 
+
+        // Calculate canopy heating tendency at full levels
+        for (int k=grid->kstart; k<kmaxh_canopy-1; ++k)
+            s_th[k] = -canopy_frac * (Rc[k+1] - Rc[k]) * grid->dzi[k];
+    }
+
     if (nerror)
         throw 1;
 }
@@ -220,19 +265,18 @@ void Force::exec(double dt)
 
     if (swurban == "1")
     {
-        // BvS: for now hard coded here for testing......
-        const double hb = 20.;   // Canopy / building height
-        const double Cd = 0.15;  // Drag coefficient walls
-        const double fr = 0.2;   // Roof fraction
-
         // Get surface mask and store in tmp1->databot 
         model->boundary->get_surface_mask(fields->atmp["tmp1"]);
 
         // Calculate bulk building drag
-        calc_building_drag(fields->ut->data, fields->vt->data, fields->wt->data,
-                           fields->u->data,  fields->v->data,  fields->w->data,
-                           grid->z, grid->zh, fields->atmp["tmp1"]->databot,
-                           grid->utrans, grid->vtrans, fr, Cd, hb);
+        calc_bulk_urban_drag(fields->ut->data, fields->vt->data, fields->wt->data,
+                             fields->u->data,  fields->v->data,  fields->w->data,
+                             grid->z, grid->zh, fields->atmp["tmp1"]->databot,
+                             grid->utrans, grid->vtrans, 
+                             roof_frac, drag_coeff, canopy_top);
+
+        // Calculate heating or cooling by roofs and walls
+        calc_bulk_urban_heating(fields->at["th"]->data, fields->atmp["tmp1"]->databot, s_th);
     }
 }
 #endif
@@ -452,28 +496,18 @@ void Force::advec_wls_2nd(double* const restrict st, const double* const restric
     }
 }
 
-void Force::calc_building_drag(double* const restrict ut, double* const restrict vt, double* const restrict wt,
-                               const double* const restrict u, const double* const restrict v, const double* const restrict w,
-                               const double* const restrict z, const double* const restrict zh,
-                               const double* const restrict surface_mask,
-                               const double utrans, const double vtrans,
-                               const double fr, const double Cd, const double hc)
+void Force::calc_bulk_urban_drag(double* const restrict ut, double* const restrict vt, double* const restrict wt,
+                                 const double* const restrict u, const double* const restrict v, const double* const restrict w,
+                                 const double* const restrict z, const double* const restrict zh,
+                                 const double* const restrict surface_mask,
+                                 const double utrans, const double vtrans,
+                                 const double fr, const double Cd, const double hc)
 {
     const int ii = 1;
     const int jj = grid->icells;
     const int kk = grid->ijcells;
 
-    // Calculate level of building/canopy top
-    int kmax_b, kmaxh_b;
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        if(z[k] > hc)
-        {
-            kmax_b = k;
-            break;
-        }
-    grid->zh[kmax_b] < hc ? kmaxh_b = kmax_b+1 : kmaxh_b = kmax_b;
-
-    for (int k=grid->kstart; k<kmax_b; ++k)
+    for (int k=grid->kstart; k<kmax_canopy; ++k)
     {
         const double a = 1. - (z[k] / hc);
         for (int j=grid->jstart; j<grid->jend; ++j)
@@ -496,7 +530,7 @@ void Force::calc_building_drag(double* const restrict ut, double* const restrict
             }
     }
 
-    for (int k=grid->kstart+1; k<kmaxh_b; ++k)
+    for (int k=grid->kstart+1; k<kmaxh_canopy; ++k)
     {
         const double a = 1. - (zh[k] / hc);
         for (int j=grid->jstart; j<grid->jend; ++j)
@@ -513,4 +547,23 @@ void Force::calc_building_drag(double* const restrict ut, double* const restrict
                 wt[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_w * w[ijk];
             }
     }
+}
+
+void Force::calc_bulk_urban_heating(double* const restrict tht, const double* const restrict surface_mask, 
+                                    const double* const restrict s_th)
+{
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + k*kk;
+
+                tht[ijk] += surface_mask[ij] * s_th[k];
+            }
 }

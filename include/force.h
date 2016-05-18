@@ -79,6 +79,20 @@ class Force
         double* vg;  ///< Pointer to array v-component geostrophic wind.
         double* wls; ///< Pointer to array large-scale vertical velocity.
 
+        // Data and settings bulk urban parameterization
+        double* Rc;              ///< Pointer to array canopy heat flux
+        double* s_th;            ///< Pointer to array heating/cooling tendency bulk urban parameterization
+        double canopy_top;       ///< Top of urban canopy
+        double canopy_frac;      ///< Canopy fraction
+        double roof_frac;        ///< Roof fraction
+        double drag_coeff;       ///< Drag coefficient walls/roof
+        double extinction_coeff; ///< Extinction coefficient
+        double roof_heat_flux;   ///< Heat flux at roof top
+        double canopy_heat_flux; ///< Heat flux at top of urban canopy
+
+        int kmax_canopy;  ///<
+        int kmaxh_canopy; ///<
+
         // time dependent variables
         std::string swtimedep;
         std::vector<double> timedeptime;
@@ -103,11 +117,13 @@ class Force
         void advec_wls_2nd(double* const, const double* const,
                            const double* const, const double* const); ///< Calculates the large-scale vertical transport.
 
-        void calc_building_drag(double* const, double* const, double* const,
-                                const double* const, const double* const, const double* const,
-                                const double* const, const double* const, const double* const,
-                                const double, const double, const double, 
-                                const double, const double); ///< Calculate urban building drag
+        void calc_bulk_urban_drag(double* const, double* const, double* const,
+                                  const double* const, const double* const, const double* const,
+                                  const double* const, const double* const, const double* const,
+                                  const double, const double, const double,
+                                  const double, const double); ///< Calculate bulk urban building drag
+
+        void calc_bulk_urban_heating(double* const, const double* const, const double* const); ///< Calculate bulk urban heating or cooling
 
         // GPU functions and variables
         double* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
