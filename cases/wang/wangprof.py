@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pylab as pl
+from microhh_tools import *
 
 pl.close('all')
 
@@ -34,12 +35,19 @@ class Grid:
               self.z [k] = self.z[k-1] + 0.5*(self.dz[k-1]+self.dz[k])
               stretch[k] = self.dz[k]/self.dz[k-1]
 
-        zsize = self.z[kmax-1] + 0.5*self.dz[kmax-1]
-        print('kmax=%i, zsize=%f'%(kmax,zsize))
+        self.zsize = self.z[kmax-1] + 0.5*self.dz[kmax-1]
+        print('kmax=%i, zsize=%f'%(kmax,self.zsize))
+
+    def plot(self):
+        pl.figure()
+        pl.plot(self.z, self.dz)
 
 #g = Grid(256, 25,  5, 10.0, 10.0)     # isotropic grid
-g = Grid(64, 25,  5, 40.0, 40.0)     # isotropic grid
-#g = Grid(128,70, 10, 2.0,  40.0)   # close to Wang
+#g = Grid(64, 25,  5, 40.0, 40.0)     # isotropic grid
+g = Grid(128, 70, 10, 2.0,  40.0)   # close to Wang
+#g = Grid(128, 50, 20, 4.0,  20.0)   # close to Wang
+
+g.plot()
 
 th = np.zeros_like(g.z)
 
@@ -48,10 +56,23 @@ for k in range(g.z.size):
         th[k] = 300 + 0.5e-3 * g.z[k]
     else:
         th[k] = 300.25 + 9.8e-3 * (g.z[k] - 500)
-        
+
+# BvS test
+u  = np.zeros(g.z.size)
+#u  = np.ones(g.z.size) * 5
+v  = u
+ug = u
+vg = v
+
 # write the data to a file
 proffile = open('wang.prof','w')
-proffile.write('{0:^20s} {1:^20s}\n'.format('z','th'))
+proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s} {4:^20s} {5:^20s}\n'.format('z','th','u','v','ug','vg'))
 for k in range(g.z.size):
-    proffile.write('{0:1.14E} {1:1.14E}\n'.format(g.z[k], th[k]))
+    proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E} {4:1.14E} {5:1.14E}\n'.format(g.z[k], th[k], u[k], v[k], ug[k], vg[k]))
 proffile.close()
+
+# Write 'zsize' to namelist
+replace_namelist_var('zsize', g.zsize)
+
+
+
