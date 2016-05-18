@@ -1,4 +1,6 @@
 import glob
+import fileinput
+import re
 
 class _Empty: pass
 
@@ -26,6 +28,7 @@ class Read_namelist:
         if (namelist_file is None):
             namelist_file = glob.glob('*.ini')[0]
 
+        curr_group = None
         with open(namelist_file) as f:
             for line in f:
                 if (len(line.strip()) > 0):
@@ -33,7 +36,7 @@ class Read_namelist:
                         curr_group_name = line.strip()[1:-1]
                         curr_group = _Empty()
                         setattr(self, curr_group_name, curr_group)
-                    else:
+                    elif (curr_group is not None):
                         setattr(curr_group, line.split('=')[0], _convert_value(line.split('=')[-1]))
 
 # Get the cross-section indices
@@ -42,3 +45,13 @@ def get_cross_indices(variable, mode):
     time = files[0].split('.')[-1]
     files = glob.glob('{}.{}.*.{}'.format(variable, mode, time))
     return [int(f.split('.')[-2]) for f in files]
+
+def replace_namelist_var(variable, new_value, namelist_file=None): 
+    if (namelist_file is None):
+        namelist_file = glob.glob('*.ini')[0]
+
+    with open(namelist_file, "r") as source:
+        lines = source.readlines()
+    with open(namelist_file, "w") as source:
+        for line in lines:
+            source.write(re.sub(r'({}).*'.format(variable), r'\1={}'.format(new_value), line))
