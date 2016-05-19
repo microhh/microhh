@@ -20,6 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
 #include "master.h"
 #include "force.h"
 #include "grid.h"
@@ -27,6 +28,10 @@
 #include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
+#include "boundary.h"
+#include "model.h"
+
+using namespace Finite_difference::O2;
 
 namespace
 {
@@ -163,6 +168,25 @@ namespace
     }
 
     __global__ 
+    void large_scale_source_g(double* const __restrict__ st, double* const __restrict__ sls, double* const __restrict__ mask_2d,
+                              const int istart, const int jstart, const int kstart,
+                              const int iend,   const int jend,   const int kend,
+                              const int jj,     const int kk)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k = blockIdx.z + kstart;
+
+        if (i < iend && j < jend && k < kend)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + k*kk;
+            st[ijk] += mask_2d[ij] * sls[k];
+        }
+    }
+
+
+    __global__ 
     void update_time_dependent_prof_g(double* const __restrict__ sls, double* const __restrict__ slstd,
                                       const double fac0, const double fac1, 
                                       const int index0,  const int index1, 
@@ -174,7 +198,56 @@ namespace
         if (k < kmax)
             sls[k+kgc] = fac0*slstd[index0*kk+k] + fac1*slstd[index1*kk+k];
     }
-}
+
+    __global__ 
+    void calc_bulk_urban_drag_g(double* const __restrict__ ut, double* const __restrict__ vt, double* const __restrict__ wt,
+                                double* const __restrict__ u,  double* const __restrict__ v,  double* const __restrict__ w,
+                                double* const __restrict__ z,  double* const __restrict__ zh, double* const __restrict__ surface_mask,
+                                const double utrans, const double vtrans, const double fr, const double Cd, const double hc,
+                                const int istart, const int jstart, const int kstart,
+                                const int iend,   const int jend,   const int kend,
+                                const int kmax_canopy, const int kmaxh_canopy,
+                                const int jj, const int kk)
+    {
+        const int i  = blockIdx.x*blockDim.x + threadIdx.x + istart;
+        const int j  = blockIdx.y*blockDim.y + threadIdx.y + jstart;
+        const int k  = blockIdx.z + kstart;
+        const int ii = 1;
+
+        if (i < iend && j < jend && k < kmax_canopy)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + k*kk;
+
+            const double a = 1. - (z[k] / hc);
+
+            const double uabs_at_u = pow(pow(u[ijk] + utrans, 2) +
+                                     pow(interp24(v[ijk], v[ijk+jj], v[ijk+jj-ii], v[ijk-ii]) + vtrans, 2) +
+                                     pow(interp24(w[ijk], w[ijk+kk], w[ijk+kk-ii], w[ijk-ii]),          2), 0.5);
+
+            const double uabs_at_v = pow(pow(v[ijk] + vtrans, 2) +
+                                     pow(interp24(u[ijk], u[ijk+ii], u[ijk+ii-jj], u[ijk-jj]) + utrans, 2) +
+                                     pow(interp24(w[ijk], w[ijk+kk], w[ijk+kk-jj], w[ijk-jj]),          2), 0.5);
+
+            ut[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_u * (u[ijk] + utrans);
+            vt[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_v * (v[ijk] + vtrans);
+        }
+
+        if (i < iend && j < jend && k < kmaxh_canopy)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + k*kk;
+
+            const double a = 1. - (zh[k] / hc);
+
+            const double uabs_at_w = pow(pow(w[ijk], 2) +
+                                     pow(interp24(u[ijk], u[ijk+ii], u[ijk+ii-kk], u[ijk-kk]) + utrans, 2) +
+                                     pow(interp24(v[ijk], v[ijk+jj], v[ijk+jj-kk], v[ijk-jj]) + vtrans, 2), 0.5);
+
+            wt[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_w * w[ijk];
+        }
+    }
+} // end namespace
 
 void Force::prepare_device()
 {
@@ -213,6 +286,25 @@ void Force::prepare_device()
             cuda_safe_call(cudaMemcpy(timedepdata_g[it->first], timedepdata[it->first], nmemsize2, cudaMemcpyHostToDevice));
         }
     }
+
+    if (swurban == "1")
+    {
+        // 1. Allocate and upload the urban canopy heating tendency
+        cuda_safe_call(cudaMalloc(&canopy_heat_tend_g, nmemsize));
+        cuda_safe_call(cudaMemcpy(canopy_heat_tend_g, canopy_heat_tend, nmemsize, cudaMemcpyHostToDevice));
+
+        // 2. For the GPU version, calculate the urban mask once, and upload it to a dedicated field on the GPU
+        const int dmemsize2d = (grid->ijcellsp+grid->memoffset)*sizeof(double);
+        const int dimemsizep = grid->icellsp * sizeof(double);
+        const int dimemsize  = grid->icells  * sizeof(double);
+
+        // 2.1 calculate mask
+        model->boundary->get_surface_mask(fields->atmp["tmp1"]);
+
+        // 2.2 allocate field and upload to device
+        cuda_safe_call(cudaMalloc(&urban_mask_g, dmemsize2d));
+        cuda_safe_call(cudaMemcpy2D(&urban_mask_g[grid->memoffset],  dimemsizep, fields->atmp["tmp1"]->databot,  dimemsize, dimemsize, grid->jcells, cudaMemcpyHostToDevice));
+    }
 }
 
 void Force::clear_device()
@@ -236,6 +328,12 @@ void Force::clear_device()
     {
         for (std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
             cuda_safe_call(cudaFree(timedepdata_g[it->first]));
+    }
+
+    if (swurban == "1")
+    {
+        cuda_safe_call(cudaFree(canopy_heat_tend_g));
+        cuda_safe_call(cudaFree(urban_mask_g));
     }
 }
 
@@ -337,6 +435,29 @@ void Force::exec(double dt)
                 grid->icellsp, grid->ijcellsp);
             cuda_check_error();
         }
+    }
+
+    if (swurban == "1")
+    {
+        // Add the urban heating
+        large_scale_source_g<<<gridGPU, blockGPU>>>(
+            &fields->at["th"]->data_g[offs], canopy_heat_tend_g, &urban_mask_g[offs],
+            grid->istart,  grid->jstart, grid->kstart,
+            grid->iend,    grid->jend,   grid->kend,
+            grid->icellsp, grid->ijcellsp);
+        cuda_check_error();
+
+        // Calculate the urban drag
+        calc_bulk_urban_drag_g<<<gridGPU, blockGPU>>>(
+            &fields->ut->data_g[offs], &fields->vt->data_g[offs], &fields->wt->data_g[offs],
+            &fields->u->data_g[offs],  &fields->v->data_g[offs],  &fields->w->data_g[offs],
+            grid->z_g, grid->zh_g, &urban_mask_g[offs],
+            grid->utrans, grid->vtrans, roof_frac, drag_coeff, canopy_top,
+            grid->istart,  grid->jstart, grid->kstart,
+            grid->iend,    grid->jend,   grid->kend,
+            kmax_canopy, kmaxh_canopy,
+            grid->icellsp, grid->ijcellsp);
+        cuda_check_error();
     }
 }
 #endif

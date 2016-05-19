@@ -91,7 +91,6 @@ class Force
         int kmax_canopy;  ///< Maximum level of canopy (full level)
         int kmaxh_canopy; ///< Maximum level of canopy (half level)
 
-        double* canopy_heat_flux;   ///< Pointer to array canopy heat flux
         double* canopy_heat_tend; ///< Pointer to array heating/cooling tendency bulk urban parameterization
 
         // time dependent variables
@@ -131,5 +130,8 @@ class Force
         double* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
         double* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         std::map<std::string, double*> timedepdata_g;
+
+        double* canopy_heat_tend_g; ///< Pointer to GPU array heating/cooling tendency bulk urban parameterization
+        double* urban_mask_g;       ///< Pointer to (2D) GPU array with city mask
 };
 #endif

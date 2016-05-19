@@ -218,7 +218,7 @@ void Model::save()
 
 void Model::exec()
 {
-#ifdef USECUDA
+    #ifdef USECUDA
     // Load all the necessary data to the GPU.
     master  ->print_message("Preparing the GPU\n");
     grid    ->prepare_device();
@@ -230,7 +230,7 @@ void Model::exec()
     force   ->prepare_device();
     // Prepare pressure last, for memory check
     pres    ->prepare_device(); 
-#endif
+    #endif
 
     master->print_message("Starting time integration\n");
 
@@ -399,11 +399,11 @@ void Model::exec()
 
     } // End time loop.
 
-#ifdef USECUDA
+    #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
     fields  ->backward_device();
     boundary->backward_device();
-#endif
+    #endif
 }
 
 void Model::set_time_step()

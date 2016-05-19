@@ -43,13 +43,16 @@ Force::Force(Model* modelin, Input* inputin)
     fields = model->fields;
     master = model->master;
 
-    ug = 0;
-    vg = 0;
+    ug  = 0;
+    vg  = 0;
     wls = 0;
 
-    ug_g = 0;
-    vg_g = 0;
+    ug_g  = 0;
+    vg_g  = 0;
     wls_g = 0;
+
+    canopy_heat_tend   = 0;
+    canopy_heat_tend_g = 0;
 
     int nerror = 0;
     nerror += inputin->get_item(&swlspres, "force", "swlspres", "", "0");
@@ -92,6 +95,7 @@ Force::Force(Model* modelin, Input* inputin)
 
     if (swurban == "1")
     {
+        std::cout << "Using urban parameterization" << std::endl;
         nerror += inputin->get_item(&canopy_top,          "force", "canopy_top" ,         "", 0.);
         nerror += inputin->get_item(&canopy_frac,         "force", "canopy_frac",         "", 0.);
         nerror += inputin->get_item(&roof_frac,           "force", "roof_frac",           "", 0.);
@@ -110,6 +114,8 @@ Force::~Force()
     delete[] ug;
     delete[] vg;
     delete[] wls;
+
+    delete[] canopy_heat_tend;
 
     if (swls == "1")
     {
@@ -145,14 +151,10 @@ void Force::init()
 
     if (swurban == "1")
     {
-        canopy_heat_flux = new double[grid->kcells];
         canopy_heat_tend = new double[grid->kcells];
 
         for (int k=0; k<grid->kcells; ++k)
-        {
-            canopy_heat_flux[k] = 0;
             canopy_heat_tend[k] = 0;
-        }
     }
 }
 
@@ -225,6 +227,7 @@ void Force::create(Input *inputin)
         grid->zh[kmax_canopy] < canopy_top ? kmaxh_canopy = kmax_canopy+1 : kmaxh_canopy = kmax_canopy;
 
         // Calculate canopy heat flux at half level
+        double* canopy_heat_flux = fields->atmp["tmp1"]->datamean;
         for (int k=grid->kstart; k<kmaxh_canopy; ++k)
             canopy_heat_flux[k] = -canopytop_heat_flux * exp(-extinction_coeff * pow(grid->zh[k]-canopy_top, 2) / (2 * canopy_top)); 
 
