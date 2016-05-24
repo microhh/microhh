@@ -885,47 +885,44 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
             }
     grid.boundary_cyclic(evisch);
 
-
-
-
-    if(true)
-    {    
-        for (int k=grid.kstart+1; k<grid.kend-1; ++k)
-            for (int j=grid.jstart; j<grid.jend; ++j)
-                #pragma ivdep
-                for (int i=grid.istart; i<grid.iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    // -2 * visc * (dui/dxj * dui/dxj + dui/dxj * duj/dxi)
-                    u2_diss[k] += ( ( -2 * interp2(evisc[ijk-ii1], evisc[ijk    ]) )
-                                  * ( ( ( ( ( 2
-                                  * std::pow( ( ( ( interp2(u[ijk    ], u[ijk+ii1]) - umean[k] ) - ( interp2(u[ijk-ii1], u[ijk    ]) - umean[k] ) )
-                                            * dxi )              , 2 ) )
-                                  + std::pow( ( ( ( interp2(u[ijk    ], u[ijk+jj1]) - umean[k] ) - ( interp2(u[ijk-jj1], u[ijk    ]) - umean[k] ) )
-                                            * dyi )              , 2 ) )
-                                  + std::pow( ( ( interp2(( u[ijk    ] - umean[k  ] ), ( u[ijk+kk1] - umean[k+1] )) - interp2(( u[ijk-kk1] - umean[k-1] ), ( u[ijk    ] - umean[k  ] )) )
-                                            * dzi[k] )              , 2 ) )
-                                  + ( ( ( ( ( interp2(u[ijk    ], u[ijk+jj1]) - umean[k] ) - ( interp2(u[ijk-jj1], u[ijk    ]) - umean[k] ) )
-                                  * dyi )
-                                  * ( ( interp2(v[ijk        ], v[ijk    +jj1]) - vmean[k] ) - ( interp2(v[ijk-ii1    ], v[ijk-ii1+jj1]) - vmean[k] ) ) )
-                                  * dxi ) )
-                                  + ( ( ( ( interp2(( u[ijk    ] - umean[k  ] ), ( u[ijk+kk1] - umean[k+1] )) - interp2(( u[ijk-kk1] - umean[k-1] ), ( u[ijk    ] - umean[k  ] )) )
-                                  * dzi[k] )
-                                  * ( interp2(w[ijk        ], w[ijk    +kk1]) - interp2(w[ijk-ii1    ], w[ijk-ii1+kk1]) ) )
-                                  * dxi ) ) );
-                   
-                    // -2duiTij/dxj 
-                    u2_visc[k] += ( ( 2
-                                  * ( ( ( interp2(interp2(evisc[ijk-ii1    ], evisc[ijk-ii1+kk1]), interp2(evisc[ijk        ], evisc[ijk    +kk1]))
-                                  * interp2(( u[ijk    ] - umean[k  ] ), ( u[ijk+kk1] - umean[k+1] )) )
-                                  * ( ( ( ( u[ijk+kk1] - umean[k+1] ) - ( u[ijk    ] - umean[k  ] ) ) * dzhi[k+1] ) + ( ( w[ijk    +kk1] - w[ijk-ii1+kk1] ) * dxi ) ) ) - ( ( interp2(interp2(evisc[ijk-ii1-kk1], evisc[ijk-ii1    ]), interp2(evisc[ijk    -kk1], evisc[ijk        ]))
-                                  * interp2(( u[ijk-kk1] - umean[k-1] ), ( u[ijk    ] - umean[k  ] )) )
-                                  * ( ( ( ( u[ijk    ] - umean[k  ] ) - ( u[ijk-kk1] - umean[k-1] ) ) * dzhi[k  ] ) + ( ( w[ijk        ] - w[ijk-ii1    ] ) * dxi ) ) ) ) )
-                                  * dzi[k] );
-
-                } // end for i
-    } // end if
+//    if(false)
+//    {    
+//        for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+//            for (int j=grid.jstart; j<grid.jend; ++j)
+//                #pragma ivdep
+//                for (int i=grid.istart; i<grid.iend; ++i)
+//                {
+//                    const int ijk = i + j*jj + k*kk;
+//
+//                    // -2 * visc * (dui/dxj * dui/dxj + dui/dxj * duj/dxi)
+//                    u2_diss[k] += ( ( -2 * interp2(evisc[ijk-ii1], evisc[ijk    ]) )
+//                                  * ( ( ( ( ( 2
+//                                  * std::pow( ( ( ( interp2(u[ijk    ], u[ijk+ii1]) - umean[k] ) - ( interp2(u[ijk-ii1], u[ijk    ]) - umean[k] ) )
+//                                            * dxi )              , 2 ) )
+//                                  + std::pow( ( ( ( interp2(u[ijk    ], u[ijk+jj1]) - umean[k] ) - ( interp2(u[ijk-jj1], u[ijk    ]) - umean[k] ) )
+//                                            * dyi )              , 2 ) )
+//                                  + std::pow( ( ( interp2(( u[ijk    ] - umean[k  ] ), ( u[ijk+kk1] - umean[k+1] )) - interp2(( u[ijk-kk1] - umean[k-1] ), ( u[ijk    ] - umean[k  ] )) )
+//                                            * dzi[k] )              , 2 ) )
+//                                  + ( ( ( ( ( interp2(u[ijk    ], u[ijk+jj1]) - umean[k] ) - ( interp2(u[ijk-jj1], u[ijk    ]) - umean[k] ) )
+//                                  * dyi )
+//                                  * ( ( interp2(v[ijk        ], v[ijk    +jj1]) - vmean[k] ) - ( interp2(v[ijk-ii1    ], v[ijk-ii1+jj1]) - vmean[k] ) ) )
+//                                  * dxi ) )
+//                                  + ( ( ( ( interp2(( u[ijk    ] - umean[k  ] ), ( u[ijk+kk1] - umean[k+1] )) - interp2(( u[ijk-kk1] - umean[k-1] ), ( u[ijk    ] - umean[k  ] )) )
+//                                  * dzi[k] )
+//                                  * ( interp2(w[ijk        ], w[ijk    +kk1]) - interp2(w[ijk-ii1    ], w[ijk-ii1+kk1]) ) )
+//                                  * dxi ) ) );
+//                   
+//                    // -2duiTij/dxj 
+//                    u2_visc[k] += ( ( 2
+//                                  * ( ( ( interp2(interp2(evisc[ijk-ii1    ], evisc[ijk-ii1+kk1]), interp2(evisc[ijk        ], evisc[ijk    +kk1]))
+//                                  * interp2(( u[ijk    ] - umean[k  ] ), ( u[ijk+kk1] - umean[k+1] )) )
+//                                  * ( ( ( ( u[ijk+kk1] - umean[k+1] ) - ( u[ijk    ] - umean[k  ] ) ) * dzhi[k+1] ) + ( ( w[ijk    +kk1] - w[ijk-ii1+kk1] ) * dxi ) ) ) - ( ( interp2(interp2(evisc[ijk-ii1-kk1], evisc[ijk-ii1    ]), interp2(evisc[ijk    -kk1], evisc[ijk        ]))
+//                                  * interp2(( u[ijk-kk1] - umean[k-1] ), ( u[ijk    ] - umean[k  ] )) )
+//                                  * ( ( ( ( u[ijk    ] - umean[k  ] ) - ( u[ijk-kk1] - umean[k-1] ) ) * dzhi[k  ] ) + ( ( w[ijk        ] - w[ijk-ii1    ] ) * dxi ) ) ) ) )
+//                                  * dzi[k] );
+//
+//                } // end for i
+//    } // end if
 
     if(true)
     {
