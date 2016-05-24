@@ -62,6 +62,8 @@ class Boundary
         virtual void get_mask(Field3d*, Field3d*, Mask*); ///< Calculate statistics mask
         virtual void get_surface_mask(Field3d*);          ///< Calculate surface mask
 
+        std::string get_switch();
+
         // GPU functions and variables
         virtual void prepare_device();
         virtual void forward_device();
@@ -72,6 +74,8 @@ class Boundary
         Model*  model;  ///< Pointer to model class.
         Grid*   grid;   ///< Pointer to grid class.
         Fields* fields; ///< Pointer to fields class.
+
+        std::string swboundary;
 
         Boundary_type mbcbot;
         Boundary_type mbctop;

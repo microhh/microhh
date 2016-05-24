@@ -47,6 +47,8 @@ Advec::Advec(Model* modelin, Input* inputin)
     int nerror = 0;
     nerror += inputin->get_item(&cflmax, "advec", "cflmax", "", 1.);
 
+    swadvec = "0";
+
     if (nerror)
         throw 1;
 }
@@ -76,6 +78,11 @@ Advec* Advec::factory(Master* masterin, Input* inputin, Model* modelin, const st
         masterin->print_error("\"%s\" is an illegal value for swadvec\n", swadvec.c_str());
         throw 1;
     }
+}
+
+std::string Advec::get_switch()
+{
+    return swadvec;
 }
 
 const double Advec::cflmin = 1.E-5;

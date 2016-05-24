@@ -453,7 +453,7 @@ void Diff_smag_2::exec_viscosity()
         // store the buoyancyflux in datafluxbot of tmp1
         model->thermo->get_buoyancy_fluxbot(fields->atmp["tmp1"]);
         // store the Brunt-vaisala frequency in data of tmp1 
-        model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
+        model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2", false);
 
         // Calculate eddy viscosity
         double tPri = 1./tPr;

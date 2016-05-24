@@ -61,6 +61,10 @@ class Force
 
         std::map<std::string, double*> lsprofs_g; ///< Map of profiles with forcings stored by its name.
 
+        // Accessor functions
+        std::string get_switch_lspres()      { return swlspres; }
+        double      get_coriolis_parameter() { return fc;       }
+
     private:
         Master* master; ///< Pointer to master class.
         Model*  model;  ///< Pointer to model class.
