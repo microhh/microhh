@@ -77,6 +77,11 @@ class Boundary
         Boundary_type mbcbot;
         Boundary_type mbctop;
 
+        double ubot;
+        double utop;
+        double vbot;
+        double vtop;
+
         /**
          * Structure containing the boundary options and values per 3d field.
          */

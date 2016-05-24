@@ -217,15 +217,14 @@ void Boundary_surface::exec_stats(Mask *m)
 
 void Boundary_surface::set_values()
 {
-    const double no_velocity = 0.;
     const double no_offset = 0.;
 
     // grid transformation is properly taken into account by setting the databot and top values
-    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, no_velocity, fields->visc, grid->utrans);
-    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, no_velocity, fields->visc, grid->vtrans);
+    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, ubot, fields->visc, grid->utrans);
+    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, vbot, fields->visc, grid->vtrans);
 
-    set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, no_velocity, fields->visc, grid->utrans);
-    set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, no_velocity, fields->visc, grid->vtrans);
+    set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, utop, fields->visc, grid->utrans);
+    set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, vtop, fields->visc, grid->vtrans);
 
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
@@ -238,8 +237,8 @@ void Boundary_surface::set_values()
     {
         const int jj = grid->icells;
 
-        set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Dirichlet_type, no_velocity, fields->visc, grid->utrans);
-        set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Dirichlet_type, no_velocity, fields->visc, grid->vtrans);
+        set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Dirichlet_type, ubot, fields->visc, grid->utrans);
+        set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Dirichlet_type, vbot, fields->visc, grid->vtrans);
 
         for (int j=0; j<grid->jcells; ++j)
 #pragma ivdep
