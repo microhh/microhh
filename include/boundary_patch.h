@@ -41,7 +41,7 @@ class Boundary_patch : public Boundary_surface
         void get_surface_mask(Field3d*);
 
     private:
-        void calc_patch(double*, const double*, const double*, int, double, double, double, double, double);  ///< Calculate the patches
+        void calc_patch(double*, const double*, const double*, int, double, double, double, double, double, double, double, double, double, double);  ///< Calculate the patches
         void set_bc_patch(double*, double*, double*, double*, int, double, double, double);       ///< Set the values for the boundary fields.
 
         // Patch properties.
@@ -49,6 +49,11 @@ class Boundary_patch : public Boundary_surface
         double patch_xh;
         double patch_xr;
         double patch_xi;
+        double patch_xoffs;
+        double patch_yh;
+        double patch_yr;
+        double patch_yi;
+        double patch_yoffs;
         double patch_facr;
         double patch_facl;
 };
