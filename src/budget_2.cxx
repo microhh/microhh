@@ -125,6 +125,7 @@ void Budget_2::create()
             stats.add_prof("uw_diff" , "Total diffusive term in UW budget" , "m2 s-3", "zh");
             stats.add_prof("vw_diff" , "Total diffusive term in VW budget" , "m2 s-3", "zh");
         }
+
     }
 
     if(force.get_switch_lspres() == "geo")
@@ -153,8 +154,10 @@ void Budget_2::create()
 
         if (diff.get_switch() != "0")
         {
-            stats.add_prof("b2_diss" , "Dissipation term in B2 budget", "m2 s-5", "z");
-            stats.add_prof("bw_diss" , "Dissipation term in BW budget", "m2 s-4", "zh");
+            stats.add_prof("b2_visc" , "Viscous transport term in B2 budget", "m2 s-5", "z");
+            stats.add_prof("b2_diss" , "Dissipation term in B2 budget"      , "m2 s-5", "z");
+            stats.add_prof("bw_visc" , "Viscous transport term in BW budget", "m2 s-4", "zh");
+            stats.add_prof("bw_diss" , "Dissipation term in BW budget"      , "m2 s-4", "zh");
         }
 
         stats.add_prof("bw_rdstr", "Redistribution term in BW budget"     , "m2 s-4", "zh");
@@ -241,11 +244,17 @@ void Budget_2::exec_stats(Mask* m)
                                    fields.atmp["tmp1"]->data, fields.atmp["tmp1"]->data,
                                    fields.atmp["tmp1"]->datamean, fields.atmp["tmp1"]->datamean);
 
-        if(advec.get_switch() != "0")
+        if (advec.get_switch() != "0")
             calc_advection_terms_scalar(m->profs["b2_shear"].data, m->profs["b2_turb"].data,
                                         m->profs["bw_shear"].data, m->profs["bw_turb"].data,
                                         fields.atmp["tmp1"]->data, fields.w->data, fields.atmp["tmp1"]->datamean,
                                         grid.dzi, grid.dzhi);
+
+        if (diff.get_switch() == "2" || diff.get_switch() == "4")
+            calc_diffusion_terms_scalar_DNS(m->profs["b2_visc"].data, m->profs["b2_diss"].data,
+                                            m->profs["bw_visc"].data, m->profs["bw_diss"].data, 
+                                            fields.atmp["tmp1"]->data, fields.atmp["tmp1"]->datamean, 
+                                            grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.sp["b"]->visc);
 
         calc_pressure_terms_scalar(m->profs["bw_pres"].data,  m->profs["bw_rdstr"].data,
                                    fields.atmp["tmp1"]->data, fields.sd["p"]->data, 
@@ -1559,6 +1568,70 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
         uw_visc[k]  /= ijtot;
         w2_diss[k]  /= ijtot;
         uw_diss[k]  /= ijtot;
+    }
+}
+
+/**
+ * Calculate the budget terms arrising from diffusion, for a fixed viscosity
+ * molecular diffusion (nu*d/dxj(dui^2/dxj)) and dissipation (-2*nu*(dui/dxj)^2)
+ * @param TO-DO
+ */
+void Budget_2::calc_diffusion_terms_scalar_DNS(double* const restrict b2_visc, double* const restrict b2_diss,
+                                               double* const restrict bw_visc, double* const restrict bw_diss,
+                                               const double* const restrict b, const double* const restrict bmean,
+                                               const double* const restrict dzi, const double* const restrict dzhi,
+                                               const double dxi, const double dyi, const double visc)
+{
+    const int ii = 1;
+    const int jj = grid.icells;
+    const int kk = grid.ijcells;
+    const int ijtot = grid.itot * grid.jtot;
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        b2_visc[k] = 0;
+        b2_diss[k] = 0;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        bw_visc[k] = 0;
+        bw_diss[k] = 0;
+    }
+   
+    for (int k=grid.kstart; k<grid.kend; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                b2_visc[k] += visc * ( (std::pow(b[ijk+kk]-bmean[k+1], 2) - std::pow(b[ijk   ]-bmean[k  ], 2))*dzhi[k+1] -
+                                       (std::pow(b[ijk   ]-bmean[k  ], 2) - std::pow(b[ijk-kk]-bmean[k-1], 2))*dzhi[k  ] ) * dzi[k];
+
+                b2_diss[k] -= 2 * visc * (
+                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+kk]-bmean[k+1]) - interp2(b[ijk]-bmean[k], b[ijk-kk]-bmean[k-1])) * dzi[k], 2) + 
+                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+ii]-bmean[k  ]) - interp2(b[ijk]-bmean[k], b[ijk-ii]-bmean[k  ])) * dxi,    2) + 
+                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+jj]-bmean[k  ]) - interp2(b[ijk]-bmean[k], b[ijk-jj]-bmean[k  ])) * dyi,    2) 
+                                         );
+            }
+
+    // Calculate sum over all processes, and calc mean profiles
+    master.sum(b2_visc, grid.kcells);
+    master.sum(b2_diss, grid.kcells);
+    master.sum(bw_visc, grid.kcells);
+    master.sum(bw_diss, grid.kcells);
+
+    for (int k=grid.kstart; k<grid.kend; ++k)
+    {
+        b2_visc[k] /= ijtot;
+        b2_diss[k] /= ijtot;
+    }
+
+    for (int k=grid.kstart; k<grid.kend+1; ++k)
+    {
+        bw_visc[k] /= ijtot;
+        bw_diss[k] /= ijtot;
     }
 }
 
