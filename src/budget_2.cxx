@@ -176,9 +176,10 @@ void Budget_2::create()
 
 void Budget_2::exec_stats(Mask* m)
 {
-    // calculate the mean of the fields
+    // Calculate the mean of the fields
     grid.calc_mean(umodel, fields.u->data, grid.kcells);
     grid.calc_mean(vmodel, fields.v->data, grid.kcells);
+
 
     // Calculate kinetic and turbulent kinetic energy
     calc_kinetic_energy(m->profs["ke"].data, m->profs["tke"].data,
@@ -219,6 +220,9 @@ void Budget_2::exec_stats(Mask* m)
 
     if(thermo.get_switch() != "0")
     {
+        // Get the buoyancy diffusivity from the thermo class
+        const double kappa_b = thermo.get_buoyancy_diffusivity();
+
         // Store the buoyancy in the tmp1 field
         thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b", true);
 

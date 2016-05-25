@@ -51,6 +51,7 @@ class Thermo_moist : public Thermo
         void get_buoyancy_surf(Field3d*);
         void get_buoyancy_fluxbot(Field3d*);
         void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
+        double get_buoyancy_diffusivity();
 
 #ifdef USECUDA
         // GPU functions and variables
