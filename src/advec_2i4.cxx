@@ -41,6 +41,8 @@ Advec_2i4::Advec_2i4(Model* modelin, Input* inputin) : Advec(modelin, inputin)
     const int kgc = 2;
 
     grid->set_minimum_ghost_cells(igc, jgc, kgc);
+
+    swadvec = "2i4";
 }
 
 Advec_2i4::~Advec_2i4()

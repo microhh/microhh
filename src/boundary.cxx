@@ -39,6 +39,8 @@
 
 Boundary::Boundary(Model* modelin, Input* inputin)
 {
+    swboundary = "default";
+
     model  = modelin;
     grid   = model->grid;
     fields = model->fields;
@@ -56,6 +58,11 @@ Boundary::~Boundary()
     // clean up time dependent data
     for (std::map<std::string, double *>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
         delete[] it->second;
+}
+
+std::string Boundary::get_switch()
+{
+    return swboundary;
 }
 
 void Boundary::process_bcs(Input* inputin)

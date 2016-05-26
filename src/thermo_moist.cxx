@@ -419,7 +419,7 @@ void Thermo_moist::exec_stats(Mask *m)
     // calculate diffusive fluxes
     if (grid->swspatialorder == "2")
     {
-        if (model->diff->get_name() == "smag2")
+        if (model->diff->get_switch() == "smag2")
         {
             Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
             stats->calc_diff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
@@ -565,7 +565,7 @@ bool Thermo_moist::check_field_exists(const std::string name)
 }
 
 #ifndef USECUDA
-void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::string name)
+void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::string name, bool cyclic)
 {
     const int kcells = grid->kcells;
 
@@ -584,6 +584,9 @@ void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::strin
         calc_N2(fld->data, fields->sp[thvar]->data, grid->dzi, thvref);
     else
         throw 1;
+
+    if (cyclic)
+        grid->boundary_cyclic(fld->data);
 }
 #endif
 
@@ -875,6 +878,8 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
                 b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ij], thvref[k]);
             }
     }
+
+    grid->boundary_cyclic(b);
 }
 
 // Calculate the maximum in-cloud virtual temperature perturbation (thv - <thv>) with height

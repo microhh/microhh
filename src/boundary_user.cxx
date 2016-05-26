@@ -31,6 +31,7 @@
 
 Boundary_user::Boundary_user(Model* modelin, Input* inputin) : Boundary(modelin, inputin)
 {
+    swboundary = "user";
 }
 
 void Boundary_user::init(Input* inputin)

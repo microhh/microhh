@@ -20,36 +20,25 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdio>
-#include <cmath>
-#include <algorithm>
-#include "grid.h"
-#include "fields.h"
-#include "defines.h"
-#include "constants.h"
-#include "master.h"
-#include "model.h"
-#include "advec_disabled.h"
+#include "budget_disabled.h"
 
-Advec_disabled::Advec_disabled(Model* modelin, Input* inputin) : Advec(modelin, inputin)
-{
-    swadvec = "0";
-}
-
-Advec_disabled::~Advec_disabled()
+Budget_disabled::Budget_disabled(Input* inputin, Master* masterin, Grid* gridin, Fields* fieldsin, Thermo* thermoin, Diff* diffin, Advec* advecin, Force* forcein, Stats* statsin) :
+    Budget(inputin, masterin, gridin, fieldsin, thermoin, diffin, advecin, forcein, statsin)
 {
 }
 
-unsigned long Advec_disabled::get_time_limit(unsigned long idt, const double dt)
+Budget_disabled::~Budget_disabled()
 {
-    return Constants::ulhuge;
 }
 
-double Advec_disabled::get_cfl(const double dt)
+void Budget_disabled::init()
 {
-    return cflmin;
 }
 
-void Advec_disabled::exec()
+void Budget_disabled::create()
+{
+}
+
+void Budget_disabled::exec_stats(Mask* m)
 {
 }
