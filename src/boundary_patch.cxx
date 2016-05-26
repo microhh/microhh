@@ -51,8 +51,13 @@ void Boundary_patch::init(Input* inputin)
     nerror += inputin->get_item(&patch_yr,    "boundary", "patch_yr"   , "", 1.);
     nerror += inputin->get_item(&patch_yi,    "boundary", "patch_yi"   , "", 0.);
     nerror += inputin->get_item(&patch_yoffs, "boundary", "patch_yoffs", "", 0.);
-    nerror += inputin->get_item(&patch_facr,  "boundary", "patch_facr" , "", 1.);
-    nerror += inputin->get_item(&patch_facl,  "boundary", "patch_facl" , "", 0.);
+
+    // Process the patch factors for all scalars
+    for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    {
+        nerror += inputin->get_item(&patch_facr_map[it->first], "boundary", "patch_facr", it->first, 1.);
+        nerror += inputin->get_item(&patch_facl_map[it->first], "boundary", "patch_facl", it->first, 0.);
+    }
 
     if (nerror)
         throw 1;
@@ -77,11 +82,12 @@ void Boundary_patch::set_values()
     calc_patch(fields->atmp["tmp1"]->databot, grid->x, grid->y, patch_dim, 
                patch_xh, patch_xr, patch_xi, 
                patch_yh, patch_yr, patch_yi, 
-               patch_facr, patch_facl, patch_xoffs, patch_yoffs);
+               patch_xoffs, patch_yoffs);
 
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-        set_bc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot, fields->atmp["tmp1"]->databot,
+        set_bc_patch(it->second->databot, it->second->datagradbot, it->second->datafluxbot, 
+                     fields->atmp["tmp1"]->databot, patch_facl_map[it->first], patch_facr_map[it->first],
                      sbc[it->first]->bcbot, sbc[it->first]->bot, it->second->visc, no_offset);
         set_bc      (it->second->datatop, it->second->datagradtop, it->second->datafluxtop,
                      sbc[it->first]->bctop, sbc[it->first]->top, it->second->visc, no_offset);
@@ -108,10 +114,9 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
     calc_patch(fields->atmp["tmp1"]->databot, grid->x, grid->y, patch_dim, 
                patch_xh, patch_xr, patch_xi, 
                patch_yh, patch_yr, patch_yi, 
-               patch_facr, patch_facl, patch_xoffs, patch_yoffs);
+               patch_xoffs, patch_yoffs);
 
     // Set the values ranging between 0....1 to 0 or 1
-    const double threshold = 0.5 * (patch_facr + patch_facl);
     model->stats->nmaskh[grid->kstart] = 0;
     for (int j=grid->jstart; j<grid->jend; ++j)
         #pragma ivdep
@@ -119,7 +124,7 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
         {
             const int ij = i + j*jj;
 
-            if (fieldh->databot[ij] >= threshold)
+            if (fields->atmp["tmp1"]->databot[ij] >= 0.5)
                 fieldh->databot[ij] = sw;
             else
                 fieldh->databot[ij] = 1-sw;
@@ -162,18 +167,16 @@ void Boundary_patch::get_surface_mask(Field3d* field)
     calc_patch(fields->atmp["tmp1"]->databot, grid->x, grid->y, patch_dim, 
                patch_xh, patch_xr, patch_xi, 
                patch_yh, patch_yr, patch_yi, 
-               patch_facr, patch_facl, patch_xoffs, patch_yoffs);
+               patch_xoffs, patch_yoffs);
 
     // Set the values ranging between 0....1 to 0 or 1
-    const double threshold = 0.5 * (patch_facr + patch_facl);
-
     for (int j=grid->jstart; j<grid->jend; ++j)
         #pragma ivdep
         for (int i=grid->istart; i<grid->iend; ++i)
         {
             const int ij = i + j*jj;
 
-            if (field->databot[ij] >= threshold)
+            if (fields->atmp["tmp1"]->databot[ij] >= 0.5)
                 field->databot[ij] = 1;
             else
                 field->databot[ij] = 0;
@@ -184,7 +187,6 @@ void Boundary_patch::calc_patch(double* const restrict patch, const double* cons
                                 const int patch_dim, 
                                 const double patch_xh, const double patch_xr, const double patch_xi,
                                 const double patch_yh, const double patch_yr, const double patch_yi,
-                                const double patch_facr, const double patch_facl,
                                 const double patch_xoffs, const double patch_yoffs) 
 {
     const int jj = grid->icells;
@@ -209,8 +211,9 @@ void Boundary_patch::calc_patch(double* const restrict patch, const double* cons
         }
 }
 
-void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, double* restrict patch, 
-                                  int sw, double aval, double visc, double offset)
+void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, 
+                                  double* restrict patch, const double patch_facl, const double patch_facr,
+                                  const int sw, const double aval, const double visc, const double offset)
 {
     const int jj = grid->icells;
 
