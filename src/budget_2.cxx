@@ -115,7 +115,7 @@ void Budget_2::create()
         stats.add_prof("uw_visc" , "Viscous transport term in UW budget" , "m2 s-3", "zh");
         stats.add_prof("vw_visc" , "Viscous transport term in VW budget" , "m2 s-3", "zh");
 
-        // For LES, add the total diffusive budget terms, which (unlike diss + visc) close 
+        // For LES, add the total diffusive budget terms, which (unlike diss + visc) close
         if(diff.get_switch() == "smag2")
         {
             stats.add_prof("u2_diff" , "Total diffusive term in U2 budget" , "m2 s-3", "z" );
@@ -208,11 +208,11 @@ void Budget_2::exec_stats(Mask* m)
                                      fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data, fields.u->data, fields.v->data, fields.w->data, umodel, vmodel,
                                      grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.visc);
         else if(diff.get_switch() == "smag2")
-            calc_diffusion_terms_LES(m->profs["u2_diss"].data,  m->profs["v2_diss"].data, m->profs["w2_diss"].data, 
-                                     m->profs["tke_diss"].data, m->profs["uw_diss"].data, m->profs["vw_diss"].data, 
-                                     m->profs["u2_visc"].data,  m->profs["v2_visc"].data, m->profs["w2_visc"].data, 
+            calc_diffusion_terms_LES(m->profs["u2_diss"].data,  m->profs["v2_diss"].data, m->profs["w2_diss"].data,
+                                     m->profs["tke_diss"].data, m->profs["uw_diss"].data, m->profs["vw_diss"].data,
+                                     m->profs["u2_visc"].data,  m->profs["v2_visc"].data, m->profs["w2_visc"].data,
                                      m->profs["tke_visc"].data, m->profs["uw_visc"].data, m->profs["vw_visc"].data,
-                                     m->profs["u2_diff"].data,  m->profs["v2_diff"].data, m->profs["w2_diff"].data, 
+                                     m->profs["u2_diff"].data,  m->profs["v2_diff"].data, m->profs["w2_diff"].data,
                                      m->profs["tke_diff"].data, m->profs["uw_diff"].data, m->profs["vw_diff"].data,
                                      fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data, fields.atmp["tmp3"]->data,
                                      fields.u->data, fields.v->data, fields.w->data,
@@ -224,7 +224,7 @@ void Budget_2::exec_stats(Mask* m)
     if(thermo.get_switch() != "0")
     {
         // Get the buoyancy diffusivity from the thermo class
-        const double kappa_b = thermo.get_buoyancy_diffusivity();
+        const double diff_b = thermo.get_buoyancy_diffusivity();
 
         // Store the buoyancy in the tmp1 field
         thermo.get_thermo_field(fields.atmp["tmp1"], fields.atmp["tmp2"], "b", true);
@@ -252,12 +252,13 @@ void Budget_2::exec_stats(Mask* m)
 
         if (diff.get_switch() == "2" || diff.get_switch() == "4")
             calc_diffusion_terms_scalar_DNS(m->profs["b2_visc"].data, m->profs["b2_diss"].data,
-                                            m->profs["bw_visc"].data, m->profs["bw_diss"].data, 
-                                            fields.atmp["tmp1"]->data, fields.atmp["tmp1"]->datamean, 
-                                            grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.sp["b"]->visc);
+                                            m->profs["bw_visc"].data, m->profs["bw_diss"].data,
+                                            fields.atmp["tmp1"]->data, fields.w->data,
+                                            fields.atmp["tmp1"]->datamean,
+                                            grid.dzi, grid.dzhi, grid.dxi, grid.dyi, fields.visc, diff_b);
 
         calc_pressure_terms_scalar(m->profs["bw_pres"].data,  m->profs["bw_rdstr"].data,
-                                   fields.atmp["tmp1"]->data, fields.sd["p"]->data, 
+                                   fields.atmp["tmp1"]->data, fields.sd["p"]->data,
                                    fields.atmp["tmp1"]->datamean, fields.sd["p"]->datamean,
                                    grid.dzi, grid.dzhi);
     }
@@ -265,9 +266,9 @@ void Budget_2::exec_stats(Mask* m)
     if(force.get_switch_lspres() == "geo")
     {
         const double fc = force.get_coriolis_parameter();
-        calc_coriolis_terms(m->profs["u2_cor"].data, m->profs["v2_cor"].data, 
+        calc_coriolis_terms(m->profs["u2_cor"].data, m->profs["v2_cor"].data,
                             m->profs["uw_cor"].data, m->profs["vw_cor"].data,
-                            fields.u->data, fields.v->data, fields.w->data, 
+                            fields.u->data, fields.v->data, fields.w->data,
                             umodel, vmodel, fc);
     }
 
@@ -766,7 +767,7 @@ void Budget_2::calc_pressure_terms(double* const restrict w2_pres,  double* cons
  */
 void Budget_2::calc_pressure_terms_scalar(double* const restrict sw_pres, double* const restrict sw_rdstr,
                                           const double* const restrict s, const double* const restrict p,
-                                          const double* const restrict smean, const double* const restrict pmean, 
+                                          const double* const restrict smean, const double* const restrict pmean,
                                           const double* const restrict dzi, const double* const restrict dzhi)
 {
     const int ii = 1;
@@ -789,7 +790,7 @@ void Budget_2::calc_pressure_terms_scalar(double* const restrict sw_pres, double
 
                 sw_pres[k] -= ((p[ijk]-pmean[k]) * (s[ijk]-smean[k]) - (p[ijk-kk]-pmean[k-1]) * (s[ijk-kk]-smean[k-1])) * dzhi[k];
 
-                sw_rdstr[k] += interp2(p[ijk]-pmean[k], p[ijk-kk]-pmean[k-1]) * ((s[ijk]-smean[k])-(s[ijk-kk]-smean[k-1])) * dzhi[k]; 
+                sw_rdstr[k] += interp2(p[ijk]-pmean[k], p[ijk-kk]-pmean[k-1]) * ((s[ijk]-smean[k])-(s[ijk-kk]-smean[k-1])) * dzhi[k];
             }
 
     // Calculate sum over all processes, and calc mean profiles
@@ -899,7 +900,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
     grid.boundary_cyclic(evisch);
 
 //    if(false)
-//    {    
+//    {
 //        for (int k=grid.kstart+1; k<grid.kend-1; ++k)
 //            for (int j=grid.jstart; j<grid.jend; ++j)
 //                #pragma ivdep
@@ -924,8 +925,8 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
 //                                  * dzi[k] )
 //                                  * ( interp2(w[ijk        ], w[ijk    +kk1]) - interp2(w[ijk-ii1    ], w[ijk-ii1+kk1]) ) )
 //                                  * dxi ) ) );
-//                   
-//                    // -2duiTij/dxj 
+//
+//                    // -2duiTij/dxj
 //                    u2_visc[k] += ( ( 2
 //                                  * ( ( ( interp2(interp2(evisc[ijk-ii1    ], evisc[ijk-ii1+kk1]), interp2(evisc[ijk        ], evisc[ijk    +kk1]))
 //                                  * interp2(( u[ijk    ] - umean[k  ] ), ( u[ijk+kk1] - umean[k+1] )) )
@@ -949,79 +950,79 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                 for (int i=grid.istart; i<grid.iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
                     const double evisc_ubot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-ii-kk], evisc[ijk-ii]);
                     const double evisc_unorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-ii], evisc[ijk-ii]);
                     const double evisc_usouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-ii], evisc[ijk-ii]);
-    
+
                     const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
                     const double evisc_vbot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-jj-kk], evisc[ijk-jj]);
                     const double evisc_veast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-jj], evisc[ijk-jj]);
                     const double evisc_vwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-jj], evisc[ijk-jj]);
-    
+
                     const double evisc_weast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-kk], evisc[ijk-kk]);
                     const double evisc_wwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-kk], evisc[ijk-kk]);
                     const double evisc_wnorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-kk], evisc[ijk-kk]);
                     const double evisc_wsouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-kk], evisc[ijk-kk]);
-    
+
                     // -----------------------------------------
                     // 2 * u * d/dx( visc * du/dx + visc * du/dx )
                     u2_diff[k] += 2 * (u[ijk]-umean[k]) * ( evisc[ijk   ] * (u[ijk+ii] - u[ijk   ]) * dxi -
                                                             evisc[ijk-ii] * (u[ijk   ] - u[ijk-ii]) * dxi ) * 2 * dxi;
-    
+
                     // 2 * u * d/dy( visc * du/dy + visc * dv/dx)
                     u2_diff[k] += 2 * (u[ijk]-umean[k]) * ( evisc_unorth * (u[ijk+jj] - u[ijk      ]) * dyi -
                                                             evisc_usouth * (u[ijk   ] - u[ijk-jj   ]) * dyi +
                                                             evisc_unorth * (v[ijk+jj] - v[ijk+jj-ii]) * dxi -
                                                             evisc_usouth * (v[ijk   ] - v[ijk-ii   ]) * dxi ) * dyi;
-    
+
                     // 2 * u * d/dz( visc * dw/dx )
                     u2_diff[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * (w[ijk+kk] - w[ijk-ii+kk]) * dxi -
                                                             evisc_ubot * (w[ijk   ] - w[ijk-ii   ]) * dxi ) * dzi[k];
-    
+
                     // -----------------------------------------
                     // 2 * v * d/dy( visc * dv/dy + visc * dv/dy )
                     v2_diff[k] += 2 * (v[ijk]-vmean[k]) * ( evisc[ijk   ] * (v[ijk+jj] - v[ijk   ]) * dyi -
                                                             evisc[ijk-jj] * (v[ijk   ] - v[ijk-jj]) * dyi ) * 2 * dyi;
-    
+
                     // 2 * v * d/dx( visc * dv/dx + visc * du/dy )
                     v2_diff[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_veast * (v[ijk+ii] - v[ijk      ]) * dxi -
                                                             evisc_vwest * (v[ijk   ] - v[ijk-ii   ]) * dxi +
                                                             evisc_veast * (u[ijk+ii] - u[ijk+ii-jj]) * dyi -
                                                             evisc_vwest * (u[ijk   ] - u[ijk-jj   ]) * dyi ) * dxi;
-    
+
                     // 2 * v * d/dz( visc * dw/dy )
                     v2_diff[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * (w[ijk+kk] - w[ijk-jj+kk]) * dyi -
                                                             evisc_vbot * (w[ijk   ] - w[ijk-jj   ]) * dyi ) * dzi[k];
-    
+
                     // -----------------------------------------
                     // 2 * w * d/dx( visc * dw/dx )
                     w2_diff[k] += 2 * w[ijk] * ( evisc_weast * (w[ijk+ii] - w[ijk   ]) * dxi -
                                                  evisc_wwest * (w[ijk   ] - w[ijk-ii]) * dxi ) * dxi;
-    
+
                     // 2 * w * d/dy( visc * dw/dy )
                     w2_diff[k] += 2 * w[ijk] * ( evisc_wnorth * (w[ijk+jj] - w[ijk   ]) * dyi -
                                                  evisc_wsouth * (w[ijk   ] - w[ijk-jj]) * dyi ) * dyi;
-    
+
                     // -----------------------------------------
                     // 2 * w * d/dx( visc * dw/dx )
                     tke_diff[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+ii]) * (wz[ijk+ii] - wz[ijk   ]) * dxi -
                                                interp2(evisc[ijk], evisc[ijk-ii]) * (wz[ijk   ] - wz[ijk-ii]) * dxi ) * dxi;
-    
+
                     // 2 * w * d/dx( visc * du/dz )
                     tke_diff[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+ii]) * (interp2(u[ijk+ii], u[ijk+ii+kk]) - interp2(u[ijk+ii], u[ijk+ii-kk])) * dzi[k] -
                                                interp2(evisc[ijk], evisc[ijk-ii]) * (interp2(u[ijk   ], u[ijk   +kk]) - interp2(u[ijk   ], u[ijk   -kk])) * dzi[k] ) * dxi;
-    
+
                     // 2 * w * d/dy( visc * dw/dy )
                     tke_diff[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (wz[ijk+jj] - wz[ijk   ]) * dyi -
                                                interp2(evisc[ijk], evisc[ijk-jj]) * (wz[ijk   ] - wz[ijk-jj]) * dyi ) * dyi;
-    
+
                     // 2 * w * d/dy( visc * dv/dz )
                     tke_diff[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+jj]) * (interp2(v[ijk+jj], v[ijk+jj+kk]) - interp2(v[ijk+jj], v[ijk+jj-kk])) * dzi[k] -
                                                interp2(evisc[ijk], evisc[ijk-jj]) * (interp2(v[ijk   ], v[ijk   +kk]) - interp2(v[ijk   ], v[ijk   -kk])) * dzi[k] ) * dyi;
                 }
-    
+
         for (int k=grid.kstart+1; k<grid.kend; ++k)
         {
             for (int j=grid.jstart; j<grid.jend; ++j)
@@ -1029,46 +1030,46 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                 for (int i=grid.istart; i<grid.iend; ++i)
                 {
                     const int ijk = i + j*jj + k*kk;
-    
+
                     const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
                     const double evisc_ubot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-ii-kk], evisc[ijk-ii]);
-    
+
                     const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
                     const double evisc_vbot   = interp2_4(evisc[ijk], evisc[ijk-kk], evisc[ijk-jj-kk], evisc[ijk-jj]);
-    
+
                     const double evisc_weast  = interp2_4(evisc[ijk], evisc[ijk+ii], evisc[ijk+ii-kk], evisc[ijk-kk]);
                     const double evisc_wwest  = interp2_4(evisc[ijk], evisc[ijk-ii], evisc[ijk-ii-kk], evisc[ijk-kk]);
                     const double evisc_wnorth = interp2_4(evisc[ijk], evisc[ijk+jj], evisc[ijk+jj-kk], evisc[ijk-kk]);
                     const double evisc_wsouth = interp2_4(evisc[ijk], evisc[ijk-jj], evisc[ijk-jj-kk], evisc[ijk-kk]);
-    
+
                     // -----------------------------------------
                     // 2 * u * d/dz( visc * du/dz )
                     u2_diff[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * (u[ijk+kk] - u[ijk   ]) * dzhi[k+1] -
                                                             evisc_ubot * (u[ijk   ] - u[ijk-kk]) * dzhi[k  ] ) * dzi[k];
-    
+
                     // -----------------------------------------
                     // 2 * v * d/dz( visc * dv/dz )
                     v2_diff[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * (v[ijk+kk] - v[ijk   ]) * dzhi[k+1] -
                                                             evisc_vbot * (v[ijk   ] - v[ijk-kk]) * dzhi[k  ] ) * dzi[k];
-    
+
                     // -----------------------------------------
                     // 2 * w * d/dx( visc * du/dz )
                     w2_diff[k] += 2 * w[ijk] * ( evisc_weast * (u[ijk+ii] - u[ijk+ii-kk]) * dzhi[k] -
                                                  evisc_wwest * (u[ijk   ] - u[ijk   -kk]) * dzhi[k] ) * dxi;
-    
+
                     // 2 * w * d/dy( visc * dv/dz )
                     w2_diff[k] += 2 * w[ijk] * ( evisc_wnorth * (v[ijk+jj] - v[ijk+jj-kk]) * dzhi[k] -
                                                  evisc_wsouth * (v[ijk   ] - v[ijk   -kk]) * dzhi[k] ) * dyi;
-    
+
                     // 2 * w * d/dz( visc * dw/dz )
                     w2_diff[k] += 2 * w[ijk] * ( evisc[ijk   ] * (w[ijk+kk] - w[ijk   ]) * dzi[k  ] -
                                                  evisc[ijk-kk] * (w[ijk   ] - w[ijk-kk]) * dzi[k-1] ) * 2 * dzhi[k];
-    
+
                     // -----------------------------------------
                     // 2 * w * d/dz( 2 * visc * dw/dz )
                     tke_diff[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+kk]) * (wz[ijk+kk] - wz[ijk   ]) * dzhi[k+1] -
                                                interp2(evisc[ijk], evisc[ijk-kk]) * (wz[ijk   ] - wz[ijk-kk]) * dzhi[k  ] ) * 2 * dzi[k];
-    
+
                     // -----------------------------------------
                     // w * d/dx(visc * du/dx + visc * du/dx)
                     uw_diff[k] += ( ( interp2(w[ijk-ii], w[ijk    ])
@@ -1078,7 +1079,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                           * ( interp2(u[ijk    -kk], u[ijk        ]) - interp2(u[ijk-ii-kk], u[ijk-ii    ]) ) )
                                         * dxi ) ) )
                                     * dxi );
-    
+
                     // w * d/dy(visc * du/dy + visc * dv/dx)
                     uw_diff[k] += ( ( interp2(w[ijk-ii], w[ijk    ])
                                       * ( ( evisch[ijk+jj]
@@ -1091,7 +1092,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                           + ( ( interp2(v[ijk        -kk], v[ijk            ]) - interp2(v[ijk-ii    -kk], v[ijk-ii        ]) )
                                             * dxi ) ) ) ) )
                                     * dyi );
-    
+
                     // w * d/dz(visc * du/dz + visc * dw/dx)
                     uw_diff[k] += ( ( interp2(w[ijk-ii], w[ijk    ])
                                       * ( ( interp2(evisc[ijk-ii    ], evisc[ijk        ])
@@ -1104,7 +1105,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                           + ( ( interp2(w[ijk    -kk], w[ijk        ]) - interp2(w[ijk-ii-kk], w[ijk-ii    ]) )
                                             * dxi ) ) ) ) )
                                     * dzhi[k] );
-    
+
                     // u * d/dx(visc * dw/dx + visc * du/dz)
                     uw_diff[k] += ( ( interp2(u[ijk-kk], u[ijk    ])
                                       * ( ( interp2(evisc[ijk    -kk], evisc[ijk        ])
@@ -1117,7 +1118,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                           + ( ( interp2(u[ijk-ii    ], u[ijk        ]) - interp2(u[ijk-ii-kk], u[ijk    -kk]) )
                                             * dzhi[k] ) ) ) ) )
                                     * dxi );
-    
+
                     // u * d/dy(visc * dw/dy + visc * dv/dz)
                     uw_diff[k] += ( ( interp2(u[ijk-kk], u[ijk    ])
                                       * ( ( evisch[ijk+jj]
@@ -1130,7 +1131,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                           + ( ( interp2(v[ijk-ii        ], v[ijk            ]) - interp2(v[ijk-ii    -kk], v[ijk        -kk]) )
                                             * dzhi[k] ) ) ) ) )
                                     * dyi );
-    
+
                     // u * d/dz(visc * dw/dz + visc * dw/dz)
                     uw_diff[k] += ( ( interp2(u[ijk-kk], u[ijk    ])
                                       * ( ( ( 2 * interp2(evisc[ijk-ii    ], evisc[ijk        ]) )
@@ -1139,7 +1140,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                         * ( ( interp2(w[ijk-ii    ], w[ijk        ]) - interp2(w[ijk-ii-kk], w[ijk    -kk]) )
                                           * dzi[k-1] ) ) ) )
                                     * dzhi[k] );
-    
+
                     // ------------------------------------------------
                     // w * d/dx(visc * dv/dx + visc * du/dy)
                     vw_diff[k] += ( ( interp2(w[ijk-jj], w[ijk    ])
@@ -1153,14 +1154,14 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                         + ( ( interp2(u[ijk        -kk], u[ijk            ]) - interp2(u[ijk    -jj-kk], u[ijk    -jj    ]) )
                                           * dyi ) ) ) ) )
                                   * dxi );
-    
+
                     // w * d/dy(visc * dv/dy + visc * dv/dy)
                     vw_diff[k] += ( ( interp2(w[ijk-jj], w[ijk    ])
                                     * ( ( ( 2 * interp2(evisc[ijk    -kk], evisc[ijk        ]) )
                                       * ( interp2(v[ijk+jj-kk], v[ijk+jj    ]) - interp2(v[ijk    -kk], v[ijk        ]) ) ) - ( ( 2 * interp2(evisc[ijk-jj-kk], evisc[ijk-jj    ]) )
                                       * ( interp2(v[ijk    -kk], v[ijk        ]) - interp2(v[ijk-jj-kk], v[ijk-jj    ]) ) ) ) )
                                   * dyi );
-    
+
                     // w * d/dz(visc * du/dz + visc * dw/dx)
                     vw_diff[k] += ( ( interp2(w[ijk-jj], w[ijk    ])
                                     * ( ( interp2(evisc[ijk-jj    ], evisc[ijk        ])
@@ -1173,7 +1174,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                         + ( ( interp2(w[ijk    -kk], w[ijk        ]) - interp2(w[ijk-jj-kk], w[ijk-jj    ]) )
                                           * dyi ) ) ) ) )
                                   * dzhi[k] );
-    
+
                     // v * d/dx(visc * dw/dx + visc * du/dz)
                     vw_diff[k] += ( ( interp2(v[ijk-kk], v[ijk    ])
                                     * ( ( evisch[ijk+ii]
@@ -1186,7 +1187,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                         + ( ( interp2(u[ijk    -jj    ], u[ijk            ]) - interp2(u[ijk    -jj-kk], u[ijk        -kk]) )
                                           * dzhi[k] ) ) ) ) )
                                   * dxi );
-    
+
                     // v * d/dy(visc * dw/dy + visc * dv/dz)
                     vw_diff[k] += ( ( interp2(v[ijk-kk], v[ijk    ])
                                     * ( ( interp2(evisc[ijk    -kk], evisc[ijk        ])
@@ -1199,7 +1200,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                         + ( ( interp2(v[ijk-jj    ], v[ijk        ]) - interp2(v[ijk-jj-kk], v[ijk    -kk]) )
                                           * dzhi[k] ) ) ) ) )
                                   * dyi );
-    
+
                     // v * d/dz(visc * dw/dz + visc * dw/dz)
                     vw_diff[k] += ( ( interp2(v[ijk-kk], v[ijk    ])
                                     * ( ( ( 2 * interp2(evisc[ijk-jj    ], evisc[ijk        ]) )
@@ -1211,7 +1212,7 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                 }
             tke_diff[k] += 0.5 * (u2_diff[k] + v2_diff[k]);
         }
-    
+
         int k = grid.kstart;
         for (int j=grid.jstart; j<grid.jend; ++j)
             #pragma ivdep
@@ -1219,20 +1220,20 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
             {
                 const int ijk = i + j*jj + k*kk;
                 const int ij  = i + j*jj;
-    
+
                 const double evisc_utop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-ii+kk], evisc[ijk-ii]);
                 const double evisc_vtop   = interp2_4(evisc[ijk], evisc[ijk+kk], evisc[ijk-jj+kk], evisc[ijk-jj]);
-    
+
                 // 2 u * d/dz( visc * du/dz )
                 u2_diff[k] += 2 * (u[ijk]-umean[k]) * ( evisc_utop * (u[ijk+kk] - u[ijk   ]) * dzhi[k+1] + ufluxbot[ij]) * dzi[k];
-    
+
                 // 2 v * d/dz( visc * dv/dz )
                 v2_diff[k] += 2 * (v[ijk]-vmean[k]) * ( evisc_vtop * (v[ijk+kk] - v[ijk   ]) * dzhi[k+1] + vfluxbot[ij]) * dzi[k];
-    
+
                 // 2 * w * d/dz( visc * dw/dz )
                 // What to do with evisc at surface (term visc * dw/dz at surface)?
                 tke_diff[k] += wz[ijk] * ( interp2(evisc[ijk], evisc[ijk+kk]) * (wz[ijk+kk] - wz[ijk   ]) * dzhi[k+1] ) * 2 * dzi[k];
-    
+
                 // uw_diff is zero at surface for no-slip case, unequal for free-slip...
             }
         tke_diff[k] += 0.5 * (u2_diff[k] + v2_diff[k]);
@@ -1578,9 +1579,10 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
  */
 void Budget_2::calc_diffusion_terms_scalar_DNS(double* const restrict b2_visc, double* const restrict b2_diss,
                                                double* const restrict bw_visc, double* const restrict bw_diss,
-                                               const double* const restrict b, const double* const restrict bmean,
+                                               const double* const restrict b, const double* const restrict w,
+                                               const double* const restrict bmean,
                                                const double* const restrict dzi, const double* const restrict dzhi,
-                                               const double dxi, const double dyi, const double visc)
+                                               const double dxi, const double dyi, const double visc, const double diff)
 {
     const int ii = 1;
     const int jj = grid.icells;
@@ -1598,7 +1600,7 @@ void Budget_2::calc_diffusion_terms_scalar_DNS(double* const restrict b2_visc, d
         bw_visc[k] = 0;
         bw_diss[k] = 0;
     }
-   
+
     for (int k=grid.kstart; k<grid.kend; ++k)
         for (int j=grid.jstart; j<grid.jend; ++j)
             #pragma ivdep
@@ -1606,13 +1608,59 @@ void Budget_2::calc_diffusion_terms_scalar_DNS(double* const restrict b2_visc, d
             {
                 const int ijk = i + j*jj + k*kk;
 
-                b2_visc[k] += visc * ( (std::pow(b[ijk+kk]-bmean[k+1], 2) - std::pow(b[ijk   ]-bmean[k  ], 2))*dzhi[k+1] -
+                b2_visc[k] += diff * ( (std::pow(b[ijk+kk]-bmean[k+1], 2) - std::pow(b[ijk   ]-bmean[k  ], 2))*dzhi[k+1] -
                                        (std::pow(b[ijk   ]-bmean[k  ], 2) - std::pow(b[ijk-kk]-bmean[k-1], 2))*dzhi[k  ] ) * dzi[k];
 
-                b2_diss[k] -= 2 * visc * (
-                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+kk]-bmean[k+1]) - interp2(b[ijk]-bmean[k], b[ijk-kk]-bmean[k-1])) * dzi[k], 2) + 
-                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+ii]-bmean[k  ]) - interp2(b[ijk]-bmean[k], b[ijk-ii]-bmean[k  ])) * dxi,    2) + 
-                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+jj]-bmean[k  ]) - interp2(b[ijk]-bmean[k], b[ijk-jj]-bmean[k  ])) * dyi,    2) 
+                b2_diss[k] -= 2 * diff * (
+                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+kk]-bmean[k+1]) - interp2(b[ijk]-bmean[k], b[ijk-kk]-bmean[k-1])) * dzi[k], 2) +
+                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+ii]-bmean[k  ]) - interp2(b[ijk]-bmean[k], b[ijk-ii]-bmean[k  ])) * dxi,    2) +
+                                           std::pow((interp2(b[ijk]-bmean[k], b[ijk+jj]-bmean[k  ]) - interp2(b[ijk]-bmean[k], b[ijk-jj]-bmean[k  ])) * dyi,    2)
+                                         );
+            }
+
+    // Note BvS: what to do with bw_visc at lower (and top) boundary?
+    int k = grid.kstart;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            // with w[kstart-1] undefined, use gradient w over lowest grid point
+            bw_diss[k] -= 2 * visc * (w[ijk+kk]-w[ijk]) * dzi[k] * ((b[ijk]-bmean[k])-(b[ijk-kk]-bmean[k-1]))*dzhi[k];
+        }
+
+    k = grid.kend;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj + k*kk;
+
+            bw_diss[k] -= 2 * visc * (w[ijk]-w[ijk-kk]) * dzi[k-1] * ((b[ijk]-bmean[k])-(b[ijk-kk]-bmean[k-1]))*dzhi[k];
+        }
+
+    for (int k=grid.kstart+1; k<grid.kend-1; ++k)
+        for (int j=grid.jstart; j<grid.jend; ++j)
+            #pragma ivdep
+            for (int i=grid.istart; i<grid.iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                bw_visc[k] += visc * ( ( (w[ijk+kk] * interp2(b[ijk      ]-bmean[k  ], b[ijk+kk]-bmean[k+1])) -
+                                         (w[ijk   ] * interp2(b[ijk-kk   ]-bmean[k-1], b[ijk   ]-bmean[k  ])) ) * dzi[k  ] -
+                                       ( (w[ijk   ] * interp2(b[ijk-kk   ]-bmean[k-1], b[ijk   ]-bmean[k  ])) -
+                                         (w[ijk-kk] * interp2(b[ijk-kk-kk]-bmean[k-2], b[ijk-kk]-bmean[k-1])) ) * dzi[k-1] ) * dzhi[k];
+
+                bw_diss[k] -= 2 * visc * (
+                                            (interp2(w[ijk+ii], w[ijk]) - interp2(w[ijk], w[ijk-ii])) * dxi *
+                                            (interp22(b[ijk]-bmean[k], b[ijk+ii]-bmean[k], b[ijk+ii-kk]-bmean[k-1],b[ijk-kk]-bmean[k-1]) -
+                                             interp22(b[ijk]-bmean[k], b[ijk-ii]-bmean[k], b[ijk-ii-kk]-bmean[k-1],b[ijk-kk]-bmean[k-1])) * dxi +
+                                            (interp2(w[ijk+jj], w[ijk]) - interp2(w[ijk], w[ijk-jj])) * dyi *
+                                            (interp22(b[ijk]-bmean[k], b[ijk+jj]-bmean[k], b[ijk+jj-kk]-bmean[k-1],b[ijk-kk]-bmean[k-1]) -
+                                             interp22(b[ijk]-bmean[k], b[ijk-jj]-bmean[k], b[ijk-jj-kk]-bmean[k-1],b[ijk-kk]-bmean[k-1])) * dyi +
+                                            (interp2(w[ijk+kk], w[ijk]) - interp2(w[ijk], w[ijk-kk])) * dzhi[k] *
+                                            ((b[ijk]-bmean[k])-(b[ijk-kk]-bmean[k-1]))*dzhi[k]
                                          );
             }
 
@@ -1787,13 +1835,13 @@ void Budget_2::calc_coriolis_terms(double* const restrict u2_cor, double* const 
             {
                 const int ijk = i + j*jj + k*kk;
 
-                uw_cor[k] += interp2(w[ijk], w[ijk-ii]) * 
-                                interp2(interp2_4(v[ijk   ]-vmean[k], v[ijk-ii   ]-vmean[k], v[ijk-ii-kk   ]-vmean[k-1], v[ijk-kk   ]-vmean[k-1]),  
+                uw_cor[k] += interp2(w[ijk], w[ijk-ii]) *
+                                interp2(interp2_4(v[ijk   ]-vmean[k], v[ijk-ii   ]-vmean[k], v[ijk-ii-kk   ]-vmean[k-1], v[ijk-kk   ]-vmean[k-1]),
                                         interp2_4(v[ijk+jj]-vmean[k], v[ijk-ii+jj]-vmean[k], v[ijk-ii+jj-kk]-vmean[k-1], v[ijk+jj-kk]-vmean[k-1])) * fc;
 
-                vw_cor[k] -= interp2(w[ijk], w[ijk-jj]) * 
-                                interp2(interp2_4(u[ijk   ]-umean[k], u[ijk-jj   ]-umean[k], u[ijk-jj-kk   ]-umean[k-1], u[ijk-kk   ]-umean[k-1]),  
-                                        interp2_4(u[ijk+ii]-umean[k], u[ijk+ii-jj]-umean[k], u[ijk+ii-jj-kk]-umean[k-1], u[ijk+ii-kk]-umean[k-1])) * fc;  
+                vw_cor[k] -= interp2(w[ijk], w[ijk-jj]) *
+                                interp2(interp2_4(u[ijk   ]-umean[k], u[ijk-jj   ]-umean[k], u[ijk-jj-kk   ]-umean[k-1], u[ijk-kk   ]-umean[k-1]),
+                                        interp2_4(u[ijk+ii]-umean[k], u[ijk+ii-jj]-umean[k], u[ijk+ii-jj-kk]-umean[k-1], u[ijk+ii-kk]-umean[k-1])) * fc;
             }
 
     // Calculate sum over all processes, and calc mean profiles
