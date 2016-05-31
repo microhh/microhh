@@ -54,6 +54,7 @@ class Thermo_dry : public Thermo
         void get_buoyancy_surf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
         void get_buoyancy_fluxbot(Field3d*);           ///< Compute the bottom buoyancy flux for usage in another routine.
         void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
+        double get_buoyancy_diffusivity();
 
 #ifdef USECUDA
         // GPU functions and variables

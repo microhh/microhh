@@ -331,6 +331,12 @@ void Thermo_dry::get_prog_vars(std::vector<std::string>* list)
     list->push_back("th");
 }
 
+double Thermo_dry::get_buoyancy_diffusivity()
+{
+    // Use the diffusivity from theta
+    return fields->sp["th"]->visc; 
+}
+
 void Thermo_dry::calc_buoyancy(double* restrict b, double* restrict th, double* restrict thref)
 {
     const int jj = grid->icells;

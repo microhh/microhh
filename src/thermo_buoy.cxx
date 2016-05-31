@@ -116,6 +116,11 @@ void Thermo_buoy::get_buoyancy_surf(Field3d *bfield)
     calc_buoyancy_fluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
 }
 
+double Thermo_buoy::get_buoyancy_diffusivity()
+{
+    return fields->sp["b"]->visc; 
+}
+
 bool Thermo_buoy::check_field_exists(std::string name)
 {
     if (name == "b")
