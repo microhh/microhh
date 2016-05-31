@@ -87,24 +87,42 @@ double Diff_smag_2::get_dn(const double dt)
 #endif
 
 #ifndef USECUDA
+
 void Diff_smag_2::exec_viscosity()
 {
     // Do a cast because the base boundary class does not have the MOST related variables.
     Boundary_surface* boundaryptr = static_cast<Boundary_surface*>(model->boundary);
 
-    calc_strain2(fields->sd["evisc"]->data,
-                 fields->u->data, fields->v->data, fields->w->data,
-                 fields->u->datafluxbot, fields->v->datafluxbot,
-                 boundaryptr->ustar, boundaryptr->obuk,
-                 grid->z, grid->dzi, grid->dzhi);
+    // Calculate strain rate using MO for velocity gradients lowest level
+    if (model->boundary->get_switch() == "surface")
+        calc_strain2<false>(fields->sd["evisc"]->data,
+                            fields->u->data, fields->v->data, fields->w->data,
+                            fields->u->datafluxbot, fields->v->datafluxbot,
+                            boundaryptr->ustar, boundaryptr->obuk,
+                            grid->z, grid->dzi, grid->dzhi);
+    // Calculate strain rate using resolved boundaries
+    else
+        calc_strain2<true>(fields->sd["evisc"]->data,
+                           fields->u->data, fields->v->data, fields->w->data,
+                           fields->u->datafluxbot, fields->v->datafluxbot,
+                           NULL, NULL, // BvS, for now....
+                           grid->z, grid->dzi, grid->dzhi);
 
     // start with retrieving the stability information
     if (model->thermo->get_switch() == "0")
     {
-        calc_evisc_neutral(fields->sd["evisc"]->data,
-                           fields->u->data, fields->v->data, fields->w->data,
-                           fields->u->datafluxbot, fields->v->datafluxbot,
-                           grid->z, grid->dz, boundaryptr->z0m);
+        // Calculate eddy viscosity using MO at lowest model level
+        if (model->boundary->get_switch() == "surface")
+            calc_evisc_neutral<false>(fields->sd["evisc"]->data,
+                                      fields->u->data, fields->v->data, fields->w->data,
+                                      fields->u->datafluxbot, fields->v->datafluxbot,
+                                      grid->z, grid->dz, boundaryptr->z0m, fields->visc);
+        // Calculate eddy viscosity assuming resolved walls
+        else
+            calc_evisc_neutral<true>(fields->sd["evisc"]->data,
+                                     fields->u->data, fields->v->data, fields->w->data,
+                                     fields->u->datafluxbot, fields->v->datafluxbot,
+                                     grid->z, grid->dz, 0, fields->visc); // BvS, for now....
     }
     // assume buoyancy calculation is needed
     else
@@ -112,7 +130,7 @@ void Diff_smag_2::exec_viscosity()
         // store the buoyancyflux in tmp1
         model->thermo->get_buoyancy_fluxbot(fields->atmp["tmp1"]);
         // retrieve the full field in tmp1 and use tmp2 for temporary calculations
-        model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2");
+        model->thermo->get_thermo_field(fields->atmp["tmp1"], fields->atmp["tmp2"], "N2", false);
         // model->thermo->getThermoField(fields->sd["tmp1"], fields->sd["tmp2"], "b");
 
         calc_evisc(fields->sd["evisc"]->data,
@@ -128,19 +146,37 @@ void Diff_smag_2::exec_viscosity()
 #ifndef USECUDA
 void Diff_smag_2::exec()
 {
-    diff_u(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
-           fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
-    diff_v(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
-           fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
-    diff_w(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
-           fields->rhoref, fields->rhorefh);
+    if(model->boundary->get_switch() == "surface")
+    {
+        diff_u<false>(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+               fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
+        diff_v<false>(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+               fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
+        diff_w(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+               fields->rhoref, fields->rhorefh);
 
-    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
-        diff_c(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
-               fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
+        for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+            diff_c(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+                   fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
+    }
+    else
+    {
+        diff_u<true>(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+               fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
+        diff_v<true>(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+               fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
+        diff_w(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+               fields->rhoref, fields->rhorefh);
+
+        for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
+            diff_c(it->second->data, fields->sp[it->first]->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
+                   fields->sp[it->first]->datafluxbot, fields->sp[it->first]->datafluxtop, fields->rhoref, fields->rhorefh, this->tPr);
+
+    }
 }
 #endif
 
+template <bool resolved_wall> 
 void Diff_smag_2::calc_strain2(double* restrict strain2,
                                double* restrict u, double* restrict v, double* restrict w,
                                double* restrict ufluxbot, double* restrict vfluxbot,
@@ -155,25 +191,60 @@ void Diff_smag_2::calc_strain2(double* restrict strain2,
     const double dxi = 1./grid->dx;
     const double dyi = 1./grid->dy;
 
-    for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            strain2[ijk] = 2.*(
-                           // du/dz
-                           + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
-                           // dv/dz
-                           + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2) );
+    const int k_offset = resolved_wall ? 0 : 1;
 
-            // add a small number to avoid zero divisions
-            strain2[ijk] += Constants::dsmall;
-        }
-
-    for (int k=grid->kstart+1; k<grid->kend; ++k)
+    // If the wall isn't resolved, calculate du/dz and dv/dz at lowest grid height using MO
+    if (!resolved_wall)
+    {
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+
+                strain2[ijk] = 2.*(
+                               // du/dx + du/dx
+                               + std::pow((u[ijk+ii]-u[ijk])*dxi, 2)
+
+                               // dv/dy + dv/dy
+                               + std::pow((v[ijk+jj]-v[ijk])*dyi, 2)
+
+                               // dw/dz + dw/dz
+                               + std::pow((w[ijk+kk]-w[ijk])*dzi[kstart], 2)
+
+                               // du/dy + dv/dx
+                               + 0.125*std::pow((u[ijk      ]-u[ijk   -jj])*dyi  + (v[ijk      ]-v[ijk-ii   ])*dxi, 2)
+                               + 0.125*std::pow((u[ijk+ii   ]-u[ijk+ii-jj])*dyi  + (v[ijk+ii   ]-v[ijk      ])*dxi, 2)
+                               + 0.125*std::pow((u[ijk   +jj]-u[ijk      ])*dyi  + (v[ijk   +jj]-v[ijk-ii+jj])*dxi, 2)
+                               + 0.125*std::pow((u[ijk+ii+jj]-u[ijk+ii   ])*dyi  + (v[ijk+ii+jj]-v[ijk   +jj])*dxi, 2)
+
+                               // du/dz
+                               + 0.5*std::pow(-0.5*(ufluxbot[ij]+ufluxbot[ij+ii])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
+
+                               // dw/dx
+                               + 0.125*std::pow((w[ijk      ]-w[ijk-ii   ])*dxi, 2)
+                               + 0.125*std::pow((w[ijk+ii   ]-w[ijk      ])*dxi, 2)
+                               + 0.125*std::pow((w[ijk   +kk]-w[ijk-ii+kk])*dxi, 2)
+                               + 0.125*std::pow((w[ijk+ii+kk]-w[ijk   +kk])*dxi, 2)
+
+                               // dv/dz
+                               + 0.5*std::pow(-0.5*(vfluxbot[ij]+vfluxbot[ij+jj])/(Constants::kappa*z[kstart]*ustar[ij])*most::phim(z[kstart]/obuk[ij]), 2)
+
+                               // dw/dy
+                               + 0.125*std::pow((w[ijk      ]-w[ijk-jj   ])*dyi, 2)
+                               + 0.125*std::pow((w[ijk+jj   ]-w[ijk      ])*dyi, 2)
+                               + 0.125*std::pow((w[ijk   +kk]-w[ijk-jj+kk])*dyi, 2)
+                               + 0.125*std::pow((w[ijk+jj+kk]-w[ijk   +kk])*dyi, 2) );
+
+                // add a small number to avoid zero divisions
+                strain2[ijk] += Constants::dsmall;
+            }
+    }
+
+    for (int k=grid->kstart+k_offset; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -241,7 +312,7 @@ void Diff_smag_2::calc_evisc(double* restrict evisc,
     double cs  = this->cs;
 
     for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; ++i)
         {
             const int ij  = i + j*jj;
@@ -261,7 +332,7 @@ void Diff_smag_2::calc_evisc(double* restrict evisc,
         fac   = std::pow(mlen, 2);
 
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -275,10 +346,11 @@ void Diff_smag_2::calc_evisc(double* restrict evisc,
     grid->boundary_cyclic(evisc);
 }
 
+template <bool resolved_wall>
 void Diff_smag_2::calc_evisc_neutral(double* restrict evisc,
                                      double* restrict u, double* restrict v, double* restrict w,
                                      double* restrict ufluxbot, double* restrict vfluxbot,
-                                     double* restrict z, double* restrict dz, const double z0m)
+                                     double* restrict z, double* restrict dz, const double z0m, const double mvisc)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
@@ -291,25 +363,60 @@ void Diff_smag_2::calc_evisc_neutral(double* restrict evisc,
     // Wall damping constant.
     const int n = 2;
 
-    for (int k=grid->kstart; k<grid->kend; ++k)
+    if (resolved_wall)
     {
-        // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
-        const double mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
-        const double mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
-        const double fac   = std::pow(mlen, 2);
+        for (int k=grid->kstart; k<grid->kend; ++k)
+        {
+            const double mlen = pow(cs*std::pow(dx*dy*dz[k], 1./3.), 2);
+            for (int j=grid->jstart; j<grid->jend; ++j)
+                #pragma ivdep
+                for (int i=grid->istart; i<grid->iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    evisc[ijk] = mlen * std::sqrt(evisc[ijk]) + mvisc;
+                }
+        }
 
-        for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
+        grid->boundary_cyclic(evisc);
+
+        // For a resolved wall the viscosity at the wall is needed. For now, assume that the eddy viscosity
+        // is zero, so set ghost cell such that the viscosity interpolated to the surface equals the molecular viscosity.
+        const int kb = grid->kstart;
+        const int kt = grid->kend-1;
+        for (int j=0; j<grid->jcells; ++j)
+            #pragma ivdep
+            for (int i=0; i<grid->icells; ++i)
             {
-                const int ijk = i + j*jj + k*kk;
-                evisc[ijk] = fac * std::sqrt(evisc[ijk]);
+                const int ijkb = i + j*jj + kb*kk;
+                const int ijkt = i + j*jj + kt*kk;
+                evisc[ijkb-kk] = 2 * mvisc - evisc[ijkb];
+                evisc[ijkt+kk] = 2 * mvisc - evisc[ijkt];
             }
     }
+    else
+    {
+        for (int k=grid->kstart; k<grid->kend; ++k)
+        {
+            // Calculate smagorinsky constant times filter width squared, use wall damping according to Mason's paper.
+            const double mlen0 = cs*std::pow(dx*dy*dz[k], 1./3.);
+            const double mlen  = std::pow(1./(1./std::pow(mlen0, n) + 1./(std::pow(Constants::kappa*(z[k]+z0m), n))), 1./n);
+            const double fac   = std::pow(mlen, 2);
 
-    grid->boundary_cyclic(evisc);
+            for (int j=grid->jstart; j<grid->jend; ++j)
+                #pragma ivdep
+                for (int i=grid->istart; i<grid->iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    evisc[ijk] = fac * std::sqrt(evisc[ijk]);
+                }
+        }
+
+        grid->boundary_cyclic(evisc);
+    }
+
 }
 
+template <bool resolved_wall>
 void Diff_smag_2::diff_u(double* restrict ut, double* restrict u, double* restrict v, double* restrict w,
                          double* restrict dzi, double* restrict dzhi, double* restrict evisc,
                          double* restrict fluxbot, double* restrict fluxtop,
@@ -326,32 +433,61 @@ void Diff_smag_2::diff_u(double* restrict ut, double* restrict u, double* restri
 
     double eviscn, eviscs, eviscb, evisct;
 
-    // bottom boundary
-    for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
-            eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
-            evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
-            eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
-            ut[ijk] +=
-                     // du/dx + du/dx
-                     + ( evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
-                     // du/dy + dv/dx
-                     + ( eviscn*((u[ijk+jj]-u[ijk   ])*dyi + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
-                       - eviscs*((u[ijk   ]-u[ijk-jj])*dyi + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
-                     // du/dz + dw/dx
-                     + ( rhorefh[kstart+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
-                       + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
-        }
-
-    for (int k=grid->kstart+1; k<grid->kend-1; ++k)
+    const int k_offset = resolved_wall ? 0 : 1;
+   
+    if(!resolved_wall)
+    {
+        // bottom boundary
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+                eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+                evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+                eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+
+                ut[ijk] +=
+                         // du/dx + du/dx
+                         + ( evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+                           - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+                         // du/dy + dv/dx
+                         + ( eviscn*((u[ijk+jj]-u[ijk   ])*dyi + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+                           - eviscs*((u[ijk   ]-u[ijk-jj])*dyi + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+                         // du/dz + dw/dx
+                         + ( rhorefh[kstart+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[kstart+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
+                           + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
+            }
+
+        // top boundary
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + (kend-1)*kk;
+                eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
+                eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
+                evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
+                eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
+                ut[ijk] +=
+                         // du/dx + du/dx
+                         + ( evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
+                           - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
+                         // du/dy + dv/dx
+                         + ( eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
+                           - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
+                         // du/dz + dw/dx
+                         + (- rhorefh[kend  ] * fluxtop[ij]
+                            - rhorefh[kend-1] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[kend-1] * dzi[kend-1];
+            }
+    }
+
+    for (int k=grid->kstart+k_offset; k<grid->kend-k_offset; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -370,31 +506,9 @@ void Diff_smag_2::diff_u(double* restrict ut, double* restrict u, double* restri
                          + ( rhorefh[k+1] * evisct*((u[ijk+kk]-u[ijk   ])* dzhi[k+1] + (w[ijk+kk]-w[ijk-ii+kk])*dxi)
                            - rhorefh[k  ] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[k  ] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[k] * dzi[k];
             }
-
-    // top boundary
-    for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + (kend-1)*kk;
-            eviscn = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+jj] + evisc[ijk+jj]);
-            eviscs = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-jj] + evisc[ijk-ii   ] + evisc[ijk   ]);
-            evisct = 0.25*(evisc[ijk-ii   ] + evisc[ijk   ] + evisc[ijk-ii+kk] + evisc[ijk+kk]);
-            eviscb = 0.25*(evisc[ijk-ii-kk] + evisc[ijk-kk] + evisc[ijk-ii   ] + evisc[ijk   ]);
-            ut[ijk] +=
-                     // du/dx + du/dx
-                     + ( evisc[ijk   ]*(u[ijk+ii]-u[ijk   ])*dxi
-                       - evisc[ijk-ii]*(u[ijk   ]-u[ijk-ii])*dxi ) * 2.* dxi
-                     // du/dy + dv/dx
-                     + ( eviscn*((u[ijk+jj]-u[ijk   ])*dyi  + (v[ijk+jj]-v[ijk-ii+jj])*dxi)
-                       - eviscs*((u[ijk   ]-u[ijk-jj])*dyi  + (v[ijk   ]-v[ijk-ii   ])*dxi) ) * dyi
-                     // du/dz + dw/dx
-                     + (- rhorefh[kend  ] * fluxtop[ij]
-                        - rhorefh[kend-1] * eviscb*((u[ijk   ]-u[ijk-kk])* dzhi[kend-1] + (w[ijk   ]-w[ijk-ii   ])*dxi) ) / rhoref[kend-1] * dzi[kend-1];
-        }
 }
 
+template <bool resolved_wall>
 void Diff_smag_2::diff_v(double* restrict vt, double* restrict u, double* restrict v, double* restrict w,
                          double* restrict dzi, double* restrict dzhi, double* restrict evisc,
                          double* restrict fluxbot, double* restrict fluxtop,
@@ -411,32 +525,60 @@ void Diff_smag_2::diff_v(double* restrict vt, double* restrict u, double* restri
 
     double evisce, eviscw, eviscb, evisct;
 
-    // bottom boundary
-    for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + kstart*kk;
-            evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
-            eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
-            evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
-            eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
-            vt[ijk] +=
-                     // dv/dx + du/dy
-                     + ( evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
-                       - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
-                     // dv/dy + dv/dy
-                     + ( evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
-                     // dv/dz + dw/dy
-                     + ( rhorefh[kstart+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
-                       + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
-        }
+    const int k_offset = resolved_wall ? 0 : 1;
 
-    for (int k=grid->kstart+1; k<grid->kend-1; ++k)
+    if(!resolved_wall)
+    {
+        // bottom boundary
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + kstart*kk;
+                evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+                eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+                evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+                eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+                vt[ijk] +=
+                         // dv/dx + du/dy
+                         + ( evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+                           - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+                         // dv/dy + dv/dy
+                         + ( evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+                           - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+                         // dv/dz + dw/dy
+                         + ( rhorefh[kstart+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[kstart+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
+                           + rhorefh[kstart  ] * fluxbot[ij] ) / rhoref[kstart] * dzi[kstart];
+            }
+
+        // top boundary
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ij  = i + j*jj;
+                const int ijk = i + j*jj + (kend-1)*kk;
+                evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
+                eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
+                evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
+                eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
+                vt[ijk] +=
+                         // dv/dx + du/dy
+                         + ( evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
+                           - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
+                         // dv/dy + dv/dy
+                         + ( evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
+                           - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
+                         // dv/dz + dw/dy
+                         + (- rhorefh[kend  ] * fluxtop[ij]
+                            - rhorefh[kend-1] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[kend-1] * dzi[kend-1];
+            }
+    }
+
+    for (int k=grid->kstart+k_offset; k<grid->kend-k_offset; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -455,29 +597,6 @@ void Diff_smag_2::diff_v(double* restrict vt, double* restrict u, double* restri
                          + ( rhorefh[k+1] * evisct*((v[ijk+kk]-v[ijk   ])*dzhi[k+1] + (w[ijk+kk]-w[ijk-jj+kk])*dyi)
                            - rhorefh[k  ] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[k  ] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[k] * dzi[k];
             }
-
-    // top boundary
-    for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
-        for (int i=grid->istart; i<grid->iend; ++i)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + (kend-1)*kk;
-            evisce = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+ii-jj] + evisc[ijk+ii]);
-            eviscw = 0.25*(evisc[ijk-ii-jj] + evisc[ijk-ii] + evisc[ijk   -jj] + evisc[ijk   ]);
-            evisct = 0.25*(evisc[ijk   -jj] + evisc[ijk   ] + evisc[ijk+kk-jj] + evisc[ijk+kk]);
-            eviscb = 0.25*(evisc[ijk-kk-jj] + evisc[ijk-kk] + evisc[ijk   -jj] + evisc[ijk   ]);
-            vt[ijk] +=
-                     // dv/dx + du/dy
-                     + ( evisce*((v[ijk+ii]-v[ijk   ])*dxi + (u[ijk+ii]-u[ijk+ii-jj])*dyi)
-                       - eviscw*((v[ijk   ]-v[ijk-ii])*dxi + (u[ijk   ]-u[ijk   -jj])*dyi) ) * dxi
-                     // dv/dy + dv/dy
-                     + ( evisc[ijk   ]*(v[ijk+jj]-v[ijk   ])*dyi
-                       - evisc[ijk-jj]*(v[ijk   ]-v[ijk-jj])*dyi ) * 2.* dyi
-                     // dv/dz + dw/dy
-                     + (- rhorefh[kend  ] * fluxtop[ij]
-                        - rhorefh[kend-1] * eviscb*((v[ijk   ]-v[ijk-kk])*dzhi[kend-1] + (w[ijk   ]-w[ijk-jj   ])*dyi) ) / rhoref[kend-1] * dzi[kend-1];
-        }
 }
 
 void Diff_smag_2::diff_w(double* restrict wt, double* restrict u, double* restrict v, double* restrict w,
@@ -495,7 +614,7 @@ void Diff_smag_2::diff_w(double* restrict wt, double* restrict u, double* restri
 
     for (int k=grid->kstart+1; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -534,7 +653,7 @@ void Diff_smag_2::diff_c(double* restrict at, double* restrict a,
 
     // bottom boundary
     for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; ++i)
         {
             const int ij  = i + j*jj;
@@ -557,7 +676,7 @@ void Diff_smag_2::diff_c(double* restrict at, double* restrict a,
 
     for (int k=grid->kstart+1; k<grid->kend-1; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -579,7 +698,7 @@ void Diff_smag_2::diff_c(double* restrict at, double* restrict a,
 
     // top boundary
     for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; ++i)
         {
             const int ij  = i + j*jj;
@@ -615,7 +734,7 @@ double Diff_smag_2::calc_dnmul(double* restrict evisc, double* restrict dzi, dou
     // get the maximum time step for diffusion
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;

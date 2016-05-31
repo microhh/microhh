@@ -164,7 +164,47 @@ namespace
     } 
 
     __global__ 
-    void calc_ghost_cells_bot_w_4th_g(double* __restrict__ w,
+    void calc_ghost_cells_botw_4th_g(double* __restrict__ w,
+                                      const int icells, const int icellsp,
+                                      const int jcells, const int kstart)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        const int kk1 = 1*icellsp*jcells;
+        const int kk2 = 2*icellsp*jcells;
+        const int kk3 = 3*icellsp*jcells;
+
+        const int ijk = i + j*icellsp + kstart*kk1;
+
+        if (i < icells && j < jcells)
+        {
+            w[ijk-kk1] = -6.*w[ijk+kk1] + 4.*w[ijk+kk2] - w[ijk+kk3];
+        }
+    }
+
+    __global__ 
+    void calc_ghost_cells_topw_4th_g(double* __restrict__ w,
+                                      const int icells, const int icellsp,
+                                      const int jcells, const int kend)
+    {
+        const int i = blockIdx.x*blockDim.x + threadIdx.x;
+        const int j = blockIdx.y*blockDim.y + threadIdx.y;
+
+        const int kk1 = 1*icellsp*jcells;
+        const int kk2 = 2*icellsp*jcells;
+        const int kk3 = 3*icellsp*jcells;
+
+        const int ijk = i + j*icellsp + kend*kk1;
+
+        if (i < icells && j < jcells)
+        {
+            w[ijk+kk1] = -6.*w[ijk-kk1] + 4.*w[ijk-kk2] - w[ijk-kk3];
+        }
+    }
+
+    __global__ 
+    void calc_ghost_cells_botw_cons_4th_g(double* __restrict__ w,
                                       const int icells, const int icellsp,
                                       const int jcells, const int kstart)
     {
@@ -184,7 +224,7 @@ namespace
     }
 
     __global__ 
-    void calc_ghost_cells_top_w_4th_g(double* __restrict__ w,
+    void calc_ghost_cells_topw_cons_4th_g(double* __restrict__ w,
                                       const int icells, const int icellsp,
                                       const int jcells, const int kend)
     {
@@ -309,13 +349,13 @@ void Boundary::exec()
             grid->jcells, grid->kend);
         cuda_check_error(); 
 
-        calc_ghost_cells_bot_w_4th_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_botw_4th_g<<<grid2dGPU, block2dGPU>>>(
             &fields->w->data_g[offs],
             grid->icells, grid->icellsp,
             grid->jcells, grid->kstart);
         cuda_check_error(); 
 
-        calc_ghost_cells_top_w_4th_g<<<grid2dGPU, block2dGPU>>>(
+        calc_ghost_cells_topw_4th_g<<<grid2dGPU, block2dGPU>>>(
             &fields->w->data_g[offs],
             grid->icells, grid->icellsp,
             grid->jcells, grid->kend);
@@ -335,6 +375,53 @@ void Boundary::exec()
                 &it->second->data_g[offs], sbc[it->first]->bctop, 
                 &it->second->datatop_g[offs], &it->second->datagradtop_g[offs],
                 grid->z_g,
+                grid->icells, grid->icellsp,
+                grid->jcells, grid->kend);
+            cuda_check_error(); 
+        }
+    }
+}
+#endif
+
+#ifdef USECUDA
+void Boundary::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
+{
+    const int blocki = grid->ithread_block;
+    const int blockj = grid->jthread_block;
+    const int gridi  = grid->icells/blocki + (grid->icells%blocki > 0);
+    const int gridj  = grid->jcells/blockj + (grid->jcells%blockj > 0);
+
+    dim3 grid2dGPU (gridi,  gridj );
+    dim3 block2dGPU(blocki, blockj);
+
+    const int offs = grid->memoffset;
+
+    if (grid->swspatialorder == "4")
+    {
+        if (boundary_w_type == Normal_type)
+        {
+            calc_ghost_cells_botw_4th_g<<<grid2dGPU, block2dGPU>>>(
+                &fields->w->data_g[offs],
+                grid->icells, grid->icellsp,
+                grid->jcells, grid->kstart);
+            cuda_check_error(); 
+
+            calc_ghost_cells_topw_4th_g<<<grid2dGPU, block2dGPU>>>(
+                &fields->w->data_g[offs],
+                grid->icells, grid->icellsp,
+                grid->jcells, grid->kend);
+            cuda_check_error(); 
+        }
+        else if (boundary_w_type == Conservation_type)
+        {
+            calc_ghost_cells_botw_cons_4th_g<<<grid2dGPU, block2dGPU>>>(
+                &fields->w->data_g[offs],
+                grid->icells, grid->icellsp,
+                grid->jcells, grid->kstart);
+            cuda_check_error(); 
+
+            calc_ghost_cells_topw_cons_4th_g<<<grid2dGPU, block2dGPU>>>(
+                &fields->w->data_g[offs],
                 grid->icells, grid->icellsp,
                 grid->jcells, grid->kend);
             cuda_check_error(); 

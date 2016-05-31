@@ -97,8 +97,8 @@ class Grid
         double* dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
         double* dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
 
-        double dzhi4biasbot;
-        double dzhi4biastop;
+        double dzhi4bot;
+        double dzhi4top;
 
         double* x;  ///< Grid coordinate of cell center in x-direction.
         double* y;  ///< Grid coordinate of cell center in y-direction.
@@ -136,6 +136,7 @@ class Grid
         int load_field3d(double*, double*, double*, char*, double); ///< Loads a full 3d field.
 
         int save_xz_slice(double*, double*, char*, int);           ///< Saves a xz-slice from a 3d field.
+        int save_yz_slice(double*, double*, char*, int);           ///< Saves a yz-slice from a 3d field.
         int save_xy_slice(double*, double*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
         int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
 
@@ -149,7 +150,7 @@ class Grid
         void fft_backward(double*, double*, double*, double*, double*, double*); ///< Backward fast-fourier transform.
 
         // interpolation functions
-        void interpolate_2nd(double*, double*, const int[3], const int[3]); ///< Second order interpolation
+        void interpolate_2nd(double*, const double*, const int[3], const int[3]); ///< Second order interpolation
         void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation
 
         // GPU functions and variables
@@ -185,6 +186,7 @@ class Grid
         bool fftwplan;  ///< Boolean to check whether FFTW3 plans are created.
 
         void calculate(); ///< Computation of dimensions, faces and ghost cells.
+        void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
 
 #ifdef USEMPI
         // MPI Datatypes
@@ -204,6 +206,7 @@ class Grid
         MPI_Datatype subj;       ///< MPI datatype containing a subset of the entire y-axis.
         MPI_Datatype subarray;   ///< MPI datatype containing the dimensions of the total array that is contained in one process.
         MPI_Datatype subxzslice; ///< MPI datatype containing only one xz-slice.
+        MPI_Datatype subyzslice; ///< MPI datatype containing only one yz-slice.
         MPI_Datatype subxyslice; ///< MPI datatype containing only one xy-slice.
 
         double* profl; ///< Help array used in profile writing.

@@ -30,6 +30,8 @@ class Model;
 class Grid;
 class Fields;
 
+enum Direction {Top_to_bottom, Bottom_to_top};
+
 class Cross
 {
     public:
@@ -51,6 +53,7 @@ class Cross
         int cross_lngrad(double*, double*, double*, double*, std::string);
         int cross_plane (double*, double*, std::string);
         int cross_path  (double*, double*, double*, std::string);
+        int cross_height_threshold(double*, double*, double*, double*, double, Direction, std::string);
 
     private:
         Master* master;
@@ -64,10 +67,13 @@ class Cross
         std::vector<std::string> crosslist; ///< List with all crosses from the ini file.
 
         std::vector<int> jxz;   ///< Index of nearest full y position of xz input
+        std::vector<int> ixz;   ///< Index of nearest full x position of yz input
         std::vector<int> kxy;   ///< Index of nearest full height level of xy input
         std::vector<int> jxzh;  ///< Index of nearest half y position of xz input
+        std::vector<int> ixzh;  ///< Index of nearest half x position of yz input
         std::vector<int> kxyh;  ///< Index of nearest half height level of xy input
         std::vector<double> xz; ///< Y-position [m] xz cross from ini file
+        std::vector<double> yz; ///< X-position [m] yz cross from ini file
         std::vector<double> xy; ///< Z-position [m] xy cross from ini file
 
         std::vector<std::string> simple;

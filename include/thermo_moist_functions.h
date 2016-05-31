@@ -20,6 +20,11 @@ namespace Thermo_moist_functions
         return grav * ((thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql) - thvref) / thvref;
     }
 
+    CUDA_MACRO inline double virtual_temperature(const double exn, const double thl, const double qt, const double ql)
+    {
+        return (thl + Lv*ql/(cp*exn)) * (1. - (1. - Rv/Rd)*qt - Rv/Rd*ql);
+    }
+
     CUDA_MACRO inline double buoyancy_no_ql(const double thl, const double qt, const double thvref)
     {
         return grav * (thl * (1. - (1. - Rv/Rd)*qt) - thvref) / thvref;

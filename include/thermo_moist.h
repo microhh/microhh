@@ -47,7 +47,7 @@ class Thermo_moist : public Thermo
 
         // functions to retrieve buoyancy properties, to be called from other classes
         bool check_field_exists(std::string name);
-        void get_thermo_field(Field3d*, Field3d*, std::string name);
+        void get_thermo_field(Field3d*, Field3d*, std::string name, bool cyclic);
         void get_buoyancy_surf(Field3d*);
         void get_buoyancy_fluxbot(Field3d*);
         void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
@@ -84,6 +84,7 @@ class Thermo_moist : public Thermo
         void calc_N2(double*, double*, double*, double*); ///< Calculation of the Brunt-Vaissala frequency.
         void calc_base_state(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
 
+        void calc_maximum_thv_perturbation_cloud(double*, double*, double*, double*, double*, double*, double*);
         void calc_liquid_water(double*, double*, double*, double*);
         void calc_buoyancy_bot(double*, double*,
                                double*, double*,

@@ -206,7 +206,7 @@ void Thermo_dry::exec_stats(Mask *m)
     // calculate diffusive fluxes
     if (grid->swspatialorder == "2")
     {
-        if (model->diff->get_name() == "smag2")
+        if (model->diff->get_switch() == "smag2")
         {
             Diff_smag_2* diffptr = static_cast<Diff_smag_2*>(model->diff);
             stats->calc_diff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
@@ -296,7 +296,7 @@ bool Thermo_dry::check_field_exists(std::string name)
 }
 
 #ifndef USECUDA
-void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
+void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name, bool cyclic)
 {
     if (name == "b")
         calc_buoyancy(fld->data, fields->sp["th"]->data, thref);
@@ -304,6 +304,9 @@ void Thermo_dry::get_thermo_field(Field3d *fld, Field3d *tmp, std::string name)
         calc_N2(fld->data, fields->sp["th"]->data, grid->dzi, thref);
     else
         throw 1;
+
+    if (cyclic)
+        grid->boundary_cyclic(fld->data);
 }
 #endif
 
@@ -480,7 +483,7 @@ void Thermo_dry::init_base_state(double* restrict rho,    double* restrict rhoh,
 
 void Thermo_dry::init_stat()
 {
-    if (stats->getSwitch() == "1")
+    if (stats->get_switch() == "1")
     {
         // Add base state profiles to statistics
         stats->add_fixed_prof("rhoref",  "Full level basic state density",  "kg m-3", "z",  fields->rhoref);

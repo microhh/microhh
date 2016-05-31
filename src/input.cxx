@@ -110,11 +110,6 @@ int Input::read_ini_file()
         }
         master->broadcast(inputline, 256);
 
-        for (int i = 0; inputline[i] != '\0'; i++)
-        {
-            inputline[i] = tolower(inputline[i]);
-        }
-
         // check for empty line
         n = std::sscanf(inputline, " %s ", temp1);
         if (n == 0)

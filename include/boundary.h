@@ -31,31 +31,35 @@ class Fields;
 struct Mask;
 
 /**
- * Base class for the advection scheme.
- * This class handles the case when advection is turned off. Derived classes are
- * implemented that handle different advection schemes.
+ * Base class for the boundary scheme.
+ * This class handles the case when the boundary is turned off. Derived classes are
+ * implemented that handle different boundary schemes.
  */
 class Boundary
 {
     public:
+        enum Boundary_type   {Dirichlet_type, Neumann_type, Flux_type, Ustar_type};
+        enum Boundary_w_type {Normal_type, Conservation_type};
+
         Boundary(Model*, Input*); ///< Constuctor of the boundary class.
-        virtual ~Boundary();        ///< Destructor of the boundary class.
+        virtual ~Boundary();      ///< Destructor of the boundary class.
 
         static Boundary* factory(Master*, Input*, Model*); ///< Factory function for boundary class generation.
 
-        virtual void init(Input*);     ///< Initialize the fields.
-        virtual void create(Input*);   ///< Create the fields.
+        virtual void init(Input*);   ///< Initialize the fields.
+        virtual void create(Input*); ///< Create the fields.
 
         virtual void update_time_dependent(); ///< Update the time dependent parameters.
 
         virtual void set_values(); ///< Set all 2d fields to the prober BC value.
 
         virtual void exec(); ///< Update the boundary conditions.
+        virtual void set_ghost_cells_w(Boundary_w_type); ///< Update the boundary conditions.
 
         virtual void exec_stats(Mask*); ///< Execute statistics of surface
         virtual void exec_cross();       ///< Execute cross sections of surface
 
-        enum Boundary_type {Dirichlet_type, Neumann_type, Flux_type, Ustar_type};
+        std::string get_switch();
 
         // GPU functions and variables
         virtual void prepare_device();
@@ -68,8 +72,15 @@ class Boundary
         Grid*   grid;   ///< Pointer to grid class.
         Fields* fields; ///< Pointer to fields class.
 
+        std::string swboundary;
+
         Boundary_type mbcbot;
         Boundary_type mbctop;
+
+        double ubot;
+        double utop;
+        double vbot;
+        double vtop;
 
         /**
          * Structure containing the boundary options and values per 3d field.
@@ -85,7 +96,7 @@ class Boundary
         typedef std::map<std::string, Field3dBc*> BcMap;
         BcMap sbc;
 
-        // time dependent variables
+        // Variables to handle time dependency.
         std::string swtimedep;
         std::vector<double> timedeptime;
         std::vector<std::string> timedeplist;
@@ -111,5 +122,8 @@ class Boundary
 
         void calc_ghost_cells_botw_4th(double*); ///< Calculate the bottom ghost cells for the vertical velocity with 4th order accuracy.
         void calc_ghost_cells_topw_4th(double*); ///< Calculate the top ghost cells for the vertical velocity with 4th order accuracy.
+
+        void calc_ghost_cells_botw_cons_4th(double*); ///< Calculate the bottom ghost cells for the vertical velocity with global conservation.
+        void calc_ghost_cells_topw_cons_4th(double*); ///< Calculate the top ghost cells for the vertical velocity with global conservation.
 };
 #endif

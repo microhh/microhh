@@ -8,20 +8,20 @@ start = 0
 end   = 19
 step  = 2
 
-stats = netCDF4.Dataset("drycblles.0000000.nc","r")
+stats = netCDF4.Dataset("drycblles.default.0000000.nc","r")
 t  = stats.variables["t"][start:end]
 z  = stats.variables["z"][:]
 zh = stats.variables["zh"][:]
-st  = stats.variables["s"][start:end,:]
+st  = stats.variables["th"][start:end,:]
 evisct = stats.variables["evisc"][start:end,:]
 u2t = stats.variables["u2"][start:end,:]
 v2t = stats.variables["v2"][start:end,:]
 w2t = stats.variables["w2"][start:end,:]
-s2t = stats.variables["s2"][start:end,:]
-sturbt = stats.variables["sw"][start:end,:]
-sdifft = stats.variables["sdiff"][start:end,:]
-sfluxt = stats.variables["sflux"][start:end,:]
-sgradt = stats.variables["sgrad"][start:end,:]
+s2t = stats.variables["th2"][start:end,:]
+sturbt = stats.variables["thw"][start:end,:]
+sdifft = stats.variables["thdiff"][start:end,:]
+sfluxt = stats.variables["thflux"][start:end,:]
+sgradt = stats.variables["thgrad"][start:end,:]
 
 s = numpy.mean(st,0)
 evisc = numpy.mean(evisct,0)

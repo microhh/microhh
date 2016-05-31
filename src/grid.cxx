@@ -31,6 +31,8 @@
 #include "finite_difference.h"
 #include "model.h"
 
+#include <iostream> // REMOVE ME BvS
+
 /**
  * This function constructs the grid class.
  * @param modelin Pointer to the model class.
@@ -94,7 +96,6 @@ Grid::Grid(Model *modelin, Input *inputin)
         master->print_error("\"%s\" is an illegal value for swspatialorder\n", swspatialorder.c_str());
         throw 1;
     }
-
     // 2nd order scheme requires only 1 ghost cell
     if (swspatialorder == "2")
     {
@@ -214,6 +215,8 @@ void Grid::init()
     iend   = imax + igc;
     jend   = jmax + jgc;
     kend   = kmax + kgc;
+
+    check_ghost_cells();
 
     // allocate all arrays
     x     = new double[imax+2*igc];
@@ -386,14 +389,36 @@ void Grid::calculate()
         dzhi4[kend+1] = 1./(tg0*z [kend-2] + tg1*z [kend-1] + tg2*z [kend] + tg3*z [kend+1]);
 
         // Define gradients at the boundary for the divgrad calculations.
-        dzhi4biasbot = 1./(bg0*z[kstart-1] + bg1*z[kstart] + bg2*z[kstart+1] + bg3*z[kstart+2]);
-        dzhi4biastop = 1./(tg0*z[kend-3  ] + tg1*z[kend-2] + tg2*z[kend-1  ] + tg3*z[kend    ]);
+        dzhi4bot = 1./(bg0*z[kstart-1] + bg1*z[kstart] + bg2*z[kstart+1] + bg3*z[kstart+2]);
+        dzhi4top = 1./(tg0*z[kend-3  ] + tg1*z[kend-2] + tg2*z[kend-1  ] + tg3*z[kend    ]);
 
         // Initialize the unused values at a huge value to allow for easier error tracing.
         dzi4[kstart-2] = Constants::dhuge;
         dzi4[kstart-3] = Constants::dhuge;
         dzi4[kend+1  ] = Constants::dhuge;
         dzi4[kend+2  ] = Constants::dhuge;
+    }
+}
+
+/**
+ * This function checks whether the number of ghost cells does not exceed the slice thickness.
+ */
+void Grid::check_ghost_cells()
+{
+    // Check whether the size per patch is larger than number of ghost cells for 3D runs.
+    if (imax < igc)
+    {
+	    master->print_error("Patch size in x-dir (%d) is smaller than the number of ghost cells (%d).\n",(iend-istart),igc);
+	    master->print_error("Either increase itot or decrease npx.\n");
+        throw 1;
+    }
+
+    // Check the jtot > 1 condition, to still allow for 2d runs.
+    if (jtot > 1 && jmax < jgc)
+    {
+	    master->print_error("Patch size in y-dir (%d) is smaller than the number of ghost cells (%d).\n",(jend-jstart),jgc);
+	    master->print_error("Either increase jtot or decrease npy.\n");
+        throw 1;
     }
 }
 
@@ -408,6 +433,10 @@ void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int k
     igc = std::max(igc, igcin);
     jgc = std::max(jgc, jgcin);
     kgc = std::max(kgc, kgcin);
+    
+    // BvS: this doesn't work; imax is undefined if this routine is called from a class constructor
+    // Removed it since this check is anyhow always performed from the init() of grid (after defining imax)
+    //check_ghost_cells(); 
 }
 
 /**
@@ -418,7 +447,7 @@ void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int k
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate_2nd(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
+void Grid::interpolate_2nd(double* const restrict out, const double* const restrict in, const int locin[3], const int locout[3])
 {
     const int ii = 1;
     const int jj = icells;
@@ -436,7 +465,7 @@ void Grid::interpolate_2nd(double* restrict out, double* restrict in, const int 
             {
                 const int ijk = i + j*jj + k*kk;
                 out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
-                    + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
+                         + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
             }
 }
 
@@ -494,10 +523,10 @@ void Grid::calc_mean(double* restrict prof, const double* restrict data, const i
             }
     }
 
-    double n = imax*jmax;
+    master->sum(prof, krange);
+
+    const double n = itot*jtot;
 
     for (int k=0; k<krange; ++k)
         prof[k] /= n;
-
-    get_prof(prof, krange);
 }

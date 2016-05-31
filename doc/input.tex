@@ -88,6 +88,7 @@ swcross       & 0     & 0 & disable cross sections \\
               &       & 1 & enable cross sections \\ 
 sampletime    & n/a   &   & sampling time step [s] \\
 xz            & empty &   & list of y locations at which xz-crosssection are taken \\
+yz            & empty &   & list of x locations at which yz-crosssection are taken \\
 xy            & empty &   & list of z locations at which xy-crosssection are taken \\
 crosslist     & empty &   & list of cross-section variables \\
 \end{supertabular}
@@ -223,8 +224,9 @@ masklist      & empty & wplus  & conditional statistics $w$ > 0 \\
 swthermo      & 0         & 0     & disable thermodynamics \\
               &           & dry   & dry thermodynamics \\
               &           & moist & moist thermodynamics \\
-              &           & buoy  & buoyancy thermodynamics \\
-              &           & buoy\_slope  & buoyancy thermodynamics including slope\\
+              &           & buoy  & buoyancy thermodynamics including option for slope\\
+alpha         & n/a       &       & optional slope angle [radians]\\
+N2            & n/a       &       & Brunt-V\"{a}is\"{a}l\"{a} frequency [1/s] (req. with alpha)\\
 swbasestate    & n/a   & boussinesq & constant density and reference temperature \\
                &       & anelastic  & anelastic approximation (Bannon, 1996) \\
 thvref0       & n/a       &       & reference virtual potential temperature [K] (moist Boussinesq) \\
