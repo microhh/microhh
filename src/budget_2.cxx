@@ -1618,7 +1618,6 @@ void Budget_2::calc_diffusion_terms_scalar_DNS(double* const restrict b2_visc, d
                                          );
             }
 
-    // Note BvS: what to do with bw_visc at lower (and top) boundary?
     int k = grid.kstart;
     for (int j=grid.jstart; j<grid.jend; ++j)
         #pragma ivdep
@@ -1626,30 +1625,8 @@ void Budget_2::calc_diffusion_terms_scalar_DNS(double* const restrict b2_visc, d
         {
             const int ijk = i + j*jj + k*kk;
 
-            // BvS: test with biased interpolations to calculate b and w at zh[kstart-1]
-            const double ci0f =  1.;
-            const double ci1f = -3.;
-            const double ci2f =  3.;
-
-            const double ci0h =  15./8.;
-            const double ci1h = -10./8.;
-            const double ci2h =   3./8.;
-
             // with w[kstart-1] undefined, use gradient w over lowest grid point
             bw_diss[k] -= 2 * visc * (w[ijk+kk]-w[ijk]) * dzi[k] * ((b[ijk]-bmean[k])-(b[ijk-kk]-bmean[k-1]))*dzhi[k];
-
-            bw_visc[k] += visc * ( ( (w[ijk+kk] * interp2(b[ijk      ]-bmean[k  ], b[ijk+kk]-bmean[k+1])) -
-                                     (w[ijk   ] * interp2(b[ijk-kk   ]-bmean[k-1], b[ijk   ]-bmean[k  ])) ) * dzi[k  ] -
-                                   ( (w[ijk   ] * interp2(b[ijk-kk   ]-bmean[k-1], b[ijk   ]-bmean[k  ])) -
-                                     (
-                                        (ci0f* w[ijk+kk+kk] +
-                                         ci1f* w[ijk+kk   ] +
-                                         ci2f* w[ijk      ]) *
-                                        (ci0h*(b[ijk-kk   ]-bmean[k-1]) +
-                                         ci1h*(b[ijk      ]-bmean[k  ]) +
-                                         ci2h*(b[ijk+kk   ]-bmean[k+1]))
-                                     ) * dzi[k-1] )
-                                  ) * dzhi[k];
         }
 
     k = grid.kend;
@@ -1685,6 +1662,11 @@ void Budget_2::calc_diffusion_terms_scalar_DNS(double* const restrict b2_visc, d
                                             ((b[ijk]-bmean[k])-(b[ijk-kk]-bmean[k-1]))*dzhi[k]
                                          );
             }
+
+    // The second derivative of the flux at the lower and top boundary can't be calculated; with a biased
+    // second derivative the term at kstart and kend equals the term at kstart+1 and kend-1, respectively
+    bw_visc[grid.kstart] = bw_visc[grid.kstart+1];
+    bw_visc[grid.kend  ] = bw_visc[grid.kend-1  ];
 
     // Calculate sum over all processes, and calc mean profiles
     master.sum(b2_visc, grid.kcells);
