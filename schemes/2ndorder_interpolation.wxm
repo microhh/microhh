@@ -12,11 +12,19 @@ sol1 : linsolve([eq1,eq2],[f0,f1]);
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-sol1_a : ratsimp( subst([a=1/4], sol1) );
+sol1_a_h : ratsimp( subst([a=1/2], sol1) );
 /* [wxMaxima: input   end   ] */
 
 /* [wxMaxima: input   start ] */
-sol1_a_error : subst([f[L]=0, f[R]=0], sol1_a);
+sol1_a_h_error : subst([f[L]=0, f[R]=0], sol1_a_h);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol1_a_q : ratsimp( subst([a=1/4], sol1) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+sol1_a_q_error : subst([f[L]=0, f[R]=0], sol1_a_q);
 /* [wxMaxima: input   end   ] */
 
 /* Maxima can't load/batch files which end with a comment! */
