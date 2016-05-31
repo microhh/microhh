@@ -150,7 +150,7 @@ class Grid
         void fft_backward(double*, double*, double*, double*, double*, double*); ///< Backward fast-fourier transform.
 
         // interpolation functions
-        void interpolate_2nd(double*, double*, const int[3], const int[3]); ///< Second order interpolation
+        void interpolate_2nd(double*, const double*, const int[3], const int[3]); ///< Second order interpolation
         void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation
 
         // GPU functions and variables

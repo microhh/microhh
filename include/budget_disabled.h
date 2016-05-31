@@ -20,50 +20,32 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BUDGET
-#define BUDGET
+#ifndef BUDGET_DISABLED
+#define BUDGET_DISABLED
 
-#include <string>
+#include "budget.h"
 
 class Input;
 class Master;
-class Stats;
 class Grid;
 class Fields;
 class Thermo;
 class Diff;
 class Advec;
-class Force;
+class Stats;
 struct Mask;
 
 /**
- * Base class for the budget statistics. This class is abstract and only
- * derived classes can be instantiated. Derived classes are
- * implemented that handle different budget statistics.
+ * Derived class for disabled budget statistics
  */
-class Budget
+class Budget_disabled : public Budget
 {
     public:
-        Budget(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Force*, Stats*);
-        virtual ~Budget();
+        Budget_disabled(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Force*, Stats*);
+        virtual ~Budget_disabled();
 
-        static Budget* factory(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Force*, Stats*); ///< Factory function for budget class generation.
-
-        virtual void init() = 0;
-        virtual void create() = 0;
-        virtual void exec_stats(Mask*) = 0;
-
-    protected:
-        Master& master;
-        Grid&   grid;
-        Fields& fields;
-        Thermo& thermo;
-        Diff&   diff;
-        Advec&  advec;
-        Force&  force;
-        Stats&  stats;
-
-        std::string swbudget;
+        void init();
+        void create();
+        void exec_stats(Mask*);
 };
 #endif
-
