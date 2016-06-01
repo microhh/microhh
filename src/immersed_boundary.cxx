@@ -565,7 +565,7 @@ void Immersed_boundary::create()
     if (sw_ib != "1")
         return;
 
-    if (stats->getSwitch() == "1")
+    if (stats->get_switch() == "1")
     {
         stats->add_time_series("IB_u_max", "Maximum u-component flow through IB walls", "m s-1");
         stats->add_time_series("IB_w_max", "Maximum w-component flow through IB walls", "m s-1");
@@ -587,7 +587,7 @@ void Immersed_boundary::exec()
     if (sw_ib != "1")
         return;
 
-    if (stats->getSwitch() == "1")
+    if (stats->get_switch() == "1")
         check_no_penetration(&boundary_u_max, &boundary_w_max, fields->u->data, fields->w->data, IB_cells, grid->icells, grid->ijcells);
 
     set_no_penetration_new(fields->ut->data, fields->vt->data, fields->wt->data,
