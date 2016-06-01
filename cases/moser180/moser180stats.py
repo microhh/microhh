@@ -6,7 +6,7 @@ from pylab import *
 
 start = 0
 end   = 60
-plotens = True
+plotens = False
 
 # read Moser's data
 Mosermean = numpy.loadtxt("chan180.means", skiprows=25)
@@ -15,6 +15,7 @@ Moseru2   = numpy.loadtxt("chan180.uubal", skiprows=25)
 Moserv2   = numpy.loadtxt("chan180.wwbal", skiprows=25)
 Moserw2   = numpy.loadtxt("chan180.vvbal", skiprows=25)
 Mosertke  = numpy.loadtxt("chan180.kbal" , skiprows=25)
+Moseruw   = numpy.loadtxt("chan180.uvbal", skiprows=25)
 
 yplusMoser = Mosermean[:,1]
 uavgMoser  = Mosermean[:,2]
@@ -44,6 +45,13 @@ tke_turbMoser  = Mosertke[:,6]
 tke_viscMoser  = Mosertke[:,7]
 tke_dissMoser  = Mosertke[:,2]
 tke_presMoser  = Mosertke[:,5]
+
+uw_shearMoser = Moseruw[:,3]
+uw_presMoser  = Moseruw[:,5]
+uw_turbMoser  = Moseruw[:,6]
+uw_viscMoser  = Moseruw[:,7]
+uw_dissMoser  = Moseruw[:,2]
+uw_rdstrMoser = Moseruw[:,4]
 
 stats = netCDF4.Dataset("moser180.default.0000000.nc","r")
 t  = stats.variables["t"] [start:end]
@@ -83,6 +91,14 @@ tke_turbt  = stats.variables["tke_turb"] [start:end,:]
 tke_visct  = stats.variables["tke_visc"] [start:end,:]
 tke_disst  = stats.variables["tke_diss"] [start:end,:]
 tke_prest  = stats.variables["tke_pres"] [start:end,:]
+
+# stress budgets
+uw_sheart = stats.variables["uw_shear"][start:end,:]
+uw_visct  = stats.variables["uw_visc"] [start:end,:]
+uw_turbt  = stats.variables["uw_turb"] [start:end,:]
+uw_disst  = stats.variables["uw_diss"] [start:end,:]
+uw_prest  = stats.variables["uw_pres"] [start:end,:]
+uw_rdstrt = stats.variables["uw_rdstr"][start:end,:]
 
 utotavgt = (uavgt**2. + vavgt**2.)**.5
 visc   = 1.0e-5
@@ -125,6 +141,14 @@ tke_visc  = numpy.mean(tke_visct ,0)
 tke_diss  = numpy.mean(tke_disst ,0)
 tke_pres  = numpy.mean(tke_prest ,0)
 tke_resid = tke_shear + tke_turb + tke_visc + tke_diss + tke_pres
+
+uw_shear = numpy.mean(uw_sheart,0)
+uw_turb  = numpy.mean(uw_turbt ,0)
+uw_visc  = numpy.mean(uw_visct ,0)
+uw_diss  = numpy.mean(uw_disst ,0)
+uw_pres  = numpy.mean(uw_prest ,0)
+uw_rdstr = numpy.mean(uw_rdstrt,0)
+uw_resid = uw_shear + uw_turb + uw_visc + uw_diss + uw_pres + uw_rdstr
 
 utotavg = numpy.mean(utotavgt,0)
 ustar   = numpy.mean(ustart)
@@ -272,6 +296,34 @@ ylabel('tke')
 legend(loc=0, frameon=False)
 grid()
 axis([0, 200, -0.3, 0.3])
+
+figure()
+if(plotens):
+  for n in range(end-start):
+    plot(yplus[starty:endy], uw_sheart[n,starty:endy] * visc / ustar**4., color='#cccccc')
+    plot(yplus[starty:endy], uw_turbt [n,starty:endy] * visc / ustar**4., color='#cccccc')
+    plot(yplus[starty:endy], uw_visct [n,starty:endy] * visc / ustar**4., color='#cccccc')
+    plot(yplus[starty:endy], uw_disst [n,starty:endy] * visc / ustar**4., color='#cccccc')
+    plot(yplus[starty:endy], uw_prest [n,starty:endy] * visc / ustar**4., color='#cccccc')
+    plot(yplus[starty:endy], uw_rdstrt[n,starty:endy] * visc / ustar**4., color='#cccccc')
+plot(yplus[starty:endy], uw_shear[starty:endy] * visc / ustar**4., 'b-', label='S')
+plot(yplus[starty:endy], uw_turb [starty:endy] * visc / ustar**4., 'g-', label='Tt')
+plot(yplus[starty:endy], uw_visc [starty:endy] * visc / ustar**4., 'c-', label='Tv')
+plot(yplus[starty:endy], uw_diss [starty:endy] * visc / ustar**4., 'r-', label='D')
+plot(yplus[starty:endy], uw_pres [starty:endy] * visc / ustar**4., 'y-', label='Tp')
+plot(yplus[starty:endy], uw_rdstr[starty:endy] * visc / ustar**4., 'm-', label='P')
+plot(yplus[starty:endy], uw_resid[starty:endy] * visc / ustar**4., 'k-', label='resid')
+plot(yplusMoser, uw_shearMoser, 'k--', label="Moser")
+plot(yplusMoser, uw_turbMoser , 'k--')
+plot(yplusMoser, uw_viscMoser , 'k--')
+plot(yplusMoser, uw_dissMoser , 'k--')
+plot(yplusMoser, uw_presMoser , 'k--')
+plot(yplusMoser, uw_rdstrMoser, 'k--')
+xlabel('y+')
+ylabel('Rxz')
+legend(loc=0, frameon=False)
+grid()
+axis([0, 200, -0.1, 0.1])
 
 figure()
 if(plotens):

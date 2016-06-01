@@ -64,6 +64,7 @@ Cross::Cross(Model* modelin, Input* inputin)
 
         // get the list of indices at which to take cross sections
         nerror += inputin->get_list(&xz, "cross", "xz", "");
+        nerror += inputin->get_list(&yz, "cross", "yz", "");
         nerror += inputin->get_list(&xy, "cross", "xy", "");
     }
 
@@ -76,7 +77,7 @@ Cross::~Cross()
 }
 
 // check whether saving the slice was successful and print appropriate message
-int Cross::check_save(int error, char * filename)
+int Cross::check_save(int error, char* filename)
 {
     master->print_message("Saving \"%s\" ... ", filename);
     if (error == 0)
@@ -107,12 +108,13 @@ void Cross::create()
     // Find nearest full and half grid locations of xz cross-sections.
     for (std::vector<double>::iterator it=xz.begin(); it<xz.end(); ++it)
     {
+        // Find the index of the slice.
         temploc  = (int) floor(*it/(grid->dy));
         temploch = (int) floor((*it+(grid->dy/2.))/(grid->dy));
 
         if (*it < 0 || *it > grid->ysize) // Check if cross location is inside domain
         {
-            master->print_error("ERROR %f in [cross][xz] is outside domain\n", *it);
+            master->print_error("%f in [cross][xz] is outside domain\n", *it);
             ++nerror;
         }
         else
@@ -120,20 +122,76 @@ void Cross::create()
             if (*it == grid->ysize) // Exception for full level when requesting domain size
                 --temploc;
 
+            // Find the corresponding index, make sure to handle MPI properly.
+            double ycross = -1.;
+            if (temploc / grid->jmax == master->mpicoordy)
+                ycross = grid->y[temploc % grid->jmax + grid->jgc];
+            master->max(&ycross, 1);
+
+            double ycrossh = -1.;
+            if (temploch / grid->jmax == master->mpicoordy)
+                ycrossh = grid->y[temploch % grid->jmax + grid->jgc];
+            master->max(&ycrossh, 1);
+
             if (std::find(jxz.begin(), jxz.end(), temploc) != jxz.end()) // Check for duplicate entries
-                master->print_warning("removed duplicate entry y=%f for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],*it);
+                master->print_warning("Removed duplicate entry y=%f for [cross][xz]=%f\n", ycross, *it);
             else // Add to cross-list
             {
                 jxz.push_back(temploc);
-                master->print_message("Addex XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", grid->y[temploc+grid->jgc],temploc,*it);
-            } 
+                master->print_message("Added XZ cross at y=%f (j=%i) for [cross][xz]=%f\n", ycross, temploc, *it);
+            }
 
             if (std::find(jxzh.begin(), jxzh.end(), temploch) != jxzh.end()) // Check for duplicate entries
-                master->print_warning("removed duplicate entry yh=%f for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],*it);
+                master->print_warning("Removed duplicate entry yh=%f for [cross][xz]=%f\n", ycrossh, *it);
             else // Add to cross-list
             {
                 jxzh.push_back(temploch);
-                master->print_message("Addex XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", grid->yh[temploch+grid->jgc],temploch,*it);
+                master->print_message("Added XZ cross at yh=%f (j=%i) for [cross][xz]=%f\n", ycrossh, temploch, *it);
+            }
+        }
+    }
+    
+    // Find nearest full and half grid locations of yz cross-sections.
+    for (std::vector<double>::iterator it=yz.begin(); it<yz.end(); ++it)
+    {
+        temploc  = (int) floor(*it/(grid->dx));
+        temploch = (int) floor((*it+(grid->dx/2.))/(grid->dx));
+
+        if (*it < 0 || *it > grid->xsize) // Check if cross location is inside domain
+        {
+            master->print_error("%f in [cross][yz] is outside domain\n", *it);
+            ++nerror;
+        }
+        else
+        {
+            if (*it == grid->xsize) // Exception for full level when requesting domain size
+                --temploc;
+
+            // Find the corresponding index, make sure to handle MPI properly.
+            double xcross = -1.;
+            if (temploc / grid->imax == master->mpicoordx)
+                xcross = grid->x[temploc % grid->imax + grid->igc];
+            master->max(&xcross, 1);
+
+            double xcrossh = -1.;
+            if (temploch / grid->imax == master->mpicoordx)
+                xcrossh = grid->x[temploch % grid->imax + grid->igc];
+            master->max(&xcrossh, 1);
+
+            if (std::find(ixz.begin(), ixz.end(), temploc) != ixz.end()) // Check for duplicate entries
+                master->print_warning("Removed duplicate entry x=%f for [cross][yz]=%f\n", xcross, *it);
+            else // Add to cross-list
+            {
+                ixz.push_back(temploc);
+                master->print_message("Added YZ cross at x=%f (i=%i) for [cross][yz]=%f\n", xcross, temploc, *it);
+            } 
+
+            if (std::find(ixzh.begin(), ixzh.end(), temploch) != ixzh.end()) // Check for duplicate entries
+                master->print_warning("Removed duplicate entry xh=%f for [cross][yz]=%f\n", xcrossh, *it);
+            else // Add to cross-list
+            {
+                ixzh.push_back(temploch);
+                master->print_message("Added YZ cross at xh=%f (i=%i) for [cross][yz]=%f\n", xcrossh, temploch, *it);
             } 
         }
     }
@@ -144,7 +202,7 @@ void Cross::create()
         hoffset = 0;
         if (*it < 0 || *it > grid->zsize) // Check if cross location is inside domain
         {
-            master->print_error("ERROR %f in [cross][xy] is outside domain\n", *it);
+            master->print_error("%f in [cross][xy] is outside domain\n", *it);
             ++nerror;
         }
         else
@@ -169,19 +227,19 @@ void Cross::create()
             }
 
             if (std::find(kxy.begin(), kxy.end(), temploc) != kxy.end()) // Check for duplicate entries
-                master->print_warning("removed duplicate entry z=%f for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],*it);
+                master->print_warning("Removed duplicate entry z=%f for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],*it);
             else // Add to cross-list
             {
                 kxy.push_back(temploc);
-                master->print_message("Addex XY cross at z=%f (k=%i) for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],temploc,*it);
+                master->print_message("Added XY cross at z=%f (k=%i) for [cross][xy]=%f\n", grid->z[temploc+grid->kgc],temploc,*it);
             } 
 
             if (std::find(kxyh.begin(), kxyh.end(), temploc+hoffset) != kxyh.end()) // Check for duplicate entries
-                master->print_warning("removed duplicate entry zh=%f for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],*it);
+                master->print_warning("Removed duplicate entry zh=%f for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],*it);
             else // Add to cross-list
             {
                 kxyh.push_back(temploc+hoffset);
-                master->print_message("Addex XY cross at zh=%f (k=%i) for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],temploc+hoffset,*it);
+                master->print_message("Added XY cross at zh=%f (k=%i) for [cross][xy]=%f\n", grid->zh[temploc+hoffset+grid->kgc],temploc+hoffset,*it);
             }  
         }
     }
@@ -229,7 +287,7 @@ bool Cross::do_cross()
         return false;
 }
 
-int Cross::cross_simple(double * restrict data, double * restrict tmp, std::string name)
+int Cross::cross_simple(double* restrict data, double* restrict tmp, std::string name)
 {
     int nerror = 0;
     char filename[256];
@@ -249,6 +307,24 @@ int Cross::cross_simple(double * restrict data, double * restrict tmp, std::stri
         {
             std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
             nerror += check_save(grid->save_xz_slice(data, tmp, filename, *it), filename);    
+        }
+    }
+    
+    // loop over the index arrays to save all yz cross sections
+    if (name == "u")
+    {
+        for (std::vector<int>::iterator it=ixzh.begin(); it<ixzh.end(); ++it)
+        {
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+            nerror += check_save(grid->save_yz_slice(data, tmp, filename, *it), filename);    
+        }
+    }
+    else
+    {
+        for (std::vector<int>::iterator it=ixz.begin(); it<ixz.end(); ++it)
+        {
+            std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+            nerror += check_save(grid->save_yz_slice(data, tmp, filename, *it), filename);    
         }
     }
 
@@ -273,7 +349,7 @@ int Cross::cross_simple(double * restrict data, double * restrict tmp, std::stri
     return nerror;
 }
 
-int Cross::cross_plane(double * restrict data, double * restrict tmp, std::string name)
+int Cross::cross_plane(double* restrict data, double* restrict tmp, std::string name)
 {
     int nerror = 0;
     char filename[256];
@@ -284,7 +360,7 @@ int Cross::cross_plane(double * restrict data, double * restrict tmp, std::strin
     return nerror;
 } 
 
-int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * restrict tmp, double * restrict dzi4, std::string name)
+int Cross::cross_lngrad(double* restrict a, double* restrict lngrad, double* restrict tmp, double* restrict dzi4, std::string name)
 {
     using namespace Finite_difference::O4;
 
@@ -385,6 +461,13 @@ int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * 
         std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "xz", *it, model->timeloop->get_iotime());
         nerror += check_save(grid->save_xz_slice(lngrad, tmp, filename, *it),filename);
     }
+    
+    // loop over the index arrays to save all yz cross sections
+    for (std::vector<int>::iterator it=ixz.begin(); it<ixz.end(); ++it)
+    {
+        std::sprintf(filename, "%s.%s.%05d.%07d", name.c_str(), "yz", *it, model->timeloop->get_iotime());
+        nerror += check_save(grid->save_yz_slice(lngrad, tmp, filename, *it),filename);
+    }
 
     // loop over the index arrays to save all xy cross sections
     for (std::vector<int>::iterator it=kxy.begin(); it<kxy.end(); ++it)
@@ -396,7 +479,7 @@ int Cross::cross_lngrad(double * restrict a, double * restrict lngrad, double * 
     return nerror;
 }
 
-int Cross::cross_path(double * restrict data, double * restrict tmp, double * restrict tmp1, std::string name)
+int Cross::cross_path(double* restrict data, double* restrict tmp, double* restrict tmp1, std::string name)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
@@ -425,8 +508,76 @@ int Cross::cross_path(double * restrict data, double * restrict tmp, double * re
                 tmp[ijk1] += fields->rhoref[k] * data[ijk] * grid->dz[k];       
             }
 
-    std::sprintf(filename, "%s.%s.%07d", name.c_str(), "xy", model->timeloop->get_iotime());
-    nerror += check_save(grid->save_xy_slice(&tmp[kstart*kk], tmp1, filename),filename);
+    nerror += cross_plane(&tmp[kstart*kk], tmp1, name);
 
     return nerror;
 }
+
+/**
+ * This routine calculates the lowest or highest height where data > threshold, 
+ * and writes a cross-section of the resulting height field
+ * @param data Pointer to input data 
+ * @param height Pointer to 2D temporary field to store the height 
+ * @param tmp1 Pointer to temporary field for writing the cross-section  
+ * @param z Pointer to 1D field containing the levels of data 
+ * @param threshold Threshold value  
+ * @param Direction Switch for bottom-up (Bottom_to_top) or top-down (Top_to_bottom) 
+ * @param name String containing the output name of the cross-section 
+ */
+int Cross::cross_height_threshold(double* restrict data, double* restrict height, double* restrict tmp1, double* restrict z, double threshold, Direction direction, std::string name)
+{
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+    const int kstart = grid->kstart;
+
+    int nerror = 0;
+    char filename[256];
+
+    // Set height to NetCDF fill value
+    for (int j=grid->jstart; j<grid->jend; j++)
+#pragma ivdep
+        for (int i=grid->istart; i<grid->iend; i++)
+        {
+            const int ij = i + j*jj;
+            height[ij] = NC_FILL_DOUBLE;
+        }
+
+    if(direction == Bottom_to_top) // Find lowest grid level where data > threshold
+    {
+        
+        for (int j=grid->jstart; j<grid->jend; j++)
+            for (int i=grid->istart; i<grid->iend; i++)
+                for (int k=kstart; k<grid->kend; k++)
+                {
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
+
+                    if(data[ijk] > threshold)
+                    {
+                        height[ij] = z[k];
+                        break;
+                    }
+                }
+    }
+    else if(direction == Top_to_bottom) // Find highest grid level where data > threshold
+    {
+        for (int j=grid->jstart; j<grid->jend; j++)
+            for (int i=grid->istart; i<grid->iend; i++)
+                for (int k=grid->kend-1; k>grid->kstart-1; k--)
+                {
+                    const int ij   = i + j*jj;
+                    const int ijk  = i + j*jj + k*kk;
+
+                    if(data[ijk] > threshold)
+                    {
+                        height[ij] = z[k];
+                        break;
+                    }
+                }
+    }
+
+    nerror += cross_plane(height, tmp1, name);
+
+    return nerror;
+}
+

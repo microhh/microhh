@@ -1,12 +1,21 @@
 import numpy as np
 import struct  as st
-import pylab as pl
 import os
 import shutil
 import subprocess
+import sys
+#import pylab as pl
 
 # Custom functions to do fast tri-linear interpolation:
 from trilin import *
+
+DEBUG = True
+
+# Print and flush stdout
+def printf(string):
+    if(DEBUG):
+        print(string)
+        sys.stdout.flush()
 
 # Execute command line task
 def execute(task):
@@ -18,14 +27,14 @@ def replace(filein, searchstring, value):
     execute('sed -i -e "s/\(' +searchstring+ r'\).*/\1=' +value+ '/g" ' + filein)
 
 # Read variable from .ini file
-def read_ini(filein, variable):
+def read_ini(filein, variable, default=0):
     value = None
     with open(filein) as f:
         for line in f:
            if(line.split('=')[0]==variable):
                value = line.split('=')[1]
     if(value == None):
-        print('no variable %s'%variable)
+        print('no variable %s, using default'%variable)
     return value
 
 def key_nearest(array, value):
@@ -40,7 +49,6 @@ class Empty:
 class Read_field:
     def __init__(self, path, name, time, nx, ny, nz):
         path = '%s%s.%07i'%(path,name,time)
-        print(path)
         self.data = np.zeros((nz+2, ny+2, nx+2))
 
         fin   = open(path, "rb")
@@ -73,12 +81,23 @@ class Read_field:
             self.mean[k] = self.data[k,1:-1,1:-1].mean()
 
 # Class to write field to restart file
-def Write_field(data, path):
-    tmp  = data.reshape(data.size)
-    tmp2 = st.pack('{0}{1}d'.format('<', tmp.size), *tmp) 
-    fout = open(path, "wb")
-    fout.write(tmp2)
-    fout.close()  
+def Write_field(data, path, per_slice=True):
+    if(per_slice): # Write level by level (less memory hungry.....)
+        nz = data.shape[0]
+        ny = data.shape[1]
+        nx = data.shape[2]
+        fout  = open(path, "wb")
+        for k in range(nz):
+            tmp  = data[k,:,:].reshape(nx*ny)
+            tmp2 = st.pack('{0}{1}d'.format('<', tmp.size), *tmp) 
+            fout.write(tmp2)
+        fout.close()
+    else: # Write entire field at once (memory hungry....)
+        tmp  = data.reshape(data.size)
+        tmp2 = st.pack('{0}{1}d'.format('<', tmp.size), *tmp) 
+        fout = open(path, "wb")
+        fout.write(tmp2)
+        fout.close()  
 
 # Class to read grid.0000000 file
 class Read_grid:
@@ -131,7 +150,7 @@ class Sounding:
 # Main part of script
 # -----------------
 if(__name__ == "__main__"): 
-    pl.close('all')
+    printf('starting...')
 
     # Settings of INPUT files
     dir_in  = '../1km_5m/'
@@ -139,27 +158,32 @@ if(__name__ == "__main__"):
     nx_in   = 256
     ny_in   = 256
     nz_in   = 288
- 
-    # Read settings from restart .ini file
-    nx_out = int(read_ini('gabls4s3.ini', 'itot'))
-    ny_out = int(read_ini('gabls4s3.ini', 'jtot'))
-    nz_out = int(read_ini('gabls4s3.ini', 'ktot'))
 
-    # Re-run init mode to create grid file and FFTW plan
-    execute('./microhh init gabls4s3')
+    # Read settings from restart .ini file
+    nx_out = int(  read_ini('gabls4s3.ini', 'itot'))
+    ny_out = int(  read_ini('gabls4s3.ini', 'jtot'))
+    nz_out = int(  read_ini('gabls4s3.ini', 'ktot'))
+    utrans = float(read_ini('gabls4s3.ini', 'utrans', 0))
+    vtrans = float(read_ini('gabls4s3.ini', 'vtrans', 0))
 
     # Read input and output grid:
+    printf('reading old and new grid...')
     grid_in  = Read_grid(dir_in+'grid.0000000',  nx_in,  ny_in,  nz_in )  
     grid_out = Read_grid('grid.0000000',         nx_out, ny_out, nz_out)  
 
     # Read input fields:
     fields_in     = Empty()
+    printf('reading u...')
     fields_in.u   = Read_field(dir_in, 'u',  time_in, nx_in, ny_in, nz_in)
+    printf('reading v...')
     fields_in.v   = Read_field(dir_in, 'v',  time_in, nx_in, ny_in, nz_in)
+    printf('reading w...')
     fields_in.w   = Read_field(dir_in, 'w',  time_in, nx_in, ny_in, nz_in)
+    printf('reading th...')
     fields_in.th  = Read_field(dir_in, 'th', time_in, nx_in, ny_in, nz_in)
 
     # Create new empty fields:
+    printf('creating empty fields ...')
     fields_out    = Empty()
     fields_out.u  = np.zeros((nz_out, ny_out, nx_out))
     fields_out.v  = np.zeros((nz_out, ny_out, nx_out))
@@ -201,33 +225,37 @@ if(__name__ == "__main__"):
         zhi[i], zho[i] = index(grid_in.zh_p, grid_out.zh[i]) 
     
     # Interpolate fields. Change to trilin_python if Cython isn't installed
+    # Only interpolate theta, velocity fields are set to their mean value
+    printf('interpolate th ...')
     trilin_cython(fields_in.th.data, fields_out.th, xi,  yi,  zi,  xo,  yo,  zo )
-    #trilin_cython(fields_in.u.data,  fields_out.u,  xhi, yi,  zi,  xho, yo,  zo )
-    #trilin_cython(fields_in.v.data,  fields_out.v,  xi,  yhi, zi,  xo,  yho, zo )
-    #trilin_cython(fields_in.w.data,  fields_out.w,  xi,  yi,  zhi, xo,  yo,  zho)
 
-    # Interpolate mean velocity field to new grid:
+    # Interpolate mean velocity field to new vertical grid:
     umean_out = np.interp(grid_out.z, grid_in.z_p, fields_in.u.mean)
     vmean_out = np.interp(grid_out.z, grid_in.z_p, fields_in.v.mean)
 
+    # Set velocities to its mean value
     for k in range(nz_out):
         fields_out.u[k,:,:] = umean_out[k]
         fields_out.v[k,:,:] = vmean_out[k]
         fields_out.w[k,:,:] = 0.
 
     # Write interpolated field to binary restart file
+    printf('writing th ...')
     Write_field(fields_out.th, '%s.%07i'%('th', time_in))
+    printf('writing u ...')
     Write_field(fields_out.u,  '%s.%07i'%('u',  time_in))
+    printf('writing v ...')
     Write_field(fields_out.v,  '%s.%07i'%('v',  time_in))
+    printf('writing w ...')
     Write_field(fields_out.w,  '%s.%07i'%('w',  time_in))
 
-    # Overwrite input sounding as the buffer acts on the initial profiles:
+    # Overwrite input sounding, as the buffer acts on the initial profiles:
     snd = Sounding('gabls4s3.prof') 
  
     for k in range(snd.z.size):
         snd.th[k] = fields_out.th[k,:,:].mean() 
-        snd.u[k]  = fields_out.u [k,:,:].mean() 
-        snd.v[k]  = fields_out.v [k,:,:].mean() 
+        snd.u[k]  = fields_out.u [k,:,:].mean() + utrans 
+        snd.v[k]  = fields_out.v [k,:,:].mean() + vtrans 
   
     snd.write_back() 
 

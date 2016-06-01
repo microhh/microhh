@@ -77,7 +77,7 @@ class Stats
         void get_mask(Field3d*, Field3d*, Mask*);
         void exec(int, double, unsigned long);
         bool doStats();
-        std::string getSwitch();
+        std::string get_switch();
 
         // Container for all stats, masks as uppermost in hierarchy
         Mask_map masks;

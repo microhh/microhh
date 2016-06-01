@@ -38,6 +38,7 @@
 Stats::Stats(Model* modelin, Input* inputin)
 {
     model = modelin;
+    master = model->master;
 
     // set the pointers to zero
     nmask  = 0;
@@ -49,7 +50,7 @@ Stats::Stats(Model* modelin, Input* inputin)
     if (swstats == "1")
         nerror += inputin->get_item(&sampletime, "stats", "sampletime", "");
 
-    if (!(swstats == "0" || swstats == "1" ))
+    if (!(swstats == "0" || swstats == "1"))
     {
         ++nerror;
         master->print_error("\"%s\" is an illegal value for swstats\n", swstats.c_str());
@@ -222,7 +223,7 @@ void Stats::exec(int iteration, double time, unsigned long itime)
     ++nstats;
 }
 
-std::string Stats::getSwitch()
+std::string Stats::get_switch()
 {
     return swstats;
 }
@@ -458,68 +459,78 @@ void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double
 
     const double range = maxval-minval;
 
-    // create bins, equal to the number of grid cells per proc
-    // make sure that bins is not larger than the memory of one 3d field
-    const int bins = grid->nmax;
-
-    // calculate bin width, subtract one to make the minimum and maximum 
-    // are in the middle of the bin range and add half a bin size on both sides
-    // |----x----|----x----|----x----|
-    double dbin = range / (double)(bins-1);
-    minval -= 0.5*dbin;
-    maxval += 0.5*dbin;
-
-    // set the bin array to zero
-    for (int n=0; n<bins; ++n)
-        bin[n] = 0;
-
-    // calculate the division factor of one equivalent height unit
-    // (the total volume saved is itot*jtot*zsize)
-    const double nslice = (double)(grid->itot*grid->jtot);
-
-    // check in which bin each value falls and increment the bin count
-    for (int k=grid->kstart; k<grid->kend; ++k)
+    // In case the field is entirely uniform, dbin becomes zero. In that case we set the profile to the minval.
+    if (range < 1.e-16)
     {
-        const double dzslice = grid->dz[k] / nslice;
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            // do not add a ivdep pragma here, because multiple instances could write the same bin[index]
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                const int index = (int)((data[ijk] - minval) / dbin);
-                bin[index] += dzslice;
-            }
+        for (int k=grid->kstart; k<grid->kend; ++k)
+            prof[k] = minval;
     }
-
-    // get the bin count
-    master->sum(bin, bins);
-
-    // set the starting values of the loop
-    int index = 0;
-    double zbin = 0.5*bin[index];
-    double profval = minval + 0.5*dbin;
-
-    for (int k=grid->kstart; k<grid->kend; ++k)
+    else
     {
-        // Integrate the profile up to the bin count.
-        // Escape the while loop when the integrated profile 
-        // exceeds the next grid point.
-        while (zbin < grid->z[k])
+        // create bins, equal to the number of grid cells per proc
+        // make sure that bins is not larger than the memory of one 3d field
+        const int bins = grid->nmax;
+
+        // calculate bin width, subtract one to make the minimum and maximum 
+        // are in the middle of the bin range and add half a bin size on both sides
+        // |----x----|----x----|----x----|
+        const double dbin = range / (double)(bins-1);
+
+        minval -= 0.5*dbin;
+        maxval += 0.5*dbin;
+
+        // set the bin array to zero
+        for (int n=0; n<bins; ++n)
+            bin[n] = 0;
+
+        // calculate the division factor of one equivalent height unit
+        // (the total volume saved is itot*jtot*zsize)
+        const double nslice = (double)(grid->itot*grid->jtot);
+
+        // check in which bin each value falls and increment the bin count
+        for (int k=grid->kstart; k<grid->kend; ++k)
         {
-            zbin += 0.5*(bin[index]+bin[index+1]);
-            profval += dbin;
-            ++index;
+            const double dzslice = grid->dz[k] / nslice;
+            for (int j=grid->jstart; j<grid->jend; ++j)
+                // do not add a ivdep pragma here, because multiple instances could write the same bin[index]
+                for (int i=grid->istart; i<grid->iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int index = (int)((data[ijk] - minval) / dbin);
+                    bin[index] += dzslice;
+                }
         }
 
-        // In case the first bin is larger than the grid spacing, which can happen
-        // in the inital phase of an MPI run, make sure that no out-of-bounds reads
-        // happen.
-        if (index == 0)
-            prof[k] = profval;
-        else
+        // get the bin count
+        master->sum(bin, bins);
+
+        // set the starting values of the loop
+        int index = 0;
+        double zbin = 0.5*bin[index];
+        double profval = minval + 0.5*dbin;
+
+        for (int k=grid->kstart; k<grid->kend; ++k)
         {
-            const double dzfrac = (zbin-grid->z[k]) / (0.5*(bin[index-1]+bin[index]));
-            prof[k] = profval - dzfrac*dbin;
+            // Integrate the profile up to the bin count.
+            // Escape the while loop when the integrated profile 
+            // exceeds the next grid point.
+            while (zbin < grid->z[k])
+            {
+                zbin += 0.5*(bin[index]+bin[index+1]);
+                profval += dbin;
+                ++index;
+            }
+
+            // In case the first bin is larger than the grid spacing, which can happen
+            // in the inital phase of an MPI run, make sure that no out-of-bounds reads
+            // happen.
+            if (index == 0)
+                prof[k] = profval;
+            else
+            {
+                const double dzfrac = (zbin-grid->z[k]) / (0.5*(bin[index-1]+bin[index]));
+                prof[k] = profval - dzfrac*dbin;
+            }
         }
     }
 
@@ -959,7 +970,7 @@ void Stats::calc_path(double* restrict data, double* restrict maskbot, int* rest
                     }
             }
         *path /= (double)*nmaskbot;
-        grid->get_prof(path,1);
+        master->sum(path, 1);
     }
     else
         *path = NC_FILL_DOUBLE;

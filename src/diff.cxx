@@ -81,18 +81,18 @@ Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std:
         if (swboundary != "surface")
         {
             masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
-            return 0;
+            throw 1;
         }
         return new Diff_smag_2(modelin, inputin);
     }
     else
     {
         masterin->print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
-        return 0;
+        throw 1;
     }
 }
 
-std::string Diff::get_name()
+std::string Diff::get_switch()
 {
     return swdiff;
 }
