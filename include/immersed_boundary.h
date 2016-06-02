@@ -33,15 +33,26 @@ class Input;
 class Stats;
 struct Mask;
 
-struct IB_cell
+struct Neighbour
 {
     int i;
     int j;
     int k;
-    std::bitset<6> sw_outer_wall;
+    double distance;
 };
 
-enum IB_edge {Bottom_edge, Top_edge, West_edge, East_edge, South_edge, North_edge};
+struct Ghost_cell
+{
+    int i;  ///< i-location of ghost cell
+    int j;  ///< j-location of ghost cell
+    int k;  ///< k-location of ghost cell
+
+    std::vector< std::vector<double> > B_u; ///< Matrix with locations/values used in interpolation to ghost cell 
+    std::vector< std::vector<double> > B_v; ///< Matrix with locations/values used in interpolation to ghost cell 
+    std::vector< std::vector<double> > B_w; ///< Matrix with locations/values used in interpolation to ghost cell 
+
+    std::vector<Neighbour> fluid_neighbours; ///< Neighbouring fluid points used in interpolation
+};
 
 class Immersed_boundary
 {
@@ -61,12 +72,9 @@ class Immersed_boundary
         Grid*   grid;   ///< Pointer to grid class.
         Stats*  stats;  ///< Pointer to grid class.
 
-        std::vector<IB_cell> IB_cells;
+        std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
+        std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
 
-        // Some (temporary?) statistics walls
-        double boundary_u_max;
-        double boundary_w_max;
-
-        std::string sw_ib;
+        std::string sw_ib; ///< Immersed boundary switch
 };
 #endif

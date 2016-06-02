@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 #include "master.h"
 #include "model.h"
 #include "grid.h"
@@ -47,460 +48,110 @@ Immersed_boundary::~Immersed_boundary()
 
 namespace
 {
-    void add_IB_block(std::vector<IB_cell> &IB_cells,
-                      const int istart, const int iend,
-                      const int jstart, const int jend,
-                      const int kstart, const int kend)
+    double gaussian_bump(const double x, const double x0, const double height, const double width)
     {
-        IB_cell tmp;
+        return height * std::exp(pow(-(x-x0)/width, 2));    
+    }
 
+    double abs_distance(const double dx, const double dy, const double dz)
+    {
+        return std::pow(std::pow(dx, 2) + std::pow(dy, 2) + std::pow(dz, 2), 0.5);
+    }
+
+    double abs_distance(const double dx, const double dz)
+    {
+        return std::pow(std::pow(dx, 2) + std::pow(dz, 2), 0.5);
+    }
+
+    void determine_ghost_cells(std::vector<Ghost_cell>* ghost_cells, const double* const x, const double* const y, const double* const z,
+                               const int n_neighbours, const double x0_hill, const double lz_hill, const double lx_hill, const double dx, const double dy,
+                               const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
+    {
+        const int ii = 1;
+
+        // Determine the ghost cells 
         for (int k=kstart; k<kend; ++k)
             for (int j=jstart; j<jend; ++j)
                 for (int i=istart; i<iend; ++i)
                 {
-                    tmp.sw_outer_wall.reset();  // Set all walls to false
+                    const int ijk = i + j*jj + k*kk;
+                    
+                    // u-location
+                    const double z_hill    = gaussian_bump(x[i],   x0_hill, lz_hill, lx_hill);
+                    const double z_hill_im = gaussian_bump(x[i-1], x0_hill, lz_hill, lx_hill);
+                    const double z_hill_ip = gaussian_bump(x[i+1], x0_hill, lz_hill, lx_hill);
 
-                    tmp.i = i;
-                    tmp.j = j;
-                    tmp.k = k;
+                    // If this grid point is inside the hill, and one of its neighbours is not, this is a ghost cell
+                    if (z[k] < z_hill && (z[k+1] >= z_hill || z[k] >= z_hill_im || z[k] >= z_hill_ip))
+                    {
+                        Ghost_cell tmp_ghost;
+                        tmp_ghost.i = i;
+                        tmp_ghost.j = j;
+                        tmp_ghost.k = k;
 
-                    if(i == istart)
-                        tmp.sw_outer_wall.set(West_edge);
-                    if(i == iend-1)
-                        tmp.sw_outer_wall.set(East_edge);
-                    if(j == jstart)
-                        tmp.sw_outer_wall.set(South_edge);
-                    if(j == jend-1)
-                        tmp.sw_outer_wall.set(North_edge);
-                    if(k == kstart)
-                        tmp.sw_outer_wall.set(Bottom_edge);
-                    if(k == kend-1)
-                        tmp.sw_outer_wall.set(Top_edge);
+                        // Find the two nearest neighbours outside of the hill
+                        for (int ii = -1; ii < 2; ++ii)
+                            for (int kk = -1; kk < 2; ++kk)
+                                if(z[k+kk] > gaussian_bump(x[i+ii], x0_hill, lz_hill, lx_hill))
+                                {
+                                    Neighbour nb = {i+ii, j, k+kk, abs_distance(x[i]-x[i+ii], z[k]-z[k+kk])};
+                                    tmp_ghost.fluid_neighbours.push_back(nb);
+                                }
 
-                    IB_cells.push_back(tmp);
+                        // Sort the neighbouring points on distance
+                        std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), [](Neighbour& a, Neighbour& b)
+                            { return a.distance < b.distance; });
+                   
+                        // Abort if there are insufficient neighbouring fluid points 
+                        if (tmp_ghost.fluid_neighbours.size() < n_neighbours)
+                        {
+                            std::cout << "NEIN" << std::endl;
+                            throw 1;
+                        }
+
+                        // Only keep the N nearest neighbour fluid points
+                        tmp_ghost.fluid_neighbours.erase(tmp_ghost.fluid_neighbours.begin()+n_neighbours, tmp_ghost.fluid_neighbours.end());
+                    
+                        // Find closest point on boundary
+                        double d_min = 1e12;
+                        double x_min = 0;
+                        double z_min = 0;
+                        const int n  = 100;
+                        for (int ii=-n/2; ii<n/2+1; ++ii)
+                        {
+                            const double xc = x[i] + 2*ii/(double)n*dx; 
+                            const double zc = gaussian_bump(xc, x0_hill, lz_hill, lx_hill);
+                            const double dc = abs_distance(x[i]-xc, z[k]-zc);
+
+                            if (dc < d_min)
+                            {
+                                d_min = dc;
+                                x_min = xc;
+                                z_min = zc;
+                            }
+                        }
+
+                        // Define the distance matrix for the interpolations
+                        std::vector< std::vector<double> > B_u(n+1, std::vector<double>(n+2,0));
+                       
+                        B_u[0][0] = 1;
+                        B_u[1][0] = 1;
+                        B_u[2][0] = 1;
+
+                        B_u[0][1] = x_min;                                // x-location of given value on boundary 
+                        B_u[1][1] = x[tmp_ghost.fluid_neighbours[0].i];   // x-location of fluid point #1
+                        B_u[2][1] = x[tmp_ghost.fluid_neighbours[1].i];   // x-location of fluid point #2
+
+                        B_u[0][2] = z_min;                                // z-location of given value on boundary
+                        B_u[1][2] = z[tmp_ghost.fluid_neighbours[0].k];   // z-location of fluid point #1
+                        B_u[2][2] = z[tmp_ghost.fluid_neighbours[1].k];   // z-location of fluid point #1
+                    
+                        // Add to vector with ghost_cells 
+                        ghost_cells->push_back(tmp_ghost);
+                    }
                 }
-        }
-
-    void set_no_penetration_new(double* const restrict ut, double* const restrict vt, double* const restrict wt,
-                                double* const restrict u,  double* const restrict v, double* const restrict w,
-                                std::vector<IB_cell> IB_cells,
-                                const int icells, const int ijcells)
-    {
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        for (std::vector<IB_cell>::iterator it=IB_cells.begin(); it<IB_cells.end(); ++it) // c++11 :(
-        {
-            const int ijk = it->i + it->j*jj + it->k*kk;
-
-            u [ijk] = 0;
-            //v [ijk] = 0;
-            w [ijk] = 0;
-            ut[ijk] = 0;
-            //vt[ijk] = 0;
-            wt[ijk] = 0;
-
-            if (it->sw_outer_wall[West_edge])
-            {
-                u [ijk] = 0;
-                ut[ijk] = 0;
-            }
-
-            if (it->sw_outer_wall[East_edge])
-            {
-                u [ijk+ii] = 0;
-                ut[ijk+ii] = 0;
-            }
-
-            //if (it->sw_outer_wall[South_edge])
-            //{
-            //    v [ijk] = 0;
-            //    vt[ijk] = 0;
-            //}
-
-            //if (it->sw_outer_wall[North_edge])
-            //{
-            //    v [ijk+jj] = 0;
-            //    vt[ijk+jj] = 0;
-            //}
-
-            if (it->sw_outer_wall[Bottom_edge])
-            {
-                w [ijk] = 0;
-                wt[ijk] = 0;
-            }
-
-            if (it->sw_outer_wall[Top_edge])
-            {
-                w [ijk+kk] = 0;
-                wt[ijk+kk] = 0;
-            }
-
-        }
     }
-
-    void set_no_penetration(double* const restrict ut, double* const restrict wt,
-                            double* const restrict u,  double* const restrict w,
-                            const int istart, const int iend,
-                            const int jstart, const int jend,
-                            const int kstart, const int kend,
-                            const int icells, const int ijcells)
-    {
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        // Put an solid block at 1/2 of the horizontal dimension in the
-        // middle of the channel.
-        const int ibc_istart = istart +  4 * (iend-istart) / 16;
-        const int ibc_iend   = istart + 12 * (iend-istart) / 16;
-        const int ibc_kstart = kstart +  3 * (kend-kstart) / 8;
-        const int ibc_kend   = kstart +  5 * (kend-kstart) / 8;
-
-        // Set the u ghost cells, no flow in the block.
-        for (int k=ibc_kstart; k<ibc_kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-            {
-                const int ijk_istart  = ibc_istart + j*jj + k*kk;
-                const int ijk_iend    = ibc_iend   + j*jj + k*kk;
-                u [ijk_istart] = 0.;
-                u [ijk_iend  ] = 0.;
-                ut[ijk_istart] = 0.;
-                ut[ijk_iend  ] = 0.;
-            }
-
-        // Set the w ghost cells, no flow in the block.
-        for (int j=jstart; j<jend; ++j)
-            for (int i=ibc_istart; i<ibc_iend; ++i)
-            {
-                const int ijk_kstart = i + j*jj + ibc_kstart*kk;
-                const int ijk_kend   = i + j*jj + ibc_kend  *kk;
-                w [ijk_kstart] = 0.;
-                w [ijk_kend  ] = 0.;
-                wt[ijk_kstart] = 0.;
-                wt[ijk_kend  ] = 0.;
-            }
-    }
-
-    void set_no_slip_new(double* const restrict ut, double* const restrict wt,
-                         const double* const restrict u, const double* const restrict w,
-                         const double* const restrict rhoref, const double* const restrict rhorefh,
-                         const double* const restrict dzi, const double* const restrict dzhi,
-                         const double dxi,
-                         const double visc,
-                         std::vector<IB_cell> IB_cells,
-                         const int icells, const int ijcells)
-    {
-        using namespace Finite_difference::O2;
-
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        const double dxidxi = dxi*dxi;
-
-        for (std::vector<IB_cell>::iterator it=IB_cells.begin(); it<IB_cells.end(); ++it) // c++11 :(
-        {
-            // Adjust u-component directly below cell
-            if (it->sw_outer_wall[Bottom_edge])
-            {
-                const int k   = it->k-1;
-                const int ijk = it->i + it->j*jj + k*kk; 
-
-                ut[ijk] +=
-                        + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk], u[ijk+kk]) ) / rhoref[k] * dzi[k];
-                        - visc * ( (u[ijk+kk] - u[ijk]) * dzhi[k+1]) * dzi[k];
-                        + visc * ( -2.*u[ijk] * dzhi[k+1] ) * dzi[k];
-
-                // For the bottom-right corner, also adjust u-component
-                if(it->sw_outer_wall[East_edge])
-                {
-                    const int ijk = it->i+1 + it->j*jj + k*kk;
-
-                    ut[ijk] +=
-                            + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk], u[ijk+kk]) ) / rhoref[k] * dzi[k];
-                            - visc * ( (u[ijk+kk] - u[ijk]) * dzhi[k+1]) * dzi[k];
-                            + visc * ( -2.*u[ijk] * dzhi[k+1] ) * dzi[k];
-                }
-            }
-
-            // Adjust u-component directly above cell
-            if (it->sw_outer_wall[Top_edge])
-            {
-                const int k   = it->k+1;
-                const int ijk = it->i + it->j*jj + k*kk; 
-
-                ut[ijk] +=
-                        - ( rhorefh[k] * interp2(w[ijk-ii], w[ijk]) * interp2(u[ijk-kk], u[ijk]) ) / rhoref[k] * dzi[k];
-                        + visc * ( (u[ijk] - u[ijk-kk]) * dzhi[k] ) * dzi[k];
-                        - visc * ( 2.*u[ijk] * dzhi[k] ) * dzi[k];
-
-                // For the top-right corner, also adjust u-component
-                if(it->sw_outer_wall[East_edge])
-                {
-                    const int ijk = it->i+1 + it->j*jj + k*kk; 
-
-                    ut[ijk] +=
-                            - ( rhorefh[k] * interp2(w[ijk-ii], w[ijk]) * interp2(u[ijk-kk], u[ijk]) ) / rhoref[k] * dzi[k];
-                            + visc * ( (u[ijk] - u[ijk-kk]) * dzhi[k] ) * dzi[k];
-                            - visc * ( 2.*u[ijk] * dzhi[k] ) * dzi[k];
-                }
-            }
-
-            // Adjust w-component west of cell  
-            if (it->sw_outer_wall[West_edge])
-            {
-                const int k   = it->k;
-                const int ijk = it->i-1 + it->j*jj + k*kk; 
-
-                wt[ijk] +=
-                        + ( interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk], w[ijk+ii]) ) * dxi
-                        - visc * ( (w[ijk+ii] - w[ijk]) ) * dxidxi
-                        + visc * ( -2.*w[ijk] ) * dxidxi;
-                
-                // For the top-left corner, also adjust w-component
-                if (it->sw_outer_wall[Top_edge])
-                {
-                    const int k   = it->k+1;
-                    const int ijk = it->i-1 + it->j*jj + k*kk; 
-
-                    wt[ijk] +=
-                            + ( interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk], w[ijk+ii]) ) * dxi
-                            - visc * ( (w[ijk+ii] - w[ijk]) ) * dxidxi
-                            + visc * ( -2.*w[ijk] ) * dxidxi;
-                }
-            }
-
-            // Adjust w-component east of cell  
-            if (it->sw_outer_wall[East_edge])
-            {
-                const int k   = it->k;
-                const int ijk = it->i+1 + it->j*jj + k*kk; 
-
-                wt[ijk] +=
-                        - ( interp2(u[ijk-kk], u[ijk]) * interp2(w[ijk-ii], w[ijk]) ) * dxi
-                        + visc * ( (w[ijk] - w[ijk-ii]) ) * dxidxi
-                        - visc * ( 2.*w[ijk] ) * dxidxi;
-                
-                // For the top-right corner, also adjust w-component
-                if (it->sw_outer_wall[Top_edge])
-                {
-                    const int k   = it->k+1;
-                    const int ijk = it->i+1 + it->j*jj + k*kk; 
-
-                    wt[ijk] +=
-                            - ( interp2(u[ijk-kk], u[ijk]) * interp2(w[ijk-ii], w[ijk]) ) * dxi
-                            + visc * ( (w[ijk] - w[ijk-ii]) ) * dxidxi
-                            - visc * ( 2.*w[ijk] ) * dxidxi;
-                }
-            }
-        }
-    }
-
-    void set_no_slip(double* const restrict ut, double* const restrict wt,
-                     const double* const restrict u, const double* const restrict w,
-                     const double* const restrict rhoref, const double* const restrict rhorefh,
-                     const double* const restrict dzi, const double* const restrict dzhi,
-                     const double dxi,
-                     const double visc,
-                     const int istart, const int iend,
-                     const int jstart, const int jend,
-                     const int kstart, const int kend,
-                     const int icells, const int ijcells)
-    {
-        using namespace Finite_difference::O2;
-
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        const double dxidxi = dxi*dxi;
-
-        // Put an solid block at 1/2 of the horizontal dimension in the
-        // middle of the channel.
-        const int ibc_istart = istart +  4 * (iend-istart) / 16;
-        const int ibc_iend   = istart + 12 * (iend-istart) / 16;
-        const int ibc_kstart = kstart +  3 * (kend-kstart) / 8;
-        const int ibc_kend   = kstart +  5 * (kend-kstart) / 8;
-
-        // Set the w no slip at the vertical walls, by reverting the advection 
-        // and diffusion towards the wall and adding the proper diffusion
-        for (int k=ibc_kstart; k<ibc_kend+1; ++k)
-            for (int j=jstart; j<jend; ++j)
-            {
-                int ijk = ibc_istart-1 + j*jj + k*kk;
-                wt[ijk] +=
-                        + ( interp2(u[ijk+ii-kk], u[ijk+ii]) * interp2(w[ijk], w[ijk+ii]) ) * dxi
-                        - visc * ( (w[ijk+ii] - w[ijk]) ) * dxidxi
-                        + visc * ( -2.*w[ijk] ) * dxidxi;
-
-                ijk = ibc_iend + j*jj + k*kk;
-                wt[ijk] +=
-                        - ( interp2(u[ijk-kk], u[ijk]) * interp2(w[ijk-ii], w[ijk]) ) * dxi
-                        + visc * ( (w[ijk] - w[ijk-ii]) ) * dxidxi
-                        - visc * ( 2.*w[ijk] ) * dxidxi;
-            }
-
-        // Set the u no slip at the horizontal walls
-        for (int j=jstart; j<jend; ++j)
-            for (int i=ibc_istart; i<ibc_iend+1; ++i)
-            {
-                int k = ibc_kstart-1;
-                int ijk = i + j*jj + k*kk;
-                ut[ijk] +=
-                        + ( rhorefh[k+1] * interp2(w[ijk-ii+kk], w[ijk+kk]) * interp2(u[ijk], u[ijk+kk]) ) / rhoref[k] * dzi[k];
-                        - visc * ( (u[ijk+kk] - u[ijk]) * dzhi[k+1]) * dzi[k];
-                        + visc * ( -2.*u[ijk] * dzhi[k+1] ) * dzi[k];
-
-                k = ibc_kend;
-                ijk = i + j*jj + k*kk;
-                ut[ijk] +=
-                        - ( rhorefh[k] * interp2(w[ijk-ii], w[ijk]) * interp2(u[ijk-kk], u[ijk]) ) / rhoref[k] * dzi[k];
-                        + visc * ( (u[ijk] - u[ijk-kk]) * dzhi[k] ) * dzi[k];
-                        - visc * ( 2.*u[ijk] * dzhi[k] ) * dzi[k];
-            }
-    }
-
-    void set_scalar_new(double* const restrict st, double* const restrict s,
-                        const double* const restrict u, const double* const restrict w,
-                        const double* const restrict rhoref, const double* const restrict rhorefh,
-                        const double* const restrict dzi, const double* const restrict dzhi,
-                        const double dxi,
-                        const double visc,
-                        std::vector<IB_cell> IB_cells,
-                        const int icells, const int ijcells)
-    {
-        using namespace Finite_difference::O2;
-
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        const double dxidxi = dxi*dxi;
-
-        for (std::vector<IB_cell>::iterator it=IB_cells.begin(); it<IB_cells.end(); ++it) // c++11 :(
-        {
-            if (it->sw_outer_wall[West_edge])
-            {
-                const int ijk = it->i-1 + it->j*jj + it->k*kk;
-                st[ijk] -= visc * ( s[ijk+ii] - s[ijk] ) * dxidxi;
-            }
-       
-            if (it->sw_outer_wall[East_edge])
-            {
-                const int ijk = it->i+1 + it->j*jj + it->k*kk;
-                st[ijk] += visc * ( (s[ijk] - s[ijk-ii]) ) * dxidxi;
-            }
-      
-            if(it->sw_outer_wall[Bottom_edge])
-            {
-                const int k   = it->k-1;
-                const int ijk = it->i + it->j*jj + k*kk;
-                st[ijk] -= visc * (s[ijk+kk] - s[ijk]) * dzhi[k+1] * dzi[k];
-            }
-
-            if(it->sw_outer_wall[Top_edge])
-            {
-                const int k   = it->k+1;
-                const int ijk = it->i + it->j*jj + k*kk;
-                st[ijk] += visc * (s[ijk] - s[ijk-kk]) * dzhi[k] * dzi[k];
-            }
-        } 
-    }
-
-    void set_scalar(double* const restrict st, double* const restrict s,
-                    const double* const restrict u, const double* const restrict w,
-                    const double* const restrict rhoref, const double* const restrict rhorefh,
-                    const double* const restrict dzi, const double* const restrict dzhi,
-                    const double dxi,
-                    const double visc,
-                    const int istart, const int iend,
-                    const int jstart, const int jend,
-                    const int kstart, const int kend,
-                    const int icells, const int ijcells)
-    {
-        using namespace Finite_difference::O2;
-
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        const double dxidxi = dxi*dxi;
-
-        // Put an solid block at 1/2 of the horizontal dimension in the
-        // middle of the channel.
-        const int ibc_istart = istart +  4 * (iend-istart) / 16;
-        const int ibc_iend   = istart + 12 * (iend-istart) / 16;
-        const int ibc_kstart = kstart +  3 * (kend-kstart) / 8;
-        const int ibc_kend   = kstart +  5 * (kend-kstart) / 8;
-
-        // Set no flow through the object at the vertical wall and a neumann BC.
-        for (int k=ibc_kstart; k<ibc_kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-            {
-                int ijk = ibc_istart-1 + j*jj + k*kk;
-                st[ijk] +=
-                         // + ( u[ijk+ii] * interp2(s[ijk], s[ijk+ii]) ) * dxi
-                         - visc * ( s[ijk+ii] - s[ijk] ) * dxidxi;
-
-                ijk = ibc_iend + j*jj + k*kk;
-                st[ijk] +=
-                         // - ( u[ijk] * interp2(s[ijk-ii], s[ijk]) ) * dxi
-                         + visc * ( (s[ijk] - s[ijk-ii]) ) * dxidxi;
-            }
-
-        // Set no flow through the object at the horizontal wall
-        for (int j=jstart; j<jend; ++j)
-            for (int i=ibc_istart; i<ibc_iend; ++i)
-            {
-                int k = ibc_kstart-1;
-                int ijk = i + j*jj + k*kk;
-                st[ijk] +=
-                         // + ( rhorefh[k+1] * w[ijk+kk] * interp2(s[ijk], s[ijk+kk]) ) / rhoref[k] * dzi[k]
-                         - visc * (s[ijk+kk] - s[ijk]) * dzhi[k+1] * dzi[k];
-
-                k = ibc_kend;
-                ijk = i + j*jj + k*kk;
-                st[ijk] +=
-                         // - ( rhorefh[k] * w[ijk] * interp2(s[ijk-kk], s[ijk]) ) / rhoref[k] * dzi[k];
-                         + visc * (s[ijk] - s[ijk-kk]) * dzhi[k] * dzi[k];
-            }
-    }
-
-    void check_no_penetration(double* u_max, double* w_max, 
-                              const double* const restrict u, const double* const restrict w, 
-                              std::vector<IB_cell> IB_cells,
-                              const int icells, const int ijcells)
-    {
-        const int ii = 1;
-        const int jj = icells;
-        const int kk = ijcells;
-
-        *u_max = 0;
-        *w_max = 0;
-
-        for (std::vector<IB_cell>::iterator it=IB_cells.begin(); it<IB_cells.end(); ++it) // c++11 :(
-        {
-            const int ijk = it->i + it->j*jj + it->k*kk;
-
-            if (it->sw_outer_wall[West_edge])
-                if(std::abs(u[ijk]) > *u_max)
-                    *u_max = std::abs(u[ijk]);
-
-            if (it->sw_outer_wall[East_edge])
-                if(std::abs(u[ijk+ii]) > *u_max)
-                    *u_max = std::abs(u[ijk+ii]);
-
-            if (it->sw_outer_wall[Bottom_edge])
-                if(std::abs(w[ijk]) > *w_max)
-                    *w_max = std::abs(w[ijk]);
-
-            if (it->sw_outer_wall[Top_edge])
-                if(std::abs(w[ijk+kk]) > *w_max)
-                    *w_max = std::abs(w[ijk+kk]);
-        }
-    }
+    
 }
 
 void Immersed_boundary::init()
@@ -509,55 +160,6 @@ void Immersed_boundary::init()
 
     if (sw_ib != "1")
         return;
-
-    int ibc_istart;
-    int ibc_iend;
-    int ibc_jstart;
-    int ibc_jend;
-    int ibc_kstart;
-    int ibc_kend;
-
-    // Inflow grid
-    //const int nvert=16;
-    //for (int k=0; k<grid->ktot/nvert; ++k)
-    //{
-    //    if(k%2==0)
-    //    {
-    //        ibc_kstart = grid->kstart + k*nvert+nvert/2;
-    //        ibc_kend   = grid->kstart + (k+1)*nvert+nvert/2;
-    //        add_IB_block(IB_cells, 64, 70, grid->jstart, grid->jend+1, ibc_kstart, ibc_kend);
-    //    }
-    //}
-
-    // Set of 2d building...
-    //const int w = grid->itot/15;
-
-    //ibc_istart = grid->istart + 0.3*grid->itot - w/2;
-    //ibc_iend   = grid->istart + 0.3*grid->itot + w/2;
-    //ibc_kstart = grid->kstart;
-    //ibc_kend   = grid->kstart + grid->ktot/5;
-    //add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend+1, ibc_kstart, ibc_kend);
-
-    //ibc_istart = grid->istart + 0.5*grid->itot - w/2;
-    //ibc_iend   = grid->istart + 0.5*grid->itot + w/2;
-    //ibc_kstart = grid->kstart;
-    //ibc_kend   = grid->kstart + grid->ktot/3;
-    //add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend+1, ibc_kstart, ibc_kend);
-
-    //ibc_istart = grid->istart + 0.7*grid->itot - w/2;
-    //ibc_iend   = grid->istart + 0.7*grid->itot + w/2;
-    //ibc_kstart = grid->kstart;
-    //ibc_kend   = grid->kstart + grid->ktot/5;
-    //add_IB_block(IB_cells, ibc_istart, ibc_iend, grid->jstart, grid->jend+1, ibc_kstart, ibc_kend);
-
-    // Block in channel
-    ibc_istart = grid->istart +  6 * (grid->iend-grid->istart) / 16;
-    ibc_iend   = grid->istart + 10 * (grid->iend-grid->istart) / 16;
-    ibc_jstart = grid->jstart;
-    ibc_jend   = grid->jend+1;
-    ibc_kstart = grid->kstart;
-    ibc_kend   = grid->kstart+ 0.2 * (grid->kend-grid->kstart);
-    add_IB_block(IB_cells, ibc_istart, ibc_iend, ibc_jstart, ibc_jend, ibc_kstart, ibc_kend);
 }
 
 void Immersed_boundary::create()
@@ -565,53 +167,85 @@ void Immersed_boundary::create()
     if (sw_ib != "1")
         return;
 
-    if (stats->get_switch() == "1")
-    {
-        stats->add_time_series("IB_u_max", "Maximum u-component flow through IB walls", "m s-1");
-        stats->add_time_series("IB_w_max", "Maximum w-component flow through IB walls", "m s-1");
-    }
+    // Tmp BvS: setting Gaussian hill
+    const double x0_hill = grid->xsize / 2.;
+    const double lz_hill = grid->zsize / 4.;
+    const double lx_hill = grid->xsize / 8.;
+
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+    
+    const int n_neighbours = 2;     // 2 for 2D linear
+
+    // Determine ghost cells for u-component
+    determine_ghost_cells(&ghost_cells_u, grid->xh, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
+                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+
+    // Determine ghost cells for w-component
+    determine_ghost_cells(&ghost_cells_w, grid->x, grid->y, grid->zh, n_neighbours, x0_hill, lz_hill, lx_hill,
+                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+
+    //for (std::vector<Ghost_cell>::iterator it=ghost_cells_u.begin(); it<ghost_cells_u.end(); ++it)
+    //{
+    //    std::cout << "------------------------" << std::endl;
+    //    std::cout << it->i << " - " << it->j << " - " << it->k << std::endl;
+    //    std::cout << "------------" << std::endl;
+    //    for (std::vector<Neighbour>::iterator it2=it->fluid_neighbours.begin(); it2 < it->fluid_neighbours.end(); ++it2)
+    //        std::cout << "     " << it2->i << " - " << it2->j << " - " << it2->k << " -- " << it2->distance << std::endl;
+    //}
+
+    //for (std::vector<Ghost_cell>::iterator it=ghost_cells_w.begin(); it<ghost_cells_w.end(); ++it)
+    //{
+    //    std::cout << "------------------------" << std::endl;
+    //    std::cout << it->i << " - " << it->j << " - " << it->k << std::endl;
+    //    std::cout << "------------" << std::endl;
+    //    for (std::vector<Neighbour>::iterator it2=it->fluid_neighbours.begin(); it2 < it->fluid_neighbours.end(); ++it2)
+    //        std::cout << "     " << it2->i << " - " << it2->j << " - " << it2->k << " -- " << it2->distance << std::endl;
+    //}
+
 }
 
 void Immersed_boundary::exec_stats(Mask *m)
 {
-    if (sw_ib != "1")
-        return;
-    
-    // Temporary hack (BvS) to get wall velocities in statistics, doesn't account for mask!!
-    m->tseries["IB_u_max"].data = boundary_u_max;
-    m->tseries["IB_w_max"].data = boundary_w_max;
+//    if (sw_ib != "1")
+//        return;
+//    
+//    // Temporary hack (BvS) to get wall velocities in statistics, doesn't account for mask!!
+//    m->tseries["IB_u_max"].data = boundary_u_max;
+//    m->tseries["IB_w_max"].data = boundary_w_max;
 }
 
 void Immersed_boundary::exec()
 {
-    if (sw_ib != "1")
-        return;
-
-    if (stats->get_switch() == "1")
-        check_no_penetration(&boundary_u_max, &boundary_w_max, fields->u->data, fields->w->data, IB_cells, grid->icells, grid->ijcells);
-
-    set_no_penetration_new(fields->ut->data, fields->vt->data, fields->wt->data,
-                           fields->u->data, fields->v->data, fields->w->data, 
-                           IB_cells, grid->icells, grid->ijcells);
-
-    set_no_slip_new(fields->ut->data, fields->wt->data,
-                    fields->u->data, fields->w->data,
-                    fields->rhoref, fields->rhorefh,
-                    grid->dzi, grid->dzhi,
-                    grid->dxi,
-                    fields->visc,
-                    IB_cells,
-                    grid->icells, grid->ijcells);
-
-    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-        set_scalar_new(it->second->data, fields->sp[it->first]->data,
-                       fields->u->data, fields->w->data,
-                       fields->rhoref, fields->rhorefh,
-                       grid->dzi, grid->dzhi,
-                       grid->dxi,
-                       fields->sp[it->first]->visc,
-                       IB_cells,
-                       grid->icells, grid->ijcells);
+//    if (sw_ib != "1")
+//        return;
+//
+//    if (stats->get_switch() == "1")
+//        check_no_penetration(&boundary_u_max, &boundary_w_max, fields->u->data, fields->w->data, IB_cells, grid->icells, grid->ijcells);
+//
+//    set_no_penetration_new(fields->ut->data, fields->vt->data, fields->wt->data,
+//                           fields->u->data, fields->v->data, fields->w->data, 
+//                           IB_cells, grid->icells, grid->ijcells);
+//
+//    set_no_slip_new(fields->ut->data, fields->wt->data,
+//                    fields->u->data, fields->w->data,
+//                    fields->rhoref, fields->rhorefh,
+//                    grid->dzi, grid->dzhi,
+//                    grid->dxi,
+//                    fields->visc,
+//                    IB_cells,
+//                    grid->icells, grid->ijcells);
+//
+//    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
+//        set_scalar_new(it->second->data, fields->sp[it->first]->data,
+//                       fields->u->data, fields->w->data,
+//                       fields->rhoref, fields->rhorefh,
+//                       grid->dzi, grid->dzhi,
+//                       grid->dxi,
+//                       fields->sp[it->first]->visc,
+//                       IB_cells,
+//                       grid->icells, grid->ijcells);
 
     //set_no_penetration(fields->ut->data, fields->wt->data,
     //                   fields->u->data, fields->w->data,
