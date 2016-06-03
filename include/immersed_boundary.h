@@ -47,10 +47,7 @@ struct Ghost_cell
     int j;  ///< j-location of ghost cell
     int k;  ///< k-location of ghost cell
 
-    std::vector< std::vector<double> > B_u; ///< Matrix with locations/values used in interpolation to ghost cell 
-    std::vector< std::vector<double> > B_v; ///< Matrix with locations/values used in interpolation to ghost cell 
-    std::vector< std::vector<double> > B_w; ///< Matrix with locations/values used in interpolation to ghost cell 
-
+    std::vector< std::vector<double> > B;
     std::vector<Neighbour> fluid_neighbours; ///< Neighbouring fluid points used in interpolation
 };
 
@@ -74,6 +71,7 @@ class Immersed_boundary
 
         std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
+        std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
 
         std::string sw_ib; ///< Immersed boundary switch
 };

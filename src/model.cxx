@@ -262,6 +262,9 @@ void Model::exec()
         // Determine the time step.
         set_time_step();
 
+        // Set the immersed boundary conditions
+        immersed_boundary->exec();
+
         // Calculate the advection tendency.
         boundary->set_ghost_cells_w(Boundary::Conservation_type);
         advec->exec();
@@ -282,7 +285,7 @@ void Model::exec()
         pres->exec_0();
 
         // Set the immersed boundary conditions
-        immersed_boundary->exec();
+        //immersed_boundary->exec();
 
         // Solve the poisson equation for pressure.
         boundary->set_ghost_cells_w(Boundary::Conservation_type);

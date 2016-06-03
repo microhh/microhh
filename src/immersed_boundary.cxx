@@ -50,7 +50,7 @@ namespace
 {
     double gaussian_bump(const double x, const double x0, const double height, const double width)
     {
-        return height * std::exp(pow(-(x-x0)/width, 2));    
+        return height * std::exp(-pow((x-x0)/width, 2));    
     }
 
     double abs_distance(const double dx, const double dy, const double dz)
@@ -63,11 +63,50 @@ namespace
         return std::pow(std::pow(dx, 2) + std::pow(dz, 2), 0.5);
     }
 
+    void inverse_mat_3x3(std::vector<std::vector<double> >& result, std::vector<std::vector<double> > input)
+    {
+        const double det = +input[0][0]*(input[1][1]*input[2][2]-input[2][1]*input[1][2])
+                           -input[0][1]*(input[1][0]*input[2][2]-input[1][2]*input[2][0])
+                           +input[0][2]*(input[1][0]*input[2][1]-input[1][1]*input[2][0]);
+        const double invdet = 1./det;
+        result[0][0]     =  (input[1][1]*input[2][2]-input[2][1]*input[1][2])*invdet;
+        result[0][1]     = -(input[0][1]*input[2][2]-input[0][2]*input[2][1])*invdet;
+        result[0][2]     =  (input[0][1]*input[1][2]-input[0][2]*input[1][1])*invdet;
+        result[1][0]     = -(input[1][0]*input[2][2]-input[1][2]*input[2][0])*invdet;
+        result[1][1]     =  (input[0][0]*input[2][2]-input[0][2]*input[2][0])*invdet;
+        result[1][2]     = -(input[0][0]*input[1][2]-input[1][0]*input[0][2])*invdet;
+        result[2][0]     =  (input[1][0]*input[2][1]-input[2][0]*input[1][1])*invdet;
+        result[2][1]     = -(input[0][0]*input[2][1]-input[2][0]*input[0][1])*invdet;
+        result[2][2]     =  (input[0][0]*input[1][1]-input[1][0]*input[0][1])*invdet;
+    }
+
+    // Help function for sorting std::vector
+    bool compare_value(const Neighbour& a, const Neighbour& b)
+    {
+        return a.distance < b.distance;
+    }
+
+    void matvecmul(std::vector<double>& vec_out, std::vector<std::vector<double> > mat_in, std::vector<double> vec_in)
+    {   
+        const int size = vec_in.size();
+        for (int i=0; i<size; ++i)
+        {
+            vec_out[i] = 0;
+            for (int j=0; j<size; ++j)
+                vec_out[i] += mat_in[i][j] * vec_in[j];
+        }
+    }
+
     void determine_ghost_cells(std::vector<Ghost_cell>* ghost_cells, const double* const x, const double* const y, const double* const z,
                                const int n_neighbours, const double x0_hill, const double lz_hill, const double lx_hill, const double dx, const double dy,
                                const int istart, const int iend, const int jstart, const int jend, const int kstart, const int kend, const int jj, const int kk)
     {
         const int ii = 1;
+
+        std::vector< std::vector<double> > tmp_matrix(n_neighbours+1, std::vector<double>(n_neighbours+1,0));
+        tmp_matrix[0][0] = 1;
+        tmp_matrix[1][0] = 1;
+        tmp_matrix[2][0] = 1;
 
         // Determine the ghost cells 
         for (int k=kstart; k<kend; ++k)
@@ -76,7 +115,6 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
                     
-                    // u-location
                     const double z_hill    = gaussian_bump(x[i],   x0_hill, lz_hill, lx_hill);
                     const double z_hill_im = gaussian_bump(x[i-1], x0_hill, lz_hill, lx_hill);
                     const double z_hill_ip = gaussian_bump(x[i+1], x0_hill, lz_hill, lx_hill);
@@ -99,8 +137,9 @@ namespace
                                 }
 
                         // Sort the neighbouring points on distance
-                        std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), [](Neighbour& a, Neighbour& b)
-                            { return a.distance < b.distance; });
+                        //std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), [](Neighbour& a, Neighbour& b)
+                        //    { return a.distance < b.distance; });
+                        std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), compare_value);
                    
                         // Abort if there are insufficient neighbouring fluid points 
                         if (tmp_ghost.fluid_neighbours.size() < n_neighbours)
@@ -132,26 +171,58 @@ namespace
                         }
 
                         // Define the distance matrix for the interpolations
-                        std::vector< std::vector<double> > B_u(n+1, std::vector<double>(n+2,0));
-                       
-                        B_u[0][0] = 1;
-                        B_u[1][0] = 1;
-                        B_u[2][0] = 1;
+                        //std::vector< std::vector<double> > tmp_ghost.B_u(n+1, std::vector<double>(n+1,0));
+                        tmp_ghost.B.resize(n+1, std::vector<double>(n+1));
 
-                        B_u[0][1] = x_min;                                // x-location of given value on boundary 
-                        B_u[1][1] = x[tmp_ghost.fluid_neighbours[0].i];   // x-location of fluid point #1
-                        B_u[2][1] = x[tmp_ghost.fluid_neighbours[1].i];   // x-location of fluid point #2
+                        tmp_matrix[0][1] = x_min;                                // x-location of given value on boundary 
+                        tmp_matrix[1][1] = x[tmp_ghost.fluid_neighbours[0].i];   // x-location of fluid point #1
+                        tmp_matrix[2][1] = x[tmp_ghost.fluid_neighbours[1].i];   // x-location of fluid point #2
 
-                        B_u[0][2] = z_min;                                // z-location of given value on boundary
-                        B_u[1][2] = z[tmp_ghost.fluid_neighbours[0].k];   // z-location of fluid point #1
-                        B_u[2][2] = z[tmp_ghost.fluid_neighbours[1].k];   // z-location of fluid point #1
-                    
+                        tmp_matrix[0][2] = z_min;                                // z-location of given value on boundary
+                        tmp_matrix[1][2] = z[tmp_ghost.fluid_neighbours[0].k];   // z-location of fluid point #1
+                        tmp_matrix[2][2] = z[tmp_ghost.fluid_neighbours[1].k];   // z-location of fluid point #1
+                  
+                        // Save the inverse of the matrix
+                        inverse_mat_3x3(tmp_ghost.B, tmp_matrix);
+
                         // Add to vector with ghost_cells 
                         ghost_cells->push_back(tmp_ghost);
                     }
                 }
     }
-    
+
+    void set_ghost_cells(std::vector<Ghost_cell> ghost_cells, double* const restrict field, const double boundary_value,
+                         const double* const restrict x, const double* const restrict z, const int ii, const int jj, const int kk)
+    {
+        std::vector<double> a(3);
+        std::vector<double> known_values(3);
+            
+        for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
+        {
+            // Values at the nearest fluid points
+            const double v1 = field[it->fluid_neighbours[0].i + it->fluid_neighbours[0].j*jj + it->fluid_neighbours[0].k*kk];
+            const double v2 = field[it->fluid_neighbours[1].i + it->fluid_neighbours[1].j*jj + it->fluid_neighbours[1].k*kk];
+
+            // Populate vector with values 
+            known_values[0] = boundary_value; 
+            known_values[1] = v1;
+            known_values[2] = v2;
+
+            // Solve for ghost cell value
+            matvecmul(a, it->B, known_values);
+
+            double ghost_value = a[0] + a[1]*x[it->i] + a[2]*z[it->k];
+
+            if(std::isnan(ghost_value))
+            {
+                std::cout << "shit -> fan" << std::endl;
+                ghost_value = 0;        
+            }
+
+            const int ijk = it->i + it->j*jj + it->k*kk;
+            field[ijk] = ghost_value;
+        }
+    }
 }
 
 void Immersed_boundary::init()
@@ -170,7 +241,7 @@ void Immersed_boundary::create()
     // Tmp BvS: setting Gaussian hill
     const double x0_hill = grid->xsize / 2.;
     const double lz_hill = grid->zsize / 4.;
-    const double lx_hill = grid->xsize / 8.;
+    const double lx_hill = grid->xsize / 16.;
 
     const int ii = 1;
     const int jj = grid->icells;
@@ -184,6 +255,10 @@ void Immersed_boundary::create()
 
     // Determine ghost cells for w-component
     determine_ghost_cells(&ghost_cells_w, grid->x, grid->y, grid->zh, n_neighbours, x0_hill, lz_hill, lx_hill,
+                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart+1, grid->kend, grid->icells, grid->ijcells);
+
+    // Determine ghost cells for scalar location
+    determine_ghost_cells(&ghost_cells_s, grid->x, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
                           grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
 
     //for (std::vector<Ghost_cell>::iterator it=ghost_cells_u.begin(); it<ghost_cells_u.end(); ++it)
@@ -203,7 +278,6 @@ void Immersed_boundary::create()
     //    for (std::vector<Neighbour>::iterator it2=it->fluid_neighbours.begin(); it2 < it->fluid_neighbours.end(); ++it2)
     //        std::cout << "     " << it2->i << " - " << it2->j << " - " << it2->k << " -- " << it2->distance << std::endl;
     //}
-
 }
 
 void Immersed_boundary::exec_stats(Mask *m)
@@ -218,64 +292,17 @@ void Immersed_boundary::exec_stats(Mask *m)
 
 void Immersed_boundary::exec()
 {
-//    if (sw_ib != "1")
-//        return;
-//
-//    if (stats->get_switch() == "1")
-//        check_no_penetration(&boundary_u_max, &boundary_w_max, fields->u->data, fields->w->data, IB_cells, grid->icells, grid->ijcells);
-//
-//    set_no_penetration_new(fields->ut->data, fields->vt->data, fields->wt->data,
-//                           fields->u->data, fields->v->data, fields->w->data, 
-//                           IB_cells, grid->icells, grid->ijcells);
-//
-//    set_no_slip_new(fields->ut->data, fields->wt->data,
-//                    fields->u->data, fields->w->data,
-//                    fields->rhoref, fields->rhorefh,
-//                    grid->dzi, grid->dzhi,
-//                    grid->dxi,
-//                    fields->visc,
-//                    IB_cells,
-//                    grid->icells, grid->ijcells);
-//
-//    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-//        set_scalar_new(it->second->data, fields->sp[it->first]->data,
-//                       fields->u->data, fields->w->data,
-//                       fields->rhoref, fields->rhorefh,
-//                       grid->dzi, grid->dzhi,
-//                       grid->dxi,
-//                       fields->sp[it->first]->visc,
-//                       IB_cells,
-//                       grid->icells, grid->ijcells);
+    if (sw_ib != "1")
+        return;
 
-    //set_no_penetration(fields->ut->data, fields->wt->data,
-    //                   fields->u->data, fields->w->data,
-    //                   grid->istart, grid->iend,
-    //                   grid->jstart, grid->jend,
-    //                   grid->kstart, grid->kend,
-    //                   grid->icells, grid->ijcells);
+    const double boundary_value = 0;
+    const int ii = 1;
 
-    //set_no_slip(fields->ut->data, fields->wt->data,
-    //            fields->u->data, fields->w->data,
-    //            fields->rhoref, fields->rhorefh,
-    //            grid->dzi, grid->dzhi,
-    //            grid->dxi,
-    //            fields->visc,
-    //            grid->istart, grid->iend,
-    //            grid->jstart, grid->jend,
-    //            grid->kstart, grid->kend,
-    //            grid->icells, grid->ijcells);
+    set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->z, ii, grid->icells, grid->ijcells);
+    set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->zh, ii, grid->icells, grid->ijcells);
 
-    //for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-    //    set_scalar(it->second->data, fields->sp[it->first]->data,
-    //               fields->u->data, fields->w->data,
-    //               fields->rhoref, fields->rhorefh,
-    //               grid->dzi, grid->dzhi,
-    //               grid->dxi,
-    //               fields->sp[it->first]->visc,
-    //               grid->istart, grid->iend,
-    //               grid->jstart, grid->jend,
-    //               grid->kstart, grid->kend,
-    //               grid->icells, grid->ijcells);
+    for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+        set_ghost_cells(ghost_cells_s, it->second->data, boundary_value, grid->x, grid->z, ii, grid->icells, grid->ijcells);
 }
 
 
