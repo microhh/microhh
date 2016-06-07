@@ -47,8 +47,18 @@ struct Ghost_cell
     int j;  ///< j-location of ghost cell
     int k;  ///< k-location of ghost cell
 
+    double xb;  ///< Nearest location at boundary
+    double zb;  ///< Nearest location at boundary
+
     std::vector< std::vector<double> > B;
     std::vector<Neighbour> fluid_neighbours; ///< Neighbouring fluid points used in interpolation
+};
+
+struct Cell
+{
+    int i;  ///< i-location of cell
+    int j;  ///< j-location of cell
+    int k;  ///< k-location of cell
 };
 
 class Immersed_boundary
@@ -60,6 +70,7 @@ class Immersed_boundary
         void init();
         void create();
         void exec();
+        void exec_tend();
 
         void exec_stats(Mask*); ///< Execute statistics of immersed boundaries
 
@@ -69,10 +80,18 @@ class Immersed_boundary
         Grid*   grid;   ///< Pointer to grid class.
         Stats*  stats;  ///< Pointer to grid class.
 
+        std::vector<Cell> boundary_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
+        std::vector<Cell> boundary_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
+        std::vector<Cell> boundary_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
+
         std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
 
         std::string sw_ib; ///< Immersed boundary switch
+
+        double x0_hill;     ///< Middle of Gaussian hill
+        double lz_hill;     ///< Height of  "   "    "
+        double lx_hill;     ///< Length of  "    "   "
 };
 #endif
