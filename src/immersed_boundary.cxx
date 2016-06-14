@@ -33,6 +33,8 @@
 #include "finite_difference.h"
 #include "immersed_boundary.h"
 
+#include <fstream>  // TMP BvS
+
 Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 {
     model  = modelin;
@@ -109,6 +111,143 @@ namespace
         }
     }
 
+    bool is_ghost_cell(const double* const x, const double* const z,
+                       const int i, const int k, 
+                       const double x0, const double z0, const double L)
+    {
+        // Gaussian hill; x0 = center hill, z0 = height hill, L = std.dev hill
+        if (false)
+        {
+            if ( z[k] < gaussian_bump(x[i], x0, z0, L) && (
+                        z[k+1] >= gaussian_bump(x[i  ], x0, z0, L) ||
+                        z[k  ] >= gaussian_bump(x[i-1], x0, z0, L) ||
+                        z[k  ] >= gaussian_bump(x[i+1], x0, z0, L) ) )
+                return true;
+            else
+                return false;
+        }   
+
+        // Circle; {x0,z0} = center, L = radius
+        if(true)
+        {
+            const double r2 = std::pow(L, 2);
+            if( pow(x[i  ]-x0, 2) + pow(z[k  ]-z0, 2) < r2 && (
+                pow(x[i+1]-x0, 2) + pow(z[k  ]-z0, 2) > r2 ||
+                pow(x[i-1]-x0, 2) + pow(z[k  ]-z0, 2) > r2 ||
+                pow(x[i  ]-x0, 2) + pow(z[k+1]-z0, 2) > r2 ||
+                pow(x[i  ]-x0, 2) + pow(z[k-1]-z0, 2) > r2    ) )
+                return true;
+            else
+                return false;  
+        }
+    }
+
+    void find_min_distance_wall(double& x_min, double& z_min,
+                                const double x, const double z, const double dx,
+                                const double x0, const double z0, const double L)
+    {
+        double d_min = 1e12;
+        const int n  = 100;
+
+        // Gaussian hill; x0 = center hill, z0 = height hill, L = std.dev hill
+        if (false)
+        {
+            for (int ii=-n/2; ii<n/2+1; ++ii)
+            {
+                const double xc = x + 2*ii/(double)n*dx;
+                const double zc = gaussian_bump(xc, x0, z0, L);
+                const double dc = abs_distance(x-xc, z-zc);
+
+                if (dc < d_min)
+                {
+                    d_min = dc;
+                    x_min = xc;
+                    z_min = zc;
+                }
+            }
+        }
+
+        // Circle; {x0,z0} = center, L = radius
+        if(true)
+        {
+            const double alpha = std::atan2(z-z0, x-x0);
+            const double dz    = std::sin(alpha) * L;
+            const double dx    = std::cos(alpha) * L;
+
+            x_min = x0 + std::cos(alpha) * L;
+            z_min = z0 + std::sin(alpha) * L;
+        } 
+    }
+
+    void find_neighbour_points(Ghost_cell& tmp_ghost, const int n_neighbours,
+                               const double* const x, const double* const z,
+                               const double dx, const int i, const int j, const int k,
+                               const double x0, const double z0, const double L)
+    {
+        // Gaussian hill; x0 = center hill, z0 = height hill, L = std.dev hill
+        if (false)
+        {
+            for (int ii = -2; ii < 3; ++ii)
+            {
+                const double zb = gaussian_bump(x[i+ii], x0, z0, L);
+                for (int kk = -2; kk < 3; ++kk)
+                    if(z[k+kk] > zb)
+                    {
+                        // Check distance of current grid point to the wall
+                        int mode;
+                        x[i+ii] < x0 ? mode = 0 : mode = 1;
+
+                        const double dz_wall = std::abs(z[k+kk]-gaussian_bump  (x[i+ii], x0, z0, L));
+                        const double dx_wall = std::abs(x[i+ii]-gaussian_bump_i(z[k+kk], x0, z0, L, mode));
+                        const double d_wall = 0.5 * abs_distance(dx_wall, dz_wall);
+
+                        if(std::min(dz_wall, dx_wall) > 0.1*dx)
+                        {
+                            Neighbour nb = {i+ii, j, k+kk, abs_distance(tmp_ghost.xb-x[i+ii], tmp_ghost.zb-z[k+kk])};
+                            tmp_ghost.fluid_neighbours.push_back(nb);
+                        }
+                    }
+            }
+        }
+
+        // Circle; {x0,z0} = center, L = radius
+        if (true)
+        {
+            for (int ii = -2; ii < 3; ++ii)
+                for (int kk = -2; kk < 3; ++kk)
+                {
+                    const double r = std::pow(std::pow(x[i+ii]-x0, 2) + std::pow(z[k+kk]-z0, 2), 0.5);
+                    if (r > L)
+                    {
+                        double x_min, z_min;
+                        find_min_distance_wall(x_min, z_min, x[i+ii], z[k+kk], dx, x0, z0, L);
+                        const double dist = abs_distance(x[i+ii]-x_min, z[k+kk]-z_min);
+
+                        if (dist > 0.5 * dx)
+                        {
+                            Neighbour nb = {i+ii, j, k+kk, dist};
+                            tmp_ghost.fluid_neighbours.push_back(nb);
+                        }
+                    }
+                }
+        }
+
+        // Sort the neighbouring points on distance
+        //std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), [](Neighbour& a, Neighbour& b)
+        //    { return a.distance < b.distance; }); // Doesn't work with CLANG?!
+        std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), compare_value);
+
+        // Abort if there are insufficient neighbouring fluid points
+        if (tmp_ghost.fluid_neighbours.size() < n_neighbours)
+        {
+            std::cout << "NEIN" << std::endl;
+            throw 1;
+        }
+
+        // Only keep the N nearest neighbour fluid points
+        tmp_ghost.fluid_neighbours.erase(tmp_ghost.fluid_neighbours.begin()+n_neighbours, tmp_ghost.fluid_neighbours.end());
+    }
+
     void determine_ghost_cells(std::vector<Ghost_cell>* ghost_cells, std::vector<Cell>* boundary_cells,
                                const double* const x, const double* const y, const double* const z,
                                const int n_neighbours, const double x0_hill, const double lz_hill, const double lx_hill,
@@ -130,86 +269,27 @@ namespace
                 {
                     const int ijk = i + j*jj + k*kk;
 
-                    const double z_hill    = gaussian_bump(x[i],   x0_hill, lz_hill, lx_hill);
-                    const double z_hill_im = gaussian_bump(x[i-1], x0_hill, lz_hill, lx_hill);
-                    const double z_hill_ip = gaussian_bump(x[i+1], x0_hill, lz_hill, lx_hill);
-
-                    // If this grid point is inside the hill, and one of its neighbours is not, this is a ghost cell
-                    if (z[k] < z_hill && (z[k+1] >= z_hill || z[k] >= z_hill_im || z[k] >= z_hill_ip))
+                    if (is_ghost_cell(x, z, i, k, x0_hill, lz_hill, lx_hill))
                     {
                         Ghost_cell tmp_ghost;
                         tmp_ghost.i = i;
                         tmp_ghost.j = j;
                         tmp_ghost.k = k;
 
-                        // Find closest point on boundary
-                        double d_min = 1e12;
-                        double x_min = 0;
-                        double z_min = 0;
-                        const int n  = 100;
-                        for (int ii=-n/2; ii<n/2+1; ++ii)
-                        {
-                            const double xc = x[i] + 2*ii/(double)n*dx;
-                            const double zc = gaussian_bump(xc, x0_hill, lz_hill, lx_hill);
-                            const double dc = abs_distance(x[i]-xc, z[k]-zc);
-
-                            if (dc < d_min)
-                            {
-                                d_min = dc;
-                                x_min = xc;
-                                z_min = zc;
-                            }
-                        }
-
-                        // Save the closest point at the boundary
-                        tmp_ghost.xb = x_min;
-                        tmp_ghost.zb = z_min;
+                        // Find the minimum distance from ghost cell to the wall
+                        find_min_distance_wall(tmp_ghost.xb, tmp_ghost.zb, x[i], z[k], dx, x0_hill, lz_hill, lx_hill);
 
                         // Find the nearest neighbours outside of the hill
-                        for (int ii = -2; ii < 3; ++ii)
-                        {
-                            const double zb = gaussian_bump(x[i+ii], x0_hill, lz_hill, lx_hill);
-                            for (int kk = -2; kk < 3; ++kk)
-                                if(z[k+kk] > zb)
-                                {
-                                    // Check distance of current grid point to the wall
-                                    int mode;
-                                    x[i+ii] < x0_hill ? mode = 0 : mode = 1;
-
-                                    const double dz_wall = std::abs(z[k+kk]-gaussian_bump  (x[i+ii], x0_hill, lz_hill, lx_hill));
-                                    const double dx_wall = std::abs(x[i+ii]-gaussian_bump_i(z[k+kk], x0_hill, lz_hill, lx_hill, mode));
-
-                                    if(std::min(dz_wall, dx_wall) > 0.1 * dx)
-                                    {
-                                        Neighbour nb = {i+ii, j, k+kk, abs_distance(tmp_ghost.xb-x[i+ii], tmp_ghost.zb-z[k+kk])};
-                                        tmp_ghost.fluid_neighbours.push_back(nb);
-                                    }
-                                }
-                        }
-
-                        // Sort the neighbouring points on distance
-                        //std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), [](Neighbour& a, Neighbour& b)
-                        //    { return a.distance < b.distance; }); // Doesn't work with CLANG?!
-                        std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), compare_value);
-
-                        // Abort if there are insufficient neighbouring fluid points
-                        if (tmp_ghost.fluid_neighbours.size() < n_neighbours)
-                        {
-                            std::cout << "NEIN" << std::endl;
-                            throw 1;
-                        }
-
-                        // Only keep the N nearest neighbour fluid points
-                        tmp_ghost.fluid_neighbours.erase(tmp_ghost.fluid_neighbours.begin()+n_neighbours, tmp_ghost.fluid_neighbours.end());
+                        find_neighbour_points(tmp_ghost, n_neighbours, x, z, dx, i, j, k, x0_hill, lz_hill, lx_hill);
 
                         // Define the distance matrix for the interpolations
-                        tmp_ghost.B.resize(n+1, std::vector<double>(n+1));
+                        tmp_ghost.B.resize(n_neighbours+1, std::vector<double>(n_neighbours+1));
 
-                        tmp_matrix[0][1] = x_min;                                // x-location of given value on boundary
+                        tmp_matrix[0][1] = tmp_ghost.xb;                         // x-location of given value on boundary
                         tmp_matrix[1][1] = x[tmp_ghost.fluid_neighbours[0].i];   // x-location of fluid point #1
                         tmp_matrix[2][1] = x[tmp_ghost.fluid_neighbours[1].i];   // x-location of fluid point #2
 
-                        tmp_matrix[0][2] = z_min;                                // z-location of given value on boundary
+                        tmp_matrix[0][2] = tmp_ghost.zb;                         // z-location of given value on boundary
                         tmp_matrix[1][2] = z[tmp_ghost.fluid_neighbours[0].k];   // z-location of fluid point #1
                         tmp_matrix[2][2] = z[tmp_ghost.fluid_neighbours[1].k];   // z-location of fluid point #1
 
@@ -219,11 +299,11 @@ namespace
                         // Add to vector with ghost_cells
                         ghost_cells->push_back(tmp_ghost);
                     }
-                    else if(z[k] < z_hill)
-                    {
-                        Cell tmp = {i, j, k};
-                        boundary_cells->push_back(tmp);
-                    }
+                    //else if(z[k] < z_hill)
+                    //{
+                    //    Cell tmp = {i, j, k};
+                    //    boundary_cells->push_back(tmp);
+                    //}
                 }
     }
 
@@ -270,6 +350,26 @@ namespace
             tendency[ijk] = 0;
         }
     }
+
+    void print_debug(std::vector<Ghost_cell> ghost_cells)
+    {
+        std::ofstream debugfile;
+        debugfile.open("debug.txt");
+
+        for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
+        {
+            debugfile << it->i                          << ", " <<
+                         it->k                          << ", " <<
+                         it->xb                         << ", " <<
+                         it->zb                         << ", " <<
+                         it->fluid_neighbours[0].i      << ", " <<
+                         it->fluid_neighbours[0].k      << ", " <<
+                         it->fluid_neighbours[1].i      << ", " <<
+                         it->fluid_neighbours[1].k      << std::endl;
+        }
+
+        debugfile.close();
+    }
 }
 
 void Immersed_boundary::init()
@@ -303,23 +403,11 @@ void Immersed_boundary::create()
     determine_ghost_cells(&ghost_cells_s, &boundary_cells_s, grid->x, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
                           grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
 
-    //for (std::vector<Ghost_cell>::iterator it=ghost_cells_u.begin(); it<ghost_cells_u.end(); ++it)
-    //{
-    //    std::cout << "------------------------" << std::endl;
-    //    std::cout << it->i << " - " << it->j << " - " << it->k << std::endl;
-    //    std::cout << "------------" << std::endl;
-    //    for (std::vector<Neighbour>::iterator it2=it->fluid_neighbours.begin(); it2 < it->fluid_neighbours.end(); ++it2)
-    //        std::cout << "     " << it2->i << " - " << it2->j << " - " << it2->k << " -- " << it2->distance << std::endl;
-    //}
+    model->master->print_message("Found %i IB[u] ghost cells \n",ghost_cells_u.size());
+    model->master->print_message("Found %i IB[w] ghost cells \n",ghost_cells_w.size());
+    model->master->print_message("Found %i IB[s] ghost cells \n",ghost_cells_s.size());
 
-    //for (std::vector<Ghost_cell>::iterator it=ghost_cells_w.begin(); it<ghost_cells_w.end(); ++it)
-    //{
-    //    std::cout << "------------------------" << std::endl;
-    //    std::cout << it->i << " - " << it->j << " - " << it->k << std::endl;
-    //    std::cout << "------------" << std::endl;
-    //    for (std::vector<Neighbour>::iterator it2=it->fluid_neighbours.begin(); it2 < it->fluid_neighbours.end(); ++it2)
-    //        std::cout << "     " << it2->i << " - " << it2->j << " - " << it2->k << " -- " << it2->distance << std::endl;
-    //}
+    print_debug(ghost_cells_s);
 }
 
 void Immersed_boundary::exec_stats(Mask *m)
