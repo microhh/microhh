@@ -29,7 +29,10 @@
 #include "defines.h"
 #include "finite_difference.h"
 #include "model.h"
+#include "stats.h"
 #include "timeloop.h"
+
+#include <iostream> // Tmp BvS
 
 Force::Force(Model* modelin, Input* inputin)
 {
@@ -183,6 +186,12 @@ void Force::create(Input *inputin)
             master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
 
+    // Add the tendency introduced by enforcing a constant velocity to the statistics
+    if (swlspres == "uflux")
+    {
+        model->stats->add_time_series("ubody", "U velocity forcing to maintain constant uflux", "m s-2");
+    }
+
     if (nerror)
         throw 1;
 }
@@ -191,7 +200,10 @@ void Force::create(Input *inputin)
 void Force::exec(double dt)
 {
     if (swlspres == "uflux")
-        calc_flux(fields->ut->data, fields->u->data, grid->dz, dt);
+    {
+        fbody_u = calc_flux(fields->ut->data, fields->u->data, grid->dz, dt);
+        add_flux(fields->ut->data, fbody_u);
+    }
 
     else if (swlspres == "geo")
     {
@@ -214,6 +226,15 @@ void Force::exec(double dt)
     }
 }
 #endif
+
+void Force::exec_stats(Mask *m)
+{
+    // BvS: see note in header;
+    if (swlspres == "uflux")
+    {
+        m->tseries["ubody"].data = fbody_u; 
+    }
+}
 
 void Force::update_time_dependent()
 {
@@ -280,7 +301,7 @@ void Force::update_time_dependent_profs(const double fac0, const double fac1, co
 }
 #endif
 
-void Force::calc_flux(double* const restrict ut, const double* const restrict u, 
+double Force::calc_flux(double* const restrict ut, const double* const restrict u, 
                       const double* const restrict dz, const double dt)
 {
     const int jj = grid->icells;
@@ -307,9 +328,11 @@ void Force::calc_flux(double* const restrict ut, const double* const restrict u,
     uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
     utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
 
-    double fbody; 
-    fbody = (uflux - uavg - ugrid) / dt - utavg;
+    return (uflux - uavg - ugrid) / dt - utavg;
+}
 
+void Force::add_flux(double* const restrict ut, const double fbody)
+{
     for (int n=0; n<grid->ncells; n++)
         ut[n] += fbody;
 }

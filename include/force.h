@@ -46,9 +46,10 @@ class Force
         Force(Model*, Input*); ///< Constructor of the force class.
         ~Force();              ///< Destructor of the force class.
 
-        void init();           ///< Initialize the arrays that contain the profiles.
-        void create(Input*);   ///< Read the profiles of the forces from the input.
-        void exec(double);     ///< Add the tendencies belonging to the large-scale processes.
+        void init();            ///< Initialize the arrays that contain the profiles.
+        void create(Input*);    ///< Read the profiles of the forces from the input.
+        void exec(double);      ///< Add the tendencies belonging to the large-scale processes.
+        void exec_stats(Mask*); ///< Execute statistics
 
         void update_time_dependent(); ///< Update the time dependent parameters.
 
@@ -90,8 +91,9 @@ class Force
 
         void update_time_dependent_profs(double, double, int, int); ///< Set the time dependent profiles.
 
-        void calc_flux(double* const, const double* const,
-                       const double* const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.
+        double calc_flux(double* const, const double* const,
+                         const double* const, const double); ///< Calculates the pressure force to enforce a constant mass-flux.
+        void add_flux(double* const, const double);          ///< Adds the pressure force to enforce a constant mass-flux.
 
         void calc_coriolis_2nd(double* const, double* const,
                                const double* const, const double* const,
@@ -112,5 +114,10 @@ class Force
         double* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         std::map<std::string, double*> timedepdata_g;
 
+        // BvS This is ugly; how to get the body force (for swlspres=uflux) into the statistics?
+        // we can't re-calculate it when statistics is called, since at that point the tendencies
+        // are already modified to satisfy the constant u velocity. For now; save value when
+        // force is exec'ed, and write that value to the statistics file later
+        double fbody_u;
 };
 #endif

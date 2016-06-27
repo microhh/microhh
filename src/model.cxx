@@ -439,6 +439,7 @@ void Model::calc_stats(std::string maskname)
     budget           ->exec_stats(&stats->masks[maskname]);
     boundary         ->exec_stats(&stats->masks[maskname]);
     immersed_boundary->exec_stats(&stats->masks[maskname]);
+    force            ->exec_stats(&stats->masks[maskname]);
 }
 
 // Print the status information to the .out file.
