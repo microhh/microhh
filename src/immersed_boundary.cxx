@@ -34,6 +34,9 @@
 #include "immersed_boundary.h"
 
 #include <fstream>  // TMP BvS
+#include <sstream>
+#include <string>
+
 
 Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 {
@@ -223,7 +226,7 @@ namespace
                         find_min_distance_wall(x_min, z_min, x[i+ii], z[k+kk], dx, x0, z0, L);
                         const double dist = abs_distance(x[i+ii]-x_min, z[k+kk]-z_min);
 
-                        if (dist > 0.5 * dx)
+                        if (dist > 0.3 * dx)
                         {
                             Neighbour nb = {i+ii, j, k+kk, dist};
                             tmp_ghost.fluid_neighbours.push_back(nb);
@@ -247,6 +250,7 @@ namespace
         // Only keep the N nearest neighbour fluid points
         tmp_ghost.fluid_neighbours.erase(tmp_ghost.fluid_neighbours.begin()+n_neighbours, tmp_ghost.fluid_neighbours.end());
     }
+
 
     void determine_ghost_cells(std::vector<Ghost_cell>* ghost_cells, std::vector<Cell>* boundary_cells,
                                const double* const x, const double* const y, const double* const z,
@@ -299,11 +303,6 @@ namespace
                         // Add to vector with ghost_cells
                         ghost_cells->push_back(tmp_ghost);
                     }
-                    //else if(z[k] < z_hill)
-                    //{
-                    //    Cell tmp = {i, j, k};
-                    //    boundary_cells->push_back(tmp);
-                    //}
                 }
     }
 
@@ -343,12 +342,118 @@ namespace
     void set_boundary_cells(std::vector<Cell> boundary_cells, double* const restrict tendency,
                             const int ii, const int jj, const int kk)
     {
-
         for (std::vector<Cell>::iterator it=boundary_cells.begin(); it<boundary_cells.end(); ++it)
         {
             const int ijk = it->i + it->j*jj + it->k*kk;
             tendency[ijk] = 0;
         }
+    }
+
+    void set_fluid_values(std::vector<Ghost_cell> ghost_cells, double* const restrict field, const double value,
+                          const int ii, const int jj, const int kk)
+    {
+        const int j = 1; // Tmp BvS
+
+        for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
+        {
+            const int ijk1 = it->fluid_neighbours[0].i + j*jj + it->fluid_neighbours[0].k*kk;
+            const int ijk2 = it->fluid_neighbours[1].i + j*jj + it->fluid_neighbours[1].k*kk;
+            field[ijk1] = value;
+            field[ijk2] = value;
+        }
+    }
+
+    void read_ghost_cells(std::vector<Ghost_cell>* ghost_cells, std::string filename, const double* const restrict x, const double* const restrict z)
+    {
+        std::ifstream inputfile;
+        inputfile.open(filename);
+
+        const int n_neighbours = 2;
+        const int j = 1;
+
+        // Temporary matrix to store the location of the wall and nearest fluid neighbours
+        std::vector< std::vector<double> > tmp_matrix(n_neighbours+1, std::vector<double>(n_neighbours+1,0));
+        tmp_matrix[0][0] = 1;
+        tmp_matrix[1][0] = 1;
+        tmp_matrix[2][0] = 1;
+
+        std::string line;
+        std::string item;
+
+        // Flush first line
+        getline(inputfile, line);
+
+        while (getline(inputfile, line))
+        {
+            Ghost_cell tmp_ghost;
+            tmp_ghost.j = j;
+
+            std::stringstream ss(line);
+
+            getline(ss, item, ' ');
+            tmp_ghost.i = atoi(item.c_str()) + 1;
+
+            getline(ss, item, ' ');
+            tmp_ghost.k = atoi(item.c_str()) + 1;
+
+            // Define the distance matrix for the interpolations
+            tmp_ghost.B.resize(n_neighbours+1, std::vector<double>(n_neighbours+1));
+
+            // Location on boundary
+            // -------------------------
+            getline(ss, item, ' ');
+            const double xb = atof(item.c_str());
+            tmp_ghost.xb = xb;
+            tmp_matrix[0][1] = xb;          // x-location of given value on boundary
+
+            getline(ss, item, ' ');
+            const double zb = atof(item.c_str());
+            tmp_ghost.zb = zb;
+            tmp_matrix[0][2] = zb;          // z-location of given value on boundary
+
+            // First fluid neighbour:
+            // -------------------------
+            getline(ss, item, ' ');
+            const int i1 = atoi(item.c_str()) + 1;
+            tmp_matrix[1][1] = x[i1];   // x-location of fluid point #1
+
+            getline(ss, item, ' ');
+            const int k1 = atoi(item.c_str()) + 1;
+            tmp_matrix[1][2] = z[k1];   // z-location of fluid point #1
+
+            Neighbour nb1 = {i1, j, k1, 0.};
+            tmp_ghost.fluid_neighbours.push_back(nb1);
+
+            // Second fluid neighbour:
+            // -------------------------
+            getline(ss, item, ' ');
+            const int i2 = atoi(item.c_str()) + 1;
+            tmp_matrix[2][1] = x[i2];   // x-location of fluid point #2
+
+            getline(ss, item, ' ');
+            const int k2 = atoi(item.c_str()) + 1;
+            tmp_matrix[2][2] = z[k2];   // z-location of fluid point #1
+
+            Neighbour nb2 = {i2, j, k2, 0.};
+            tmp_ghost.fluid_neighbours.push_back(nb2);
+
+            // Save the inverse of the matrix
+            inverse_mat_3x3(tmp_ghost.B, tmp_matrix);
+
+            //std::cout << tmp_ghost.i << ", " << tmp_ghost.k << std::endl;
+            //for (int i=0; i<3; ++i)
+            //{
+            //    for (int k=0; k<3; ++k)
+            //    {
+            //        std::cout << tmp_matrix[i][k] << ", ";
+            //    }
+            //    std::cout << " " << std::endl;
+            //}
+
+            // Add to vector with ghost_cells
+            ghost_cells->push_back(tmp_ghost);
+        }
+
     }
 
     void print_debug(std::vector<Ghost_cell> ghost_cells)
@@ -390,24 +495,38 @@ void Immersed_boundary::create()
     const int kk = grid->ijcells;
 
     const int n_neighbours = 2;     // 2 for 2D linear
+    std::string filename;
 
-    // Determine ghost cells for u-component
-    determine_ghost_cells(&ghost_cells_u, &boundary_cells_u, grid->xh, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
-                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+    filename = "ib.boundary_u";
+    read_ghost_cells(&ghost_cells_u, filename, grid->xh, grid->z);
 
-    // Determine ghost cells for w-component
-    determine_ghost_cells(&ghost_cells_w, &boundary_cells_w, grid->x, grid->y, grid->zh, n_neighbours, x0_hill, lz_hill, lx_hill,
-                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart+1, grid->kend, grid->icells, grid->ijcells);
+    filename = "ib.boundary_w";
+    read_ghost_cells(&ghost_cells_w, filename, grid->x, grid->zh);
 
-    // Determine ghost cells for scalar location
-    determine_ghost_cells(&ghost_cells_s, &boundary_cells_s, grid->x, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
-                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+    filename = "ib.boundary_s";
+    read_ghost_cells(&ghost_cells_s, filename, grid->x, grid->z);
+
+//    // Determine ghost cells for u-component
+//    determine_ghost_cells(&ghost_cells_u, &boundary_cells_u, grid->xh, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
+//                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+//
+//    // Determine ghost cells for w-component
+//    determine_ghost_cells(&ghost_cells_w, &boundary_cells_w, grid->x, grid->y, grid->zh, n_neighbours, x0_hill, lz_hill, lx_hill,
+//                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart+1, grid->kend, grid->icells, grid->ijcells);
+//
+//    // Determine ghost cells for scalar location
+//    determine_ghost_cells(&ghost_cells_s, &boundary_cells_s, grid->x, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
+//                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+
+    //const double value=0;
+    //set_fluid_values(ghost_cells_u, fields->u->data, value, ii, jj, kk);
+    //set_fluid_values(ghost_cells_w, fields->w->data, value, ii, jj, kk);
 
     model->master->print_message("Found %i IB[u] ghost cells \n",ghost_cells_u.size());
     model->master->print_message("Found %i IB[w] ghost cells \n",ghost_cells_w.size());
     model->master->print_message("Found %i IB[s] ghost cells \n",ghost_cells_s.size());
 
-    print_debug(ghost_cells_s);
+    print_debug(ghost_cells_u);
 }
 
 void Immersed_boundary::exec_stats(Mask *m)
@@ -431,9 +550,9 @@ void Immersed_boundary::exec()
     set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->z, ii, grid->icells, grid->ijcells);
     set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->zh, ii, grid->icells, grid->ijcells);
 
-    //const double sboundary_value = 10;
-    //for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
-    //    set_ghost_cells(ghost_cells_s, it->second->data, sboundary_value, grid->x, grid->z, ii, grid->icells, grid->ijcells);
+    const double sboundary_value = 0;
+    for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
+        set_ghost_cells(ghost_cells_s, it->second->data, sboundary_value, grid->x, grid->z, ii, grid->icells, grid->ijcells);
 }
 
 void Immersed_boundary::exec_tend()
