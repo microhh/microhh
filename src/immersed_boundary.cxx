@@ -22,21 +22,207 @@
 
 #include <cstdio>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 #include <algorithm>
+#include <string>
 #include "master.h"
 #include "model.h"
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
 #include "stats.h"
+#include "constants.h"
 #include "finite_difference.h"
 #include "immersed_boundary.h"
 
 #include <fstream>  // TMP BvS
 #include <sstream>
-#include <string>
 
+namespace
+{
+    inline double abs_distance(const double x1, const double x2, const double y1, const double y2, const double z1, const double z2)
+    {
+        return std::pow(std::pow(x1-x2, 2) + std::pow(y1-y2, 2) + std::pow(z1-z2, 2), 0.5);
+    }
+
+    inline double abs_distance(const double x1, const double x2, const double z1, const double z2)
+    {
+        return std::pow(std::pow(x1-x2, 2) + std::pow(z1-z2, 2), 0.5);
+    }
+
+    // Help function for sorting std::vector with Neighbour points
+    bool compare_value(const Neighbour& a, const Neighbour& b)
+    {
+        return a.distance < b.distance;
+    }
+
+    void print_mat(std::vector<std::vector<double> > m)
+    {
+        for (int i=0; i<m.size(); ++i)
+        {
+            for (int j=0; j<m.size(); ++j)
+            {
+                std::cout << std::fixed << std::setw(6) << std::setprecision(3) << m[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    void inverse_mat_4x4(std::vector<std::vector<double> >& result, std::vector<std::vector<double> > input)
+    {
+        result[0][0] =  input[1][1] * input[2][2] * input[3][3] - 
+                        input[1][1] * input[3][2] * input[2][3] - 
+                        input[1][2] * input[2][1] * input[3][3] + 
+                        input[1][2] * input[3][1] * input[2][3] +
+                        input[1][3] * input[2][1] * input[3][2] - 
+                        input[1][3] * input[3][1] * input[2][2];
+
+        result[0][1] = -input[0][1] * input[2][2] * input[3][3] + 
+                        input[0][1] * input[3][2] * input[2][3] + 
+                        input[0][2] * input[2][1] * input[3][3] - 
+                        input[0][2] * input[3][1] * input[2][3] - 
+                        input[0][3] * input[2][1] * input[3][2] + 
+                        input[0][3] * input[3][1] * input[2][2];
+
+        result[0][2] =  input[0][1] * input[1][2] * input[3][3] - 
+                        input[0][1] * input[3][2] * input[1][3] - 
+                        input[0][2] * input[1][1] * input[3][3] + 
+                        input[0][2] * input[3][1] * input[1][3] + 
+                        input[0][3] * input[1][1] * input[3][2] - 
+                        input[0][3] * input[3][1] * input[1][2];
+
+        result[0][3] = -input[0][1] * input[1][2] * input[2][3] + 
+                        input[0][1] * input[2][2] * input[1][3] +
+                        input[0][2] * input[1][1] * input[2][3] - 
+                        input[0][2] * input[2][1] * input[1][3] - 
+                        input[0][3] * input[1][1] * input[2][2] + 
+                        input[0][3] * input[2][1] * input[1][2];
+
+        result[1][0] = -input[1][0] * input[2][2] * input[3][3] + 
+                        input[1][0] * input[3][2] * input[2][3] + 
+                        input[1][2] * input[2][0] * input[3][3] - 
+                        input[1][2] * input[3][0] * input[2][3] - 
+                        input[1][3] * input[2][0] * input[3][2] + 
+                        input[1][3] * input[3][0] * input[2][2];
+
+        result[1][1] =  input[0][0] * input[2][2] * input[3][3] - 
+                        input[0][0] * input[3][2] * input[2][3] - 
+                        input[0][2] * input[2][0] * input[3][3] + 
+                        input[0][2] * input[3][0] * input[2][3] + 
+                        input[0][3] * input[2][0] * input[3][2] - 
+                        input[0][3] * input[3][0] * input[2][2];
+
+        result[1][2] = -input[0][0] * input[1][2] * input[3][3] + 
+                        input[0][0] * input[3][2] * input[1][3] + 
+                        input[0][2] * input[1][0] * input[3][3] - 
+                        input[0][2] * input[3][0] * input[1][3] - 
+                        input[0][3] * input[1][0] * input[3][2] + 
+                        input[0][3] * input[3][0] * input[1][2];
+
+        result[1][3] =  input[0][0] * input[1][2] * input[2][3] - 
+                        input[0][0] * input[2][2] * input[1][3] - 
+                        input[0][2] * input[1][0] * input[2][3] + 
+                        input[0][2] * input[2][0] * input[1][3] + 
+                        input[0][3] * input[1][0] * input[2][2] - 
+                        input[0][3] * input[2][0] * input[1][2];
+
+        result[2][0] =  input[1][0] * input[2][1] * input[3][3] - 
+                        input[1][0] * input[3][1] * input[2][3] - 
+                        input[1][1] * input[2][0] * input[3][3] + 
+                        input[1][1] * input[3][0] * input[2][3] + 
+                        input[1][3] * input[2][0] * input[3][1] - 
+                        input[1][3] * input[3][0] * input[2][1];
+
+        result[2][1] = -input[0][0] * input[2][1] * input[3][3] + 
+                        input[0][0] * input[3][1] * input[2][3] + 
+                        input[0][1] * input[2][0] * input[3][3] - 
+                        input[0][1] * input[3][0] * input[2][3] - 
+                        input[0][3] * input[2][0] * input[3][1] + 
+                        input[0][3] * input[3][0] * input[2][1];
+
+        result[2][2] =  input[0][0] * input[1][1] * input[3][3] - 
+                        input[0][0] * input[3][1] * input[1][3] - 
+                        input[0][1] * input[1][0] * input[3][3] + 
+                        input[0][1] * input[3][0] * input[1][3] + 
+                        input[0][3] * input[1][0] * input[3][1] - 
+                        input[0][3] * input[3][0] * input[1][1];
+
+        result[2][3] = -input[0][0] * input[1][1] * input[2][3] + 
+                        input[0][0] * input[2][1] * input[1][3] + 
+                        input[0][1] * input[1][0] * input[2][3] - 
+                        input[0][1] * input[2][0] * input[1][3] - 
+                        input[0][3] * input[1][0] * input[2][1] + 
+                        input[0][3] * input[2][0] * input[1][1];
+
+        result[3][0] = -input[1][0] * input[2][1] * input[3][2] + 
+                        input[1][0] * input[3][1] * input[2][2] + 
+                        input[1][1] * input[2][0] * input[3][2] - 
+                        input[1][1] * input[3][0] * input[2][2] - 
+                        input[1][2] * input[2][0] * input[3][1] + 
+                        input[1][2] * input[3][0] * input[2][1];
+
+        result[3][1] =  input[0][0] * input[2][1] * input[3][2] - 
+                        input[0][0] * input[3][1] * input[2][2] - 
+                        input[0][1] * input[2][0] * input[3][2] + 
+                        input[0][1] * input[3][0] * input[2][2] + 
+                        input[0][2] * input[2][0] * input[3][1] - 
+                        input[0][2] * input[3][0] * input[2][1];
+
+        result[3][2] = -input[0][0] * input[1][1] * input[3][2] + 
+                        input[0][0] * input[3][1] * input[1][2] + 
+                        input[0][1] * input[1][0] * input[3][2] - 
+                        input[0][1] * input[3][0] * input[1][2] - 
+                        input[0][2] * input[1][0] * input[3][1] + 
+                        input[0][2] * input[3][0] * input[1][1];
+
+        result[3][3] =  input[0][0] * input[1][1] * input[2][2] - 
+                        input[0][0] * input[2][1] * input[1][2] - 
+                        input[0][1] * input[1][0] * input[2][2] + 
+                        input[0][1] * input[2][0] * input[1][2] + 
+                        input[0][2] * input[1][0] * input[2][1] - 
+                        input[0][2] * input[2][0] * input[1][1];
+
+        double det = input[0][0] * result[0][0] + input[1][0] * result[0][1] + input[2][0] * result[0][2] + input[3][0] * result[0][3];
+
+        if (det == 0)
+        {
+            print_mat(input); // Debug
+        }
+
+        det = 1.0 / det;
+
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+                result[i][j] *= det;
+    }
+    
+    void write_debug(std::vector<Ghost_cell> ghost_cells, std::string name)
+    {
+        std::ofstream debugfile;
+        debugfile.open(name);
+
+        for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
+        {
+            debugfile << it->i                << ", " <<
+                         it->j                << ", " <<
+                         it->k                << ", " <<
+                         it->xb               << ", " <<
+                         it->yb               << ", " <<
+                         it->zb               << ", " <<
+                         it->neighbours[0].i  << ", " <<
+                         it->neighbours[0].j  << ", " <<
+                         it->neighbours[0].k  << ", " <<
+                         it->neighbours[1].i  << ", " <<
+                         it->neighbours[1].j  << ", " <<
+                         it->neighbours[1].k  << ", " <<
+                         it->neighbours[2].i  << ", " <<
+                         it->neighbours[2].j  << ", " <<
+                         it->neighbours[2].k  << std::endl;
+        }
+        debugfile.close();
+    }
+}
 
 Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 {
@@ -44,528 +230,317 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     fields = model->fields;
     grid   = model->grid;
 
-    inputin->get_item(&sw_ib,   "boundary", "sw_ib",   "", "0");
-    inputin->get_item(&x0_hill, "boundary", "x0_hill", "",  0);
-    inputin->get_item(&lz_hill, "boundary", "lz_hill", "",  0);
-    inputin->get_item(&lx_hill, "boundary", "lx_hill", "",  0);
+    int nerror = 0;
+
+    inputin->get_item(&sw_ib,   "immersed_boundary", "sw_ib",   "", "0");
+
+    if (sw_ib == "0")
+    {
+        ib_type = None_type;
+    }
+    else if (sw_ib == "sine")
+    {
+        ib_type = Sine_type;
+        nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
+        nerror += inputin->get_item(&amplitude,    "immersed_boundary", "amplitude",    ""    );
+        nerror += inputin->get_item(&wavelength_x, "immersed_boundary", "wavelength_x", ""    );
+        nerror += inputin->get_item(&wavelength_y, "immersed_boundary", "wavelength_y", "", -1);
+        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+    }
+    else if (sw_ib == "gaussian")
+    {
+        ib_type = Gaus_type; 
+        nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
+        nerror += inputin->get_item(&amplitude,    "immersed_boundary", "amplitude",    ""    );
+        nerror += inputin->get_item(&x0_hill,      "immersed_boundary", "x0_hill",      ""    );
+        nerror += inputin->get_item(&sigma_x_hill, "immersed_boundary", "sigma_x_hill", ""    );
+        nerror += inputin->get_item(&y0_hill,      "immersed_boundary", "y0_hill",      "", -1);
+        nerror += inputin->get_item(&sigma_y_hill, "immersed_boundary", "sigma_y_hill", "", -1);
+        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+    }
+    else
+    {
+        model->master->print_error("sw_ib = \"%s\" not (yet) supported\n", sw_ib.c_str());
+        throw 1;
+    }
+
+    if (ib_type != None_type)
+        grid->set_minimum_ghost_cells(2, 2, 1);
+
+    if (nerror > 0)
+        throw 1;
 }
 
 Immersed_boundary::~Immersed_boundary()
 {
 }
 
-namespace
-{
-    double gaussian_bump(const double x, const double x0, const double height, const double width)
-    {
-        return height * std::exp(-pow((x-x0)/(2*width), 2));
-    }
-
-    double gaussian_bump_i(const double y, const double x0, const double height, const double width, const int mode)
-    {
-        const double diff = 2*width * pow(std::log(height/y), 2);
-        if (mode == 0)
-            return x0-diff;
-        else
-            return x0+diff;
-    }
-
-    double abs_distance(const double dx, const double dy, const double dz)
-    {
-        return std::pow(std::pow(dx, 2) + std::pow(dy, 2) + std::pow(dz, 2), 0.5);
-    }
-
-    double abs_distance(const double dx, const double dz)
-    {
-        return std::pow(std::pow(dx, 2) + std::pow(dz, 2), 0.5);
-    }
-
-    void inverse_mat_3x3(std::vector<std::vector<double> >& result, std::vector<std::vector<double> > input)
-    {
-        const double det = +input[0][0]*(input[1][1]*input[2][2]-input[2][1]*input[1][2])
-                           -input[0][1]*(input[1][0]*input[2][2]-input[1][2]*input[2][0])
-                           +input[0][2]*(input[1][0]*input[2][1]-input[1][1]*input[2][0]);
-        const double invdet = 1./det;
-        result[0][0]     =  (input[1][1]*input[2][2]-input[2][1]*input[1][2])*invdet;
-        result[0][1]     = -(input[0][1]*input[2][2]-input[0][2]*input[2][1])*invdet;
-        result[0][2]     =  (input[0][1]*input[1][2]-input[0][2]*input[1][1])*invdet;
-        result[1][0]     = -(input[1][0]*input[2][2]-input[1][2]*input[2][0])*invdet;
-        result[1][1]     =  (input[0][0]*input[2][2]-input[0][2]*input[2][0])*invdet;
-        result[1][2]     = -(input[0][0]*input[1][2]-input[1][0]*input[0][2])*invdet;
-        result[2][0]     =  (input[1][0]*input[2][1]-input[2][0]*input[1][1])*invdet;
-        result[2][1]     = -(input[0][0]*input[2][1]-input[2][0]*input[0][1])*invdet;
-        result[2][2]     =  (input[0][0]*input[1][1]-input[1][0]*input[0][1])*invdet;
-    }
-
-    // Help function for sorting std::vector
-    bool compare_value(const Neighbour& a, const Neighbour& b)
-    {
-        return a.distance < b.distance;
-    }
-
-    void matvecmul(std::vector<double>& vec_out, std::vector<std::vector<double> > mat_in, std::vector<double> vec_in)
-    {
-        const int size = vec_in.size();
-        for (int i=0; i<size; ++i)
-        {
-            vec_out[i] = 0;
-            for (int j=0; j<size; ++j)
-                vec_out[i] += mat_in[i][j] * vec_in[j];
-        }
-    }
-
-    bool is_ghost_cell(const double* const x, const double* const z,
-                       const int i, const int k, 
-                       const double x0, const double z0, const double L)
-    {
-        // Gaussian hill; x0 = center hill, z0 = height hill, L = std.dev hill
-        if (false)
-        {
-            if ( z[k] < gaussian_bump(x[i], x0, z0, L) && (
-                        z[k+1] >= gaussian_bump(x[i  ], x0, z0, L) ||
-                        z[k  ] >= gaussian_bump(x[i-1], x0, z0, L) ||
-                        z[k  ] >= gaussian_bump(x[i+1], x0, z0, L) ) )
-                return true;
-            else
-                return false;
-        }   
-
-        // Circle; {x0,z0} = center, L = radius
-        if(true)
-        {
-            const double r2 = std::pow(L, 2);
-            if( pow(x[i  ]-x0, 2) + pow(z[k  ]-z0, 2) < r2 && (
-                pow(x[i+1]-x0, 2) + pow(z[k  ]-z0, 2) > r2 ||
-                pow(x[i-1]-x0, 2) + pow(z[k  ]-z0, 2) > r2 ||
-                pow(x[i  ]-x0, 2) + pow(z[k+1]-z0, 2) > r2 ||
-                pow(x[i  ]-x0, 2) + pow(z[k-1]-z0, 2) > r2    ) )
-                return true;
-            else
-                return false;  
-        }
-    }
-
-    void find_min_distance_wall(double& x_min, double& z_min,
-                                const double x, const double z, const double dx,
-                                const double x0, const double z0, const double L)
-    {
-        double d_min = 1e12;
-        const int n  = 100;
-
-        // Gaussian hill; x0 = center hill, z0 = height hill, L = std.dev hill
-        if (false)
-        {
-            for (int ii=-n/2; ii<n/2+1; ++ii)
-            {
-                const double xc = x + 2*ii/(double)n*dx;
-                const double zc = gaussian_bump(xc, x0, z0, L);
-                const double dc = abs_distance(x-xc, z-zc);
-
-                if (dc < d_min)
-                {
-                    d_min = dc;
-                    x_min = xc;
-                    z_min = zc;
-                }
-            }
-        }
-
-        // Circle; {x0,z0} = center, L = radius
-        if(true)
-        {
-            const double alpha = std::atan2(z-z0, x-x0);
-            const double dz    = std::sin(alpha) * L;
-            const double dx    = std::cos(alpha) * L;
-
-            x_min = x0 + std::cos(alpha) * L;
-            z_min = z0 + std::sin(alpha) * L;
-        } 
-    }
-
-    void find_neighbour_points(Ghost_cell& tmp_ghost, const int n_neighbours,
-                               const double* const x, const double* const z,
-                               const double dx, const int i, const int j, const int k,
-                               const double x0, const double z0, const double L)
-    {
-        // Gaussian hill; x0 = center hill, z0 = height hill, L = std.dev hill
-        if (false)
-        {
-            for (int ii = -2; ii < 3; ++ii)
-            {
-                const double zb = gaussian_bump(x[i+ii], x0, z0, L);
-                for (int kk = -2; kk < 3; ++kk)
-                    if(z[k+kk] > zb)
-                    {
-                        // Check distance of current grid point to the wall
-                        int mode;
-                        x[i+ii] < x0 ? mode = 0 : mode = 1;
-
-                        const double dz_wall = std::abs(z[k+kk]-gaussian_bump  (x[i+ii], x0, z0, L));
-                        const double dx_wall = std::abs(x[i+ii]-gaussian_bump_i(z[k+kk], x0, z0, L, mode));
-                        const double d_wall = 0.5 * abs_distance(dx_wall, dz_wall);
-
-                        if(std::min(dz_wall, dx_wall) > 0.1*dx)
-                        {
-                            Neighbour nb = {i+ii, j, k+kk, abs_distance(tmp_ghost.xb-x[i+ii], tmp_ghost.zb-z[k+kk])};
-                            tmp_ghost.fluid_neighbours.push_back(nb);
-                        }
-                    }
-            }
-        }
-
-        // Circle; {x0,z0} = center, L = radius
-        if (true)
-        {
-            for (int ii = -2; ii < 3; ++ii)
-                for (int kk = -2; kk < 3; ++kk)
-                {
-                    const double r = std::pow(std::pow(x[i+ii]-x0, 2) + std::pow(z[k+kk]-z0, 2), 0.5);
-                    if (r > L)
-                    {
-                        double x_min, z_min;
-                        find_min_distance_wall(x_min, z_min, x[i+ii], z[k+kk], dx, x0, z0, L);
-                        const double dist = abs_distance(x[i+ii]-x_min, z[k+kk]-z_min);
-
-                        if (dist > 0.3 * dx)
-                        {
-                            Neighbour nb = {i+ii, j, k+kk, dist};
-                            tmp_ghost.fluid_neighbours.push_back(nb);
-                        }
-                    }
-                }
-        }
-
-        // Sort the neighbouring points on distance
-        //std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), [](Neighbour& a, Neighbour& b)
-        //    { return a.distance < b.distance; }); // Doesn't work with CLANG?!
-        std::sort(tmp_ghost.fluid_neighbours.begin(), tmp_ghost.fluid_neighbours.end(), compare_value);
-
-        // Abort if there are insufficient neighbouring fluid points
-        if (tmp_ghost.fluid_neighbours.size() < n_neighbours)
-        {
-            std::cout << "NEIN" << std::endl;
-            throw 1;
-        }
-
-        // Only keep the N nearest neighbour fluid points
-        tmp_ghost.fluid_neighbours.erase(tmp_ghost.fluid_neighbours.begin()+n_neighbours, tmp_ghost.fluid_neighbours.end());
-    }
-
-
-    void determine_ghost_cells(std::vector<Ghost_cell>* ghost_cells, std::vector<Cell>* boundary_cells,
-                               const double* const x, const double* const y, const double* const z,
-                               const int n_neighbours, const double x0_hill, const double lz_hill, const double lx_hill,
-                               const double dx, const double dy,
-                               const int istart, const int iend, const int jstart, const int jend,
-                               const int kstart, const int kend, const int jj, const int kk)
-    {
-        const int ii = 1;
-
-        std::vector< std::vector<double> > tmp_matrix(n_neighbours+1, std::vector<double>(n_neighbours+1,0));
-        tmp_matrix[0][0] = 1;
-        tmp_matrix[1][0] = 1;
-        tmp_matrix[2][0] = 1;
-
-        // Determine the ghost cells
-        for (int k=kstart; k<kend; ++k)
-            for (int j=jstart; j<jend; ++j)
-                for (int i=istart; i<iend; ++i)
-                {
-                    const int ijk = i + j*jj + k*kk;
-
-                    if (is_ghost_cell(x, z, i, k, x0_hill, lz_hill, lx_hill))
-                    {
-                        Ghost_cell tmp_ghost;
-                        tmp_ghost.i = i;
-                        tmp_ghost.j = j;
-                        tmp_ghost.k = k;
-
-                        // Find the minimum distance from ghost cell to the wall
-                        find_min_distance_wall(tmp_ghost.xb, tmp_ghost.zb, x[i], z[k], dx, x0_hill, lz_hill, lx_hill);
-
-                        // Find the nearest neighbours outside of the hill
-                        find_neighbour_points(tmp_ghost, n_neighbours, x, z, dx, i, j, k, x0_hill, lz_hill, lx_hill);
-
-                        // Define the distance matrix for the interpolations
-                        tmp_ghost.B.resize(n_neighbours+1, std::vector<double>(n_neighbours+1));
-
-                        tmp_matrix[0][1] = tmp_ghost.xb;                         // x-location of given value on boundary
-                        tmp_matrix[1][1] = x[tmp_ghost.fluid_neighbours[0].i];   // x-location of fluid point #1
-                        tmp_matrix[2][1] = x[tmp_ghost.fluid_neighbours[1].i];   // x-location of fluid point #2
-
-                        tmp_matrix[0][2] = tmp_ghost.zb;                         // z-location of given value on boundary
-                        tmp_matrix[1][2] = z[tmp_ghost.fluid_neighbours[0].k];   // z-location of fluid point #1
-                        tmp_matrix[2][2] = z[tmp_ghost.fluid_neighbours[1].k];   // z-location of fluid point #1
-
-                        // Save the inverse of the matrix
-                        inverse_mat_3x3(tmp_ghost.B, tmp_matrix);
-
-                        // Add to vector with ghost_cells
-                        ghost_cells->push_back(tmp_ghost);
-                    }
-                }
-    }
-
-    void set_ghost_cells(std::vector<Ghost_cell> ghost_cells, double* const restrict field, const double boundary_value,
-                         const double* const restrict x, const double* const restrict z, const int ii, const int jj, const int kk)
-    {
-        std::vector<double> coefficients(3);
-        std::vector<double> known_values(3);
-
-        for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
-        {
-            // Values at the nearest fluid points
-            const double v1 = field[it->fluid_neighbours[0].i + it->fluid_neighbours[0].j*jj + it->fluid_neighbours[0].k*kk];
-            const double v2 = field[it->fluid_neighbours[1].i + it->fluid_neighbours[1].j*jj + it->fluid_neighbours[1].k*kk];
-
-            // Populate vector with values
-            known_values[0] = boundary_value;
-            known_values[1] = v1;
-            known_values[2] = v2;
-
-            // Solve coefficients
-            matvecmul(coefficients, it->B, known_values);
-
-            // Location of image point
-            const double xi = 2*it->xb - x[it->i];
-            const double zi = 2*it->zb - z[it->k];
-
-            // Value at image point
-            double image_value = coefficients[0] + coefficients[1]*xi + coefficients[2]*zi;
-
-            // Set ghost cell value
-            const int ijk = it->i + it->j*jj + it->k*kk;
-            field[ijk] = 2*boundary_value - image_value;
-        }
-    }
-
-    void set_boundary_cells(std::vector<Cell> boundary_cells, double* const restrict tendency,
-                            const int ii, const int jj, const int kk)
-    {
-        for (std::vector<Cell>::iterator it=boundary_cells.begin(); it<boundary_cells.end(); ++it)
-        {
-            const int ijk = it->i + it->j*jj + it->k*kk;
-            tendency[ijk] = 0;
-        }
-    }
-
-    void set_fluid_values(std::vector<Ghost_cell> ghost_cells, double* const restrict field, const double value,
-                          const int ii, const int jj, const int kk)
-    {
-        const int j = 1; // Tmp BvS
-
-        for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
-        {
-            const int ijk1 = it->fluid_neighbours[0].i + j*jj + it->fluid_neighbours[0].k*kk;
-            const int ijk2 = it->fluid_neighbours[1].i + j*jj + it->fluid_neighbours[1].k*kk;
-            field[ijk1] = value;
-            field[ijk2] = value;
-        }
-    }
-
-    void read_ghost_cells(std::vector<Ghost_cell>* ghost_cells, std::string filename, const double* const restrict x, const double* const restrict z)
-    {
-        std::ifstream inputfile;
-        inputfile.open(filename);
-
-        const int n_neighbours = 2;
-        const int j = 1;
-
-        // Temporary matrix to store the location of the wall and nearest fluid neighbours
-        std::vector< std::vector<double> > tmp_matrix(n_neighbours+1, std::vector<double>(n_neighbours+1,0));
-        tmp_matrix[0][0] = 1;
-        tmp_matrix[1][0] = 1;
-        tmp_matrix[2][0] = 1;
-
-        std::string line;
-        std::string item;
-
-        // Flush first line
-        getline(inputfile, line);
-
-        while (getline(inputfile, line))
-        {
-            Ghost_cell tmp_ghost;
-            tmp_ghost.j = j;
-
-            std::stringstream ss(line);
-
-            getline(ss, item, ' ');
-            tmp_ghost.i = atoi(item.c_str()) + 1;
-
-            getline(ss, item, ' ');
-            tmp_ghost.k = atoi(item.c_str()) + 1;
-
-            // Define the distance matrix for the interpolations
-            tmp_ghost.B.resize(n_neighbours+1, std::vector<double>(n_neighbours+1));
-
-            // Location on boundary
-            // -------------------------
-            getline(ss, item, ' ');
-            const double xb = atof(item.c_str());
-            tmp_ghost.xb = xb;
-            tmp_matrix[0][1] = xb;          // x-location of given value on boundary
-
-            getline(ss, item, ' ');
-            const double zb = atof(item.c_str());
-            tmp_ghost.zb = zb;
-            tmp_matrix[0][2] = zb;          // z-location of given value on boundary
-
-            // First fluid neighbour:
-            // -------------------------
-            getline(ss, item, ' ');
-            const int i1 = atoi(item.c_str()) + 1;
-            tmp_matrix[1][1] = x[i1];   // x-location of fluid point #1
-
-            getline(ss, item, ' ');
-            const int k1 = atoi(item.c_str()) + 1;
-            tmp_matrix[1][2] = z[k1];   // z-location of fluid point #1
-
-            Neighbour nb1 = {i1, j, k1, 0.};
-            tmp_ghost.fluid_neighbours.push_back(nb1);
-
-            // Second fluid neighbour:
-            // -------------------------
-            getline(ss, item, ' ');
-            const int i2 = atoi(item.c_str()) + 1;
-            tmp_matrix[2][1] = x[i2];   // x-location of fluid point #2
-
-            getline(ss, item, ' ');
-            const int k2 = atoi(item.c_str()) + 1;
-            tmp_matrix[2][2] = z[k2];   // z-location of fluid point #1
-
-            Neighbour nb2 = {i2, j, k2, 0.};
-            tmp_ghost.fluid_neighbours.push_back(nb2);
-
-            // Save the inverse of the matrix
-            inverse_mat_3x3(tmp_ghost.B, tmp_matrix);
-
-            //std::cout << tmp_ghost.i << ", " << tmp_ghost.k << std::endl;
-            //for (int i=0; i<3; ++i)
-            //{
-            //    for (int k=0; k<3; ++k)
-            //    {
-            //        std::cout << tmp_matrix[i][k] << ", ";
-            //    }
-            //    std::cout << " " << std::endl;
-            //}
-
-            // Add to vector with ghost_cells
-            ghost_cells->push_back(tmp_ghost);
-        }
-
-    }
-
-    void print_debug(std::vector<Ghost_cell> ghost_cells)
-    {
-        std::ofstream debugfile;
-        debugfile.open("debug.txt");
-
-        for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
-        {
-            debugfile << it->i                          << ", " <<
-                         it->k                          << ", " <<
-                         it->xb                         << ", " <<
-                         it->zb                         << ", " <<
-                         it->fluid_neighbours[0].i      << ", " <<
-                         it->fluid_neighbours[0].k      << ", " <<
-                         it->fluid_neighbours[1].i      << ", " <<
-                         it->fluid_neighbours[1].k      << std::endl;
-        }
-
-        debugfile.close();
-    }
-}
-
 void Immersed_boundary::init()
 {
     stats = model->stats;
 
-    if (sw_ib != "1")
+    if (ib_type == None_type)
         return;
 }
 
 void Immersed_boundary::create()
 {
-    if (sw_ib != "1")
+    if (ib_type == None_type)
         return;
 
+    if (xy_dims == 1)
+    {
+        if (ib_type == Sine_type)
+        {
+            find_ghost_cells<Sine_type, 1>(&ghost_cells_u, grid->xh, grid->y,  grid->z );
+            find_ghost_cells<Sine_type, 1>(&ghost_cells_v, grid->x,  grid->yh, grid->z );
+            find_ghost_cells<Sine_type, 1>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
+            find_ghost_cells<Sine_type, 1>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
+        }
+        else if (ib_type == Gaus_type)
+        {
+            find_ghost_cells<Gaus_type, 1>(&ghost_cells_u, grid->xh, grid->y,  grid->z );
+            find_ghost_cells<Gaus_type, 1>(&ghost_cells_v, grid->x,  grid->yh, grid->z );
+            find_ghost_cells<Gaus_type, 1>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
+            find_ghost_cells<Gaus_type, 1>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
+        }
+    }
+    else if (xy_dims == 2)
+    {
+        if (ib_type == Sine_type)
+        {
+            find_ghost_cells<Sine_type, 2>(&ghost_cells_u, grid->xh, grid->y,  grid->z );
+            find_ghost_cells<Sine_type, 2>(&ghost_cells_v, grid->x,  grid->yh, grid->z );
+            find_ghost_cells<Sine_type, 2>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
+            find_ghost_cells<Sine_type, 2>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
+        }
+        else if (ib_type == Gaus_type)
+        {
+            find_ghost_cells<Gaus_type, 2>(&ghost_cells_u, grid->xh, grid->y,  grid->z );
+            find_ghost_cells<Gaus_type, 2>(&ghost_cells_v, grid->x,  grid->yh, grid->z );
+            find_ghost_cells<Gaus_type, 2>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
+            find_ghost_cells<Gaus_type, 2>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
+        }
+    }
+
+    model->master->print_message("Found %i IB[u] ghost cells \n",ghost_cells_u.size());
+    model->master->print_message("Found %i IB[v] ghost cells \n",ghost_cells_v.size());
+    model->master->print_message("Found %i IB[w] ghost cells \n",ghost_cells_w.size());
+    model->master->print_message("Found %i IB[s] ghost cells \n",ghost_cells_s.size());
+
+    // Debug.....
+    std::string name;
+    name = "debug_u.txt"; write_debug(ghost_cells_u, name);
+    name = "debug_v.txt"; write_debug(ghost_cells_v, name);
+    name = "debug_w.txt"; write_debug(ghost_cells_w, name);
+    name = "debug_s.txt"; write_debug(ghost_cells_s, name);
+}
+
+template<Immersed_boundary::IB_type sw, int dims>
+double Immersed_boundary::boundary_function(const double x, const double y)
+{
+    if (dims == 1)
+    {
+        if (sw == Sine_type)
+        {
+            const double pi = std::acos((double)-1.); 
+            return z_offset + amplitude + amplitude * std::sin(2*pi*x/wavelength_x);
+        }
+        else if (sw == Gaus_type)
+        {
+            return z_offset + amplitude * std::exp(-pow((x-x0_hill)/(2*sigma_x_hill), 2));
+        }
+    }
+    else if (dims == 2)
+    {
+        if (sw == Sine_type)
+        {
+            const double pi = std::acos((double)-1.); 
+            return z_offset + amplitude + amplitude * std::sin(2*pi*x/wavelength_x) * std::sin(2*pi*y/wavelength_y);
+        }
+        else if (sw == Gaus_type)
+        {
+            return z_offset + amplitude * std::exp(-pow((x-x0_hill)/(2*sigma_x_hill), 2))
+                                        * std::exp(-pow((y-y0_hill)/(2*sigma_y_hill), 2));
+        }
+    }
+}
+
+template<Immersed_boundary::IB_type sw, int dims>
+bool Immersed_boundary::is_ghost_cell(const double* const restrict x, const double* const restrict y, const double* const restrict z,
+                                      const int i, const int j, const int k)
+{
+    if (z[k] < boundary_function<sw, dims>(x[i], y[j]))  // Inside IB
+    {
+        // Check if one of the neighbouring grid cells is outside the IB
+        for (int dk=-1; dk<2; ++dk) // BvS Fix this
+            if (z[k+dk] > boundary_function<sw, dims>(x[i], y[j]))
+                return true;
+        for (int dj=-1; dj<2; ++dj)
+            if (z[k] > boundary_function<sw, dims>(x[i], y[j+dj]))
+                return true;
+        for (int di=-1; di<2; ++di)
+            if (z[k] > boundary_function<sw, dims>(x[i+di], y[j]))
+                return true;
+    }
+    return false;
+}
+
+template<Immersed_boundary::IB_type sw, int dims>
+void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min, double& z_min, double& d_min,
+                                                   const double x, const double y, const double z, 
+                                                   const int i, const int j, const int k)
+{
+    const double dx = grid->dx;
+    const double dy = grid->dy;
+
+    d_min = Constants::dbig;
+    const int n  = 100;
+
+    for (int ii = -n/2; ii < n/2+1; ++ii)
+        for (int jj = -n/2; jj < n/2+1; ++jj)
+        {
+            const double xc = x + 2*ii/(double)n*dx;
+            const double yc = y + 2*jj/(double)n*dy;
+            const double zc = boundary_function<sw,dims>(xc, yc);
+            const double d  = abs_distance(x, xc, y, yc, z, zc);
+
+            if (d < d_min)
+            {
+                d_min = d;
+                x_min = xc;
+                y_min = yc;
+                z_min = zc;
+            }
+        }
+}
+
+template<Immersed_boundary::IB_type sw, int dims>
+void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell, 
+                                                  const double* const restrict x, const double* const restrict y, const double* const restrict z,
+                                                  const int i, const int j, const int k, const int n)
+{
+    double x_min, y_min, z_min, d_min;  // x, y, z location and distance to wall 
+
+    // Minimal distance that a grid point used in the interpolation has to be
+    // away from the IB, to prevent getting extreme extrapolated values in the ghost cells
+    const double d_lim = 0.25 * std::min(std::min(grid->dx, grid->dy), grid->dz[k]);
+
+    // Find the neighbouring grid points outside the IB
+    for (int dk=-1; dk<3; ++dk)
+        for (int dj=-2; dj<3; ++dj)
+            for (int di=-2; di<3; ++di)
+            {
+                // Check if grid point is outside IB
+                if (z[k+dk] > boundary_function<sw,dims>(x[i+di], y[j+dj]))
+                {
+                    // Calculate distance (d_min) of current grid point to the IB
+                    find_nearest_location_wall<sw,dims>(x_min, y_min, z_min, d_min, x[i+di], y[j+dj], z[k+dk], i+di, j+dj, k+dk); 
+
+                    // As described above; exclude grid points which are close to the IB
+                    if (d_min > d_lim)
+                    {
+                        Neighbour tmp_neighbour = {i+di, j+dj, k+dk, abs_distance(x[i], x[i+di], y[j], y[j+dj], z[k], z[k+dk])};
+                        ghost_cell.neighbours.push_back(tmp_neighbour);
+                    }
+                }
+            }
+
+    // Sort them on distance:
+    std::sort(ghost_cell.neighbours.begin(), ghost_cell.neighbours.end(), compare_value);
+
+    // Abort if there are insufficient neighbouring fluid points
+    if (ghost_cell.neighbours.size() < n)
+    {
+        model->master->print_error("Only found %i of 3 neighbour points\n", ghost_cell.neighbours.size());
+        throw 1;
+    }
+
+    // Only keep the N nearest neighbour fluid points
+    ghost_cell.neighbours.erase(ghost_cell.neighbours.begin()+n, ghost_cell.neighbours.end());
+}
+
+void Immersed_boundary::define_distance_matrix(Ghost_cell& ghost_cell, 
+                                               const double* const restrict x, const double* const restrict y, const double* const restrict z)
+{
+    const int n = 4;
+
+    // Temporary matrix
+    std::vector< std::vector<double> > tmp(n, std::vector<double>(n,0));
+    for (int i=0; i<n; ++i)
+        tmp[i][0] = 1;
+
+    tmp[0][1] = ghost_cell.xb;                   // x-location of given value on boundary
+    tmp[1][1] = x[ghost_cell.neighbours[0].i];   // x-location of fluid point #1
+    tmp[2][1] = x[ghost_cell.neighbours[1].i];   // x-location of fluid point #2
+    tmp[3][1] = x[ghost_cell.neighbours[2].i];   // x-location of fluid point #3
+
+    tmp[0][2] = ghost_cell.yb;                   // y-location of given value on boundary
+    tmp[1][2] = y[ghost_cell.neighbours[0].j];   // x-location of fluid point #1
+    tmp[2][2] = y[ghost_cell.neighbours[1].j];   // x-location of fluid point #2
+    tmp[3][2] = y[ghost_cell.neighbours[2].j];   // x-location of fluid point #3
+    
+    tmp[0][3] = ghost_cell.zb;                   // z-location of given value on boundary
+    tmp[1][3] = z[ghost_cell.neighbours[0].k];   // z-location of fluid point #1
+    tmp[2][3] = z[ghost_cell.neighbours[1].k];   // z-location of fluid point #1
+    tmp[3][3] = z[ghost_cell.neighbours[2].k];   // z-location of fluid point #1
+ 
+    // Resize matrix in ghost_cell to 4x4 
+    ghost_cell.B.resize(n, std::vector<double>(n));
+    
+    // Save the inverse of the matrix
+    inverse_mat_4x4(ghost_cell.B, tmp);
+}
+   
+template<Immersed_boundary::IB_type sw, int dims>
+void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell>* ghost_cells, 
+                                         const double* const restrict x, const double* const restrict y, const double* const restrict z)
+{
     const int ii = 1;
     const int jj = grid->icells;
     const int kk = grid->ijcells;
 
-    const int n_neighbours = 2;     // 2 for 2D linear
-    std::string filename;
+    double d_wall;  // Distance to IB (m)
+    
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                // 1. Check if this is a ghost cell, i.e. inside the IB, with a neighbour outside the IB
+                if (is_ghost_cell<sw, dims>(x, y, z, i, j, k))
+                {
+                    Ghost_cell tmp_ghost = {i, j, k};
 
-    filename = "ib.boundary_u";
-    read_ghost_cells(&ghost_cells_u, filename, grid->xh, grid->z);
+                    // 2. Find the closest location on the IB
+                    find_nearest_location_wall<sw,dims>(tmp_ghost.xb, tmp_ghost.yb, tmp_ghost.zb, d_wall, x[i], y[j], z[k], i, j, k);
 
-    filename = "ib.boundary_w";
-    read_ghost_cells(&ghost_cells_w, filename, grid->x, grid->zh);
+                    // 3. Find the closest 3 grid points outside the IB
+                    find_interpolation_points<sw,dims>(tmp_ghost, x, y, z, i, j, k, 3);
 
-    filename = "ib.boundary_s";
-    read_ghost_cells(&ghost_cells_s, filename, grid->x, grid->z);
+                    // 4. Define the matrix with distances to the boundary and each grid point used in the interpolation
+                    define_distance_matrix(tmp_ghost, x, y, z);
 
-//    // Determine ghost cells for u-component
-//    determine_ghost_cells(&ghost_cells_u, &boundary_cells_u, grid->xh, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
-//                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
-//
-//    // Determine ghost cells for w-component
-//    determine_ghost_cells(&ghost_cells_w, &boundary_cells_w, grid->x, grid->y, grid->zh, n_neighbours, x0_hill, lz_hill, lx_hill,
-//                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart+1, grid->kend, grid->icells, grid->ijcells);
-//
-//    // Determine ghost cells for scalar location
-//    determine_ghost_cells(&ghost_cells_s, &boundary_cells_s, grid->x, grid->y, grid->z, n_neighbours, x0_hill, lz_hill, lx_hill,
-//                          grid->dx, grid->dy, grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
-
-    //const double value=0;
-    //set_fluid_values(ghost_cells_u, fields->u->data, value, ii, jj, kk);
-    //set_fluid_values(ghost_cells_w, fields->w->data, value, ii, jj, kk);
-
-    model->master->print_message("Found %i IB[u] ghost cells \n",ghost_cells_u.size());
-    model->master->print_message("Found %i IB[w] ghost cells \n",ghost_cells_w.size());
-    model->master->print_message("Found %i IB[s] ghost cells \n",ghost_cells_s.size());
-
-    print_debug(ghost_cells_u);
+                    ghost_cells->push_back(tmp_ghost);
+                }
+            }
 }
 
 void Immersed_boundary::exec_stats(Mask *m)
 {
-//    if (sw_ib != "1")
-//        return;
-//
-//    // Temporary hack (BvS) to get wall velocities in statistics, doesn't account for mask!!
-//    m->tseries["IB_u_max"].data = boundary_u_max;
-//    m->tseries["IB_w_max"].data = boundary_w_max;
+    if (ib_type == None_type)
+        return;
 }
 
 void Immersed_boundary::exec()
 {
-    if (sw_ib != "1")
+    if (ib_type == None_type)
         return;
-
-    const double boundary_value = 0;
-    const int ii = 1;
-
-    set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->z, ii, grid->icells, grid->ijcells);
-    set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->zh, ii, grid->icells, grid->ijcells);
-
-    const double sboundary_value = 0;
-    for (FieldMap::const_iterator it = fields->sp.begin(); it!=fields->sp.end(); it++)
-        set_ghost_cells(ghost_cells_s, it->second->data, sboundary_value, grid->x, grid->z, ii, grid->icells, grid->ijcells);
 }
 
 void Immersed_boundary::exec_tend()
 {
-    if (sw_ib != "1")
+    if (ib_type == None_type)
         return;
-
-    const int ii = 1;
-
-    set_boundary_cells(boundary_cells_u, fields->ut->data, ii, grid->icells, grid->ijcells);
-    set_boundary_cells(boundary_cells_w, fields->wt->data, ii, grid->icells, grid->ijcells);
-
-    for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); it++)
-        set_boundary_cells(boundary_cells_s, it->second->data, ii, grid->icells, grid->ijcells);
 }
 

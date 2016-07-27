@@ -48,22 +48,18 @@ struct Ghost_cell
     int k;  ///< k-location of ghost cell
 
     double xb;  ///< Nearest location at boundary
+    double yb;  ///< Nearest location at boundary
     double zb;  ///< Nearest location at boundary
 
-    std::vector< std::vector<double> > B;
-    std::vector<Neighbour> fluid_neighbours; ///< Neighbouring fluid points used in interpolation
-};
-
-struct Cell
-{
-    int i;  ///< i-location of cell
-    int j;  ///< j-location of cell
-    int k;  ///< k-location of cell
+    std::vector< std::vector<double> > B;    ///< Inversed matrix with the locations of all interpolation points
+    std::vector<Neighbour> neighbours; ///< Neighbouring fluid points used in interpolation
 };
 
 class Immersed_boundary
 {
     public:
+        enum IB_type{None_type, Sine_type, Gaus_type, Block_type, User_type};
+
         Immersed_boundary(Model*, Input*); ///< Constructor of the class.
         ~Immersed_boundary();              ///< Destructor of the class.
 
@@ -80,18 +76,42 @@ class Immersed_boundary
         Grid*   grid;   ///< Pointer to grid class.
         Stats*  stats;  ///< Pointer to grid class.
 
-        std::vector<Cell> boundary_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
-        std::vector<Cell> boundary_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
-        std::vector<Cell> boundary_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
-
         std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
+        std::vector<Ghost_cell> ghost_cells_v;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
 
-        std::string sw_ib; ///< Immersed boundary switch
+        template<IB_type, int> 
+        void find_ghost_cells(std::vector<Ghost_cell>*, const double*, const double*, const double*); ///< Function which determines the ghost cells
 
-        double x0_hill;     ///< Middle of Gaussian hill
-        double lz_hill;     ///< Height of  "   "    "
-        double lx_hill;     ///< Length of  "    "   "
+        template<IB_type, int> 
+        double boundary_function(double, double); ///< Function describing boundary (1D)
+        template<IB_type, int> 
+        bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
+        template<IB_type, int> 
+        void find_nearest_location_wall(double&, double&, double&, double&, 
+                                        const double, const double, const double, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
+        template<IB_type, int> 
+        void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
+
+        void define_distance_matrix(Ghost_cell&, const double*, const double*, const double*);
+
+        // General settings IB
+        std::string sw_ib; ///< Immersed boundary switch
+        IB_type ib_type;   ///< Internal IB switch
+
+        double amplitude;  ///< Height of IB object (Gaussian, sine or blocks)
+        double z_offset;   ///< Vertical offset of IB objects
+        int xy_dims;       ///< Hill dimension (1=x, 2=xy)
+
+        // Sine type of boundary
+        double wavelength_x; ///< Wave length sine in x-direction
+        double wavelength_y; ///< Wave length sine in y-direction
+
+        // Gaussian hill
+        double x0_hill;
+        double y0_hill;
+        double sigma_x_hill;
+        double sigma_y_hill;
 };
 #endif
