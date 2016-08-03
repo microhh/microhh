@@ -47,9 +47,13 @@ struct Ghost_cell
     int j;  ///< j-location of ghost cell
     int k;  ///< k-location of ghost cell
 
-    double xb;  ///< Nearest location at boundary
-    double yb;  ///< Nearest location at boundary
-    double zb;  ///< Nearest location at boundary
+    double xb;  ///< Nearest x location on boundary
+    double yb;  ///< Nearest y location on boundary
+    double zb;  ///< Nearest z location on boundary
+
+    double xi;  ///< Image point x
+    double yi;  ///< Image point y
+    double zi;  ///< Image point z
 
     std::vector< std::vector<double> > B;    ///< Inversed matrix with the locations of all interpolation points
     std::vector<Neighbour> neighbours; ///< Neighbouring fluid points used in interpolation
@@ -59,6 +63,7 @@ class Immersed_boundary
 {
     public:
         enum IB_type{None_type, Sine_type, Gaus_type, Block_type, User_type};
+        enum Interpol_type{Linear_type, Distance_type};
 
         Immersed_boundary(Model*, Input*); ///< Constructor of the class.
         ~Immersed_boundary();              ///< Destructor of the class.
@@ -97,21 +102,26 @@ class Immersed_boundary
         void define_distance_matrix(Ghost_cell&, const double*, const double*, const double*);
 
         // General settings IB
-        std::string sw_ib; ///< Immersed boundary switch
+        std::string sw_ib; ///< Namelist IB switch
         IB_type ib_type;   ///< Internal IB switch
 
-        double amplitude;  ///< Height of IB object (Gaussian, sine or blocks)
-        double z_offset;   ///< Vertical offset of IB objects
-        int xy_dims;       ///< Hill dimension (1=x, 2=xy)
+        // Interpolation settings
+        std::string sw_interpol;     ///< Namelist interpolation switch
+        Interpol_type interpol_type; ///< Internal interpolation switch
+        int idw_points;              ///< Number of points used for inverse distance weighted interpolation
+
+        double amplitude; ///< Height of IB object (Gaussian, sine or blocks)
+        double z_offset;  ///< Vertical offset of IB objects
+        int xy_dims;      ///< Hill dimension (1=x, 2=xy)
 
         // Sine type of boundary
         double wavelength_x; ///< Wave length sine in x-direction
         double wavelength_y; ///< Wave length sine in y-direction
 
         // Gaussian hill
-        double x0_hill;
-        double y0_hill;
-        double sigma_x_hill;
-        double sigma_y_hill;
+        double x0_hill;      ///< Center of hill in x-direction 
+        double y0_hill;      ///< Center of hill in y-direction 
+        double sigma_x_hill; ///< Std.dev hill width in x-direction
+        double sigma_y_hill; ///< Std.dev hill width in y-direction
 };
 #endif
