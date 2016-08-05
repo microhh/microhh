@@ -43,20 +43,23 @@ struct Neighbour
 
 struct Ghost_cell
 {
-    int i;  ///< i-location of ghost cell
-    int j;  ///< j-location of ghost cell
-    int k;  ///< k-location of ghost cell
+    int i;  ///< x-index of ghost cell
+    int j;  ///< y-index of ghost cell
+    int k;  ///< z-index of ghost cell
 
-    double xb;  ///< Nearest x location on boundary
-    double yb;  ///< Nearest y location on boundary
-    double zb;  ///< Nearest z location on boundary
+    double xB;  ///< Nearest x location on immersed boundary
+    double yB;  ///< Nearest y location on immersed boundary
+    double zB;  ///< Nearest z location on immersed boundary
 
-    double xi;  ///< Image point x
-    double yi;  ///< Image point y
-    double zi;  ///< Image point z
+    double xI;  ///< x-Location of image point of ghost cell
+    double yI;  ///< x-Location of image point of ghost cell
+    double zI;  ///< x-Location of image point of ghost cell
 
-    std::vector< std::vector<double> > B;    ///< Inversed matrix with the locations of all interpolation points
-    std::vector<Neighbour> neighbours; ///< Neighbouring fluid points used in interpolation
+    std::vector< std::vector<double> > B; ///< Inversed matrix with the locations of all interpolation points
+    std::vector<Neighbour> neighbours;    ///< Neighbouring fluid points used in interpolation
+
+    std::vector<double> c_idw; ///< Weights for inverse distance weighted interpolation
+    double c_idw_sum;          ///< Sum inverse distance weights
 };
 
 class Immersed_boundary
@@ -70,9 +73,7 @@ class Immersed_boundary
 
         void init();
         void create();
-        void exec();
-        void exec_tend();
-
+        void exec();            ///< Set the immersed boundary ghost cells
         void exec_stats(Mask*); ///< Execute statistics of immersed boundaries
 
     private:
@@ -80,8 +81,9 @@ class Immersed_boundary
         Fields* fields; ///< Pointer to fields class.
         Grid*   grid;   ///< Pointer to grid class.
         Stats*  stats;  ///< Pointer to grid class.
-
-        std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
+        
+        ///< Vector holding info on all the ghost cells within the boundary
+        std::vector<Ghost_cell> ghost_cells_u;  
         std::vector<Ghost_cell> ghost_cells_v;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
@@ -90,7 +92,7 @@ class Immersed_boundary
         void find_ghost_cells(std::vector<Ghost_cell>*, const double*, const double*, const double*); ///< Function which determines the ghost cells
 
         template<IB_type, int> 
-        double boundary_function(double, double); ///< Function describing boundary (1D)
+        double boundary_function(double, double); ///< Function describing boundary
         template<IB_type, int> 
         bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
         template<IB_type, int> 
@@ -99,7 +101,7 @@ class Immersed_boundary
         template<IB_type, int> 
         void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
 
-        void define_distance_matrix(Ghost_cell&, const double*, const double*, const double*);
+//        void define_distance_matrix(Ghost_cell&, const double*, const double*, const double*);
 
         // General settings IB
         std::string sw_ib; ///< Namelist IB switch

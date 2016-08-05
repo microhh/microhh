@@ -51,9 +51,9 @@ namespace
             debugfile << it->i                << ", " <<
                          it->j                << ", " <<
                          it->k                << ", " <<
-                         it->xb               << ", " <<
-                         it->yb               << ", " <<
-                         it->zb               << ", " <<
+                         it->xB               << ", " <<
+                         it->yB               << ", " <<
+                         it->zB               << ", " <<
                          it->neighbours[0].i  << ", " <<
                          it->neighbours[0].j  << ", " <<
                          it->neighbours[0].k  << ", " <<
@@ -225,46 +225,21 @@ namespace
                          const double* const restrict x, const double* const restrict y, const double* const restrict z,
                          const int nn, const int ii, const int jj, const int kk)
     {
-        const double p = 0.5;   // Coefficient in inverse-distance interpolation
-
-        std::vector<double> r(ghost_cells[0].neighbours.size()+1);  // radius
-        std::vector<double> c(ghost_cells[0].neighbours.size()+1);  // weight
-        std::vector<double> s(ghost_cells[0].neighbours.size()+1);  // value
-
         for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
         {
-            // Calculate distances to image point
-            // PRE-CALCULATE THIS BART
+            // Calculate interpolant at image point
+            double vI = 0;
             for (int i=0; i<nn; ++i)
             {
-                r[i] = abs_distance(it->xi, x[it->neighbours[i].i], 
-                                    it->yi, y[it->neighbours[i].j],
-                                    it->zi, z[it->neighbours[i].k]);
                 const int ijk = it->neighbours[i].i + it->neighbours[i].j*jj + it->neighbours[i].k*kk;
-                s[i] = field[ijk];
+                vI += it->c_idw[i] * field[ijk];
             }
-            r[nn] = abs_distance(it->xi, it->xb, it->yi, it->yb, it->zi, it->zb);
-            s[nn] = boundary_value;
-
-            const double rmax = *std::max_element(std::begin(r), std::end(r));  // max radius
-
-            // Calculate weights:
-            // PRE-CALCULATE THIS BART
-            double csum = 0;
-            for (int i=0; i<nn+1; ++i)
-            {
-                c[i] = std::pow((rmax - r[i]) / (rmax * r[i]), p);
-                csum += c[i];
-            }
-
-            // Calculate interpolant at image point
-            double vi=0;
-            for (int i=0; i<nn+1; ++i)
-                vi += (c[i] * s[i]) / csum;
+            vI += it->c_idw[nn] * boundary_value; 
+            vI /= it->c_idw_sum; 
 
             // Reflect across boundary
             const int ijk = it->i + it->j*jj + it->k*kk;
-            field[ijk] = 2*boundary_value - vi;
+            field[ijk] = 2*boundary_value - vI;
         }
     }
 }
@@ -348,8 +323,6 @@ void Immersed_boundary::create()
     if (ib_type == None_type)
         return;
 
-    std::cout << "CREATE IB" << std::endl;
-
     if (xy_dims == 1)
     {
         if (ib_type == Sine_type)
@@ -385,10 +358,10 @@ void Immersed_boundary::create()
         }
     }
 
-    model->master->print_message("Found %i IB[u] ghost cells \n",ghost_cells_u.size());
-    model->master->print_message("Found %i IB[v] ghost cells \n",ghost_cells_v.size());
-    model->master->print_message("Found %i IB[w] ghost cells \n",ghost_cells_w.size());
-    model->master->print_message("Found %i IB[s] ghost cells \n",ghost_cells_s.size());
+    model->master->print_message("Found %i IB[u] ghost cells \n", ghost_cells_u.size());
+    model->master->print_message("Found %i IB[v] ghost cells \n", ghost_cells_v.size());
+    model->master->print_message("Found %i IB[w] ghost cells \n", ghost_cells_w.size());
+    model->master->print_message("Found %i IB[s] ghost cells \n", ghost_cells_s.size());
 
     // Debug.....
     std::string name;
@@ -514,45 +487,69 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
     // Abort if there are insufficient neighbouring fluid points
     if (ghost_cell.neighbours.size() < n)
     {
-        model->master->print_error("Only found %i of %1 neighbour points\n", ghost_cell.neighbours.size(), n);
+        model->master->print_error("Only found %i of %i neighbour points\n", ghost_cell.neighbours.size(), n);
         throw 1;
     }
 
     // Only keep the N nearest neighbour fluid points
     ghost_cell.neighbours.erase(ghost_cell.neighbours.begin()+n, ghost_cell.neighbours.end());
+
+    // Pre-calculate the coefficient for the inverse distance weighted interpolation
+    ghost_cell.c_idw.resize(n+1); // n neighbour points + location on wall
+
+    // Calculate distance interpolation points to image point
+    for (int l=0; l<n; ++l)
+        ghost_cell.c_idw[l] = abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i], 
+                                           ghost_cell.yI, y[ghost_cell.neighbours[l].j],
+                                           ghost_cell.zI, z[ghost_cell.neighbours[l].k]);
+
+    ghost_cell.c_idw[n] = abs_distance(ghost_cell.xI, ghost_cell.xB, 
+                                       ghost_cell.yI, ghost_cell.yB,
+                                       ghost_cell.zI, ghost_cell.zB);
+
+    // Save maximum distance
+    const double max_distance = *std::max_element(std::begin(ghost_cell.c_idw), std::end(ghost_cell.c_idw));
+
+    // Calculate coefficients
+    ghost_cell.c_idw_sum = 0;
+    for (int l=0; l<n+1; ++l)
+    {
+        ghost_cell.c_idw[l] = std::pow((max_distance - ghost_cell.c_idw[l]) / (max_distance * ghost_cell.c_idw[l]), 0.5);
+        ghost_cell.c_idw_sum += ghost_cell.c_idw[l];
+    }
 }
 
-void Immersed_boundary::define_distance_matrix(Ghost_cell& ghost_cell, 
-                                               const double* const restrict x, const double* const restrict y, const double* const restrict z)
-{
-    const int n = 4;
-
-    // Temporary matrix
-    std::vector< std::vector<double> > tmp(n, std::vector<double>(n,0));
-    for (int i=0; i<n; ++i)
-        tmp[i][0] = 1;
-
-    tmp[0][1] = ghost_cell.xb;                   // x-location of given value on boundary
-    tmp[1][1] = x[ghost_cell.neighbours[0].i];   // x-location of fluid point #1
-    tmp[2][1] = x[ghost_cell.neighbours[1].i];   // x-location of fluid point #2
-    tmp[3][1] = x[ghost_cell.neighbours[2].i];   // x-location of fluid point #3
-
-    tmp[0][2] = ghost_cell.yb;                   // y-location of given value on boundary
-    tmp[1][2] = y[ghost_cell.neighbours[0].j];   // x-location of fluid point #1
-    tmp[2][2] = y[ghost_cell.neighbours[1].j];   // x-location of fluid point #2
-    tmp[3][2] = y[ghost_cell.neighbours[2].j];   // x-location of fluid point #3
-    
-    tmp[0][3] = ghost_cell.zb;                   // z-location of given value on boundary
-    tmp[1][3] = z[ghost_cell.neighbours[0].k];   // z-location of fluid point #1
-    tmp[2][3] = z[ghost_cell.neighbours[1].k];   // z-location of fluid point #1
-    tmp[3][3] = z[ghost_cell.neighbours[2].k];   // z-location of fluid point #1
-
-    // Resize matrix in ghost_cell to 4x4 
-    ghost_cell.B.resize(n, std::vector<double>(n));
-    
-    // Save the inverse of the matrix
-    inverse_mat_4x4(ghost_cell.B, tmp);
-}
+//void Immersed_boundary::define_distance_matrix(Ghost_cell& ghost_cell, 
+//                                               const double* const restrict x, const double* const restrict y, const double* const restrict z)
+//{
+//    const int n = 4;
+//
+//    // Temporary matrix
+//    std::vector< std::vector<double> > tmp(n, std::vector<double>(n,0));
+//    for (int i=0; i<n; ++i)
+//        tmp[i][0] = 1;
+//
+//    tmp[0][1] = ghost_cell.xb;                   // x-location of given value on boundary
+//    tmp[1][1] = x[ghost_cell.neighbours[0].i];   // x-location of fluid point #1
+//    tmp[2][1] = x[ghost_cell.neighbours[1].i];   // x-location of fluid point #2
+//    tmp[3][1] = x[ghost_cell.neighbours[2].i];   // x-location of fluid point #3
+//
+//    tmp[0][2] = ghost_cell.yb;                   // y-location of given value on boundary
+//    tmp[1][2] = y[ghost_cell.neighbours[0].j];   // x-location of fluid point #1
+//    tmp[2][2] = y[ghost_cell.neighbours[1].j];   // x-location of fluid point #2
+//    tmp[3][2] = y[ghost_cell.neighbours[2].j];   // x-location of fluid point #3
+//    
+//    tmp[0][3] = ghost_cell.zb;                   // z-location of given value on boundary
+//    tmp[1][3] = z[ghost_cell.neighbours[0].k];   // z-location of fluid point #1
+//    tmp[2][3] = z[ghost_cell.neighbours[1].k];   // z-location of fluid point #1
+//    tmp[3][3] = z[ghost_cell.neighbours[2].k];   // z-location of fluid point #1
+//
+//    // Resize matrix in ghost_cell to 4x4 
+//    ghost_cell.B.resize(n, std::vector<double>(n));
+//    
+//    // Save the inverse of the matrix
+//    inverse_mat_4x4(ghost_cell.B, tmp);
+//}
    
 template<Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell>* ghost_cells, 
@@ -563,7 +560,7 @@ void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell>* ghost_cells,
     const int kk = grid->ijcells;
 
     double d_wall;  // Distance to IB (m)
-    
+
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
             #pragma ivdep
@@ -572,19 +569,16 @@ void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell>* ghost_cells,
                 // 1. Check if this is a ghost cell, i.e. inside the IB, with a neighbour outside the IB
                 if (is_ghost_cell<sw, dims>(x, y, z, i, j, k))
                 {
-                    //std::cout << "start ghost cell" << std::endl;
                     Ghost_cell tmp_ghost = {i, j, k};
 
-                    //std::cout << "find location wall:" << std::endl;
                     // 2. Find the closest location on the IB
-                    find_nearest_location_wall<sw,dims>(tmp_ghost.xb, tmp_ghost.yb, tmp_ghost.zb, d_wall, x[i], y[j], z[k], i, j, k);
+                    find_nearest_location_wall<sw,dims>(tmp_ghost.xB, tmp_ghost.yB, tmp_ghost.zB, d_wall, x[i], y[j], z[k], i, j, k);
 
                     // 2.1 Location image point
-                    tmp_ghost.xi = 2*tmp_ghost.xb - x[i];
-                    tmp_ghost.yi = 2*tmp_ghost.yb - y[j];
-                    tmp_ghost.zi = 2*tmp_ghost.zb - z[k];
+                    tmp_ghost.xI = 2*tmp_ghost.xB - x[i];
+                    tmp_ghost.yI = 2*tmp_ghost.yB - y[j];
+                    tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
 
-                    //std::cout << "find interpolation points:" << std::endl;
                     // 3. Find the closest 3 grid points outside the IB
                     find_interpolation_points<sw,dims>(tmp_ghost, x, y, z, i, j, k, 5);
 
@@ -614,10 +608,3 @@ void Immersed_boundary::exec()
     set_ghost_cells(ghost_cells_v, fields->v->data, boundary_value, grid->x, grid->yh, grid->z, 5, ii, grid->icells, grid->ijcells);
     set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->y, grid->zh, 5, ii, grid->icells, grid->ijcells);
 }
-
-void Immersed_boundary::exec_tend()
-{
-    if (ib_type == None_type)
-        return;
-}
-
