@@ -74,7 +74,6 @@ class Force
         std::string swlspres; ///< Switch for the large scale pressure force.
         std::string swls;     ///< Switch for large scale scalar tendencies.
         std::string swwls;    ///< Switch for large-scale vertical transport of scalars.
-        std::string swurban;  ///< Switch for a minimal bulk urban parameterization.
 
         double uflux; ///< Mean velocity used to enforce constant flux.
         double fc;    ///< Coriolis parameter.
@@ -112,5 +111,6 @@ class Force
         double* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
         double* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         std::map<std::string, double*> timedepdata_g;
+
 };
 #endif
