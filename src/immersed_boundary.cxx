@@ -59,19 +59,9 @@ namespace
             {
                 debugfile << ", " << it->neighbours[i].i-2;
                 debugfile << ", " << it->neighbours[i].j-2;
-                debugfile << ", " << it->neighbours[i].k-2;
+                debugfile << ", " << it->neighbours[i].k-1;
             }
             debugfile << std::endl;
-
-                         //it->neighbours[0].i  << ", " <<
-                         //it->neighbours[0].j  << ", " <<
-                         //it->neighbours[0].k  << ", " <<
-                         //it->neighbours[1].i  << ", " <<
-                         //it->neighbours[1].j  << ", " <<
-                         //it->neighbours[1].k  << ", " <<
-                         //it->neighbours[2].i  << ", " <<
-                         //it->neighbours[2].j  << ", " <<
-                         //it->neighbours[2].k  << std::endl;
         }
         debugfile.close();
     }
@@ -279,7 +269,10 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     }
     else if (sw_ib == "gaussian" || sw_ib == "agnesi")
     {
-        ib_type = Gaus_type; 
+        if (sw_ib == "gaussian")
+            ib_type = Gaus_type;
+        else if (sw_ib == "agnesi")
+            ib_type = Agnesi_type; 
         nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
         nerror += inputin->get_item(&amplitude,    "immersed_boundary", "amplitude",    ""    );
         nerror += inputin->get_item(&x0_hill,      "immersed_boundary", "x0_hill",      ""    );
@@ -462,7 +455,7 @@ void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min,
     const double dy = grid->dy;
 
     d_min = Constants::dbig;
-    const int n  = 20;
+    const int n  = 40;
 
     for (int ii = -n/2; ii < n/2+1; ++ii)
         for (int jj = -n/2; jj < n/2+1; ++jj)
