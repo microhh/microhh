@@ -83,20 +83,6 @@ class Force
         double* vg;  ///< Pointer to array v-component geostrophic wind.
         double* wls; ///< Pointer to array large-scale vertical velocity.
 
-        // Data and settings bulk urban parameterization
-        double canopy_top;          ///< Top of urban canopy
-        double canopy_frac;         ///< Canopy fraction
-        double roof_frac;           ///< Roof fraction
-        double drag_coeff;          ///< Drag coefficient walls/roof
-        double extinction_coeff;    ///< Extinction coefficient
-        double rooftop_heat_flux;   ///< Heat flux at roof top
-        double canopytop_heat_flux; ///< Heat flux at top of urban canopy
-
-        int kmax_canopy;  ///< Maximum level of canopy (full level)
-        int kmaxh_canopy; ///< Maximum level of canopy (half level)
-
-        double* canopy_heat_tend; ///< Pointer to array heating/cooling tendency bulk urban parameterization
-
         // time dependent variables
         std::string swtimedep;
         std::vector<double> timedeptime;
@@ -121,21 +107,10 @@ class Force
         void advec_wls_2nd(double* const, const double* const,
                            const double* const, const double* const); ///< Calculates the large-scale vertical transport.
 
-        void calc_bulk_urban_drag(double* const, double* const, double* const,
-                                  const double* const, const double* const, const double* const,
-                                  const double* const, const double* const, const double* const,
-                                  const double, const double, const double,
-                                  const double, const double); ///< Calculate bulk urban building drag
-
-        void calc_bulk_urban_heating(double* const, const double* const, const double* const); ///< Calculate bulk urban heating or cooling
-
         // GPU functions and variables
         double* ug_g;  ///< Pointer to GPU array u-component geostrophic wind.
         double* vg_g;  ///< Pointer to GPU array v-component geostrophic wind.
         double* wls_g; ///< Pointer to GPU array large-scale vertical velocity.
         std::map<std::string, double*> timedepdata_g;
-
-        double* canopy_heat_tend_g; ///< Pointer to GPU array heating/cooling tendency bulk urban parameterization
-        double* urban_mask_g;       ///< Pointer to (2D) GPU array with city mask
 };
 #endif

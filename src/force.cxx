@@ -51,14 +51,10 @@ Force::Force(Model* modelin, Input* inputin)
     vg_g  = 0;
     wls_g = 0;
 
-    canopy_heat_tend   = 0;
-    canopy_heat_tend_g = 0;
-
     int nerror = 0;
     nerror += inputin->get_item(&swlspres, "force", "swlspres", "", "0");
     nerror += inputin->get_item(&swls    , "force", "swls"    , "", "0");
     nerror += inputin->get_item(&swwls   , "force", "swwls"   , "", "0");
-    nerror += inputin->get_item(&swurban , "force", "swurban" , "", "0");
 
     if (swlspres != "0")
     {
@@ -93,18 +89,6 @@ Force::Force(Model* modelin, Input* inputin)
     nerror += inputin->get_item(&swtimedep  , "force", "swtimedep"  , "", "0");
     nerror += inputin->get_list(&timedeplist, "force", "timedeplist", "");
 
-    if (swurban == "1")
-    {
-        std::cout << "Using urban parameterization" << std::endl;
-        nerror += inputin->get_item(&canopy_top,          "force", "canopy_top" ,         "", 0.);
-        nerror += inputin->get_item(&canopy_frac,         "force", "canopy_frac",         "", 0.);
-        nerror += inputin->get_item(&roof_frac,           "force", "roof_frac",           "", 0.);
-        nerror += inputin->get_item(&drag_coeff,          "force", "drag_coeff",          "", 0.);
-        nerror += inputin->get_item(&extinction_coeff,    "force", "extinction_coeff",    "", 0.);
-        nerror += inputin->get_item(&rooftop_heat_flux,   "force", "rooftop_heat_flux",   "", 0.);
-        nerror += inputin->get_item(&canopytop_heat_flux, "force", "canopytop_heat_flux", "", 0.);
-    }
-
     if (nerror)
         throw 1;
 }
@@ -114,8 +98,6 @@ Force::~Force()
     delete[] ug;
     delete[] vg;
     delete[] wls;
-
-    delete[] canopy_heat_tend;
 
     if (swls == "1")
     {
@@ -148,14 +130,6 @@ void Force::init()
 
     if (swwls == "1")
         wls = new double[grid->kcells];
-
-    if (swurban == "1")
-    {
-        canopy_heat_tend = new double[grid->kcells];
-
-        for (int k=0; k<grid->kcells; ++k)
-            canopy_heat_tend[k] = 0;
-    }
 }
 
 void Force::create(Input *inputin)
@@ -214,28 +188,6 @@ void Force::create(Input *inputin)
             master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
     }
 
-    // Pre-calculate the (in time) fixed urban heating/cooling
-    if (swurban == "1")
-    {
-        // 1. Calculate max half/full levels to consider for buildings
-        for (int k=grid->kstart; k<grid->kend; ++k)
-            if(grid->z[k] > canopy_top)
-            {
-                kmax_canopy = k;
-                break;
-            }
-        grid->zh[kmax_canopy] < canopy_top ? kmaxh_canopy = kmax_canopy+1 : kmaxh_canopy = kmax_canopy;
-
-        // Calculate canopy heat flux at half level
-        double* canopy_heat_flux = fields->atmp["tmp1"]->datamean;
-        for (int k=grid->kstart; k<kmaxh_canopy; ++k)
-            canopy_heat_flux[k] = -canopytop_heat_flux * exp(-extinction_coeff * pow(grid->zh[k]-canopy_top, 2) / (2 * canopy_top)); 
-
-        // Calculate canopy heating tendency at full levels
-        for (int k=grid->kstart; k<kmaxh_canopy-1; ++k)
-            canopy_heat_tend[k] = -canopy_frac * (canopy_heat_flux[k+1] - canopy_heat_flux[k]) * grid->dzi[k];
-    }
-
     if (nerror)
         throw 1;
 }
@@ -264,22 +216,6 @@ void Force::exec(double dt)
     {
         for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
             advec_wls_2nd(it->second->data, fields->sp[it->first]->datamean, wls, grid->dzhi);
-    }
-
-    if (swurban == "1")
-    {
-        // Get surface mask and store in tmp1->databot 
-        model->boundary->get_surface_mask(fields->atmp["tmp1"]);
-
-        // Calculate bulk building drag
-        calc_bulk_urban_drag(fields->ut->data, fields->vt->data, fields->wt->data,
-                             fields->u->data,  fields->v->data,  fields->w->data,
-                             grid->z, grid->zh, fields->atmp["tmp1"]->databot,
-                             grid->utrans, grid->vtrans, 
-                             roof_frac, drag_coeff, canopy_top);
-
-        // Calculate heating or cooling by roofs and walls
-        calc_bulk_urban_heating(fields->at["th"]->data, fields->atmp["tmp1"]->databot, canopy_heat_tend);
     }
 }
 #endif
@@ -497,76 +433,4 @@ void Force::advec_wls_2nd(double* const restrict st, const double* const restric
                 }
         }
     }
-}
-
-void Force::calc_bulk_urban_drag(double* const restrict ut, double* const restrict vt, double* const restrict wt,
-                                 const double* const restrict u, const double* const restrict v, const double* const restrict w,
-                                 const double* const restrict z, const double* const restrict zh,
-                                 const double* const restrict surface_mask,
-                                 const double utrans, const double vtrans,
-                                 const double fr, const double Cd, const double hc)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    for (int k=grid->kstart; k<kmax_canopy; ++k)
-    {
-        const double a = 1. - (z[k] / hc);
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + k*kk;
-
-                const double uabs_at_u = pow(pow(u[ijk] + utrans, 2) +
-                                         pow(interp24(v[ijk], v[ijk+jj], v[ijk+jj-ii], v[ijk-ii]) + vtrans, 2) +
-                                         pow(interp24(w[ijk], w[ijk+kk], w[ijk+kk-ii], w[ijk-ii]),          2), 0.5);
-
-                const double uabs_at_v = pow(pow(v[ijk] + vtrans, 2) +
-                                         pow(interp24(u[ijk], u[ijk+ii], u[ijk+ii-jj], u[ijk-jj]) + utrans, 2) +
-                                         pow(interp24(w[ijk], w[ijk+kk], w[ijk+kk-jj], w[ijk-jj]),          2), 0.5);
-
-                ut[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_u * (u[ijk] + utrans);
-                vt[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_v * (v[ijk] + vtrans);
-            }
-    }
-
-    for (int k=grid->kstart+1; k<kmaxh_canopy; ++k)
-    {
-        const double a = 1. - (zh[k] / hc);
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + k*kk;
-
-                const double uabs_at_w = pow(pow(w[ijk], 2) +
-                                         pow(interp24(u[ijk], u[ijk+ii], u[ijk+ii-kk], u[ijk-kk]) + utrans, 2) +
-                                         pow(interp24(v[ijk], v[ijk+jj], v[ijk+jj-kk], v[ijk-jj]) + vtrans, 2), 0.5);
-
-                wt[ijk] -= surface_mask[ij] * fr * Cd * a * uabs_at_w * w[ijk];
-            }
-    }
-}
-
-void Force::calc_bulk_urban_heating(double* const restrict tht, const double* const restrict surface_mask, 
-                                    const double* const restrict s_th)
-{
-    const int ii = 1;
-    const int jj = grid->icells;
-    const int kk = grid->ijcells;
-
-    for (int k=grid->kstart; k<grid->kend; ++k)
-        for (int j=grid->jstart; j<grid->jend; ++j)
-            #pragma ivdep
-            for (int i=grid->istart; i<grid->iend; ++i)
-            {
-                const int ij  = i + j*jj;
-                const int ijk = i + j*jj + k*kk;
-
-                tht[ijk] += surface_mask[ij] * s_th[k];
-            }
 }
