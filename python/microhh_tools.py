@@ -9,9 +9,6 @@ import re
 
 class _Empty: pass
 
-# ------------------------------------
-# ----- General helper functions -----
-# ------------------------------------
 # Convert a string to int/float/str
 def _int_or_float_or_str(value):
     try:
@@ -30,9 +27,6 @@ def _convert_value(value):
     else:
         return _int_or_float_or_str(value)
 
-# -------------------------
-# ----- MicroHH tools -----
-# -------------------------
 # Read namelist
 class Read_namelist:
     def __init__(self, namelist_file=None):
@@ -124,12 +118,31 @@ class Read_statistics:
 
         f.close()
 
+# Read a single 3d restart file
+def read_3d(file_in, itot, jtot, ktot, endian='little'):
+    if endian not in ['little', 'big']:
+        raise ValueError('endian has to be \"little\" or \"big\"!')
+    en = '<' if endian == 'little' else '>'
+
+    field = np.zeros((ktot, jtot, itot))
+
+    f = open(file_in, 'rb')
+    for k in range(ktot):
+        raw = f.read(itot*jtot*8)
+        tmp = np.array(st.unpack('{0}{1}d'.format(en, itot*jtot), raw))
+        field[k,:,:] = tmp.reshape((jtot, itot))[:,:]
+    f.close()
+
+    return field
+
 # Get the cross-section indices
 def get_cross_indices(variable, mode):
     files = glob.glob('{}.{}.*.*'.format(variable, mode))
     time  = files[0].split('.')[-1]
     files = glob.glob('{}.{}.*.{}'.format(variable, mode, time))
-    return [int(f.split('.')[-2]) for f in files]
+    indices = [int(f.split('.')[-2]) for f in files]
+    indices.sort()
+    return indices
 
 # Replace a variable value in the namelist
 def replace_namelist_var(variable, new_value, namelist_file=None): 
@@ -142,9 +155,12 @@ def replace_namelist_var(variable, new_value, namelist_file=None):
         for line in lines:
             source.write(re.sub(r'({}).*'.format(variable), r'\1={}'.format(new_value), line))
 
-# --------------------------
-# ----- Plotting tools -----
-# --------------------------
+
+
+
+
+
+# ----------------------
 def remove_top_right_ax(ax=None):
     if ax is None:
         ax = pl.gca()
