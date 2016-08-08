@@ -26,6 +26,7 @@
 #include <cmath>
 #include <algorithm>
 #include <string>
+#include <vector>
 #include "master.h"
 #include "model.h"
 #include "grid.h"
@@ -48,21 +49,29 @@ namespace
 
         for (std::vector<Ghost_cell>::iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
         {
-            debugfile << it->i                << ", " <<
-                         it->j                << ", " <<
-                         it->k                << ", " <<
-                         it->xB               << ", " <<
-                         it->yB               << ", " <<
-                         it->zB               << ", " <<
-                         it->neighbours[0].i  << ", " <<
-                         it->neighbours[0].j  << ", " <<
-                         it->neighbours[0].k  << ", " <<
-                         it->neighbours[1].i  << ", " <<
-                         it->neighbours[1].j  << ", " <<
-                         it->neighbours[1].k  << ", " <<
-                         it->neighbours[2].i  << ", " <<
-                         it->neighbours[2].j  << ", " <<
-                         it->neighbours[2].k  << std::endl;
+            debugfile << it->i-2  << ", " <<
+                         it->j-2  << ", " <<
+                         it->k-1  << ", " <<
+                         it->xB   << ", " <<
+                         it->yB   << ", " <<
+                         it->zB;
+            for(int i=0; i<4; ++i)
+            {
+                debugfile << ", " << it->neighbours[i].i-2;
+                debugfile << ", " << it->neighbours[i].j-2;
+                debugfile << ", " << it->neighbours[i].k-2;
+            }
+            debugfile << std::endl;
+
+                         //it->neighbours[0].i  << ", " <<
+                         //it->neighbours[0].j  << ", " <<
+                         //it->neighbours[0].k  << ", " <<
+                         //it->neighbours[1].i  << ", " <<
+                         //it->neighbours[1].j  << ", " <<
+                         //it->neighbours[1].k  << ", " <<
+                         //it->neighbours[2].i  << ", " <<
+                         //it->neighbours[2].j  << ", " <<
+                         //it->neighbours[2].k  << std::endl;
         }
         debugfile.close();
     }
@@ -268,7 +277,7 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
         nerror += inputin->get_item(&wavelength_y, "immersed_boundary", "wavelength_y", "", -1);
         nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
     }
-    else if (sw_ib == "gaussian")
+    else if (sw_ib == "gaussian" || sw_ib == "agnesi")
     {
         ib_type = Gaus_type; 
         nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
@@ -339,6 +348,13 @@ void Immersed_boundary::create()
             find_ghost_cells<Gaus_type, 1>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
             find_ghost_cells<Gaus_type, 1>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
         }
+        else if (ib_type == Agnesi_type)
+        {
+            find_ghost_cells<Agnesi_type, 1>(&ghost_cells_u, grid->xh, grid->y,  grid->z );
+            find_ghost_cells<Agnesi_type, 1>(&ghost_cells_v, grid->x,  grid->yh, grid->z );
+            find_ghost_cells<Agnesi_type, 1>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
+            find_ghost_cells<Agnesi_type, 1>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
+        }
     }
     else if (xy_dims == 2)
     {
@@ -355,6 +371,13 @@ void Immersed_boundary::create()
             find_ghost_cells<Gaus_type, 2>(&ghost_cells_v, grid->x,  grid->yh, grid->z );
             find_ghost_cells<Gaus_type, 2>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
             find_ghost_cells<Gaus_type, 2>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
+        }
+        else if (ib_type == Agnesi_type)
+        {
+            find_ghost_cells<Agnesi_type, 2>(&ghost_cells_u, grid->xh, grid->y,  grid->z );
+            find_ghost_cells<Agnesi_type, 2>(&ghost_cells_v, grid->x,  grid->yh, grid->z );
+            find_ghost_cells<Agnesi_type, 2>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
+            find_ghost_cells<Agnesi_type, 2>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
         }
     }
 
@@ -385,6 +408,10 @@ double Immersed_boundary::boundary_function(const double x, const double y)
         {
             return z_offset + amplitude * std::exp(-pow((x-x0_hill)/(2*sigma_x_hill), 2));
         }
+        else if (sw == Agnesi_type)
+        {
+            return z_offset + amplitude / (1. + pow((x-x0_hill)/sigma_x_hill, 2));
+        }
     }
     else if (dims == 2)
     {
@@ -397,6 +424,11 @@ double Immersed_boundary::boundary_function(const double x, const double y)
         {
             return z_offset + amplitude * std::exp(-pow((x-x0_hill)/(2*sigma_x_hill), 2))
                                         * std::exp(-pow((y-y0_hill)/(2*sigma_y_hill), 2));
+        }
+        else if (sw == Agnesi_type)
+        {
+            return z_offset + amplitude / (1. + pow((x-x0_hill)/sigma_x_hill, 2)
+                                              + pow((y-y0_hill)/sigma_y_hill, 2));
         }
     }
 }
@@ -580,7 +612,7 @@ void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell>* ghost_cells,
                     tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
 
                     // 3. Find the closest 3 grid points outside the IB
-                    find_interpolation_points<sw,dims>(tmp_ghost, x, y, z, i, j, k, 5);
+                    find_interpolation_points<sw,dims>(tmp_ghost, x, y, z, i, j, k, 4);
 
                     // 4. Define the matrix with distances to the boundary and each grid point used in the interpolation
                     //define_distance_matrix(tmp_ghost, x, y, z);
@@ -604,7 +636,7 @@ void Immersed_boundary::exec()
     const int ii = 1;
     const double boundary_value = 0.;
 
-    set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->y, grid->z, 5, ii, grid->icells, grid->ijcells);
-    set_ghost_cells(ghost_cells_v, fields->v->data, boundary_value, grid->x, grid->yh, grid->z, 5, ii, grid->icells, grid->ijcells);
-    set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->y, grid->zh, 5, ii, grid->icells, grid->ijcells);
+    set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->y, grid->z, 4, ii, grid->icells, grid->ijcells);
+    set_ghost_cells(ghost_cells_v, fields->v->data, boundary_value, grid->x, grid->yh, grid->z, 4, ii, grid->icells, grid->ijcells);
+    set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->y, grid->zh, 4, ii, grid->icells, grid->ijcells);
 }

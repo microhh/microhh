@@ -65,7 +65,7 @@ struct Ghost_cell
 class Immersed_boundary
 {
     public:
-        enum IB_type{None_type, Sine_type, Gaus_type, Block_type, User_type};
+        enum IB_type{None_type, Sine_type, Gaus_type, Agnesi_type, Block_type, User_type};
         enum Interpol_type{Linear_type, Distance_type};
 
         Immersed_boundary(Model*, Input*); ///< Constructor of the class.
