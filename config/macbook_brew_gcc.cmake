@@ -3,8 +3,8 @@ if(USEMPI)
   set(ENV{CC}  mpicc ) # C compiler for parallel build
   set(ENV{CXX} mpicxx) # C++ compiler for parallel build
 else()
-  set(ENV{CC}  gcc-5) # C compiler for serial build
-  set(ENV{CXX} g++-5) # C++ compiler for serial build
+  set(ENV{CC}  gcc-6) # C compiler for serial build
+  set(ENV{CXX} g++-6) # C++ compiler for serial build
 endif()
 
 set(GNU_SED "gsed")

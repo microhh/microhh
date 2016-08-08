@@ -47,6 +47,7 @@ class Thermo_disabled : public Thermo
         void exec_dump() {}
         void get_mask(Field3d*, Field3d*, Mask*) {}
         void get_prog_vars(std::vector<std::string>*) {}
+        double get_buoyancy_diffusivity();
 
 #ifdef USECUDA
         void prepare_device() {};

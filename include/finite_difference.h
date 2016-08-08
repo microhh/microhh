@@ -38,7 +38,7 @@ namespace Finite_difference
             return 0.5 * (a + b);
         }
 
-        CUDA_MACRO inline double interp24(const double a, const double b, const double c, const double d)
+        CUDA_MACRO inline double interp22(const double a, const double b, const double c, const double d)
         {
             return 0.25 * (a + b + c + d);
         }

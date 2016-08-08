@@ -75,8 +75,17 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
     fields->init_prognostic_field(thvar, "Liquid water potential temperature", "K");
     fields->init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
 
+    // Get the diffusivities of temperature and moisture
     nerror += inputin->get_item(&fields->sp[thvar]->visc, "fields", "svisc", thvar );
     nerror += inputin->get_item(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
+
+    // Test if the diffusivities of theta and qt are equal, else throw error
+    if (fields->sp[thvar]->visc != fields->sp["qt"]->visc)
+    {
+        master->print_error("The diffusivities of temperature and moisture must be equal\n");
+        throw 1;
+    }
+
     nerror += inputin->get_item(&pbot, "thermo", "pbot", "");
 
     // Get base state option (boussinesq or anelastic)
@@ -612,6 +621,12 @@ void Thermo_moist::get_prog_vars(std::vector<std::string> *list)
 {
     list->push_back(thvar);
     list->push_back("qt");
+}
+
+double Thermo_moist::get_buoyancy_diffusivity()
+{
+    // Use the diffusivity from the liquid water potential temperature
+    return fields->sp[thvar]->visc; 
 }
 
 namespace
