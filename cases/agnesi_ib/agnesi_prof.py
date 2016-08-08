@@ -3,7 +3,6 @@ import matplotlib.pylab as pl
 
 from microhh_tools import *
 
-
 # Create stretched grid
 class Grid:
     def __init__(self, kmax, nloc1, nbuf1, dz1, dz2):
@@ -49,12 +48,12 @@ if(False):
 if(True):
     dz = nl.grid.zsize / nl.grid.ktot
     z  = np.linspace(0.5*dz, nl.grid.zsize-0.5*dz, nl.grid.ktot)
-    u  = nl.force.uflux * np.ones(z.size)
+    u  = np.ones(nl.grid.ktot)*10
     b  = z
 
 # Write the data to a file.
-proffile = open('ib.prof','w')
-proffile.write('{0:^20s} {1:^20s} {2:^20s}\n'.format('z','u','b'))
+proffile = open('agnesi.prof','w')
+proffile.write('{0:^20s} {1:^20s} {2:^20s} {3:^20s}\n'.format('z','u','b','ug'))
 for k in range(nl.grid.ktot):
-    proffile.write('{0:1.14E} {1:1.14E} {2:1.14E}\n'.format(z[k], u[k], b[k]))
+    proffile.write('{0:1.14E} {1:1.14E} {2:1.14E} {3:1.14E}\n'.format(z[k], u[k], b[k], u[k]))
 proffile.close()
