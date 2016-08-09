@@ -376,7 +376,6 @@ void Budget_2::calc_advection_terms(double* const restrict u2_shear, double* con
     grid.interpolate_2nd(wx, w, wloc, wxloc);
     grid.interpolate_2nd(wy, w, wloc, wyloc);
 
-    const int ii = 1;
     const int jj = grid.icells;
     const int kk = grid.ijcells;
     const int ijtot = grid.itot * grid.jtot;
@@ -544,7 +543,6 @@ void Budget_2::calc_advection_terms_scalar(double* const restrict s2_shear, doub
                                            const double* const restrict smean,
                                            const double* const restrict dzi, const double* const restrict dzhi)
 {
-    const int ii = 1;
     const int jj = grid.icells;
     const int kk = grid.ijcells;
     const int ijtot = grid.itot * grid.jtot;
@@ -770,7 +768,6 @@ void Budget_2::calc_pressure_terms_scalar(double* const restrict sw_pres, double
                                           const double* const restrict smean, const double* const restrict pmean,
                                           const double* const restrict dzi, const double* const restrict dzhi)
 {
-    const int ii = 1;
     const int jj = grid.icells;
     const int kk = grid.ijcells;
     const int ijtot = grid.itot * grid.jtot;
@@ -828,13 +825,10 @@ void Budget_2::calc_diffusion_terms_LES(double* const restrict u2_diss, double* 
                                         const double dxi, const double dyi)
 {
     const int ii = 1;
-    const int ii1 = 1;
     const int ii2 = 2;
     const int jj = grid.icells;
-    const int jj1= grid.icells;
     const int jj2 = 2*grid.icells;
     const int kk = grid.ijcells;
-    const int kk1= grid.ijcells;
     const int kk2 = 2*grid.ijcells;
     const int ijtot = grid.itot * grid.jtot;
 
@@ -1479,7 +1473,7 @@ void Budget_2::calc_diffusion_terms_DNS(double* const restrict u2_visc, double* 
                                          ( interp2_4(w[ijk]         , w[ijk+jj]         , w[ijk+jj-ii]           , w[ijk-ii]           ) -
                                            interp2_4(w[ijk]         , w[ijk-jj]         , w[ijk-jj-ii]           , w[ijk-ii]           ) ) * dyi;
             }
-            tke_diss[k] += 0.5 * (u2_diss[k] + v2_diss[k]);
+        tke_diss[k] += 0.5 * (u2_diss[k] + v2_diss[k]);
     }
 
     // Bottom boundary (z=0)
@@ -1769,7 +1763,6 @@ void Budget_2::calc_buoyancy_terms_scalar(double* const restrict sw_buoy,
                                           const double* const restrict s, const double* const restrict b,
                                           const double* const restrict smean, const double* const restrict bmean)
 {
-    const int ii = 1;
     const int jj = grid.icells;
     const int kk = grid.ijcells;
     const int ijtot = grid.itot * grid.jtot;
