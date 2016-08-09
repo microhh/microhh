@@ -36,6 +36,7 @@
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_surface_patch.h"
+#include "boundary_patch.h"
 
 Boundary::Boundary(Model* modelin, Input* inputin)
 {
@@ -463,8 +464,10 @@ Boundary* Boundary::factory(Master* masterin, Input* inputin, Model* modelin)
 
     if (swboundary == "surface")
         return new Boundary_surface(modelin, inputin);
-    else if (swboundary == "patch")
+    else if (swboundary == "surface_patch")
         return new Boundary_surface_patch(modelin, inputin);
+    else if (swboundary == "patch")
+        return new Boundary_patch(modelin, inputin);
     else if (swboundary == "default")
         return new Boundary(modelin, inputin);
     else
@@ -733,8 +736,6 @@ void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
 
 void Boundary::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
 {
-    const int jj  = grid->icells;
-
     // Set surface mask
     for (int i=0; i<grid->ijcells; ++i)
         fieldh->databot[i] = 1;
@@ -749,8 +750,6 @@ void Boundary::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
 
 void Boundary::get_surface_mask(Field3d* field)
 {
-    const int jj  = grid->icells;
-
     // Set surface mask
     for (int i=0; i<grid->ijcells; ++i)
         field->databot[i] = 1;
