@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_PATCH
-#define BOUNDARY_PATCH
+#ifndef BOUNDARY_SURFACE_PATCH
+#define BOUNDARY_SURFACE_PATCH
 
 #include "boundary_surface.h"
 
@@ -30,10 +30,10 @@ class Input;
 class Fields;
 struct Mask;
 
-class Boundary_patch : public Boundary_surface
+class Boundary_surface_patch : public Boundary_surface
 {
     public:
-        Boundary_patch(Model*, Input*);
+        Boundary_surface_patch(Model*, Input*);
 
         void init(Input*);
         void set_values();

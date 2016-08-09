@@ -26,15 +26,15 @@
 #include "grid.h"
 #include "master.h"
 #include "fields.h"
-#include "boundary_patch.h"
+#include "boundary_surface_patch.h"
 #include "defines.h"
 #include "model.h"
 
-Boundary_patch::Boundary_patch(Model* modelin, Input* inputin) : Boundary_surface(modelin, inputin)
+Boundary_surface_patch::Boundary_surface_patch(Model* modelin, Input* inputin) : Boundary_surface(modelin, inputin)
 {
 }
 
-void Boundary_patch::init(Input* inputin)
+void Boundary_surface_patch::init(Input* inputin)
 {
     int nerror = 0;
 
@@ -69,7 +69,7 @@ void Boundary_patch::init(Input* inputin)
     init_surface();
 }
 
-void Boundary_patch::set_values()
+void Boundary_surface_patch::set_values()
 {
     const double no_offset = 0.;
 
@@ -101,7 +101,7 @@ void Boundary_patch::set_values()
     init_solver();
 }
 
-void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
+void Boundary_surface_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
@@ -160,7 +160,7 @@ void Boundary_patch::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
     grid->boundary_cyclic_2d(fieldh->databot);
 }
 
-void Boundary_patch::get_surface_mask(Field3d* field)
+void Boundary_surface_patch::get_surface_mask(Field3d* field)
 {
     const int jj = grid->icells;
 
@@ -183,11 +183,11 @@ void Boundary_patch::get_surface_mask(Field3d* field)
         }
 }
 
-void Boundary_patch::calc_patch(double* const restrict patch, const double* const restrict x, const double* const restrict y,
-                                const int patch_dim, 
-                                const double patch_xh, const double patch_xr, const double patch_xi,
-                                const double patch_yh, const double patch_yr, const double patch_yi,
-                                const double patch_xoffs, const double patch_yoffs) 
+void Boundary_surface_patch::calc_patch(double* const restrict patch, const double* const restrict x, const double* const restrict y,
+                                        const int patch_dim, 
+                                        const double patch_xh, const double patch_xr, const double patch_xi,
+                                        const double patch_yh, const double patch_yr, const double patch_yi,
+                                        const double patch_xoffs, const double patch_yoffs) 
 {
     const int jj = grid->icells;
     double errvalx, errvaly;
@@ -211,9 +211,9 @@ void Boundary_patch::calc_patch(double* const restrict patch, const double* cons
         }
 }
 
-void Boundary_patch::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, 
-                                  double* restrict patch, const double patch_facl, const double patch_facr,
-                                  const int sw, const double aval, const double visc, const double offset)
+void Boundary_surface_patch::set_bc_patch(double* restrict a, double* restrict agrad, double* restrict aflux, 
+                                          double* restrict patch, const double patch_facl, const double patch_facr,
+                                          const int sw, const double aval, const double visc, const double offset)
 {
     const int jj = grid->icells;
 
