@@ -168,24 +168,6 @@ namespace
     }
 
     __global__ 
-    void large_scale_source_g(double* const __restrict__ st, double* const __restrict__ sls, double* const __restrict__ mask_2d,
-                              const int istart, const int jstart, const int kstart,
-                              const int iend,   const int jend,   const int kend,
-                              const int jj,     const int kk)
-    {
-        const int i = blockIdx.x*blockDim.x + threadIdx.x + istart;
-        const int j = blockIdx.y*blockDim.y + threadIdx.y + jstart;
-        const int k = blockIdx.z + kstart;
-
-        if (i < iend && j < jend && k < kend)
-        {
-            const int ij  = i + j*jj;
-            const int ijk = i + j*jj + k*kk;
-            st[ijk] += mask_2d[ij] * sls[k];
-        }
-    }
-
-    __global__ 
     void update_time_dependent_prof_g(double* const __restrict__ sls, double* const __restrict__ slstd,
                                       const double fac0, const double fac1, 
                                       const int index0,  const int index1, 
