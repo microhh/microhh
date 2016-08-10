@@ -75,6 +75,7 @@ class Immersed_boundary
         void create();
         void exec();            ///< Set the immersed boundary ghost cells
         void exec_stats(Mask*); ///< Execute statistics of immersed boundaries
+        void get_mask(Field3d*, Field3d*);
 
     private:
         Model*  model;  ///< Pointer to model class.
@@ -89,8 +90,9 @@ class Immersed_boundary
         std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
 
         template<IB_type, int> 
+        void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*); 
+        template<IB_type, int> 
         void find_ghost_cells(std::vector<Ghost_cell>*, const double*, const double*, const double*); ///< Function which determines the ghost cells
-
         template<IB_type, int> 
         double boundary_function(double, double); ///< Function describing boundary
         template<IB_type, int> 

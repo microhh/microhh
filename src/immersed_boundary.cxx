@@ -619,6 +619,89 @@ void Immersed_boundary::exec_stats(Mask *m)
 {
     if (ib_type == None_type)
         return;
+    else
+        return;  // ...
+}
+
+template<Immersed_boundary::IB_type sw, int dims>
+void Immersed_boundary::calc_mask(double* const restrict mask, double* const restrict maskh, double* const restrict maskbot,
+                                  int* const restrict nmask, int* const restrict nmaskh, int* const restrict nmaskbot,
+                                  const double* const restrict x, const double* const restrict y,
+                                  const double* const restrict z, const double* const restrict zh)
+{
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+    const int kstart = grid->kstart;
+
+    // Set the mask for outside (1) or inside (0) IB
+    for (int k=grid->kstart; k<grid->kend; ++k)
+    {
+        nmask[k]  = 0;
+        nmaskh[k] = 0;
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+
+                const double zb = boundary_function<sw, dims>(x[i], y[j]);
+                const int is_not_ib    = z [k] > zb;
+                const int is_not_ib_h  = zh[k] > zb;
+
+                mask[ijk]  = static_cast<double>(is_not_ib);
+                maskh[ijk] = static_cast<double>(is_not_ib_h);
+
+                nmask[k]  += is_not_ib;
+                nmaskh[k] += is_not_ib_h;
+            }
+    }
+
+    // Mask for surface projected quantities
+    for (int j=grid->jstart; j<grid->jend; j++)
+        #pragma ivdep
+        for (int i=grid->istart; i<grid->iend; i++)
+        {
+            const int ij  = i + j*jj;
+            const int ijk = i + j*jj + kstart*kk;
+            maskbot[ij] = maskh[ijk];
+        }
+
+    grid->boundary_cyclic(mask);
+    grid->boundary_cyclic(maskh);
+    grid->boundary_cyclic_2d(maskbot);
+
+    model->master->sum(nmask , grid->kcells);
+    model->master->sum(nmaskh, grid->kcells);
+    *nmaskbot = nmaskh[grid->kstart];
+}
+
+void Immersed_boundary::get_mask(Field3d *mfield, Field3d *mfieldh)
+{
+    if (xy_dims == 1)
+    {
+        if (ib_type == Sine_type)
+            calc_mask<Sine_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+                                    grid->x, grid->y, grid->z, grid->zh);
+        else if (ib_type == Gaus_type)
+            calc_mask<Gaus_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+                                    grid->x, grid->y, grid->z, grid->zh);
+        else if (ib_type == Agnesi_type)
+            calc_mask<Agnesi_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+                                    grid->x, grid->y, grid->z, grid->zh);
+    }
+    else if (xy_dims == 2)
+    {
+        if (ib_type == Sine_type)
+            calc_mask<Sine_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+                                    grid->x, grid->y, grid->z, grid->zh);
+        else if (ib_type == Gaus_type)
+            calc_mask<Gaus_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+                                    grid->x, grid->y, grid->z, grid->zh);
+        else if (ib_type == Agnesi_type)
+            calc_mask<Agnesi_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+                                    grid->x, grid->y, grid->z, grid->zh);
+    }
 }
 
 void Immersed_boundary::exec()
