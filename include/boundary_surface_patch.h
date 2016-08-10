@@ -54,8 +54,6 @@ class Boundary_surface_patch : public Boundary_surface
         double patch_yr;
         double patch_yi;
         double patch_yoffs;
-        double patch_facr;
-        double patch_facl;
 
         std::map<std::string, double> patch_facr_map;
         std::map<std::string, double> patch_facl_map;
