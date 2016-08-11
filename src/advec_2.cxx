@@ -35,6 +35,7 @@ using namespace Finite_difference::O2;
 
 Advec_2::Advec_2(Model* modelin, Input* inputin) : Advec(modelin, inputin)
 {
+    swadvec = "2";
 }
 
 Advec_2::~Advec_2()

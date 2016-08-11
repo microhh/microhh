@@ -868,8 +868,17 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
     fields->init_prognostic_field(thvar, "Liquid water potential temperature", "K");
     fields->init_prognostic_field("qt", "Total water mixing ratio", "kg kg-1");
 
+    // Get the diffusivities of temperature and moisture
     nerror += inputin->get_item(&fields->sp[thvar]->visc, "fields", "svisc", thvar );
     nerror += inputin->get_item(&fields->sp["qt"]->visc, "fields", "svisc", "qt");
+
+    // Test if the diffusivities of theta and qt are equal, else throw error
+    if (fields->sp[thvar]->visc != fields->sp["qt"]->visc)
+    {
+        master->print_error("The diffusivities of temperature and moisture must be equal\n");
+        throw 1;
+    }
+
     nerror += inputin->get_item(&pbot, "thermo", "pbot", "");
 
     // Get base state option (boussinesq or anelastic)
@@ -1354,7 +1363,7 @@ void Thermo_moist::exec_stats(Mask *m)
     // calculate diffusive fluxes
     if (grid->swspatialorder == "2")
     {
-        if (model->diff->get_name() == "smag2")
+        if (model->diff->get_switch() == "smag2")
         {
             Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
             stats->calc_diff_2nd(fields->atmp["tmp1"]->data, fields->w->data, fields->sd["evisc"]->data,
@@ -1364,14 +1373,14 @@ void Thermo_moist::exec_stats(Mask *m)
         }
         else
         {
-            stats->calc_diff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp["th"]->visc, sloc,
+            stats->calc_diff_2nd(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi, fields->sp[thvar]->visc, sloc,
                                  fields->atmp["tmp4"]->data, stats->nmaskh);
         }
     }
     else if (grid->swspatialorder == "4")
     {
         // take the diffusivity of temperature for that of buoyancy
-        stats->calc_diff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp["th"]->visc, sloc,
+        stats->calc_diff_4th(fields->atmp["tmp1"]->data, m->profs["bdiff"].data, grid->dzhi4, fields->sp[thvar]->visc, sloc,
                              fields->atmp["tmp4"]->data, stats->nmaskh);
     }
 
@@ -1616,7 +1625,7 @@ bool Thermo_moist::check_field_exists(const std::string name)
 }
 
 #ifndef USECUDA
-void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::string name)
+void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::string name, bool cyclic)
 {
     const int kcells = grid->kcells;
 
@@ -1635,6 +1644,9 @@ void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::strin
         calc_N2(fld->data, fields->sp[thvar]->data, grid->dzi, thvref);
     else
         throw 1;
+
+    if (cyclic)
+        grid->boundary_cyclic(fld->data);
 }
 #endif
 
@@ -1660,6 +1672,12 @@ void Thermo_moist::get_prog_vars(std::vector<std::string> *list)
 {
     list->push_back(thvar);
     list->push_back("qt");
+}
+
+double Thermo_moist::get_buoyancy_diffusivity()
+{
+    // Use the diffusivity from the liquid water potential temperature
+    return fields->sp[thvar]->visc; 
 }
 
 namespace
@@ -1931,6 +1949,8 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
                 b[ijk] = buoyancy(ex, thl[ijk], qt[ijk], ql[ij], thvref[k]);
             }
     }
+
+    grid->boundary_cyclic(b);
 }
 
 // Calculate the maximum in-cloud virtual temperature perturbation (thv - <thv>) with height

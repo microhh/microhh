@@ -47,6 +47,8 @@ namespace
 
 Boundary_surface::Boundary_surface(Model* modelin, Input* inputin) : Boundary(modelin, inputin)
 {
+    swboundary = "surface";
+
     ustar = 0;
     obuk  = 0;
     nobuk = 0;
@@ -92,12 +94,19 @@ void Boundary_surface::init(Input *inputin)
     // 1. Process the boundary conditions now all fields are registered
     process_bcs(inputin);
 
+    // 2. Read and check the boundary_surface specific settings
+    process_input(inputin);
+
+    // 3. Allocate and initialize the 2D surface fields
+    init_surface();
+}
+
+void Boundary_surface::process_input(Input *inputin)
+{
     int nerror = 0;
+
     nerror += inputin->get_item(&z0m, "boundary", "z0m", "");
     nerror += inputin->get_item(&z0h, "boundary", "z0h", "");
-
-    // Read list of cross sections
-    nerror += inputin->get_list(&crosslist , "boundary", "crosslist" , "");
 
     // crash in case fixed gradient is prescribed
     if (mbcbot == Neumann_type)
@@ -150,28 +159,12 @@ void Boundary_surface::init(Input *inputin)
     if (nerror)
         throw 1;
 
-    // 2. Allocate the fields
-    obuk  = new double[grid->ijcells];
-    nobuk = new int   [grid->ijcells];
-    ustar = new double[grid->ijcells];
-
-    stats = model->stats;
-
-    const int jj = grid->icells;
-
-    // initialize the obukhov length on a small number
-    for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-        for (int i=0; i<grid->icells; ++i)
-        {
-            const int ij = i + j*jj;
-            obuk[ij]  = Constants::dsmall;
-            nobuk[ij] = 0;
-        }
-
     // Cross sections
     allowedcrossvars.push_back("ustar");
     allowedcrossvars.push_back("obuk");
+
+    // Read list of cross sections
+    nerror += inputin->get_list(&crosslist , "boundary", "crosslist" , "");
 
     // Get global cross-list from cross.cxx
     std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
@@ -189,6 +182,27 @@ void Boundary_surface::init(Input *inputin)
         else
             ++it2;
     }
+}
+
+void Boundary_surface::init_surface()
+{
+    obuk  = new double[grid->ijcells];
+    nobuk = new int   [grid->ijcells];
+    ustar = new double[grid->ijcells];
+
+    stats = model->stats;
+
+    const int jj = grid->icells;
+
+    // initialize the obukhov length on a small number
+    for (int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ij = i + j*jj;
+            obuk[ij]  = Constants::dsmall;
+            nobuk[ij] = 0;
+        }
 }
 
 void Boundary_surface::exec_cross()
@@ -215,15 +229,14 @@ void Boundary_surface::exec_stats(Mask *m)
 
 void Boundary_surface::set_values()
 {
-    const double no_velocity = 0.;
     const double no_offset = 0.;
 
     // grid transformation is properly taken into account by setting the databot and top values
-    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, no_velocity, fields->visc, grid->utrans);
-    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, no_velocity, fields->visc, grid->vtrans);
+    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, ubot, fields->visc, grid->utrans);
+    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, vbot, fields->visc, grid->vtrans);
 
-    set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, no_velocity, fields->visc, grid->utrans);
-    set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, no_velocity, fields->visc, grid->vtrans);
+    set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, utop, fields->visc, grid->utrans);
+    set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, vtop, fields->visc, grid->vtrans);
 
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
@@ -233,23 +246,32 @@ void Boundary_surface::set_values()
 
     // in case the momentum has a fixed ustar, set the value to that of the input
     if (mbcbot == Ustar_type)
-    {
-        const int jj = grid->icells;
+        set_ustar();
 
-        set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Dirichlet_type, no_velocity, fields->visc, grid->utrans);
-        set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Dirichlet_type, no_velocity, fields->visc, grid->vtrans);
+    // Prepare the lookup table for the surface solver
+    init_solver();
+}
 
-        for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+void Boundary_surface::set_ustar()
+{
+    const int jj = grid->icells;
+
+    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, Dirichlet_type, ubot, fields->visc, grid->utrans);
+    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, Dirichlet_type, vbot, fields->visc, grid->vtrans);
+
+    for (int j=0; j<grid->jcells; ++j)
+            #pragma ivdep
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
                 // Limit ustar at 1e-4 to avoid zero divisions.
                 ustar[ij] = std::max(0.0001, ustarin);
             }
-    }
+}
 
-    // Prepare the surface layer solver.
+// Prepare the surface layer solver.
+void Boundary_surface::init_solver()
+{
     zL_sl = new float[nzL];
     f_sl  = new float[nzL];
 

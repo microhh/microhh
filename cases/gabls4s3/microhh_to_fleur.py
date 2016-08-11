@@ -16,7 +16,7 @@ default_fill_value = -9999
 # Settings case
 institute  = 'mp'
 model      = 'MicroHH'
-version    = 'v01'
+version    = 'v02'
 experiment = 'exp1'
 
 # Constants
@@ -24,21 +24,56 @@ rho = 1.     # Boussinesq
 cp  = 1005. 
 Lv  = 2.5e6
 
-# Case specific settings
-ps  = 65100
-z0m = 0.01
-z0h = 0.001
+def read_namelist(namelist, variable, dtype='float', default=None):
+    with open(namelist) as f:
+        for line in f:
+            if(line.split('=')[0] == variable):
+                if(dtype == 'float'):
+                    return float(line.split('=')[1])
+                elif(dtype == 'int'):
+                    return int(line.split('=')[1])
+                elif(dtype == 'str'):
+                    return line.split('=')[1]
+    if default is not None:
+        print('Didnt find variable {} in {}, using default = {}'.format(variable, namelist, default))
+        return default
+    else:
+        print('Didnt find variable {} in {}'.format(variable, namelist))
 
 def key_nearest(array,value):
     return (np.abs(array-value)).argmin()
 
 def add_global_attr(nc):
-    nc.setncattr('Model', 'MicroHH (github.com/microhh)')
+    # Read settings from namelist
+    itot  = read_namelist('gabls4s3.ini', 'itot', 'int')
+    jtot  = read_namelist('gabls4s3.ini', 'jtot', 'int')
+    ktot  = read_namelist('gabls4s3.ini', 'ktot', 'int')
+
+    xsize = read_namelist('gabls4s3.ini', 'xsize', 'float')
+    ysize = read_namelist('gabls4s3.ini', 'ysize', 'float')
+
+    dx = xsize / float(itot)
+    dy = ysize / float(jtot)
+
+    cs  = read_namelist('gabls4s3.ini', 'cs',  'float')
+    tpr = read_namelist('gabls4s3.ini', 'tPr', 'float', 0.333)
+    z0m = read_namelist('gabls4s3.ini', 'z0m', 'float')
+    z0h = read_namelist('gabls4s3.ini', 'z0h', 'float')
+
+    ps = read_namelist('gabls4s3.ini', 'pbot', 'float', 65100)
+
+    # Read grid and vertical grid spacing:
+    z = np.loadtxt('gabls4s3.prof', skiprows=1)[:,0]
+    dz = z[1] - z[0]
+
+    nc.setncattr('Model', 'MicroHH (microhh.org)')
     nc.setncattr('Reference', 'van Heerwaarden et al, in preparation for Geosci. Model Dev.')
-    nc.setncattr('Contact', 'Bart van Stratum (bart.vanstratum@mpimet.mpg.de), Chiel van Heerwaarden (chiel.vanheerwaarden@mpimet.mpg.de)')
-    nc.setncattr('Diffusion', 'Smagorinsky-Lilly, Cs=0.1, tPr=1/3, L=(dxdydz)^1/3, with wall-damping (Mason and Thomson, 1992) with n=2')
+    nc.setncattr('Contact', 'Bart van Stratum (bart.vanstratum@mpimet.mpg.de), Chiel van Heerwaarden (chiel.vanheerwaarden@wur.nl)')
+    nc.setncattr('Diffusion', 'Smagorinsky-Lilly, Cs={0:.3f}, tPr={1:.3f}, L=(dxdydz)^1/3, with wall-damping (Mason and Thomson, 1992) with n=2'.format(cs, tpr))
     nc.setncattr('Advection', 'momentum and scalar: 2nd order centered with 4th order interpolations')
     nc.setncattr('Time step', 'variable, to maintain CFL=1.2')
+    nc.setncattr('Surface', 'Monin-Obukhov, z0m={0:.2e}, z0h={1:.2e}'.format(z0m, z0h))
+    nc.setncattr('Grid', 'n={0:d}x{1:d}x{2:d}, dx=dy={3:.2f} m, dz={4:.2f} m'.format(itot, jtot, ktot, dx, dy, dz))
 
 def interpol(field, z, height):
     k = key_nearest(z, height)
@@ -78,6 +113,11 @@ class read_stat:
                 setattr(self,var,tmp[:,:])
 
     def write_time_series(self):
+        # Read variables from namelist
+        ps = read_namelist('gabls4s3.ini', 'pbot', 'float', 65100)
+        z0m = read_namelist('gabls4s3.ini', 'z0m', 'float')
+        z0h = read_namelist('gabls4s3.ini', 'z0h', 'float')
+
         # Read list with required variables:
         var_file  = np.genfromtxt('variables_ts.txt', delimiter=',', dtype='str', autostrip=True)
         var_name  = var_file[:,0]
@@ -287,6 +327,7 @@ def convert_3d(times, itot=608, jtot=608, ktot=304, ksave=246):
     fin.close()
 
     for time in times:
+        print(time, times)
         nc = Dataset('gabls4_3D_les_%02i_%s_%s_%s_stage3_%s.nc'%(time/3600., institute, model, experiment, version), 'w')
 
         add_global_attr(nc)
@@ -364,14 +405,19 @@ def convert_3d(times, itot=608, jtot=608, ktot=304, ksave=246):
 
         nc.close()
 
-if(True):
+if __name__ == "__main__":
     # Convert time series and profile statistics
-    r1 = read_stat('gabls4s3.default.nc')
-    r1.write_time_series()
-    r1.write_profiles(average=False)
-    r1.write_profiles(average=True)
+    if(True):
+        r1 = read_stat('gabls4s3.default.nc')
+        r1.write_time_series()
+        r1.write_profiles(average=False)
+        r1.write_profiles(average=True)
+    
+    # Convert 3D files
+    if(True):
+        itot  = read_namelist('gabls4s3.ini', 'itot', 'int')
+        jtot  = read_namelist('gabls4s3.ini', 'jtot', 'int')
+        ktot  = read_namelist('gabls4s3.ini', 'ktot', 'int')
 
-# Convert 3D files
-if(True):
-    times = np.array([5,7,9,11,13,15,17,19,21,23])*3600.
-    convert_3d(times)
+        times = np.array([5,7,9,11,13,15,17,19,21,23])*3600.
+        convert_3d(times, itot, jtot, ktot, ktot)

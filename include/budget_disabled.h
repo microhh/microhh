@@ -20,33 +20,32 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_USER
-#define BOUNDARY_USER
+#ifndef BUDGET_DISABLED
+#define BUDGET_DISABLED
 
-#include "boundary.h"
+#include "budget.h"
 
-class Model;
 class Input;
+class Master;
+class Grid;
+class Fields;
+class Thermo;
+class Diff;
+class Advec;
+class Stats;
+struct Mask;
 
-class Boundary_user : public Boundary
+/**
+ * Derived class for disabled budget statistics
+ */
+class Budget_disabled : public Budget
 {
-  public:
-    Boundary_user(Model*, Input*);
+    public:
+        Budget_disabled(Input*, Master*, Grid*, Fields*, Thermo*, Diff*, Advec*, Force*, Stats*);
+        virtual ~Budget_disabled();
 
-    void init(Input*);
-
-    void set_values();
-
-  private:
-    void set_bc_patch(double*, double*, double*, int, double, double, double,
-                      double*, double, double); ///< Set the values for the boundary fields.
-
-    // Patch properties.
-    int    patch_dim;
-    double patch_xh;
-    double patch_xr;
-    double patch_xi;
-    double patch_facr;
-    double patch_facl;
+        void init();
+        void create();
+        void exec_stats(Mask*);
 };
 #endif

@@ -33,6 +33,7 @@
 
 Advec_disabled::Advec_disabled(Model* modelin, Input* inputin) : Advec(modelin, inputin)
 {
+    swadvec = "0";
 }
 
 Advec_disabled::~Advec_disabled()

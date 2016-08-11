@@ -36,10 +36,13 @@
 #include "boundary.h"
 #include "boundary_surface.h"
 #include "boundary_surface_bulk.h"
-#include "boundary_user.h"
+#include "boundary_surface_patch.h"
+#include "boundary_patch.h"
 
 Boundary::Boundary(Model* modelin, Input* inputin)
 {
+    swboundary = "default";
+
     model  = modelin;
     grid   = model->grid;
     fields = model->fields;
@@ -59,6 +62,11 @@ Boundary::~Boundary()
         delete[] it->second;
 }
 
+std::string Boundary::get_switch()
+{
+    return swboundary;
+}
+
 void Boundary::process_bcs(Input* inputin)
 {
     int nerror = 0;
@@ -67,6 +75,11 @@ void Boundary::process_bcs(Input* inputin)
 
     nerror += inputin->get_item(&swbot, "boundary", "mbcbot", "");
     nerror += inputin->get_item(&swtop, "boundary", "mbctop", "");
+
+    nerror += inputin->get_item(&ubot, "boundary", "ubot", "", 0.);
+    nerror += inputin->get_item(&utop, "boundary", "utop", "", 0.);
+    nerror += inputin->get_item(&vbot, "boundary", "vbot", "", 0.);
+    nerror += inputin->get_item(&vtop, "boundary", "vtop", "", 0.);
 
     // set the bottom bc
     if (swbot == "noslip")
@@ -259,14 +272,13 @@ void Boundary::update_time_dependent()
 
 void Boundary::set_values()
 {
-    const double noVelocity = 0.;
     const double noOffset = 0.;
 
-    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, noVelocity, fields->visc, grid->utrans);
-    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, noVelocity, fields->visc, grid->vtrans);
+    set_bc(fields->u->databot, fields->u->datagradbot, fields->u->datafluxbot, mbcbot, ubot, fields->visc, grid->utrans);
+    set_bc(fields->v->databot, fields->v->datagradbot, fields->v->datafluxbot, mbcbot, vbot, fields->visc, grid->vtrans);
 
-    set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, noVelocity, fields->visc, grid->utrans);
-    set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, noVelocity, fields->visc, grid->vtrans);
+    set_bc(fields->u->datatop, fields->u->datagradtop, fields->u->datafluxtop, mbctop, utop, fields->visc, grid->utrans);
+    set_bc(fields->v->datatop, fields->v->datagradtop, fields->v->datafluxtop, mbctop, vtop, fields->visc, grid->vtrans);
 
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
@@ -323,6 +335,23 @@ void Boundary::exec()
 
     // Update the boundary fields that are a slave of the boundary condition.
     update_slave_bcs();
+}
+
+void Boundary::set_ghost_cells_w(const Boundary_w_type boundary_w_type)
+{
+    if (grid->swspatialorder == "4")
+    {
+        if (boundary_w_type == Normal_type)
+        {
+            calc_ghost_cells_botw_4th(fields->w->data);
+            calc_ghost_cells_topw_4th(fields->w->data);
+        }
+        else if (boundary_w_type == Conservation_type)
+        {
+            calc_ghost_cells_botw_cons_4th(fields->w->data);
+            calc_ghost_cells_topw_cons_4th(fields->w->data);
+        }
+    }
 }
 #endif
 
@@ -438,8 +467,10 @@ Boundary* Boundary::factory(Master* masterin, Input* inputin, Model* modelin)
         return new Boundary_surface(modelin, inputin);
     if (swboundary == "bulk")
         return new Boundary_surface_bulk(modelin, inputin);
-    else if (swboundary == "user")
-        return new Boundary_user(modelin, inputin);
+    else if (swboundary == "surface_patch")
+        return new Boundary_surface_patch(modelin, inputin);
+    else if (swboundary == "patch")
+        return new Boundary_patch(modelin, inputin);
     else if (swboundary == "default")
         return new Boundary(modelin, inputin);
     else
@@ -634,7 +665,7 @@ void Boundary::calc_ghost_cells_top_4th(double* restrict a, double* restrict z, 
 }
 
 // BOUNDARY CONDITIONS FOR THE VERTICAL VELOCITY (NO PENETRATION)
-void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
+void Boundary::calc_ghost_cells_botw_cons_4th(double* restrict w)
 {
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -652,7 +683,7 @@ void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
         }
 }
 
-void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
+void Boundary::calc_ghost_cells_topw_cons_4th(double* restrict w)
 {
     const int jj  = grid->icells;
     const int kk1 = 1*grid->ijcells;
@@ -668,6 +699,63 @@ void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
             w[ijk+kk1] = -w[ijk-kk1];
             w[ijk+kk2] = -w[ijk-kk2];
         }
+}
+
+void Boundary::calc_ghost_cells_botw_4th(double* restrict w)
+{
+    const int jj  = grid->icells;
+    const int kk1 = 1*grid->ijcells;
+    const int kk2 = 2*grid->ijcells;
+    const int kk3 = 3*grid->ijcells;
+
+    const int kstart = grid->kstart;
+
+    for (int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ijk = i + j*jj + kstart*kk1;
+            w[ijk-kk1] = -6.*w[ijk+kk1] + 4.*w[ijk+kk2] - w[ijk+kk3];
+        }
+}
+
+void Boundary::calc_ghost_cells_topw_4th(double* restrict w)
+{
+    const int jj  = grid->icells;
+    const int kk1 = 1*grid->ijcells;
+    const int kk2 = 2*grid->ijcells;
+    const int kk3 = 3*grid->ijcells;
+
+    const int kend = grid->kend;
+
+    for (int j=0; j<grid->jcells; ++j)
+#pragma ivdep
+        for (int i=0; i<grid->icells; ++i)
+        {
+            const int ijk = i + j*jj + kend*kk1;
+            w[ijk+kk1] = -6.*w[ijk-kk1] + 4.*w[ijk-kk2] - w[ijk-kk3];
+        }
+}
+
+void Boundary::get_mask(Field3d* field, Field3d* fieldh, Mask* m)
+{
+    // Set surface mask
+    for (int i=0; i<grid->ijcells; ++i)
+        fieldh->databot[i] = 1;
+
+    // Set atmospheric mask
+    for (int i=0; i<grid->ncells; ++i)
+    {
+        field ->data[i] = 1;
+        fieldh->data[i] = 1;
+    }
+}
+
+void Boundary::get_surface_mask(Field3d* field)
+{
+    // Set surface mask
+    for (int i=0; i<grid->ijcells; ++i)
+        field->databot[i] = 1;
 }
 
 void Boundary::prepare_device()

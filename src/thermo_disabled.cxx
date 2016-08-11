@@ -48,3 +48,8 @@ bool Thermo_disabled::check_field_exists(std::string name)
 {
     return false;  // always returns error 
 }
+
+double Thermo_disabled::get_buoyancy_diffusivity()
+{
+    return 0; 
+}

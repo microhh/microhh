@@ -78,22 +78,20 @@ Diff* Diff::factory(Master* masterin, Input* inputin, Model* modelin, const std:
     else if (swdiff == "smag2")
     {
         // the subgrid model requires a surface model because of the MO matching at first level
-        if ((swboundary == "surface") || (swboundary == "bulk"))
+        if ((swboundary == "surface") || (swboundary == "bulk" || (swboundary == "surface_patch"))
             return new Diff_smag_2(modelin, inputin);
         else
-        {
-            masterin->print_error("swdiff == \"smag2\" requires swboundary == \"surface\"\n");
-            return 0;
-        }
+        //    throw 1;
+        //}
     }
     else
     {
         masterin->print_error("\"%s\" is an illegal value for swdiff\n", swdiff.c_str());
-        return 0;
+        throw 1;
     }
 }
 
-std::string Diff::get_name()
+std::string Diff::get_switch()
 {
     return swdiff;
 }

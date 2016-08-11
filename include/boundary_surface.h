@@ -64,6 +64,12 @@ class Boundary_surface : public Boundary
         int*    nobuk_g;
 #endif
 
+    protected:
+        void process_input(Input *);   // Process and check the surface input 
+        void init_surface();           // Allocate and initialize the surface arrays
+        void init_solver();            // Prepare the lookup table's for the surface layer solver
+        void set_ustar();              // Set fixed ustar
+
     private:
 
         // surface scheme

@@ -46,6 +46,8 @@ cflmax        & 1.0                  &     & \\
 \begin{supertabular}{|L{\wname} C{\wdef} C{\wopt} L{\wdesc}|}
 swboundary    & default & default   & fully resolved boundaries (smooth wall) \\
               &         & surface   & MOST based wall model \\
+              &         & patch	    & patches, resolved boundary \\
+              &         & surface\_patch & patches, MOST boundary \\
 mbcbot        & n/a     & noslip    & no-slip bottom boundary condition \\
               &         & freeslip  & free-slip bottom boundary condition \\
               &         & ustar     & fixed ustar bottom boundary condition \\
@@ -63,6 +65,16 @@ stop[]        & n/a     &           & value of the top boundary condition \\
 z0m           & n/a     &           & roughness length of momentum [m] \\
 z0h           & n/a     &           & roughness length of scalars [m]\\
 ustar         & n/a     &           & value of the friction velocity [m~s$^{-1}$]\\
+\hline \multicolumn{4}{l}{Only for swboundary = \textit{patch} or \textit{surface\_patch}:} \\ \hline
+patch\_dim    & 2       &           & patch direction (1=$x$, 2=$x$ and $y$) \\
+patch\_xh     & 1       &           & heterogeneity size ($x$) [m]\\
+patch\_xr     & 1       &           & patch size ($x$) [m]\\
+patch\_xi     & 0       &           & interface sharpness ($x$) [m]\\
+patch\_xoffs  & 0       &           & offset patch within heterogeneity ($x$) [m]\\
+patch\_yh     & 1       &           & heterogeneity size ($y$) [m]\\
+patch\_yr     & 1       &           & patch size ($y$) [m]\\
+patch\_yi     & 0       &           & interface sharpness ($y$) [m]\\
+patch\_yoffs  & 0       &           & offset patch within heterogeneity ($y$) [m]\\
 \end{supertabular}
 
 \subsection*{[buffer] Buffer layer}
@@ -78,6 +90,8 @@ sigma    & n/a &   & damping time scale of the buffer layer [s$^{-1}$]\\
 beta     & 2.  &   & exponent of the damping increase with height [-] \\
 \end{supertabular}
 
+\newpage
+
 \subsection*{[cross] Cross-section}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -88,11 +102,10 @@ swcross       & 0     & 0 & disable cross sections \\
               &       & 1 & enable cross sections \\ 
 sampletime    & n/a   &   & sampling time step [s] \\
 xz            & empty &   & list of y locations at which xz-crosssection are taken \\
+yz            & empty &   & list of x locations at which yz-crosssection are taken \\
 xy            & empty &   & list of z locations at which xy-crosssection are taken \\
 crosslist     & empty &   & list of cross-section variables \\
 \end{supertabular}
-
-\newpage
 
 \subsection*{[diff] Diffusion}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -158,8 +171,6 @@ fc            & n/a   &       & coriolis parameter [s$^{-1}$] \\
 uflux         & n/a   &       & mean flow velocity [m~s$^{-1}$] \\
 \end{supertabular}
 
-\newpage
-
 \subsection*{[grid] Grid}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
 \tablehead{\multicolumn{4}{l}{\small\sl ... continued from previous page} \\  \hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -221,10 +232,11 @@ masklist      & empty & wplus  & conditional statistics $w$ > 0 \\
 \tablelasttail{\hline}
 \begin{supertabular}{|L{\wname} C{\wdef} C{\wopt} L{\wdesc}|}
 swthermo      & 0         & 0     & disable thermodynamics \\
-              &           & dry   & dry thermodynamics \\
-              &           & moist & moist thermodynamics \\
-              &           & buoy  & buoyancy thermodynamics \\
-              &           & buoy\_slope  & buoyancy thermodynamics including slope\\
+              &           & dry   & dry thermodynamics (\textit{"th"}) \\
+              &           & moist & moist thermodynamics (\textit{"thl" + "qt"}) \\
+              &           & buoy  & buoyancy thermodynamics including option for slope (\textit{"b"})\\
+alpha         & n/a       &       & optional slope angle [radians]\\
+N2            & n/a       &       & Brunt-V\"{a}is\"{a}l\"{a} frequency [1/s] (req. with alpha)\\
 swbasestate    & n/a   & boussinesq & constant density and reference temperature \\
                &       & anelastic  & anelastic approximation (Bannon, 1996) \\
 thvref0       & n/a       &       & reference virtual potential temperature [K] (moist Boussinesq) \\
@@ -233,8 +245,6 @@ ps            & n/a       &       & surface pressure [Pa] \\
 swupdatebasestate & n/a   & 0     & use initial hydrostatic pressure in $q_l$ calculation \\
               &           & 1     & update hydrostatic pressure in $q_l$ calculation \\         
 \end{supertabular}
-
-\newpage
 
 \subsection*{[timeloop] Time}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}

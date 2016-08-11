@@ -1,14 +1,14 @@
 # Mistral GPU nodes
 if(USEMPI) 
-  set(ENV{CC}  mpicc ) # C compiler for parallel build
-  set(ENV{CXX} mpicxx) # C++ compiler for parallel build
+  set(ENV{CC}  mpiicc ) # C compiler for parallel build
+  set(ENV{CXX} mpiicpc) # C++ compiler for parallel build
 else()
   set(ENV{CC}  gcc) # C compiler for serial build
   set(ENV{CXX} g++) # C++ compiler for serial build
 endif()
 
-set(USER_CXX_FLAGS "")
-set(USER_CXX_FLAGS_RELEASE "-Ofast -mtune=native")
+set(USER_CXX_FLAGS "-restrict")
+set(USER_CXX_FLAGS_RELEASE "-Ofast -xCORE-AVX2")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
 # Note(s) BvS: * the legacy NetCDF C++ library is not (yet) installed on Mistral
@@ -33,4 +33,4 @@ if(USECUDA)
   set(USER_CUDA_NVCC_FLAGS "-arch=sm_37")
 endif()
 
-add_definitions(-DRESTRICTKEYWORD=__restrict__)
+add_definitions(-DRESTRICTKEYWORD=restrict)
