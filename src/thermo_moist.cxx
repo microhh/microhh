@@ -68,7 +68,7 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
 
     int nerror = 0;
 
-    // Option to overrule the prognostic variable 
+    // Option to overrule the prognostic variable
     nerror += inputin->get_item(&thvar, "thermo", "progvar", "", "thl");  // defaults to thl
 
     // Initialize the prognostic fields
@@ -97,16 +97,19 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
         throw 1;
     }
 
-    if (grid->swspatialorder == "4" && swbasestate == "anelastic")
+    // Note BvS: the base state calculation was never tested/supported for 4th order DNS,
+    // and has therefor been removed for now.
+    if (grid->swspatialorder == "4") // && swbasestate == "anelastic")
     {
-        master->print_error("Anelastic mode is not supported for swspatialorder=4\n");
+        //master->print_error("Anelastic mode is not supported for swspatialorder=4\n");
+        master->print_error("Moist thermodynamics are not supported for swspatialorder=4\n");
         throw 1;
     }
 
     // BvS test for updating hydrostatic prssure during run
     // swupdate..=0 -> initial base state pressure used in saturation calculation
     // swupdate..=1 -> base state pressure updated before saturation calculation
-    nerror += inputin->get_item(&swupdatebasestate, "thermo", "swupdatebasestate", ""); 
+    nerror += inputin->get_item(&swupdatebasestate, "thermo", "swupdatebasestate", "");
 
     // Remove the data from the input that is not used, to avoid warnings.
     if (master->mode == "init")
@@ -173,7 +176,7 @@ void Thermo_moist::create(Input* inputin)
     if (swupdatebasestate)
         fields->set_calc_mean_profs(true);
 
-    // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration. 
+    // Calculate the base state profiles. With swupdatebasestate=1, these profiles are updated on every iteration.
     // 1. Take the initial profile as the reference
     if (inputin->get_prof(&thl0[grid->kstart], thvar, grid->kmax))
         throw 1;
@@ -220,7 +223,7 @@ void Thermo_moist::exec()
     const int kk = grid->ijcells;
     const int kcells = grid->kcells;
 
-    // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state 
+    // Re-calculate hydrostatic pressure and exner, pass dummy as rhoref,thvref to prevent overwriting base state
     double *tmp2 = fields->atmp["tmp2"]->data;
     if (swupdatebasestate)
         calc_base_state(pref, prefh,
@@ -234,13 +237,13 @@ void Thermo_moist::exec()
                                &fields->atmp["tmp2"]->data[0*kk], &fields->atmp["tmp2"]->data[1*kk],
                                &fields->atmp["tmp2"]->data[2*kk], thvrefh);
     }
-    else if (grid->swspatialorder == "4")
-    {
-        calc_buoyancy_tend_4th(fields->wt->data, fields->sp[thvar]->data, fields->sp["qt"]->data, prefh,
-                               &fields->atmp["tmp2"]->data[0*kk], &fields->atmp["tmp2"]->data[1*kk],
-                               &fields->atmp["tmp2"]->data[2*kk],
-                               thvrefh);
-    }
+    //else if (grid->swspatialorder == "4")
+    //{
+    //    calc_buoyancy_tend_4th(fields->wt->data, fields->sp[thvar]->data, fields->sp["qt"]->data, prefh,
+    //                           &fields->atmp["tmp2"]->data[0*kk], &fields->atmp["tmp2"]->data[1*kk],
+    //                           &fields->atmp["tmp2"]->data[2*kk],
+    //                           thvrefh);
+    //}
 }
 #endif
 
@@ -466,8 +469,8 @@ void Thermo_moist::exec_stats(Mask *m)
     {
         const int kcells = grid->kcells;
         double* restrict tmp2 = fields->atmp["tmp2"]->data;
-        calc_base_state(&tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], 
-                        &tmp2[4*kcells], &tmp2[5*kcells], &tmp2[6*kcells], &tmp2[7*kcells], 
+        calc_base_state(&tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells],
+                        &tmp2[4*kcells], &tmp2[5*kcells], &tmp2[6*kcells], &tmp2[7*kcells],
                         fields->sp[thvar]->datamean, fields->sp["qt"]->datamean);
 
         for (int k=0; k<kcells; ++k)
@@ -476,7 +479,7 @@ void Thermo_moist::exec_stats(Mask *m)
             m->profs["phh" ].data[k] = tmp2[1*kcells+k];
             m->profs["rho" ].data[k] = tmp2[2*kcells+k];
             m->profs["rhoh"].data[k] = tmp2[3*kcells+k];
-        } 
+        }
     }
 }
 
@@ -489,8 +492,8 @@ void Thermo_moist::exec_cross()
     // With one additional temp field, we wouldn't have to re-calculate the ql or b field for simple,lngrad,path, etc.
     for (std::vector<std::string>::iterator it=crosslist.begin(); it<crosslist.end(); ++it)
     {
-        /* BvS: for now, don't call getThermoField() or getBuoyancySurf(), but directly the function itself. With CUDA enabled, 
-           statistics etc. is done on the host, while getThermoField() is executed on the GPU */ 
+        /* BvS: for now, don't call getThermoField() or getBuoyancySurf(), but directly the function itself. With CUDA enabled,
+           statistics etc. is done on the host, while getThermoField() is executed on the GPU */
 
         if (*it == "b")
         {
@@ -529,7 +532,7 @@ void Thermo_moist::exec_cross()
         else if (*it == "maxthvcloud")
         {
             calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
-            calc_maximum_thv_perturbation_cloud(fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->data, 
+            calc_maximum_thv_perturbation_cloud(fields->atmp["tmp2"]->databot, fields->atmp["tmp2"]->data,
                                                 fields->sp["thl"]->data, fields->sp["qt"]->data, fields->atmp["tmp1"]->data, pref, fields->atmp["tmp2"]->datamean);
             nerror += cross->cross_plane(fields->atmp["tmp2"]->databot, fields->atmp["tmp1"]->data, "maxthvcloud");
         }
@@ -553,7 +556,7 @@ void Thermo_moist::exec_dump()
 {
     for (std::vector<std::string>::const_iterator it=dumplist.begin(); it<dumplist.end(); ++it)
     {
-        // TODO BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant... 
+        // TODO BvS restore getThermoField(), the combination of checkThermoField with getThermoField is more elegant...
         if (*it == "b")
             calc_buoyancy(fields->atmp["tmp2"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp1"]->data, thvref);
         else if (*it == "ql")
@@ -579,10 +582,10 @@ void Thermo_moist::get_thermo_field(Field3d* fld, Field3d* tmp, const std::strin
     const int kcells = grid->kcells;
 
     // BvS: getThermoField() is called from subgrid-model, before thermo(), so re-calculate the hydrostatic pressure
-    // Pass dummy as rhoref,thvref to prevent overwriting base state 
+    // Pass dummy as rhoref,thvref to prevent overwriting base state
     double* restrict tmp2 = fields->atmp["tmp2"]->data;
     if (swupdatebasestate)
-        calc_base_state(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh, 
+        calc_base_state(pref, prefh, &tmp2[0*kcells], &tmp2[1*kcells], &tmp2[2*kcells], &tmp2[3*kcells], exnref, exnrefh,
                 fields->sp[thvar]->datamean, fields->sp["qt"]->datamean);
 
     if (name == "b")
@@ -626,7 +629,7 @@ void Thermo_moist::get_prog_vars(std::vector<std::string> *list)
 double Thermo_moist::get_buoyancy_diffusivity()
 {
     // Use the diffusivity from the liquid water potential temperature
-    return fields->sp[thvar]->visc; 
+    return fields->sp[thvar]->visc;
 }
 
 namespace
@@ -647,10 +650,10 @@ namespace
         }
 
         if (niter == nitermax)
-        {  
+        {
             printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",thl,qt,p);
             throw 1;
-        }  
+        }
 
         ql = std::max(0.,qt - qs);
         return ql;
@@ -658,19 +661,19 @@ namespace
 }
 
 /**
- * This function calculates the hydrostatic pressure at full and half levels, 
+ * This function calculates the hydrostatic pressure at full and half levels,
  * with option to return base state profiles like reference density and temperature
  * Solves: dpi/dz=-g/thv with pi=cp*(p/p0)**(rd/cp)
- * @param pref Pointer to output hydrostatic pressure array (full level) 
- * @param prefh Pointer to output hydrostatic pressure array (half level) 
- * @param rho Pointer to output density array (full level) 
- * @param rhoh Pointer to output density array (half level) 
- * @param thv Pointer to output virtual potential temperature array (full level) 
- * @param thvh Pointer to output virtual potential temperature array (half level) 
- * @param ex Pointer to output exner array (full level) 
- * @param exh Pointer to output exner array (half level) 
- * @param thlmean Pointer to input liq. water potential temperature array (horizontal mean, full level) 
- * @param qtmean Pointer to input tot. moisture mix. ratio  array (horizontal mean, full level) 
+ * @param pref Pointer to output hydrostatic pressure array (full level)
+ * @param prefh Pointer to output hydrostatic pressure array (half level)
+ * @param rho Pointer to output density array (full level)
+ * @param rhoh Pointer to output density array (half level)
+ * @param thv Pointer to output virtual potential temperature array (full level)
+ * @param thvh Pointer to output virtual potential temperature array (half level)
+ * @param ex Pointer to output exner array (full level)
+ * @param exh Pointer to output exner array (half level)
+ * @param thlmean Pointer to input liq. water potential temperature array (horizontal mean, full level)
+ * @param qtmean Pointer to input tot. moisture mix. ratio  array (horizontal mean, full level)
  */
 void  Thermo_moist::calc_base_state(double* restrict pref,    double* restrict prefh,
                                     double* restrict rho,     double* restrict rhoh,
@@ -686,74 +689,47 @@ void  Thermo_moist::calc_base_state(double* restrict pref,    double* restrict p
     double thlsurf = Constants::dhuge;
     double qtsurf = Constants::dhuge;
 
-    if (grid->swspatialorder == "2")
-    {
-        thlsurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
-        qtsurf   = interp2(qtmean[kstart-1],  qtmean[kstart]);
-    }
-    else if (grid->swspatialorder == "4")
-    {
-        thlsurf  = interp4(thlmean[kstart-2], thlmean[kstart-1], thlmean[kstart], thlmean[kstart+1]);
-        qtsurf   = interp4(qtmean[kstart-2],  qtmean[kstart-1],  qtmean[kstart],  qtmean[kstart+1]);
-    }
+    thlsurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
+    qtsurf   = interp2(qtmean[kstart-1],  qtmean[kstart]);
 
     double ql,thli=0,qti=0,qli;
 
     // Calculate surface (half=kstart) values
     exh[kstart]   = exner(pbot);
-    ql            = sat_adjust(thlsurf,qtsurf,pbot,exh[kstart]); 
+    ql            = sat_adjust(thlsurf,qtsurf,pbot,exh[kstart]);
     thvh[kstart]  = (thlsurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
     prefh[kstart] = pbot;
     rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
 
     // First full grid level pressure
-    pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thvh[kstart])),(1./rdcp)); 
+    pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thvh[kstart])),(1./rdcp));
 
     for (int k=kstart+1; k<kend+1; k++)
     {
-        // 1. Calculate values at full level below zh[k] 
+        // 1. Calculate values at full level below zh[k]
         ex[k-1]  = exner(pref[k-1]);
-        ql       = sat_adjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]); 
-        thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql); 
+        ql       = sat_adjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]);
+        thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql);
         rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
 
         // 2. Calculate half level pressure at zh[k] using values at z[k-1]
         prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dz[k-1] / (cp * thv[k-1])),(1./rdcp));
 
         // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
-        if (grid->swspatialorder == "2")
-        {
-            thli   = interp2(thlmean[k-1],thlmean[k]);
-            qti    = interp2(qtmean[k-1],qtmean[k]);
-        }
-        else if (grid->swspatialorder == "4")
-        {
-            thli   = interp4(thlmean[k-2],thlmean[k-1],thlmean[k],thlmean[k+1]);
-            qti    = interp4(qtmean[k-2],qtmean[k-1],qtmean[k],qtmean[k+1]);
-        }
-
+        thli     = interp2(thlmean[k-1], thlmean[k]);
+        qti      = interp2(qtmean [k-1], qtmean [k]);
         exh[k]   = exner(prefh[k]);
         qli      = sat_adjust(thli,qti,prefh[k],exh[k]);
-        thvh[k]  = (thli + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli); 
-        rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]); 
+        thvh[k]  = (thli + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli);
+        rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]);
 
         // 4. Calculate full level pressure at z[k]
-        pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thvh[k])),(1./rdcp)); 
+        pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thvh[k])),(1./rdcp));
     }
 
-    // Fill bottom and top full level ghost cells 
-    if (grid->swspatialorder == "2")
-    {
-        pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
-        pref[kend]     = 2.*prefh[kend]   - pref[kend-1];
-    }
-    else if (grid->swspatialorder == "4")
-    {
-        pref[kstart-1] = (8./3.)*prefh[kstart] - 2.*pref[kstart] + (1./3.)*pref[kstart+1];
-        pref[kstart-2] = 8.*prefh[kstart]      - 9.*pref[kstart] + 2.*pref[kstart+1];
-        pref[kend]     = (8./3.)*prefh[kend]   - 2.*pref[kend-1] + (1./3.)*pref[kend-2];
-        pref[kend+1]   = 8.*prefh[kend]        - 9.*pref[kend-1] + 2.*pref[kend-2];
-    }
+    // Fill bottom and top full level ghost cells
+    pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
+    pref[kend]     = 2.*prefh[kend]   - pref[kend-1];
 }
 
 void Thermo_moist::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict thl, double* restrict qt,
@@ -769,7 +745,7 @@ void Thermo_moist::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict 
     {
         exnh = exner(ph[k]);
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -782,7 +758,7 @@ void Thermo_moist::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict 
                 ql[ij]  = qth[ij]-qsat(ph[k],tl);
             }
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ij  = i + j*jj;
@@ -794,7 +770,7 @@ void Thermo_moist::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict 
                     ql[ij] = 0.;
             }
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -804,52 +780,6 @@ void Thermo_moist::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict 
     }
 }
 
-void Thermo_moist::calc_buoyancy_tend_4th(double* restrict wt, double* restrict thl,  double* restrict qt, 
-                                          double* restrict ph, double* restrict thlh, double* restrict qth,
-                                          double* restrict ql, double* restrict thvrefh)
-{
-    const int jj  = grid->icells;
-    const int kk1 = 1*grid->ijcells;
-    const int kk2 = 2*grid->ijcells;
-
-    double tl, exnh;
-
-    for (int k=grid->kstart+1; k<grid->kend; k++)
-    {
-        exnh = exner(ph[k]);
-        for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
-            {
-                const int ijk = i + j*jj + k*kk1;
-                const int ij  = i + j*jj;
-                thlh[ij] = interp4(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
-                qth[ij]  = interp4(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
-                tl       = thlh[ij] * exnh;
-                // Calculate first estimate of ql using Tl
-                // if ql(Tl)>0, saturation adjustment routine needed
-                ql[ij]  = qth[ij]-qsat(ph[k],tl);   
-            }
-        for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
-            {
-                const int ij = i + j*jj;
-                if (ql[ij]>0)   // already doesn't vectorize because of iteration in sat_adjust()
-                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
-                else
-                    ql[ij] = 0.;
-            }
-        for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
-            for (int i=grid->istart; i<grid->iend; i++)
-            {
-                const int ijk = i + j*jj + k*kk1;
-                const int ij  = i + j*jj;
-                wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
-            }
-    }
-}
 
 void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, double* restrict qt,
                                  double* restrict p, double* restrict ql, double* restrict thvref)
@@ -863,7 +793,7 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
     {
         ex = exner(p[k]);
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -873,7 +803,7 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
             }
 
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -885,7 +815,7 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
             }
 
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -898,7 +828,7 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
 }
 
 // Calculate the maximum in-cloud virtual temperature perturbation (thv - <thv>) with height
-void Thermo_moist::calc_maximum_thv_perturbation_cloud(double* restrict thv_pert, double* restrict thv, double* restrict thl, 
+void Thermo_moist::calc_maximum_thv_perturbation_cloud(double* restrict thv_pert, double* restrict thv, double* restrict thl,
                                                        double* restrict qt, double* restrict ql, double* restrict p, double* restrict thvmean)
 {
     double ex;
@@ -914,7 +844,7 @@ void Thermo_moist::calc_maximum_thv_perturbation_cloud(double* restrict thv_pert
             thv_pert[ij] = NC_FILL_DOUBLE; // BvS not so nice..
         }
 
-    // Calculate virtual temperature 
+    // Calculate virtual temperature
     for (int k=grid->kstart; k<grid->kend; k++)
     {
         ex = exner(p[k]);
@@ -929,8 +859,8 @@ void Thermo_moist::calc_maximum_thv_perturbation_cloud(double* restrict thv_pert
 
     // Calculate domain averaged virtual temperature
     grid->calc_mean(thvmean, thv, grid->kcells);
-  
-    // Calculate maximum in-cloud virtual temperature perturbation per column 
+
+    // Calculate maximum in-cloud virtual temperature perturbation per column
     for (int k=grid->kstart; k<grid->kend; k++)
         for (int j=grid->jstart; j<grid->jend; j++)
             #pragma ivdep
@@ -956,11 +886,11 @@ void Thermo_moist::calc_liquid_water(double* restrict ql, double* restrict thl, 
     const int jj = grid->icells;
     const int kk = grid->ijcells;
 
-    // Fill ghost cells with zeros to prevent problems in calculating ql or qlcore masks 
+    // Fill ghost cells with zeros to prevent problems in calculating ql or qlcore masks
     for (int k=0; k<grid->kstart; k++)
     {
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -971,7 +901,7 @@ void Thermo_moist::calc_liquid_water(double* restrict ql, double* restrict thl, 
     for (int k=grid->kend; k<grid->kcells; k++)
     {
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -984,7 +914,7 @@ void Thermo_moist::calc_liquid_water(double* restrict ql, double* restrict thl, 
     {
         ex = exner(p[k]);
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -1001,7 +931,7 @@ void Thermo_moist::calc_N2(double* restrict N2, double* restrict thl, double* re
 
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -1020,7 +950,7 @@ void Thermo_moist::calc_buoyancy_bot(double* restrict b,      double* restrict b
 
     // assume no liquid water at the lowest model level
     for (int j=0; j<grid->jcells; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<grid->icells; i++)
         {
             const int ij  = i + j*jj;
@@ -1038,7 +968,7 @@ void Thermo_moist::calc_buoyancy_fluxbot(double* restrict bfluxbot, double* rest
 
     // assume no liquid water at the lowest model level
     for (int j=0; j<grid->jcells; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=0; i<grid->icells; i++)
         {
             const int ij = i + j*jj;
@@ -1109,7 +1039,7 @@ void Thermo_moist::init_cross()
         allowedcrossvars.push_back("maxthvcloud");  // yikes
 
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *crosslist_global = model->cross->get_crosslist(); 
+        std::vector<std::string> *crosslist_global = model->cross->get_crosslist();
 
         // Check input list of cross variables (crosslist)
         std::vector<std::string>::iterator it=crosslist_global->begin();
@@ -1135,7 +1065,7 @@ void Thermo_moist::init_dump()
     if (model->dump->get_switch() == "1")
     {
         // Get global cross-list from cross.cxx
-        std::vector<std::string> *dumplist_global = model->dump->get_dumplist(); 
+        std::vector<std::string> *dumplist_global = model->dump->get_dumplist();
 
         // Check if fields in dumplist are retrievable thermo fields
         std::vector<std::string>::iterator dumpvar=dumplist_global->begin();
@@ -1152,3 +1082,51 @@ void Thermo_moist::init_dump()
         }
     }
 }
+
+void Thermo_moist::calc_buoyancy_tend_4th(double* restrict wt, double* restrict thl,  double* restrict qt,
+                                          double* restrict ph, double* restrict thlh, double* restrict qth,
+                                          double* restrict ql, double* restrict thvrefh)
+{
+    const int jj  = grid->icells;
+    const int kk1 = 1*grid->ijcells;
+    const int kk2 = 2*grid->ijcells;
+
+    double tl, exnh;
+
+    for (int k=grid->kstart+1; k<grid->kend; k++)
+    {
+        exnh = exner(ph[k]);
+        for (int j=grid->jstart; j<grid->jend; j++)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; i++)
+            {
+                const int ijk = i + j*jj + k*kk1;
+                const int ij  = i + j*jj;
+                thlh[ij] = interp4(thl[ijk-kk2], thl[ijk-kk1], thl[ijk], thl[ijk+kk1]);
+                qth[ij]  = interp4(qt[ijk-kk2],  qt[ijk-kk1],  qt[ijk],  qt[ijk+kk1]);
+                tl       = thlh[ij] * exnh;
+                // Calculate first estimate of ql using Tl
+                // if ql(Tl)>0, saturation adjustment routine needed
+                ql[ij]  = qth[ij]-qsat(ph[k],tl);
+            }
+        for (int j=grid->jstart; j<grid->jend; j++)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; i++)
+            {
+                const int ij = i + j*jj;
+                if (ql[ij]>0)   // already doesn't vectorize because of iteration in sat_adjust()
+                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                else
+                    ql[ij] = 0.;
+            }
+        for (int j=grid->jstart; j<grid->jend; j++)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; i++)
+            {
+                const int ijk = i + j*jj + k*kk1;
+                const int ij  = i + j*jj;
+                wt[ijk] += buoyancy(exnh, thlh[ij], qth[ij], ql[ij], thvrefh[k]);
+            }
+    }
+}
+
