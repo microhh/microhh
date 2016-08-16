@@ -681,55 +681,46 @@ void  Thermo_moist::calc_base_state(double* restrict pref,    double* restrict p
                                     double* restrict ex,      double* restrict exh,
                                     double* restrict thlmean, double* restrict qtmean)
 {
-    const double rdcp = Rd/cp;
-
     const int kstart = grid->kstart;
-    const int kend = grid->kend;
+    const int kend   = grid->kend;
 
-    double thlsurf = Constants::dhuge;
-    double qtsurf = Constants::dhuge;
+    const double thlsurf = interp2(thlmean[kstart-1], thlmean[kstart]);
+    const double qtsurf  = interp2(qtmean[kstart-1],  qtmean[kstart]);
 
-    thlsurf  = interp2(thlmean[kstart-1], thlmean[kstart]);
-    qtsurf   = interp2(qtmean[kstart-1],  qtmean[kstart]);
+    double ql;
 
-    double ql,thli=0,qti=0,qli;
-
-    // Calculate surface (half=kstart) values
-    exh[kstart]   = exner(pbot);
-    ql            = sat_adjust(thlsurf,qtsurf,pbot,exh[kstart]);
-    thvh[kstart]  = (thlsurf + Lv*ql/(cp*exh[kstart])) * (1. - (1. - Rv/Rd)*qtsurf - Rv/Rd*ql);
+    // Calculate the values at the surface (half level == kstart)
     prefh[kstart] = pbot;
+    exh[kstart]   = exner(prefh[kstart]);
+    ql            = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]);
+    thvh[kstart]  = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql);
     rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
 
-    // First full grid level pressure
-    pref[kstart] = pow((pow(pbot,rdcp) - grav * pow(p0,rdcp) * grid->z[kstart] / (cp * thvh[kstart])),(1./rdcp));
+    // Calculate the first full level pressure
+    pref[kstart]  = prefh[kstart] * std::exp(-grav * grid->z[kstart] / (Rd * exh[kstart] * thvh[kstart]));
 
-    for (int k=kstart+1; k<kend+1; k++)
+    for (int k=kstart+1; k<kend+1; ++k)
     {
-        // 1. Calculate values at full level below zh[k]
+        // 1. Calculate remaining values (thv and rho) at full-level[k-1]
         ex[k-1]  = exner(pref[k-1]);
-        ql       = sat_adjust(thlmean[k-1],qtmean[k-1],pref[k-1],ex[k-1]);
-        thv[k-1] = (thlmean[k-1] + Lv*ql/(cp*ex[k-1])) * (1. - (1. - Rv/Rd)*qtmean[k-1] - Rv/Rd*ql);
+        ql       = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]);
+        thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql);
         rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
 
-        // 2. Calculate half level pressure at zh[k] using values at z[k-1]
-        prefh[k] = pow((pow(prefh[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dz[k-1] / (cp * thv[k-1])),(1./rdcp));
-
-        // 3. Interpolate conserved variables to zh[k] and calculate virtual temp and ql
-        thli     = interp2(thlmean[k-1], thlmean[k]);
-        qti      = interp2(qtmean [k-1], qtmean [k]);
+        // 2. Calculate pressure at half-level[k]
+        prefh[k] = prefh[k-1] * std::exp(-grav * grid->dz[k-1] / (Rd * ex[k-1] * thv[k-1]));
         exh[k]   = exner(prefh[k]);
-        qli      = sat_adjust(thli,qti,prefh[k],exh[k]);
-        thvh[k]  = (thli + Lv*qli/(cp*exh[k])) * (1. - (1. - Rv/Rd)*qti - Rv/Rd*qli);
+
+        // 3. Use interpolated conserved quantities to calculate half-level[k] values
+        const double thli = interp2(thlmean[k-1], thlmean[k]);
+        const double qti  = interp2(qtmean [k-1], qtmean [k]);
+        const double qli  = sat_adjust(thli, qti, prefh[k], exh[k]);
+
+        thvh[k]  = virtual_temperature(exh[k], thli, qti, qli);
         rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]);
 
-        // 4. Calculate full level pressure at z[k]
-        pref[k]  = pow((pow(pref[k-1],rdcp) - grav * pow(p0,rdcp) * grid->dzh[k] / (cp * thvh[k])),(1./rdcp));
-    }
-
-    // Fill bottom and top full level ghost cells
-    pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
-    pref[kend]     = 2.*prefh[kend]   - pref[kend-1];
+        // 4. Calculate pressure at full-level[k]
+        pref[k] = pref[k-1] * std::exp(-grav * grid->dzh[k] / (Rd * exh[k] * thvh[k]));
 }
 
 void Thermo_moist::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict thl, double* restrict qt,
