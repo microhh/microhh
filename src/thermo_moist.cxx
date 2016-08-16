@@ -721,6 +721,9 @@ void  Thermo_moist::calc_base_state(double* restrict pref,    double* restrict p
 
         // 4. Calculate pressure at full-level[k]
         pref[k] = pref[k-1] * std::exp(-grav * grid->dzh[k] / (Rd * exh[k] * thvh[k]));
+    }
+
+    pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
 }
 
 void Thermo_moist::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict thl, double* restrict qt,
