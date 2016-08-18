@@ -40,6 +40,8 @@ class Input
 
         void clear();
 
+        int read_data_file(Data_map*, std::string, bool);
+
         // Item retrieval functions
         int get_item(int*        , std::string, std::string, std::string);
         int get_item(int*        , std::string, std::string, std::string, int);
@@ -66,7 +68,6 @@ class Input
         Master* master;
 
         int read_ini_file();
-        int read_data_file(Data_map*, std::string, bool);
 
         template <class valuetype>
         int parse_item(valuetype*, std::string, std::string, std::string, bool, valuetype);

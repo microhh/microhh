@@ -36,6 +36,7 @@
 #include "constants.h"
 #include "finite_difference.h"
 #include "immersed_boundary.h"
+#include "input.h"
 
 #include <fstream>  // TMP BvS
 #include <sstream>
@@ -220,6 +221,35 @@ namespace
                 result[i][j] *= det;
     }
 
+    void precalculate_idw(Ghost_cell& ghost_cell, const double* const restrict x, const double* const restrict y, const double* const restrict z)
+    {
+        const int n = ghost_cell.neighbours.size();
+
+        // Pre-calculate the coefficient for the inverse distance weighted interpolation
+        ghost_cell.c_idw.resize(n+1); // n neighbour points + location on wall
+
+        // Calculate distance interpolation points to image point
+        for (int l=0; l<n; ++l)
+            ghost_cell.c_idw[l] = abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i], 
+                                               ghost_cell.yI, y[ghost_cell.neighbours[l].j],
+                                               ghost_cell.zI, z[ghost_cell.neighbours[l].k]);
+
+        ghost_cell.c_idw[n] = abs_distance(ghost_cell.xI, ghost_cell.xB, 
+                                           ghost_cell.yI, ghost_cell.yB,
+                                           ghost_cell.zI, ghost_cell.zB);
+
+        // Save maximum distance
+        const double max_distance = *std::max_element(std::begin(ghost_cell.c_idw), std::end(ghost_cell.c_idw));
+
+        // Calculate coefficients
+        ghost_cell.c_idw_sum = 0;
+        for (int l=0; l<n+1; ++l)
+        {
+            ghost_cell.c_idw[l] = std::pow((max_distance - ghost_cell.c_idw[l]) / (max_distance * ghost_cell.c_idw[l]), 0.5);
+            ghost_cell.c_idw_sum += ghost_cell.c_idw[l];
+        }
+    }
+
     void set_ghost_cells(std::vector<Ghost_cell> ghost_cells, double* const restrict field, const double boundary_value,
                          const double* const restrict x, const double* const restrict y, const double* const restrict z,
                          const int nn, const int ii, const int jj, const int kk)
@@ -257,6 +287,10 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     if (sw_ib == "0")
     {
         ib_type = None_type;
+    }
+    else if (sw_ib == "user")
+    {
+        ib_type = User_type;
     }
     else if (sw_ib == "sine")
     {
@@ -325,7 +359,24 @@ void Immersed_boundary::create()
     if (ib_type == None_type)
         return;
 
-    if (xy_dims == 1)
+    if (ib_type == User_type)
+    {
+        std::string file_name;
+
+        file_name = "u.ib_input";
+        read_ghost_cells(&ghost_cells_u, file_name, grid->xh, grid->y, grid->z);
+
+        file_name = "v.ib_input";
+        read_ghost_cells(&ghost_cells_v, file_name, grid->x, grid->yh, grid->z);
+
+        file_name = "w.ib_input";
+        read_ghost_cells(&ghost_cells_w, file_name, grid->x, grid->y, grid->zh);
+
+        file_name = "s.ib_input";
+        read_ghost_cells(&ghost_cells_s, file_name, grid->x, grid->y, grid->z);
+    }
+
+    else if (xy_dims == 1)
     {
         if (ib_type == Sine_type)
         {
@@ -519,29 +570,8 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
     // Only keep the N nearest neighbour fluid points
     ghost_cell.neighbours.erase(ghost_cell.neighbours.begin()+n, ghost_cell.neighbours.end());
 
-    // Pre-calculate the coefficient for the inverse distance weighted interpolation
-    ghost_cell.c_idw.resize(n+1); // n neighbour points + location on wall
-
-    // Calculate distance interpolation points to image point
-    for (int l=0; l<n; ++l)
-        ghost_cell.c_idw[l] = abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i], 
-                                           ghost_cell.yI, y[ghost_cell.neighbours[l].j],
-                                           ghost_cell.zI, z[ghost_cell.neighbours[l].k]);
-
-    ghost_cell.c_idw[n] = abs_distance(ghost_cell.xI, ghost_cell.xB, 
-                                       ghost_cell.yI, ghost_cell.yB,
-                                       ghost_cell.zI, ghost_cell.zB);
-
-    // Save maximum distance
-    const double max_distance = *std::max_element(std::begin(ghost_cell.c_idw), std::end(ghost_cell.c_idw));
-
-    // Calculate coefficients
-    ghost_cell.c_idw_sum = 0;
-    for (int l=0; l<n+1; ++l)
-    {
-        ghost_cell.c_idw[l] = std::pow((max_distance - ghost_cell.c_idw[l]) / (max_distance * ghost_cell.c_idw[l]), 0.5);
-        ghost_cell.c_idw_sum += ghost_cell.c_idw[l];
-    }
+    // Pre-calculate the inverse distance weighting coefficients
+    precalculate_idw(ghost_cell, x, y, z);
 }
 
 //void Immersed_boundary::define_distance_matrix(Ghost_cell& ghost_cell, 
@@ -575,7 +605,53 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
 //    // Save the inverse of the matrix
 //    inverse_mat_4x4(ghost_cell.B, tmp);
 //}
-   
+  
+void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell>* ghost_cells, std::string file_name,
+                                         const double* const restrict x, const double* const restrict y, const double* const restrict z)
+{
+    bool is_optional = false;
+    Data_map input;
+
+    // Read the input data into a std::map< header_name, std::vecor<data> > 
+    model->input->read_data_file(&input, file_name, is_optional);
+
+    for (int n=0; n<input["i"].size(); ++n)
+    {
+        const int i = input["i"][n] + grid->istart;
+        const int j = input["j"][n] + grid->jstart;
+        const int k = input["k"][n] + grid->kstart;
+
+        Ghost_cell tmp_ghost = {i, j, k}; 
+
+        // Location on boundary
+        tmp_ghost.xB = input["xb"][n];
+        tmp_ghost.yB = input["yb"][n];
+        tmp_ghost.zB = input["zb"][n];
+
+        // Location image point
+        tmp_ghost.xI = 2*tmp_ghost.xB - x[i];
+        tmp_ghost.yI = 2*tmp_ghost.yB - y[j];
+        tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
+        
+        // Neighbours
+        const int n_neighbours = input["nn"][n];
+
+        for (int nn=0; nn<n_neighbours; ++nn)
+        {
+            const int in = input["i"+std::to_string(nn)][n] + grid->istart;
+            const int jn = input["j"+std::to_string(nn)][n] + grid->jstart;
+            const int kn = input["k"+std::to_string(nn)][n] + grid->kstart;
+
+            Neighbour tmp_neighbour = {in, jn, kn, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])}; 
+            tmp_ghost.neighbours.push_back(tmp_neighbour);
+        }
+
+        precalculate_idw(tmp_ghost, x, y, z);
+
+        ghost_cells->push_back(tmp_ghost);
+    }
+}
+
 template<Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell>* ghost_cells, 
                                          const double* const restrict x, const double* const restrict y, const double* const restrict z)

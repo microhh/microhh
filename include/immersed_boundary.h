@@ -93,6 +93,7 @@ class Immersed_boundary
         void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*); 
         template<IB_type, int> 
         void find_ghost_cells(std::vector<Ghost_cell>*, const double*, const double*, const double*); ///< Function which determines the ghost cells
+        void read_ghost_cells(std::vector<Ghost_cell>*, std::string, const double*, const double*, const double*); ///< Function to read user input IB
         template<IB_type, int> 
         double boundary_function(double, double); ///< Function describing boundary
         template<IB_type, int> 
