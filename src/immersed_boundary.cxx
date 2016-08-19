@@ -97,116 +97,116 @@ namespace
 
     void inverse_mat_4x4(std::vector<std::vector<double> >& result, std::vector<std::vector<double> > input)
     {
-        result[0][0] =  input[1][1] * input[2][2] * input[3][3] - 
-                        input[1][1] * input[3][2] * input[2][3] - 
-                        input[1][2] * input[2][1] * input[3][3] + 
+        result[0][0] =  input[1][1] * input[2][2] * input[3][3] -
+                        input[1][1] * input[3][2] * input[2][3] -
+                        input[1][2] * input[2][1] * input[3][3] +
                         input[1][2] * input[3][1] * input[2][3] +
-                        input[1][3] * input[2][1] * input[3][2] - 
+                        input[1][3] * input[2][1] * input[3][2] -
                         input[1][3] * input[3][1] * input[2][2];
 
-        result[0][1] = -input[0][1] * input[2][2] * input[3][3] + 
-                        input[0][1] * input[3][2] * input[2][3] + 
-                        input[0][2] * input[2][1] * input[3][3] - 
-                        input[0][2] * input[3][1] * input[2][3] - 
-                        input[0][3] * input[2][1] * input[3][2] + 
+        result[0][1] = -input[0][1] * input[2][2] * input[3][3] +
+                        input[0][1] * input[3][2] * input[2][3] +
+                        input[0][2] * input[2][1] * input[3][3] -
+                        input[0][2] * input[3][1] * input[2][3] -
+                        input[0][3] * input[2][1] * input[3][2] +
                         input[0][3] * input[3][1] * input[2][2];
 
-        result[0][2] =  input[0][1] * input[1][2] * input[3][3] - 
-                        input[0][1] * input[3][2] * input[1][3] - 
-                        input[0][2] * input[1][1] * input[3][3] + 
-                        input[0][2] * input[3][1] * input[1][3] + 
-                        input[0][3] * input[1][1] * input[3][2] - 
+        result[0][2] =  input[0][1] * input[1][2] * input[3][3] -
+                        input[0][1] * input[3][2] * input[1][3] -
+                        input[0][2] * input[1][1] * input[3][3] +
+                        input[0][2] * input[3][1] * input[1][3] +
+                        input[0][3] * input[1][1] * input[3][2] -
                         input[0][3] * input[3][1] * input[1][2];
 
-        result[0][3] = -input[0][1] * input[1][2] * input[2][3] + 
+        result[0][3] = -input[0][1] * input[1][2] * input[2][3] +
                         input[0][1] * input[2][2] * input[1][3] +
-                        input[0][2] * input[1][1] * input[2][3] - 
-                        input[0][2] * input[2][1] * input[1][3] - 
-                        input[0][3] * input[1][1] * input[2][2] + 
+                        input[0][2] * input[1][1] * input[2][3] -
+                        input[0][2] * input[2][1] * input[1][3] -
+                        input[0][3] * input[1][1] * input[2][2] +
                         input[0][3] * input[2][1] * input[1][2];
 
-        result[1][0] = -input[1][0] * input[2][2] * input[3][3] + 
-                        input[1][0] * input[3][2] * input[2][3] + 
-                        input[1][2] * input[2][0] * input[3][3] - 
-                        input[1][2] * input[3][0] * input[2][3] - 
-                        input[1][3] * input[2][0] * input[3][2] + 
+        result[1][0] = -input[1][0] * input[2][2] * input[3][3] +
+                        input[1][0] * input[3][2] * input[2][3] +
+                        input[1][2] * input[2][0] * input[3][3] -
+                        input[1][2] * input[3][0] * input[2][3] -
+                        input[1][3] * input[2][0] * input[3][2] +
                         input[1][3] * input[3][0] * input[2][2];
 
-        result[1][1] =  input[0][0] * input[2][2] * input[3][3] - 
-                        input[0][0] * input[3][2] * input[2][3] - 
-                        input[0][2] * input[2][0] * input[3][3] + 
-                        input[0][2] * input[3][0] * input[2][3] + 
-                        input[0][3] * input[2][0] * input[3][2] - 
+        result[1][1] =  input[0][0] * input[2][2] * input[3][3] -
+                        input[0][0] * input[3][2] * input[2][3] -
+                        input[0][2] * input[2][0] * input[3][3] +
+                        input[0][2] * input[3][0] * input[2][3] +
+                        input[0][3] * input[2][0] * input[3][2] -
                         input[0][3] * input[3][0] * input[2][2];
 
-        result[1][2] = -input[0][0] * input[1][2] * input[3][3] + 
-                        input[0][0] * input[3][2] * input[1][3] + 
-                        input[0][2] * input[1][0] * input[3][3] - 
-                        input[0][2] * input[3][0] * input[1][3] - 
-                        input[0][3] * input[1][0] * input[3][2] + 
+        result[1][2] = -input[0][0] * input[1][2] * input[3][3] +
+                        input[0][0] * input[3][2] * input[1][3] +
+                        input[0][2] * input[1][0] * input[3][3] -
+                        input[0][2] * input[3][0] * input[1][3] -
+                        input[0][3] * input[1][0] * input[3][2] +
                         input[0][3] * input[3][0] * input[1][2];
 
-        result[1][3] =  input[0][0] * input[1][2] * input[2][3] - 
-                        input[0][0] * input[2][2] * input[1][3] - 
-                        input[0][2] * input[1][0] * input[2][3] + 
-                        input[0][2] * input[2][0] * input[1][3] + 
-                        input[0][3] * input[1][0] * input[2][2] - 
+        result[1][3] =  input[0][0] * input[1][2] * input[2][3] -
+                        input[0][0] * input[2][2] * input[1][3] -
+                        input[0][2] * input[1][0] * input[2][3] +
+                        input[0][2] * input[2][0] * input[1][3] +
+                        input[0][3] * input[1][0] * input[2][2] -
                         input[0][3] * input[2][0] * input[1][2];
 
-        result[2][0] =  input[1][0] * input[2][1] * input[3][3] - 
-                        input[1][0] * input[3][1] * input[2][3] - 
-                        input[1][1] * input[2][0] * input[3][3] + 
-                        input[1][1] * input[3][0] * input[2][3] + 
-                        input[1][3] * input[2][0] * input[3][1] - 
+        result[2][0] =  input[1][0] * input[2][1] * input[3][3] -
+                        input[1][0] * input[3][1] * input[2][3] -
+                        input[1][1] * input[2][0] * input[3][3] +
+                        input[1][1] * input[3][0] * input[2][3] +
+                        input[1][3] * input[2][0] * input[3][1] -
                         input[1][3] * input[3][0] * input[2][1];
 
-        result[2][1] = -input[0][0] * input[2][1] * input[3][3] + 
-                        input[0][0] * input[3][1] * input[2][3] + 
-                        input[0][1] * input[2][0] * input[3][3] - 
-                        input[0][1] * input[3][0] * input[2][3] - 
-                        input[0][3] * input[2][0] * input[3][1] + 
+        result[2][1] = -input[0][0] * input[2][1] * input[3][3] +
+                        input[0][0] * input[3][1] * input[2][3] +
+                        input[0][1] * input[2][0] * input[3][3] -
+                        input[0][1] * input[3][0] * input[2][3] -
+                        input[0][3] * input[2][0] * input[3][1] +
                         input[0][3] * input[3][0] * input[2][1];
 
-        result[2][2] =  input[0][0] * input[1][1] * input[3][3] - 
-                        input[0][0] * input[3][1] * input[1][3] - 
-                        input[0][1] * input[1][0] * input[3][3] + 
-                        input[0][1] * input[3][0] * input[1][3] + 
-                        input[0][3] * input[1][0] * input[3][1] - 
+        result[2][2] =  input[0][0] * input[1][1] * input[3][3] -
+                        input[0][0] * input[3][1] * input[1][3] -
+                        input[0][1] * input[1][0] * input[3][3] +
+                        input[0][1] * input[3][0] * input[1][3] +
+                        input[0][3] * input[1][0] * input[3][1] -
                         input[0][3] * input[3][0] * input[1][1];
 
-        result[2][3] = -input[0][0] * input[1][1] * input[2][3] + 
-                        input[0][0] * input[2][1] * input[1][3] + 
-                        input[0][1] * input[1][0] * input[2][3] - 
-                        input[0][1] * input[2][0] * input[1][3] - 
-                        input[0][3] * input[1][0] * input[2][1] + 
+        result[2][3] = -input[0][0] * input[1][1] * input[2][3] +
+                        input[0][0] * input[2][1] * input[1][3] +
+                        input[0][1] * input[1][0] * input[2][3] -
+                        input[0][1] * input[2][0] * input[1][3] -
+                        input[0][3] * input[1][0] * input[2][1] +
                         input[0][3] * input[2][0] * input[1][1];
 
-        result[3][0] = -input[1][0] * input[2][1] * input[3][2] + 
-                        input[1][0] * input[3][1] * input[2][2] + 
-                        input[1][1] * input[2][0] * input[3][2] - 
-                        input[1][1] * input[3][0] * input[2][2] - 
-                        input[1][2] * input[2][0] * input[3][1] + 
+        result[3][0] = -input[1][0] * input[2][1] * input[3][2] +
+                        input[1][0] * input[3][1] * input[2][2] +
+                        input[1][1] * input[2][0] * input[3][2] -
+                        input[1][1] * input[3][0] * input[2][2] -
+                        input[1][2] * input[2][0] * input[3][1] +
                         input[1][2] * input[3][0] * input[2][1];
 
-        result[3][1] =  input[0][0] * input[2][1] * input[3][2] - 
-                        input[0][0] * input[3][1] * input[2][2] - 
-                        input[0][1] * input[2][0] * input[3][2] + 
-                        input[0][1] * input[3][0] * input[2][2] + 
-                        input[0][2] * input[2][0] * input[3][1] - 
+        result[3][1] =  input[0][0] * input[2][1] * input[3][2] -
+                        input[0][0] * input[3][1] * input[2][2] -
+                        input[0][1] * input[2][0] * input[3][2] +
+                        input[0][1] * input[3][0] * input[2][2] +
+                        input[0][2] * input[2][0] * input[3][1] -
                         input[0][2] * input[3][0] * input[2][1];
 
-        result[3][2] = -input[0][0] * input[1][1] * input[3][2] + 
-                        input[0][0] * input[3][1] * input[1][2] + 
-                        input[0][1] * input[1][0] * input[3][2] - 
-                        input[0][1] * input[3][0] * input[1][2] - 
-                        input[0][2] * input[1][0] * input[3][1] + 
+        result[3][2] = -input[0][0] * input[1][1] * input[3][2] +
+                        input[0][0] * input[3][1] * input[1][2] +
+                        input[0][1] * input[1][0] * input[3][2] -
+                        input[0][1] * input[3][0] * input[1][2] -
+                        input[0][2] * input[1][0] * input[3][1] +
                         input[0][2] * input[3][0] * input[1][1];
 
-        result[3][3] =  input[0][0] * input[1][1] * input[2][2] - 
-                        input[0][0] * input[2][1] * input[1][2] - 
-                        input[0][1] * input[1][0] * input[2][2] + 
-                        input[0][1] * input[2][0] * input[1][2] + 
-                        input[0][2] * input[1][0] * input[2][1] - 
+        result[3][3] =  input[0][0] * input[1][1] * input[2][2] -
+                        input[0][0] * input[2][1] * input[1][2] -
+                        input[0][1] * input[1][0] * input[2][2] +
+                        input[0][1] * input[2][0] * input[1][2] +
+                        input[0][2] * input[1][0] * input[2][1] -
                         input[0][2] * input[2][0] * input[1][1];
 
         double det = input[0][0] * result[0][0] + input[1][0] * result[0][1] + input[2][0] * result[0][2] + input[3][0] * result[0][3];
@@ -230,11 +230,11 @@ namespace
 
         // Calculate distance interpolation points to image point
         for (int l=0; l<n; ++l)
-            ghost_cell.c_idw[l] = abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i], 
+            ghost_cell.c_idw[l] = abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i],
                                                ghost_cell.yI, y[ghost_cell.neighbours[l].j],
                                                ghost_cell.zI, z[ghost_cell.neighbours[l].k]);
 
-        ghost_cell.c_idw[n] = abs_distance(ghost_cell.xI, ghost_cell.xB, 
+        ghost_cell.c_idw[n] = abs_distance(ghost_cell.xI, ghost_cell.xB,
                                            ghost_cell.yI, ghost_cell.yB,
                                            ghost_cell.zI, ghost_cell.zB);
 
@@ -263,8 +263,8 @@ namespace
                 const int ijk = it->neighbours[i].i + it->neighbours[i].j*jj + it->neighbours[i].k*kk;
                 vI += it->c_idw[i] * field[ijk];
             }
-            vI += it->c_idw[nn] * boundary_value; 
-            vI /= it->c_idw_sum; 
+            vI += it->c_idw[nn] * boundary_value;
+            vI /= it->c_idw_sum;
 
             // Reflect across boundary
             const int ijk = it->i + it->j*jj + it->k*kk;
@@ -281,7 +281,7 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 
     int nerror = 0;
 
-    inputin->get_item(&sw_ib,   "immersed_boundary", "sw_ib",   "", "0");
+    inputin->get_item(&sw_ib, "immersed_boundary", "sw_ib", "", "0");
 
     // Get the IB type, and required parameters for that type
     if (sw_ib == "0")
@@ -306,7 +306,7 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
         if (sw_ib == "gaussian")
             ib_type = Gaus_type;
         else if (sw_ib == "agnesi")
-            ib_type = Agnesi_type; 
+            ib_type = Agnesi_type;
         nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
         nerror += inputin->get_item(&amplitude,    "immersed_boundary", "amplitude",    ""    );
         nerror += inputin->get_item(&x0_hill,      "immersed_boundary", "x0_hill",      ""    );
@@ -325,6 +325,7 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     if (ib_type != None_type)
     {
         grid->set_minimum_ghost_cells(2, 2, 1);
+
         inputin->get_item(&sw_interpol, "immersed_boundary", "sw_interpolation", "");
 
         if (sw_interpol == "linear")
@@ -445,7 +446,7 @@ double Immersed_boundary::boundary_function(const double x, const double y)
     {
         if (sw == Sine_type)
         {
-            const double pi = std::acos((double)-1.); 
+            const double pi = std::acos((double)-1.);
             return z_offset + amplitude + amplitude * std::sin(2*pi*x/wavelength_x);
         }
         else if (sw == Gaus_type)
@@ -461,7 +462,7 @@ double Immersed_boundary::boundary_function(const double x, const double y)
     {
         if (sw == Sine_type)
         {
-            const double pi = std::acos((double)-1.); 
+            const double pi = std::acos((double)-1.);
             return z_offset + amplitude + amplitude * std::sin(2*pi*x/wavelength_x) * std::sin(2*pi*y/wavelength_y);
         }
         else if (sw == Gaus_type)
@@ -499,7 +500,7 @@ bool Immersed_boundary::is_ghost_cell(const double* const restrict x, const doub
 
 template<Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min, double& z_min, double& d_min,
-                                                   const double x, const double y, const double z, 
+                                                   const double x, const double y, const double z,
                                                    const int i, const int j, const int k)
 {
     const double dx = grid->dx;
@@ -527,11 +528,11 @@ void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min,
 }
 
 template<Immersed_boundary::IB_type sw, int dims>
-void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell, 
+void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
                                                   const double* const restrict x, const double* const restrict y, const double* const restrict z,
                                                   const int i, const int j, const int k, const int n)
 {
-    double x_min, y_min, z_min, d_min;  // x, y, z location and distance to wall 
+    double x_min, y_min, z_min, d_min;  // x, y, z location and distance to wall
 
     // Minimal distance that a grid point used in the interpolation has to be
     // away from the IB, to prevent getting extreme extrapolated values in the ghost cells
@@ -546,7 +547,7 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
                 if (z[k+dk] > boundary_function<sw,dims>(x[i+di], y[j+dj]))
                 {
                     // Calculate distance (d_min) of current grid point to the IB
-                    find_nearest_location_wall<sw,dims>(x_min, y_min, z_min, d_min, x[i+di], y[j+dj], z[k+dk], i+di, j+dj, k+dk); 
+                    find_nearest_location_wall<sw,dims>(x_min, y_min, z_min, d_min, x[i+di], y[j+dj], z[k+dk], i+di, j+dj, k+dk);
 
                     // As described above; exclude grid points which are close to the IB
                     if (d_min > d_lim)
@@ -574,7 +575,7 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
     precalculate_idw(ghost_cell, x, y, z);
 }
 
-//void Immersed_boundary::define_distance_matrix(Ghost_cell& ghost_cell, 
+//void Immersed_boundary::define_distance_matrix(Ghost_cell& ghost_cell,
 //                                               const double* const restrict x, const double* const restrict y, const double* const restrict z)
 //{
 //    const int n = 4;
@@ -593,67 +594,82 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
 //    tmp[1][2] = y[ghost_cell.neighbours[0].j];   // x-location of fluid point #1
 //    tmp[2][2] = y[ghost_cell.neighbours[1].j];   // x-location of fluid point #2
 //    tmp[3][2] = y[ghost_cell.neighbours[2].j];   // x-location of fluid point #3
-//    
+//
 //    tmp[0][3] = ghost_cell.zb;                   // z-location of given value on boundary
 //    tmp[1][3] = z[ghost_cell.neighbours[0].k];   // z-location of fluid point #1
 //    tmp[2][3] = z[ghost_cell.neighbours[1].k];   // z-location of fluid point #1
 //    tmp[3][3] = z[ghost_cell.neighbours[2].k];   // z-location of fluid point #1
 //
-//    // Resize matrix in ghost_cell to 4x4 
+//    // Resize matrix in ghost_cell to 4x4
 //    ghost_cell.B.resize(n, std::vector<double>(n));
-//    
+//
 //    // Save the inverse of the matrix
 //    inverse_mat_4x4(ghost_cell.B, tmp);
 //}
-  
+
 void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell>* ghost_cells, std::string file_name,
                                          const double* const restrict x, const double* const restrict y, const double* const restrict z)
 {
     bool is_optional = false;
     Data_map input;
 
-    // Read the input data into a std::map< header_name, std::vecor<data> > 
+    // Read the input data into a std::map< header_name, std::vecor<data> >
     model->input->read_data_file(&input, file_name, is_optional);
+
+    const int mpioffsx = model->master->mpicoordx * grid->imax;
+    const int mpioffsy = model->master->mpicoordy * grid->jmax;
+
+    const int i0 = mpioffsx + grid->igc;
+    const int i1 = mpioffsx + grid->igc + grid->imax;
+    const int j0 = mpioffsy + grid->jgc;
+    const int j1 = mpioffsy + grid->jgc + grid->jmax;
 
     for (int n=0; n<input["i"].size(); ++n)
     {
-        const int i = input["i"][n] + grid->istart;
-        const int j = input["j"][n] + grid->jstart;
-        const int k = input["k"][n] + grid->kstart;
+        int i = input["i"][n] + grid->istart;
+        int j = input["j"][n] + grid->jstart;
+        int k = input["k"][n] + grid->kstart;
 
-        Ghost_cell tmp_ghost = {i, j, k}; 
-
-        // Location on boundary
-        tmp_ghost.xB = input["xb"][n];
-        tmp_ghost.yB = input["yb"][n];
-        tmp_ghost.zB = input["zb"][n];
-
-        // Location image point
-        tmp_ghost.xI = 2*tmp_ghost.xB - x[i];
-        tmp_ghost.yI = 2*tmp_ghost.yB - y[j];
-        tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
-        
-        // Neighbours
-        const int n_neighbours = input["nn"][n];
-
-        for (int nn=0; nn<n_neighbours; ++nn)
+        // Check if grid point on this MPI task
+        if (i >= i0 && i < i1 && j >= j0 && j < j1)
         {
-            const int in = input["i"+std::to_string(nn)][n] + grid->istart;
-            const int jn = input["j"+std::to_string(nn)][n] + grid->jstart;
-            const int kn = input["k"+std::to_string(nn)][n] + grid->kstart;
+            i -= mpioffsx + grid->igc;
+            j -= mpioffsy + grid->jgc;
 
-            Neighbour tmp_neighbour = {in, jn, kn, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])}; 
-            tmp_ghost.neighbours.push_back(tmp_neighbour);
+            Ghost_cell tmp_ghost = {i, j, k};
+
+            // Location on boundary
+            tmp_ghost.xB = input["xb"][n];
+            tmp_ghost.yB = input["yb"][n];
+            tmp_ghost.zB = input["zb"][n];
+
+            // Location image point
+            tmp_ghost.xI = 2*tmp_ghost.xB - x[i];
+            tmp_ghost.yI = 2*tmp_ghost.yB - y[j];
+            tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
+
+            // Neighbours
+            const int n_neighbours = input["nn"][n];
+
+            for (int nn=0; nn<n_neighbours; ++nn)
+            {
+                const int in = input["i"+std::to_string(nn)][n] + grid->istart - mpioffsx;
+                const int jn = input["j"+std::to_string(nn)][n] + grid->jstart - mpioffsy;
+                const int kn = input["k"+std::to_string(nn)][n] + grid->kstart;
+
+                Neighbour tmp_neighbour = {in, jn, kn, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])};
+                tmp_ghost.neighbours.push_back(tmp_neighbour);
+            }
+
+            precalculate_idw(tmp_ghost, x, y, z);
+
+            ghost_cells->push_back(tmp_ghost);
         }
-
-        precalculate_idw(tmp_ghost, x, y, z);
-
-        ghost_cells->push_back(tmp_ghost);
     }
 }
 
 template<Immersed_boundary::IB_type sw, int dims>
-void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell>* ghost_cells, 
+void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell>* ghost_cells,
                                          const double* const restrict x, const double* const restrict y, const double* const restrict z)
 {
     const int ii = 1;
@@ -757,25 +773,25 @@ void Immersed_boundary::get_mask(Field3d *mfield, Field3d *mfieldh)
     if (xy_dims == 1)
     {
         if (ib_type == Sine_type)
-            calc_mask<Sine_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+            calc_mask<Sine_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
                                     grid->x, grid->y, grid->z, grid->zh);
         else if (ib_type == Gaus_type)
-            calc_mask<Gaus_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+            calc_mask<Gaus_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
                                     grid->x, grid->y, grid->z, grid->zh);
         else if (ib_type == Agnesi_type)
-            calc_mask<Agnesi_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+            calc_mask<Agnesi_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
                                     grid->x, grid->y, grid->z, grid->zh);
     }
     else if (xy_dims == 2)
     {
         if (ib_type == Sine_type)
-            calc_mask<Sine_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+            calc_mask<Sine_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
                                     grid->x, grid->y, grid->z, grid->zh);
         else if (ib_type == Gaus_type)
-            calc_mask<Gaus_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+            calc_mask<Gaus_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
                                     grid->x, grid->y, grid->z, grid->zh);
         else if (ib_type == Agnesi_type)
-            calc_mask<Agnesi_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, 
+            calc_mask<Agnesi_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
                                     grid->x, grid->y, grid->z, grid->zh);
     }
 }
