@@ -22,6 +22,8 @@
 
 #include <cstdio>
 #include <algorithm>
+#include <iostream>
+#include <math.h>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -31,6 +33,9 @@
 #include "model.h"
 #include "stats.h"
 #include "timeloop.h"
+#include "boundary.h"
+
+using namespace Finite_difference::O2;
 
 #include <iostream> // Tmp BvS
 
@@ -41,12 +46,12 @@ Force::Force(Model* modelin, Input* inputin)
     fields = model->fields;
     master = model->master;
 
-    ug = 0;
-    vg = 0;
+    ug  = 0;
+    vg  = 0;
     wls = 0;
 
-    ug_g = 0;
-    vg_g = 0;
+    ug_g  = 0;
+    vg_g  = 0;
     wls_g = 0;
 
     int nerror = 0;

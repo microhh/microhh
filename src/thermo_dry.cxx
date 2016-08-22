@@ -25,7 +25,6 @@
 #include <cmath>
 #include "grid.h"
 #include "fields.h"
-#include "thermo_dry.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -36,27 +35,31 @@
 #include "cross.h"
 #include "dump.h"
 
+#include "thermo_dry.h"
+#include "thermo_moist_functions.h"  // For Exner function
+
 using Finite_difference::O2::interp2;
 using Finite_difference::O4::interp4;
 using namespace Constants;
+using namespace Thermo_moist_functions;
 
 Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin)
 {
     swthermo = "dry";
 
-    thref  = 0;
-    threfh = 0;
-    pref   = 0;
-    prefh  = 0;
-    exner  = 0;
-    exnerh = 0;
+    thref     = 0;
+    threfh    = 0;
+    pref      = 0;
+    prefh     = 0;
+    exnref    = 0;
+    exnrefh   = 0;
 
-    thref_g  = 0;
-    threfh_g = 0;
-    pref_g   = 0;
-    prefh_g  = 0;
-    exner_g  = 0;
-    exnerh_g = 0;
+    thref_g   = 0;
+    threfh_g  = 0;
+    pref_g    = 0;
+    prefh_g   = 0;
+    exnref_g  = 0;
+    exnrefh_g = 0;
 
     int nerror = 0;
 
@@ -92,12 +95,12 @@ Thermo_dry::Thermo_dry(Model *modelin, Input *inputin) : Thermo(modelin, inputin
 
 Thermo_dry::~Thermo_dry()
 {
-    delete[] this->thref;
-    delete[] this->threfh;
-    delete[] this->pref;
-    delete[] this->prefh;
-    delete[] this->exner;
-    delete[] this->exnerh;
+    delete[] thref;
+    delete[] threfh;
+    delete[] pref;
+    delete[] prefh;
+    delete[] exnref;
+    delete[] exnrefh;
 
 #ifdef USECUDA
     clear_device();
@@ -110,12 +113,12 @@ void Thermo_dry::init()
     stats = model->stats;
 
     // fields for Boussinesq and anelastic solver
-    thref  = new double[grid->kcells];
-    threfh = new double[grid->kcells];
-    pref   = new double[grid->kcells];
-    prefh  = new double[grid->kcells];
-    exner  = new double[grid->kcells];
-    exnerh = new double[grid->kcells];
+    thref   = new double[grid->kcells];
+    threfh  = new double[grid->kcells];
+    pref    = new double[grid->kcells];
+    prefh   = new double[grid->kcells];
+    exnref  = new double[grid->kcells];
+    exnrefh = new double[grid->kcells];
 
     init_cross();
     init_dump(); 
@@ -132,8 +135,7 @@ void Thermo_dry::create(Input *inputin)
             throw 1;
         if (inputin->get_prof(&thref[grid->kstart], "th", grid->kmax))
             throw 1;
-
-        init_base_state(fields->rhoref, fields->rhorefh, pref, prefh, exner, exnerh, thref, threfh, pbot);
+        calc_base_state(fields->rhoref, fields->rhorefh, pref, prefh, exnref, exnrefh, thref, threfh, pbot);
     }
     else
     {
@@ -433,9 +435,10 @@ void Thermo_dry::calc_buoyancy_tend_4th(double* restrict wt, double* restrict th
             }
 }
 
-void Thermo_dry::init_base_state(double* restrict rho,    double* restrict rhoh,
+// Initialize the base state for the anelastic solver
+void Thermo_dry::calc_base_state(double* restrict rhoref, double* restrict rhorefh,
                                  double* restrict pref,   double* restrict prefh,
-                                 double* restrict exner,  double* restrict exnerh,
+                                 double* restrict exnref, double* restrict exnrefh,
                                  double* restrict thref,  double* restrict threfh,
                                  const double pbot)
 {
@@ -448,43 +451,32 @@ void Thermo_dry::init_base_state(double* restrict rho,    double* restrict rhoh,
     // extrapolate the input sounding to get the top value
     threfh[kend] = thref[kend-1] + (grid->zh[kend]-grid->z[kend-1])*(thref[kend-1]-thref[kend-2])*grid->dzhi[kend-1];
 
-    // set the ghost cells for the reference temperature
+    // set the ghost cells for the reference potential temperature
     thref[kstart-1] = 2.*threfh[kstart] - thref[kstart];
     thref[kend]     = 2.*threfh[kend]   - thref[kend-1];
 
     // interpolate the input sounding to half levels
-    for (int k=grid->kstart+1; k<grid->kend; ++k)
+    for (int k=kstart+1; k<kend; ++k)
         threfh[k] = 0.5*(thref[k-1] + thref[k]);
 
-    // calculate the full level base state pressure and density
-    for (int k=grid->kstart; k<grid->kend; ++k)
+    // Calculate pressure
+    prefh[kstart] = pbot;
+    pref [kstart] = pbot * std::exp(-grav * grid->z[kstart] / (Rd * threfh[kstart] * exner(prefh[kstart])));
+    for (int k=kstart+1; k<kend+1; ++k)
     {
-        pref [k] = pbot*std::exp(-grav/(Rd*thref[k])*grid->z[k]);
-        exner[k] = std::pow(pref[k]/pbot, Rd/cp);
-
-        // set the base density
-        rho[k] = pref[k] / (Rd*exner[k]*thref[k]);
+        prefh[k] = prefh[k-1] * std::exp(-grav * grid->dz[k-1] / (Rd * thref[k-1] * exner(pref[k-1])));
+        pref [k] = pref [k-1] * std::exp(-grav * grid->dzh[k ] / (Rd * threfh[k ] * exner(prefh[k ])));
     }
+    pref[kstart-1] = 2.*prefh[kstart] - pref[kstart];
 
-    // calculate the half level base state pressure and density
-    for (int k=grid->kstart; k<grid->kend+1; ++k)
+    // Calculate density and exner
+    for (int k=0; k<grid->kcells; ++k)
     {
-        prefh [k] = pbot*std::exp(-grav/(Rd*threfh[k])*grid->zh[k]);
-        exnerh[k] = std::pow(prefh[k]/pbot, Rd/cp);
-
-        // set the base density for the entire model
-        rhoh[k] = prefh[k] / (Rd*exnerh[k]*threfh[k]);
+        exnref[k]  = exner(pref[k] );
+        exnrefh[k] = exner(prefh[k]);
+        rhoref[k]  = pref[k]  / (Rd * thref[k]  * exnref[k] );
+        rhorefh[k] = prefh[k] / (Rd * threfh[k] * exnrefh[k]);
     }
-
-    // set the ghost cells for the reference variables
-    // CvH for now in 2nd order
-    pref[kstart-1]  = 2.*prefh [kstart] - pref [kstart];
-    exner[kstart-1] = 2.*exnerh[kstart] - exner[kstart];
-    rho[kstart-1]   = 2.*rhoh[kstart] - rho[kstart];
-
-    pref[kend]      = 2.*prefh [kend] - pref [kend-1];
-    exner[kend]     = 2.*exnerh[kend] - exner[kend-1];
-    rho[kend]       = 2.*rhoh[kend] - rho[kend-1];
 }
 
 void Thermo_dry::init_stat()
