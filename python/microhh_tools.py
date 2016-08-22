@@ -46,7 +46,7 @@ class Read_namelist:
 
 # Read grid file MicroHH:
 class Read_grid:
-    def __init__(self, itot, jtot, ktot, zsize, filename=None, n_ghost=0, endian='little'):
+    def __init__(self, itot, jtot, ktot, zsize, filename=None, igc=0, jgc=0, kgc=0, endian='little'):
         if endian not in ['little', 'big']:
             raise ValueError('endian has to be \"little\" or \"big\"!')
         self.endian = '<' if endian == 'little' else '>'
@@ -75,29 +75,30 @@ class Read_grid:
         self.zsize = zsize
 
         # Add ghost cells
-        if (n_ghost > 0):
-            for i in range(n_ghost):
+        if (igc > 0):
+            for i in range(igc):
                 self.x  = np.insert(self.x,  0, self.x [0 ]-self.dx)
                 self.x  = np.append(self.x,     self.x [-1]+self.dx)   
                 self.xh = np.insert(self.xh, 0, self.xh[0 ]-self.dx) 
                 self.xh = np.append(self.xh,    self.xh[-1]+self.dx) 
-           
+        if (jgc > 0):
+            for i in range(jgc):
                 self.y  = np.insert(self.y,  0, self.y [0 ]-self.dy)
                 self.y  = np.append(self.y,     self.y [-1]+self.dy)   
                 self.yh = np.insert(self.yh, 0, self.yh[0 ]-self.dy) 
                 self.yh = np.append(self.yh,    self.yh[-1]+self.dy) 
-            
+        if (kgc > 0):
             self.z  = np.insert(self.z,  0, -self.z[0])
             self.z  = np.append(self.z,  2*zsize-self.z[-1])
             self.zh = np.insert(self.zh, 0, 0) # undefined
             self.zh = np.append(self.zh, zsize)
 
-        self.istart = n_ghost
-        self.iend   = self.itot+n_ghost 
-        self.jstart = n_ghost
-        self.jend   = self.jtot+n_ghost
+        self.istart = igc
+        self.iend   = self.itot+igc
+        self.jstart = jgc
+        self.jend   = self.jtot+jgc
        
-        ngz = 1 if n_ghost > 0 else 0 
+        ngz = 1 if kgc > 0 else 0
         self.kstart = ngz
         self.kend   = self.ktot+ngz
 
