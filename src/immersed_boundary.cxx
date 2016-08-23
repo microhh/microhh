@@ -770,6 +770,13 @@ void Immersed_boundary::calc_mask(double* const restrict mask, double* const res
 
 void Immersed_boundary::get_mask(Field3d *mfield, Field3d *mfieldh)
 {
+    // Mask is currently only implemented for boundaries set up from f(x,y)
+    if ((ib_type != Sine_type) && (ib_type != Gaus_type) && (ib_type != Agnesi_type))
+    {
+        model->master->print_error("Get_mask() not yet implemented for chosen IB type\n");
+        throw 1;
+    }
+
     if (xy_dims == 1)
     {
         if (ib_type == Sine_type)

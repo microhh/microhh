@@ -34,6 +34,7 @@
 #include "stats.h"
 #include "timeloop.h"
 #include "boundary.h"
+#include "immersed_boundary.h"
 
 using namespace Finite_difference::O2;
 
@@ -206,9 +207,19 @@ void Force::exec(double dt)
 {
     if (swlspres == "uflux")
     {
-        fbody_u = calc_flux(fields->ut->data, fields->u->data, grid->dz, dt);
-        add_flux(fields->ut->data, fbody_u);
+        if (model->immersed_boundary->get_switch() != Immersed_boundary::None_type)
+        {
+            model->immersed_boundary->get_mask(fields->atmp["tmp1"], fields->atmp["tmp2"]);
+            fbody_u = calc_flux(fields->ut->data, fields->u->data, grid->dz, dt, fields->atmp["tmp1"]->data);
+            add_flux(fields->ut->data, fbody_u, fields->atmp["tmp1"]->data);
+        }
+        else
+        {
+            fbody_u = calc_flux(fields->ut->data, fields->u->data, grid->dz, dt);
+            add_flux(fields->ut->data, fbody_u);
+        }
     }
+
 
     else if (swlspres == "geo")
     {
@@ -319,7 +330,7 @@ double Force::calc_flux(double* const restrict ut, const double* const restrict 
 
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -336,10 +347,59 @@ double Force::calc_flux(double* const restrict ut, const double* const restrict 
     return (uflux - uavg - ugrid) / dt - utavg;
 }
 
+// Overloaded calc_flux which accounts for mask
+double Force::calc_flux(double* const restrict ut, const double* const restrict u, 
+                        const double* const restrict dz, const double dt, const double* const restrict mask)
+{
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    const double ugrid = grid->utrans;
+
+    double uavg  = 0.;
+    double utavg = 0.;
+    double ndz = 0;
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                uavg  += mask[ijk]*u [ijk]*dz[k];
+                utavg += mask[ijk]*ut[ijk]*dz[k];
+                ndz   += mask[ijk]*dz[k];
+            }
+
+    grid->get_sum(&uavg);
+    grid->get_sum(&utavg);
+    grid->get_sum(&ndz);
+
+    uavg  = uavg  / ndz;
+    utavg = utavg / ndz;
+
+    return (uflux - uavg - ugrid) / dt - utavg;
+}
+
 void Force::add_flux(double* const restrict ut, const double fbody)
 {
     for (int n=0; n<grid->ncells; n++)
         ut[n] += fbody;
+}
+
+// Overloaded add_flux which accounts for mask
+void Force::add_flux(double* const restrict ut, const double fbody, const double* const restrict mask)
+{
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    for (int k=grid->kstart; k<grid->kend; ++k)
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            #pragma ivdep
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                ut[ijk] += mask[ijk]*fbody;
+            }
 }
 
 void Force::calc_coriolis_2nd(double* const restrict ut, double* const restrict vt,

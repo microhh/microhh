@@ -106,7 +106,8 @@ Model::Model(Master *masterin, Input *inputin)
                 *it != "ql"          &&
                 *it != "qlcore"      &&
                 *it != "patch_high"  &&
-                *it != "patch_low")
+                *it != "patch_low"   &&
+                *it != "ib" )
             {
                 master->print_warning("%s is an undefined mask for conditional statistics\n", it->c_str());
             }
@@ -329,6 +330,11 @@ void Model::exec()
                     else if (*it == "patch_high" || *it == "patch_low")
                     {
                         boundary->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+                        calc_stats(*it);
+                    }
+                    else if (*it == "ib")
+                    {
+                        immersed_boundary->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"]);
                         calc_stats(*it);
                     }
                 }

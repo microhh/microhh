@@ -91,9 +91,15 @@ class Force
 
         void update_time_dependent_profs(double, double, int, int); ///< Set the time dependent profiles.
 
+        // Calculate and add pressure force
         double calc_flux(double* const, const double* const,
                          const double* const, const double); ///< Calculates the pressure force to enforce a constant mass-flux.
         void add_flux(double* const, const double);          ///< Adds the pressure force to enforce a constant mass-flux.
+
+        // Overloaded functions which account for mask
+        double calc_flux(double* const, const double* const,
+                         const double* const, const double, const double* const); ///< Calculates the pressure force to enforce a constant mass-flux.
+        void add_flux(double* const, const double, const double* const);          ///< Adds the pressure force to enforce a constant mass-flux.
 
         void calc_coriolis_2nd(double* const, double* const,
                                const double* const, const double* const,
