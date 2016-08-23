@@ -239,7 +239,7 @@ namespace
                                            ghost_cell.zI, ghost_cell.zB);
 
         // Save maximum distance
-        const double max_distance = *std::max_element(std::begin(ghost_cell.c_idw), std::end(ghost_cell.c_idw));
+        const double max_distance = *std::max_element(ghost_cell.c_idw.begin(), ghost_cell.c_idw.end());
 
         // Calculate coefficients
         ghost_cell.c_idw_sum = 0;
@@ -653,9 +653,10 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell>* ghost_cells, s
 
             for (int nn=0; nn<n_neighbours; ++nn)
             {
-                const int in = input["i"+std::to_string(nn)][n] + grid->istart - mpioffsx;
-                const int jn = input["j"+std::to_string(nn)][n] + grid->jstart - mpioffsy;
-                const int kn = input["k"+std::to_string(nn)][n] + grid->kstart;
+                // Note BvS: the cast to long long is only necessary as intel currently doesn't have the full c++11 set of to_string() implemented
+                const int in = input["i"+std::to_string(static_cast<long long>(nn))][n] + grid->istart - mpioffsx;
+                const int jn = input["j"+std::to_string(static_cast<long long>(nn))][n] + grid->jstart - mpioffsy;
+                const int kn = input["k"+std::to_string(static_cast<long long>(nn))][n] + grid->kstart;
 
                 Neighbour tmp_neighbour = {in, jn, kn, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])};
                 tmp_ghost.neighbours.push_back(tmp_neighbour);
