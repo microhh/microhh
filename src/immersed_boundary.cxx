@@ -626,15 +626,15 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell>* ghost_cells, s
 
     for (int n=0; n<input["i"].size(); ++n)
     {
-        int i = input["i"][n] + grid->istart;
-        int j = input["j"][n] + grid->jstart;
-        int k = input["k"][n] + grid->kstart;
+        int i = input["i"][n] + grid->igc;
+        int j = input["j"][n] + grid->jgc;
+        int k = input["k"][n] + grid->kgc;
 
         // Check if grid point on this MPI task
         if (i >= i0 && i < i1 && j >= j0 && j < j1)
         {
-            i -= mpioffsx + grid->igc;
-            j -= mpioffsy + grid->jgc;
+            i -= mpioffsx;
+            j -= mpioffsy;
 
             Ghost_cell tmp_ghost = {i, j, k};
 
@@ -656,6 +656,8 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell>* ghost_cells, s
                 const int in = input["i"+std::to_string(nn)][n] + grid->istart - mpioffsx;
                 const int jn = input["j"+std::to_string(nn)][n] + grid->jstart - mpioffsy;
                 const int kn = input["k"+std::to_string(nn)][n] + grid->kstart;
+
+                std::cout << y[j] << " - " << y[jn] << std::endl;
 
                 Neighbour tmp_neighbour = {in, jn, kn, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])};
                 tmp_ghost.neighbours.push_back(tmp_neighbour);
