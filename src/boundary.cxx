@@ -465,7 +465,7 @@ Boundary* Boundary::factory(Master* masterin, Input* inputin, Model* modelin)
 
     if (swboundary == "surface")
         return new Boundary_surface(modelin, inputin);
-    if (swboundary == "bulk")
+    if (swboundary == "surface_bulk")
         return new Boundary_surface_bulk(modelin, inputin);
     else if (swboundary == "surface_patch")
         return new Boundary_surface_patch(modelin, inputin);

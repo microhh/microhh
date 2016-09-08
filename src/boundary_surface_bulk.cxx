@@ -51,6 +51,10 @@ void Boundary_surface_bulk::init(Input *inputin)
     // 1. Process the boundary conditions now all fields are registered
     process_bcs(inputin);
 
+
+
+
+
     int nerror = 0;
     nerror += inputin->get_item(&z0m, "boundary", "z0m", "");
     nerror += inputin->get_item(&z0h, "boundary", "z0h", "");
@@ -84,6 +88,10 @@ void Boundary_surface_bulk::init(Input *inputin)
 
     if (nerror)
         throw 1;
+
+
+
+
 
     // 2. Allocate the fields
     obuk  = new double[grid->ijcells];
