@@ -20,8 +20,8 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOUNDARY_BULK
-#define BOUNDARY_BULK
+#ifndef BOUNDARY_SURFACE_BULK
+#define BOUNDARY_SURFACE_BULK
 
 #include "boundary_surface.h"
 #include "stats.h"
