@@ -106,54 +106,8 @@ def esat(T):
 def qsat(p, T):
     return ep*esat(T)/(p-(1.-ep)*esat(T))
 
-def rsat(p, T):
-    return ep*esat(T)/(p-esat(T))
-
 ps  = 101540.
 SST = 299.8 
 ths = SST / (ps/1.e5)**(287.04/1005.)
 qs  = qsat(ps, SST) 
 print('sbot[thl]=%f, sbot[qt]=%f'%(ths, qs))
-
-if(True):
-    # TMP: sounding UCLA-LES
-    ucla_ps  = np.array([     0,  740.,  3260.,    4000.  ])
-    ucla_ts  = np.array([ 297.9,  297.9,  312.6644, 317.0 ])
-    ucla_rts = np.array([  16.0,   13.8,    2.4,      1.8 ])
-    ucla_us  = np.array([  -9.9,   -8.42,  -3.38,    -1.9 ])
-    ucla_vs  = np.array([  -3.8,   -3.8,   -3.8,     -3.8 ])
-
-    qs_tmp = ucla_rts * 1e-3 # g/kg -> kg/kg
-    es_tmp = ps * (qs_tmp) / (-ep*qs_tmp + qs_tmp + ep)
-    ucla_rts2 = ep * es_tmp / (ps - es_tmp)
-
-    print(ucla_rts2)
-
-    import pylab as pl
-    pl.close('all')
-
-    pl.figure()
-    pl.subplot(331)
-    pl.plot(thl, z)
-    pl.plot(ucla_ts, ucla_ps, 'o')
-    
-    pl.subplot(332)
-    pl.plot(qt*1000., z)
-    pl.plot(ucla_rts, ucla_ps, 'o')
-    
-    pl.subplot(333)
-    pl.plot(u, z)
-    pl.plot(ucla_us, ucla_ps, 'o')
-    
-    pl.subplot(334)
-    pl.plot(v, z)
-    pl.plot(ucla_vs, ucla_ps, 'o')
-    
-    pl.subplot(335)
-    pl.plot(wls, z)
-    
-    pl.subplot(336)
-    pl.plot(thlls, z)
-    
-    pl.subplot(337)
-    pl.plot(qtls, z)
