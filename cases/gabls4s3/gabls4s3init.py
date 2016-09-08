@@ -75,7 +75,7 @@ g02s  = Grid(512, 440, 40, 0.25, 8) # dz = 0.25 m
 g02s2 = Grid(480, 410, 30, 0.25, 8) # dz = 0.25 m # mistral
 
 # Switch between vertical grids:
-g = g02s2
+g = g20l
 
 th = np.zeros(g.z.size)
 u  = np.zeros(g.z.size)

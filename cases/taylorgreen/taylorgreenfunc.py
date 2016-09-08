@@ -69,11 +69,7 @@ class geterror:
     self.p = 0.
 
     for k in range(data.z.size):
-      self.u = self.u + sqrt(dx*sum((data.u[k,:] - ref.u[k,:])**2.))
-      self.w = self.w + sqrt(dx*sum((data.w[k,:] - ref.w[k,:])**2.))
-      self.p = self.p + sqrt(dx*sum((data.p[k,:] - ref.p[k,:])**2.))
-
-    self.u = self.u / data.z.size
-    self.w = self.w / data.z.size
-    self.p = self.p / data.z.size
+      self.u = self.u + sum(dx*dz*abs(data.u[k,:] - ref.u[k,:]))
+      self.w = self.w + sum(dx*dz*abs(data.w[k,:] - ref.w[k,:]))
+      self.p = self.p + sum(dx*dz*abs(data.p[k,:] - ref.p[k,:]))
 
