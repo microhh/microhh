@@ -38,6 +38,10 @@
 
 Boundary_surface_bulk::Boundary_surface_bulk(Model* modelin, Input* inputin) : Boundary_surface(modelin, inputin)
 {
+    #ifdef USECUDA
+    master->print_error("swboundary=\"surface_bulk\" not (yet) implemented in CUDA\n");
+    throw 1;
+    #endif
 }
 
 Boundary_surface_bulk::~Boundary_surface_bulk()
@@ -50,10 +54,6 @@ void Boundary_surface_bulk::init(Input *inputin)
 
     // 1. Process the boundary conditions now all fields are registered
     process_bcs(inputin);
-
-
-
-
 
     int nerror = 0;
     nerror += inputin->get_item(&z0m, "boundary", "z0m", "");
@@ -88,10 +88,6 @@ void Boundary_surface_bulk::init(Input *inputin)
 
     if (nerror)
         throw 1;
-
-
-
-
 
     // 2. Allocate the fields
     obuk  = new double[grid->ijcells];
@@ -138,7 +134,7 @@ void Boundary_surface_bulk::set_values()
     }
 }
 
-#ifndef USECUDA
+//#ifndef USECUDA
 void Boundary_surface_bulk::calculate_du(double* restrict dutot, double* restrict u, double* restrict v, double* restrict ubot, double* restrict vbot)
 {
     const int ii = 1;
@@ -269,4 +265,4 @@ void Boundary_surface_bulk::update_bcs()
     model->thermo->get_buoyancy_fluxbot(fields->atmp["tmp2"]);
     surface_scaling(ustar, obuk, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->datafluxbot, bulk_cm); 
 }
-#endif
+//#endif
