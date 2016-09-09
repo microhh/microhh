@@ -83,11 +83,6 @@ Fields::Fields(Model *modelin, Input *inputin)
     // before the init phase, where they are initialized in Fields::init()
     n_tmp_fields = 4;
 
-    // BvS: micro
-    init_tmp_field("tmp5", "", "");
-    init_tmp_field("tmp6", "", "");
-    init_tmp_field("tmp7", "", "");
-
     // Remove the data from the input that is not used in run mode, to avoid warnings.
     if (master->mode == "run")
     {

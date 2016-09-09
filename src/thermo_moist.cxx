@@ -865,6 +865,11 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
         nerror += inputin->get_item(&swmicrobudget, "thermo", "swmicrobudget", "", "0");
         nerror += inputin->get_item(&swmicrobudget, "thermo", "swmicrobudget", "", "0");
         nerror += inputin->get_item(&cflmax_micro,  "thermo", "cflmax_micro",  "", 2.);
+
+        // The microphysics requires three additional tmp fields
+        const int n_tmp = 7;
+        fields->set_minimum_tmp_fields(n_tmp);
+
         fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
         fields->init_prognostic_field("nr", "Number density rain", "m-3");
     }    
