@@ -3,14 +3,14 @@ import struct  as st
 import netCDF4 as nc4
 
 # Settings -------
-variables  = ['qrpath']
-indexes    = [-1] # -1 for surface variable which doesn't have an index
-nx         = 16
-ny         = 16
-nz         = 100
+variables  = ['u','v','w','th','p']
+indexes    = [0,4]
+nx         = 32
+ny         = 32
+nz         = 32
 starttime  = 0
 endtime    = 3600
-sampletime = 60
+sampletime = 300
 iotimeprec = 0
 nxsave     = nx
 nysave     = ny
@@ -93,16 +93,10 @@ for crossname in variables:
         for k in range(np.size(indexes)):
             index = indexes[k]
             otime = int((starttime + t*sampletime) / 10**iotimeprec)
-  
-            if(index == -1): 
-                filein = "{0:}.xy.{1:07d}".format(crossname, otime)
-            else:
-                filein = "{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime)
-
+    
             try:
-                fin = open(filein, "rb")
+                fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
             except:
-                print('reading %s failed'%filein)
                 crossfile.sync()
                 stop = True
                 break
@@ -110,13 +104,9 @@ for crossname in variables:
             print("Processing %8s, time=%7i, index=%4i"%(crossname, otime, index))
 
             var_t[t] = otime * 10**iotimeprec
-
-            if(index >= 0):
-                var_z[k] = z[index] if locz=='z' else zh[index] 
-            else:
-                var_z[k] = 0 
-   
-            fin = open(filein, "rb")
+            var_z[k] = z[index] if locz=='z' else zh[index] 
+    
+            fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
             raw = fin.read(nx*ny*8)
             tmp = np.array(st.unpack('{0}{1}d'.format(en, nx*ny), raw))
             del(raw)
