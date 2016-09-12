@@ -39,6 +39,7 @@ namespace Constants
     const double ep    = Rd/Rv;
 
     // Coefficients saturation vapor pressure estimation
+    // Original MicroHH (/ UCLA-LES)
     const double c0 = 0.6105851e+03; 
     const double c1 = 0.4440316e+02; 
     const double c2 = 0.1430341e+01; 
@@ -48,6 +49,19 @@ namespace Constants
     const double c6 = 0.6936113e-08; 
     const double c7 = 0.2564861e-11; 
     const double c8 = -.3704404e-13; 
+
+    // Coefficients Taylor expansion Arden Buck equation (1981) around T=T0
+    const double c00  = +6.1121000000E+02;
+    const double c10  = +4.4393067270E+01;
+    const double c20  = +1.4279398448E+00;
+    const double c30  = +2.6415206946E-02;
+    const double c40  = +3.0291749160E-04;
+    const double c50  = +2.1159987257E-06;
+    const double c60  = +7.5015702516E-09;
+    const double c70  = -1.5604873363E-12;
+    const double c80  = -9.9726710231E-14;
+    const double c90  = -4.8165754883E-17;
+    const double c100 = +1.3839187032E-18;
 
     // Coefficients exner function estimation
     const double ex1 = 2.85611940298507510698e-06;
