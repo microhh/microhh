@@ -166,7 +166,9 @@ void Fields::init()
     // now that all classes have been able to set the minimum number of tmp fields, initialize them
     for (int i=1; i<=n_tmp_fields; ++i)
     {
-        std::string name = "tmp" + std::to_string(i);
+        // BvS: the cast to long long is unfortunately necessary for Intel compilers
+        // which don't seem to have the full c++11 implementation
+        std::string name = "tmp" + std::to_string(static_cast<long long>(i));
         init_tmp_field(name, "", "");
     }
 
