@@ -70,6 +70,15 @@ class Diff_smag_2 : public Diff
                                 double*, double*,
                                 double, double);
 
+        // Diffusive fluxes:
+        void uflux(double*, double*, double*, 
+                   const double*, const double*, const double*, const double*, const double*, 
+                   const double*, const double*, const double*, const double*, const double*);
+
+        // Divergence diffusive fluxes:
+        void div_uflux(double*, const double*, const double*, const double*, const double*, const double*, const double*);
+
+        // Combined flux divergence:
         template<bool>
         void diff_u(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
         template<bool>
