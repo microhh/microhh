@@ -230,13 +230,13 @@ namespace
 
         // Calculate distance interpolation points to image point
         for (int l=0; l<n; ++l)
-            ghost_cell.c_idw[l] = abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i],
-                                               ghost_cell.yI, y[ghost_cell.neighbours[l].j],
-                                               ghost_cell.zI, z[ghost_cell.neighbours[l].k]);
+            ghost_cell.c_idw[l] = std::max(abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i],
+                                                        ghost_cell.yI, y[ghost_cell.neighbours[l].j],
+                                                        ghost_cell.zI, z[ghost_cell.neighbours[l].k]), Constants::dsmall);
 
-        ghost_cell.c_idw[n] = abs_distance(ghost_cell.xI, ghost_cell.xB,
-                                           ghost_cell.yI, ghost_cell.yB,
-                                           ghost_cell.zI, ghost_cell.zB);
+        ghost_cell.c_idw[n] = std::max(abs_distance(ghost_cell.xI, ghost_cell.xB,
+                                                    ghost_cell.yI, ghost_cell.yB,
+                                                    ghost_cell.zI, ghost_cell.zB), Constants::dsmall);
 
         // Save maximum distance
         const double max_distance = *std::max_element(ghost_cell.c_idw.begin(), ghost_cell.c_idw.end());
@@ -315,6 +315,11 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
         nerror += inputin->get_item(&sigma_y_hill, "immersed_boundary", "sigma_y_hill", "", -1);
         nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
     }
+    else if (sw_ib == "flat")
+    {
+        ib_type = Flat_type;
+        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+    }
     else
     {
         model->master->print_error("sw_ib = \"%s\" not (yet) supported\n", sw_ib.c_str());
@@ -376,7 +381,13 @@ void Immersed_boundary::create()
         file_name = "s.ib_input";
         read_ghost_cells(&ghost_cells_s, file_name, grid->x, grid->y, grid->z);
     }
-
+    else if (ib_type == Flat_type)
+    {
+        find_ghost_cells<Flat_type, 1>(&ghost_cells_u, grid->xh, grid->y,  grid->z );
+        find_ghost_cells<Flat_type, 1>(&ghost_cells_v, grid->x,  grid->yh, grid->z );
+        find_ghost_cells<Flat_type, 1>(&ghost_cells_w, grid->x,  grid->y,  grid->zh);
+        find_ghost_cells<Flat_type, 1>(&ghost_cells_s, grid->x,  grid->y,  grid->z );
+    }
     else if (xy_dims == 1)
     {
         if (ib_type == Sine_type)
@@ -432,17 +443,20 @@ void Immersed_boundary::create()
     model->master->print_message("Found %i IB[s] ghost cells \n", ghost_cells_s.size());
 
     // Debug.....
-    std::string name;
-    name = "debug_u.txt"; write_debug(ghost_cells_u, name);
-    name = "debug_v.txt"; write_debug(ghost_cells_v, name);
-    name = "debug_w.txt"; write_debug(ghost_cells_w, name);
-    name = "debug_s.txt"; write_debug(ghost_cells_s, name);
+    //std::string name;
+    //name = "debug_u.txt"; write_debug(ghost_cells_u, name);
+    //name = "debug_v.txt"; write_debug(ghost_cells_v, name);
+    //name = "debug_w.txt"; write_debug(ghost_cells_w, name);
+    //name = "debug_s.txt"; write_debug(ghost_cells_s, name);
 }
 
 template<Immersed_boundary::IB_type sw, int dims>
 double Immersed_boundary::boundary_function(const double x, const double y)
 {
-    if (dims == 1)
+    if (sw == Flat_type)
+        return z_offset;
+
+    else if (dims == 1)
     {
         if (sw == Sine_type)
         {
@@ -482,7 +496,7 @@ template<Immersed_boundary::IB_type sw, int dims>
 bool Immersed_boundary::is_ghost_cell(const double* const restrict x, const double* const restrict y, const double* const restrict z,
                                       const int i, const int j, const int k)
 {
-    if (z[k] < boundary_function<sw, dims>(x[i], y[j]))  // Inside IB
+    if (z[k] <= boundary_function<sw, dims>(x[i], y[j]))  // Inside IB
     {
         // Check if one of the neighbouring grid cells is outside the IB
         for (int dk=-1; dk<2; ++dk) // BvS Fix this
@@ -774,13 +788,18 @@ void Immersed_boundary::calc_mask(double* const restrict mask, double* const res
 void Immersed_boundary::get_mask(Field3d *mfield, Field3d *mfieldh)
 {
     // Mask is currently only implemented for boundaries set up from f(x,y)
-    if ((ib_type != Sine_type) && (ib_type != Gaus_type) && (ib_type != Agnesi_type))
+    if ((ib_type != Sine_type) && (ib_type != Gaus_type) && (ib_type != Agnesi_type) && (ib_type != Flat_type))
     {
         model->master->print_error("Get_mask() not yet implemented for chosen IB type\n");
         throw 1;
     }
 
-    if (xy_dims == 1)
+    if (ib_type == Flat_type)
+    {
+        calc_mask<Flat_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
+                                grid->x, grid->y, grid->z, grid->zh);
+    }
+    else if (xy_dims == 1)
     {
         if (ib_type == Sine_type)
             calc_mask<Sine_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
