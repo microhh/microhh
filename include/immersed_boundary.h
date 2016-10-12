@@ -65,7 +65,7 @@ struct Ghost_cell
 class Immersed_boundary
 {
     public:
-        enum IB_type{None_type, Sine_type, Gaus_type, Agnesi_type, Block_type, User_type};
+        enum IB_type{None_type, Sine_type, Gaus_type, Agnesi_type, Flat_type, User_type};
         enum Interpol_type{Linear_type, Distance_type};
 
         Immersed_boundary(Model*, Input*); ///< Constructor of the class.
@@ -93,8 +93,8 @@ class Immersed_boundary
         template<IB_type, int> 
         void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*); 
         template<IB_type, int> 
-        void find_ghost_cells(std::vector<Ghost_cell>*, const double*, const double*, const double*); ///< Function which determines the ghost cells
-        void read_ghost_cells(std::vector<Ghost_cell>*, std::string, const double*, const double*, const double*); ///< Function to read user input IB
+        void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*); ///< Function which determines the ghost cells
+        void read_ghost_cells(std::vector<Ghost_cell>&, std::string, const double*, const double*, const double*); ///< Function to read user input IB
         template<IB_type, int> 
         double boundary_function(double, double); ///< Function describing boundary
         template<IB_type, int> 
