@@ -23,8 +23,6 @@
 #ifndef CROSS
 #define CROSS
 
-#include <netcdfcpp.h>
-
 class Master;
 class Model;
 class Grid;

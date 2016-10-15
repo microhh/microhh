@@ -34,7 +34,7 @@
 #include "model.h"
 #include "thermo.h"
 #include "timeloop.h"
-#include <netcdfcpp.h>
+#include <netcdf>
 
 Cross::Cross(Model* modelin, Input* inputin)
 {

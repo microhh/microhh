@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <cmath>
+#include <sstream>
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
