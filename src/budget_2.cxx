@@ -33,7 +33,6 @@
 #include "advec.h"
 #include "force.h"
 #include "stats.h"
-#include <netcdfcpp.h>
 
 #include "budget.h"
 #include "budget_2.h"

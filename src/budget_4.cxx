@@ -30,7 +30,6 @@
 #include "model.h"
 #include "thermo.h"
 #include "stats.h"
-#include <netcdfcpp.h>
 
 #include "budget.h"
 #include "budget_4.h"

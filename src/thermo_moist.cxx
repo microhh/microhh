@@ -25,7 +25,7 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
-#include <netcdfcpp.h> // for NC_FILLVAL
+#include <netcdf>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
