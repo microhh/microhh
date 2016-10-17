@@ -106,6 +106,8 @@ void Stats::create(int n)
     if (swstats == "0")
         return;
 
+    int nerror = 0;
+
     for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
     {
         // shortcut
@@ -123,16 +125,15 @@ void Stats::create(int n)
             }
             catch(NcException& e)
             {
-                master->print_error("NetCDF exception = %s\n",e.what());
-                throw 1;
+                master->print_error("NetCDF exception: %s\n",e.what());
+                ++nerror;
             }
         }
 
-// crash on all processes in case the file could not be written
-// BvS: Why was the error broadcasted??
-// master->broadcast(&nerror, 1);
-// if (nerror)
-// throw 1;
+        // Crash on all processes in case the file could not be written
+        master->broadcast(&nerror, 1);
+        if (nerror)
+            throw 1;
 
         // create dimensions
         if (master->mpiid == 0)
@@ -261,8 +262,6 @@ void Stats::add_mask(const std::string maskname)
 
 void Stats::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
 {
-    int nerror = 0;
-
     // add the profile to all files
     for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
     {
@@ -296,15 +295,10 @@ void Stats::add_prof(std::string name, std::string longname, std::string unit, s
         for (int k=0; k<grid->kcells; ++k)
             m->profs[name].data[k] = 0.;
     }
-
-    if (nerror)
-        throw 1;
 }
 
 void Stats::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, double* restrict prof)
 {
-    int nerror = 0;
-
     // add the profile to all files
     for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
     {
@@ -336,15 +330,10 @@ void Stats::add_fixed_prof(std::string name, std::string longname, std::string u
             }
         }
     }
-
-    if (nerror)
-        throw 1;
 }
 
 void Stats::add_time_series(std::string name, std::string longname, std::string unit)
 {
-    int nerror = 0;
-
     // add the series to all files
     for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
     {
@@ -363,9 +352,6 @@ void Stats::add_time_series(std::string name, std::string longname, std::string 
         // Initialize at zero
         m->tseries[name].data = 0.;
     }
-
-    if (nerror)
-        throw 1;
 }
 
 void Stats::get_mask(Field3d* mfield, Field3d* mfieldh, Mask* m)
