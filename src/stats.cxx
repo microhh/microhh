@@ -37,7 +37,8 @@
 #include "diff_smag2.h"
 #include "timeloop.h"
 
-#include <netcdf>
+#include <netcdf>       // C++
+#include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
 using namespace netCDF;
 using namespace netCDF::exceptions;
 
@@ -165,7 +166,10 @@ void Stats::create(int n)
             zh_var.putVar(&grid->zh[grid->kstart]);
 
             // Synchronize the NetCDF file
-            m->dataFile->sync();
+            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
+            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
+            //m->dataFile->sync();
+            nc_sync(m->dataFile->getId());
         }
     }
 
@@ -233,7 +237,11 @@ void Stats::exec(int iteration, double time, unsigned long itime)
             for (Time_series_map::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
                 m->tseries[it->first].ncvar.putVar(time_index, &m->tseries[it->first].data);
 
-            m->dataFile->sync();
+            // Synchronize the NetCDF file
+            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
+            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
+            //m->dataFile->sync();
+            nc_sync(m->dataFile->getId());
         }
     }
 
