@@ -25,6 +25,7 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
+#include <netcdfcpp.h> // for NC_FILLVAL
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
@@ -38,12 +39,793 @@
 #include "cross.h"
 #include "dump.h"
 #include "thermo_moist_functions.h"
-#include <netcdfcpp.h> // for NC_FILLVAL
+#include "timeloop.h"
 
 using Finite_difference::O2::interp2;
 using Finite_difference::O4::interp4;
 using namespace Constants;
 using namespace Thermo_moist_functions;
+
+namespace
+{
+    // Settings for now here for convenience....
+    const double pi      = std::acos(-1.);
+    const double Nc0     = 70e6;     // Fixed cloud droplet number
+    const double K_t     = 2.5e-2;   // Conductivity of heat [J/(sKm)]
+    const double D_v     = 3.e-5;    // Diffusivity of water vapor [m2/s]
+    const double rho_w   = 1.e3;     // Density water
+    const double rho_0   = 1.225;    // SB06, p48
+    const double pirhow  = pi * rho_w / 6.;
+    const double mc_min  = 4.2e-15;  // Min mean mass of cloud droplet
+    const double mc_max  = 2.6e-10;  // Max mean mass of cloud droplet
+    const double mr_min  = mc_max;   // Min mean mass of precipitation drop
+    const double mr_max  = 3e-6;     // Max mean mass of precipitation drop // as in UCLA-LES
+    const double ql_min  = 1.e-6;    // Min cloud liquid water for which calculations are performed 
+    const double qr_min  = 1.e-15;   // Min rain liquid water for which calculations are performed 
+
+    // Rational tanh approximation  
+    inline double tanh2(const double x)
+    {
+        return x * (27 + x * x) / (27 + 9 * x * x);
+    }
+
+    // Given rain water content (qr), number density (nr) and density (rho)
+    // calculate mean mass of rain drop
+    inline double calc_rain_mass(const double qr, const double nr, const double rho)
+    {
+        //double mr = rho * qr / (nr + dsmall);
+        double mr = rho * qr / std::max(nr, 1.);
+        mr        = std::min(std::max(mr, mr_min), mr_max);
+        return mr;
+    }
+
+    // Given mean mass rain drop, calculate mean diameter
+    inline double calc_rain_diameter(const double mr)
+    {
+        return pow(mr/pirhow, 1./3.);
+    }
+
+    // Shape parameter mu_r
+    inline double calc_mu_r(const double dr)
+    {
+        //return 1./3.; // SB06
+        //return 10. * (1. + tanh(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+        return 10. * (1. + tanh2(1200 * (dr - 0.0015))); // SS08 (Milbrandt&Yau, 2005) -> similar as UCLA
+    }
+
+    // Slope parameter lambda_r
+    inline double calc_lambda_r(const double mur, const double dr)
+    {
+        return pow((mur+3)*(mur+2)*(mur+1), 1./3.) / dr;
+    }
+
+    inline double minmod(const double a, const double b)
+    {
+        return copysign(1., a) * std::max(0., std::min(std::abs(a), copysign(1., a)*b));
+    }
+
+    inline double min3(const double a, const double b, const double c)
+    {
+        return std::min(a,std::min(b,c));
+    }
+
+    inline double max3(const double a, const double b, const double c)
+    {
+        return std::max(a,std::max(b,c));
+    }
+}
+
+// Microphysics per 2D (xz) slices
+namespace mp2d
+{
+    // Calculate microphysics properties which are used in multiple routines
+    void prepare_microphysics_slice(double* const restrict rain_mass, double* const restrict rain_diameter,
+                                    double* const restrict mu_r, double* const restrict lambda_r,
+                                    const double* const restrict qr, const double* const restrict nr,
+                                    const double* const restrict rho, 
+                                    const int istart, const int iend,
+                                    const int kstart, const int kend,
+                                    const int icells, const int ijcells, const int j)
+    {
+    
+        for (int k=kstart; k<kend; k++) 
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                if(qr[ijk] > qr_min)
+                {
+                    rain_mass[ik]     = calc_rain_mass(qr[ijk], nr[ijk], rho[k]); 
+                    rain_diameter[ik] = calc_rain_diameter(rain_mass[ik]);
+                    mu_r[ik]          = calc_mu_r(rain_diameter[ik]);
+                    lambda_r[ik]      = calc_lambda_r(mu_r[ik], rain_diameter[ik]);
+                }
+                else
+                {
+                    rain_mass[ik]     = 0; 
+                    rain_diameter[ik] = 0;
+                    mu_r[ik]          = 0;
+                    lambda_r[ik]      = 0;
+                }
+            }
+    }
+
+    // Evaporation: evaporation of rain drops in unsaturated environment
+    void evaporation(double* const restrict qrt, double* const restrict nrt,
+                     double* const restrict qtt, double* const restrict thlt,
+                     const double* const restrict qr, const double* const restrict nr,
+                     const double* const restrict ql, const double* const restrict qt, const double* const restrict thl, 
+                     const double* const restrict rho, const double* const restrict exner, const double* const restrict p,
+                     const double* const restrict rain_mass, const double* const restrict rain_diameter,
+                     const int istart, const int jstart, const int kstart,
+                     const int iend,   const int jend,   const int kend,
+                     const int jj, const int kk, const int j)
+    {
+        const double lambda_evap = 1.; // 1.0 in UCLA, 0.7 in DALES
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik  = i + k*jj;
+                const int ijk = i + j*jj + k*kk;
+
+                if(qr[ijk] > qr_min)
+                {
+                    const double mr  = rain_mass[ik];
+                    const double dr  = rain_diameter[ik];
+
+                    const double T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
+                    const double Glv = pow(Rv * T / (esat(T) * D_v) + (Lv / (K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+
+                    const double S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
+                    const double F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
+
+                    const double ev_tend = 2. * pi * dr * Glv * S * F * nr[ijk] / rho[k];             
+
+                    qrt[ijk]  += ev_tend;
+                    nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
+                    qtt[ijk]  -= ev_tend;
+                    thlt[ijk] += Lv / (cp * exner[k]) * ev_tend; 
+                }
+            }
+    }
+
+    // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+    void selfcollection_breakup(double* const restrict nrt, const double* const restrict qr, const double* const restrict nr, const double* const restrict rho,
+                                const double* const restrict rain_mass, const double* const restrict rain_diameter,
+                                const double* const restrict lambda_r,
+                                const int istart, const int jstart, const int kstart,
+                                const int iend,   const int jend,   const int kend,
+                                const int jj, const int kk, const int j)
+    {
+        const double k_rr     = 7.12;   // SB06, p49
+        const double kappa_rr = 60.7;   // SB06, p49 
+        const double D_eq     = 0.9e-3; // SB06, list of symbols 
+        const double k_br1    = 1.0e3;  // SB06, p50, for 0.35e-3 <= Dr <= D_eq
+        const double k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik  = i + k*jj;
+                const int ijk = i + j*jj + k*kk;
+
+                if(qr[ijk] > qr_min)
+                {
+                    // Calculate mean rain drop mass and diameter
+                    const double mr      = rain_mass[ik];
+                    const double dr      = rain_diameter[ik];
+                    const double lambdar = lambda_r[ik];
+
+                    // Selfcollection
+                    const double sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambdar * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
+                    nrt[ijk] += sc_tend; 
+
+                    // Breakup
+                    const double dDr = dr - D_eq;
+                    if(dr > 0.35e-3)
+                    {
+                        double phi_br;
+                        if(dr <= D_eq)
+                            phi_br = k_br1 * dDr;
+                        else
+                            phi_br = 2. * exp(k_br2 * dDr) - 1.; 
+                        const double br_tend = -(phi_br + 1.) * sc_tend;
+                        nrt[ijk] += br_tend; 
+                    }
+                }
+            }
+    }
+
+    // Sedimentation from Stevens and Seifert (2008)
+    void sedimentation_ss08(double* const restrict qrt, double* const restrict nrt, 
+                            double* const restrict tmpxz1, double* const restrict tmpxz2,
+                            double* const restrict tmpxz3, double* const restrict tmpxz4,
+                            double* const restrict tmpxz5, double* const restrict tmpxz6,
+                            const double* const restrict mu_r, const double* const restrict lambda_r,
+                            const double* const restrict qr, const double* const restrict nr, 
+                            const double* const restrict rho, const double* const restrict dzi,
+                            const double* const restrict dz, const double dt,
+                            const int istart, const int jstart, const int kstart,
+                            const int iend,   const int jend,   const int kend,
+                            const int icells, const int kcells, const int ijcells, const int j)
+    {
+        const double w_max = 9.65; // 9.65=UCLA, 20=SS08, appendix A
+        const double a_R = 9.65;   // SB06, p51
+        const double c_R = 600;    // SB06, p51
+        const double Dv  = 25.0e-6;
+        const double b_R = a_R * exp(c_R*Dv); // UCLA-LES
+
+        const int ikcells = icells * kcells;
+
+        const int kk3d = ijcells;
+        const int kk2d = icells;
+
+        // 1. Calculate sedimentation velocity at cell center
+        double* restrict w_qr = tmpxz1;
+        double* restrict w_nr = tmpxz2;
+
+        for (int k=kstart; k<kend; k++)
+        {
+            const double rho_n = pow(1.2 / rho[k], 0.5);
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+              
+                if(qr[ijk] > qr_min)
+                {
+                    // SS08:
+                    w_qr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+4))));
+                    w_nr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambda_r[ik], -1.*(mu_r[ik]+1))));
+                }
+                else
+                {
+                    w_qr[ik] = 0.;
+                    w_nr[ik] = 0.;
+                }
+            }
+        }
+
+        // 1.1 Set one ghost cell to zero
+        for (int i=istart; i<iend; i++)
+        {
+            const int ik1  = i + (kstart-1)*icells;
+            const int ik2  = i + (kend    )*icells;
+            w_qr[ik1] = w_qr[ik1+kk2d];
+            w_nr[ik1] = w_nr[ik1+kk2d];
+            w_qr[ik2] = 0;
+            w_nr[ik2] = 0;
+        } 
+
+         // 2. Calculate CFL number using interpolated sedimentation velocity
+        double* restrict c_qr = tmpxz3;
+        double* restrict c_nr = tmpxz4;
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik  = i + k*icells;
+                c_qr[ik] = 0.25 * (w_qr[ik-kk2d] + 2.*w_qr[ik] + w_qr[ik+kk2d]) * dzi[k] * dt; 
+                c_nr[ik] = 0.25 * (w_nr[ik-kk2d] + 2.*w_nr[ik] + w_nr[ik+kk2d]) * dzi[k] * dt; 
+            }
+
+        // 3. Calculate slopes
+        double* restrict slope_qr = tmpxz1;
+        double* restrict slope_nr = tmpxz2;
+
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                slope_qr[ik] = minmod(qr[ijk]-qr[ijk-kk3d], qr[ijk+kk3d]-qr[ijk]);
+                slope_nr[ik] = minmod(nr[ijk]-nr[ijk-kk3d], nr[ijk+kk3d]-nr[ijk]);
+            }
+
+        // Calculate flux
+        double* restrict flux_qr = tmpxz5;
+        double* restrict flux_nr = tmpxz6;
+
+        // Set the fluxes at the top of the domain (kend) to zero
+        for (int i=istart; i<iend; i++)
+        {
+            const int ik  = i + kend*icells;
+            flux_qr[ik] = 0;
+            flux_nr[ik] = 0;
+        } 
+
+        for (int k=kend-1; k>kstart-1; k--)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {    
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                int kk;
+                double ftot, dzz, cc;
+
+                // q_rain
+                kk    = k;  // current grid level
+                ftot  = 0;  // cumulative 'flux' (kg m-2) 
+                dzz   = 0;  // distance from zh[k]
+                cc    = std::min(1., c_qr[ik]);
+                while (cc > 0 && kk < kend)
+                {
+                    const int ikk  = i + kk*icells;
+                    const int ijkk = i + j*icells + kk*ijcells;
+
+                    ftot  += rho[kk] * (qr[ijkk] + 0.5 * slope_qr[ikk] * (1.-cc)) * cc * dz[kk];
+
+                    dzz   += dz[kk];
+                    kk    += 1;
+                    cc     = std::min(1., c_qr[ikk] - dzz*dzi[kk]);
+                }
+
+                // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
+                ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * dt);
+                flux_qr[ik] = -ftot / dt;
+
+                // number density
+                kk    = k;  // current grid level
+                ftot  = 0;  // cumulative 'flux'
+                dzz   = 0;  // distance from zh[k]
+                cc    = std::min(1., c_nr[ik]);
+                while (cc > 0 && kk < kend)
+                {    
+                    const int ikk  = i + kk*icells;
+                    const int ijkk = i + j*icells + kk*ijcells;
+
+                    ftot += rho[kk] * (nr[ijkk] + 0.5 * slope_nr[ikk] * (1.-cc)) * cc * dz[kk];
+
+                    dzz   += dz[kk];
+                    kk    += 1;
+                    cc     = std::min(1., c_nr[ikk] - dzz*dzi[k]);
+                }
+
+                // Given flux at top, limit bottom flux such that the number density stays >= 0.
+                ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * dt);
+                flux_nr[ik] = -ftot / dt;
+            }
+
+        // Calculate tendency
+        for (int k=kstart; k<kend; k++)
+            #pragma ivdep
+            for (int i=istart; i<iend; i++)
+            {    
+                const int ijk = i + j*icells + k*ijcells;
+                const int ik  = i + k*icells;
+
+                qrt[ijk] += -(flux_qr[ik+kk2d] - flux_qr[ik]) / rho[k] * dzi[k]; 
+                nrt[ijk] += -(flux_nr[ik+kk2d] - flux_nr[ik]) / rho[k] * dzi[k]; 
+            }
+    }
+}
+
+namespace mp
+{
+    // Remove negative values from 3D field
+    void remove_neg_values(double* const restrict field,
+                           const int istart, const int jstart, const int kstart,
+                           const int iend,   const int jend,   const int kend,
+                           const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    field[ijk] = std::max(0., field[ijk]);
+                }
+    }
+
+    void zero(double* const restrict field, const int ncells)
+    {
+        for (int n=0; n<ncells; ++n)
+            field[n] = 0.;
+    }
+
+
+    // Autoconversion: formation of rain drop by coagulating cloud droplets
+    void autoconversion(double* const restrict qrt, double* const restrict nrt,
+                        double* const restrict qtt, double* const restrict thlt,
+                        const double* const restrict qr,  const double* const restrict ql, 
+                        const double* const restrict rho, const double* const restrict exner,
+                        const int istart, const int jstart, const int kstart,
+                        const int iend,   const int jend,   const int kend,
+                        const int jj, const int kk)
+    {
+        const double x_star = 2.6e-10;       // SB06, list of symbols, same as UCLA-LES
+        const double k_cc   = 9.44e9;        // UCLA-LES (Long, 1974), 4.44e9 in SB06, p48
+        const double nu_c   = 1;             // SB06, Table 1., same as UCLA-LES
+        const double kccxs  = k_cc / (20. * x_star) * (nu_c+2)*(nu_c+4) / pow(nu_c+1, 2); 
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(ql[ijk] > ql_min)
+                    {
+                        const double xc      = rho[k] * ql[ijk] / Nc0; // Mean mass of cloud drops [kg]
+                        const double tau     = 1. - ql[ijk] / (ql[ijk] + qr[ijk] + dsmall); // SB06, Eq 5
+                        const double phi_au  = 600. * pow(tau, 0.68) * pow(1. - pow(tau, 0.68), 3); // UCLA-LES
+                        //const double phi_au  = 400. * pow(tau, 0.7) * pow(1. - pow(tau, 0.7), 3); // SB06, Eq 6
+                        const double au_tend = rho[k] * kccxs * pow(ql[ijk], 2) * pow(xc, 2) *
+                                               (1. + phi_au / pow(1-tau, 2)); // SB06, eq 4
+
+                        qrt[ijk]  += au_tend; 
+                        nrt[ijk]  += au_tend * rho[k] / x_star;
+                        qtt[ijk]  -= au_tend;
+                        thlt[ijk] += Lv / (cp * exner[k]) * au_tend; 
+                    }
+                }
+    }
+
+    // Evaporation: evaporation of rain drops in unsaturated environment
+    void evaporation(double* const restrict qrt, double* const restrict nrt,
+                     double* const restrict qtt, double* const restrict thlt,
+                     const double* const restrict qr, const double* const restrict nr,
+                     const double* const restrict ql, const double* const restrict qt, const double* const restrict thl, 
+                     const double* const restrict rho, const double* const restrict exner, const double* const restrict p,
+                     const int istart, const int jstart, const int kstart,
+                     const int iend,   const int jend,   const int kend,
+                     const int jj, const int kk)
+    {
+        const double lambda_evap = 1.; // 1.0 in UCLA, 0.7 in DALES
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(qr[ijk] > qr_min)
+                    {
+                        // Calculate mean rain drop mass and diameter
+                        const double mr  = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr  = calc_rain_diameter(mr);
+
+                        const double T   = thl[ijk] * exner[k] + (Lv * ql[ijk]) / (cp * exner[k]); // Absolute temperature [K]
+                        const double Glv = pow(Rv * T / (esat(T) * D_v) + (Lv / (K_t * T)) * (Lv / (Rv * T) - 1), -1); // Cond/evap rate (kg m-1 s-1)?
+
+                        const double S   = (qt[ijk] - ql[ijk]) / qsat(p[k], T) - 1; // Saturation
+                        const double F   = 1.; // Evaporation excludes ventilation term from SB06 (like UCLA, unimportant term? TODO: test)
+
+                        const double ev_tend = 2. * pi * dr * Glv * S * F * nr[ijk] / rho[k];             
+
+                        qrt[ijk]  += ev_tend;
+                        nrt[ijk]  += lambda_evap * ev_tend * rho[k] / mr;
+                        qtt[ijk]  -= ev_tend;
+                        thlt[ijk] += Lv / (cp * exner[k]) * ev_tend; 
+                    }
+                }
+    }
+
+    // Accreation: growth of raindrops collecting cloud droplets
+    void accretion(double* const restrict qrt, double* const restrict qtt, double* const restrict thlt,
+                   const double* const restrict qr,  const double* const restrict ql, 
+                   const double* const restrict rho, const double* const restrict exner,
+                   const int istart, const int jstart, const int kstart,
+                   const int iend,   const int jend,   const int kend,
+                   const int jj, const int kk)
+    {
+        const double k_cr  = 5.25; // SB06, p49
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(ql[ijk] > ql_min && qr[ijk] > qr_min)
+                    {
+                        const double tau     = 1 - ql[ijk] / (ql[ijk] + qr[ijk]); // SB06, Eq 5
+                        const double phi_ac  = pow(tau / (tau + 5e-5), 4); // SB06, Eq 8
+                        const double ac_tend = k_cr * ql[ijk] *  qr[ijk] * phi_ac * pow(rho_0 / rho[k], 0.5); // SB06, Eq 7 
+
+                        qrt[ijk]  += ac_tend;
+                        qtt[ijk]  -= ac_tend;
+                        thlt[ijk] += Lv / (cp * exner[k]) * ac_tend; 
+                    }
+                }
+    }
+
+
+    // Selfcollection & breakup: growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+    void selfcollection_breakup(double* const restrict nrt, const double* const restrict qr, const double* const restrict nr, const double* const restrict rho,
+                                const int istart, const int jstart, const int kstart,
+                                const int iend,   const int jend,   const int kend,
+                                const int jj, const int kk)
+    {
+        const double k_rr     = 7.12;   // SB06, p49
+        const double kappa_rr = 60.7;   // SB06, p49 
+        const double D_eq     = 0.9e-3; // SB06, list of symbols 
+        const double k_br1    = 1.0e3;  // SB06, p50, for 0.35e-3 <= Dr <= D_eq
+        const double k_br2    = 2.3e3;  // SB06, p50, for Dr > D_eq
+
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    if(qr[ijk] > qr_min)
+                    {
+                        // Calculate mean rain drop mass and diameter
+                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr      = calc_rain_diameter(mr);
+                        const double mur     = calc_mu_r(dr);
+                        const double lambdar = calc_lambda_r(mur, dr);
+
+                        // Selfcollection
+                        const double sc_tend = -k_rr * nr[ijk] * qr[ijk]*rho[k] * pow(1. + kappa_rr / lambdar * pow(pirhow, 1./3.), -9) * pow(rho_0 / rho[k], 0.5);
+                        nrt[ijk] += sc_tend; 
+
+                        // Breakup
+                        const double dDr = dr - D_eq;
+                        if(dr > 0.35e-3)
+                        {
+                            double phi_br;
+                            if(dr <= D_eq)
+                                phi_br = k_br1 * dDr;
+                            else
+                                phi_br = 2. * exp(k_br2 * dDr) - 1.; 
+                            const double br_tend = -(phi_br + 1.) * sc_tend;
+                            nrt[ijk] += br_tend; 
+                        }
+                    }
+                }
+    }
+
+    // Sedimentation from Stevens and Seifert (2008)
+    void sedimentation_ss08(double* const restrict qrt, double* const restrict nrt, 
+                            double* const restrict tmp1, double* const restrict tmp2,
+                            const double* const restrict qr, const double* const restrict nr, 
+                            const double* const restrict rho, const double* const restrict dzi,
+                            const double* const restrict dz, const double dt,
+                            const int istart, const int jstart, const int kstart,
+                            const int iend,   const int jend,   const int kend,
+                            const int icells, const int kcells, const int ijcells)
+    {
+        const double w_max = 9.65; // 9.65=UCLA, 20=SS08, appendix A
+        const double a_R = 9.65;   // SB06, p51
+        const double c_R = 600;    // SB06, p51
+        const double Dv  = 25.0e-6;
+        const double b_R = a_R * exp(c_R*Dv); // UCLA-LES
+
+        const int ikcells = icells * kcells;
+
+        for (int j=jstart; j<jend; ++j)
+        {
+            // 1. Calculate sedimentation velocity at cell center
+            double* restrict w_qr = &tmp1[0*ikcells];
+            double* restrict w_nr = &tmp1[1*ikcells];
+
+            for (int k=kstart; k<kend; k++)
+            {
+                const double rho_n = pow(1.2 / rho[k], 0.5);
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ik  = i + k*icells;
+                  
+                    if(qr[ijk] > qr_min)
+                    {
+                        // Calculate mean rain drop mass and diameter
+                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr      = calc_rain_diameter(mr);
+                        const double mur     = calc_mu_r(dr);
+                        const double lambdar = calc_lambda_r(mur, dr);
+              
+                        // SS08:
+                        w_qr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+                        w_nr[ik] = std::min(w_max, std::max(0.1, rho_n * a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+1))));
+                    }
+                    else
+                    {
+                        w_qr[ik] = 0.;
+                        w_nr[ik] = 0.;
+                    }
+                }
+            }
+
+            // 1.1 Set one ghost cell to zero
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik1  = i + (kstart-1)*icells;
+                const int ik2  = i + (kend    )*icells;
+                w_qr[ik1] = w_qr[ik1+icells];
+                w_nr[ik1] = w_nr[ik1+icells];
+                w_qr[ik2] = 0;
+                w_nr[ik2] = 0;
+            } 
+
+             // 2. Calculate CFL number using interpolated sedimentation velocity
+            double* restrict c_qr = &tmp1[2*ikcells];
+            double* restrict c_nr = &tmp2[0*ikcells];
+
+            for (int k=kstart; k<kend; k++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ik  = i + k*icells;
+                    c_qr[ik] = 0.25 * (w_qr[ik-icells] + 2.*w_qr[ik] + w_qr[ik+icells]) * dzi[k] * dt; 
+                    c_nr[ik] = 0.25 * (w_nr[ik-icells] + 2.*w_nr[ik] + w_nr[ik+icells]) * dzi[k] * dt; 
+                }
+
+            // 3. Calculate slopes with slope limiter to prevent forming new maxima/minima using slopes
+            double* restrict slope_qr = &tmp1[0*ikcells];
+            double* restrict slope_nr = &tmp1[1*ikcells];
+
+            // Dissable slope limiter near surface, i.e. assume that e.g. qr[kstart]-qr[kstart-1] == qr[kstart+1]-qr[kstart] 
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ijk = i + j*icells + kstart*ijcells;
+                const int ik  = i + kstart*icells;
+
+                slope_qr[ik] = qr[ijk+ijcells] - qr[ijk];
+                slope_nr[ik] = nr[ijk+ijcells] - nr[ijk];
+            }
+
+            for (int k=kstart+1; k<kend; k++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ik  = i + k*icells;
+
+                    slope_qr[ik] = minmod(qr[ijk]-qr[ijk-ijcells], qr[ijk+ijcells]-qr[ijk]);
+                    slope_nr[ik] = minmod(nr[ijk]-nr[ijk-ijcells], nr[ijk+ijcells]-nr[ijk]);
+                }
+
+            // Calculate flux
+            double* restrict flux_qr = &tmp2[1*ikcells];
+            double* restrict flux_nr = &tmp2[2*ikcells];
+
+            // Set the fluxes at the top of the domain (kend) to zero
+            for (int i=istart; i<iend; i++)
+            {
+                const int ik  = i + kend*icells;
+                flux_qr[ik] = 0;
+                flux_nr[ik] = 0;
+            } 
+
+            for (int k=kend-1; k>kstart-1; k--)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {    
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ik  = i + k*icells;
+
+                    int kk;
+                    double ftot, dzz, cc;
+
+                    // q_rain
+                    kk    = k;  // current grid level
+                    ftot  = 0;  // cumulative 'flux' (kg m-2) 
+                    dzz   = 0;  // distance from zh[k]
+                    cc    = std::min(1., c_qr[ik]);
+                    while (cc > 0 && kk < kend)
+                    {
+                        const int ikk  = i + kk*icells;
+                        const int ijkk = i + j*icells + kk*ijcells;
+                        
+                        ftot += rho[kk] * (qr[ijkk] + 0.5 * slope_qr[ikk] * (1.-cc)) * cc * dz[kk];
+                        
+                        dzz   += dz[kk];
+                        kk    += 1;
+                        cc     = std::min(1., c_qr[ikk] - dzz*dzi[kk]);
+                    }
+
+                    // Given flux at top, limit bottom flux such that the total rain content stays >= 0.
+                    ftot = std::min(ftot, rho[k] * dz[k] * qr[ijk] - flux_qr[ik+icells] * dt - dsmall);
+                    flux_qr[ik] = -ftot / dt;
+
+                    // number density
+                    kk    = k;  // current grid level
+                    ftot  = 0;  // cumulative 'flux'
+                    dzz   = 0;  // distance from zh[k]
+                    cc    = std::min(1., c_nr[ik]);
+                    while (cc > 0 && kk < kend)
+                    {    
+                        const int ikk  = i + kk*icells;
+                        const int ijkk = i + j*icells + kk*ijcells;
+            
+                        ftot += rho[kk] * (nr[ijkk] + 0.5 * slope_nr[ikk] * (1.-cc)) * cc * dz[kk];
+
+                        dzz   += dz[kk];
+                        kk    += 1;
+                        cc     = std::min(1., c_nr[ikk] - dzz*dzi[kk]);
+                    }
+
+                    // Given flux at top, limit bottom flux such that the number density stays >= 0.
+                    ftot = std::min(ftot, rho[k] * dz[k] * nr[ijk] - flux_nr[ik+icells] * dt - dsmall);
+                    flux_nr[ik] = -ftot / dt;
+                }
+
+            // Calculate tendency
+            for (int k=kstart; k<kend; k++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {    
+                    const int ijk = i + j*icells + k*ijcells;
+                    const int ik  = i + k*icells;
+
+                    qrt[ijk] += -(flux_qr[ik+icells] - flux_qr[ik]) / rho[k] * dzi[k]; 
+                    nrt[ijk] += -(flux_nr[ik+icells] - flux_nr[ik]) / rho[k] * dzi[k]; 
+                }
+        }
+    }
+
+    // Calculate maximum sedimentation velocity
+    double calc_max_sedimentation_cfl(double* const restrict w_qr,
+                                      const double* const restrict qr, const double* const restrict nr, 
+                                      const double* const restrict rho, const double* const restrict dzi,
+                                      const double dt,
+                                      const int istart, const int jstart, const int kstart,
+                                      const int iend,   const int jend,   const int kend,
+                                      const int icells, const int ijcells)
+    {
+        const double w_max = 9.65; // 9.65=UCLA, 20=SS08, appendix A
+        const double a_R = 9.65;   // SB06, p51
+        const double c_R = 600;    // SB06, p51
+        const double Dv  = 25.0e-6;
+        const double b_R = a_R * exp(c_R*Dv); // UCLA-LES
+
+        // Calculate sedimentation velocity at cell centre
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+
+                    if(qr[ijk] > qr_min)
+                    {
+                        // Calculate mean rain drop mass and diameter
+                        const double mr      = calc_rain_mass(qr[ijk], nr[ijk], rho[k]);
+                        const double dr      = calc_rain_diameter(mr);
+                        const double mur     = calc_mu_r(dr);
+                        const double lambdar = calc_lambda_r(mur, dr);
+                
+                        w_qr[ijk] = std::min(w_max, std::max(0.1, a_R - b_R * pow(1. + c_R/lambdar, -1.*(mur+4))));
+                    }
+                    else
+                    {
+                        w_qr[ijk] = 0.;
+                    }
+                }
+
+        // Calculate maximum CFL based on interpolated velocity
+        double cfl_max = 1e-5;
+        for (int k=kstart; k<kend; k++)
+            for (int j=jstart; j<jend; j++)
+                #pragma ivdep
+                for (int i=istart; i<iend; i++)
+                {
+                    const int ijk = i + j*icells + k*ijcells;
+                    
+                    const double cfl_qr = 0.25 * (w_qr[ijk-ijcells] + 2.*w_qr[ijk] + w_qr[ijk+ijcells]) * dzi[k] * dt;
+                    cfl_max = std::max(cfl_max, cfl_qr);
+                }
+
+        return cfl_max;
+    }
+
+} // End namespace
+
 
 Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
@@ -70,6 +852,27 @@ Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inp
 
     // Option to overrule the prognostic variable
     nerror += inputin->get_item(&thvar, "thermo", "progvar", "", "thl");  // defaults to thl
+
+    // BvS:micro Get microphysics switch, and init rain and number density
+    nerror += inputin->get_item(&swmicro, "thermo", "swmicro", "", "0");
+    if(swmicro == "2mom_warm")
+    {
+        #ifdef USECUDA
+        master->print_error("swmicro = \"2mom_warm\" not (yet) implemented in CUDA\n");
+        throw 1;
+        #endif
+
+        nerror += inputin->get_item(&swmicrobudget, "thermo", "swmicrobudget", "", "0");
+        nerror += inputin->get_item(&swmicrobudget, "thermo", "swmicrobudget", "", "0");
+        nerror += inputin->get_item(&cflmax_micro,  "thermo", "cflmax_micro",  "", 2.);
+
+        // The microphysics requires three additional tmp fields
+        const int n_tmp = 7;
+        fields->set_minimum_tmp_fields(n_tmp);
+
+        fields->init_prognostic_field("qr", "Rain water mixing ratio", "kg kg-1");
+        fields->init_prognostic_field("nr", "Number density rain", "m-3");
+    }    
 
     // Initialize the prognostic fields
     fields->init_prognostic_field(thvar, "Liquid water potential temperature", "K");
@@ -133,9 +936,9 @@ Thermo_moist::~Thermo_moist()
     delete[] pref;
     delete[] prefh;
 
-#ifdef USECUDA
+    #ifdef USECUDA
     clear_device();
-#endif
+    #endif
 }
 
 void Thermo_moist::init()
@@ -244,8 +1047,133 @@ void Thermo_moist::exec()
     //                           &fields->atmp["tmp2"]->data[2*kk],
     //                           thvrefh);
     //}
+
+    // 2-moment warm microphysics 
+    if(swmicro == "2mom_warm")
+        exec_microphysics();
 }
 #endif
+
+unsigned long Thermo_moist::get_time_limit(unsigned long idt, const double dt)
+{
+    if(swmicro == "2mom_warm")
+    {
+        const double cfl = mp::calc_max_sedimentation_cfl(fields->atmp["tmp1"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data,
+                                                          fields->rhoref, grid->dzi, dt,
+                                                          grid->istart, grid->jstart, grid->kstart,
+                                                          grid->iend,   grid->jend,   grid->kend,
+                                                          grid->icells, grid->ijcells);
+        return idt * cflmax_micro / cfl;
+    }
+    else
+    {
+        return Constants::ulhuge;
+    }
+}
+
+// BvS:micro 
+void Thermo_moist::exec_microphysics()
+{
+    // Switch to solve certain routines over xz-slices, to reduce calculations recurring in several microphysics routines
+    bool per_slice = true;
+
+    // Remove the negative values from the precipitation fields
+    mp::remove_neg_values(fields->sp["qr"]->data, grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend, grid->icells, grid->ijcells);
+    mp::remove_neg_values(fields->sp["nr"]->data, grid->istart, grid->jstart, grid->kstart, grid->iend, grid->jend, grid->kend, grid->icells, grid->ijcells);
+
+    // Calculate the cloud liquid water concent using the saturation adjustment method
+    calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp["thl"]->data, fields->sp["qt"]->data, pref);
+
+    const double dt = model->timeloop->get_dt();
+
+    // xz tmp slices for quantities which are used by multiple microphysics routines
+    const int ikslice = grid->icells * grid->kcells;
+    double* rain_mass = &fields->atmp["tmp2"]->data[0*ikslice]; 
+    double* rain_diam = &fields->atmp["tmp2"]->data[1*ikslice]; 
+    double* mu_r      = &fields->atmp["tmp2"]->data[2*ikslice]; 
+    double* lambda_r  = &fields->atmp["tmp3"]->data[0*ikslice]; 
+
+    // xz tmp slices for intermediate calculations
+    double* tmpxz1    = &fields->atmp["tmp3"]->data[1*ikslice];
+    double* tmpxz2    = &fields->atmp["tmp3"]->data[2*ikslice];
+    double* tmpxz3    = &fields->atmp["tmp4"]->data[0*ikslice];
+    double* tmpxz4    = &fields->atmp["tmp4"]->data[1*ikslice];
+    double* tmpxz5    = &fields->atmp["tmp4"]->data[2*ikslice];
+    double* tmpxz6    = &fields->atmp["tmp5"]->data[0*ikslice];
+
+    // Autoconversion; formation of rain drop by coagulating cloud droplets
+    mp::autoconversion(fields->st["qr"]->data, fields->st["nr"]->data, fields->st["qt"]->data, fields->st["thl"]->data,
+                       fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                       grid->istart, grid->jstart, grid->kstart, 
+                       grid->iend,   grid->jend,   grid->kend, 
+                       grid->icells, grid->ijcells);
+
+    // Accretion; growth of raindrops collecting cloud droplets
+    mp::accretion(fields->st["qr"]->data, fields->st["qt"]->data, fields->st["thl"]->data,
+                  fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                  grid->istart, grid->jstart, grid->kstart, 
+                  grid->iend,   grid->jend,   grid->kend, 
+                  grid->icells, grid->ijcells);
+
+    if(per_slice)
+    {
+        for (int j=grid->jstart; j<grid->jend; ++j)
+        {
+            mp2d::prepare_microphysics_slice(rain_mass, rain_diam, mu_r, lambda_r, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
+                                             grid->istart, grid->iend, grid->kstart, grid->kend, grid->icells, grid->ijcells, j);
+
+            // Evaporation; evaporation of rain drops in unsaturated environment
+            mp2d::evaporation(fields->st["qr"]->data, fields->st["nr"]->data,  fields->st["qt"]->data, fields->st["thl"]->data,
+                              fields->sp["qr"]->data, fields->sp["nr"]->data,  fields->atmp["tmp1"]->data,
+                              fields->sp["qt"]->data, fields->sp["thl"]->data, fields->rhoref, exnref, pref,
+                              rain_mass, rain_diam,
+                              grid->istart, grid->jstart, grid->kstart, 
+                              grid->iend,   grid->jend,   grid->kend, 
+                              grid->icells, grid->ijcells, j);
+
+            // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+            mp2d::selfcollection_breakup(fields->st["nr"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
+                                         rain_mass, rain_diam, lambda_r,
+                                         grid->istart, grid->jstart, grid->kstart, 
+                                         grid->iend,   grid->jend,   grid->kend, 
+                                         grid->icells, grid->ijcells, j);
+
+            // Sedimentation; sub-grid sedimentation of rain 
+            mp2d::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
+                                     tmpxz1, tmpxz2, tmpxz3, tmpxz4, tmpxz5, tmpxz6, mu_r, lambda_r,
+                                     fields->sp["qr"]->data, fields->sp["nr"]->data, 
+                                     fields->rhoref, grid->dzi, grid->dz, dt,
+                                     grid->istart, grid->jstart, grid->kstart, 
+                                     grid->iend,   grid->jend,   grid->kend, 
+                                     grid->icells, grid->kcells, grid->ijcells, j);
+        }
+    }
+    else
+    {
+        // Evaporation; evaporation of rain drops in unsaturated environment
+        mp::evaporation(fields->st["qr"]->data, fields->st["nr"]->data,  fields->st["qt"]->data, fields->st["thl"]->data,
+                        fields->sp["qr"]->data, fields->sp["nr"]->data,  fields->atmp["tmp1"]->data,
+                        fields->sp["qt"]->data, fields->sp["thl"]->data, fields->rhoref, exnref, pref,
+                        grid->istart, grid->jstart, grid->kstart, 
+                        grid->iend,   grid->jend,   grid->kend, 
+                        grid->icells, grid->ijcells);
+       
+        // Self collection and breakup; growth of raindrops by mutual (rain-rain) coagulation, and breakup by collisions
+        mp::selfcollection_breakup(fields->st["nr"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
+                                   grid->istart, grid->jstart, grid->kstart, 
+                                   grid->iend,   grid->jend,   grid->kend, 
+                                   grid->icells, grid->ijcells);
+    
+        // Sedimentation; sub-grid sedimentation of rain 
+        mp::sedimentation_ss08(fields->st["qr"]->data, fields->st["nr"]->data, 
+                               fields->atmp["tmp4"]->data, fields->atmp["tmp5"]->data,
+                               fields->sp["qr"]->data, fields->sp["nr"]->data, 
+                               fields->rhoref, grid->dzi, grid->dz, dt,
+                               grid->istart, grid->jstart, grid->kstart, 
+                               grid->iend,   grid->jend,   grid->kend, 
+                               grid->icells, grid->kcells, grid->ijcells);
+    }
+}
 
 void Thermo_moist::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
 {
@@ -259,7 +1187,6 @@ void Thermo_moist::get_mask(Field3d *mfield, Field3d *mfieldh, Mask *m)
     else if (m->name == "qlcore")
     {
         calc_buoyancy(fields->atmp["tmp2"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref, fields->atmp["tmp1"]->data,thvref);
-        // calculate the mean buoyancy to determine positive buoyancy
         grid->calc_mean(fields->atmp["tmp2"]->datamean, fields->atmp["tmp2"]->data, grid->kcells);
 
         calc_liquid_water(fields->atmp["tmp1"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, pref);
@@ -281,7 +1208,7 @@ void Thermo_moist::calc_mask_ql(double* restrict mask, double* restrict maskh, d
     {
         nmask[k] = 0;
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -295,7 +1222,7 @@ void Thermo_moist::calc_mask_ql(double* restrict mask, double* restrict maskh, d
     {
         nmaskh[k] = 0;
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -309,7 +1236,7 @@ void Thermo_moist::calc_mask_ql(double* restrict mask, double* restrict maskh, d
     // Set the mask for surface projected quantities
     // In this case: ql at surface
     for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ij  = i + j*jj;
@@ -342,7 +1269,7 @@ void Thermo_moist::calc_mask_qlcore(double* restrict mask, double* restrict mask
     {
         nmask[k] = 0;
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -356,7 +1283,7 @@ void Thermo_moist::calc_mask_qlcore(double* restrict mask, double* restrict mask
     {
         nmaskh[k] = 0;
         for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -369,7 +1296,7 @@ void Thermo_moist::calc_mask_qlcore(double* restrict mask, double* restrict mask
     // Set the mask for surface projected quantities
     // In this case: qlcore at surface
     for (int j=grid->jstart; j<grid->jend; j++)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; i++)
         {
             const int ij  = i + j*jj;
@@ -464,6 +1391,117 @@ void Thermo_moist::exec_stats(Mask *m)
     stats->calc_cover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
     stats->calc_path (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
 
+    // BvS:micro 
+    if(swmicro == "2mom_warm")
+    {
+        stats->calc_path (fields->sp["qr"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["rwp"].data);
+
+        if(swmicrobudget == "1")
+        {
+            // Autoconversion
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp7"]->data, grid->ncells);
+
+            mp::autoconversion(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data, fields->atmp["tmp6"]->data, fields->atmp["tmp7"]->data,
+                               fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                               grid->istart, grid->jstart, grid->kstart, 
+                               grid->iend,   grid->jend,   grid->kend, 
+                               grid->icells, grid->ijcells);
+
+            stats->calc_mean(m->profs["auto_qrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["auto_nrt" ].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["auto_qtt" ].data, fields->atmp["tmp6"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["auto_thlt"].data, fields->atmp["tmp7"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+            // Evaporation
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp7"]->data, grid->ncells);
+
+            mp::evaporation(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data,  fields->atmp["tmp6"]->data, fields->atmp["tmp7"]->data,
+                            fields->sp["qr"]->data, fields->sp["nr"]->data,  fields->atmp["tmp1"]->data,
+                            fields->sp["qt"]->data, fields->sp["thl"]->data, fields->rhoref, exnref, pref,
+                            grid->istart, grid->jstart, grid->kstart, 
+                            grid->iend,   grid->jend,   grid->kend, 
+                            grid->icells, grid->ijcells);
+
+            stats->calc_mean(m->profs["evap_qrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["evap_nrt" ].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["evap_qtt" ].data, fields->atmp["tmp6"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["evap_thlt"].data, fields->atmp["tmp7"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+            // Accretion
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
+
+            mp::accretion(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data, fields->atmp["tmp6"]->data,
+                          fields->sp["qr"]->data, fields->atmp["tmp1"]->data, fields->rhoref, exnref,
+                          grid->istart, grid->jstart, grid->kstart, 
+                          grid->iend,   grid->jend,   grid->kend, 
+                          grid->icells, grid->ijcells);
+
+            stats->calc_mean(m->profs["accr_qrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["accr_qtt" ].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["accr_thlt"].data, fields->atmp["tmp6"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+            // Selfcollection and breakup
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+
+            mp::selfcollection_breakup(fields->atmp["tmp2"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data, fields->rhoref,
+                                       grid->istart, grid->jstart, grid->kstart, 
+                                       grid->iend,   grid->jend,   grid->kend, 
+                                       grid->icells, grid->ijcells);
+
+            stats->calc_mean(m->profs["scbr_nrt" ].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+            // Sedimentation
+            mp::zero(fields->atmp["tmp2"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp5"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp6"]->data, grid->ncells);
+            mp::zero(fields->atmp["tmp7"]->data, grid->ncells);
+
+            // 1. Get number of substeps based on sedimentation with CFL=1
+            //const double dt = model->timeloop->get_sub_time_step();
+            //int nsubstep = mp::get_sedimentation_steps(fields->sp["qr"]->data, fields->sp["nr"]->data, 
+            //                                           fields->rhoref, grid->dzi, dt,
+            //                                           grid->istart, grid->jstart, grid->kstart, 
+            //                                           grid->iend,   grid->jend,   grid->kend, 
+            //                                           grid->icells, grid->ijcells);
+
+            //// 2. Synchronize over all MPI processes 
+            //grid->get_max(&nsubstep);
+
+            //// Stay a bit further from CFL=1
+            //nsubstep *= 2;
+
+            //// Sedimentation in nsubstep steps:
+            //mp::sedimentation_sub(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data, 
+            //                      fields->atmp["tmp6"]->data, fields->atmp["tmp7"]->data,
+            //                      fields->sp["qr"]->data, fields->sp["nr"]->data, 
+            //                      fields->rhoref, grid->dzi, grid->dzhi, dt,
+            //                      grid->istart, grid->jstart, grid->kstart, 
+            //                      grid->iend,   grid->jend,   grid->kend, 
+            //                      grid->icells, grid->kcells, grid->ijcells,
+            //                      nsubstep);
+
+            const double dt = model->timeloop->get_sub_time_step();
+            mp::sedimentation_ss08(fields->atmp["tmp2"]->data, fields->atmp["tmp5"]->data, 
+                                   fields->atmp["tmp6"]->data, fields->atmp["tmp7"]->data,
+                                   fields->sp["qr"]->data, fields->sp["nr"]->data, 
+                                   fields->rhoref, grid->dzi, grid->dz, dt,
+                                   grid->istart, grid->jstart, grid->kstart, 
+                                   grid->iend,   grid->jend,   grid->kend, 
+                                   grid->icells, grid->kcells, grid->ijcells);
+
+            stats->calc_mean(m->profs["sed_qrt"].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+            stats->calc_mean(m->profs["sed_nrt"].data, fields->atmp["tmp5"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+        }
+    }
+
     // Calculate base state in tmp array
     if (swupdatebasestate == 1)
     {
@@ -545,6 +1583,11 @@ void Thermo_moist::exec_cross()
                 nerror += cross->cross_plane(fields->atmp["tmp1"]->databot, fields->atmp["tmp1"]->data, "bbot");
             else if (*it == "bfluxbot")
                 nerror += cross->cross_plane(fields->atmp["tmp1"]->datafluxbot, fields->atmp["tmp1"]->data, "bfluxbot");
+        }
+        // BvS:micro 
+        else if (*it == "qrpath")
+        {
+            nerror += cross->cross_path(fields->sp["qr"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp1"]->data, "qrpath");
         }
     }
 
@@ -640,6 +1683,11 @@ namespace
         int nitermax = 30;
         double ql, tl, tnr_old = 1.e9, tnr, qs=0;
         tl = thl * exn;
+
+        // Calculate if q-qs(Tl) <= 0. If so, return 0. Else continue with saturation adjustment
+        if(qt-qsat(p, tl) <= 0)
+            return 0.;
+
         tnr = tl;
         while (std::fabs(tnr-tnr_old)/tnr_old> 1e-5 && niter < nitermax)
         {
@@ -1014,6 +2062,34 @@ void Thermo_moist::init_stat()
 
         stats->add_time_series("lwp", "Liquid water path", "kg m-2");
         stats->add_time_series("ccover", "Projected cloud cover", "-");
+
+        // BvS:micro 
+        if(swmicro == "2mom_warm")
+        {
+            stats->add_time_series("rwp", "Rain water path", "kg m-2");
+
+            if(swmicrobudget == "1")
+            {
+                stats->add_prof("auto_qrt" , "Autoconversion tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("auto_nrt" , "Autoconversion tendency nr", "m-3 s-1", "z");
+                stats->add_prof("auto_thlt", "Autoconversion tendency thl", "K s-1", "z");
+                stats->add_prof("auto_qtt" , "Autoconversion tendency qt", "kg kg-1 s-1", "z");
+
+                stats->add_prof("evap_qrt" , "Evaporation tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("evap_nrt" , "Evaporation tendency nr", "m-3 s-1", "z");
+                stats->add_prof("evap_thlt", "Evaporation tendency thl", "K s-1", "z");
+                stats->add_prof("evap_qtt" , "Evaporation tendency qt", "kg kg-1 s-1", "z");
+
+                stats->add_prof("accr_qrt" , "Accretion tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("accr_thlt", "Accretion tendency thl", "K s-1", "z");
+                stats->add_prof("accr_qtt" , "Accretion tendency qt", "kg kg-1 s-1", "z");
+
+                stats->add_prof("scbr_nrt" , "Selfcollection and breakup tendency nr", "m-3 s-1", "z");
+
+                stats->add_prof("sed_qrt"  , "Sedimentation tendency qr", "kg kg-1 s-1", "z");
+                stats->add_prof("sed_nrt"  , "Sedimentation tendency nr", "m-3 s-1", "z");
+            }
+        }
     }
 }
 
@@ -1031,6 +2107,10 @@ void Thermo_moist::init_cross()
         allowedcrossvars.push_back("qlbase");
         allowedcrossvars.push_back("qltop");
         allowedcrossvars.push_back("maxthvcloud");  // yikes
+
+        // BvS:micro 
+        if(swmicro == "2mom_warm")
+            allowedcrossvars.push_back("qrpath");
 
         // Get global cross-list from cross.cxx
         std::vector<std::string> *crosslist_global = model->cross->get_crosslist();

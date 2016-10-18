@@ -49,6 +49,8 @@ class Thermo_disabled : public Thermo
         void get_prog_vars(std::vector<std::string>*) {}
         double get_buoyancy_diffusivity();
 
+        unsigned long get_time_limit(unsigned long, double);
+
 #ifdef USECUDA
         void prepare_device() {};
         void clear_device() {};

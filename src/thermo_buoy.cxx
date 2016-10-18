@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "thermo_buoy.h"
 #include "defines.h"
+#include "constants.h"
 #include "finite_difference.h"
 #include "model.h"
 #include "master.h"
@@ -91,6 +92,11 @@ void Thermo_buoy::exec()
     }
 }
 #endif
+
+unsigned long Thermo_buoy::get_time_limit(unsigned long idt, const double dt)
+{
+    return Constants::ulhuge;
+}
 
 void Thermo_buoy::get_thermo_field(Field3d* field, Field3d* tmp, const std::string name, bool cyclic)
 {

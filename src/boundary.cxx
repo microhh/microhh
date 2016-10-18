@@ -35,6 +35,7 @@
 // Boundary schemes.
 #include "boundary.h"
 #include "boundary_surface.h"
+#include "boundary_surface_bulk.h"
 #include "boundary_surface_patch.h"
 #include "boundary_patch.h"
 
@@ -464,6 +465,8 @@ Boundary* Boundary::factory(Master* masterin, Input* inputin, Model* modelin)
 
     if (swboundary == "surface")
         return new Boundary_surface(modelin, inputin);
+    if (swboundary == "surface_bulk")
+        return new Boundary_surface_bulk(modelin, inputin);
     else if (swboundary == "surface_patch")
         return new Boundary_surface_patch(modelin, inputin);
     else if (swboundary == "patch")

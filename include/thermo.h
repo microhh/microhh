@@ -46,6 +46,7 @@ class Thermo
         virtual void init() = 0;
         virtual void create(Input*) = 0;
         virtual void exec() = 0;
+        virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec_stats(Mask*) = 0;
         virtual void exec_cross() = 0;

@@ -457,7 +457,7 @@ void Boundary_surface::stability_neutral(double* restrict ustar, double* restric
 
     // first, interpolate the wind to the scalar location
     for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+        #pragma ivdep
         for (int i=grid->istart; i<grid->iend; ++i)
         {
             const int ij  = i + j*jj;
@@ -471,37 +471,26 @@ void Boundary_surface::stability_neutral(double* restrict ustar, double* restric
 
     grid->boundary_cyclic_2d(dutot);
 
-    // set the Obukhov length to a very large negative number
-    // case 1: fixed buoyancy flux and fixed ustar
-    if (mbcbot == Ustar_type && thermobc == Flux_type)
+    // Set the Obukhov length to a very large negative number
+    // Case 1: fixed ustar, only set the Obukhov length
+    if (mbcbot == Ustar_type)
     {
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ij = i + j*jj;
                 obuk[ij] = -Constants::dbig;
             }
     }
-    // case 2: fixed buoyancy surface value and free ustar
-    else if (mbcbot == Dirichlet_type && thermobc == Flux_type)
+    // Case 2: free ustar, calculate Obukhov length
+    else
     {
         for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=0; i<grid->icells; ++i)
             {
                 const int ij = i + j*jj;
-                obuk [ij] = -Constants::dbig;
-                ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
-            }
-    }
-    else if (mbcbot == Dirichlet_type && thermobc == Dirichlet_type)
-    {
-        for (int j=0; j<grid->jcells; ++j)
-#pragma ivdep
-            for (int i=0; i<grid->icells; ++i)
-            {
-                const int ij  = i + j*jj;
                 obuk [ij] = -Constants::dbig;
                 ustar[ij] = dutot[ij] * most::fm(z[kstart], z0m, obuk[ij]);
             }
