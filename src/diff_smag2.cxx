@@ -33,6 +33,7 @@
 #include "thermo.h"
 #include "model.h"
 #include "monin_obukhov.h"
+#include "immersed_boundary.h"
 
 namespace
 {
@@ -156,7 +157,7 @@ void Diff_smag_2::exec()
                    fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi,
                    fields->sd["evisc"]->data, fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
 
-        // IB correction...
+        model->immersed_boundary->exec_uflux(fields->atmp["tmp3"]->data);
 
         calc_divergence(fields->ut->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
                           grid->dzi, fields->rhoref, fields->rhorefh, uloc);
@@ -166,17 +167,11 @@ void Diff_smag_2::exec()
                    fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi,
                    fields->sd["evisc"]->data, fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
 
-        // IB correction...
+        model->immersed_boundary->exec_vflux(fields->atmp["tmp3"]->data);
 
         calc_divergence(fields->vt->data, fields->atmp["tmp1"]->data, fields->atmp["tmp2"]->data, fields->atmp["tmp3"]->data,
                           grid->dzi, fields->rhoref, fields->rhorefh, vloc);
 
-
-
-        //diff_u<false>(fields->ut->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
-        //       fields->u->datafluxbot, fields->u->datafluxtop, fields->rhoref, fields->rhorefh);
-        //diff_v<false>(fields->vt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
-        //       fields->v->datafluxbot, fields->v->datafluxtop, fields->rhoref, fields->rhorefh);
         diff_w(fields->wt->data, fields->u->data, fields->v->data, fields->w->data, grid->dzi, grid->dzhi, fields->sd["evisc"]->data,
                fields->rhoref, fields->rhorefh);
 

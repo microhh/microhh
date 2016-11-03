@@ -668,184 +668,68 @@ void Immersed_boundary::exec()
     set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->y, grid->z, 4, ii, grid->icells, grid->ijcells);
     set_ghost_cells(ghost_cells_v, fields->v->data, boundary_value, grid->x, grid->yh, grid->z, 4, ii, grid->icells, grid->ijcells);
     set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->y, grid->zh, 4, ii, grid->icells, grid->ijcells);
+
+    grid->boundary_cyclic(fields->u->data);
+    grid->boundary_cyclic(fields->v->data);
+    grid->boundary_cyclic(fields->w->data);
 }
 
-
-
-
-
-// "Archive"....
-/*
-   void print_mat(std::vector<std::vector<double> > m)
-    {
-        for (int i=0; i<m.size(); ++i)
-        {
-            for (int j=0; j<m.size(); ++j)
-            {
-                std::cout << std::fixed << std::setw(6) << std::setprecision(3) << m[i][j] << " ";
-            }
-            std::cout << std::endl;
-        }
-    }
-
-    void inverse_mat_4x4(std::vector<std::vector<double> > &result, std::vector<std::vector<double> > const &input)
-    {
-        result[0][0] =  input[1][1] * input[2][2] * input[3][3] -
-                        input[1][1] * input[3][2] * input[2][3] -
-                        input[1][2] * input[2][1] * input[3][3] +
-                        input[1][2] * input[3][1] * input[2][3] +
-                        input[1][3] * input[2][1] * input[3][2] -
-                        input[1][3] * input[3][1] * input[2][2];
-
-        result[0][1] = -input[0][1] * input[2][2] * input[3][3] +
-                        input[0][1] * input[3][2] * input[2][3] +
-                        input[0][2] * input[2][1] * input[3][3] -
-                        input[0][2] * input[3][1] * input[2][3] -
-                        input[0][3] * input[2][1] * input[3][2] +
-                        input[0][3] * input[3][1] * input[2][2];
-
-        result[0][2] =  input[0][1] * input[1][2] * input[3][3] -
-                        input[0][1] * input[3][2] * input[1][3] -
-                        input[0][2] * input[1][1] * input[3][3] +
-                        input[0][2] * input[3][1] * input[1][3] +
-                        input[0][3] * input[1][1] * input[3][2] -
-                        input[0][3] * input[3][1] * input[1][2];
-
-        result[0][3] = -input[0][1] * input[1][2] * input[2][3] +
-                        input[0][1] * input[2][2] * input[1][3] +
-                        input[0][2] * input[1][1] * input[2][3] -
-                        input[0][2] * input[2][1] * input[1][3] -
-                        input[0][3] * input[1][1] * input[2][2] +
-                        input[0][3] * input[2][1] * input[1][2];
-
-        result[1][0] = -input[1][0] * input[2][2] * input[3][3] +
-                        input[1][0] * input[3][2] * input[2][3] +
-                        input[1][2] * input[2][0] * input[3][3] -
-                        input[1][2] * input[3][0] * input[2][3] -
-                        input[1][3] * input[2][0] * input[3][2] +
-                        input[1][3] * input[3][0] * input[2][2];
-
-        result[1][1] =  input[0][0] * input[2][2] * input[3][3] -
-                        input[0][0] * input[3][2] * input[2][3] -
-                        input[0][2] * input[2][0] * input[3][3] +
-                        input[0][2] * input[3][0] * input[2][3] +
-                        input[0][3] * input[2][0] * input[3][2] -
-                        input[0][3] * input[3][0] * input[2][2];
-
-        result[1][2] = -input[0][0] * input[1][2] * input[3][3] +
-                        input[0][0] * input[3][2] * input[1][3] +
-                        input[0][2] * input[1][0] * input[3][3] -
-                        input[0][2] * input[3][0] * input[1][3] -
-                        input[0][3] * input[1][0] * input[3][2] +
-                        input[0][3] * input[3][0] * input[1][2];
-
-        result[1][3] =  input[0][0] * input[1][2] * input[2][3] -
-                        input[0][0] * input[2][2] * input[1][3] -
-                        input[0][2] * input[1][0] * input[2][3] +
-                        input[0][2] * input[2][0] * input[1][3] +
-                        input[0][3] * input[1][0] * input[2][2] -
-                        input[0][3] * input[2][0] * input[1][2];
-
-        result[2][0] =  input[1][0] * input[2][1] * input[3][3] -
-                        input[1][0] * input[3][1] * input[2][3] -
-                        input[1][1] * input[2][0] * input[3][3] +
-                        input[1][1] * input[3][0] * input[2][3] +
-                        input[1][3] * input[2][0] * input[3][1] -
-                        input[1][3] * input[3][0] * input[2][1];
-
-        result[2][1] = -input[0][0] * input[2][1] * input[3][3] +
-                        input[0][0] * input[3][1] * input[2][3] +
-                        input[0][1] * input[2][0] * input[3][3] -
-                        input[0][1] * input[3][0] * input[2][3] -
-                        input[0][3] * input[2][0] * input[3][1] +
-                        input[0][3] * input[3][0] * input[2][1];
-
-        result[2][2] =  input[0][0] * input[1][1] * input[3][3] -
-                        input[0][0] * input[3][1] * input[1][3] -
-                        input[0][1] * input[1][0] * input[3][3] +
-                        input[0][1] * input[3][0] * input[1][3] +
-                        input[0][3] * input[1][0] * input[3][1] -
-                        input[0][3] * input[3][0] * input[1][1];
-
-        result[2][3] = -input[0][0] * input[1][1] * input[2][3] +
-                        input[0][0] * input[2][1] * input[1][3] +
-                        input[0][1] * input[1][0] * input[2][3] -
-                        input[0][1] * input[2][0] * input[1][3] -
-                        input[0][3] * input[1][0] * input[2][1] +
-                        input[0][3] * input[2][0] * input[1][1];
-
-        result[3][0] = -input[1][0] * input[2][1] * input[3][2] +
-                        input[1][0] * input[3][1] * input[2][2] +
-                        input[1][1] * input[2][0] * input[3][2] -
-                        input[1][1] * input[3][0] * input[2][2] -
-                        input[1][2] * input[2][0] * input[3][1] +
-                        input[1][2] * input[3][0] * input[2][1];
-
-        result[3][1] =  input[0][0] * input[2][1] * input[3][2] -
-                        input[0][0] * input[3][1] * input[2][2] -
-                        input[0][1] * input[2][0] * input[3][2] +
-                        input[0][1] * input[3][0] * input[2][2] +
-                        input[0][2] * input[2][0] * input[3][1] -
-                        input[0][2] * input[3][0] * input[2][1];
-
-        result[3][2] = -input[0][0] * input[1][1] * input[3][2] +
-                        input[0][0] * input[3][1] * input[1][2] +
-                        input[0][1] * input[1][0] * input[3][2] -
-                        input[0][1] * input[3][0] * input[1][2] -
-                        input[0][2] * input[1][0] * input[3][1] +
-                        input[0][2] * input[3][0] * input[1][1];
-
-        result[3][3] =  input[0][0] * input[1][1] * input[2][2] -
-                        input[0][0] * input[2][1] * input[1][2] -
-                        input[0][1] * input[1][0] * input[2][2] +
-                        input[0][1] * input[2][0] * input[1][2] +
-                        input[0][2] * input[1][0] * input[2][1] -
-                        input[0][2] * input[2][0] * input[1][1];
-
-        double det = input[0][0] * result[0][0] + input[1][0] * result[0][1] + input[2][0] * result[0][2] + input[3][0] * result[0][3];
-
-        if (det == 0)
-            std::cout << "DET == 0!" << std::endl;
-
-        det = 1.0 / det;
-
-        for (int i = 0; i < 4; i++)
-            for (int j = 0; j < 4; j++)
-                result[i][j] *= det;
-    }
-
-void Immersed_boundary::define_distance_matrix(Ghost_cell& ghost_cell,
-                                               const double* const restrict x, const double* const restrict y, const double* const restrict z)
+void Immersed_boundary::exec_uflux(double* const restrict flux)
 {
-    const int n = 4;
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
 
-    // Temporary matrix
-    std::vector< std::vector<double> > tmp(n, std::vector<double>(n,0));
-    for (int i=0; i<n; ++i)
-        tmp[i][0] = 1;
+    const double minval = 1.e-2;
+    const double ustar = 0.2;
 
-    tmp[0][1] = ghost_cell.xb;                   // x-location of given value on boundary
-    tmp[1][1] = x[ghost_cell.neighbours[0].i];   // x-location of fluid point #1
-    tmp[2][1] = x[ghost_cell.neighbours[1].i];   // x-location of fluid point #2
-    tmp[3][1] = x[ghost_cell.neighbours[2].i];   // x-location of fluid point #3
+    const double* u = fields->u->data;
+    const double* v = fields->v->data;
+    const double* zh = grid->zh;
 
-    tmp[0][2] = ghost_cell.yb;                   // y-location of given value on boundary
-    tmp[1][2] = y[ghost_cell.neighbours[0].j];   // x-location of fluid point #1
-    tmp[2][2] = y[ghost_cell.neighbours[1].j];   // x-location of fluid point #2
-    tmp[3][2] = y[ghost_cell.neighbours[2].j];   // x-location of fluid point #3
+    for (std::vector<Ghost_cell>::iterator it=ghost_cells_u.begin(); it<ghost_cells_u.end(); ++it)
+    {
+        const int ijk = it->i + it->j*jj + (it->k+1)*kk;
 
-    tmp[0][3] = ghost_cell.zb;                   // z-location of given value on boundary
-    tmp[1][3] = z[ghost_cell.neighbours[0].k];   // z-location of fluid point #1
-    tmp[2][3] = z[ghost_cell.neighbours[1].k];   // z-location of fluid point #1
-    tmp[3][3] = z[ghost_cell.neighbours[2].k];   // z-location of fluid point #1
+        // 1. Calculate v^2 above u, and u^2 and ustar^4
+        const double v2  = std::max(minval, 0.25*(std::pow(v[ijk],2) + std::pow(v[ijk+jj],2) + std::pow(v[ijk+jj-ii],2) + std::pow(v[ijk-ii],2)));
+        const double u2  = std::max(minval, std::pow(u[ijk], 2));
+        const double us4 = std::pow(ustar, 4);
 
-    // Resize matrix in ghost_cell to 4x4
-    ghost_cell.B.resize(n, std::vector<double>(n));
+        // 2. Calculate flux at boundary
+        const double ib_flux = copysign(1., u[ijk]) * std::pow(us4 / (1. + v2 / u2), 0.5);
 
-    // Save the inverse of the matrix
-    inverse_mat_4x4(ghost_cell.B, tmp);
+        // 3. Intrapolate/extrapolate to flux level
+        flux[ijk] = ib_flux + (flux[ijk+kk] - ib_flux) / (zh[it->k+2] - it->zB) * (zh[it->k+1] - it->zB); 
+    }
 }
 
+void Immersed_boundary::exec_vflux(double* const restrict flux)
+{
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
 
- */
+    const double minval = 1.e-2;
+    const double ustar = 0.2;
 
+    const double* u = fields->u->data;
+    const double* v = fields->v->data;
+    const double* zh = grid->zh;
+
+    for (std::vector<Ghost_cell>::iterator it=ghost_cells_u.begin(); it<ghost_cells_u.end(); ++it)
+    {
+        const int ijk = it->i + it->j*jj + (it->k+1)*kk;
+
+        // 1. Calculate u^2 above v, and v^2 and ustar^4
+        const double u2  = std::max(minval, 0.25*(std::pow(u[ijk],2) + std::pow(u[ijk+ii],2) + std::pow(u[ijk+ii-jj],2) + std::pow(u[ijk-jj],2)));
+        const double v2  = std::max(minval, std::pow(v[ijk], 2));
+        const double us4 = std::pow(ustar, 4);
+
+        // 2. Calculate flux at boundary
+        const double ib_flux = copysign(1., v[ijk]) * std::pow(us4 / (1. + u2 / v2), 0.5);
+
+        // 3. Intrapolate/extrapolate to flux level
+        flux[ijk] = ib_flux + (flux[ijk+kk] - ib_flux) / (zh[it->k+2] - it->zB) * (zh[it->k+1] - it->zB); 
+    }
+}
