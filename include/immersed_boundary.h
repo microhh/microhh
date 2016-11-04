@@ -90,19 +90,14 @@ class Immersed_boundary
         std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
 
-        template<IB_type, int> 
         void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*); 
-        template<IB_type, int> 
-        void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*, const int); ///< Function which determines the ghost cells
+        void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*); ///< Function which determines the ghost cells
         void read_ghost_cells(std::vector<Ghost_cell>&, std::string, const double*, const double*, const double*); ///< Function to read user input IB
-        template<IB_type, int> 
-        double boundary_function(double, double); ///< Function describing boundary
-        template<IB_type, int> 
+        double boundary_function(const double, const double); ///< Function describing boundary
         bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
-        template<IB_type, int> 
         void find_nearest_location_wall(double&, double&, double&, double&, 
-                                        const double, const double, const double, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
-        template<IB_type, int> 
+                                        const double, const double, const double, 
+                                        const int, const int, const int); ///< Function which checks if a cell is a ghost cell
         void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
 
         // General settings IB
