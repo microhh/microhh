@@ -38,40 +38,18 @@
 #include "immersed_boundary.h"
 #include "input.h"
 
-#include <fstream>  // TMP BvS
-#include <sstream>
+//#include <fstream>  // TMP BvS
+//#include <sstream>
 
 namespace
 {
-    void write_debug(std::vector<Ghost_cell> const &ghost_cells, std::string name)
-    {
-        std::ofstream debugfile;
-        debugfile.open(name);
-
-        for (std::vector<Ghost_cell>::const_iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
-        {
-            debugfile << it->i-2  << ", " <<
-                         it->j-2  << ", " <<
-                         it->k-1  << ", " <<
-                         it->xB   << ", " <<
-                         it->yB   << ", " <<
-                         it->zB;
-            for(int i=0; i<4; ++i)
-            {
-                debugfile << ", " << it->neighbours[i].i-2;
-                debugfile << ", " << it->neighbours[i].j-2;
-                debugfile << ", " << it->neighbours[i].k-1;
-            }
-            debugfile << std::endl;
-        }
-        debugfile.close();
-    }
-
+    // Overloaded method to calculate the absolute distance in 3D 
     inline double abs_distance(const double x1, const double x2, const double y1, const double y2, const double z1, const double z2)
     {
         return std::pow(std::pow(x1-x2, 2) + std::pow(y1-y2, 2) + std::pow(z1-z2, 2), 0.5);
     }
 
+    // Overloaded method to calculate the absolute distance in 2D 
     inline double abs_distance(const double x1, const double x2, const double z1, const double z2)
     {
         return std::pow(std::pow(x1-x2, 2) + std::pow(z1-z2, 2), 0.5);
@@ -83,7 +61,7 @@ namespace
         return a.distance < b.distance;
     }
 
- 
+    //  Pre-calculate the coefficients used in the inverse distance weighted interpolation
     void precalculate_idw(Ghost_cell& ghost_cell, const double* const restrict x, const double* const restrict y, const double* const restrict z)
     {
         const int n = ghost_cell.neighbours.size();
@@ -97,6 +75,7 @@ namespace
                                                         ghost_cell.yI, y[ghost_cell.neighbours[l].j],
                                                         ghost_cell.zI, z[ghost_cell.neighbours[l].k]), Constants::dsmall);
 
+        // Add the distance between boundary and image point 
         ghost_cell.c_idw[n] = std::max(abs_distance(ghost_cell.xI, ghost_cell.xB,
                                                     ghost_cell.yI, ghost_cell.yB,
                                                     ghost_cell.zI, ghost_cell.zB), Constants::dsmall);
@@ -113,6 +92,7 @@ namespace
         }
     }
 
+    // Set the ghost cells according to the chosen boundary conditions
     void set_ghost_cells(std::vector<Ghost_cell> const &ghost_cells, double* const restrict field, const double boundary_value,
                          const double* const restrict x, const double* const restrict y, const double* const restrict z,
                          const int nn, const int ii, const int jj, const int kk)
@@ -144,7 +124,7 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 
     int nerror = 0;
 
-    inputin->get_item(&sw_ib, "immersed_boundary", "sw_ib", "", "0");
+    inputin->get_item(&sw_ib, "IB", "sw_ib", "", "0");
 
     // Get the IB type, and required parameters for that type
     if (sw_ib == "0")
@@ -158,11 +138,11 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     else if (sw_ib == "sine")
     {
         ib_type = Sine_type;
-        nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
-        nerror += inputin->get_item(&amplitude,    "immersed_boundary", "amplitude",    ""    );
-        nerror += inputin->get_item(&wavelength_x, "immersed_boundary", "wavelength_x", ""    );
-        nerror += inputin->get_item(&wavelength_y, "immersed_boundary", "wavelength_y", "", -1);
-        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+        nerror += inputin->get_item(&xy_dims,      "IB", "xy_dims",      "", 1 );
+        nerror += inputin->get_item(&amplitude,    "IB", "amplitude",    ""    );
+        nerror += inputin->get_item(&wavelength_x, "IB", "wavelength_x", ""    );
+        nerror += inputin->get_item(&wavelength_y, "IB", "wavelength_y", "", -1);
+        nerror += inputin->get_item(&z_offset,     "IB", "z_offset",     "", 0 );
     }
     else if (sw_ib == "gaussian" || sw_ib == "agnesi")
     {
@@ -170,18 +150,18 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
             ib_type = Gaus_type;
         else if (sw_ib == "agnesi")
             ib_type = Agnesi_type;
-        nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
-        nerror += inputin->get_item(&amplitude,    "immersed_boundary", "amplitude",    ""    );
-        nerror += inputin->get_item(&x0_hill,      "immersed_boundary", "x0_hill",      ""    );
-        nerror += inputin->get_item(&sigma_x_hill, "immersed_boundary", "sigma_x_hill", ""    );
-        nerror += inputin->get_item(&y0_hill,      "immersed_boundary", "y0_hill",      "", -1);
-        nerror += inputin->get_item(&sigma_y_hill, "immersed_boundary", "sigma_y_hill", "", -1);
-        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+        nerror += inputin->get_item(&xy_dims,      "IB", "xy_dims",      "", 1 );
+        nerror += inputin->get_item(&amplitude,    "IB", "amplitude",    ""    );
+        nerror += inputin->get_item(&x0_hill,      "IB", "x0_hill",      ""    );
+        nerror += inputin->get_item(&sigma_x_hill, "IB", "sigma_x_hill", ""    );
+        nerror += inputin->get_item(&y0_hill,      "IB", "y0_hill",      "", -1);
+        nerror += inputin->get_item(&sigma_y_hill, "IB", "sigma_y_hill", "", -1);
+        nerror += inputin->get_item(&z_offset,     "IB", "z_offset",     "", 0 );
     }
     else if (sw_ib == "flat")
     {
         ib_type = Flat_type;
-        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+        nerror += inputin->get_item(&z_offset,     "IB", "z_offset",     "", 0 );
     }
     else
     {
@@ -189,21 +169,32 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
         throw 1;
     }
 
-    // Interpolation method
     if (ib_type != None_type)
     {
-        grid->set_minimum_ghost_cells(2, 2, 1);
+        nerror += inputin->get_item(&n_idw, "IB", "n_idw", "");  // Number of grid points used in interpolation
 
-        inputin->get_item(&sw_interpol, "immersed_boundary", "sw_interpolation", "");
+        grid->set_minimum_ghost_cells(2, 2, 1);  // Set at leat two ghost cells in the horizontal
 
-        if (sw_interpol == "linear")
-            interpol_type = Linear_type;
-        else if (sw_interpol == "inverse_distance")
-            interpol_type = Distance_type;
-        else
+        // Get the scalar boundary conditions. For now, the momentum BC is hardcoded at a no-slip condition.
+        std::string swbot;
+        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
         {
-           model->master->print_error("sw_interpolate = \"%s\" not (yet) supported\n", sw_interpol.c_str());
-           throw 1;
+            sbc[it->first] = new Field3dBc;
+            nerror += inputin->get_item(&swbot, "IB", "sbcbot", it->first);
+            nerror += inputin->get_item(&sbc[it->first]->bot, "IB", "sbot", it->first);
+
+            // Set the bottom BC
+            if (swbot == "dirichlet")
+                sbc[it->first]->bcbot = Dirichlet_type;
+            else if (swbot == "neumann")
+                sbc[it->first]->bcbot = Neumann_type;
+            else if (swbot == "flux")
+                sbc[it->first]->bcbot = Flux_type;
+            else
+            {
+                model->master->print_error("%s is illegal value for sbcbot\n", swbot.c_str());
+                nerror++;
+            }
         }
     }
 
@@ -246,57 +237,57 @@ void Immersed_boundary::create()
     }
     else if (ib_type == Flat_type)
     {
-        find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-        find_ghost_cells<Flat_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-        find_ghost_cells<Flat_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-        find_ghost_cells<Flat_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+        find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  n_idw);
+        find_ghost_cells<Flat_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  n_idw);
+        find_ghost_cells<Flat_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, n_idw);
+        find_ghost_cells<Flat_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  n_idw);
     }
     else if (xy_dims == 1)
     {
         if (ib_type == Sine_type)
         {
-            find_ghost_cells<Sine_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Sine_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Sine_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Sine_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            find_ghost_cells<Sine_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  n_idw);
+            find_ghost_cells<Sine_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  n_idw);
+            find_ghost_cells<Sine_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, n_idw);
+            find_ghost_cells<Sine_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  n_idw);
         }
         else if (ib_type == Gaus_type)
         {
-            find_ghost_cells<Gaus_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Gaus_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Gaus_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Gaus_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            find_ghost_cells<Gaus_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  n_idw);
+            find_ghost_cells<Gaus_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  n_idw);
+            find_ghost_cells<Gaus_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, n_idw);
+            find_ghost_cells<Gaus_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  n_idw);
         }
         else if (ib_type == Agnesi_type)
         {
-            find_ghost_cells<Agnesi_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Agnesi_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Agnesi_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Agnesi_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            find_ghost_cells<Agnesi_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  n_idw);
+            find_ghost_cells<Agnesi_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  n_idw);
+            find_ghost_cells<Agnesi_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, n_idw);
+            find_ghost_cells<Agnesi_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  n_idw);
         }
     }
     else if (xy_dims == 2)
     {
         if (ib_type == Sine_type)
         {
-            find_ghost_cells<Sine_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Sine_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Sine_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Sine_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            find_ghost_cells<Sine_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  n_idw);
+            find_ghost_cells<Sine_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  n_idw);
+            find_ghost_cells<Sine_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, n_idw);
+            find_ghost_cells<Sine_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  n_idw);
         }
         else if (ib_type == Gaus_type)
         {
-            find_ghost_cells<Gaus_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Gaus_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Gaus_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Gaus_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            find_ghost_cells<Gaus_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  n_idw);
+            find_ghost_cells<Gaus_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  n_idw);
+            find_ghost_cells<Gaus_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, n_idw);
+            find_ghost_cells<Gaus_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  n_idw);
         }
         else if (ib_type == Agnesi_type)
         {
-            find_ghost_cells<Agnesi_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Agnesi_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Agnesi_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Agnesi_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            find_ghost_cells<Agnesi_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  n_idw);
+            find_ghost_cells<Agnesi_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  n_idw);
+            find_ghost_cells<Agnesi_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, n_idw);
+            find_ghost_cells<Agnesi_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  n_idw);
         }
     }
 
@@ -304,13 +295,6 @@ void Immersed_boundary::create()
     model->master->print_message("Found %i IB[v] ghost cells \n", ghost_cells_v.size());
     model->master->print_message("Found %i IB[w] ghost cells \n", ghost_cells_w.size());
     model->master->print_message("Found %i IB[s] ghost cells \n", ghost_cells_s.size());
-
-    // Debug.....
-    //std::string name;
-    //name = "debug_u.txt"; write_debug(ghost_cells_u, name);
-    //name = "debug_v.txt"; write_debug(ghost_cells_v, name);
-    //name = "debug_w.txt"; write_debug(ghost_cells_w, name);
-    //name = "debug_s.txt"; write_debug(ghost_cells_s, name);
 }
 
 template<Immersed_boundary::IB_type sw, int dims>
@@ -407,7 +391,7 @@ void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min,
 template<Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
                                                   const double* const restrict x, const double* const restrict y, const double* const restrict z,
-                                                  const int i, const int j, const int k, const int n)
+                                                  const int i, const int j, const int k, const int n_idw)
 {
     double x_min, y_min, z_min, d_min;  // x, y, z location and distance to wall
 
@@ -439,14 +423,14 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
     std::sort(ghost_cell.neighbours.begin(), ghost_cell.neighbours.end(), compare_value);
 
     // Abort if there are insufficient neighbouring fluid points
-    if (ghost_cell.neighbours.size() < n)
+    if (ghost_cell.neighbours.size() < n_idw)
     {
-        model->master->print_error("Only found %i of %i neighbour points\n", ghost_cell.neighbours.size(), n);
+        model->master->print_error("Only found %i of n_idw=%i neighbour points\n", ghost_cell.neighbours.size(), n_idw);
         throw 1;
     }
 
     // Only keep the N nearest neighbour fluid points
-    ghost_cell.neighbours.erase(ghost_cell.neighbours.begin()+n, ghost_cell.neighbours.end());
+    ghost_cell.neighbours.erase(ghost_cell.neighbours.begin()+n_idw, ghost_cell.neighbours.end());
 
     // Pre-calculate the inverse distance weighting coefficients
     precalculate_idw(ghost_cell, x, y, z);
@@ -504,8 +488,6 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
                 const int jn = input["j"+std::to_string(static_cast<long long>(nn))][n] + grid->jstart - mpioffsy;
                 const int kn = input["k"+std::to_string(static_cast<long long>(nn))][n] + grid->kstart;
 
-                std::cout << y[j] << " - " << y[jn] << std::endl;
-
                 Neighbour tmp_neighbour = {in, jn, kn, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])};
                 tmp_ghost.neighbours.push_back(tmp_neighbour);
             }
@@ -519,7 +501,8 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
 
 template<Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
-                                         const double* const restrict x, const double* const restrict y, const double* const restrict z)
+                                         const double* const restrict x, const double* const restrict y, 
+                                         const double* const restrict z, const int n_idw)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -545,12 +528,10 @@ void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
                     tmp_ghost.yI = 2*tmp_ghost.yB - y[j];
                     tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
 
-                    // 3. Find the closest 3 grid points outside the IB
-                    find_interpolation_points<sw,dims>(tmp_ghost, x, y, z, i, j, k, 4);
+                    // 3. Find the closest `n_idw` grid points outside the IB
+                    find_interpolation_points<sw,dims>(tmp_ghost, x, y, z, i, j, k, n_idw);
 
-                    // 4. Define the matrix with distances to the boundary and each grid point used in the interpolation
-                    //define_distance_matrix(tmp_ghost, x, y, z);
-
+                    // 4. Add to collection (list) of ghost cells
                     ghost_cells.push_back(tmp_ghost);
                 }
             }
@@ -665,9 +646,21 @@ void Immersed_boundary::exec()
     const int ii = 1;
     const double boundary_value = 0.;
 
+    // Set the immersed boundary ghost cells to enforce a no-slip BC for the velocity components
     set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->y, grid->z, 4, ii, grid->icells, grid->ijcells);
     set_ghost_cells(ghost_cells_v, fields->v->data, boundary_value, grid->x, grid->yh, grid->z, 4, ii, grid->icells, grid->ijcells);
     set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->y, grid->zh, 4, ii, grid->icells, grid->ijcells);
+
+    grid->boundary_cyclic(fields->u->data);
+    grid->boundary_cyclic(fields->v->data);
+    grid->boundary_cyclic(fields->w->data);
+
+    // Set the ghost cells for scalars, depending on their BC
+    for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    {
+        set_ghost_cells(ghost_cells_s, fields->ap[it->first]->data, sbc[it->first]->bot, grid->x, grid->y, grid->z, 4, ii, grid->icells, grid->ijcells);
+        grid->boundary_cyclic(fields->ap[it->first]->data);
+    }
 }
 
 
