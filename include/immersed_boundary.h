@@ -55,6 +55,8 @@ struct Ghost_cell
     double yI;  ///< x-Location of image point of ghost cell
     double zI;  ///< x-Location of image point of ghost cell
 
+    double dI;  ///< Distance from ghost cell to interpolation point
+
     std::vector< std::vector<double> > B; ///< Inversed matrix with the locations of all interpolation points
     std::vector<Neighbour> neighbours;    ///< Neighbouring fluid points used in interpolation
 
@@ -83,22 +85,25 @@ class Immersed_boundary
         Fields* fields; ///< Pointer to fields class.
         Grid*   grid;   ///< Pointer to grid class.
         Stats*  stats;  ///< Pointer to grid class.
-        
+
         ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_v;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
 
-        void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*); 
-        void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*); ///< Function which determines the ghost cells
+        void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*);
+
+        void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*, Boundary_type); ///< Function which determines the ghost cells
         void read_ghost_cells(std::vector<Ghost_cell>&, std::string, const double*, const double*, const double*); ///< Function to read user input IB
+
         double boundary_function(const double, const double); ///< Function describing boundary
+
         bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
-        void find_nearest_location_wall(double&, double&, double&, double&, 
-                                        const double, const double, const double, 
+        void find_nearest_location_wall(double&, double&, double&, double&,
+                                        const double, const double, const double,
                                         const int, const int, const int); ///< Function which checks if a cell is a ghost cell
-        void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
+        void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, Boundary_type); ///< Function which searched for the nearest neighbours
 
         // General settings IB
         std::string sw_ib; ///< Namelist IB switch
@@ -116,19 +121,19 @@ class Immersed_boundary
         double wavelength_y; ///< Wave length sine in y-direction
 
         // Gaussian hill
-        double x0_hill;      ///< Center of hill in x-direction 
-        double y0_hill;      ///< Center of hill in y-direction 
+        double x0_hill;      ///< Center of hill in x-direction
+        double y0_hill;      ///< Center of hill in y-direction
         double sigma_x_hill; ///< Std.dev hill width in x-direction
         double sigma_y_hill; ///< Std.dev hill width in y-direction
 
-        // Boundary conditions 
+        // Boundary conditions
         struct Field3dBc
         {
-            double bot; ///< Value of the bottom boundary.
+            double bot;          ///< Value of the bottom boundary.
             Boundary_type bcbot; ///< Switch for the bottom boundary.
         };
 
-        typedef std::map<std::string, Field3dBc*> BcMap;
-        BcMap sbc;
+        typedef std::map<std::string, Field3dBc*> BcMap;    ///< Map with boundary conditions per scalar
+        BcMap sbc;                                          ///< Map with boundary conditions per scalar
 };
 #endif

@@ -38,18 +38,15 @@
 #include "immersed_boundary.h"
 #include "input.h"
 
-//#include <fstream>  // TMP BvS
-//#include <sstream>
-
 namespace
 {
-    // Overloaded method to calculate the absolute distance in 3D 
+    // Overloaded method to calculate the absolute distance in 3D
     inline double abs_distance(const double x1, const double x2, const double y1, const double y2, const double z1, const double z2)
     {
         return std::pow(std::pow(x1-x2, 2) + std::pow(y1-y2, 2) + std::pow(z1-z2, 2), 0.5);
     }
 
-    // Overloaded method to calculate the absolute distance in 2D 
+    // Overloaded method to calculate the absolute distance in 2D
     inline double abs_distance(const double x1, const double x2, const double z1, const double z2)
     {
         return std::pow(std::pow(x1-x2, 2) + std::pow(z1-z2, 2), 0.5);
@@ -62,30 +59,36 @@ namespace
     }
 
     //  Pre-calculate the coefficients used in the inverse distance weighted interpolation
-    void precalculate_idw(Ghost_cell& ghost_cell, const double* const restrict x, const double* const restrict y, const double* const restrict z)
+    void precalculate_idw(Ghost_cell& ghost_cell, const double* const restrict x, const double* const restrict y, const double* const restrict z, Immersed_boundary::Boundary_type bc)
     {
         const int n = ghost_cell.neighbours.size();
 
-        // Pre-calculate the coefficient for the inverse distance weighted interpolation
-        ghost_cell.c_idw.resize(n+1); // n neighbour points + location on wall
+        // Calculate distances between image and interpolation points
+        for (std::vector<Neighbour>::const_iterator it=ghost_cell.neighbours.begin(); it<ghost_cell.neighbours.end(); ++it)
+        {
+            const double dist = std::max(abs_distance(ghost_cell.xI, x[it->i],
+                                                      ghost_cell.yI, y[it->j],
+                                                      ghost_cell.zI, z[it->k]), Constants::dsmall);
+            ghost_cell.c_idw.push_back(dist);
+        }
 
-        // Calculate distance interpolation points to image point
-        for (int l=0; l<n; ++l)
-            ghost_cell.c_idw[l] = std::max(abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i],
-                                                        ghost_cell.yI, y[ghost_cell.neighbours[l].j],
-                                                        ghost_cell.zI, z[ghost_cell.neighbours[l].k]), Constants::dsmall);
+        // For dirichlet BCs, add the distance between boundary and image point
+        if (bc == Immersed_boundary::Dirichlet_type)
+        {
+            const double dist = std::max(abs_distance(ghost_cell.xI, ghost_cell.xB,
+                                                      ghost_cell.yI, ghost_cell.yB,
+                                                      ghost_cell.zI, ghost_cell.zB), Constants::dsmall);
 
-        // Add the distance between boundary and image point 
-        ghost_cell.c_idw[n] = std::max(abs_distance(ghost_cell.xI, ghost_cell.xB,
-                                                    ghost_cell.yI, ghost_cell.yB,
-                                                    ghost_cell.zI, ghost_cell.zB), Constants::dsmall);
+            ghost_cell.c_idw.push_back(dist);
+        }
 
         // Save maximum distance
         const double max_distance = *std::max_element(ghost_cell.c_idw.begin(), ghost_cell.c_idw.end());
 
-        // Calculate coefficients
+        // Calculate IDW coefficients
         ghost_cell.c_idw_sum = 0;
-        for (int l=0; l<n+1; ++l)
+
+        for (int l=0; l<ghost_cell.c_idw.size(); ++l)
         {
             ghost_cell.c_idw[l] = std::pow((max_distance - ghost_cell.c_idw[l]) / (max_distance * ghost_cell.c_idw[l]), 0.5);
             ghost_cell.c_idw_sum += ghost_cell.c_idw[l];
@@ -95,23 +98,39 @@ namespace
     // Set the ghost cells according to the chosen boundary conditions
     void set_ghost_cells(std::vector<Ghost_cell> const &ghost_cells, double* const restrict field, const double boundary_value,
                          const double* const restrict x, const double* const restrict y, const double* const restrict z,
-                         const int nn, const int ii, const int jj, const int kk)
+                         const int n_idw, const int ii, const int jj, const int kk,
+                         Immersed_boundary::Boundary_type bc, const double visc)
     {
+        const int n = (bc == Immersed_boundary::Boundary_type::Dirichlet_type) ? n_idw-1 : n_idw;
+
         for (std::vector<Ghost_cell>::const_iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
         {
-            // Calculate interpolant at image point
+            // Sum the IDW coefficient times the value at the neighbouring grid points
             double vI = 0;
-            for (int i=0; i<nn; ++i)
+            for (int i=0; i<n; ++i)
             {
                 const int ijk = it->neighbours[i].i + it->neighbours[i].j*jj + it->neighbours[i].k*kk;
                 vI += it->c_idw[i] * field[ijk];
             }
-            vI += it->c_idw[nn] * boundary_value;
+
+            // For Dirichlet BCs, add the boundary value
+            if (bc == Immersed_boundary::Boundary_type::Dirichlet_type)
+                vI += it->c_idw[n_idw] * boundary_value;
+
             vI /= it->c_idw_sum;
 
-            // Reflect across boundary
+            // Set the correct BC in the ghost cell
             const int ijk = it->i + it->j*jj + it->k*kk;
-            field[ijk] = 2*boundary_value - vI;
+
+            if (bc == Immersed_boundary::Boundary_type::Dirichlet_type)
+                field[ijk] = 2*boundary_value - vI;         // Image value reflected across IB
+            else if (bc == Immersed_boundary::Boundary_type::Neumann_type)
+                field[ijk] = vI - boundary_value * it->dI;  // Image value minus gradient times distance
+            else if (bc == Immersed_boundary::Boundary_type::Flux_type)
+            {
+                const double grad = -boundary_value / visc;
+                field[ijk] = vI - grad * it->dI;            // Image value minus gradient times distance
+            }
         }
     }
 }
@@ -175,25 +194,40 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 
         grid->set_minimum_ghost_cells(2, 2, 1);  // Set at leat two ghost cells in the horizontal
 
-        // Get the scalar boundary conditions. For now, the momentum BC is hardcoded at a no-slip condition.
-        std::string swbot;
-        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+        // Get the scalar boundary conditions. For now, the momentum BC is hardcoded at no-slip.
+        if (fields->sp.size() > 0)
         {
-            sbc[it->first] = new Field3dBc;
-            nerror += inputin->get_item(&swbot, "IB", "sbcbot", it->first);
-            nerror += inputin->get_item(&sbc[it->first]->bot, "IB", "sbot", it->first);
-
-            // Set the bottom BC
-            if (swbot == "dirichlet")
-                sbc[it->first]->bcbot = Dirichlet_type;
-            else if (swbot == "neumann")
-                sbc[it->first]->bcbot = Neumann_type;
-            else if (swbot == "flux")
-                sbc[it->first]->bcbot = Flux_type;
-            else
+            std::string swbot;
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
             {
-                model->master->print_error("%s is illegal value for sbcbot\n", swbot.c_str());
-                nerror++;
+                sbc[it->first] = new Field3dBc;
+                nerror += inputin->get_item(&swbot, "IB", "sbcbot", it->first);
+                nerror += inputin->get_item(&sbc[it->first]->bot, "IB", "sbot", it->first);
+
+                // Set the bottom BC
+                if (swbot == "dirichlet")
+                    sbc[it->first]->bcbot = Dirichlet_type;
+                else if (swbot == "neumann")
+                    sbc[it->first]->bcbot = Neumann_type;
+                else if (swbot == "flux")
+                    sbc[it->first]->bcbot = Flux_type;
+                else
+                {
+                    model->master->print_error("%s is illegal value for sbcbot\n", swbot.c_str());
+                    nerror++;
+                }
+            }
+
+            // Check whether all scalar BCs are the same type
+            Boundary_type bc = sbc[fields->sp.begin()->first]->bcbot;
+
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+            {
+                if (sbc[it->first]->bcbot != bc)
+                {
+                    model->master->print_error("All IB \"sbcbot\" need to be of the same type!\n");
+                    nerror++;
+                }
             }
         }
     }
@@ -232,21 +266,36 @@ void Immersed_boundary::create()
         file_name = "w.ib_input";
         read_ghost_cells(ghost_cells_w, file_name, grid->x, grid->y, grid->zh);
 
-        file_name = "s.ib_input";
-        read_ghost_cells(ghost_cells_s, file_name, grid->x, grid->y, grid->z);
+        model->master->print_message("Read %i IB[u] ghost cells from u.ib_input\n", ghost_cells_u.size());
+        model->master->print_message("Read %i IB[v] ghost cells from v.ib_input\n", ghost_cells_v.size());
+        model->master->print_message("Read %i IB[w] ghost cells from w.ib_input\n", ghost_cells_w.size());
+
+        if (fields->sp.size() > 0)
+        {
+            file_name = "s.ib_input";
+            read_ghost_cells(ghost_cells_s, file_name, grid->x, grid->y, grid->z);
+            model->master->print_message("Read %i IB[s] ghost cells from s.ib_input\n", ghost_cells_s.size());
+        }
     }
-    else 
+    else
     {
-        find_ghost_cells(ghost_cells_u, grid->xh, grid->y,  grid->z );
-        find_ghost_cells(ghost_cells_v, grid->x,  grid->yh, grid->z );
-        find_ghost_cells(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-        find_ghost_cells(ghost_cells_s, grid->x,  grid->y,  grid->z );
+        // Find the IB ghost cells for the momentum locations
+        find_ghost_cells(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+        find_ghost_cells(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+        find_ghost_cells(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+
+        model->master->print_message("Found %i IB[u] ghost cells \n", ghost_cells_u.size());
+        model->master->print_message("Found %i IB[v] ghost cells \n", ghost_cells_v.size());
+        model->master->print_message("Found %i IB[w] ghost cells \n", ghost_cells_w.size());
+
+        if (fields->sp.size() > 0)
+        {
+            Boundary_type bc = sbc[fields->sp.begin()->first]->bcbot;
+            find_ghost_cells(ghost_cells_s, grid->x,  grid->y,  grid->z, bc);
+            model->master->print_message("Found %i IB[s] ghost cells \n", ghost_cells_s.size());
+        }
     }
 
-    model->master->print_message("Found %i IB[u] ghost cells \n", ghost_cells_u.size());
-    model->master->print_message("Found %i IB[v] ghost cells \n", ghost_cells_v.size());
-    model->master->print_message("Found %i IB[w] ghost cells \n", ghost_cells_w.size());
-    model->master->print_message("Found %i IB[s] ghost cells \n", ghost_cells_s.size());
 }
 
 // Return the height of the IB as a function of x,y position
@@ -341,7 +390,7 @@ void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min,
 
 void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
                                                   const double* const restrict x, const double* const restrict y, const double* const restrict z,
-                                                  const int i, const int j, const int k, const int n_idw)
+                                                  const int i, const int j, const int k, Boundary_type bc)
 {
     double x_min, y_min, z_min, d_min;  // x, y, z location and distance to wall
 
@@ -379,11 +428,15 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
         throw 1;
     }
 
+    // For Dirichlet BCs, one interpolation point is the boundary value at the IB,
+    // so we only require n_idw-1 interpolation points outside the IB
+    const int n = (bc == Dirichlet_type) ? n_idw-1 : n_idw;
+
     // Only keep the N nearest neighbour fluid points
-    ghost_cell.neighbours.erase(ghost_cell.neighbours.begin()+n_idw, ghost_cell.neighbours.end());
+    ghost_cell.neighbours.erase(ghost_cell.neighbours.begin()+n, ghost_cell.neighbours.end());
 
     // Pre-calculate the inverse distance weighting coefficients
-    precalculate_idw(ghost_cell, x, y, z);
+    precalculate_idw(ghost_cell, x, y, z, bc);
 }
 
 
@@ -442,7 +495,7 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
                 tmp_ghost.neighbours.push_back(tmp_neighbour);
             }
 
-            precalculate_idw(tmp_ghost, x, y, z);
+            precalculate_idw(tmp_ghost, x, y, z, Dirichlet_type);
 
             ghost_cells.push_back(tmp_ghost);
         }
@@ -450,7 +503,8 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
 }
 
 void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
-                                         const double* const restrict x, const double* const restrict y, const double* const restrict z)
+                                         const double* const restrict x, const double* const restrict y, const double* const restrict z,
+                                         Boundary_type bc)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -476,8 +530,11 @@ void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
                     tmp_ghost.yI = 2*tmp_ghost.yB - y[j];
                     tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
 
+                    // 2.2 Save distance ghost cell to image point
+                    tmp_ghost.dI = abs_distance(tmp_ghost.xI, x[i], tmp_ghost.yI, y[j], tmp_ghost.zI, z[k]);
+
                     // 3. Find the closest `n_idw` grid points outside the IB
-                    find_interpolation_points(tmp_ghost, x, y, z, i, j, k, n_idw);
+                    find_interpolation_points(tmp_ghost, x, y, z, i, j, k, bc);
 
                     // 4. Add to collection (list) of ghost cells
                     ghost_cells.push_back(tmp_ghost);
@@ -564,12 +621,12 @@ void Immersed_boundary::exec()
         return;
 
     const int ii = 1;
-    const double boundary_value = 0.;
+    const double no_slip = 0.;
 
     // Set the immersed boundary ghost cells to enforce a no-slip BC for the velocity components
-    set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->y, grid->z, 4, ii, grid->icells, grid->ijcells);
-    set_ghost_cells(ghost_cells_v, fields->v->data, boundary_value, grid->x, grid->yh, grid->z, 4, ii, grid->icells, grid->ijcells);
-    set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->y, grid->zh, 4, ii, grid->icells, grid->ijcells);
+    set_ghost_cells(ghost_cells_u, fields->u->data, no_slip, grid->xh, grid->y,  grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
+    set_ghost_cells(ghost_cells_v, fields->v->data, no_slip, grid->x,  grid->yh, grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
+    set_ghost_cells(ghost_cells_w, fields->w->data, no_slip, grid->x,  grid->y,  grid->zh, n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
 
     grid->boundary_cyclic(fields->u->data);
     grid->boundary_cyclic(fields->v->data);
@@ -578,187 +635,8 @@ void Immersed_boundary::exec()
     // Set the ghost cells for scalars, depending on their BC
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
     {
-        set_ghost_cells(ghost_cells_s, fields->ap[it->first]->data, sbc[it->first]->bot, grid->x, grid->y, grid->z, 4, ii, grid->icells, grid->ijcells);
+        set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
+                        grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc);
         grid->boundary_cyclic(fields->ap[it->first]->data);
     }
 }
-
-
-
-
-
-// "Archive"....
-/*
-   void print_mat(std::vector<std::vector<double> > m)
-    {
-        for (int i=0; i<m.size(); ++i)
-        {
-            for (int j=0; j<m.size(); ++j)
-            {
-                std::cout << std::fixed << std::setw(6) << std::setprecision(3) << m[i][j] << " ";
-            }
-            std::cout << std::endl;
-        }
-    }
-
-    void inverse_mat_4x4(std::vector<std::vector<double> > &result, std::vector<std::vector<double> > const &input)
-    {
-        result[0][0] =  input[1][1] * input[2][2] * input[3][3] -
-                        input[1][1] * input[3][2] * input[2][3] -
-                        input[1][2] * input[2][1] * input[3][3] +
-                        input[1][2] * input[3][1] * input[2][3] +
-                        input[1][3] * input[2][1] * input[3][2] -
-                        input[1][3] * input[3][1] * input[2][2];
-
-        result[0][1] = -input[0][1] * input[2][2] * input[3][3] +
-                        input[0][1] * input[3][2] * input[2][3] +
-                        input[0][2] * input[2][1] * input[3][3] -
-                        input[0][2] * input[3][1] * input[2][3] -
-                        input[0][3] * input[2][1] * input[3][2] +
-                        input[0][3] * input[3][1] * input[2][2];
-
-        result[0][2] =  input[0][1] * input[1][2] * input[3][3] -
-                        input[0][1] * input[3][2] * input[1][3] -
-                        input[0][2] * input[1][1] * input[3][3] +
-                        input[0][2] * input[3][1] * input[1][3] +
-                        input[0][3] * input[1][1] * input[3][2] -
-                        input[0][3] * input[3][1] * input[1][2];
-
-        result[0][3] = -input[0][1] * input[1][2] * input[2][3] +
-                        input[0][1] * input[2][2] * input[1][3] +
-                        input[0][2] * input[1][1] * input[2][3] -
-                        input[0][2] * input[2][1] * input[1][3] -
-                        input[0][3] * input[1][1] * input[2][2] +
-                        input[0][3] * input[2][1] * input[1][2];
-
-        result[1][0] = -input[1][0] * input[2][2] * input[3][3] +
-                        input[1][0] * input[3][2] * input[2][3] +
-                        input[1][2] * input[2][0] * input[3][3] -
-                        input[1][2] * input[3][0] * input[2][3] -
-                        input[1][3] * input[2][0] * input[3][2] +
-                        input[1][3] * input[3][0] * input[2][2];
-
-        result[1][1] =  input[0][0] * input[2][2] * input[3][3] -
-                        input[0][0] * input[3][2] * input[2][3] -
-                        input[0][2] * input[2][0] * input[3][3] +
-                        input[0][2] * input[3][0] * input[2][3] +
-                        input[0][3] * input[2][0] * input[3][2] -
-                        input[0][3] * input[3][0] * input[2][2];
-
-        result[1][2] = -input[0][0] * input[1][2] * input[3][3] +
-                        input[0][0] * input[3][2] * input[1][3] +
-                        input[0][2] * input[1][0] * input[3][3] -
-                        input[0][2] * input[3][0] * input[1][3] -
-                        input[0][3] * input[1][0] * input[3][2] +
-                        input[0][3] * input[3][0] * input[1][2];
-
-        result[1][3] =  input[0][0] * input[1][2] * input[2][3] -
-                        input[0][0] * input[2][2] * input[1][3] -
-                        input[0][2] * input[1][0] * input[2][3] +
-                        input[0][2] * input[2][0] * input[1][3] +
-                        input[0][3] * input[1][0] * input[2][2] -
-                        input[0][3] * input[2][0] * input[1][2];
-
-        result[2][0] =  input[1][0] * input[2][1] * input[3][3] -
-                        input[1][0] * input[3][1] * input[2][3] -
-                        input[1][1] * input[2][0] * input[3][3] +
-                        input[1][1] * input[3][0] * input[2][3] +
-                        input[1][3] * input[2][0] * input[3][1] -
-                        input[1][3] * input[3][0] * input[2][1];
-
-        result[2][1] = -input[0][0] * input[2][1] * input[3][3] +
-                        input[0][0] * input[3][1] * input[2][3] +
-                        input[0][1] * input[2][0] * input[3][3] -
-                        input[0][1] * input[3][0] * input[2][3] -
-                        input[0][3] * input[2][0] * input[3][1] +
-                        input[0][3] * input[3][0] * input[2][1];
-
-        result[2][2] =  input[0][0] * input[1][1] * input[3][3] -
-                        input[0][0] * input[3][1] * input[1][3] -
-                        input[0][1] * input[1][0] * input[3][3] +
-                        input[0][1] * input[3][0] * input[1][3] +
-                        input[0][3] * input[1][0] * input[3][1] -
-                        input[0][3] * input[3][0] * input[1][1];
-
-        result[2][3] = -input[0][0] * input[1][1] * input[2][3] +
-                        input[0][0] * input[2][1] * input[1][3] +
-                        input[0][1] * input[1][0] * input[2][3] -
-                        input[0][1] * input[2][0] * input[1][3] -
-                        input[0][3] * input[1][0] * input[2][1] +
-                        input[0][3] * input[2][0] * input[1][1];
-
-        result[3][0] = -input[1][0] * input[2][1] * input[3][2] +
-                        input[1][0] * input[3][1] * input[2][2] +
-                        input[1][1] * input[2][0] * input[3][2] -
-                        input[1][1] * input[3][0] * input[2][2] -
-                        input[1][2] * input[2][0] * input[3][1] +
-                        input[1][2] * input[3][0] * input[2][1];
-
-        result[3][1] =  input[0][0] * input[2][1] * input[3][2] -
-                        input[0][0] * input[3][1] * input[2][2] -
-                        input[0][1] * input[2][0] * input[3][2] +
-                        input[0][1] * input[3][0] * input[2][2] +
-                        input[0][2] * input[2][0] * input[3][1] -
-                        input[0][2] * input[3][0] * input[2][1];
-
-        result[3][2] = -input[0][0] * input[1][1] * input[3][2] +
-                        input[0][0] * input[3][1] * input[1][2] +
-                        input[0][1] * input[1][0] * input[3][2] -
-                        input[0][1] * input[3][0] * input[1][2] -
-                        input[0][2] * input[1][0] * input[3][1] +
-                        input[0][2] * input[3][0] * input[1][1];
-
-        result[3][3] =  input[0][0] * input[1][1] * input[2][2] -
-                        input[0][0] * input[2][1] * input[1][2] -
-                        input[0][1] * input[1][0] * input[2][2] +
-                        input[0][1] * input[2][0] * input[1][2] +
-                        input[0][2] * input[1][0] * input[2][1] -
-                        input[0][2] * input[2][0] * input[1][1];
-
-        double det = input[0][0] * result[0][0] + input[1][0] * result[0][1] + input[2][0] * result[0][2] + input[3][0] * result[0][3];
-
-        if (det == 0)
-            std::cout << "DET == 0!" << std::endl;
-
-        det = 1.0 / det;
-
-        for (int i = 0; i < 4; i++)
-            for (int j = 0; j < 4; j++)
-                result[i][j] *= det;
-    }
-
-void Immersed_boundary::define_distance_matrix(Ghost_cell& ghost_cell,
-                                               const double* const restrict x, const double* const restrict y, const double* const restrict z)
-{
-    const int n = 4;
-
-    // Temporary matrix
-    std::vector< std::vector<double> > tmp(n, std::vector<double>(n,0));
-    for (int i=0; i<n; ++i)
-        tmp[i][0] = 1;
-
-    tmp[0][1] = ghost_cell.xb;                   // x-location of given value on boundary
-    tmp[1][1] = x[ghost_cell.neighbours[0].i];   // x-location of fluid point #1
-    tmp[2][1] = x[ghost_cell.neighbours[1].i];   // x-location of fluid point #2
-    tmp[3][1] = x[ghost_cell.neighbours[2].i];   // x-location of fluid point #3
-
-    tmp[0][2] = ghost_cell.yb;                   // y-location of given value on boundary
-    tmp[1][2] = y[ghost_cell.neighbours[0].j];   // x-location of fluid point #1
-    tmp[2][2] = y[ghost_cell.neighbours[1].j];   // x-location of fluid point #2
-    tmp[3][2] = y[ghost_cell.neighbours[2].j];   // x-location of fluid point #3
-
-    tmp[0][3] = ghost_cell.zb;                   // z-location of given value on boundary
-    tmp[1][3] = z[ghost_cell.neighbours[0].k];   // z-location of fluid point #1
-    tmp[2][3] = z[ghost_cell.neighbours[1].k];   // z-location of fluid point #1
-    tmp[3][3] = z[ghost_cell.neighbours[2].k];   // z-location of fluid point #1
-
-    // Resize matrix in ghost_cell to 4x4
-    ghost_cell.B.resize(n, std::vector<double>(n));
-
-    // Save the inverse of the matrix
-    inverse_mat_4x4(ghost_cell.B, tmp);
-}
-
-
- */
-
