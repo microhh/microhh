@@ -92,18 +92,16 @@ class Immersed_boundary
         std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
 
-        void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*);
-
-        void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*, Boundary_type); ///< Function which determines the ghost cells
         void read_ghost_cells(std::vector<Ghost_cell>&, std::string, const double*, const double*, const double*); ///< Function to read user input IB
 
-        double boundary_function(const double, const double); ///< Function describing boundary
-
-        bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
-        void find_nearest_location_wall(double&, double&, double&, double&,
-                                        const double, const double, const double,
-                                        const int, const int, const int); ///< Function which checks if a cell is a ghost cell
-        void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, Boundary_type); ///< Function which searched for the nearest neighbours
+        template <IB_type, int> void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*, Boundary_type); ///< Function which determines the ghost cells
+        template <IB_type, int> double boundary_function(const double, const double); ///< Function describing boundary
+        template <IB_type, int> bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
+        template <IB_type, int> void find_nearest_location_wall(double&, double&, double&, double&,
+                                                                const double, const double, const double,
+                                                                const int, const int, const int); ///< Function which checks if a cell is a ghost cell
+        template <IB_type, int> void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, Boundary_type); ///< Function which searched for the nearest neighbours
+        template <IB_type, int> void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*);
 
         // General settings IB
         std::string sw_ib; ///< Namelist IB switch

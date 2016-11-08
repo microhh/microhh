@@ -38,6 +38,8 @@ namespace Constants
 
     const double ep    = Rd/Rv;
 
+    const double pi    = 3.14159265358979323846; ///< Pi
+
     // Coefficients saturation vapor pressure estimation
     // Original MicroHH (/ UCLA-LES)
     const double c0 = 0.6105851e+03; 

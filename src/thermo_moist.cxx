@@ -49,7 +49,6 @@ using namespace Thermo_moist_functions;
 namespace
 {
     // Settings for now here for convenience....
-    const double pi      = std::acos(-1.);
     const double Nc0     = 70e6;     // Fixed cloud droplet number
     const double K_t     = 2.5e-2;   // Conductivity of heat [J/(sKm)]
     const double D_v     = 3.e-5;    // Diffusivity of water vapor [m2/s]
