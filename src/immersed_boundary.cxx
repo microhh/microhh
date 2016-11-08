@@ -108,28 +108,23 @@ namespace
             // Sum the IDW coefficient times the value at the neighbouring grid points
             double vI = 0;
             for (int i=0; i<n; ++i)
-            {
-                const int ijk = it->neighbours[i].i + it->neighbours[i].j*jj + it->neighbours[i].k*kk;
-                vI += it->c_idw[i] * field[ijk];
-            }
+                vI += it->c_idw[i] * field[it->neighbours[i].ijk];
 
             // For Dirichlet BCs, add the boundary value
             if (bc == Immersed_boundary::Boundary_type::Dirichlet_type)
-                vI += it->c_idw[n_idw] * boundary_value;
+                vI += it->c_idw[n] * boundary_value;
 
             vI /= it->c_idw_sum;
 
             // Set the correct BC in the ghost cell
-            const int ijk = it->i + it->j*jj + it->k*kk;
-
             if (bc == Immersed_boundary::Boundary_type::Dirichlet_type)
-                field[ijk] = 2*boundary_value - vI;         // Image value reflected across IB
+                field[it->ijk] = 2*boundary_value - vI;         // Image value reflected across IB
             else if (bc == Immersed_boundary::Boundary_type::Neumann_type)
-                field[ijk] = vI - boundary_value * it->dI;  // Image value minus gradient times distance
+                field[it->ijk] = vI - boundary_value * it->dI;  // Image value minus gradient times distance
             else if (bc == Immersed_boundary::Boundary_type::Flux_type)
             {
                 const double grad = -boundary_value / visc;
-                field[ijk] = vI - grad * it->dI;            // Image value minus gradient times distance
+                field[it->ijk] = vI - grad * it->dI;            // Image value minus gradient times distance
             }
         }
     }
@@ -185,7 +180,7 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     else
     {
         model->master->print_error("sw_ib = \"%s\" not (yet) supported\n", sw_ib.c_str());
-        throw 1;
+        ++nerror;
     }
 
     if (ib_type != None_type)
@@ -442,6 +437,10 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
                                                   const double* const restrict x, const double* const restrict y, const double* const restrict z,
                                                   const int i, const int j, const int k, Boundary_type bc)
 {
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
     double x_min, y_min, z_min, d_min;  // x, y, z location and distance to wall
 
     // Minimal distance that a grid point used in the interpolation has to be
@@ -462,7 +461,8 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
                     // As described above; exclude grid points which are close to the IB
                     if (d_min > d_lim)
                     {
-                        Neighbour tmp_neighbour = {i+di, j+dj, k+dk, abs_distance(x[i], x[i+di], y[j], y[j+dj], z[k], z[k+dk])};
+                        const int ijk = (i+di) + (j+dj)*jj + (k+dk)*kk;
+                        Neighbour tmp_neighbour = {i+di, j+dj, k+dk, ijk, abs_distance(x[i], x[i+di], y[j], y[j+dj], z[k], z[k+dk])};
                         ghost_cell.neighbours.push_back(tmp_neighbour);
                     }
                 }
@@ -493,6 +493,10 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
 void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, std::string file_name,
                                          const double* const restrict x, const double* const restrict y, const double* const restrict z)
 {
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
     bool is_optional = false;
     Data_map input;
 
@@ -519,7 +523,9 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
             i -= mpioffsx;
             j -= mpioffsy;
 
-            Ghost_cell tmp_ghost = {i, j, k};
+            const int ijk = i + j*jj + k*kk;
+
+            Ghost_cell tmp_ghost = {i, j, k, ijk};
 
             // Location on boundary
             tmp_ghost.xB = input["xb"][n];
@@ -541,7 +547,9 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
                 const int jn = input["j"+std::to_string(static_cast<long long>(nn))][n] + grid->jstart - mpioffsy;
                 const int kn = input["k"+std::to_string(static_cast<long long>(nn))][n] + grid->kstart;
 
-                Neighbour tmp_neighbour = {in, jn, kn, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])};
+                const int ijk = in + jn*jj + kn*kk;
+
+                Neighbour tmp_neighbour = {in, jn, kn, ijk, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])};
                 tmp_ghost.neighbours.push_back(tmp_neighbour);
             }
 
@@ -571,7 +579,9 @@ void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
                 // 1. Check if this is a ghost cell, i.e. inside the IB, with a neighbour outside the IB
                 if (is_ghost_cell<sw, dims>(x, y, z, i, j, k))
                 {
-                    Ghost_cell tmp_ghost = {i, j, k};
+                    const int ijk = i + j*jj + k*kk;
+
+                    Ghost_cell tmp_ghost = {i, j, k, ijk};
 
                     // 2. Find the closest location on the IB
                     find_nearest_location_wall<sw, dims>(tmp_ghost.xB, tmp_ghost.yB, tmp_ghost.zB, d_wall, x[i], y[j], z[k], i, j, k);

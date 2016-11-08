@@ -38,14 +38,16 @@ struct Neighbour
     int i;
     int j;
     int k;
+    int ijk;
     double distance;
 };
 
 struct Ghost_cell
 {
-    int i;  ///< x-index of ghost cell
-    int j;  ///< y-index of ghost cell
-    int k;  ///< z-index of ghost cell
+    int i;      ///< x-index of ghost cell
+    int j;      ///< y-index of ghost cell
+    int k;      ///< z-index of ghost cell
+    int ijk;    ///< combined index
 
     double xB;  ///< Nearest x location on immersed boundary
     double yB;  ///< Nearest y location on immersed boundary
