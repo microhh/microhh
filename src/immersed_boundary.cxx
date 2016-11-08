@@ -560,6 +560,17 @@ void Immersed_boundary::calc_mask(double* const restrict mask, double* const res
     const int kk = grid->ijcells;
     const int kstart = grid->kstart;
 
+    // Temporarily store IB heigh in maskbot
+    double* const restrict zb = maskbot;
+
+    for (int j=grid->jstart; j<grid->jend; j++)
+        #pragma ivdep
+        for (int i=grid->istart; i<grid->iend; i++)
+        {
+            const int ij  = i + j*jj;
+            zb[ij] = boundary_function(x[i], y[j]);
+        }
+
     // Set the mask for outside (1) or inside (0) IB
     for (int k=grid->kstart; k<grid->kend; ++k)
     {
@@ -570,10 +581,10 @@ void Immersed_boundary::calc_mask(double* const restrict mask, double* const res
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
+                const int ij  = i + j*jj;
 
-                const double zb = boundary_function(x[i], y[j]);
-                const int is_not_ib    = z [k] > zb;
-                const int is_not_ib_h  = zh[k] > zb;
+                const int is_not_ib    = z [k] > zb[ij];
+                const int is_not_ib_h  = zh[k] > zb[ij];
 
                 mask[ijk]  = static_cast<double>(is_not_ib);
                 maskh[ijk] = static_cast<double>(is_not_ib_h);
