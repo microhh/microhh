@@ -261,15 +261,10 @@ void Immersed_boundary::create()
         file_name = "w.ib_input";
         read_ghost_cells(ghost_cells_w, file_name, grid->x, grid->y, grid->zh);
 
-        model->master->print_message("Read %i IB[u] ghost cells from u.ib_input\n", ghost_cells_u.size());
-        model->master->print_message("Read %i IB[v] ghost cells from v.ib_input\n", ghost_cells_v.size());
-        model->master->print_message("Read %i IB[w] ghost cells from w.ib_input\n", ghost_cells_w.size());
-
         if (fields->sp.size() > 0)
         {
             file_name = "s.ib_input";
             read_ghost_cells(ghost_cells_s, file_name, grid->x, grid->y, grid->z);
-            model->master->print_message("Read %i IB[s] ghost cells from s.ib_input\n", ghost_cells_s.size());
         }
     }
     else
@@ -341,15 +336,27 @@ void Immersed_boundary::create()
                     find_ghost_cells<Agnesi_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
             }
         }
-
-        model->master->print_message("Found %i IB[u] ghost cells \n", ghost_cells_u.size());
-        model->master->print_message("Found %i IB[v] ghost cells \n", ghost_cells_v.size());
-        model->master->print_message("Found %i IB[w] ghost cells \n", ghost_cells_w.size());
-
-        if (fields->sp.size() > 0)
-            model->master->print_message("Found %i IB[s] ghost cells \n", ghost_cells_s.size());
     }
 
+    // Print some debugging output
+    int n_ghost_u = ghost_cells_u.size();
+    int n_ghost_v = ghost_cells_v.size();
+    int n_ghost_w = ghost_cells_w.size();
+
+    model->master->sum(&n_ghost_u, 1);
+    model->master->sum(&n_ghost_v, 1);
+    model->master->sum(&n_ghost_w, 1);
+
+    model->master->print_message("Found %i IB[u] ghost cells \n", n_ghost_u);
+    model->master->print_message("Found %i IB[v] ghost cells \n", n_ghost_v);
+    model->master->print_message("Found %i IB[w] ghost cells \n", n_ghost_w);
+
+    if (fields->sp.size() > 0)
+    {
+        int n_ghost_s = ghost_cells_s.size();
+        model->master->sum(&n_ghost_s, 1);
+        model->master->print_message("Found %i IB[s] ghost cells \n", n_ghost_s);
+    }
 }
 
 // Return the height of the IB as a function of x,y position
