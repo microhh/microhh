@@ -155,28 +155,3 @@ def replace_namelist_var(variable, new_value, namelist_file=None):
     with open(namelist_file, "w") as source:
         for line in lines:
             source.write(re.sub(r'({}).*'.format(variable), r'\1={}'.format(new_value), line))
-
-
-
-
-
-
-# ----------------------
-def remove_top_right_ax(ax=None):
-    if ax is None:
-        ax = pl.gca()
-
-    ax.spines['right'].set_visible(False)
-    ax.get_yaxis().tick_left()
-    ax.spines['top'].set_visible(False)
-    ax.get_xaxis().tick_bottom()
-
-# Define the ColorBrewer (set 1) colors
-c1    = '#333333'
-c2    = '#e41a1c'
-c3    = '#377eb8'
-c4    = '#4daf4a'
-c5    = '#984ea3'
-c6    = '#ff7f00'
-cc    = [c1,c2,c3,c4,c5,c6]
-
