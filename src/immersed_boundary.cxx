@@ -38,40 +38,15 @@
 #include "immersed_boundary.h"
 #include "input.h"
 
-#include <fstream>  // TMP BvS
-#include <sstream>
-
 namespace
 {
-    void write_debug(std::vector<Ghost_cell> const &ghost_cells, std::string name)
-    {
-        std::ofstream debugfile;
-        debugfile.open(name);
-
-        for (std::vector<Ghost_cell>::const_iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
-        {
-            debugfile << it->i-2  << ", " <<
-                         it->j-2  << ", " <<
-                         it->k-1  << ", " <<
-                         it->xB   << ", " <<
-                         it->yB   << ", " <<
-                         it->zB;
-            for(int i=0; i<4; ++i)
-            {
-                debugfile << ", " << it->neighbours[i].i-2;
-                debugfile << ", " << it->neighbours[i].j-2;
-                debugfile << ", " << it->neighbours[i].k-1;
-            }
-            debugfile << std::endl;
-        }
-        debugfile.close();
-    }
-
+    // Overloaded method to calculate the absolute distance in 3D
     inline double abs_distance(const double x1, const double x2, const double y1, const double y2, const double z1, const double z2)
     {
         return std::pow(std::pow(x1-x2, 2) + std::pow(y1-y2, 2) + std::pow(z1-z2, 2), 0.5);
     }
 
+    // Overloaded method to calculate the absolute distance in 2D
     inline double abs_distance(const double x1, const double x2, const double z1, const double z2)
     {
         return std::pow(std::pow(x1-x2, 2) + std::pow(z1-z2, 2), 0.5);
@@ -83,55 +58,74 @@ namespace
         return a.distance < b.distance;
     }
 
- 
-    void precalculate_idw(Ghost_cell& ghost_cell, const double* const restrict x, const double* const restrict y, const double* const restrict z)
+    //  Pre-calculate the coefficients used in the inverse distance weighted interpolation
+    void precalculate_idw(Ghost_cell& ghost_cell, const double* const restrict x, const double* const restrict y, const double* const restrict z, Immersed_boundary::Boundary_type bc)
     {
         const int n = ghost_cell.neighbours.size();
 
-        // Pre-calculate the coefficient for the inverse distance weighted interpolation
-        ghost_cell.c_idw.resize(n+1); // n neighbour points + location on wall
+        // Calculate distances between image and interpolation points
+        for (std::vector<Neighbour>::const_iterator it=ghost_cell.neighbours.begin(); it<ghost_cell.neighbours.end(); ++it)
+        {
+            const double dist = std::max(abs_distance(ghost_cell.xI, x[it->i],
+                                                      ghost_cell.yI, y[it->j],
+                                                      ghost_cell.zI, z[it->k]), Constants::dsmall);
+            ghost_cell.c_idw.push_back(dist);
+        }
 
-        // Calculate distance interpolation points to image point
-        for (int l=0; l<n; ++l)
-            ghost_cell.c_idw[l] = std::max(abs_distance(ghost_cell.xI, x[ghost_cell.neighbours[l].i],
-                                                        ghost_cell.yI, y[ghost_cell.neighbours[l].j],
-                                                        ghost_cell.zI, z[ghost_cell.neighbours[l].k]), Constants::dsmall);
+        // For dirichlet BCs, add the distance between boundary and image point
+        if (bc == Immersed_boundary::Dirichlet_type)
+        {
+            const double dist = std::max(abs_distance(ghost_cell.xI, ghost_cell.xB,
+                                                      ghost_cell.yI, ghost_cell.yB,
+                                                      ghost_cell.zI, ghost_cell.zB), Constants::dsmall);
 
-        ghost_cell.c_idw[n] = std::max(abs_distance(ghost_cell.xI, ghost_cell.xB,
-                                                    ghost_cell.yI, ghost_cell.yB,
-                                                    ghost_cell.zI, ghost_cell.zB), Constants::dsmall);
+            ghost_cell.c_idw.push_back(dist);
+        }
 
         // Save maximum distance
         const double max_distance = *std::max_element(ghost_cell.c_idw.begin(), ghost_cell.c_idw.end());
 
-        // Calculate coefficients
+        // Calculate IDW coefficients
         ghost_cell.c_idw_sum = 0;
-        for (int l=0; l<n+1; ++l)
+
+        for (int l=0; l<ghost_cell.c_idw.size(); ++l)
         {
             ghost_cell.c_idw[l] = std::pow((max_distance - ghost_cell.c_idw[l]) / (max_distance * ghost_cell.c_idw[l]), 0.5);
             ghost_cell.c_idw_sum += ghost_cell.c_idw[l];
         }
     }
 
+    // Set the ghost cells according to the chosen boundary conditions
     void set_ghost_cells(std::vector<Ghost_cell> const &ghost_cells, double* const restrict field, const double boundary_value,
                          const double* const restrict x, const double* const restrict y, const double* const restrict z,
-                         const int nn, const int ii, const int jj, const int kk)
+                         const int n_idw, const int ii, const int jj, const int kk,
+                         Immersed_boundary::Boundary_type bc, const double visc)
     {
+        const int n = (bc == Immersed_boundary::Boundary_type::Dirichlet_type) ? n_idw-1 : n_idw;
+
         for (std::vector<Ghost_cell>::const_iterator it=ghost_cells.begin(); it<ghost_cells.end(); ++it)
         {
-            // Calculate interpolant at image point
+            // Sum the IDW coefficient times the value at the neighbouring grid points
             double vI = 0;
-            for (int i=0; i<nn; ++i)
-            {
-                const int ijk = it->neighbours[i].i + it->neighbours[i].j*jj + it->neighbours[i].k*kk;
-                vI += it->c_idw[i] * field[ijk];
-            }
-            vI += it->c_idw[nn] * boundary_value;
+            for (int i=0; i<n; ++i)
+                vI += it->c_idw[i] * field[it->neighbours[i].ijk];
+
+            // For Dirichlet BCs, add the boundary value
+            if (bc == Immersed_boundary::Boundary_type::Dirichlet_type)
+                vI += it->c_idw[n] * boundary_value;
+
             vI /= it->c_idw_sum;
 
-            // Reflect across boundary
-            const int ijk = it->i + it->j*jj + it->k*kk;
-            field[ijk] = 2*boundary_value - vI;
+            // Set the correct BC in the ghost cell
+            if (bc == Immersed_boundary::Boundary_type::Dirichlet_type)
+                field[it->ijk] = 2*boundary_value - vI;         // Image value reflected across IB
+            else if (bc == Immersed_boundary::Boundary_type::Neumann_type)
+                field[it->ijk] = vI - boundary_value * it->dI;  // Image value minus gradient times distance
+            else if (bc == Immersed_boundary::Boundary_type::Flux_type)
+            {
+                const double grad = -boundary_value / visc;
+                field[it->ijk] = vI - grad * it->dI;            // Image value minus gradient times distance
+            }
         }
     }
 }
@@ -144,7 +138,7 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 
     int nerror = 0;
 
-    inputin->get_item(&sw_ib, "immersed_boundary", "sw_ib", "", "0");
+    inputin->get_item(&sw_ib, "IB", "sw_ib", "", "0");
 
     // Get the IB type, and required parameters for that type
     if (sw_ib == "0")
@@ -158,11 +152,11 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
     else if (sw_ib == "sine")
     {
         ib_type = Sine_type;
-        nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
-        nerror += inputin->get_item(&amplitude,    "immersed_boundary", "amplitude",    ""    );
-        nerror += inputin->get_item(&wavelength_x, "immersed_boundary", "wavelength_x", ""    );
-        nerror += inputin->get_item(&wavelength_y, "immersed_boundary", "wavelength_y", "", -1);
-        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+        nerror += inputin->get_item(&xy_dims,      "IB", "xy_dims",      "", 1 );
+        nerror += inputin->get_item(&amplitude,    "IB", "amplitude",    ""    );
+        nerror += inputin->get_item(&wavelength_x, "IB", "wavelength_x", ""    );
+        nerror += inputin->get_item(&wavelength_y, "IB", "wavelength_y", "", -1);
+        nerror += inputin->get_item(&z_offset,     "IB", "z_offset",     "", 0 );
     }
     else if (sw_ib == "gaussian" || sw_ib == "agnesi")
     {
@@ -170,40 +164,66 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
             ib_type = Gaus_type;
         else if (sw_ib == "agnesi")
             ib_type = Agnesi_type;
-        nerror += inputin->get_item(&xy_dims,      "immersed_boundary", "xy_dims",      "", 1 );
-        nerror += inputin->get_item(&amplitude,    "immersed_boundary", "amplitude",    ""    );
-        nerror += inputin->get_item(&x0_hill,      "immersed_boundary", "x0_hill",      ""    );
-        nerror += inputin->get_item(&sigma_x_hill, "immersed_boundary", "sigma_x_hill", ""    );
-        nerror += inputin->get_item(&y0_hill,      "immersed_boundary", "y0_hill",      "", -1);
-        nerror += inputin->get_item(&sigma_y_hill, "immersed_boundary", "sigma_y_hill", "", -1);
-        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+        nerror += inputin->get_item(&xy_dims,      "IB", "xy_dims",      "", 1 );
+        nerror += inputin->get_item(&amplitude,    "IB", "amplitude",    ""    );
+        nerror += inputin->get_item(&x0_hill,      "IB", "x0_hill",      ""    );
+        nerror += inputin->get_item(&sigma_x_hill, "IB", "sigma_x_hill", ""    );
+        nerror += inputin->get_item(&y0_hill,      "IB", "y0_hill",      "", -1);
+        nerror += inputin->get_item(&sigma_y_hill, "IB", "sigma_y_hill", "", -1);
+        nerror += inputin->get_item(&z_offset,     "IB", "z_offset",     "", 0 );
     }
     else if (sw_ib == "flat")
     {
         ib_type = Flat_type;
-        nerror += inputin->get_item(&z_offset,     "immersed_boundary", "z_offset",     "", 0 );
+        nerror += inputin->get_item(&z_offset,     "IB", "z_offset",     "", 0 );
     }
     else
     {
         model->master->print_error("sw_ib = \"%s\" not (yet) supported\n", sw_ib.c_str());
-        throw 1;
+        ++nerror;
     }
 
-    // Interpolation method
     if (ib_type != None_type)
     {
-        grid->set_minimum_ghost_cells(2, 2, 1);
+        nerror += inputin->get_item(&n_idw, "IB", "n_idw", "");  // Number of grid points used in interpolation
 
-        inputin->get_item(&sw_interpol, "immersed_boundary", "sw_interpolation", "");
+        grid->set_minimum_ghost_cells(2, 2, 1);  // Set at leat two ghost cells in the horizontal
 
-        if (sw_interpol == "linear")
-            interpol_type = Linear_type;
-        else if (sw_interpol == "inverse_distance")
-            interpol_type = Distance_type;
-        else
+        // Get the scalar boundary conditions. For now, the momentum BC is hardcoded at no-slip.
+        if (fields->sp.size() > 0)
         {
-           model->master->print_error("sw_interpolate = \"%s\" not (yet) supported\n", sw_interpol.c_str());
-           throw 1;
+            std::string swbot;
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+            {
+                sbc[it->first] = new Field3dBc;
+                nerror += inputin->get_item(&swbot, "IB", "sbcbot", it->first);
+                nerror += inputin->get_item(&sbc[it->first]->bot, "IB", "sbot", it->first);
+
+                // Set the bottom BC
+                if (swbot == "dirichlet")
+                    sbc[it->first]->bcbot = Dirichlet_type;
+                else if (swbot == "neumann")
+                    sbc[it->first]->bcbot = Neumann_type;
+                else if (swbot == "flux")
+                    sbc[it->first]->bcbot = Flux_type;
+                else
+                {
+                    model->master->print_error("%s is illegal value for sbcbot\n", swbot.c_str());
+                    nerror++;
+                }
+            }
+
+            // Check whether all scalar BCs are the same type
+            Boundary_type bc = sbc[fields->sp.begin()->first]->bcbot;
+
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+            {
+                if (sbc[it->first]->bcbot != bc)
+                {
+                    model->master->print_error("All IB \"sbcbot\" need to be of the same type!\n");
+                    nerror++;
+                }
+            }
         }
     }
 
@@ -241,128 +261,143 @@ void Immersed_boundary::create()
         file_name = "w.ib_input";
         read_ghost_cells(ghost_cells_w, file_name, grid->x, grid->y, grid->zh);
 
-        file_name = "s.ib_input";
-        read_ghost_cells(ghost_cells_s, file_name, grid->x, grid->y, grid->z);
-    }
-    else if (ib_type == Flat_type)
-    {
-        find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-        find_ghost_cells<Flat_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-        find_ghost_cells<Flat_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-        find_ghost_cells<Flat_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z );
-    }
-    else if (xy_dims == 1)
-    {
-        if (ib_type == Sine_type)
+        if (fields->sp.size() > 0)
         {
-            find_ghost_cells<Sine_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Sine_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Sine_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Sine_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z );
-        }
-        else if (ib_type == Gaus_type)
-        {
-            find_ghost_cells<Gaus_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Gaus_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Gaus_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Gaus_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z );
-        }
-        else if (ib_type == Agnesi_type)
-        {
-            find_ghost_cells<Agnesi_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Agnesi_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Agnesi_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Agnesi_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            file_name = "s.ib_input";
+            read_ghost_cells(ghost_cells_s, file_name, grid->x, grid->y, grid->z);
         }
     }
-    else if (xy_dims == 2)
+    else
     {
-        if (ib_type == Sine_type)
+        Boundary_type bc;
+        if (fields->sp.size() > 0)
+            bc = sbc[fields->sp.begin()->first]->bcbot;
+
+        // Find the IB ghost cells
+        if (ib_type == Flat_type)
         {
-            find_ghost_cells<Sine_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Sine_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Sine_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Sine_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            find_ghost_cells<Flat_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+            find_ghost_cells<Flat_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+            find_ghost_cells<Flat_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+            if (fields->sp.size() > 0)
+                find_ghost_cells<Flat_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
         }
-        else if (ib_type == Gaus_type)
+        else if (xy_dims == 1)
         {
-            find_ghost_cells<Gaus_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Gaus_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Gaus_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Gaus_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            if (ib_type == Sine_type)
+            {
+                find_ghost_cells<Sine_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+                find_ghost_cells<Sine_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+                find_ghost_cells<Sine_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                if (fields->sp.size() > 0)
+                    find_ghost_cells<Sine_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+            }
+            else if (ib_type == Gaus_type)
+            {
+                find_ghost_cells<Gaus_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+                find_ghost_cells<Gaus_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+                find_ghost_cells<Gaus_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                if (fields->sp.size() > 0)
+                    find_ghost_cells<Gaus_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+            }
+            else if (ib_type == Agnesi_type)
+            {
+                find_ghost_cells<Agnesi_type, 1>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 1>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 1>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                if (fields->sp.size() > 0)
+                    find_ghost_cells<Agnesi_type, 1>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+            }
         }
-        else if (ib_type == Agnesi_type)
+        else if (xy_dims == 2)
         {
-            find_ghost_cells<Agnesi_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z );
-            find_ghost_cells<Agnesi_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z );
-            find_ghost_cells<Agnesi_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh);
-            find_ghost_cells<Agnesi_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z );
+            if (ib_type == Sine_type)
+            {
+                find_ghost_cells<Sine_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+                find_ghost_cells<Sine_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+                find_ghost_cells<Sine_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                if (fields->sp.size() > 0)
+                    find_ghost_cells<Sine_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+            }
+            else if (ib_type == Gaus_type)
+            {
+                find_ghost_cells<Gaus_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+                find_ghost_cells<Gaus_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+                find_ghost_cells<Gaus_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                if (fields->sp.size() > 0)
+                    find_ghost_cells<Gaus_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+            }
+            else if (ib_type == Agnesi_type)
+            {
+                find_ghost_cells<Agnesi_type, 2>(ghost_cells_u, grid->xh, grid->y,  grid->z,  Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 2>(ghost_cells_v, grid->x,  grid->yh, grid->z,  Dirichlet_type);
+                find_ghost_cells<Agnesi_type, 2>(ghost_cells_w, grid->x,  grid->y,  grid->zh, Dirichlet_type);
+                if (fields->sp.size() > 0)
+                    find_ghost_cells<Agnesi_type, 2>(ghost_cells_s, grid->x,  grid->y,  grid->z,  bc);
+            }
         }
     }
 
-    model->master->print_message("Found %i IB[u] ghost cells \n", ghost_cells_u.size());
-    model->master->print_message("Found %i IB[v] ghost cells \n", ghost_cells_v.size());
-    model->master->print_message("Found %i IB[w] ghost cells \n", ghost_cells_w.size());
-    model->master->print_message("Found %i IB[s] ghost cells \n", ghost_cells_s.size());
+    // Print some debugging output
+    int n_ghost_u = ghost_cells_u.size();
+    int n_ghost_v = ghost_cells_v.size();
+    int n_ghost_w = ghost_cells_w.size();
 
-    // Debug.....
-    //std::string name;
-    //name = "debug_u.txt"; write_debug(ghost_cells_u, name);
-    //name = "debug_v.txt"; write_debug(ghost_cells_v, name);
-    //name = "debug_w.txt"; write_debug(ghost_cells_w, name);
-    //name = "debug_s.txt"; write_debug(ghost_cells_s, name);
+    model->master->sum(&n_ghost_u, 1);
+    model->master->sum(&n_ghost_v, 1);
+    model->master->sum(&n_ghost_w, 1);
+
+    model->master->print_message("Found %i IB[u] ghost cells \n", n_ghost_u);
+    model->master->print_message("Found %i IB[v] ghost cells \n", n_ghost_v);
+    model->master->print_message("Found %i IB[w] ghost cells \n", n_ghost_w);
+
+    if (fields->sp.size() > 0)
+    {
+        int n_ghost_s = ghost_cells_s.size();
+        model->master->sum(&n_ghost_s, 1);
+        model->master->print_message("Found %i IB[s] ghost cells \n", n_ghost_s);
+    }
 }
 
-template<Immersed_boundary::IB_type sw, int dims>
+// Return the height of the IB as a function of x,y position
+template <Immersed_boundary::IB_type sw, int dims>
 double Immersed_boundary::boundary_function(const double x, const double y)
 {
     if (sw == Flat_type)
         return z_offset;
-
     else if (dims == 1)
     {
         if (sw == Sine_type)
-        {
-            const double pi = std::acos((double)-1.);
-            return z_offset + amplitude + amplitude * std::sin(2*pi*x/wavelength_x);
-        }
+            return z_offset + amplitude + amplitude * std::sin(2*Constants::pi*x/wavelength_x);
         else if (sw == Gaus_type)
-        {
             return z_offset + amplitude * std::exp(-pow((x-x0_hill)/(2*sigma_x_hill), 2));
-        }
         else if (sw == Agnesi_type)
-        {
             return z_offset + amplitude / (1. + pow((x-x0_hill)/sigma_x_hill, 2));
-        }
     }
     else if (dims == 2)
     {
         if (sw == Sine_type)
-        {
-            const double pi = std::acos((double)-1.);
-            return z_offset + amplitude + amplitude * std::sin(2*pi*x/wavelength_x) * std::sin(2*pi*y/wavelength_y);
-        }
+            return z_offset + amplitude + amplitude * std::sin(2*Constants::pi*x/wavelength_x)
+                                                    * std::sin(2*Constants::pi*y/wavelength_y);
         else if (sw == Gaus_type)
-        {
             return z_offset + amplitude * std::exp(-pow((x-x0_hill)/(2*sigma_x_hill), 2))
                                         * std::exp(-pow((y-y0_hill)/(2*sigma_y_hill), 2));
-        }
         else if (sw == Agnesi_type)
-        {
             return z_offset + amplitude / (1. + pow((x-x0_hill)/sigma_x_hill, 2)
                                               + pow((y-y0_hill)/sigma_y_hill, 2));
-        }
     }
+
+    return 0;   // Otherwise the compiler complains
 }
 
-template<Immersed_boundary::IB_type sw, int dims>
+template <Immersed_boundary::IB_type sw, int dims>
 bool Immersed_boundary::is_ghost_cell(const double* const restrict x, const double* const restrict y, const double* const restrict z,
                                       const int i, const int j, const int k)
 {
     if (z[k] <= boundary_function<sw, dims>(x[i], y[j]))  // Inside IB
     {
         // Check if one of the neighbouring grid cells is outside the IB
-        for (int dk=-1; dk<2; ++dk) // BvS Fix this
+        for (int dk=-1; dk<2; ++dk)
             if (z[k+dk] > boundary_function<sw, dims>(x[i], y[j]))
                 return true;
         for (int dj=-1; dj<2; ++dj)
@@ -375,7 +410,7 @@ bool Immersed_boundary::is_ghost_cell(const double* const restrict x, const doub
     return false;
 }
 
-template<Immersed_boundary::IB_type sw, int dims>
+template <Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min, double& z_min, double& d_min,
                                                    const double x, const double y, const double z,
                                                    const int i, const int j, const int k)
@@ -391,7 +426,7 @@ void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min,
         {
             const double xc = x + 2*ii/(double)n*dx;
             const double yc = y + 2*jj/(double)n*dy;
-            const double zc = boundary_function<sw,dims>(xc, yc);
+            const double zc = boundary_function<sw, dims>(xc, yc);
             const double d  = abs_distance(x, xc, y, yc, z, zc);
 
             if (d < d_min)
@@ -404,11 +439,15 @@ void Immersed_boundary::find_nearest_location_wall(double& x_min, double& y_min,
         }
 }
 
-template<Immersed_boundary::IB_type sw, int dims>
+template <Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
                                                   const double* const restrict x, const double* const restrict y, const double* const restrict z,
-                                                  const int i, const int j, const int k, const int n)
+                                                  const int i, const int j, const int k, Boundary_type bc)
 {
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
     double x_min, y_min, z_min, d_min;  // x, y, z location and distance to wall
 
     // Minimal distance that a grid point used in the interpolation has to be
@@ -421,15 +460,16 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
             for (int di=-2; di<3; ++di)
             {
                 // Check if grid point is outside IB
-                if (z[k+dk] > boundary_function<sw,dims>(x[i+di], y[j+dj]))
+                if (z[k+dk] > boundary_function<sw, dims>(x[i+di], y[j+dj]))
                 {
                     // Calculate distance (d_min) of current grid point to the IB
-                    find_nearest_location_wall<sw,dims>(x_min, y_min, z_min, d_min, x[i+di], y[j+dj], z[k+dk], i+di, j+dj, k+dk);
+                    find_nearest_location_wall<sw, dims>(x_min, y_min, z_min, d_min, x[i+di], y[j+dj], z[k+dk], i+di, j+dj, k+dk);
 
                     // As described above; exclude grid points which are close to the IB
                     if (d_min > d_lim)
                     {
-                        Neighbour tmp_neighbour = {i+di, j+dj, k+dk, abs_distance(x[i], x[i+di], y[j], y[j+dj], z[k], z[k+dk])};
+                        const int ijk = (i+di) + (j+dj)*jj + (k+dk)*kk;
+                        Neighbour tmp_neighbour = {i+di, j+dj, k+dk, ijk, abs_distance(x[i], x[i+di], y[j], y[j+dj], z[k], z[k+dk])};
                         ghost_cell.neighbours.push_back(tmp_neighbour);
                     }
                 }
@@ -439,23 +479,31 @@ void Immersed_boundary::find_interpolation_points(Ghost_cell& ghost_cell,
     std::sort(ghost_cell.neighbours.begin(), ghost_cell.neighbours.end(), compare_value);
 
     // Abort if there are insufficient neighbouring fluid points
-    if (ghost_cell.neighbours.size() < n)
+    if (ghost_cell.neighbours.size() < n_idw)
     {
-        model->master->print_error("Only found %i of %i neighbour points\n", ghost_cell.neighbours.size(), n);
+        model->master->print_error("Only found %i of n_idw=%i neighbour points\n", ghost_cell.neighbours.size(), n_idw);
         throw 1;
     }
+
+    // For Dirichlet BCs, one interpolation point is the boundary value at the IB,
+    // so we only require n_idw-1 interpolation points outside the IB
+    const int n = (bc == Dirichlet_type) ? n_idw-1 : n_idw;
 
     // Only keep the N nearest neighbour fluid points
     ghost_cell.neighbours.erase(ghost_cell.neighbours.begin()+n, ghost_cell.neighbours.end());
 
     // Pre-calculate the inverse distance weighting coefficients
-    precalculate_idw(ghost_cell, x, y, z);
+    precalculate_idw(ghost_cell, x, y, z, bc);
 }
 
 
 void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, std::string file_name,
                                          const double* const restrict x, const double* const restrict y, const double* const restrict z)
 {
+    const int ii = 1;
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
     bool is_optional = false;
     Data_map input;
 
@@ -482,7 +530,9 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
             i -= mpioffsx;
             j -= mpioffsy;
 
-            Ghost_cell tmp_ghost = {i, j, k};
+            const int ijk = i + j*jj + k*kk;
+
+            Ghost_cell tmp_ghost = {i, j, k, ijk};
 
             // Location on boundary
             tmp_ghost.xB = input["xb"][n];
@@ -504,22 +554,23 @@ void Immersed_boundary::read_ghost_cells(std::vector<Ghost_cell> &ghost_cells, s
                 const int jn = input["j"+std::to_string(static_cast<long long>(nn))][n] + grid->jstart - mpioffsy;
                 const int kn = input["k"+std::to_string(static_cast<long long>(nn))][n] + grid->kstart;
 
-                std::cout << y[j] << " - " << y[jn] << std::endl;
+                const int ijk = in + jn*jj + kn*kk;
 
-                Neighbour tmp_neighbour = {in, jn, kn, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])};
+                Neighbour tmp_neighbour = {in, jn, kn, ijk, abs_distance(x[i], x[in], y[j], y[jn], z[k], z[kn])};
                 tmp_ghost.neighbours.push_back(tmp_neighbour);
             }
 
-            precalculate_idw(tmp_ghost, x, y, z);
+            precalculate_idw(tmp_ghost, x, y, z, Dirichlet_type);
 
             ghost_cells.push_back(tmp_ghost);
         }
     }
 }
 
-template<Immersed_boundary::IB_type sw, int dims>
+template <Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
-                                         const double* const restrict x, const double* const restrict y, const double* const restrict z)
+                                         const double* const restrict x, const double* const restrict y, const double* const restrict z,
+                                         Boundary_type bc)
 {
     const int ii = 1;
     const int jj = grid->icells;
@@ -535,22 +586,25 @@ void Immersed_boundary::find_ghost_cells(std::vector<Ghost_cell> &ghost_cells,
                 // 1. Check if this is a ghost cell, i.e. inside the IB, with a neighbour outside the IB
                 if (is_ghost_cell<sw, dims>(x, y, z, i, j, k))
                 {
-                    Ghost_cell tmp_ghost = {i, j, k};
+                    const int ijk = i + j*jj + k*kk;
+
+                    Ghost_cell tmp_ghost = {i, j, k, ijk};
 
                     // 2. Find the closest location on the IB
-                    find_nearest_location_wall<sw,dims>(tmp_ghost.xB, tmp_ghost.yB, tmp_ghost.zB, d_wall, x[i], y[j], z[k], i, j, k);
+                    find_nearest_location_wall<sw, dims>(tmp_ghost.xB, tmp_ghost.yB, tmp_ghost.zB, d_wall, x[i], y[j], z[k], i, j, k);
 
                     // 2.1 Location image point
                     tmp_ghost.xI = 2*tmp_ghost.xB - x[i];
                     tmp_ghost.yI = 2*tmp_ghost.yB - y[j];
                     tmp_ghost.zI = 2*tmp_ghost.zB - z[k];
 
-                    // 3. Find the closest 3 grid points outside the IB
-                    find_interpolation_points<sw,dims>(tmp_ghost, x, y, z, i, j, k, 4);
+                    // 2.2 Save distance ghost cell to image point
+                    tmp_ghost.dI = abs_distance(tmp_ghost.xI, x[i], tmp_ghost.yI, y[j], tmp_ghost.zI, z[k]);
 
-                    // 4. Define the matrix with distances to the boundary and each grid point used in the interpolation
-                    //define_distance_matrix(tmp_ghost, x, y, z);
+                    // 3. Find the closest `n_idw` grid points outside the IB
+                    find_interpolation_points<sw, dims>(tmp_ghost, x, y, z, i, j, k, bc);
 
+                    // 4. Add to collection (list) of ghost cells
                     ghost_cells.push_back(tmp_ghost);
                 }
             }
@@ -564,7 +618,7 @@ void Immersed_boundary::exec_stats(Mask *m)
         return;  // ...
 }
 
-template<Immersed_boundary::IB_type sw, int dims>
+template <Immersed_boundary::IB_type sw, int dims>
 void Immersed_boundary::calc_mask(double* const restrict mask, double* const restrict maskh, double* const restrict maskbot,
                                   int* const restrict nmask, int* const restrict nmaskh, int* const restrict nmaskbot,
                                   const double* const restrict x, const double* const restrict y,
@@ -574,6 +628,17 @@ void Immersed_boundary::calc_mask(double* const restrict mask, double* const res
     const int jj = grid->icells;
     const int kk = grid->ijcells;
     const int kstart = grid->kstart;
+
+    // Temporarily store IB heigh in maskbot
+    double* const restrict zb = maskbot;
+
+    for (int j=grid->jstart; j<grid->jend; j++)
+        #pragma ivdep
+        for (int i=grid->istart; i<grid->iend; i++)
+        {
+            const int ij  = i + j*jj;
+            zb[ij] = boundary_function<sw,dims>(x[i], y[j]);
+        }
 
     // Set the mask for outside (1) or inside (0) IB
     for (int k=grid->kstart; k<grid->kend; ++k)
@@ -585,10 +650,10 @@ void Immersed_boundary::calc_mask(double* const restrict mask, double* const res
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
+                const int ij  = i + j*jj;
 
-                const double zb = boundary_function<sw, dims>(x[i], y[j]);
-                const int is_not_ib    = z [k] > zb;
-                const int is_not_ib_h  = zh[k] > zb;
+                const int is_not_ib    = z [k] > zb[ij];
+                const int is_not_ib_h  = zh[k] > zb[ij];
 
                 mask[ijk]  = static_cast<double>(is_not_ib);
                 maskh[ijk] = static_cast<double>(is_not_ib_h);
@@ -627,33 +692,24 @@ void Immersed_boundary::get_mask(Field3d *mfield, Field3d *mfieldh)
     }
 
     if (ib_type == Flat_type)
-    {
-        calc_mask<Flat_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                                grid->x, grid->y, grid->z, grid->zh);
-    }
+        calc_mask<Flat_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
     else if (xy_dims == 1)
     {
         if (ib_type == Sine_type)
-            calc_mask<Sine_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                                    grid->x, grid->y, grid->z, grid->zh);
+            calc_mask<Sine_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
         else if (ib_type == Gaus_type)
-            calc_mask<Gaus_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                                    grid->x, grid->y, grid->z, grid->zh);
+            calc_mask<Gaus_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
         else if (ib_type == Agnesi_type)
-            calc_mask<Agnesi_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                                    grid->x, grid->y, grid->z, grid->zh);
+            calc_mask<Agnesi_type, 1>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
     }
     else if (xy_dims == 2)
     {
         if (ib_type == Sine_type)
-            calc_mask<Sine_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                                    grid->x, grid->y, grid->z, grid->zh);
+            calc_mask<Sine_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
         else if (ib_type == Gaus_type)
-            calc_mask<Gaus_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                                    grid->x, grid->y, grid->z, grid->zh);
+            calc_mask<Gaus_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
         else if (ib_type == Agnesi_type)
-            calc_mask<Agnesi_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot,
-                                    grid->x, grid->y, grid->z, grid->zh);
+            calc_mask<Agnesi_type, 2>(mfield->data, mfieldh->data, mfieldh->databot, stats->nmask, stats->nmaskh, &stats->nmaskbot, grid->x, grid->y, grid->z, grid->zh);
     }
 }
 
@@ -663,15 +719,24 @@ void Immersed_boundary::exec()
         return;
 
     const int ii = 1;
-    const double boundary_value = 0.;
+    const double no_slip = 0.;
 
-    set_ghost_cells(ghost_cells_u, fields->u->data, boundary_value, grid->xh, grid->y, grid->z, 4, ii, grid->icells, grid->ijcells);
-    set_ghost_cells(ghost_cells_v, fields->v->data, boundary_value, grid->x, grid->yh, grid->z, 4, ii, grid->icells, grid->ijcells);
-    set_ghost_cells(ghost_cells_w, fields->w->data, boundary_value, grid->x, grid->y, grid->zh, 4, ii, grid->icells, grid->ijcells);
+    // Set the immersed boundary ghost cells to enforce a no-slip BC for the velocity components
+    set_ghost_cells(ghost_cells_u, fields->u->data, no_slip, grid->xh, grid->y,  grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
+    set_ghost_cells(ghost_cells_v, fields->v->data, no_slip, grid->x,  grid->yh, grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
+    set_ghost_cells(ghost_cells_w, fields->w->data, no_slip, grid->x,  grid->y,  grid->zh, n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
 
     grid->boundary_cyclic(fields->u->data);
     grid->boundary_cyclic(fields->v->data);
     grid->boundary_cyclic(fields->w->data);
+
+    // Set the ghost cells for scalars, depending on their BC
+    for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    {
+        set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
+                        grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc);
+        grid->boundary_cyclic(fields->ap[it->first]->data);
+    }
 }
 
 void Immersed_boundary::exec_uflux(double* const restrict flux)

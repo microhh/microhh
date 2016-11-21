@@ -38,14 +38,16 @@ struct Neighbour
     int i;
     int j;
     int k;
+    int ijk;
     double distance;
 };
 
 struct Ghost_cell
 {
-    int i;  ///< x-index of ghost cell
-    int j;  ///< y-index of ghost cell
-    int k;  ///< z-index of ghost cell
+    int i;      ///< x-index of ghost cell
+    int j;      ///< y-index of ghost cell
+    int k;      ///< z-index of ghost cell
+    int ijk;    ///< combined index
 
     double xB;  ///< Nearest x location on immersed boundary
     double yB;  ///< Nearest y location on immersed boundary
@@ -54,6 +56,8 @@ struct Ghost_cell
     double xI;  ///< x-Location of image point of ghost cell
     double yI;  ///< x-Location of image point of ghost cell
     double zI;  ///< x-Location of image point of ghost cell
+
+    double dI;  ///< Distance from ghost cell to interpolation point
 
     std::vector< std::vector<double> > B; ///< Inversed matrix with the locations of all interpolation points
     std::vector<Neighbour> neighbours;    ///< Neighbouring fluid points used in interpolation
@@ -65,8 +69,8 @@ struct Ghost_cell
 class Immersed_boundary
 {
     public:
-        enum IB_type{None_type, Sine_type, Gaus_type, Agnesi_type, Flat_type, User_type};
-        enum Interpol_type{Linear_type, Distance_type};
+        enum IB_type       {None_type, Sine_type, Gaus_type, Agnesi_type, Flat_type, User_type};
+        enum Boundary_type {Dirichlet_type, Neumann_type, Flux_type};
 
         Immersed_boundary(Model*, Input*); ///< Constructor of the class.
         ~Immersed_boundary();              ///< Destructor of the class.
@@ -85,38 +89,30 @@ class Immersed_boundary
         Fields* fields; ///< Pointer to fields class.
         Grid*   grid;   ///< Pointer to grid class.
         Stats*  stats;  ///< Pointer to grid class.
-        
+
         ///< Vector holding info on all the ghost cells within the boundary
-        std::vector<Ghost_cell> ghost_cells_u;  
+        std::vector<Ghost_cell> ghost_cells_u;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_v;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_w;  ///< Vector holding info on all the ghost cells within the boundary
         std::vector<Ghost_cell> ghost_cells_s;  ///< Vector holding info on all the ghost cells within the boundary
 
-        template<IB_type, int> 
-        void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*); 
-        template<IB_type, int> 
-        void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*); ///< Function which determines the ghost cells
         void read_ghost_cells(std::vector<Ghost_cell>&, std::string, const double*, const double*, const double*); ///< Function to read user input IB
-        template<IB_type, int> 
-        double boundary_function(double, double); ///< Function describing boundary
-        template<IB_type, int> 
-        bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
-        template<IB_type, int> 
-        void find_nearest_location_wall(double&, double&, double&, double&, 
-                                        const double, const double, const double, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
-        template<IB_type, int> 
-        void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
 
-//        void define_distance_matrix(Ghost_cell&, const double*, const double*, const double*);
+        template <IB_type, int> void find_ghost_cells(std::vector<Ghost_cell>&, const double*, const double*, const double*, Boundary_type); ///< Function which determines the ghost cells
+        template <IB_type, int> double boundary_function(const double, const double); ///< Function describing boundary
+        template <IB_type, int> bool is_ghost_cell(const double*, const double*, const double*, const int, const int, const int); ///< Function which checks if a cell is a ghost cell
+        template <IB_type, int> void find_nearest_location_wall(double&, double&, double&, double&,
+                                                                const double, const double, const double,
+                                                                const int, const int, const int); ///< Function which checks if a cell is a ghost cell
+        template <IB_type, int> void find_interpolation_points(Ghost_cell&, const double*, const double*, const double*, const int, const int, const int, Boundary_type); ///< Function which searched for the nearest neighbours
+        template <IB_type, int> void calc_mask(double*, double*, double*, int*, int*, int*, const double*, const double*, const double*, const double*);
 
         // General settings IB
         std::string sw_ib; ///< Namelist IB switch
         IB_type ib_type;   ///< Internal IB switch
 
         // Interpolation settings
-        std::string sw_interpol;     ///< Namelist interpolation switch
-        Interpol_type interpol_type; ///< Internal interpolation switch
-        int idw_points;              ///< Number of points used for inverse distance weighted interpolation
+        int n_idw; ///< Number of points used for inverse distance weighted interpolation
 
         double amplitude; ///< Height of IB object (Gaussian, sine or blocks)
         double z_offset;  ///< Vertical offset of IB objects
@@ -127,9 +123,19 @@ class Immersed_boundary
         double wavelength_y; ///< Wave length sine in y-direction
 
         // Gaussian hill
-        double x0_hill;      ///< Center of hill in x-direction 
-        double y0_hill;      ///< Center of hill in y-direction 
+        double x0_hill;      ///< Center of hill in x-direction
+        double y0_hill;      ///< Center of hill in y-direction
         double sigma_x_hill; ///< Std.dev hill width in x-direction
         double sigma_y_hill; ///< Std.dev hill width in y-direction
+
+        // Boundary conditions
+        struct Field3dBc
+        {
+            double bot;          ///< Value of the bottom boundary.
+            Boundary_type bcbot; ///< Switch for the bottom boundary.
+        };
+
+        typedef std::map<std::string, Field3dBc*> BcMap;    ///< Map with boundary conditions per scalar
+        BcMap sbc;                                          ///< Map with boundary conditions per scalar
 };
 #endif
