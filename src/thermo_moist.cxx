@@ -1058,11 +1058,12 @@ unsigned long Thermo_moist::get_time_limit(unsigned long idt, const double dt)
 {
     if(swmicro == "2mom_warm")
     {
-        const double cfl = mp::calc_max_sedimentation_cfl(fields->atmp["tmp1"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data,
-                                                          fields->rhoref, grid->dzi, dt,
-                                                          grid->istart, grid->jstart, grid->kstart,
-                                                          grid->iend,   grid->jend,   grid->kend,
-                                                          grid->icells, grid->ijcells);
+        double cfl = mp::calc_max_sedimentation_cfl(fields->atmp["tmp1"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data,
+                                                    fields->rhoref, grid->dzi, dt,
+                                                    grid->istart, grid->jstart, grid->kstart,
+                                                    grid->iend,   grid->jend,   grid->kend,
+                                                    grid->icells, grid->ijcells);
+        grid->get_max(&cfl);
         return idt * cflmax_micro / cfl;
     }
     else
