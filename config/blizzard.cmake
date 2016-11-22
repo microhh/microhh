@@ -13,5 +13,6 @@ set(HDF5_LIB_1         "/sw/aix61/hdf5-1.8.8/lib/libhdf5.a")
 set(HDF5_LIB_2         "/sw/aix61/hdf5-1.8.8/lib/libhdf5_hl.a")
 set(SZIP_LIB           "/sw/aix53/szip-2.1/lib/libsz.a")
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z)
+set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_definitions(-DRESTRICTKEYWORD=__restrict__)

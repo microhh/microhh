@@ -19,5 +19,6 @@ set(HDF5_LIB_2          "/cm/shared/apps/hdf5/intel/64/1.8.17/lib/libhdf5_hl.a")
 set(SZIP_LIB            "/cm/shared/apps/szip/intel/64/2.1/lib/libsz.a")
 
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
+set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_definitions(-DRESTRICTKEYWORD=restrict)
