@@ -40,6 +40,8 @@ class Thermo_moist : public Thermo
         void init();
         void create(Input*);
         void exec();
+        unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (only for sw_micro=1)
+
         void get_mask(Field3d*, Field3d*, Mask*);
         void exec_stats(Mask*);
         void exec_cross();
@@ -51,6 +53,7 @@ class Thermo_moist : public Thermo
         void get_buoyancy_surf(Field3d*);
         void get_buoyancy_fluxbot(Field3d*);
         void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
+        double get_buoyancy_diffusivity();
 
 #ifdef USECUDA
         // GPU functions and variables
@@ -113,5 +116,12 @@ class Thermo_moist : public Thermo
         double* exnrefh_g;
         double* pref_g;
         double* prefh_g;
+
+        // Microphysics
+        std::string swmicro; ///< Microphysics scheme
+        std::string swmicrobudget; ///< Calculate budget statistics
+        double cflmax_micro; ///< Maximum allowed CFL for sedimentation.
+        void exec_microphysics();
+
 };
 #endif

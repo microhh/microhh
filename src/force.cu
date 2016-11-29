@@ -20,6 +20,7 @@
  * along with MicroHH.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
 #include "master.h"
 #include "force.h"
 #include "grid.h"
@@ -27,6 +28,10 @@
 #include "finite_difference.h"
 #include "constants.h"
 #include "tools.h"
+#include "boundary.h"
+#include "model.h"
+
+using namespace Finite_difference::O2;
 
 namespace
 {
@@ -174,7 +179,7 @@ namespace
         if (k < kmax)
             sls[k+kgc] = fac0*slstd[index0*kk+k] + fac1*slstd[index1*kk+k];
     }
-}
+} // end namespace
 
 void Force::prepare_device()
 {

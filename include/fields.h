@@ -63,6 +63,7 @@ class Fields
         double check_mass();
 
         void set_calc_mean_profs(bool);
+        void set_minimum_tmp_fields(int);
 
         void exec_cross();
         void exec_dump();
@@ -161,6 +162,8 @@ class Fields
         // statistics
         double* umodel;
         double* vmodel;
+
+        int n_tmp_fields;   // number of temporary fields
 
         /* 
          *Device (GPU) functions and variables

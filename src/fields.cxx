@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
+#include <sstream>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -78,10 +79,10 @@ Fields::Fields(Model *modelin, Input *inputin)
     init_momentum_field(v, vt, "v", "V velocity", "m s-1");
     init_momentum_field(w, wt, "w", "Vertical velocity", "m s-1");
     init_diagnostic_field("p", "Pressure", "Pa");
-    init_tmp_field("tmp1", "", "");
-    init_tmp_field("tmp2", "", "");
-    init_tmp_field("tmp3", "", "");
-    init_tmp_field("tmp4", "", "");
+
+    // Set a default of 4 temporary fields. Other classes can increase this number
+    // before the init phase, where they are initialized in Fields::init()
+    n_tmp_fields = 4;
 
     // Remove the data from the input that is not used in run mode, to avoid warnings.
     if (master->mode == "run")
@@ -162,6 +163,15 @@ void Fields::init()
     // allocate the diagnostic scalars
     for (FieldMap::iterator it=sd.begin(); it!=sd.end(); ++it)
         nerror += it->second->init();
+
+    // now that all classes have been able to set the minimum number of tmp fields, initialize them
+    for (int i=1; i<=n_tmp_fields; ++i)
+    {
+        // BvS: the cast to long long is unfortunately necessary for Intel compilers
+        // which don't seem to have the full c++11 implementation
+        std::string name = "tmp" + std::to_string(static_cast<long long>(i));
+        init_tmp_field(name, "", "");
+    }
 
     // allocate the tmp fields
     for (FieldMap::iterator it=atmp.begin(); it!=atmp.end(); ++it)
@@ -571,6 +581,11 @@ void Fields::exec_stats(Mask *m)
 void Fields::set_calc_mean_profs(bool sw)
 {
     calc_mean_profs = sw;
+}
+
+void Fields::set_minimum_tmp_fields(int n)
+{
+    n_tmp_fields = std::max(n_tmp_fields, n);
 }
 
 void Fields::init_momentum_field(Field3d*& fld, Field3d*& fldt, std::string fldname, std::string longname, std::string unit)

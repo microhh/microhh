@@ -46,6 +46,7 @@ class Thermo
         virtual void init() = 0;
         virtual void create(Input*) = 0;
         virtual void exec() = 0;
+        virtual unsigned long get_time_limit(unsigned long, double) = 0;
 
         virtual void exec_stats(Mask*) = 0;
         virtual void exec_cross() = 0;
@@ -60,11 +61,13 @@ class Thermo
         virtual void get_buoyancy_fluxbot(Field3d*) = 0;
         virtual void get_prog_vars(std::vector<std::string>*) = 0;
 
-#ifdef USECUDA
+        virtual double get_buoyancy_diffusivity() = 0;
+
+        #ifdef USECUDA
         // GPU functions and variables.
         virtual void prepare_device() = 0;
         virtual void clear_device() = 0;
-#endif
+        #endif
 
     protected:
         Grid*   grid;

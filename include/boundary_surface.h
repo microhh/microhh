@@ -37,9 +37,9 @@ class Boundary_surface : public Boundary
         Boundary_surface(Model*, Input*);
         ~Boundary_surface();
 
-        void init(Input*);
+        virtual void init(Input*);
         void create(Input*);
-        void set_values();
+        virtual void set_values();
 
         void exec_stats(Mask*); ///< Execute statistics of surface
         void exec_cross();      ///< Execute cross sections of surface
@@ -64,14 +64,16 @@ class Boundary_surface : public Boundary
         int*    nobuk_g;
 #endif
 
+    protected:
+        void process_input(Input *);   // Process and check the surface input 
+        void init_surface();           // Allocate and initialize the surface arrays
+        void init_solver();            // Prepare the lookup table's for the surface layer solver
+        void set_ustar();              // Set fixed ustar
+
     private:
-        // cross sections
-        std::vector<std::string> crosslist;        // List with all crosses from ini file
-        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
 
         // surface scheme
         void update_bcs();
-        void update_slave_bcs();
 
         void stability(double*, double*, double*,
                        double*, double*, double*,
@@ -94,7 +96,6 @@ class Boundary_surface : public Boundary
 
         double ustarin;
 
-        Stats* stats;
 
         float* zL_sl;
         float* f_sl;
@@ -104,5 +105,13 @@ class Boundary_surface : public Boundary
         float* f_sl_g;
 #endif
         int thermobc;
+
+    protected:
+        // cross sections
+        std::vector<std::string> crosslist;        // List with all crosses from ini file
+        std::vector<std::string> allowedcrossvars; // List with allowed cross variables
+
+        Stats* stats;
+        void update_slave_bcs();
 };
 #endif

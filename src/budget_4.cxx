@@ -30,7 +30,6 @@
 #include "model.h"
 #include "thermo.h"
 #include "stats.h"
-#include <netcdfcpp.h>
 
 #include "budget.h"
 #include "budget_4.h"
@@ -1353,7 +1352,6 @@ void Budget_4::calc_tke_budget(double* restrict u, double* restrict v, double* r
             }
     }
 
-
     k = grid.kstart;
     uw_diss[k] = 0.;
     for (int j=grid.jstart; j<grid.jend; ++j)
@@ -1361,112 +1359,115 @@ void Budget_4::calc_tke_budget(double* restrict u, double* restrict v, double* r
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            uw_diss[k] -= ( ( 2.0 * visc )
+
+            uw_diss[k] -= ( ( 2 * visc )
             
             
-                          * ( ( ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
+                          * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
             
-                                      + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
+                                  + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
             
-                                      + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
+                                  + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
             
-                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
-            
-            
-                                    * cgi*dxi )
-            
-            
-                                  * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
+                                  + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
             
             
                                 * cgi*dxi )
             
             
-                              + ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
-            
-                                      + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
-            
-                                      + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
-            
-                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
+                              * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
             
             
-                                    * cgi*dyi )
+                            * cgi*dxi ) );
+            
+            uw_diss[k] -= ( ( 2 * visc )
+            
+                          * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
+            
+                                  + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
+            
+                                  + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
+            
+                                  + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
+            
+                                * cgi*dyi )
             
             
-                                  * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
-                                          + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                          + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                              * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
+                                      + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                      + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
             
-                                    + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                          + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
+                                + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                      + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
             
-                                    + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                          + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
+                                + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                      + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
             
-                                    + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                          + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
-                                          + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
-            
-            
-                                * cgi*dyi ) )
+                                + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                      + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
+                                      + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
             
             
-                            + ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+                            * cgi*dyi ) );
+            
+            uw_diss[k] -= ( ( 2 * visc )
             
             
-                                * ( bg0*( bi0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + bi1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + bi2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                        + bi3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
-            
-                                  + bg1*( ci0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ci2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                        + ci3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
-            
-                                  + bg2*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ci1*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                        + ci2*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] )
-                                        + ci3*( ci0*w[ijk-ii2+kk3] + ci1*w[ijk-ii1+kk3] + ci2*w[ijk    +kk3] + ci3*w[ijk+ii1+kk3] ) )
-            
-                                  + bg3*( ci0*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                        + ci1*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] )
-                                        + ci2*( ci0*w[ijk-ii2+kk3] + ci1*w[ijk-ii1+kk3] + ci2*w[ijk    +kk3] + ci3*w[ijk+ii1+kk3] )
-                                        + ci3*( ci0*w[ijk-ii2+kk4] + ci1*w[ijk-ii1+kk4] + ci2*w[ijk    +kk4] + ci3*w[ijk+ii1+kk4] ) ) ) )
+                          * ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
             
             
-                              * dzhi4bot ) ) );
+                              * ( bg0*( bi0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + bi1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + bi2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                      + bi3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
+            
+                                + bg1*( ci0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                      + ci3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
+            
+                                + bg2*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci1*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                      + ci2*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] )
+                                      + ci3*( ci0*w[ijk-ii2+kk3] + ci1*w[ijk-ii1+kk3] + ci2*w[ijk    +kk3] + ci3*w[ijk+ii1+kk3] ) )
+            
+                                + bg3*( ci0*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                      + ci1*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] )
+                                      + ci2*( ci0*w[ijk-ii2+kk3] + ci1*w[ijk-ii1+kk3] + ci2*w[ijk    +kk3] + ci3*w[ijk+ii1+kk3] )
+                                      + ci3*( ci0*w[ijk-ii2+kk4] + ci1*w[ijk-ii1+kk4] + ci2*w[ijk    +kk4] + ci3*w[ijk+ii1+kk4] ) ) ) )
+            
+            
+                            * dzhi4bot ) );
         }
 
     k = grid.kstart+1;
@@ -1476,112 +1477,117 @@ void Budget_4::calc_tke_budget(double* restrict u, double* restrict v, double* r
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            uw_diss[k] -= ( ( 2.0 * visc )
+            
+            uw_diss[k] -= ( ( 2 * visc )
             
             
-                          * ( ( ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
+                          * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
             
-                                      + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
+                                  + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
             
-                                      + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
+                                  + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
             
-                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
-            
-            
-                                    * cgi*dxi )
-            
-            
-                                  * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
+                                  + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
             
             
                                 * cgi*dxi )
             
             
-                              + ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
-            
-                                      + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
-            
-                                      + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
-            
-                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
+                              * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
             
             
-                                    * cgi*dyi )
+                            * cgi*dxi ) );
+            
+            uw_diss[k] -= ( ( 2 * visc )
             
             
-                                  * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
-                                          + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                          + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                          * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
             
-                                    + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                          + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
+                                  + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
             
-                                    + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                          + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
+                                  + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
             
-                                    + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                          + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
-                                          + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
-            
-            
-                                * cgi*dyi ) )
+                                  + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
             
             
-                            + ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+                                * cgi*dyi )
             
             
-                                * ( cg0*( bi0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                        + bi1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + bi2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + bi3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+                              * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
+                                      + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                      + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
             
-                                  + cg1*( ci0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                        + ci1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ci3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+                                + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                      + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
             
-                                  + cg2*( ci0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ci2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                        + ci3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
+                                + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                      + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
             
-                                  + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ci1*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                        + ci2*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] )
-                                        + ci3*( ci0*w[ijk-ii2+kk3] + ci1*w[ijk-ii1+kk3] + ci2*w[ijk    +kk3] + ci3*w[ijk+ii1+kk3] ) ) ) )
+                                + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                      + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
+                                      + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
             
             
-                              * dzhi4[k] ) ) );
+                            * cgi*dyi ) );
+            
+            uw_diss[k] -= ( ( 2 * visc )
+            
+            
+                          * ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+            
+            
+                              * ( cg0*( bi0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                      + bi1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + bi2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + bi3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+            
+                                + cg1*( ci0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                      + ci1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+            
+                                + cg2*( ci0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                      + ci3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
+            
+                                + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci1*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                      + ci2*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] )
+                                      + ci3*( ci0*w[ijk-ii2+kk3] + ci1*w[ijk-ii1+kk3] + ci2*w[ijk    +kk3] + ci3*w[ijk+ii1+kk3] ) ) ) )
+            
+            
+                            * dzhi4[k] ) ); 
         }
 
     for (int k=grid.kstart+2; k<grid.kend-1; ++k)
@@ -1592,112 +1598,118 @@ void Budget_4::calc_tke_budget(double* restrict u, double* restrict v, double* r
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                uw_diss[k] -= ( ( 2.0 * visc )
+               
+                uw_diss[k] -= ( ( 2 * visc )
                 
                 
-                              * ( ( ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                                + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                                + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                                + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
+                              * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                            + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                            + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                            + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
                 
-                                          + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
-                                                + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
-                                                + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
-                                                + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
+                                      + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
+                                            + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
+                                            + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
+                                            + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
                 
-                                          + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
-                                                + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
-                                                + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
-                                                + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
+                                      + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
+                                            + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
+                                            + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
+                                            + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
                 
-                                          + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
-                                                + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
-                                                + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
-                                                + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
-                
-                
-                                        * cgi*dxi )
-                
-                
-                                      * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
+                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
+                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
+                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
+                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
                 
                 
                                     * cgi*dxi )
                 
                 
-                                  + ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                                + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                                + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                                + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
-                
-                                          + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
-                                                + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
-                                                + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
-                                                + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
-                
-                                          + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
-                                                + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
-                                                + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
-                                                + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
-                
-                                          + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
-                                                + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
-                                                + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
-                                                + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
+                                  * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
                 
                 
-                                        * cgi*dyi )
+                                * cgi*dxi ) );
+                
+                uw_diss[k] -= ( ( 2 * visc )
                 
                 
-                                      * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
-                                              + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                              + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                              + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                              * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                            + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                            + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                            + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
                 
-                                        + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                              + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                              + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                              + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
+                                      + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
+                                            + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
+                                            + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
+                                            + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
                 
-                                        + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                              + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                              + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                              + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
+                                      + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
+                                            + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
+                                            + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
+                                            + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
                 
-                                        + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                              + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                              + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
-                                              + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
-                
-                
-                                    * cgi*dyi ) )
+                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
+                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
+                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
+                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
                 
                 
-                                + ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+                                    * cgi*dyi )
                 
                 
-                                    * ( cg0*( ci0*( ci0*w[ijk-ii2-kk3] + ci1*w[ijk-ii1-kk3] + ci2*w[ijk    -kk3] + ci3*w[ijk+ii1-kk3] )
-                                            + ci1*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                            + ci2*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                            + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                                  * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
+                                          + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                          + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                          + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
                 
-                                      + cg1*( ci0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                            + ci1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                            + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                            + ci3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+                                    + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                          + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                          + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                          + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
                 
-                                      + cg2*( ci0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                            + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                            + ci2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                            + ci3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
+                                    + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                          + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                          + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                          + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
                 
-                                      + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                            + ci1*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                            + ci2*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] )
-                                            + ci3*( ci0*w[ijk-ii2+kk3] + ci1*w[ijk-ii1+kk3] + ci2*w[ijk    +kk3] + ci3*w[ijk+ii1+kk3] ) ) ) )
+                                    + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                          + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                          + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
+                                          + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
                 
                 
-                                  * dzhi4[k] ) ) );
+                                * cgi*dyi ) );
+                
+                uw_diss[k] -= ( ( 2 * visc )
+                
+                
+                              * ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+                
+                
+                                  * ( cg0*( ci0*( ci0*w[ijk-ii2-kk3] + ci1*w[ijk-ii1-kk3] + ci2*w[ijk    -kk3] + ci3*w[ijk+ii1-kk3] )
+                                          + ci1*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                          + ci2*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                          + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                
+                                    + cg1*( ci0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                          + ci1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                          + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                          + ci3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+                
+                                    + cg2*( ci0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                          + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                          + ci2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                          + ci3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
+                
+                                    + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                          + ci1*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                          + ci2*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] )
+                                          + ci3*( ci0*w[ijk-ii2+kk3] + ci1*w[ijk-ii1+kk3] + ci2*w[ijk    +kk3] + ci3*w[ijk+ii1+kk3] ) ) ) )
+                
+                
+                                * dzhi4[k] ) );
+               
             }
     }
 
@@ -1708,112 +1720,117 @@ void Budget_4::calc_tke_budget(double* restrict u, double* restrict v, double* r
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            uw_diss[k] -= ( ( 2.0 * visc )
+
+            uw_diss[k] -= ( ( 2 * visc )
             
             
-                          * ( ( ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
+                          * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
             
-                                      + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
+                                  + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
             
-                                      + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
+                                  + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
             
-                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
-            
-            
-                                    * cgi*dxi )
-            
-            
-                                  * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
+                                  + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
             
             
                                 * cgi*dxi )
             
             
-                              + ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
-            
-                                      + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
-            
-                                      + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
-            
-                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
+                              * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
             
             
-                                    * cgi*dyi )
+                            * cgi*dxi ) );
+            
+            uw_diss[k] -= ( ( 2 * visc )
             
             
-                                  * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
-                                          + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                          + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                          * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
             
-                                    + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                          + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
+                                  + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
             
-                                    + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                          + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
+                                  + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
             
-                                    + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                          + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
-                                          + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
-            
-            
-                                * cgi*dyi ) )
+                                  + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
             
             
-                            + ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+                                * cgi*dyi )
             
             
-                                * ( cg0*( ci0*( ci0*w[ijk-ii2-kk3] + ci1*w[ijk-ii1-kk3] + ci2*w[ijk    -kk3] + ci3*w[ijk+ii1-kk3] )
-                                        + ci1*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                        + ci2*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                              * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
+                                      + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                      + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
             
-                                  + cg1*( ci0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                        + ci1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ci3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+                                + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                      + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
             
-                                  + cg2*( ci0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ci2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                        + ci3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
+                                + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                      + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
             
-                                  + cg3*( ti0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ti1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ti2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
-                                        + ti3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) ) ) )
+                                + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                      + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
+                                      + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
             
             
-                              * dzhi4[k] ) ) );
+                            * cgi*dyi ) );
+            
+            uw_diss[k] -= ( ( 2 * visc )
+            
+            
+                          * ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+            
+            
+                              * ( cg0*( ci0*( ci0*w[ijk-ii2-kk3] + ci1*w[ijk-ii1-kk3] + ci2*w[ijk    -kk3] + ci3*w[ijk+ii1-kk3] )
+                                      + ci1*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                      + ci2*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+            
+                                + cg1*( ci0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                      + ci1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+            
+                                + cg2*( ci0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                      + ci3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) )
+            
+                                + cg3*( ti0*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ti1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ti2*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] )
+                                      + ti3*( ci0*w[ijk-ii2+kk2] + ci1*w[ijk-ii1+kk2] + ci2*w[ijk    +kk2] + ci3*w[ijk+ii1+kk2] ) ) ) )
+            
+            
+                            * dzhi4[k] ) );
         }
 
     k = grid.kend;
@@ -1823,112 +1840,117 @@ void Budget_4::calc_tke_budget(double* restrict u, double* restrict v, double* r
         for (int i=grid.istart; i<grid.iend; ++i)
         {
             const int ijk = i + j*jj1 + k*kk1;
-            uw_diss[k] -= ( ( 2.0 * visc )
+ 
+            uw_diss[k] -= ( ( 2 * visc )
             
             
-                          * ( ( ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
+                          * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-ii3-kk2] - umean[k-2] ) + ci1*( u[ijk-ii2-kk2] - umean[k-2] ) + ci2*( u[ijk-ii1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii3-kk1] - umean[k-1] ) + ci1*( u[ijk-ii2-kk1] - umean[k-1] ) + ci2*( u[ijk-ii1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii3    ] - umean[k  ] ) + ci1*( u[ijk-ii2    ] - umean[k  ] ) + ci2*( u[ijk-ii1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii3+kk1] - umean[k+1] ) + ci1*( u[ijk-ii2+kk1] - umean[k+1] ) + ci2*( u[ijk-ii1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
             
-                                      + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
+                                  + cg1*( ci0*( ci0*( u[ijk-ii2-kk2] - umean[k-2] ) + ci1*( u[ijk-ii1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+ii1-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii2-kk1] - umean[k-1] ) + ci1*( u[ijk-ii1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+ii1-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii2    ] - umean[k  ] ) + ci1*( u[ijk-ii1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+ii1    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii2+kk1] - umean[k+1] ) + ci1*( u[ijk-ii1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+ii1+kk1] - umean[k+1] ) ) )
             
-                                      + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
+                                  + cg2*( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
             
-                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
-            
-            
-                                    * cgi*dxi )
-            
-            
-                                  * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
+                                  + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+ii1-kk2] - umean[k-2] ) + ci2*( u[ijk+ii2-kk2] - umean[k-2] ) + ci3*( u[ijk+ii3-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+ii1-kk1] - umean[k-1] ) + ci2*( u[ijk+ii2-kk1] - umean[k-1] ) + ci3*( u[ijk+ii3-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+ii1    ] - umean[k  ] ) + ci2*( u[ijk+ii2    ] - umean[k  ] ) + ci3*( u[ijk+ii3    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+ii1+kk1] - umean[k+1] ) + ci2*( u[ijk+ii2+kk1] - umean[k+1] ) + ci3*( u[ijk+ii3+kk1] - umean[k+1] ) ) ) )
             
             
                                 * cgi*dxi )
             
             
-                              + ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
-            
-                                      + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
-            
-                                      + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
-            
-                                      + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
-                                            + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
-                                            + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
-                                            + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
+                              * ( cg0*w[ijk-ii2] + cg1*w[ijk-ii1] + cg2*w[ijk    ] + cg3*w[ijk+ii1] ) )
             
             
-                                    * cgi*dyi )
+                            * cgi*dxi ) );
+            
+            uw_diss[k] -= ( ( 2 * visc )
             
             
-                                  * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
-                                          + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                          + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                          * ( ( ( ( cg0*( ci0*( ci0*( u[ijk-jj3-kk2] - umean[k-2] ) + ci1*( u[ijk-jj2-kk2] - umean[k-2] ) + ci2*( u[ijk-jj1-kk2] - umean[k-2] ) + ci3*( u[ijk    -kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj3-kk1] - umean[k-1] ) + ci1*( u[ijk-jj2-kk1] - umean[k-1] ) + ci2*( u[ijk-jj1-kk1] - umean[k-1] ) + ci3*( u[ijk    -kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj3    ] - umean[k  ] ) + ci1*( u[ijk-jj2    ] - umean[k  ] ) + ci2*( u[ijk-jj1    ] - umean[k  ] ) + ci3*( u[ijk        ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj3+kk1] - umean[k+1] ) + ci1*( u[ijk-jj2+kk1] - umean[k+1] ) + ci2*( u[ijk-jj1+kk1] - umean[k+1] ) + ci3*( u[ijk    +kk1] - umean[k+1] ) ) )
             
-                                    + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
-                                          + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
+                                  + cg1*( ci0*( ci0*( u[ijk-jj2-kk2] - umean[k-2] ) + ci1*( u[ijk-jj1-kk2] - umean[k-2] ) + ci2*( u[ijk    -kk2] - umean[k-2] ) + ci3*( u[ijk+jj1-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj2-kk1] - umean[k-1] ) + ci1*( u[ijk-jj1-kk1] - umean[k-1] ) + ci2*( u[ijk    -kk1] - umean[k-1] ) + ci3*( u[ijk+jj1-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj2    ] - umean[k  ] ) + ci1*( u[ijk-jj1    ] - umean[k  ] ) + ci2*( u[ijk        ] - umean[k  ] ) + ci3*( u[ijk+jj1    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj2+kk1] - umean[k+1] ) + ci1*( u[ijk-jj1+kk1] - umean[k+1] ) + ci2*( u[ijk    +kk1] - umean[k+1] ) + ci3*( u[ijk+jj1+kk1] - umean[k+1] ) ) )
             
-                                    + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
-                                          + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                          + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
+                                  + cg2*( ci0*( ci0*( u[ijk-jj1-kk2] - umean[k-2] ) + ci1*( u[ijk    -kk2] - umean[k-2] ) + ci2*( u[ijk+jj1-kk2] - umean[k-2] ) + ci3*( u[ijk+jj2-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk-jj1-kk1] - umean[k-1] ) + ci1*( u[ijk    -kk1] - umean[k-1] ) + ci2*( u[ijk+jj1-kk1] - umean[k-1] ) + ci3*( u[ijk+jj2-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk-jj1    ] - umean[k  ] ) + ci1*( u[ijk        ] - umean[k  ] ) + ci2*( u[ijk+jj1    ] - umean[k  ] ) + ci3*( u[ijk+jj2    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk-jj1+kk1] - umean[k+1] ) + ci1*( u[ijk    +kk1] - umean[k+1] ) + ci2*( u[ijk+jj1+kk1] - umean[k+1] ) + ci3*( u[ijk+jj2+kk1] - umean[k+1] ) ) )
             
-                                    + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                          + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
-                                          + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
-                                          + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
-            
-            
-                                * cgi*dyi ) )
+                                  + cg3*( ci0*( ci0*( u[ijk    -kk2] - umean[k-2] ) + ci1*( u[ijk+jj1-kk2] - umean[k-2] ) + ci2*( u[ijk+jj2-kk2] - umean[k-2] ) + ci3*( u[ijk+jj3-kk2] - umean[k-2] ) )
+                                        + ci1*( ci0*( u[ijk    -kk1] - umean[k-1] ) + ci1*( u[ijk+jj1-kk1] - umean[k-1] ) + ci2*( u[ijk+jj2-kk1] - umean[k-1] ) + ci3*( u[ijk+jj3-kk1] - umean[k-1] ) )
+                                        + ci2*( ci0*( u[ijk        ] - umean[k  ] ) + ci1*( u[ijk+jj1    ] - umean[k  ] ) + ci2*( u[ijk+jj2    ] - umean[k  ] ) + ci3*( u[ijk+jj3    ] - umean[k  ] ) )
+                                        + ci3*( ci0*( u[ijk    +kk1] - umean[k+1] ) + ci1*( u[ijk+jj1+kk1] - umean[k+1] ) + ci2*( u[ijk+jj2+kk1] - umean[k+1] ) + ci3*( u[ijk+jj3+kk1] - umean[k+1] ) ) ) )
             
             
-                            + ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+                                * cgi*dyi )
             
             
-                                * ( tg0*( ci0*( ci0*w[ijk-ii2-kk4] + ci1*w[ijk-ii1-kk4] + ci2*w[ijk    -kk4] + ci3*w[ijk+ii1-kk4] )
-                                        + ci1*( ci0*w[ijk-ii2-kk3] + ci1*w[ijk-ii1-kk3] + ci2*w[ijk    -kk3] + ci3*w[ijk+ii1-kk3] )
-                                        + ci2*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                        + ci3*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] ) )
+                              * ( cg0*( ci0*( ci0*w[ijk-ii2-jj3] + ci1*w[ijk-ii1-jj3] + ci2*w[ijk    -jj3] + ci3*w[ijk+ii1-jj3] )
+                                      + ci1*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                      + ci2*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
             
-                                  + tg1*( ci0*( ci0*w[ijk-ii2-kk3] + ci1*w[ijk-ii1-kk3] + ci2*w[ijk    -kk3] + ci3*w[ijk+ii1-kk3] )
-                                        + ci1*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                        + ci2*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+                                + cg1*( ci0*( ci0*w[ijk-ii2-jj2] + ci1*w[ijk-ii1-jj2] + ci2*w[ijk    -jj2] + ci3*w[ijk+ii1-jj2] )
+                                      + ci1*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci3*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] ) )
             
-                                  + tg2*( ci0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                        + ci1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ci3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+                                + cg2*( ci0*( ci0*w[ijk-ii2-jj1] + ci1*w[ijk-ii1-jj1] + ci2*w[ijk    -jj1] + ci3*w[ijk+ii1-jj1] )
+                                      + ci1*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci2*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                      + ci3*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] ) )
             
-                                  + tg3*( ti0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
-                                        + ti1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
-                                        + ti2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
-                                        + ti3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) ) ) )
+                                + cg3*( ci0*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci1*( ci0*w[ijk-ii2+jj1] + ci1*w[ijk-ii1+jj1] + ci2*w[ijk    +jj1] + ci3*w[ijk+ii1+jj1] )
+                                      + ci2*( ci0*w[ijk-ii2+jj2] + ci1*w[ijk-ii1+jj2] + ci2*w[ijk    +jj2] + ci3*w[ijk+ii1+jj2] )
+                                      + ci3*( ci0*w[ijk-ii2+jj3] + ci1*w[ijk-ii1+jj3] + ci2*w[ijk    +jj3] + ci3*w[ijk+ii1+jj3] ) ) ) )
             
             
-                              * dzhi4top ) ) );
+                            * cgi*dyi ) );
+            
+            uw_diss[k] -= ( ( 2 * visc )
+            
+            
+                          * ( ( ( ( cg0*( u[ijk-kk2] - umean[k-2] ) + cg1*( u[ijk-kk1] - umean[k-1] ) + cg2*( u[ijk    ] - umean[k  ] ) + cg3*( u[ijk+kk1] - umean[k+1] ) ) * dzhi4[k] )
+            
+            
+                              * ( tg0*( ci0*( ci0*w[ijk-ii2-kk4] + ci1*w[ijk-ii1-kk4] + ci2*w[ijk    -kk4] + ci3*w[ijk+ii1-kk4] )
+                                      + ci1*( ci0*w[ijk-ii2-kk3] + ci1*w[ijk-ii1-kk3] + ci2*w[ijk    -kk3] + ci3*w[ijk+ii1-kk3] )
+                                      + ci2*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                      + ci3*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] ) )
+            
+                                + tg1*( ci0*( ci0*w[ijk-ii2-kk3] + ci1*w[ijk-ii1-kk3] + ci2*w[ijk    -kk3] + ci3*w[ijk+ii1-kk3] )
+                                      + ci1*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                      + ci2*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ci3*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] ) )
+            
+                                + tg2*( ci0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                      + ci1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ci2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ci3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) )
+            
+                                + tg3*( ti0*( ci0*w[ijk-ii2-kk2] + ci1*w[ijk-ii1-kk2] + ci2*w[ijk    -kk2] + ci3*w[ijk+ii1-kk2] )
+                                      + ti1*( ci0*w[ijk-ii2-kk1] + ci1*w[ijk-ii1-kk1] + ci2*w[ijk    -kk1] + ci3*w[ijk+ii1-kk1] )
+                                      + ti2*( ci0*w[ijk-ii2    ] + ci1*w[ijk-ii1    ] + ci2*w[ijk        ] + ci3*w[ijk+ii1    ] )
+                                      + ti3*( ci0*w[ijk-ii2+kk1] + ci1*w[ijk-ii1+kk1] + ci2*w[ijk    +kk1] + ci3*w[ijk+ii1+kk1] ) ) ) )
+            
+            
+                            * dzhi4top ) ); 
         }
 
     master.sum(u2_diss , grid.kcells);

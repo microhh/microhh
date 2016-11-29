@@ -25,6 +25,7 @@
 #include "grid.h"
 #include "fields.h"
 #include "defines.h"
+#include "constants.h"
 #include "model.h"
 #include "thermo.h"
 #include "thermo_disabled.h"
@@ -38,7 +39,17 @@ Thermo_disabled::~Thermo_disabled()
 {
 }
 
+unsigned long Thermo_disabled::get_time_limit(unsigned long idt, const double dt)
+{
+    return Constants::ulhuge;
+}
+
 bool Thermo_disabled::check_field_exists(std::string name)
 {
     return false;  // always returns error 
+}
+
+double Thermo_disabled::get_buoyancy_diffusivity()
+{
+    return 0; 
 }

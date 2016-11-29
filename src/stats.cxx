@@ -22,6 +22,9 @@
 
 #include <cstdio>
 #include <cmath>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
 #include "master.h"
 #include "grid.h"
 #include "fields.h"
@@ -33,7 +36,11 @@
 #include "model.h"
 #include "diff_smag2.h"
 #include "timeloop.h"
-#include <netcdfcpp.h>
+
+#include <netcdf>       // C++
+#include <netcdf.h>     // C, for sync() using older netCDF-C++ versions
+using namespace netCDF;
+using namespace netCDF::exceptions;
 
 Stats::Stats(Model* modelin, Input* inputin)
 {
@@ -109,16 +116,21 @@ void Stats::create(int n)
         // create a NetCDF file for the statistics
         if (master->mpiid == 0)
         {
-            char filename[256];
-            std::sprintf(filename, "%s.%s.%07d.nc", master->simname.c_str(), m->name.c_str(), n);
-            m->dataFile = new NcFile(filename, NcFile::New);
-            if (!m->dataFile->is_valid())
+            std::stringstream filename;
+            filename << master->simname << "." << m->name << "." << std::setfill('0') << std::setw(7) << n << ".nc";
+
+            try
             {
-                master->print_error("cannot write statistics file\n");
+                m->dataFile = new NcFile(filename.str(), NcFile::newFile);
+            }
+            catch(NcException& e)
+            {
+                master->print_error("NetCDF exception: %s\n",e.what());
                 ++nerror;
             }
         }
-        // crash on all processes in case the file could not be written
+
+        // Crash on all processes in case the file could not be written
         master->broadcast(&nerror, 1);
         if (nerror)
             throw 1;
@@ -126,41 +138,44 @@ void Stats::create(int n)
         // create dimensions
         if (master->mpiid == 0)
         {
-            m->z_dim  = m->dataFile->add_dim("z" , grid->kmax);
-            m->zh_dim = m->dataFile->add_dim("zh", grid->kmax+1);
-            m->t_dim  = m->dataFile->add_dim("t");
+            m->z_dim  = m->dataFile->addDim("z" , grid->kmax);
+            m->zh_dim = m->dataFile->addDim("zh", grid->kmax+1);
+            m->t_dim  = m->dataFile->addDim("t");
 
-            NcVar* z_var;
-            NcVar* zh_var;
+            NcVar z_var;
+            NcVar zh_var;
 
             // create variables belonging to dimensions
-            m->iter_var = m->dataFile->add_var("iter", ncInt, m->t_dim);
-            m->iter_var->add_att("units", "-");
-            m->iter_var->add_att("long_name", "Iteration number");
+            m->iter_var = m->dataFile->addVar("iter", ncInt, m->t_dim);
+            m->iter_var.putAtt("units", "-");
+            m->iter_var.putAtt("long_name", "Iteration number");
 
-            m->t_var = m->dataFile->add_var("t", ncDouble, m->t_dim);
-            m->t_var->add_att("units", "s");
-            m->t_var->add_att("long_name", "Time");
+            m->t_var = m->dataFile->addVar("t", ncDouble, m->t_dim);
+            m->t_var.putAtt("units", "s");
+            m->t_var.putAtt("long_name", "Time");
 
-            z_var = m->dataFile->add_var("z", ncDouble, m->z_dim);
-            z_var->add_att("units", "m");
-            z_var->add_att("long_name", "Full level height");
+            z_var = m->dataFile->addVar("z", ncDouble, m->z_dim);
+            z_var.putAtt("units", "m");
+            z_var.putAtt("long_name", "Full level height");
 
-            zh_var = m->dataFile->add_var("zh", ncDouble, m->zh_dim);
-            zh_var->add_att("units", "m");
-            zh_var->add_att("long_name", "Half level height");
+            zh_var = m->dataFile->addVar("zh", ncDouble, m->zh_dim);
+            zh_var.putAtt("units", "m");
+            zh_var.putAtt("long_name", "Half level height");
 
             // save the grid variables
-            z_var ->put(&grid->z [grid->kstart], grid->kmax  );
-            zh_var->put(&grid->zh[grid->kstart], grid->kmax+1);
+            z_var .putVar(&grid->z [grid->kstart]);
+            zh_var.putVar(&grid->zh[grid->kstart]);
 
-            m->dataFile->sync();
+            // Synchronize the NetCDF file
+            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
+            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
+            //m->dataFile->sync();
+            nc_sync(m->dataFile->getId());
         }
-
     }
 
     // for each mask add the area as a variable
-    add_prof("area" , "Fractional area contained in mask", "-", "z");
+    add_prof("area" , "Fractional area contained in mask", "-", "z" );
     add_prof("areah", "Fractional area contained in mask", "-", "zh");
 }
 
@@ -206,17 +221,28 @@ void Stats::exec(int iteration, double time, unsigned long itime)
         // put the data into the NetCDF file
         if (master->mpiid == 0)
         {
-            m->t_var   ->put_rec(&time     , nstats);
-            m->iter_var->put_rec(&iteration, nstats);
+            const std::vector<size_t> time_index = {static_cast<size_t>(nstats)};
+
+            m->t_var   .putVar(time_index, &time     );
+            m->iter_var.putVar(time_index, &iteration);
+
+            const std::vector<size_t> time_height_index = {static_cast<size_t>(nstats), 0};
+            std::vector<size_t> time_height_size  = {1, 0};
 
             for (Prof_map::const_iterator it=m->profs.begin(); it!=m->profs.end(); ++it)
-                m->profs[it->first].ncvar->put_rec(&m->profs[it->first].data[grid->kstart], nstats);
+            {
+                time_height_size[1] = m->profs[it->first].ncvar.getDim(1).getSize();
+                m->profs[it->first].ncvar.putVar(time_height_index, time_height_size, &m->profs[it->first].data[grid->kstart]);
+            }
 
             for (Time_series_map::const_iterator it=m->tseries.begin(); it!=m->tseries.end(); ++it)
-                m->tseries[it->first].ncvar->put_rec(&m->tseries[it->first].data, nstats);
+                m->tseries[it->first].ncvar.putVar(time_index, &m->tseries[it->first].data);
 
-            // sync the data
-            m->dataFile->sync();
+            // Synchronize the NetCDF file
+            // BvS: only the last netCDF4-c++ includes the NcFile->sync()
+            //      for now use sync() from the netCDF-C library to support older NetCDF4-c++ versions
+            //m->dataFile->sync();
+            nc_sync(m->dataFile->getId());
         }
     }
 
@@ -236,8 +262,6 @@ void Stats::add_mask(const std::string maskname)
 
 void Stats::add_prof(std::string name, std::string longname, std::string unit, std::string zloc)
 {
-    int nerror = 0;
-
     // add the profile to all files
     for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
     {
@@ -247,19 +271,23 @@ void Stats::add_prof(std::string name, std::string longname, std::string unit, s
         // create the NetCDF variable
         if (master->mpiid == 0)
         {
+            std::vector<NcDim> dim_vector = {m->t_dim};
+
             if (zloc == "z")
             {
-                m->profs[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim, m->z_dim);
+                dim_vector.push_back(m->z_dim);
+                m->profs[name].ncvar = m->dataFile->addVar(name, ncDouble, dim_vector);
                 m->profs[name].data = NULL;
             }
             else if (zloc == "zh")
             {
-                m->profs[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim, m->zh_dim);
+                dim_vector.push_back(m->zh_dim);
+                m->profs[name].ncvar = m->dataFile->addVar(name.c_str(), ncDouble, dim_vector);
                 m->profs[name].data = NULL;
             }
-            m->profs[name].ncvar->add_att("units", unit.c_str());
-            m->profs[name].ncvar->add_att("long_name", longname.c_str());
-            m->profs[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+            m->profs[name].ncvar.putAtt("units", unit.c_str());
+            m->profs[name].ncvar.putAtt("long_name", longname.c_str());
+            m->profs[name].ncvar.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
         }
 
         // and allocate the memory and initialize at zero
@@ -267,15 +295,10 @@ void Stats::add_prof(std::string name, std::string longname, std::string unit, s
         for (int k=0; k<grid->kcells; ++k)
             m->profs[name].data[k] = 0.;
     }
-
-    if (nerror)
-        throw 1;
 }
 
 void Stats::add_fixed_prof(std::string name, std::string longname, std::string unit, std::string zloc, double* restrict prof)
 {
-    int nerror = 0;
-
     // add the profile to all files
     for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
     {
@@ -283,32 +306,34 @@ void Stats::add_fixed_prof(std::string name, std::string longname, std::string u
         Mask* m = &it->second;
 
         // create the NetCDF variable
-        NcVar* var = 0;
         if (master->mpiid == 0)
         {
+            NcVar var;
             if (zloc == "z")
-                var = m->dataFile->add_var(name.c_str(), ncDouble, m->z_dim);
+                var = m->dataFile->addVar(name.c_str(), ncDouble, m->z_dim);
             else if (zloc == "zh")
-                var = m->dataFile->add_var(name.c_str(), ncDouble, m->zh_dim);
-            var->add_att("units", unit.c_str());
-            var->add_att("long_name", longname.c_str());
-            var->add_att("_FillValue", NC_FILL_DOUBLE);
+                var = m->dataFile->addVar(name.c_str(), ncDouble, m->zh_dim);
+            var.putAtt("units", unit.c_str());
+            var.putAtt("long_name", longname.c_str());
+            var.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
 
+            const std::vector<size_t> index = {0};
             if (zloc == "z")
-                var->put(&prof[grid->kstart], grid->kmax);
+            {
+                const std::vector<size_t> size  = {static_cast<size_t>(grid->kmax)};
+                var.putVar(index, size, &prof[grid->kstart]);
+            }
             else if (zloc == "zh")
-                var->put(&prof[grid->kstart], grid->kmax+1);
+            {
+                const std::vector<size_t> size  = {static_cast<size_t>(grid->kmax+1)};
+                var.putVar(index, size, &prof[grid->kstart]);
+            }
         }
     }
-
-    if (nerror)
-        throw 1;
 }
 
 void Stats::add_time_series(std::string name, std::string longname, std::string unit)
 {
-    int nerror = 0;
-
     // add the series to all files
     for (Mask_map::iterator it=masks.begin(); it!=masks.end(); ++it)
     {
@@ -318,18 +343,15 @@ void Stats::add_time_series(std::string name, std::string longname, std::string 
         // create the NetCDF variable
         if (master->mpiid == 0)
         {
-            m->tseries[name].ncvar = m->dataFile->add_var(name.c_str(), ncDouble, m->t_dim);
-            m->tseries[name].ncvar->add_att("units", unit.c_str());
-            m->tseries[name].ncvar->add_att("long_name", longname.c_str());
-            m->tseries[name].ncvar->add_att("_FillValue", NC_FILL_DOUBLE);
+            m->tseries[name].ncvar = m->dataFile->addVar(name.c_str(), ncDouble, m->t_dim);
+            m->tseries[name].ncvar.putAtt("units", unit.c_str());
+            m->tseries[name].ncvar.putAtt("long_name", longname.c_str());
+            m->tseries[name].ncvar.putAtt("_FillValue", ncDouble, NC_FILL_DOUBLE);
         }
 
-        // and initialize at zero
+        // Initialize at zero
         m->tseries[name].data = 0.;
     }
-
-    if (nerror)
-        throw 1;
 }
 
 void Stats::get_mask(Field3d* mfield, Field3d* mfieldh, Mask* m)
@@ -425,7 +447,7 @@ void Stats::calc_mean2d(double* const restrict mean, const double* const restric
         *mean /= (double)*nmask;
     }
     else
-        *mean = NC_FILL_DOUBLE; 
+        *mean = NC_FILL_DOUBLE;
 }
 
 void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double* restrict prof)
@@ -471,7 +493,7 @@ void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double
         // make sure that bins is not larger than the memory of one 3d field
         const int bins = grid->nmax;
 
-        // calculate bin width, subtract one to make the minimum and maximum 
+        // calculate bin width, subtract one to make the minimum and maximum
         // are in the middle of the bin range and add half a bin size on both sides
         // |----x----|----x----|----x----|
         const double dbin = range / (double)(bins-1);
@@ -512,7 +534,7 @@ void Stats::calc_sorted_prof(double* restrict data, double* restrict bin, double
         for (int k=grid->kstart; k<grid->kend; ++k)
         {
             // Integrate the profile up to the bin count.
-            // Escape the while loop when the integrated profile 
+            // Escape the while loop when the integrated profile
             // exceeds the next grid point.
             while (zbin < grid->z[k])
             {

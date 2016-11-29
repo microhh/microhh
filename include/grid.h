@@ -127,6 +127,7 @@ class Grid
         void transpose_zy(double*, double*); ///< Changes the transpose orientation from z to y.
 
         void get_max (double*);      ///< Gets the maximum of a number over all processes.
+        void get_max (int*);         ///< Gets the maximum of a number over all processes.
         void get_sum (double*);      ///< Gets the sum of a number over all processes.
         void get_prof(double*, int); ///< Averages a vertical profile over all processes.
         void calc_mean(double*, const double*, int);

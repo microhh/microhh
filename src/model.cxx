@@ -98,10 +98,12 @@ Model::Model(Master *masterin, Input *inputin)
         nerror += input->get_list(&masklist, "stats", "masklist", "");
         for (std::vector<std::string>::const_iterator it=masklist.begin(); it!=masklist.end(); ++it)
         {
-            if (*it != "wplus" &&
-                    *it != "wmin"  &&
-                    *it != "ql"    &&
-                    *it != "qlcore")
+            if (*it != "wplus"       &&
+                *it != "wmin"        &&
+                *it != "ql"          &&
+                *it != "qlcore"      &&
+                *it != "patch_high"  &&
+                *it != "patch_low")
             {
                 master->print_warning("%s is an undefined mask for conditional statistics\n", it->c_str());
             }
@@ -216,7 +218,7 @@ void Model::save()
 
 void Model::exec()
 {
-#ifdef USECUDA
+    #ifdef USECUDA
     // Load all the necessary data to the GPU.
     master  ->print_message("Preparing the GPU\n");
     grid    ->prepare_device();
@@ -228,7 +230,7 @@ void Model::exec()
     force   ->prepare_device();
     // Prepare pressure last, for memory check
     pres    ->prepare_device(); 
-#endif
+    #endif
 
     master->print_message("Starting time integration\n");
 
@@ -308,6 +310,11 @@ void Model::exec()
                     else if (*it == "ql" || *it == "qlcore")
                     {
                         thermo->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
+                        calc_stats(*it);
+                    }
+                    else if (*it == "patch_high" || *it == "patch_low")
+                    {
+                        boundary->get_mask(fields->atmp["tmp3"], fields->atmp["tmp4"], &stats->masks[*it]);
                         calc_stats(*it);
                     }
                 }
@@ -392,11 +399,11 @@ void Model::exec()
 
     } // End time loop.
 
-#ifdef USECUDA
+    #ifdef USECUDA
     // At the end of the run, copy the data back from the GPU.
     fields  ->backward_device();
     boundary->backward_device();
-#endif
+    #endif
 }
 
 void Model::set_time_step()
@@ -407,11 +414,12 @@ void Model::set_time_step()
 
     // Retrieve the maximum allowed time step per class.
     timeloop->set_time_step_limit();
-    timeloop->set_time_step_limit(advec->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(diff ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
-    timeloop->set_time_step_limit(stats->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(cross->get_time_limit(timeloop->get_itime()));
-    timeloop->set_time_step_limit(dump ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(advec ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(diff  ->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(thermo->get_time_limit(timeloop->get_idt(), timeloop->get_dt()));
+    timeloop->set_time_step_limit(stats ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(cross ->get_time_limit(timeloop->get_itime()));
+    timeloop->set_time_step_limit(dump  ->get_time_limit(timeloop->get_itime()));
 
     // Set the time step.
     timeloop->set_time_step();

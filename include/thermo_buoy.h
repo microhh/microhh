@@ -42,12 +42,14 @@ class Thermo_buoy : public Thermo
         virtual ~Thermo_buoy();        ///< Destructor of the dry thermodynamics class.
 
         void exec(); ///< Add the tendencies belonging to the buoyancy.
+        unsigned long get_time_limit(unsigned long, double); ///< Compute the time limit (n/a for thermo_buoy)
 
         bool check_field_exists(std::string name);
         void get_buoyancy_surf(Field3d *);             ///< Compute the near-surface and bottom buoyancy for usage in another routine.
         void get_buoyancy_fluxbot(Field3d*);           ///< Compute the bottom buoyancy flux for usage in another routine.
         void get_prog_vars(std::vector<std::string>*); ///< Retrieve a list of prognostic variables.
         void get_thermo_field(Field3d*, Field3d*, std::string name, bool cyclic); ///< Compute the buoyancy for usage in another routine.
+        double get_buoyancy_diffusivity();
 
         // Empty functions that are allowed to pass.
         void init() {}

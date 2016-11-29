@@ -27,6 +27,7 @@
 #include "fields.h"
 #include "thermo_buoy.h"
 #include "defines.h"
+#include "constants.h"
 #include "finite_difference.h"
 #include "model.h"
 #include "master.h"
@@ -92,6 +93,11 @@ void Thermo_buoy::exec()
 }
 #endif
 
+unsigned long Thermo_buoy::get_time_limit(unsigned long idt, const double dt)
+{
+    return Constants::ulhuge;
+}
+
 void Thermo_buoy::get_thermo_field(Field3d* field, Field3d* tmp, const std::string name, bool cyclic)
 {
     calc_buoyancy(field->data, fields->sp["b"]->data);
@@ -114,6 +120,11 @@ void Thermo_buoy::get_buoyancy_surf(Field3d *bfield)
     calc_buoyancy_bot(bfield->data         , bfield->databot,
                       fields->sp["b"]->data, fields->sp["b"]->databot);
     calc_buoyancy_fluxbot(bfield->datafluxbot, fields->sp["b"]->datafluxbot);
+}
+
+double Thermo_buoy::get_buoyancy_diffusivity()
+{
+    return fields->sp["b"]->visc; 
 }
 
 bool Thermo_buoy::check_field_exists(std::string name)

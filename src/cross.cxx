@@ -34,7 +34,7 @@
 #include "model.h"
 #include "thermo.h"
 #include "timeloop.h"
-#include <netcdfcpp.h>
+#include <netcdf>
 
 Cross::Cross(Model* modelin, Input* inputin)
 {
@@ -486,7 +486,6 @@ int Cross::cross_path(double* restrict data, double* restrict tmp, double* restr
     const int kstart = grid->kstart;
 
     int nerror = 0;
-    char filename[256];
 
     // Path is integrated in first full level, set to zero first
     for (int j=grid->jstart; j<grid->jend; j++)
@@ -531,7 +530,6 @@ int Cross::cross_height_threshold(double* restrict data, double* restrict height
     const int kstart = grid->kstart;
 
     int nerror = 0;
-    char filename[256];
 
     // Set height to NetCDF fill value
     for (int j=grid->jstart; j<grid->jend; j++)
@@ -580,4 +578,3 @@ int Cross::cross_height_threshold(double* restrict data, double* restrict height
 
     return nerror;
 }
-
