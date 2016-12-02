@@ -22,6 +22,7 @@ set(HDF5_LIB_1         "/usr/local/lib/libhdf5.a")
 set(HDF5_LIB_2         "/usr/local/lib/libhdf5_hl.a")
 set(SZIP_LIB           "/usr/local/lib/libsz.a")
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
+set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 if(USECUDA)
   set(CUDA_PROPAGATE_HOST_FLAGS OFF)

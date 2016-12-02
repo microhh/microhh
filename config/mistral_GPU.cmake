@@ -26,6 +26,7 @@ set(HDF5_LIB_2         "/sw/rhel6-x64/hdf5/hdf5-1.8.14-gcc48/lib/libhdf5_hl.a")
 set(SZIP_LIB           "/sw/rhel6-x64/sys/szip-2.1-gcc48/lib/libsz.a")
 set(CURL_LIB           "/usr/lib64/libcurl.so.4")
 set(LIBS ${CURL_LIB} ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z dl)
+set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 if(USECUDA)
   set(CUDA_PROPAGATE_HOST_FLAGS OFF)

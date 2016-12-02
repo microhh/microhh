@@ -24,5 +24,6 @@ set(NETCDF_LIB_CPP     "/usr/local/netcdf/lib/libnetcdf_c++.a")
 #set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
 
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} m z curl)
+set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_definitions(-DRESTRICTKEYWORD=restrict)

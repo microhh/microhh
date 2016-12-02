@@ -120,9 +120,6 @@ if(USECUDA)
   message(STATUS "NVCC flags: " ${CUDA_NVCC_FLAGS})
 endif()
 
-# Set the include dirs.
-set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
-
 add_subdirectory(src)
 add_subdirectory(main)
 
