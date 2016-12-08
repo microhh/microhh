@@ -1028,7 +1028,7 @@ void Stats::calc_cover(double* restrict data, double* restrict maskbot, int* res
                     }
             }
         *cover /= (double)*nmaskbot;
-        grid->get_prof(cover,1);
+        master->sum(cover,1);
     }
     else
         *cover = NC_FILL_DOUBLE;
