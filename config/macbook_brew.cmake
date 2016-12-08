@@ -9,7 +9,7 @@ endif()
 
 set(GNU_SED "gsed")
 
-set(USER_CXX_FLAGS "")
+set(USER_CXX_FLAGS "-std=c++11")
 set(USER_CXX_FLAGS_RELEASE "-Ofast -march=native")
 set(USER_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wno-unknown-pragmas")
 
@@ -17,7 +17,7 @@ set(FFTW_INCLUDE_DIR   "/usr/local/include")
 set(FFTW_LIB           "/usr/local/lib/libfftw3.a")
 set(NETCDF_INCLUDE_DIR "/usr/local/include")
 set(NETCDF_LIB_C       "/usr/local/lib/libnetcdf.a")
-set(NETCDF_LIB_CPP     "/usr/local/lib/libnetcdf_c++.a")
+set(NETCDF_LIB_CPP     "/usr/local/lib/libnetcdf_c++4.a")
 set(HDF5_LIB_1         "/usr/local/lib/libhdf5.a")
 set(HDF5_LIB_2         "/usr/local/lib/libhdf5_hl.a")
 set(SZIP_LIB           "/usr/local/lib/libsz.a")
