@@ -263,7 +263,7 @@ void Fields::exec()
     // calculate the means for the prognostic scalars
     if (calc_mean_profs)
     {
-        for (FieldMap::iterator it=sp.begin(); it!=sp.end(); ++it)
+        for (FieldMap::iterator it=ap.begin(); it!=ap.end(); ++it)
             grid->calc_mean(it->second->datamean, it->second->data, grid->kcells);
     }
 }

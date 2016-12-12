@@ -63,6 +63,7 @@ class Buffer
         std::map<std::string, double*> bufferprofs;   ///< Map containing the buffer profiles.
 
         std::string swbuffer; ///< Switch for buffer.
+        std::string swupdate; ///< Switch for enabling runtime updating of buffer profile.
 
         void buffer(double* const, const double* const, 
                     const double* const, const double* const); ///< Calculate the tendency.

@@ -43,13 +43,17 @@ Buffer::Buffer(Model* modelin, Input* inputin)
 
     if (swbuffer == "1")
     {
-        nerror += inputin->get_item(&zstart, "buffer", "zstart", "");
-        nerror += inputin->get_item(&sigma , "buffer", "sigma" , "", 2.);
-        nerror += inputin->get_item(&beta  , "buffer", "beta"  , "", 2.);
+        nerror += inputin->get_item(&swupdate, "buffer", "swupdate", "", "0");
+        nerror += inputin->get_item(&zstart  , "buffer", "zstart"  , "");
+        nerror += inputin->get_item(&sigma   , "buffer", "sigma"   , "", 2.);
+        nerror += inputin->get_item(&beta    , "buffer", "beta"    , "", 2.);
     }
 
     if (nerror)
         throw 1;
+
+    if (swbuffer == "1" && swupdate == "1")
+        fields->set_calc_mean_profs(true);
 }
 
 Buffer::~Buffer()
@@ -57,21 +61,25 @@ Buffer::~Buffer()
     for (std::map<std::string, double*>::const_iterator it=bufferprofs.begin(); it!=bufferprofs.end(); ++it)
         delete[] it->second;
 
-#ifdef USECUDA
+    #ifdef USECUDA
     clear_device();
-#endif
+    #endif
 }
 
 void Buffer::init()
 {
     if (swbuffer == "1")
     {
-        // allocate the buffer arrays
-        for (FieldMap::const_iterator it=fields->mp.begin(); it!=fields->mp.end(); ++it)
-            bufferprofs[it->first] = new double[grid->kcells];
-
-        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            bufferprofs[it->first] = new double[grid->kcells];
+        if (swupdate == "1")
+        {
+            bufferprofs["w"] = new double[grid->kcells];
+        }
+        else
+        {
+            // Allocate the buffer arrays.
+            for (FieldMap::const_iterator it=fields->ap.begin(); it!=fields->ap.end(); ++it)
+                bufferprofs[it->first] = new double[grid->kcells];
+        }
     }
 }
 
@@ -81,43 +89,47 @@ void Buffer::create(Input* inputin)
 
     if (swbuffer == "1")
     {
-        // set the buffers according to the initial profiles of the variables
-        nerror += inputin->get_prof(&bufferprofs["u"][grid->kstart], "u", grid->kmax);
-        nerror += inputin->get_prof(&bufferprofs["v"][grid->kstart], "v", grid->kmax);
-
-        // in case of u and v, subtract the grid velocity
-        for (int k=grid->kstart; k<grid->kend; ++k)
-        {
-            bufferprofs["u"][k] -= grid->utrans;
-            bufferprofs["v"][k] -= grid->vtrans;
-        }
-
-        // allocate the buffer for w on 0
-        for (int k=0; k<grid->kcells; ++k)
-            bufferprofs["w"][k] = 0.;
-
-        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            nerror += inputin->get_prof(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
-
-        // find the starting points
+        // Find the starting points.
         bufferkstart  = grid->kstart;
         bufferkstarth = grid->kstart;
 
         for (int k=grid->kstart; k<grid->kend; ++k)
         {
-            // check if the cell center is in the buffer zone
+            // Check if the cell center is in the buffer zone.
             if (grid->z[k] < this->zstart)
                 ++bufferkstart;
-            // check if the cell face is in the buffer zone
+            // Check if the cell face is in the buffer zone.
             if (grid->zh[k] < this->zstart)
                 ++bufferkstarth;
         }
 
-        // check whether the lowest of the two levels is contained in the buffer layer
+        // Check whether the lowest of the two levels is contained in the buffer layer.
         if (bufferkstarth == grid->kend)
         {
             ++nerror;
             master->print_error("buffer is too close to the model top\n");
+        }
+
+        // Allocate the buffer for w on 0.
+        for (int k=0; k<grid->kcells; ++k)
+             bufferprofs["w"][k] = 0.;
+
+        if (swupdate == "0")
+        {
+            // Set the buffers according to the initial profiles of the variables.
+            nerror += inputin->get_prof(&bufferprofs["u"][grid->kstart], "u", grid->kmax);
+            nerror += inputin->get_prof(&bufferprofs["v"][grid->kstart], "v", grid->kmax);
+
+            // In case of u and v, subtract the grid velocity.
+            for (int k=grid->kstart; k<grid->kend; ++k)
+            {
+                bufferprofs["u"][k] -= grid->utrans;
+                bufferprofs["v"][k] -= grid->vtrans;
+            }
+
+
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+                nerror += inputin->get_prof(&bufferprofs[it->first][grid->kstart], it->first, grid->kmax);
         }
     }
 
@@ -130,13 +142,26 @@ void Buffer::exec()
 {
     if (swbuffer == "1")
     {
-        // calculate the buffer tendencies
-        buffer(fields->mt["u"]->data, fields->mp["u"]->data, bufferprofs["u"], grid->z );
-        buffer(fields->mt["v"]->data, fields->mp["v"]->data, bufferprofs["v"], grid->z );
-        buffer(fields->mt["w"]->data, fields->mp["w"]->data, bufferprofs["w"], grid->zh);
+        if (swupdate == "1")
+        {
+            // Calculate the buffer tendencies.
+            buffer(fields->mt["u"]->data, fields->mp["u"]->data, fields->mp["u"]->datamean, grid->z );
+            buffer(fields->mt["v"]->data, fields->mp["v"]->data, fields->mp["v"]->datamean, grid->z );
+            buffer(fields->mt["w"]->data, fields->mp["w"]->data, bufferprofs["w"]         , grid->zh);
 
-        for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
-            buffer(fields->st[it->first]->data, it->second->data, bufferprofs[it->first], grid->z);
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+                buffer(fields->st[it->first]->data, it->second->data, it->second->datamean, grid->z);
+        }
+        else
+        {
+            // Calculate the buffer tendencies.
+            buffer(fields->mt["u"]->data, fields->mp["u"]->data, bufferprofs["u"], grid->z );
+            buffer(fields->mt["v"]->data, fields->mp["v"]->data, bufferprofs["v"], grid->z );
+            buffer(fields->mt["w"]->data, fields->mp["w"]->data, bufferprofs["w"], grid->zh);
+
+            for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+                buffer(fields->st[it->first]->data, it->second->data, bufferprofs[it->first], grid->z);
+        }
     }
 }
 #endif

@@ -22,7 +22,7 @@
 \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 \begin{document}
-\section*{\huge MicroHH 1.0 cheat sheet}
+\section*{\huge MicroHH 1.6 cheat sheet}
 
 \subsection*{[advec] Advection}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -85,12 +85,12 @@ patch\_yoffs  & 0       &           & offset patch within heterogeneity ($y$) [m
 \begin{supertabular}{|L{\wname} C{\wdef} C{\wopt} L{\wdesc}|}
 swbuffer & 0   & 0 & disable buffer layer at the top of the domain \\
          &     & 1 & enable buffer layer at the top of the domain \\
+swupdate & 0   & 0 & use the initial profile as the buffer reference \\
+         &     & 1 & take the actual mean profile as the buffer reference \\
 zstart   & n/a &   & starting height for buffer zone [m]\\
 sigma    & n/a &   & damping time scale of the buffer layer [s$^{-1}$]\\
-beta     & 2.  &   & exponent of the damping increase with height [-] \\
+beta     & 2.  &   & exponent of the damping increase with height [-]\\
 \end{supertabular}
-
-\newpage
 
 \subsection*{[cross] Cross-section}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
@@ -152,6 +152,8 @@ vortexnpair   & 0     &  & number of rotating vortex pairs \\
 vortexamp     & 1.e-3 &  & amplitude of vortex pairs \\
 vortexaxis    & x     &  & axis around which the vortices are evolving \\
 \end{supertabular}
+
+\clearpage
 
 \subsection*{[force] Large scale forcings}
 \tablefirsthead{\hline NAME & DEFAULT VALUE & OPTIONS & DESCRIPTION \\ \hline}
