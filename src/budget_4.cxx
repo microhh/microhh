@@ -41,6 +41,14 @@ Budget_4::Budget_4(Input* inputin, Master* masterin, Grid* gridin, Fields* field
 {
     umodel = 0;
     vmodel = 0;
+    
+    int nerror = 0;
+    nerror += inputin->get_item(&alpha, "thermo", "alpha", "", 0.);
+    nerror += inputin->get_item(&n2   , "thermo", "N2"   , "", 0.);
+
+    if (nerror)
+        throw 1;
+    
 }
 
 Budget_4::~Budget_4()
@@ -190,8 +198,8 @@ void Budget_4::exec_stats(Mask* m)
                            grid.dzi4, grid.dzhi4,
                            fields.visc);
 
-            calc_bw_budget(fields.w->data, fields.sd["p"]->data, fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
-                           fields.sd["p"]->datamean, fields.atmp["tmp1"]->datamean,
+            calc_bw_budget(fields.u->data, fields.w->data, fields.sd["p"]->data, fields.atmp["tmp1"]->data, fields.atmp["tmp2"]->data,
+                           fields.u->datamean, fields.sd["p"]->datamean, fields.atmp["tmp1"]->datamean,
                            m->profs["bw_shear"].data, m->profs["bw_turb"].data, m->profs["bw_visc"].data,
                            m->profs["bw_buoy"].data, m->profs["bw_rdstr"].data, m->profs["bw_diss"].data, m->profs["bw_pres"].data,
                            grid.dzi4, grid.dzhi4,
@@ -2415,8 +2423,8 @@ void Budget_4::calc_b2_budget(double* restrict w, double* restrict b,
 
 }
 
-void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* restrict b, double* restrict bz,
-                              double* restrict pmean, double* restrict bmean,
+void Budget_4::calc_bw_budget(double* restrict u, double* restrict w, double* restrict p, double* restrict b, double* restrict bz,
+                              double* restrict umean, double* restrict pmean, double* restrict bmean,
                               double* restrict bw_shear, double* restrict bw_turb, double* restrict bw_visc,
                               double* restrict bw_buoy, double* restrict bw_rdstr, double* restrict bw_diss, double* restrict bw_pres,
                               double* restrict dzi4, double* restrict dzhi4,
@@ -2440,6 +2448,10 @@ void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* re
 
     const double dzhi4bot = grid.dzhi4bot;
     const double dzhi4top = grid.dzhi4top;
+    
+    const double sinalpha = std::sin(this->alpha);
+    const double cosalpha = std::cos(this->alpha);
+    const double n2 = this->n2;
 
     // 0. Create an interpolated field for b on the cell face.
     int k = grid.kstart-1;
@@ -2479,7 +2491,20 @@ void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* re
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_shear[k] -= ( ( std::pow( w[ijk], 2 ) * ( cg0*bmean[k-2] + cg1*bmean[k-1] + cg2*bmean[k  ] + cg3*bmean[k+1] ) ) * dzhi4[k] );
+                bw_shear[k] -= ( ( ( std::pow( w[ijk], 2 ) * ( cg0*bmean[k-2] + cg1*bmean[k-1] + cg2*bmean[k  ] + cg3*bmean[k+1] ) ) * dzhi4[k] )
+
+               + ( n2
+
+                 * ( ( ( ( ci0*( ci0*( u[ijk-ii1-kk2] - umean[k-2] ) + ci1*( u[ijk - kk2] - umean[k-2] ) + ci2*( u[ijk+ii1-kk2] - umean[k-2] ) + ci3*( u[ijk+ii2-kk2] - umean[k-2] ) )
+                         + ci1*( ci0*( u[ijk-ii1-kk1] - umean[k-1] ) + ci1*( u[ijk - kk1] - umean[k-1] ) + ci2*( u[ijk+ii1-kk1] - umean[k-1] ) + ci3*( u[ijk+ii2-kk1] - umean[k-1] ) )
+                         + ci2*( ci0*( u[ijk-ii1    ] - umean[k  ] ) + ci1*( u[ijk      ] - umean[k  ] ) + ci2*( u[ijk+ii1    ] - umean[k  ] ) + ci3*( u[ijk+ii2    ] - umean[k  ] ) )
+                         + ci3*( ci0*( u[ijk-ii1+kk1] - umean[k+1] ) + ci1*( u[ijk + kk1] - umean[k+1] ) + ci2*( u[ijk+ii1+kk1] - umean[k+1] ) + ci3*( u[ijk+ii2+kk1] - umean[k+1] ) ) )
+
+                       * w[ijk] )
+
+                     * sinalpha )
+
+                   + ( std::pow( w[ijk], 2 ) * cosalpha ) ) ) );
             }
     }
 
@@ -2597,8 +2622,25 @@ void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* re
             
                           * dzhi4[k] );
         }
+    
+    k = grid.kstart+2;
+    bw_visc[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+            bw_visc[k] += ( ( visc
+            
+                            * ( cg0*( ( cg0*( w[ijk-kk3] * bz[ijk-kk3] ) + cg1*( w[ijk-kk2] * bz[ijk-kk2] ) + cg2*( w[ijk-kk1] * bz[ijk-kk1] ) + cg3*( w[ijk    ] * bz[ijk    ] ) ) * dzi4[k-2] )
+				              + cg1*( ( cg0*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2*( w[ijk    ] * bz[ijk    ] ) + cg3*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
+				              + cg2*( ( cg0*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1*( w[ijk    ] * bz[ijk    ] ) + cg2*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
+				              + cg3*( ( cg0*( w[ijk    ] * bz[ijk    ] ) + cg1*( w[ijk+kk1] * bz[ijk+kk1] ) + cg2*( w[ijk+kk2] * bz[ijk+kk2] ) + cg3*( w[ijk+kk3] * bz[ijk+kk3] ) ) * dzi4[k+1] ) ) )
 
-    for (int k=grid.kstart+2; k<grid.kend-1; ++k)
+                          * dzhi4[k] );
+        }
+
+    for (int k=grid.kstart+3; k<grid.kend-2; ++k)
     {
         bw_visc[k] = 0;
         for (int j=grid.jstart; j<grid.jend; ++j)
@@ -2616,7 +2658,24 @@ void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* re
                               * dzhi4[k] );
             }
     }
-
+    
+    k = grid.kend-2;
+    bw_visc[k] = 0;
+    for (int j=grid.jstart; j<grid.jend; ++j)
+        #pragma ivdep
+        for (int i=grid.istart; i<grid.iend; ++i)
+        {
+            const int ijk = i + j*jj1 + k*kk1;
+            bw_visc[k] += ( ( visc
+                           
+                            * ( cg0*( ( cg0*( w[ijk-kk3] * bz[ijk-kk3] ) + cg1*( w[ijk-kk2] * bz[ijk-kk2] ) + cg2*( w[ijk-kk1] * bz[ijk-kk1] ) + cg3*( w[ijk    ] * bz[ijk    ] ) ) * dzi4[k-2] )
+                              + cg1*( ( cg0*( w[ijk-kk2] * bz[ijk-kk2] ) + cg1*( w[ijk-kk1] * bz[ijk-kk1] ) + cg2*( w[ijk    ] * bz[ijk    ] ) + cg3*( w[ijk+kk1] * bz[ijk+kk1] ) ) * dzi4[k-1] )
+				              + cg2*( ( cg0*( w[ijk-kk1] * bz[ijk-kk1] ) + cg1*( w[ijk    ] * bz[ijk    ] ) + cg2*( w[ijk+kk1] * bz[ijk+kk1] ) + cg3*( w[ijk+kk2] * bz[ijk+kk2] ) ) * dzi4[k  ] )
+				              + cg3*( ( cg0*( w[ijk    ] * bz[ijk    ] ) + cg1*( w[ijk+kk1] * bz[ijk+kk1] ) + cg2*( w[ijk+kk2] * bz[ijk+kk2] ) + cg3*( w[ijk+kk3] * bz[ijk+kk3] ) ) * dzi4[k+1] ) ) )
+				          
+				          * dzhi4[k] );
+        }
+    
     k = grid.kend-1;
     bw_visc[k] = 0;
     for (int j=grid.jstart; j<grid.jend; ++j)
@@ -2661,7 +2720,7 @@ void Budget_4::calc_bw_budget(double* restrict w, double* restrict p, double* re
             for (int i=grid.istart; i<grid.iend; ++i)
             {
                 const int ijk = i + j*jj1 + k*kk1;
-                bw_buoy[k] += std::pow( bz[ijk], 2 );
+                bw_buoy[k] += std::pow( bz[ijk], 2 ) * cosalpha;
             }
     }
 

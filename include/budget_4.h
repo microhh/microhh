@@ -48,6 +48,8 @@ class Budget_4 : public Budget
     private:
         double* umodel;
         double* vmodel;
+        double alpha;
+        double n2;
 
         void calc_ke(double*, double*, double*,
                      double*, double*,
@@ -80,8 +82,8 @@ class Budget_4 : public Budget
                             double*, double*,
                             double);
 
-        void calc_bw_budget(double*, double*, double*, double*,
-                            double*, double*,
+        void calc_bw_budget(double*, double*, double*, double*, double*,
+                            double*, double*, double*,
                             double*, double*, double*,
                             double*, double*, double*, double*,
                             double*, double*,
@@ -106,5 +108,6 @@ class Budget_4 : public Budget
 
         double calc_zsort   (double, double*, double*, int);
         double calc_dzstardb(double, double*, double*);
+        
 };
 #endif
