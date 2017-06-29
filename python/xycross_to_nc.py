@@ -2,15 +2,20 @@ import numpy   as np
 import struct  as st
 import netCDF4 as nc4
 
+import microhh_tools as mht     # available in microhh/python directory
+
+# Read the namelist settings
+nl = mht.Read_namelist()
+
 # Settings -------
-variables  = ['u','v','w','th','p']
-indexes    = [0,4]
-nx         = 32
-ny         = 32
-nz         = 32
+variables  = nl['cross']['crosslist']
+indexes    = -1   # With -1, script finds the correct indexes itself
+nx         = nl['grid']['itot']
+ny         = nl['grid']['jtot']
+nz         = nl['grid']['ktot']
 starttime  = 0
-endtime    = 3600
-sampletime = 300
+endtime    = nl['time']['endtime']
+sampletime = nl['cross']['sampletime']
 iotimeprec = 0
 nxsave     = nx
 nysave     = ny
@@ -56,6 +61,11 @@ fin.close()
 
 # Loop over the different variables
 for crossname in variables:
+    if indexes == -1:
+        indexes_local = mht.get_cross_indices(crossname, 'xy')
+    else:
+        indexes_local = indexes
+
     crossfile = nc4.Dataset("{0}.xy.nc".format(crossname), "w")
 
     if(crossname == 'u'): loc = [1,0,0]
@@ -70,7 +80,7 @@ for crossname in variables:
     # create dimensions in netCDF file
     dim_x  = crossfile.createDimension(locx,   nxsave)
     dim_y  = crossfile.createDimension(locy,   nysave)
-    dim_z  = crossfile.createDimension(locz,   np.size(indexes))
+    dim_z  = crossfile.createDimension(locz,   np.size(indexes_local))
     dim_t  = crossfile.createDimension('time', None)
     
     # create dimension variables
@@ -90,13 +100,15 @@ for crossname in variables:
     for t in range(niter):
         if (stop):
             break
-        for k in range(np.size(indexes)):
-            index = indexes[k]
+        for k in range(np.size(indexes_local)):
+            index = indexes_local[k]
             otime = int((starttime + t*sampletime) / 10**iotimeprec)
+            f_in  = "{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime)
     
             try:
-                fin = open("{0:}.xy.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
+                fin = open(f_in, "rb")
             except:
+                print('Stopping: cannot find file {}'.format(f_in))
                 crossfile.sync()
                 stop = True
                 break
