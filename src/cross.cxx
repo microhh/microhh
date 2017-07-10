@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2015 Chiel van Heerwaarden
- * Copyright (c) 2011-2015 Thijs Heus
- * Copyright (c) 2014-2015 Bart van Stratum
+ * Copyright (c) 2011-2017 Chiel van Heerwaarden
+ * Copyright (c) 2011-2017 Thijs Heus
+ * Copyright (c) 2014-2017 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -34,7 +34,7 @@
 #include "model.h"
 #include "thermo.h"
 #include "timeloop.h"
-#include <netcdfcpp.h>
+#include <netcdf>
 
 Cross::Cross(Model* modelin, Input* inputin)
 {

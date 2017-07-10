@@ -1,8 +1,10 @@
 # Cartesius SurfSARA
 if(USEMPI)
-  set(ENV{CXX} mpiicpc) # compiler for parallel build
+  set(ENV{CC}  mpiicc ) # C compiler for parallel build
+  set(ENV{CXX} mpiicpc) # C++ compiler for parallel build
 elseif()
-  set(ENV{CXX} icpc) # compiler for serial build
+  set(ENV{CC}  icc ) # C compiler for parallel build
+  set(ENV{CXX} icpc) # C++ compiler for serial build
 endif()
 
 set(USER_CXX_FLAGS "-restrict -DMPICH_IGNORE_CXX_SEEK")
@@ -19,5 +21,6 @@ set(HDF5_LIB_2         "/hpc/sw/hdf5-1.8.12-intel-seq/lib/libhdf5_hl.a")
 set(SZIP_LIB           "/hpc/sw/szip-2.1-intel//lib/libsz.a")
 
 set(LIBS ${FFTW_LIB} ${NETCDF_LIB_CPP} ${NETCDF_LIB_C} ${HDF5_LIB_2} ${HDF5_LIB_1} ${SZIP_LIB} m z curl)
+set(INCLUDE_DIRS ${FFTW_INCLUDE_DIR} ${NETCDF_INCLUDE_DIR})
 
 add_definitions(-DRESTRICTKEYWORD=restrict)

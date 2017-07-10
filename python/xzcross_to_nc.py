@@ -1,20 +1,21 @@
 import numpy   as np
 import struct  as st
 import netCDF4 as nc4
-from microhh_tools import *
 
-# Read namelist
-n = Read_namelist()
+import microhh_tools as mht     # available in microhh/python directory
+
+# Read the namelist settings
+nl = mht.Read_namelist()
 
 # Settings -------
-variables  = n.cross.crosslist
-indexes    = None # None for automatic detection, or manually specify a list
-nx         = n.grid.itot
-ny         = n.grid.jtot
-nz         = n.grid.ktot
+variables  = nl['cross']['crosslist']
+indexes    = -1   # With -1, script finds the correct indexes itself
+nx         = nl['grid']['itot']
+ny         = nl['grid']['jtot']
+nz         = nl['grid']['ktot']
 starttime  = 0
-endtime    = n.time.endtime
-sampletime = n.cross.sampletime
+endtime    = nl['time']['endtime']
+sampletime = nl['cross']['sampletime']
 iotimeprec = 0
 nxsave     = nx
 nzsave     = nz
@@ -60,10 +61,10 @@ fin.close()
 
 # Loop over the different variables
 for crossname in variables:
-    if (indexes is None):
-        indexes_2 = get_cross_indices(crossname, 'xz')
+    if indexes == -1:
+        indexes_local = mht.get_cross_indices(crossname, 'xz')
     else:
-        indexes_2 = indexes
+        indexes_local = indexes
 
     crossfile = nc4.Dataset("{0}.xz.nc".format(crossname), "w")
 
@@ -78,7 +79,7 @@ for crossname in variables:
 
     # create dimensions in netCDF file
     dim_x  = crossfile.createDimension(locx,   nxsave)
-    dim_y  = crossfile.createDimension(locy,   np.size(indexes_2))
+    dim_y  = crossfile.createDimension(locy,   np.size(indexes_local))
     dim_z  = crossfile.createDimension(locz,   nzsave)
     dim_t  = crossfile.createDimension('time', None)
     
@@ -99,13 +100,15 @@ for crossname in variables:
     for t in range(niter):
         if (stop):
             break
-        for i in range(np.size(indexes_2)):
-            index = indexes_2[i]
+        for i in range(np.size(indexes_local)):
+            index = indexes_local[i]
             otime = int((starttime + t*sampletime) / 10**iotimeprec)
+            f_in  = "{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, otime)
 
             try:
-                fin = open("{0:}.xz.{1:05d}.{2:07d}".format(crossname, index, otime), "rb")
+                fin = open(f_in, "rb")
             except:
+                print('Stopping: cannot find file {}'.format(f_in))
                 crossfile.sync()
                 stop = True
                 break
@@ -125,4 +128,3 @@ for crossname in variables:
             fin.close()
 
     crossfile.close() 
-

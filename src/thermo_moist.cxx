@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2015 Chiel van Heerwaarden
- * Copyright (c) 2011-2015 Thijs Heus
- * Copyright (c) 2014-2015 Bart van Stratum
+ * Copyright (c) 2011-2017 Chiel van Heerwaarden
+ * Copyright (c) 2011-2017 Thijs Heus
+ * Copyright (c) 2014-2017 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -25,7 +25,7 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
-#include <netcdfcpp.h> // for NC_FILLVAL
+#include <netcdf>
 #include "grid.h"
 #include "fields.h"
 #include "thermo_moist.h"
@@ -1057,11 +1057,12 @@ unsigned long Thermo_moist::get_time_limit(unsigned long idt, const double dt)
 {
     if(swmicro == "2mom_warm")
     {
-        const double cfl = mp::calc_max_sedimentation_cfl(fields->atmp["tmp1"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data,
-                                                          fields->rhoref, grid->dzi, dt,
-                                                          grid->istart, grid->jstart, grid->kstart,
-                                                          grid->iend,   grid->jend,   grid->kend,
-                                                          grid->icells, grid->ijcells);
+        double cfl = mp::calc_max_sedimentation_cfl(fields->atmp["tmp1"]->data, fields->sp["qr"]->data, fields->sp["nr"]->data,
+                                                    fields->rhoref, grid->dzi, dt,
+                                                    grid->istart, grid->jstart, grid->kstart,
+                                                    grid->iend,   grid->jend,   grid->kend,
+                                                    grid->icells, grid->ijcells);
+        grid->get_max(&cfl);
         return idt * cflmax_micro / cfl;
     }
     else

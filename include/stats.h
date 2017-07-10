@@ -1,8 +1,8 @@
 /*
  * MicroHH
- * Copyright (c) 2011-2015 Chiel van Heerwaarden
- * Copyright (c) 2011-2015 Thijs Heus
- * Copyright (c) 2014-2015 Bart van Stratum
+ * Copyright (c) 2011-2017 Chiel van Heerwaarden
+ * Copyright (c) 2011-2017 Thijs Heus
+ * Copyright (c) 2014-2017 Bart van Stratum
  *
  * This file is part of MicroHH
  *
@@ -23,7 +23,9 @@
 #ifndef STATS
 #define STATS
 
-#include <netcdfcpp.h>
+//#include <netcdfcpp.h>
+#include <netcdf>
+using namespace netCDF;
 
 class Master;
 class Model;
@@ -33,14 +35,14 @@ class Fields;
 // struct for profiles
 struct Prof_var
 {
-    NcVar*  ncvar;
+    NcVar ncvar;
     double* data;
 };
 
 // struct for time series
 struct Time_series_var
 {
-    NcVar* ncvar;
+    NcVar ncvar;
     double data;
 };
 
@@ -53,11 +55,11 @@ struct Mask
 {
     std::string name;
     NcFile* dataFile;
-    NcDim* z_dim;
-    NcDim* zh_dim;
-    NcDim* t_dim;
-    NcVar* iter_var;
-    NcVar* t_var;
+    NcDim z_dim;
+    NcDim zh_dim;
+    NcDim t_dim;
+    NcVar iter_var;
+    NcVar t_var;
     Prof_map profs;
     Time_series_map tseries;
 };
