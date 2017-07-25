@@ -826,10 +826,58 @@ namespace mp
 
 } // End namespace
 
+namespace
+{
+    void calc_thv(double* const restrict thv,
+                  const double* const restrict thl, const double* const restrict qt,
+                  const double* const restrict ql, const double* const restrict p,
+                  const int istart, const int iend,
+                  const int jstart, const int jend,
+                  const int kstart, const int kend,
+                  const int jj, const int kk)
+    {
+        for (int k=kstart; k<kend; ++k)
+        {
+            const double exn = exner(p[k]);
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    // virtual_temperature() calculates the virtual potential temperature..
+                    thv[ijk] = virtual_temperature(exn, thl[ijk], qt[ijk], ql[ijk]);
+                }
+        }
+    }
+
+    void calc_thv_fluxbot(double* const restrict wthv,
+                          const double* const restrict thlbot, const double* const restrict thlfluxbot,
+                          const double* const restrict qtbot,  const double* const restrict qtfluxbot,
+                          const int istart, const int iend,
+                          const int jstart, const int jend,
+                          const int jj)
+    {
+        for (int j=jstart; j<jend; ++j)
+            #pragma ivdep
+            for (int i=istart; i<iend; ++i)
+            {
+                const int ij = i + j*jj;
+                wthv[ij] = thv_flux_no_ql(thlbot[ij], thlfluxbot[ij], qtbot[ij], qtfluxbot[ij]);
+            }
+    }
+}
+
 
 Thermo_moist::Thermo_moist(Model* modelin, Input* inputin) : Thermo(modelin, inputin)
 {
     swthermo = "moist";
+
+    // BvS: fourth order code is only partially implemented, so throw error for now
+    if (grid->swspatialorder == "4")
+    {
+        master->print_error("swspatialorder = \"4\" not (yet) supported in thermo_moist\n");
+        throw 1;
+    }
 
     thl0 = 0;
     qt0  = 0;
@@ -1391,6 +1439,41 @@ void Thermo_moist::exec_stats(Mask *m)
 
     stats->calc_cover(fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["ccover"].data, 0.);
     stats->calc_path (fields->atmp["tmp1"]->data, fields->atmp["tmp4"]->databot, &stats->nmaskbot, &m->tseries["lwp"].data);
+
+    // calculate virtual potential temperature stats
+    calc_thv(fields->atmp["tmp2"]->data, fields->sp[thvar]->data, fields->sp["qt"]->data, fields->atmp["tmp1"]->data, pref,
+             grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+    calc_thv_fluxbot(fields->atmp["tmp2"]->datafluxbot, fields->sp[thvar]->databot, fields->sp[thvar]->datafluxbot,
+                     fields->sp["qt"]->databot, fields->sp["qt"]->datafluxbot,
+                     grid->istart, grid->iend, grid->jstart, grid->jend, grid->icells);
+
+    stats->calc_mean(m->profs["thv"].data, fields->atmp["tmp2"]->data, NoOffset, sloc, fields->atmp["tmp3"]->data, stats->nmask);
+
+    if (grid->swspatialorder == "2")
+    {
+        stats->calc_grad_2nd(fields->atmp["tmp2"]->data, m->profs["thvgrad"].data, grid->dzhi, sloc,
+                             fields->atmp["tmp4"]->data, stats->nmaskh);
+
+        stats->calc_flux_2nd(fields->atmp["tmp2"]->data, m->profs["thv"].data, fields->w->data, m->profs["w"].data,
+                             m->profs["thvw"].data, fields->atmp["tmp3"]->data, sloc,
+                             fields->atmp["tmp4"]->data, stats->nmaskh);
+
+        if (model->diff->get_switch() == "smag2")
+        {
+            Diff_smag_2 *diffptr = static_cast<Diff_smag_2 *>(model->diff);
+            stats->calc_diff_2nd(fields->atmp["tmp2"]->data, fields->w->data, fields->sd["evisc"]->data,
+                                 m->profs["thvdiff"].data, grid->dzhi,
+                                 fields->atmp["tmp2"]->datafluxbot, fields->atmp["tmp2"]->datafluxtop, diffptr->tPr, sloc,
+                                 fields->atmp["tmp4"]->data, stats->nmaskh);
+        }
+        else
+        {
+            stats->calc_diff_2nd(fields->atmp["tmp2"]->data, m->profs["thvdiff"].data, grid->dzhi, fields->sp[thvar]->visc, sloc,
+                                 fields->atmp["tmp4"]->data, stats->nmaskh);
+        }
+
+        stats->add_fluxes(m->profs["thvflux"].data, m->profs["thvw"].data, m->profs["thvdiff"].data);
+    }
 
     // BvS:micro 
     if(swmicro == "2mom_warm")
@@ -1982,6 +2065,7 @@ void Thermo_moist::calc_N2(double* restrict N2, double* restrict thl, double* re
             }
 }
 
+
 void Thermo_moist::calc_buoyancy_bot(double* restrict b,      double* restrict bbot,
                                      double* restrict thl,    double* restrict thlbot,
                                      double* restrict qt,     double* restrict qtbot,
@@ -2060,6 +2144,12 @@ void Thermo_moist::init_stat()
 
         stats->add_prof("ql", "Liquid water mixing ratio", "kg kg-1", "z");
         stats->add_prof("cfrac", "Cloud fraction", "-","z");
+
+        stats->add_prof("thv",     "Virtual potential temperature", "K", "z");
+        stats->add_prof("thvgrad", "Gradient of the virtual potential temperature", "K m-1", "zh");
+        stats->add_prof("thvw",    "Turbulent flux of the virtual potential temperature", "K m s-1", "zh");
+        stats->add_prof("thvdiff", "Diffusive flux of the virtual potential temperature", "K m s-1", "zh");
+        stats->add_prof("thvflux", "Total flux of the virtual potential temperature", "K m s-1", "zh");
 
         stats->add_time_series("lwp", "Liquid water path", "kg m-2");
         stats->add_time_series("ccover", "Projected cloud cover", "-");
