@@ -14,7 +14,7 @@ def is_inside_block(x, y, x0, x1, y0, y1):
     if x > x0 and x < x1 and y > y0 and y < y1:
         return True
     else:
-        return False 
+        return False
 
 # Read namelist and grid:
 nl = mht.Read_namelist()
@@ -22,17 +22,37 @@ gr = mht.Read_grid(nl['grid']['itot'], nl['grid']['jtot'], nl['grid']['ktot'], n
 
 n_idw = 5 # number of interpolation points in inverse distance weighted interpolation
 
-# Define boundaries block:
-x0 = gr.xh[22] + 0.25 * gr.dx
-x1 = gr.xh[42] - 0.25 * gr.dx
-y0 = gr.yh[24] + 0.25 * gr.dy
-y1 = gr.yh[42] - 0.25 * gr.dy
+# Find correct (approximate) location of block with size 1x1
+#i0 = np.abs(gr.xh - 3.0).argmin()
+#i1 = np.abs(gr.xh - 4.0).argmin()
+#j0 = np.abs(gr.yh - 2.7).argmin()
+#j1 = np.abs(gr.yh - 3.7).argmin()
+#
+## Define boundaries block:
+#x0 = gr.xh[i0] + 0.05 * gr.dx
+#x1 = gr.xh[i1] - 0.05 * gr.dx
+#y0 = gr.yh[j0] + 0.05 * gr.dy
+#y1 = gr.yh[j1] - 0.05 * gr.dy
+
+x0 = 3
+x1 = 4
+y0 = 2.7
+y1 = 3.7
+
+print('block size = {0:.2f} x {1:.2f}, x0={2:.2f}, x1={3:.2f}, y0={4:.2f}, y1={5:.2f}'.format(x1-x0, y1-y0, x0, x1, y0, y1))
 
 xblock = np.array([x0, x1, x1, x0, x0])
 yblock = np.array([y0, y0, y1, y1, y0])
-zblock = 0.994
+zblock = 1
 
-def find_ghost_cells(x, y, z):
+# Write to namelist
+mht.replace_namelist_value('x0_block', x0)
+mht.replace_namelist_value('x1_block', x1)
+mht.replace_namelist_value('y0_block', y0)
+mht.replace_namelist_value('y1_block', y1)
+mht.replace_namelist_value('z1_block', zblock)
+
+def find_ghost_cells(x, y, z, kstart=0):
     print('Searching ghost cells.....')
 
     # Lists holding all the ghost cell info
@@ -51,7 +71,7 @@ def find_ghost_cells(x, y, z):
 
     # Find all the ghost cells, and give them a flag for east/west/... walls
     ghost_cells = np.zeros((nl['grid']['itot'], nl['grid']['jtot'], kmax_block), dtype=int)
-    
+
     Walls = {'west':1, 'east':2, 'south':4, 'north':8, 'top':16}
 
     is_ib = np.where(inside_block_2d)
@@ -60,23 +80,23 @@ def find_ghost_cells(x, y, z):
         j = is_ib[1][n]
 
         if not inside_block_2d[i-1,j]:
-            ghost_cells[i,j,:kmax_block] += Walls['west']
+            ghost_cells[i,j,kstart:kmax_block] += Walls['west']
         if not inside_block_2d[i+1,j]:
-            ghost_cells[i,j,:kmax_block] += Walls['east']
+            ghost_cells[i,j,kstart:kmax_block] += Walls['east']
         if not inside_block_2d[i,j-1]:
-            ghost_cells[i,j,:kmax_block] += Walls['south']
+            ghost_cells[i,j,kstart:kmax_block] += Walls['south']
         if not inside_block_2d[i,j+1]:
-            ghost_cells[i,j,:kmax_block] += Walls['north']
+            ghost_cells[i,j,kstart:kmax_block] += Walls['north']
 
         ghost_cells[i,j,kmax_block-1] += Walls['top']
 
     is_ghost = np.where(ghost_cells > 0)
     for n in range(is_ghost[0].size):
         # Indices of ghost cell
-        i = is_ghost[0][n]  
-        j = is_ghost[1][n]  
-        k = is_ghost[2][n]  
-  
+        i = is_ghost[0][n]
+        j = is_ghost[1][n]
+        k = is_ghost[2][n]
+
         # "Nearest" location on wall (biased...)
         if ghost_cells[i,j,k] & Walls['west'] > 0:
             xb = x0
@@ -97,7 +117,7 @@ def find_ghost_cells(x, y, z):
         elif ghost_cells[i,j,k] & Walls['top'] > 0:
             xb = x[i]
             yb = y[j]
-            zb = zblock 
+            zb = zblock
 
         # Interpolation location in fluid domain
         xi = 2*xb - x[i];
@@ -108,7 +128,7 @@ def find_ghost_cells(x, y, z):
         ii = np.abs(x-xi).argmin()
         jj = np.abs(x-yi).argmin()
         kk = np.abs(z-zi).argmin()
-    
+
         # Find n nearest fluid points (outside IB)
         i_n = []
         j_n = []
@@ -123,28 +143,28 @@ def find_ghost_cells(x, y, z):
                         j_n.append(jj+dj)
                         k_n.append(kk+dk)
                         d  .append(dist)
-    
+
         # Sort on distance, and clip to the required number of interpolation points
         inds = np.array(d).argsort()
         d    = np.array(d)  [inds][:n_idw]
         i_n  = np.array(i_n)[inds][:n_idw]
         j_n  = np.array(j_n)[inds][:n_idw]
         k_n  = np.array(k_n)[inds][:n_idw]
-     
+
         # Add to dict with ghost cells
-        ghost_list.append({'i':i, 'j':j, 'k':k, 
-                           'xb':xb, 'yb':yb, 'zb':zb, 
+        ghost_list.append({'i':i, 'j':j, 'k':k,
+                           'xb':xb, 'yb':yb, 'zb':zb,
                            'xi':xi, 'yi':yi, 'zi':zi,
                            'in':i_n, 'jn':j_n, 'kn':k_n})
-       
-    return ghost_list 
-   
-   
+
+    return ghost_list
+
+
     ## Empty list which holds all the ghost cell info
     #ghost_cells = []
     #count = 0
     #
-    ## Loop over the points which are inside a block 
+    ## Loop over the points which are inside a block
     #ij_in = np.where(gp)
     #for n in range(ij_in[0].size):
     #    i = ij_in[0][n]
@@ -156,7 +176,7 @@ def find_ghost_cells(x, y, z):
     #
     #            # Find nearest location on the wall:
     #            xb,yb,zb = it.nearest_on_polygon(x[i], y[j], z[k], xblock, yblock, z=zblock)
-   
+
     #            # Interpolation location:
     #            xi = 2*xb - x[i];
     #            yi = 2*yb - y[j];
@@ -190,8 +210,8 @@ def find_ghost_cells(x, y, z):
     #            k_n  = np.array(k_n)[inds][:n_idw]
 
     #            # Add to list of ghost cells
-    #            ghost_cells.append({'i':i, 'j':j, 'k':k, 
-    #                                'xb':xb, 'yb':yb, 'zb':zb, 
+    #            ghost_cells.append({'i':i, 'j':j, 'k':k,
+    #                                'xb':xb, 'yb':yb, 'zb':zb,
     #                                'xi':xi, 'yi':yi, 'zi':zi,
     #                                'in':i_n, 'jn':j_n, 'kn':k_n})
 
@@ -211,24 +231,24 @@ def write_output(ghost_cells, file_name):
     for n in range(n_neighbours):
         f.write(' {0:>2s}{1:<2d} {2:>2s}{3:<2d} {4:>2s}{5:<2d}'.format('i',n,'j',n,'k',n))
     f.write('\n')
-  
-    for g in ghost_cells: 
+
+    for g in ghost_cells:
         f.write('{0:04d} {1:04d} {2:04d} {3:1.14E} {4:1.14E} {5:1.14E} {6:04d}'\
             .format(g['i'], g['j'], g['k'], g['xb'], g['yb'], g['zb'], n_neighbours))
 
         for n in range(n_neighbours):
             f.write(' {0:04d} {1:04d} {2:04d}'.format(g['in'][n], g['jn'][n], g['kn'][n]))
         f.write('\n')
-   
+
     f.close()
 
 # Skip if script is executed with -i in IPython
 if "ghost_cells_u" not in locals():
-    ghost_cells_u = find_ghost_cells(gr.xh, gr.y,  gr.z ) 
-    ghost_cells_v = find_ghost_cells(gr.x,  gr.yh, gr.z ) 
-    ghost_cells_w = find_ghost_cells(gr.x,  gr.y,  gr.zh) 
-    ghost_cells_s = find_ghost_cells(gr.x,  gr.y,  gr.z ) 
-    
+    ghost_cells_u = find_ghost_cells(gr.xh, gr.y,  gr.z )
+    ghost_cells_v = find_ghost_cells(gr.x,  gr.yh, gr.z )
+    ghost_cells_w = find_ghost_cells(gr.x,  gr.y,  gr.zh, kstart=1)
+    ghost_cells_s = find_ghost_cells(gr.x,  gr.y,  gr.z)
+
     write_output(ghost_cells_u, 'u.ib_input')
     write_output(ghost_cells_v, 'v.ib_input')
     write_output(ghost_cells_w, 'w.ib_input')
@@ -267,7 +287,7 @@ if (False):
         xg = x[g['i']]
         yg = y[g['j']]
         zg = z[g['k']]
-        ax.scatter(xg, yg, zg, s=30, facecolor='r') 
+        ax.scatter(xg, yg, zg, s=30, facecolor='r')
         pl.plot([g['xi'],xg], [g['yi'],yg], [g['zi'],zg], 'k-')
 
         for n in range(g['in'].size):

@@ -51,26 +51,21 @@ class Grid_uni:
 
 if __name__ == "__main__":
 
-
     if (True):
         # Read the .ini file
         ini = Read_namelist()
 
         # Create stretched grid
-        grid = Grid(96, 70, 5, 0.02, 0.06)
+        #grid = Grid(96, 70, 5, 0.02, 0.06)
         #grid = Grid(96, 40, 5, 0.01, 0.04)
-        #grid = Grid(128, 40, 5, 0.0002, 0.0005)
-        #grid = Grid(256, 122, 10, 0.0001, 0.0003)
-        #grid = Grid(384, 180, 20, 0.00006, 0.00021)
-
+        grid = Grid(120, 75, 5, 0.017, 0.04)
         grid.plot()
 
         # Write `zsize` and `ktot` back to .ini file
         replace_namelist_value('zsize', grid.zsize)
         replace_namelist_value('ktot',  grid.kmax)
 
-    if (False):
-        grid = Grid_uni(32, 3)
+        #grid = Grid_uni(96, 3)
 
     # Create initial profiles:
     z = grid.z

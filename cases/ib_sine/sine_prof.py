@@ -49,12 +49,12 @@ if __name__ == "__main__":
     grid.plot()
 
     # Write `zsize` and `ktot` back to .ini file
-    replace_namelist_var('zsize', grid.zsize)
-    replace_namelist_var('ktot',  grid.kmax)
+    replace_namelist_value('zsize', grid.zsize)
+    replace_namelist_value('ktot',  grid.kmax)
 
     # Create initial profiles:
     z = grid.z
-    u = ini.force.uflux * np.ones(z.size)
+    u = ini['force']['uflux'] * np.ones(z.size)
     s = z
 
     # Write the data to a .prof file for MicroHH
