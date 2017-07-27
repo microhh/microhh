@@ -193,7 +193,7 @@ void Force::create(Input *inputin)
     }
 
     // Add the tendency introduced by enforcing a constant velocity to the statistics
-    if (swlspres == "uflux")
+    if (model->stats->get_switch() == "1" && swlspres == "uflux")
     {
         model->stats->add_time_series("ubody", "U velocity forcing to maintain constant uflux", "m s-2");
     }
@@ -246,7 +246,7 @@ void Force::exec(double dt)
 void Force::exec_stats(Mask *m)
 {
     // BvS: see note in header;
-    if (swlspres == "uflux")
+    if (model->stats->get_switch() == "1" && swlspres == "uflux")
     {
         m->tseries["ubody"].data = fbody_u; 
     }
