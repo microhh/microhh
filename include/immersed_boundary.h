@@ -137,5 +137,13 @@ class Immersed_boundary
 
         typedef std::map<std::string, Field3dBc*> BcMap;    ///< Map with boundary conditions per scalar
         BcMap sbc;                                          ///< Map with boundary conditions per scalar
+
+
+        // TMP BvS
+        double x0_block;
+        double x1_block;
+        double y0_block;
+        double y1_block;
+        double z1_block;
 };
 #endif
