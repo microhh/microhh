@@ -55,6 +55,7 @@ Force::Force(Model* modelin, Input* inputin)
     nerror += inputin->get_item(&swlspres, "force", "swlspres", "", "0");
     nerror += inputin->get_item(&swls    , "force", "swls"    , "", "0");
     nerror += inputin->get_item(&swwls   , "force", "swwls"   , "", "0");
+    nerror += inputin->get_item(&swnudge , "force", "swnudge" , "", "0");
 
     if (swlspres != "0")
     {
@@ -85,6 +86,18 @@ Force::Force(Model* modelin, Input* inputin)
         master->print_error("\"%s\" is an illegal option for swwls\n", swwls.c_str());
     }
 
+    if (swnudge == "1")
+    {
+        nerror += inputin->get_list(&nudgelist, "force", "nudgelist", "");
+        nerror += inputin->get_item(&tau_nudge, "force", "nudgetimescale", "");
+        fields->set_calc_mean_profs(true);
+    }
+    else if (swnudge != "1")
+    {
+        ++nerror;
+        master->print_error("\"%s\" is an illegal option for swnudge\n", swwls.c_str());
+    }
+
     // get the list of time varying variables
     nerror += inputin->get_item(&swtimedep  , "force", "swtimedep"  , "", "0");
     nerror += inputin->get_list(&timedeplist, "force", "timedeplist", "");
@@ -109,6 +122,12 @@ Force::~Force()
     for (std::map<std::string, double*>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
         delete[] it->second;
 
+    if (swnudge == "1")
+    {
+        for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
+            delete[] nudgeprofs[*it];
+    }
+
 #ifdef USECUDA
     clear_device();
 #endif
@@ -130,6 +149,12 @@ void Force::init()
 
     if (swwls == "1")
         wls = new double[grid->kcells];
+
+    if (swnudge == "1")
+    {
+        for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
+            nudgeprofs[*it] = new double[grid->kcells];
+    }
 }
 
 void Force::create(Input *inputin)
@@ -155,6 +180,21 @@ void Force::create(Input *inputin)
         // read the large scale sources, which are the variable names with a "ls" suffix
         for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
             nerror += inputin->get_prof(&lsprofs[*it][grid->kstart], *it+"ls", grid->kmax);
+    }
+
+    if (swnudge == "1")
+    {
+        // check whether the fields in the list exist in the prognostic fields
+        for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
+            if (!fields->ap.count(*it))
+            {
+                master->print_error("field %s in [force][nudgelist] is illegal\n", it->c_str());
+                ++nerror;
+            }
+
+        // read the large scale sources, which are the variable names with a "nudge" suffix
+        for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
+            nerror += inputin->get_prof(&nudgeprofs[*it][grid->kstart], *it+"nudge", grid->kmax);
     }
 
     if (swwls == "1")
@@ -216,6 +256,12 @@ void Force::exec(double dt)
     {
         for (FieldMap::const_iterator it = fields->st.begin(); it!=fields->st.end(); ++it)
             advec_wls_2nd(it->second->data, fields->sp[it->first]->datamean, wls, grid->dzhi);
+    }
+
+    if (swnudge == "1")
+    {
+        for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
+            calc_nudging_tendency(fields->at[*it]->data, fields->ap[*it]->datamean, nudgeprofs[*it]);
     }
 }
 #endif
@@ -403,6 +449,25 @@ void Force::calc_large_scale_source(double* const restrict st, const double* con
                 const int ijk = i + j*jj + k*kk;
                 st[ijk] += sls[k];
             }
+}
+
+void Force::calc_nudging_tendency(double* const restrict fldtend, const double* const restrict fldmean, const double* const restrict ref)
+{
+    const int jj = grid->icells;
+    const int kk = grid->ijcells;
+
+    const double tau_i = 1./tau_nudge;
+
+    for (int k=grid->kstart; k<grid->kend; ++k)
+    {
+        const double tend = -(fldmean[k] - ref[k]) * tau_i;
+        for (int j=grid->jstart; j<grid->jend; ++j)
+            for (int i=grid->istart; i<grid->iend; ++i)
+            {
+                const int ijk = i + j*jj + k*kk;
+                fldtend[ijk] += tend;
+            }
+    }
 }
 
 void Force::advec_wls_2nd(double* const restrict st, const double* const restrict s,

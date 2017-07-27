@@ -52,8 +52,11 @@ class Force
 
         void update_time_dependent(); ///< Update the time dependent parameters.
 
-        std::vector<std::string> lslist;         ///< List of variables that have large-scale forcings.
+        std::vector<std::string> lslist;        ///< List of variables that have large-scale forcings.
         std::map<std::string, double*> lsprofs; ///< Map of profiles with forcings stored by its name.
+
+        std::vector<std::string> nudgelist;        ///< List of variables that are nudged to a provided profile
+        std::map<std::string, double*> nudgeprofs; ///< Map of nudge profiles stored by its name.
 
         // GPU functions and variables
         void prepare_device();
@@ -82,6 +85,9 @@ class Force
         double* vg;  ///< Pointer to array v-component geostrophic wind.
         double* wls; ///< Pointer to array large-scale vertical velocity.
 
+        std::string swnudge;  ///< Switch for nudging to reference profiles
+        double tau_nudge; ///< Nudging time scale (s)
+
         // time dependent variables
         std::string swtimedep;
         std::vector<double> timedeptime;
@@ -102,6 +108,8 @@ class Force
                                const double* const, const double* const); ///< Calculates Coriolis force with 4th-order accuracy.
 
         void calc_large_scale_source(double* const, const double* const); ///< Applies the large scale scalar tendency.
+
+        void calc_nudging_tendency(double* const, const double* const, const double* const); ///< Calculate nudging tendency.
 
         void advec_wls_2nd(double* const, const double* const,
                            const double* const, const double* const); ///< Calculates the large-scale vertical transport.
