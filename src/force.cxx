@@ -71,7 +71,11 @@ Force::Force(Model* modelin, Input* inputin)
     }
 
     if (swls == "1")
-        nerror += inputin->get_list(&lslist, "force", "lslist", "");
+    {
+        nerror += inputin->get_list(&lslist,         "force", "lslist",         "");
+        nerror += inputin->get_item(&swtimedep_ls,   "force", "swtimedep_ls",   "", "0");
+        nerror += inputin->get_list(&timedeplist_ls, "force", "timedeplist_ls", "");
+    }
     else if (swls != "0")
     {
         ++nerror;
@@ -98,10 +102,6 @@ Force::Force(Model* modelin, Input* inputin)
         master->print_error("\"%s\" is an illegal option for swnudge\n", swwls.c_str());
     }
 
-    // get the list of time varying variables
-    nerror += inputin->get_item(&swtimedep  , "force", "swtimedep"  , "", "0");
-    nerror += inputin->get_list(&timedeplist, "force", "timedeplist", "");
-
     if (nerror)
         throw 1;
 }
@@ -116,11 +116,11 @@ Force::~Force()
     {
         for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
             delete[] lsprofs[*it];
-    }
 
-    // clean up time dependent data
-    for (std::map<std::string, double*>::const_iterator it=timedepdata.begin(); it!=timedepdata.end(); ++it)
-        delete[] it->second;
+        // Clean up time dependent data
+        for (std::map<std::string, double*>::const_iterator it=timedepdata_ls.begin(); it!=timedepdata_ls.end(); ++it)
+            delete[] it->second;
+    }
 
     if (swnudge == "1")
     {
@@ -197,39 +197,56 @@ void Force::create(Input *inputin)
             nerror += inputin->get_prof(&nudgeprofs[*it][grid->kstart], *it+"nudge", grid->kmax);
     }
 
+    // Get the large scale vertical velocity from the input
     if (swwls == "1")
         nerror += inputin->get_prof(&wls[grid->kstart], "wls", grid->kmax);
 
-    // process the profiles for the time dependent data
-    if (swtimedep == "1")
-    {
-        // create temporary list to check which entries are used
-        std::vector<std::string> tmplist = timedeplist;
-
-        // process time dependent bcs for the large scale forcings
-        for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
-        {
-            // \TODO make sure to give each element its own time series and remove the clear()
-            timedeptime.clear();
-            std::string name = *it + "ls";
-            if (std::find(timedeplist.begin(), timedeplist.end(), *it) != timedeplist.end()) 
-            {
-                nerror += inputin->get_time_prof(&timedepdata[name], &timedeptime, name, grid->kmax);
-
-                // remove the item from the tmplist
-                std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), *it);
-                if (ittmp != tmplist.end())
-                    tmplist.erase(ittmp);
-            }
-        }
-
-        // display a warning for the non-supported 
-        for (std::vector<std::string>::const_iterator ittmp=tmplist.begin(); ittmp!=tmplist.end(); ++ittmp)
-            master->print_warning("%s is not supported (yet) as a time dependent parameter\n", ittmp->c_str());
-    }
+    // Process the profiles for the time dependent data
+    if (swtimedep_ls == "1")
+        create_timedep(timedepdata_ls, timedeptime_ls, timedeplist_ls, lslist, "ls");
 
     if (nerror)
         throw 1;
+}
+
+void Force::create_timedep(std::map<std::string, double*>& data, std::map<std::string, std::vector<double>>& time,
+                           std::vector<std::string>& timedep_variables, std::vector<std::string> all_variables, std::string suffix)
+{
+    int nerror = 0;
+
+    // Create temporary copy of the time dependent variables, to check which ones are used
+    std::vector<std::string> tmplist = timedep_variables;
+
+    // Loop over all variables which might be time dependent
+    for (auto& it : all_variables)
+    {
+        // Check if the current variable is time dependent
+        if (std::find(timedep_variables.begin(), timedep_variables.end(), it) != timedep_variables.end())
+        {
+            std::string name = it + suffix;
+
+            // Get the time dependent data and time
+            nerror += model->input->get_time_prof(&data[name], &time[name], name, grid->kmax);
+
+            // Debug..
+            master->print_message("Processed %s for times = {", name.c_str());
+            for (auto& time : time[name])
+                master->print_message(" %.2f ", time);
+            master->print_message("}\n");
+
+            // Remove from tmplist
+            std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), it);
+            if (ittmp != tmplist.end())
+                tmplist.erase(ittmp);
+        }
+    }
+
+    // Print a warning for the non-supported time dependent variables, and remove them from list of time dependent variables
+    for (auto& it : tmplist)
+    {
+        master->print_warning("%s is not supported (yet) as a time dependent parameter\n", it.c_str());
+        timedep_variables.erase(std::remove(timedep_variables.begin(), timedep_variables.end(), it), timedep_variables.end());
+    }
 }
 
 #ifndef USECUDA
@@ -268,70 +285,81 @@ void Force::exec(double dt)
 
 void Force::update_time_dependent()
 {
-    if (swtimedep == "0")
-        return;
+    if (swtimedep_ls == "1")
+        update_time_dependent_profs(lsprofs, timedepdata_ls, timedeptime_ls, "ls");
+}
 
-    // first find the index for the time entries
-    unsigned int index0 = 0;
-    unsigned int index1 = 0;
-    for (std::vector<double>::const_iterator it=timedeptime.begin(); it!=timedeptime.end(); ++it)
+namespace
+{
+    void calc_time_interpolation_factors(int& index0, int&index1, double& fac0, double& fac1, const double time, std::vector<double> timevec)
     {
-        if (model->timeloop->get_time() < *it)
-            break;
-        else
-            ++index1;
-    }
-
-    // second, calculate the weighting factor
-    double fac0, fac1;
-
-    // correct for out of range situations where the simulation is longer than the time range in input
-    if (index1 == 0)
-    {
-        fac0 = 0.;
-        fac1 = 1.;
+        // 1. Get the indexes and factors for the interpolation in time
         index0 = 0;
-    }
-    else if (index1 == timedeptime.size())
-    {
-        fac0 = 1.;
-        fac1 = 0.;
-        index0 = index1-1;
-        index1 = index0;
-    }
-    else
-    {
-        index0 = index1-1;
-        double timestep;
-        timestep = timedeptime[index1] - timedeptime[index0];
-        fac0 = (timedeptime[index1] - model->timeloop->get_time()) / timestep;
-        fac1 = (model->timeloop->get_time() - timedeptime[index0]) / timestep;
+        index1 = 0;
+
+        for (auto& t : timevec)
+        {
+            if (time < t)
+                break;
+            else
+                ++index1;
+        }
+
+        // 2. Calculate the weighting factor, accounting for out of range situations where the simulation is longer than the time range in input
+        if (index1 == 0)
+        {
+            fac0   = 0.;
+            fac1   = 1.;
+            index0 = 0;
+        }
+        else if (index1 == timevec.size())
+        {
+            fac0   = 1.;
+            fac1   = 0.;
+            index0 = index1-1;
+            index1 = index0;
+        }
+        else
+        {
+            index0 = index1-1;
+            fac0 = (timevec[index1] - time) / (timevec[index1] - timevec[index0]);
+            fac1 = (time - timevec[index0]) / (timevec[index1] - timevec[index0]);
+        }
     }
 
-    update_time_dependent_profs(fac0, fac1, index0, index1);
 }
 
 #ifndef USECUDA
-void Force::update_time_dependent_profs(const double fac0, const double fac1, const int index0, const int index1)
+void Force::update_time_dependent_profs(std::map<std::string, double*>& profiles, std::map<std::string, double*> time_profiles,
+                                        std::map<std::string, std::vector<double>> times, std::string suffix)
 {
-    // process time dependent bcs for the large scale forcings
     const int kk = grid->kmax;
     const int kgc = grid->kgc;
 
-    for (std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
+    // Loop over all profiles which might be time dependent
+    for (auto& it : profiles)
     {
-        std::string name = *it1 + "ls";
-        std::map<std::string, double*>::const_iterator it2 = timedepdata.find(name);
+        std::string name = it.first + suffix;
 
-        // update the profile
-        if (it2 != timedepdata.end())
+        // Check if they have time dependent data
+        if (time_profiles.find(name) != time_profiles.end())
+        {
+            // Get/calculate the interpolation indexes/factors
+            int index0, index1;
+            double fac0, fac1;
+            const double time = model->timeloop->get_time();
+
+            calc_time_interpolation_factors(index0, index1, fac0, fac1, time, times[name]);
+
+            // Calculate the new vertical profile
             for (int k=0; k<grid->kmax; ++k)
-                lsprofs[*it1][k+kgc] = fac0*it2->second[index0*kk+k] + fac1*it2->second[index1*kk+k];
+                it.second[k+kgc] = fac0 * time_profiles[name][index0*kk+k] + fac1 * time_profiles[name][index1*kk+k];
+        }
     }
 }
 #endif
 
-void Force::calc_flux(double* const restrict ut, const double* const restrict u, 
+void Force::calc_flux(double* const restrict ut, const double* const restrict u,
                       const double* const restrict dz, const double dt)
 {
     const int jj = grid->icells;
@@ -344,7 +372,7 @@ void Force::calc_flux(double* const restrict ut, const double* const restrict u,
 
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -358,7 +386,7 @@ void Force::calc_flux(double* const restrict ut, const double* const restrict u,
     uavg  = uavg  / (grid->itot*grid->jtot*grid->zsize);
     utavg = utavg / (grid->itot*grid->jtot*grid->zsize);
 
-    double fbody; 
+    double fbody;
     fbody = (uflux - uavg - ugrid) / dt - utavg;
 
     for (int n=0; n<grid->ncells; n++)

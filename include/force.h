@@ -77,6 +77,7 @@ class Force
         std::string swlspres; ///< Switch for the large scale pressure force.
         std::string swls;     ///< Switch for large scale scalar tendencies.
         std::string swwls;    ///< Switch for large-scale vertical transport of scalars.
+        std::string swnudge;  ///< Switch for nudging to reference profiles
 
         double uflux; ///< Mean velocity used to enforce constant flux.
         double fc;    ///< Coriolis parameter.
@@ -85,16 +86,19 @@ class Force
         double* vg;  ///< Pointer to array v-component geostrophic wind.
         double* wls; ///< Pointer to array large-scale vertical velocity.
 
-        std::string swnudge;  ///< Switch for nudging to reference profiles
         double tau_nudge; ///< Nudging time scale (s)
 
-        // time dependent variables
-        std::string swtimedep;
-        std::vector<double> timedeptime;
-        std::vector<std::string> timedeplist;
-        std::map<std::string, double*> timedepdata;
+        // Time dependence large-scale forcings
+        std::string swtimedep_ls;
+        std::vector<std::string> timedeplist_ls;
+        std::map<std::string, std::vector<double>> timedeptime_ls;
+        std::map<std::string, double*> timedepdata_ls;
 
-        void update_time_dependent_profs(double, double, int, int); ///< Set the time dependent profiles.
+        void create_timedep(std::map<std::string, double*>&, std::map<std::string, std::vector<double>>&,
+                            std::vector<std::string>&, std::vector<std::string>, std::string);
+
+        void update_time_dependent_profs(std::map<std::string, double*>&, std::map<std::string, double*>,
+                                         std::map<std::string, std::vector<double>> times, std::string);
 
         void calc_flux(double* const, const double* const,
                        const double* const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.

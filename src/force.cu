@@ -349,21 +349,23 @@ void Force::exec(double dt)
 #ifdef USECUDA
 void Force::update_time_dependent_profs(double fac0, double fac1, int index0, int index1)
 {
-    const int blockk = 128;
-    const int gridk  = grid->kmax/blockk + (grid->kmax%blockk > 0);
+    master->print_error("Updating time dependent profiles currently disabled on GPU\n");
+    throw 1;
+    //const int blockk = 128;
+    //const int gridk  = grid->kmax/blockk + (grid->kmax%blockk > 0);
 
-    for (std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
-    {
-        std::string name = *it1 + "ls";
-        std::map<std::string, double *>::const_iterator it2 = timedepdata_g.find(name);
+    //for (std::vector<std::string>::const_iterator it1=lslist.begin(); it1!=lslist.end(); ++it1)
+    //{
+    //    std::string name = *it1 + "ls";
+    //    std::map<std::string, double *>::const_iterator it2 = timedepdata_g.find(name);
 
-        // update the profile
-        if (it2 != timedepdata.end())
-        {
-            update_time_dependent_prof_g<<<gridk, blockk>>>(
-                lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
-            cuda_check_error();
-        }
-    }
+    //    // update the profile
+    //    if (it2 != timedepdata.end())
+    //    {
+    //        update_time_dependent_prof_g<<<gridk, blockk>>>(
+    //            lsprofs_g[*it1], it2->second, fac0, fac1, index0, index1, grid->kmax, grid->kgc);
+    //        cuda_check_error();
+    //    }
+    //}
 }
 #endif
