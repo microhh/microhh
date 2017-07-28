@@ -92,7 +92,7 @@ Force::Force(Model* modelin, Input* inputin)
         nerror += inputin->get_item(&tau_nudge, "force", "nudgetimescale", "");
         fields->set_calc_mean_profs(true);
     }
-    else if (swnudge != "1")
+    else if (swnudge != "0")
     {
         ++nerror;
         master->print_error("\"%s\" is an illegal option for swnudge\n", swwls.c_str());
