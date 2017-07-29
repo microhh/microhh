@@ -239,12 +239,6 @@ int Force::create_timedep(std::map<std::string, double*>& data, std::map<std::st
             // Get the time dependent data and time
             nerror += model->input->get_time_prof(&data[name], &time[name], name, grid->kmax);
 
-            // Debug..
-            master->print_message("Processed %s.timeprof for times = {", name.c_str());
-            for (auto& time : time[name])
-                master->print_message(" %.2f ", time);
-            master->print_message("}\n");
-
             // Remove from tmplist
             std::vector<std::string>::iterator ittmp = std::find(tmplist.begin(), tmplist.end(), it);
             if (ittmp != tmplist.end())
