@@ -94,7 +94,13 @@ class Force
         std::map<std::string, std::vector<double>> timedeptime_ls;
         std::map<std::string, double*> timedepdata_ls;
 
-        void create_timedep(std::map<std::string, double*>&, std::map<std::string, std::vector<double>>&,
+        // Time dependence nudging profiles
+        std::string swtimedep_nudge;
+        std::vector<std::string> timedeplist_nudge;
+        std::map<std::string, std::vector<double>> timedeptime_nudge;
+        std::map<std::string, double*> timedepdata_nudge;
+
+        int create_timedep(std::map<std::string, double*>&, std::map<std::string, std::vector<double>>&,
                             std::vector<std::string>&, std::vector<std::string>, std::string);
 
         void update_time_dependent_profs(std::map<std::string, double*>&, std::map<std::string, double*>,

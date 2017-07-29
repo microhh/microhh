@@ -92,8 +92,10 @@ Force::Force(Model* modelin, Input* inputin)
 
     if (swnudge == "1")
     {
-        nerror += inputin->get_list(&nudgelist, "force", "nudgelist", "");
-        nerror += inputin->get_item(&tau_nudge, "force", "nudgetimescale", "");
+        nerror += inputin->get_list(&nudgelist,         "force", "nudgelist", "");
+        nerror += inputin->get_item(&tau_nudge,         "force", "nudgetimescale", "");
+        nerror += inputin->get_item(&swtimedep_nudge,   "force", "swtimedep_nudge",   "", "0");
+        nerror += inputin->get_list(&timedeplist_nudge, "force", "timedeplist_nudge", "");
         fields->set_calc_mean_profs(true);
     }
     else if (swnudge != "0")
@@ -180,6 +182,10 @@ void Force::create(Input *inputin)
         // read the large scale sources, which are the variable names with a "ls" suffix
         for (std::vector<std::string>::const_iterator it=lslist.begin(); it!=lslist.end(); ++it)
             nerror += inputin->get_prof(&lsprofs[*it][grid->kstart], *it+"ls", grid->kmax);
+
+        // Process the time dependent data
+        if (swtimedep_ls == "1")
+            nerror += create_timedep(timedepdata_ls, timedeptime_ls, timedeplist_ls, lslist, "ls");
     }
 
     if (swnudge == "1")
@@ -195,21 +201,21 @@ void Force::create(Input *inputin)
         // read the large scale sources, which are the variable names with a "nudge" suffix
         for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
             nerror += inputin->get_prof(&nudgeprofs[*it][grid->kstart], *it+"nudge", grid->kmax);
+
+        // Process the time dependent data
+        if (swtimedep_nudge == "1")
+            nerror += create_timedep(timedepdata_nudge, timedeptime_nudge, timedeplist_nudge, nudgelist, "nudge");
     }
 
     // Get the large scale vertical velocity from the input
     if (swwls == "1")
         nerror += inputin->get_prof(&wls[grid->kstart], "wls", grid->kmax);
 
-    // Process the profiles for the time dependent data
-    if (swtimedep_ls == "1")
-        create_timedep(timedepdata_ls, timedeptime_ls, timedeplist_ls, lslist, "ls");
-
     if (nerror)
         throw 1;
 }
 
-void Force::create_timedep(std::map<std::string, double*>& data, std::map<std::string, std::vector<double>>& time,
+int Force::create_timedep(std::map<std::string, double*>& data, std::map<std::string, std::vector<double>>& time,
                            std::vector<std::string>& timedep_variables, std::vector<std::string> all_variables, std::string suffix)
 {
     int nerror = 0;
@@ -229,7 +235,7 @@ void Force::create_timedep(std::map<std::string, double*>& data, std::map<std::s
             nerror += model->input->get_time_prof(&data[name], &time[name], name, grid->kmax);
 
             // Debug..
-            master->print_message("Processed %s for times = {", name.c_str());
+            master->print_message("Processed %s.timeprof for times = {", name.c_str());
             for (auto& time : time[name])
                 master->print_message(" %.2f ", time);
             master->print_message("}\n");
@@ -247,6 +253,8 @@ void Force::create_timedep(std::map<std::string, double*>& data, std::map<std::s
         master->print_warning("%s is not supported (yet) as a time dependent parameter\n", it.c_str());
         timedep_variables.erase(std::remove(timedep_variables.begin(), timedep_variables.end(), it), timedep_variables.end());
     }
+
+    return nerror;
 }
 
 #ifndef USECUDA
@@ -287,6 +295,9 @@ void Force::update_time_dependent()
 {
     if (swtimedep_ls == "1")
         update_time_dependent_profs(lsprofs, timedepdata_ls, timedeptime_ls, "ls");
+
+    if (swtimedep_nudge == "1")
+        update_time_dependent_profs(nudgeprofs, timedepdata_nudge, timedeptime_nudge, "nudge");
 }
 
 namespace
