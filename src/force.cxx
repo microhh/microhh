@@ -93,7 +93,7 @@ Force::Force(Model* modelin, Input* inputin)
     if (swnudge == "1")
     {
         nerror += inputin->get_list(&nudgelist,         "force", "nudgelist", "");
-        nerror += inputin->get_item(&tau_nudge,         "force", "nudgetimescale", "");
+        nerror += inputin->get_item(&nudge_tau,         "force", "nudgetimescale", "");
         nerror += inputin->get_item(&swtimedep_nudge,   "force", "swtimedep_nudge",   "", "0");
         nerror += inputin->get_list(&timedeplist_nudge, "force", "timedeplist_nudge", "");
         fields->set_calc_mean_profs(true);
@@ -154,6 +154,8 @@ void Force::init()
 
     if (swnudge == "1")
     {
+        nudge_factor.resize(grid->kcells); 
+
         for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
             nudgeprofs[*it] = new double[grid->kcells];
     }
@@ -190,6 +192,9 @@ void Force::create(Input *inputin)
 
     if (swnudge == "1")
     {
+        // Get profile with nudging factor as function of height
+        nerror += inputin->get_prof(&nudge_factor[grid->kstart], "nudgefac", grid->kmax);
+
         // check whether the fields in the list exist in the prognostic fields
         for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
             if (!fields->ap.count(*it))
@@ -286,7 +291,7 @@ void Force::exec(double dt)
     if (swnudge == "1")
     {
         for (std::vector<std::string>::const_iterator it=nudgelist.begin(); it!=nudgelist.end(); ++it)
-            calc_nudging_tendency(fields->at[*it]->data, fields->ap[*it]->datamean, nudgeprofs[*it]);
+            calc_nudging_tendency(fields->at[*it]->data, fields->ap[*it]->datamean, nudgeprofs[*it], nudge_factor.data());
     }
 }
 #endif
@@ -337,7 +342,6 @@ namespace
             fac1 = (time - timevec[index0]) / (timevec[index1] - timevec[index0]);
         }
     }
-
 }
 
 #ifndef USECUDA
@@ -490,16 +494,17 @@ void Force::calc_large_scale_source(double* const restrict st, const double* con
             }
 }
 
-void Force::calc_nudging_tendency(double* const restrict fldtend, const double* const restrict fldmean, const double* const restrict ref)
+void Force::calc_nudging_tendency(double* const restrict fldtend, const double* const restrict fldmean,
+                                  const double* const restrict ref, const double* const restrict factor)
 {
     const int jj = grid->icells;
     const int kk = grid->ijcells;
 
-    const double tau_i = 1./tau_nudge;
+    const double tau_i = 1./nudge_tau;
 
     for (int k=grid->kstart; k<grid->kend; ++k)
     {
-        const double tend = -(fldmean[k] - ref[k]) * tau_i;
+        const double tend = -factor[k] * (fldmean[k] - ref[k]) * tau_i;
         for (int j=grid->jstart; j<grid->jend; ++j)
             for (int i=grid->istart; i<grid->iend; ++i)
             {

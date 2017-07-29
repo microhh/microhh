@@ -86,7 +86,8 @@ class Force
         double* vg;  ///< Pointer to array v-component geostrophic wind.
         double* wls; ///< Pointer to array large-scale vertical velocity.
 
-        double tau_nudge; ///< Nudging time scale (s)
+        double nudge_tau;                  ///< Nudging time scale (s)
+        std::vector<double> nudge_factor;  ///< Height varying nudging factor (-)
 
         // Time dependence large-scale forcings
         std::string swtimedep_ls;
@@ -119,7 +120,8 @@ class Force
 
         void calc_large_scale_source(double* const, const double* const); ///< Applies the large scale scalar tendency.
 
-        void calc_nudging_tendency(double* const, const double* const, const double* const); ///< Calculate nudging tendency.
+        void calc_nudging_tendency(double* const, const double* const,
+                                   const double* const, const double* const); ///< Calculate nudging tendency.
 
         void advec_wls_2nd(double* const, const double* const,
                            const double* const, const double* const); ///< Calculates the large-scale vertical transport.
