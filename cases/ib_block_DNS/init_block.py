@@ -23,21 +23,21 @@ gr = mht.Read_grid(nl['grid']['itot'], nl['grid']['jtot'], nl['grid']['ktot'], n
 n_idw = 5 # number of interpolation points in inverse distance weighted interpolation
 
 # Find correct (approximate) location of block with size 1x1
-#i0 = np.abs(gr.xh - 3.0).argmin()
-#i1 = np.abs(gr.xh - 4.0).argmin()
-#j0 = np.abs(gr.yh - 2.7).argmin()
-#j1 = np.abs(gr.yh - 3.7).argmin()
-#
-## Define boundaries block:
-#x0 = gr.xh[i0] + 0.05 * gr.dx
-#x1 = gr.xh[i1] - 0.05 * gr.dx
-#y0 = gr.yh[j0] + 0.05 * gr.dy
-#y1 = gr.yh[j1] - 0.05 * gr.dy
+i0 = np.abs(gr.xh - 3.0).argmin()
+i1 = np.abs(gr.xh - 4.0).argmin()
+j0 = np.abs(gr.yh - 2.7).argmin()
+j1 = np.abs(gr.yh - 3.7).argmin()
 
-x0 = 3
-x1 = 4
-y0 = 2.7
-y1 = 3.7
+# Define boundaries block:
+x0 = gr.xh[i0] + 0.25 * gr.dx
+x1 = gr.xh[i1] - 0.25 * gr.dx
+y0 = gr.yh[j0] + 0.25 * gr.dy
+y1 = gr.yh[j1] - 0.25 * gr.dy
+
+#x0 = 3
+#x1 = 4
+#y0 = 2.7
+#y1 = 3.7
 
 print('block size = {0:.2f} x {1:.2f}, x0={2:.2f}, x1={3:.2f}, y0={4:.2f}, y1={5:.2f}'.format(x1-x0, y1-y0, x0, x1, y0, y1))
 
