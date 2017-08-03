@@ -198,7 +198,7 @@ int Input::read_ini_file()
 int Input::read_data_file(Data_map* series, std::string inputname, bool optional)
 {
     int nerror = 0;
-    char inputline[256], temp1[256];
+    char inputline[2048], temp1[2048];
     char* substring;
     int n;
 
@@ -238,11 +238,12 @@ int Input::read_data_file(Data_map* series, std::string inputname, bool optional
     if (master->mpiid == 0)
     {
         std::printf("Processing data file \"%s\"\n", inputfilename.c_str());
-        while (std::fgets(inputline, 256, inputfile) != NULL)
+        while (std::fgets(inputline, 2048, inputfile) != NULL)
             nlines++;
         rewind(inputfile);
     }
     master->broadcast(&nlines, 1);
+
 
     int nn;
 
@@ -253,9 +254,9 @@ int Input::read_data_file(Data_map* series, std::string inputname, bool optional
         if (master->mpiid == 0)
         {
             // fetch a line and broadcast it
-            std::fgets(inputline, 256, inputfile);
+            std::fgets(inputline, 2048, inputfile);
         }
-        master->broadcast(inputline, 256);
+        master->broadcast(inputline, 2048);
 
         // check for empty line
         n = std::sscanf(inputline, " %s ", temp1);
@@ -322,9 +323,9 @@ int Input::read_data_file(Data_map* series, std::string inputname, bool optional
         if (master->mpiid == 0)
         {
             // fetch a line and broadcast it
-            std::fgets(inputline, 256, inputfile);
+            std::fgets(inputline, 2048, inputfile);
         }
-        master->broadcast(inputline, 256);
+        master->broadcast(inputline, 2048);
 
         // check for empty line
         n = std::sscanf(inputline, " %s ", temp1);
