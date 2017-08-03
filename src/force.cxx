@@ -101,7 +101,7 @@ Force::Force(Model* modelin, Input* inputin)
     else if (swnudge != "0")
     {
         ++nerror;
-        master->print_error("\"%s\" is an illegal option for swnudge\n", swwls.c_str());
+        master->print_error("\"%s\" is an illegal option for swnudge\n", swnudge.c_str());
     }
 
     if (nerror)
@@ -421,7 +421,7 @@ void Force::calc_coriolis_2nd(double* const restrict ut, double* const restrict 
 
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
@@ -430,7 +430,7 @@ void Force::calc_coriolis_2nd(double* const restrict ut, double* const restrict 
 
     for (int k=grid->kstart; k<grid->kend; ++k)
         for (int j=grid->jstart; j<grid->jend; ++j)
-#pragma ivdep
+            #pragma ivdep
             for (int i=grid->istart; i<grid->iend; ++i)
             {
                 const int ijk = i + j*jj + k*kk;
