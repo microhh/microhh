@@ -89,6 +89,11 @@ class Force
         double nudge_tau;                  ///< Nudging time scale (s)
         std::vector<double> nudge_factor;  ///< Height varying nudging factor (-)
 
+        // Time dependence geostrophic wind
+        std::string swtimedep_geo;
+        std::map<std::string, std::vector<double>> timedeptime_geo;
+        std::map<std::string, double*> timedepdata_geo;
+
         // Time dependence large-scale forcings
         std::string swtimedep_ls;
         std::vector<std::string> timedeplist_ls;
@@ -106,6 +111,8 @@ class Force
 
         void update_time_dependent_profs(std::map<std::string, double*>&, std::map<std::string, double*>,
                                          std::map<std::string, std::vector<double>> times, std::string);
+
+        void update_time_dependent_prof(double* const, const double* const, std::vector<double>);
 
         void calc_flux(double* const, const double* const,
                        const double* const, const double);  ///< Calculates the pressure force to enforce a constant mass-flux.

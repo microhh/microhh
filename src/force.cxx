@@ -62,7 +62,10 @@ Force::Force(Model* modelin, Input* inputin)
         if (swlspres == "uflux")
             nerror += inputin->get_item(&uflux, "force", "uflux", "");
         else if (swlspres == "geo")
+        {
             nerror += inputin->get_item(&fc, "force", "fc", "");
+            nerror += inputin->get_item(&swtimedep_geo, "force", "swtimedep_geo", "", "0");
+        }
         else
         {
             ++nerror;
@@ -130,9 +133,9 @@ Force::~Force()
             delete[] nudgeprofs[*it];
     }
 
-#ifdef USECUDA
+    #ifdef USECUDA
     clear_device();
-#endif
+    #endif
 }
 
 void Force::init()
@@ -169,6 +172,13 @@ void Force::create(Input *inputin)
     {
         nerror += inputin->get_prof(&ug[grid->kstart], "ug", grid->kmax);
         nerror += inputin->get_prof(&vg[grid->kstart], "vg", grid->kmax);
+
+        if (swtimedep_geo == "1")
+        {
+            // Read the time dependent geostrophic wind components
+            nerror += model->input->get_time_prof(&timedepdata_geo["ug"], &timedeptime_geo["ug"], "ug", grid->kmax);
+            nerror += model->input->get_time_prof(&timedepdata_geo["vg"], &timedeptime_geo["vg"], "vg", grid->kmax);
+        }
     }
 
     if (swls == "1")
@@ -297,6 +307,12 @@ void Force::update_time_dependent()
 
     if (swtimedep_nudge == "1")
         update_time_dependent_profs(nudgeprofs, timedepdata_nudge, timedeptime_nudge, "nudge");
+
+    if (swtimedep_geo == "1")
+    {
+        update_time_dependent_prof(ug, timedepdata_geo["ug"], timedeptime_geo["ug"]);
+        update_time_dependent_prof(vg, timedepdata_geo["vg"], timedeptime_geo["vg"]);
+    }
 }
 
 namespace
@@ -365,6 +381,25 @@ void Force::update_time_dependent_profs(std::map<std::string, double*>& profiles
                 it.second[k+kgc] = fac0 * time_profiles[name][index0*kk+k] + fac1 * time_profiles[name][index1*kk+k];
         }
     }
+}
+#endif
+
+#ifndef USECUDA
+void Force::update_time_dependent_prof(double* const restrict prof, const double* const restrict data,
+                                       const std::vector<double> times)
+{
+    const int kk = grid->kmax;
+    const int kgc = grid->kgc;
+
+    // Get/calculate the interpolation indexes/factors
+    const double time = model->timeloop->get_time();
+    int index0, index1;
+    double fac0, fac1;
+    calc_time_interpolation_factors(index0, index1, fac0, fac1, time, times);
+
+    // Calculate the new vertical profile
+    for (int k=0; k<grid->kmax; ++k)
+        prof[k+kgc] = fac0 * data[index0*kk+k] + fac1 * data[index1*kk+k];
 }
 #endif
 
