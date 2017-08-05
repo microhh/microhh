@@ -257,4 +257,13 @@ void Master::min(double *var, int datasize)
 {
     MPI_Allreduce(MPI_IN_PLACE, var, datasize, MPI_DOUBLE, MPI_MIN, commxy);
 }
+
+// Only use this function for situations where only one (or more, but not all)
+// processes need to abort the simulation. If all tasks are guaranteed to abort the simulation,
+// simply use a throw on each process, as that more gracefully exits the model.
+void Master::abort()
+{
+    int error_code;
+    MPI_Abort(commxy, error_code);
+}
 #endif

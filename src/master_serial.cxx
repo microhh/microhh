@@ -146,4 +146,9 @@ void Master::max(double *var, int datasize)
 void Master::min(double *var, int datasize)
 {
 }
+
+void Master::abort()
+{
+    throw 1;
+}
 #endif
