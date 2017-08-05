@@ -65,6 +65,8 @@ class Master
         void print_warning(const char *format, ...);
         void print_error  (const char *format, ...);
 
+        void abort();
+
         std::string mode;
         std::string simname;
 

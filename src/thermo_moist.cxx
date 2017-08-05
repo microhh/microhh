@@ -1678,7 +1678,7 @@ double Thermo_moist::get_buoyancy_diffusivity()
 
 namespace
 {
-    inline double sat_adjust(const double thl, const double qt, const double p, const double exn)
+    inline double sat_adjust(const double thl, const double qt, const double p, const double exn, Master* master)
     {
         int niter = 0;
         int nitermax = 30;
@@ -1700,8 +1700,8 @@ namespace
 
         if (niter == nitermax)
         {
-            printf("Saturation adjustment not converged!! [thl=%f K, qt=%f kg/kg, p=%f p]\n",thl,qt,p);
-            throw 1;
+            master->print_error("Saturation adjustment not converged. Input: thl=%f K, qt=%f kg/kg, p=%f Pa\n", thl, qt, p);
+            master->abort();
         }
 
         ql = std::max(0.,qt - qs);
@@ -1741,7 +1741,7 @@ void  Thermo_moist::calc_base_state(double* restrict pref,    double* restrict p
     // Calculate the values at the surface (half level == kstart)
     prefh[kstart] = pbot;
     exh[kstart]   = exner(prefh[kstart]);
-    ql            = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart]);
+    ql            = sat_adjust(thlsurf, qtsurf, prefh[kstart], exh[kstart], model->master);
     thvh[kstart]  = virtual_temperature(exh[kstart], thlsurf, qtsurf, ql);
     rhoh[kstart]  = pbot / (Rd * exh[kstart] * thvh[kstart]);
 
@@ -1752,7 +1752,7 @@ void  Thermo_moist::calc_base_state(double* restrict pref,    double* restrict p
     {
         // 1. Calculate remaining values (thv and rho) at full-level[k-1]
         ex[k-1]  = exner(pref[k-1]);
-        ql       = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1]);
+        ql       = sat_adjust(thlmean[k-1], qtmean[k-1], pref[k-1], ex[k-1], model->master);
         thv[k-1] = virtual_temperature(ex[k-1], thlmean[k-1], qtmean[k-1], ql);
         rho[k-1] = pref[k-1] / (Rd * ex[k-1] * thv[k-1]);
 
@@ -1763,7 +1763,7 @@ void  Thermo_moist::calc_base_state(double* restrict pref,    double* restrict p
         // 3. Use interpolated conserved quantities to calculate half-level[k] values
         const double thli = interp2(thlmean[k-1], thlmean[k]);
         const double qti  = interp2(qtmean [k-1], qtmean [k]);
-        const double qli  = sat_adjust(thli, qti, prefh[k], exh[k]);
+        const double qli  = sat_adjust(thli, qti, prefh[k], exh[k], model->master);
 
         thvh[k]  = virtual_temperature(exh[k], thli, qti, qli);
         rhoh[k]  = prefh[k] / (Rd * exh[k] * thvh[k]);
@@ -1807,7 +1807,7 @@ void Thermo_moist::calc_buoyancy_tend_2nd(double* restrict wt, double* restrict 
                 const int ij  = i + j*jj;
                 if (ql[ij]>0)   // already doesn't vectorize because of iteration in sat_adjust()
                 {
-                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh, model->master);
                 }
                 else
                     ql[ij] = 0.;
@@ -1852,7 +1852,7 @@ void Thermo_moist::calc_buoyancy(double* restrict b, double* restrict thl, doubl
                 const int ijk = i + j*jj + k*kk;
                 const int ij  = i + j*jj;
                 if (ql[ij] > 0)
-                    ql[ij] = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                    ql[ij] = sat_adjust(thl[ijk], qt[ijk], p[k], ex, model->master);
                 else
                     ql[ij] = 0.;
             }
@@ -1961,7 +1961,7 @@ void Thermo_moist::calc_liquid_water(double* restrict ql, double* restrict thl, 
             for (int i=grid->istart; i<grid->iend; i++)
             {
                 const int ijk = i + j*jj + k*kk;
-                ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex);
+                ql[ijk] = sat_adjust(thl[ijk], qt[ijk], p[k], ex, model->master);
             }
     }
 }
@@ -2190,7 +2190,7 @@ void Thermo_moist::calc_buoyancy_tend_4th(double* restrict wt, double* restrict 
             {
                 const int ij = i + j*jj;
                 if (ql[ij]>0)   // already doesn't vectorize because of iteration in sat_adjust()
-                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh);
+                    ql[ij] = sat_adjust(thlh[ij], qth[ij], ph[k], exnh, model->master);
                 else
                     ql[ij] = 0.;
             }
