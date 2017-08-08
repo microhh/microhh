@@ -178,6 +178,30 @@ namespace
 
     }
 
+    void zero_ib(double* const restrict field,
+                 const double* const restrict x, const double* const restrict y,
+                 const double* const restrict z,
+                 const double x0, const double x1, const double y0, const double y1, const double z1,
+                 const int istart, const int iend,
+                 const int jstart, const int jend,
+                 const int kstart, const int kend,
+                 const int jj, const int kk)
+    {
+        const int ii = 1;
+
+        for (int k=kstart; k<kend; ++k)
+            for (int j=jstart; j<jend; ++j)
+                #pragma ivdep
+                for (int i=istart; i<iend; ++i)
+                {
+                    const int ijk = i + j*jj + k*kk;
+                    const int ij  = i + j*jj;
+
+                    const int is_not_ib   = !(x[i] > x0 && x[i] < x1 && y[j] > y0 && y[j] < y1 && z [k] < z1);
+
+                    field[ijk] *= static_cast<double>(is_not_ib);
+                }
+    }
 }
 
 Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
@@ -805,8 +829,8 @@ void Immersed_boundary::exec()
     grid->boundary_cyclic(fields->v->data);
     grid->boundary_cyclic(fields->w->data);
 
-    //if (model->diff->get_switch() == "smag2")
-    //    set_ghost_cells(ghost_cells_s, fields->sd["evisc"]->data, visc_wall, grid->x, grid->y,  grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
+    if (model->diff->get_switch() == "smag2")
+        set_ghost_cells(ghost_cells_s, fields->sd["evisc"]->data, visc_wall, grid->x, grid->y,  grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
 
     // Set the ghost cells for scalars, depending on their BC
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
@@ -814,6 +838,32 @@ void Immersed_boundary::exec()
         set_ghost_cells(ghost_cells_s, fields->sp[it->first]->data, sbc[it->first]->bot,
                         grid->x, grid->y, grid->z, n_idw, ii, grid->icells, grid->ijcells, sbc[it->first]->bcbot, fields->sp[it->first]->visc);
         grid->boundary_cyclic(fields->ap[it->first]->data);
+    }
+}
+
+void Immersed_boundary::zero_ib_tendencies()
+{
+    if (ib_type == None_type)
+        return;
+
+    zero_ib(fields->ut->data, grid->xh, grid->y, grid->z, x0_block, x1_block, y0_block, y1_block, z1_block,
+            grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+    zero_ib(fields->vt->data, grid->x, grid->yh, grid->z, x0_block, x1_block, y0_block, y1_block, z1_block,
+            grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+    zero_ib(fields->wt->data, grid->x, grid->y, grid->zh, x0_block, x1_block, y0_block, y1_block, z1_block,
+            grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+
+    grid->boundary_cyclic(fields->ut->data);
+    grid->boundary_cyclic(fields->vt->data);
+    grid->boundary_cyclic(fields->wt->data);
+
+    // Set the ghost cells for scalars, depending on their BC
+    for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
+    {
+
+        zero_ib(fields->at[it->first]->data, grid->x, grid->y, grid->z, x0_block, x1_block, y0_block, y1_block, z1_block,
+                grid->istart, grid->iend, grid->jstart, grid->jend, grid->kstart, grid->kend, grid->icells, grid->ijcells);
+        grid->boundary_cyclic(fields->at[it->first]->data);
     }
 }
 

@@ -77,7 +77,8 @@ class Immersed_boundary
 
         void init();
         void create();
-        void exec();            ///< Set the immersed boundary ghost cells
+        void exec();                   ///< Set the immersed boundary ghost cells
+        void zero_ib_tendencies();     ///< Set the immersed boundary ghost cells
         void exec_uflux(double*);
         void exec_vflux(double*);
         void exec_stats(Mask*); ///< Execute statistics of immersed boundaries

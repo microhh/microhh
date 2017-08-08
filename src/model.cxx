@@ -284,11 +284,12 @@ void Model::exec()
         // Apply the large scale forcings. Keep this one always right before the pressure.
         force->exec(timeloop->get_sub_time_step());
 
+        // TMP BvS: zero tendencies inside IB
+        immersed_boundary->zero_ib_tendencies();
+
         // Add the previous pressure gradient.
         pres->exec_0();
 
-        // Set the immersed boundary conditions
-        //immersed_boundary->exec();
 
         // Solve the poisson equation for pressure.
         boundary->set_ghost_cells_w(Boundary::Conservation_type);
