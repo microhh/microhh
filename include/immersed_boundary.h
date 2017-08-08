@@ -128,6 +128,8 @@ class Immersed_boundary
         double sigma_x_hill; ///< Std.dev hill width in x-direction
         double sigma_y_hill; ///< Std.dev hill width in y-direction
 
+        double visc_wall;
+
         // Boundary conditions
         struct Field3dBc
         {

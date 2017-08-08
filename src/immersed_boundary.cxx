@@ -37,6 +37,7 @@
 #include "finite_difference.h"
 #include "immersed_boundary.h"
 #include "input.h"
+#include "diff.h"
 
 namespace
 {
@@ -241,7 +242,8 @@ Immersed_boundary::Immersed_boundary(Model* modelin, Input* inputin)
 
     if (ib_type != None_type)
     {
-        nerror += inputin->get_item(&n_idw, "IB", "n_idw", "");  // Number of grid points used in interpolation
+        nerror += inputin->get_item(&n_idw,     "IB", "n_idw", "");      // Number of grid points used in interpolation
+        nerror += inputin->get_item(&visc_wall, "IB", "visc_wall", "");  // Fixed viscosity at the wall
 
         grid->set_minimum_ghost_cells(2, 2, 1);  // Set at leat two ghost cells in the horizontal
 
@@ -792,6 +794,7 @@ void Immersed_boundary::exec()
 
     const int ii = 1;
     const double no_slip = 0.;
+    const double fixed_visc = visc_wall;
 
     // Set the immersed boundary ghost cells to enforce a no-slip BC for the velocity components
     set_ghost_cells(ghost_cells_u, fields->u->data, no_slip, grid->xh, grid->y,  grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
@@ -801,6 +804,9 @@ void Immersed_boundary::exec()
     grid->boundary_cyclic(fields->u->data);
     grid->boundary_cyclic(fields->v->data);
     grid->boundary_cyclic(fields->w->data);
+
+    //if (model->diff->get_switch() == "smag2")
+    //    set_ghost_cells(ghost_cells_s, fields->sd["evisc"]->data, visc_wall, grid->x, grid->y,  grid->z,  n_idw, ii, grid->icells, grid->ijcells, Dirichlet_type, fields->visc);
 
     // Set the ghost cells for scalars, depending on their BC
     for (FieldMap::const_iterator it=fields->sp.begin(); it!=fields->sp.end(); ++it)
