@@ -28,7 +28,7 @@
 class Master;
 class Input;
 
-template<typename TF> class Grid;
+template<typename> class Grid;
 
 template<typename TF>
 class Model

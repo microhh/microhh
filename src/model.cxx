@@ -46,7 +46,7 @@ Model<TF>::Model(Master *masterin, Input *inputin)
         int nerror = 0;
 
         // Create an instance of the Grid class.
-        grid = new Grid<double>(master, input);
+        grid = new Grid<TF>(master, input);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)
@@ -125,3 +125,4 @@ void Model<TF>::print_status()
 }
 
 template class Model<double>;
+template class Model<float>;
