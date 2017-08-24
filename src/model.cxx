@@ -125,4 +125,4 @@ void Model<TF>::print_status()
 }
 
 template class Model<double>;
-template class Model<float>;
+// template class Model<float>;

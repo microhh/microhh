@@ -45,21 +45,25 @@ class Master
 
         void wait_all();
 
-        // overload the broadcast function
-        void broadcast(char *, int);
-        void broadcast(int *, int);
-        void broadcast(double *, int);
-        void broadcast(unsigned long *, int);
+        // Overload the broadcast function.
+        void broadcast(char*, int);
+        void broadcast(int*, int);
+        void broadcast(double*, int);
+        void broadcast(float*, int);
+        void broadcast(unsigned long*, int);
 
-        // overload the sum function
+        // Overload the sum function.
         void sum(int *, int);
-        void sum(double *, int);
+        void sum(double*, int);
+        void sum(float*, int);
 
-        // overload the max function
-        void max(double *, int);
+        // Overload the max function.
+        void max(double*, int);
+        void max(float*, int);
 
-        // overload the min function
-        void min(double *, int);
+        // Overload the min function.
+        void min(double*, int);
+        void min(float*, int);
 
         void print_message(const char *format, ...);
         void print_warning(const char *format, ...);

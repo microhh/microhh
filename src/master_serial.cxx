@@ -109,41 +109,19 @@ double Master::get_wall_clock_time()
     return (double)timestruct.tv_sec + (double)timestruct.tv_usec*1.e-6;
 }
 
-void  Master::wait_all()
-{
-}
+void  Master::wait_all() {}
 
-// all broadcasts return directly, because there is nothing to broadcast
-void Master::broadcast(char *data, int datasize)
-{
-}
-
-// overloaded broadcast functions
-void Master::broadcast(int *data, int datasize)
-{
-}
-
-void Master::broadcast(unsigned long *data, int datasize)
-{
-}
-
-void Master::broadcast(double *data, int datasize)
-{
-}
-
-void Master::sum(int *var, int datasize)
-{
-}
-
-void Master::sum(double *var, int datasize)
-{
-}
-
-void Master::max(double *var, int datasize)
-{
-}
-
-void Master::min(double *var, int datasize)
-{
-}
+// All broadcasts return directly, because there is nothing to broadcast.
+void Master::broadcast(char* data, int datasize) {}
+void Master::broadcast(int* data, int datasize) {}
+void Master::broadcast(unsigned long* data, int datasize) {}
+void Master::broadcast(double* data, int datasize) {}
+void Master::broadcast(float* data, int datasize) {}
+void Master::sum(int* var, int datasize) {}
+void Master::sum(double* var, int datasize) {}
+void Master::sum(float* var, int datasize) {}
+void Master::max(double* var, int datasize) {}
+void Master::max(float* var, int datasize) {}
+void Master::min(double* var, int datasize) {}
+void Master::min(float* var, int datasize) {}
 #endif
