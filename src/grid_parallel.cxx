@@ -28,7 +28,8 @@
 #include "defines.h"
 
 // MPI functions
-void Grid::init_mpi()
+template<typename TF>
+void Grid<TF>::init_mpi()
 {
     // create the MPI types for the cyclic boundary conditions
     int datacount, datablock, datastride;
@@ -144,12 +145,13 @@ void Grid::init_mpi()
     MPI_Type_commit(&subxyslice);
 
     // allocate the array for the profiles
-    profl = new double[kcells];
+    // profl = new double[kcells];
 
     mpitypes = true;
 } 
 
-void Grid::exit_mpi()
+template<typename TF>
+void Grid<TF>::exit_mpi()
 {
     if (mpitypes)
     {
@@ -170,305 +172,318 @@ void Grid::exit_mpi()
         MPI_Type_free(&subyzslice);
         MPI_Type_free(&subxyslice);
 
-        delete[] profl;
+        // delete[] profl;
     }
 }
 
-void Grid::boundary_cyclic(double* restrict data, Edge edge)
-{
-    const int ncount = 1;
-
-    if (edge == East_west_edge || edge == Both_edges)
-    {
-        // Communicate east-west edges.
-        const int eastout = iend-igc;
-        const int westin  = 0;
-        const int westout = istart;
-        const int eastin  = iend;
-
-        // Send and receive the ghost cells in east-west direction.
-        MPI_Isend(&data[eastout], ncount, eastwestedge, master->neast, 1, master->commxy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&data[westin], ncount, eastwestedge, master->nwest, 1, master->commxy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Isend(&data[westout], ncount, eastwestedge, master->nwest, 2, master->commxy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&data[eastin], ncount, eastwestedge, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        // Wait here for the MPI to have correct values in the corners of the cells.
-        master->wait_all();
-    }
-
-    if (edge == North_south_edge || edge == Both_edges)
-    {
-        // If the run is 3D, perform the cyclic boundary routine for the north-south direction.
-        if (jtot > 1)
-        {
-            // Communicate north-south edges.
-            const int northout = (jend-jgc)*icells;
-            const int southin  = 0;
-            const int southout = jstart*icells;
-            const int northin  = jend  *icells;
-
-            // Send and receive the ghost cells in the north-south direction.
-            MPI_Isend(&data[northout], ncount, northsouthedge, master->nnorth, 1, master->commxy, &master->reqs[master->reqsn]);
-            master->reqsn++;
-            MPI_Irecv(&data[southin], ncount, northsouthedge, master->nsouth, 1, master->commxy, &master->reqs[master->reqsn]);
-            master->reqsn++;
-            MPI_Isend(&data[southout], ncount, northsouthedge, master->nsouth, 2, master->commxy, &master->reqs[master->reqsn]);
-            master->reqsn++;
-            MPI_Irecv(&data[northin], ncount, northsouthedge, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
-            master->reqsn++;
-            master->wait_all();
-        }
-        // In case of 2D, fill all the ghost cells in the y-direction with the same value.
-        else
-        {
-            const int jj = icells;
-            const int kk = icells*jcells;
-
-            for (int k=kstart; k<kend; k++)
-                for (int j=0; j<jgc; j++)
-#pragma ivdep
-                    for (int i=0; i<icells; i++)
-                    {
-                        const int ijkref   = i + jstart*jj   + k*kk;
-                        const int ijknorth = i + j*jj        + k*kk;
-                        const int ijksouth = i + (jend+j)*jj + k*kk;
-                        data[ijknorth] = data[ijkref];
-                        data[ijksouth] = data[ijkref];
-                    }
-        }
-    }
-}
-
-void Grid::boundary_cyclic_2d(double* restrict data)
-{
-    int ncount = 1;
-
-    // communicate east-west edges
-    int eastout = iend-igc;
-    int westin  = 0;
-    int westout = istart;
-    int eastin  = iend;
-
-    // communicate north-south edges
-    int northout = (jend-jgc)*icells;
-    int southin  = 0;
-    int southout = jstart*icells;
-    int northin  = jend  *icells;
-
-    // first, send and receive the ghost cells in east-west direction
-    MPI_Isend(&data[eastout], ncount, eastwestedge2d, master->neast, 1, master->commxy, &master->reqs[master->reqsn]);
-    master->reqsn++;
-    MPI_Irecv(&data[westin], ncount, eastwestedge2d, master->nwest, 1, master->commxy, &master->reqs[master->reqsn]);
-    master->reqsn++;
-    MPI_Isend(&data[westout], ncount, eastwestedge2d, master->nwest, 2, master->commxy, &master->reqs[master->reqsn]);
-    master->reqsn++;
-    MPI_Irecv(&data[eastin], ncount, eastwestedge2d, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
-    master->reqsn++;
-    // wait here for the mpi to have correct values in the corners of the cells
-    master->wait_all();
-
-    // if the run is 3D, apply the BCs
-    if (jtot > 1)
-    {
-        // second, send and receive the ghost cells in the north-south direction
-        MPI_Isend(&data[northout], ncount, northsouthedge2d, master->nnorth, 1, master->commxy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&data[southin], ncount, northsouthedge2d, master->nsouth, 1, master->commxy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Isend(&data[southout], ncount, northsouthedge2d, master->nsouth, 2, master->commxy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&data[northin], ncount, northsouthedge2d, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        master->wait_all();
-    }
-    // in case of 2D, fill all the ghost cells with the current value
-    else
-    {
-        // 2d essential variables
-        const int jj = icells;
-
-        for (int j=0; j<jgc; j++)
-#pragma ivdep
-            for (int i=0; i<icells; i++)
-            {
-                const int ijref   = i + jstart*jj;
-                const int ijnorth = i + j*jj;
-                const int ijsouth = i + (jend+j)*jj;
-                data[ijnorth] = data[ijref];
-                data[ijsouth] = data[ijref];
-            }
-    }
-}
-
-void Grid::transpose_zx(double* restrict ar, double* restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = imax;
-    const int kk = imax*jmax;
-
-    for (int n=0; n<master->npx; n++)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*kblock*kk;
-        const int ijkr = n*jj;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposez, n, tag, master->commx, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master->commx, &master->reqs[master->reqsn]);
-        master->reqsn++;
-    }
-    master->wait_all();
-}
-
-void Grid::transpose_xz(double* restrict ar, double* restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = imax;
-    const int kk = imax*jmax;
-
-    for (int n=0; n<master->npx; n++)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*jj;
-        const int ijkr = n*kblock*kk;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposex, n, tag, master->commx, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master->commx, &master->reqs[master->reqsn]);
-        master->reqsn++;
-    }
-    master->wait_all();
-}
-
-void Grid::transpose_xy(double* restrict ar, double* restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = iblock;
-    const int kk = iblock*jmax;
-
-    for (int n=0; n<master->npy; n++)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*jj;
-        const int ijkr = n*kk;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposex2, n, tag, master->commy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master->commy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-    }
-    master->wait_all();
-}
-
-void Grid::transpose_yx(double* restrict ar, double* restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = iblock;
-    const int kk = iblock*jmax;
-
-    for (int n=0; n<master->npy; n++)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*kk;
-        const int ijkr = n*jj;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey , n, tag, master->commy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master->commy, &master->reqs[master->reqsn]);
-        master->reqsn++;
-    }
-    master->wait_all();
-}
-
-void Grid::transpose_yz(double* restrict ar, double* restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = iblock;
-    const int kk = iblock*jblock;
-
-    for (int n=0; n<master->npx; n++)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*jblock*jj;
-        const int ijkr = n*kblock*kk;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposey2, n, tag, master->commx, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master->commx, &master->reqs[master->reqsn]);
-        master->reqsn++;
-    }
-    master->wait_all();
-}
-
-void Grid::transpose_zy(double* restrict ar, double* restrict as)
-{
-    const int ncount = 1;
-    const int tag = 1;
-
-    const int jj = iblock;
-    const int kk = iblock*jblock;
-
-    for (int n=0; n<master->npx; n++)
-    {
-        // determine where to fetch the data and where to store it
-        const int ijks = n*kblock*kk;
-        const int ijkr = n*jblock*jj;
-
-        // send and receive the data
-        MPI_Isend(&as[ijks], ncount, transposez2, n, tag, master->commx, &master->reqs[master->reqsn]);
-        master->reqsn++;
-        MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master->commx, &master->reqs[master->reqsn]);
-        master->reqsn++;
-    }
-    master->wait_all();
-}
-
-void Grid::get_max(double *var)
-{
-    double varl = *var;
-    MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, master->commxy);
-}
-
-void Grid::get_max(int *var)
-{
-    int varl = *var;
-    MPI_Allreduce(&varl, var, 1, MPI_INT, MPI_MAX, master->commxy);
-}
-
-void Grid::get_sum(double *var)
-{
-    double varl = *var;
-    MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, master->commxy);
-}
-
-void Grid::get_prof(double *prof, int kcellsin)
-{
-    for (int k=0; k<kcellsin; k++)
-        profl[k] = prof[k] / master->nprocs;
-
-    MPI_Allreduce(profl, prof, kcellsin, MPI_DOUBLE, MPI_SUM, master->commxy);
-}
+// template<typename TF>
+// void Grid<TF>::boundary_cyclic(double* restrict data, Edge edge)
+// {
+//     const int ncount = 1;
+// 
+//     if (edge == East_west_edge || edge == Both_edges)
+//     {
+//         // Communicate east-west edges.
+//         const int eastout = iend-igc;
+//         const int westin  = 0;
+//         const int westout = istart;
+//         const int eastin  = iend;
+// 
+//         // Send and receive the ghost cells in east-west direction.
+//         MPI_Isend(&data[eastout], ncount, eastwestedge, master->neast, 1, master->commxy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&data[westin], ncount, eastwestedge, master->nwest, 1, master->commxy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Isend(&data[westout], ncount, eastwestedge, master->nwest, 2, master->commxy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&data[eastin], ncount, eastwestedge, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         // Wait here for the MPI to have correct values in the corners of the cells.
+//         master->wait_all();
+//     }
+// 
+//     if (edge == North_south_edge || edge == Both_edges)
+//     {
+//         // If the run is 3D, perform the cyclic boundary routine for the north-south direction.
+//         if (jtot > 1)
+//         {
+//             // Communicate north-south edges.
+//             const int northout = (jend-jgc)*icells;
+//             const int southin  = 0;
+//             const int southout = jstart*icells;
+//             const int northin  = jend  *icells;
+// 
+//             // Send and receive the ghost cells in the north-south direction.
+//             MPI_Isend(&data[northout], ncount, northsouthedge, master->nnorth, 1, master->commxy, &master->reqs[master->reqsn]);
+//             master->reqsn++;
+//             MPI_Irecv(&data[southin], ncount, northsouthedge, master->nsouth, 1, master->commxy, &master->reqs[master->reqsn]);
+//             master->reqsn++;
+//             MPI_Isend(&data[southout], ncount, northsouthedge, master->nsouth, 2, master->commxy, &master->reqs[master->reqsn]);
+//             master->reqsn++;
+//             MPI_Irecv(&data[northin], ncount, northsouthedge, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
+//             master->reqsn++;
+//             master->wait_all();
+//         }
+//         // In case of 2D, fill all the ghost cells in the y-direction with the same value.
+//         else
+//         {
+//             const int jj = icells;
+//             const int kk = icells*jcells;
+// 
+//             for (int k=kstart; k<kend; k++)
+//                 for (int j=0; j<jgc; j++)
+// #pragma ivdep
+//                     for (int i=0; i<icells; i++)
+//                     {
+//                         const int ijkref   = i + jstart*jj   + k*kk;
+//                         const int ijknorth = i + j*jj        + k*kk;
+//                         const int ijksouth = i + (jend+j)*jj + k*kk;
+//                         data[ijknorth] = data[ijkref];
+//                         data[ijksouth] = data[ijkref];
+//                     }
+//         }
+//     }
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::boundary_cyclic_2d(double* restrict data)
+// {
+//     int ncount = 1;
+// 
+//     // communicate east-west edges
+//     int eastout = iend-igc;
+//     int westin  = 0;
+//     int westout = istart;
+//     int eastin  = iend;
+// 
+//     // communicate north-south edges
+//     int northout = (jend-jgc)*icells;
+//     int southin  = 0;
+//     int southout = jstart*icells;
+//     int northin  = jend  *icells;
+// 
+//     // first, send and receive the ghost cells in east-west direction
+//     MPI_Isend(&data[eastout], ncount, eastwestedge2d, master->neast, 1, master->commxy, &master->reqs[master->reqsn]);
+//     master->reqsn++;
+//     MPI_Irecv(&data[westin], ncount, eastwestedge2d, master->nwest, 1, master->commxy, &master->reqs[master->reqsn]);
+//     master->reqsn++;
+//     MPI_Isend(&data[westout], ncount, eastwestedge2d, master->nwest, 2, master->commxy, &master->reqs[master->reqsn]);
+//     master->reqsn++;
+//     MPI_Irecv(&data[eastin], ncount, eastwestedge2d, master->neast, 2, master->commxy, &master->reqs[master->reqsn]);
+//     master->reqsn++;
+//     // wait here for the mpi to have correct values in the corners of the cells
+//     master->wait_all();
+// 
+//     // if the run is 3D, apply the BCs
+//     if (jtot > 1)
+//     {
+//         // second, send and receive the ghost cells in the north-south direction
+//         MPI_Isend(&data[northout], ncount, northsouthedge2d, master->nnorth, 1, master->commxy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&data[southin], ncount, northsouthedge2d, master->nsouth, 1, master->commxy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Isend(&data[southout], ncount, northsouthedge2d, master->nsouth, 2, master->commxy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&data[northin], ncount, northsouthedge2d, master->nnorth, 2, master->commxy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         master->wait_all();
+//     }
+//     // in case of 2D, fill all the ghost cells with the current value
+//     else
+//     {
+//         // 2d essential variables
+//         const int jj = icells;
+// 
+//         for (int j=0; j<jgc; j++)
+// #pragma ivdep
+//             for (int i=0; i<icells; i++)
+//             {
+//                 const int ijref   = i + jstart*jj;
+//                 const int ijnorth = i + j*jj;
+//                 const int ijsouth = i + (jend+j)*jj;
+//                 data[ijnorth] = data[ijref];
+//                 data[ijsouth] = data[ijref];
+//             }
+//     }
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::transpose_zx(double* restrict ar, double* restrict as)
+// {
+//     const int ncount = 1;
+//     const int tag = 1;
+// 
+//     const int jj = imax;
+//     const int kk = imax*jmax;
+// 
+//     for (int n=0; n<master->npx; n++)
+//     {
+//         // determine where to fetch the data and where to store it
+//         const int ijks = n*kblock*kk;
+//         const int ijkr = n*jj;
+// 
+//         // send and receive the data
+//         MPI_Isend(&as[ijks], ncount, transposez, n, tag, master->commx, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&ar[ijkr], ncount, transposex, n, tag, master->commx, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//     }
+//     master->wait_all();
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::transpose_xz(double* restrict ar, double* restrict as)
+// {
+//     const int ncount = 1;
+//     const int tag = 1;
+// 
+//     const int jj = imax;
+//     const int kk = imax*jmax;
+// 
+//     for (int n=0; n<master->npx; n++)
+//     {
+//         // determine where to fetch the data and where to store it
+//         const int ijks = n*jj;
+//         const int ijkr = n*kblock*kk;
+// 
+//         // send and receive the data
+//         MPI_Isend(&as[ijks], ncount, transposex, n, tag, master->commx, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&ar[ijkr], ncount, transposez, n, tag, master->commx, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//     }
+//     master->wait_all();
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::transpose_xy(double* restrict ar, double* restrict as)
+// {
+//     const int ncount = 1;
+//     const int tag = 1;
+// 
+//     const int jj = iblock;
+//     const int kk = iblock*jmax;
+// 
+//     for (int n=0; n<master->npy; n++)
+//     {
+//         // determine where to fetch the data and where to store it
+//         const int ijks = n*jj;
+//         const int ijkr = n*kk;
+// 
+//         // send and receive the data
+//         MPI_Isend(&as[ijks], ncount, transposex2, n, tag, master->commy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&ar[ijkr], ncount, transposey , n, tag, master->commy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//     }
+//     master->wait_all();
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::transpose_yx(double* restrict ar, double* restrict as)
+// {
+//     const int ncount = 1;
+//     const int tag = 1;
+// 
+//     const int jj = iblock;
+//     const int kk = iblock*jmax;
+// 
+//     for (int n=0; n<master->npy; n++)
+//     {
+//         // determine where to fetch the data and where to store it
+//         const int ijks = n*kk;
+//         const int ijkr = n*jj;
+// 
+//         // send and receive the data
+//         MPI_Isend(&as[ijks], ncount, transposey , n, tag, master->commy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&ar[ijkr], ncount, transposex2, n, tag, master->commy, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//     }
+//     master->wait_all();
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::transpose_yz(double* restrict ar, double* restrict as)
+// {
+//     const int ncount = 1;
+//     const int tag = 1;
+// 
+//     const int jj = iblock;
+//     const int kk = iblock*jblock;
+// 
+//     for (int n=0; n<master->npx; n++)
+//     {
+//         // determine where to fetch the data and where to store it
+//         const int ijks = n*jblock*jj;
+//         const int ijkr = n*kblock*kk;
+// 
+//         // send and receive the data
+//         MPI_Isend(&as[ijks], ncount, transposey2, n, tag, master->commx, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&ar[ijkr], ncount, transposez2, n, tag, master->commx, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//     }
+//     master->wait_all();
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::transpose_zy(double* restrict ar, double* restrict as)
+// {
+//     const int ncount = 1;
+//     const int tag = 1;
+// 
+//     const int jj = iblock;
+//     const int kk = iblock*jblock;
+// 
+//     for (int n=0; n<master->npx; n++)
+//     {
+//         // determine where to fetch the data and where to store it
+//         const int ijks = n*kblock*kk;
+//         const int ijkr = n*jblock*jj;
+// 
+//         // send and receive the data
+//         MPI_Isend(&as[ijks], ncount, transposez2, n, tag, master->commx, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//         MPI_Irecv(&ar[ijkr], ncount, transposey2, n, tag, master->commx, &master->reqs[master->reqsn]);
+//         master->reqsn++;
+//     }
+//     master->wait_all();
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::get_max(double *var)
+// {
+//     double varl = *var;
+//     MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_MAX, master->commxy);
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::get_max(int *var)
+// {
+//     int varl = *var;
+//     MPI_Allreduce(&varl, var, 1, MPI_INT, MPI_MAX, master->commxy);
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::get_sum(double *var)
+// {
+//     double varl = *var;
+//     MPI_Allreduce(&varl, var, 1, MPI_DOUBLE, MPI_SUM, master->commxy);
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::get_prof(double *prof, int kcellsin)
+// {
+//     for (int k=0; k<kcellsin; k++)
+//         profl[k] = prof[k] / master->nprocs;
+// 
+//     MPI_Allreduce(profl, prof, kcellsin, MPI_DOUBLE, MPI_SUM, master->commxy);
+// }
 
 // IO functions
-void Grid::save()
+template<typename TF>
+void Grid<TF>::save()
 {
     char filename[256];
     std::sprintf(filename, "%s.%07d", "grid", 0);
@@ -566,7 +581,8 @@ void Grid::save()
     }
 }
 
-void Grid::load()
+template<typename TF>
+void Grid<TF>::load()
 {
     int nerror = 0;
 
@@ -647,427 +663,437 @@ void Grid::load()
     fftw_forget_wisdom();
 }
 
-int Grid::save_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
-{
-    // save the data in transposed order to have large chunks of contiguous disk space
-    // MPI-IO is not stable on Juqueen and supermuc otherwise
-
-    // extract the data from the 3d field without the ghost cells
-    const int jj  = icells;
-    const int kk  = icells*jcells;
-    const int jjb = imax;
-    const int kkb = imax*jmax;
-
-    int count = imax*jmax*kmax;
-
-    for (int k=0; k<kmax; k++)
-        for (int j=0; j<jmax; j++)
-#pragma ivdep
-            for (int i=0; i<imax; i++)
-            {
-                const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-                const int ijkb = i + j*jjb + k*kkb;
-                tmp1[ijkb] = data[ijk] + offset;
-            }
-
-    transpose_zx(tmp2, tmp1);
-
-    MPI_File fh;
-    if (MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-        return 1;
-
-    // select noncontiguous part of 3d array to store the selected data
-    MPI_Offset fileoff = 0; // the offset within the file (header size)
-    char name[] = "native";
-
-    if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
-        return 1;
-
-    if (MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-        return 1;
-
-    if (MPI_File_close(&fh))
-        return 1;
-
-    return 0;
-}
-
-int Grid::load_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
-{
-    // save the data in transposed order to have large chunks of contiguous disk space
-    // MPI-IO is not stable on Juqueen and supermuc otherwise
-
-    // read the file
-    MPI_File fh;
-    if (MPI_File_open(master->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
-        return 1;
-
-    // select noncontiguous part of 3d array to store the selected data
-    MPI_Offset fileoff = 0; // the offset within the file (header size)
-    char name[] = "native";
-    MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
-
-    // extract the data from the 3d field without the ghost cells
-    int count = imax*jmax*kmax;
-
-    if (MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-        return 1;
-
-    if (MPI_File_close(&fh))
-        return 1;
-
-    // transpose the data back
-    transpose_xz(tmp2, tmp1);
-
-    const int jj  = icells;
-    const int kk  = icells*jcells;
-    const int jjb = imax;
-    const int kkb = imax*jmax;
-
-    for (int k=0; k<kmax; k++)
-        for (int j=0; j<jmax; j++)
-#pragma ivdep
-            for (int i=0; i<imax; i++)
-            {
-                const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
-                const int ijkb = i + j*jjb + k*kkb;
-                data[ijk] = tmp2[ijkb] - offset;
-            }
-
-    return 0;
-}
-
-void Grid::fft_forward(double* restrict data,   double* restrict tmp1,
-                       double* restrict fftini, double* restrict fftouti,
-                       double* restrict fftinj, double* restrict fftoutj)
-{
-    // transpose the pressure field
-    transpose_zx(tmp1,data);
-
-    int kk = itot*jmax;
-
-    // process the fourier transforms slice by slice
-    for (int k=0; k<kblock; k++)
-    {
-#pragma ivdep
-        for (int n=0; n<itot*jmax; n++)
-        {
-            const int ij  = n;
-            const int ijk = n + k*kk;
-            fftini[ij] = tmp1[ijk];
-        }
-
-        fftw_execute(iplanf);
-
-#pragma ivdep
-        for (int n=0; n<itot*jmax; n++)
-        {
-            const int ij  = n;
-            const int ijk = n + k*kk;
-            tmp1[ijk] = fftouti[ij];
-        }
-    }
-
-    // transpose again
-    transpose_xy(data,tmp1);
-
-    kk = iblock*jtot;
-
-    // do the second fourier transform
-    for (int k=0; k<kblock; k++)
-    {
-#pragma ivdep
-        for (int n=0; n<iblock*jtot; n++)
-        {
-            const int ij  = n;
-            const int ijk = n + k*kk;
-            fftinj[ij] = data[ijk];
-        }
-
-        fftw_execute(jplanf);
-
-#pragma ivdep
-        for (int n=0; n<iblock*jtot; n++)
-        {
-            const int ij  = n;
-            const int ijk = n + k*kk;
-            // shift to use p in pressure solver
-            tmp1[ijk] = fftoutj[ij];
-        }
-    }
-
-    // transpose back to original orientation
-    transpose_yz(data,tmp1);
-}
-
-void Grid::fft_backward(double* restrict data,   double* restrict tmp1,
-                        double* restrict fftini, double* restrict fftouti,
-                        double* restrict fftinj, double* restrict fftoutj)
-{
-    // transpose back to y
-    transpose_zy(tmp1, data);
-
-    int kk = iblock*jtot;
-
-    // transform the second transform back
-    for (int k=0; k<kblock; k++)
-    {
-#pragma ivdep
-        for (int n=0; n<iblock*jtot; n++)
-        {
-            const int ij  = n;
-            const int ijk = n + k*kk;
-            fftinj[ij] = tmp1[ijk];
-        }
-
-        fftw_execute(jplanb);
-
-#pragma ivdep
-        for (int n=0; n<iblock*jtot; n++)
-        {
-            const int ij  = n;
-            const int ijk = n + k*kk;
-            data[ijk] = fftoutj[ij] / jtot;
-        }
-    }
-
-    // transpose back to x
-    transpose_yx(tmp1, data);
-
-    kk = itot*jmax;
-
-    // transform the first transform back
-    for (int k=0; k<kblock; k++)
-    {
-#pragma ivdep
-        for (int n=0; n<itot*jmax; n++)
-        {
-            const int ij  = n;
-            const int ijk = n + k*kk;
-            fftini[ij] = tmp1[ijk];
-        }
-
-        fftw_execute(iplanb);
-
-#pragma ivdep
-        for (int n=0; n<itot*jmax; n++)
-        {
-            const int ij  = n;
-            const int ijk = n + k*kk;
-            // swap array here to avoid unnecessary 3d loop
-            data[ijk] = fftouti[ij] / itot;
-        }
-    }
-
-    // and transpose back...
-    transpose_xz(tmp1, data);
-}
-
-int Grid::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
-{
-    // extract the data from the 3d field without the ghost cells
-    int nerror=0;
-
-    const int jj  = icells;
-    const int kk  = icells*jcells;
-    const int kkb = imax;
-
-    int count = imax*kmax;
-
-    for (int k=0; k<kmax; k++)
-#pragma ivdep
-        for (int i=0; i<imax; i++)
-        {
-            // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = i+igc + ((jslice%jmax)+jgc)*jj + (k+kgc)*kk;
-            const int ijkb = i + k*kkb;
-            tmp[ijkb] = data[ijk];
-        }
-
-    if (master->mpicoordy == jslice/jmax)
-    {
-        MPI_File fh;
-        if (MPI_File_open(master->commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-            ++nerror;
-
-        // select noncontiguous part of 3d array to store the selected data
-        MPI_Offset fileoff = 0; // the offset within the file (header size)
-        char name[] = "native";
-
-        if (!nerror)
-            if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
-                ++nerror;
-
-        // only write at the procs that contain the slice
-        if (!nerror)
-            if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-                ++nerror;
-
-        if (!nerror)
-            MPI_File_sync(fh);
-
-        if (!nerror)
-            if (MPI_File_close(&fh))
-                ++nerror;
-    }
-
-    // Gather errors from other processes
-    master->sum(&nerror,1);
-
-    MPI_Barrier(master->commxy);
-
-    return nerror;
-}
-
-int Grid::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
-{
-    // extract the data from the 3d field without the ghost cells
-    int nerror=0;
-
-    const int jj = icells;
-    const int kk = ijcells;
-
-    const int kkb = jmax;
-
-    int count = jmax*kmax;
-
-    // Strip off the ghost cells
-    for (int k=0; k<kmax; k++)
-        #pragma ivdep
-        for (int j=0; j<jmax; j++)
-        {
-            // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = (islice%imax)+igc + (j+jgc)*jj + (k+kgc)*kk;
-            const int ijkb = j + k*kkb;
-            tmp[ijkb] = data[ijk];
-        }
-
-    if (master->mpicoordx == islice/imax)
-    {
-        MPI_File fh;
-        if (MPI_File_open(master->commy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-            ++nerror;
-
-        // select noncontiguous part of 3d array to store the selected data
-        MPI_Offset fileoff = 0; // the offset within the file (header size)
-        char name[] = "native";
-
-        if (!nerror)
-            if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subyzslice, name, MPI_INFO_NULL))
-                ++nerror;
-
-        // only write at the procs that contain the slice
-        if (!nerror)
-            if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-                ++nerror;
-
-        if (!nerror)
-            MPI_File_sync(fh);
-
-        if (!nerror)
-            if (MPI_File_close(&fh))
-                ++nerror;
-    }
-
-    // Gather errors from other processes
-    master->sum(&nerror,1);
-
-    MPI_Barrier(master->commxy);
-
-    return nerror;
-}
-
-int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
-{
-    // extract the data from the 3d field without the ghost cells
-    const int jj  = icells;
-    const int kk  = icells*jcells;
-    const int jjb = imax;
-
-    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
-    if (kslice == -1)
-        kslice = -kgc;
-
-    int count = imax*jmax;
-
-    for (int j=0; j<jmax; j++)
-#pragma ivdep
-        for (int i=0; i<imax; i++)
-        {
-            // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
-            const int ijkb = i + j*jjb;
-            tmp[ijkb] = data[ijk];
-        }
-
-    MPI_File fh;
-    if (MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
-        return 1;
-
-    // select noncontiguous part of 3d array to store the selected data
-    MPI_Offset fileoff = 0; // the offset within the file (header size)
-    char name[] = "native";
-
-    if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
-        return 1;
-
-    // only write at the procs that contain the slice
-    if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-        return 1;
-
-    MPI_File_sync(fh);
-
-    if (MPI_File_close(&fh))
-        return 1;
-
-    MPI_Barrier(master->commxy);
-
-    return 0;
-}
-
-int Grid::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
-{
-    // extract the data from the 3d field without the ghost cells
-    const int jj  = icells;
-    const int kk  = icells*jcells;
-    const int jjb = imax;
-
-    // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
-    if (kslice == -1)
-        kslice = -kgc;
-
-    int count = imax*jmax;
-
-    MPI_File fh;
-    if (MPI_File_open(master->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
-        return 1;
-
-    // select noncontiguous part of 3d array to store the selected data
-    MPI_Offset fileoff = 0; // the offset within the file (header size)
-    char name[] = "native";
-
-    if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
-        return 1;
-
-    // only write at the procs that contain the slice
-    if (MPI_File_read_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
-        return 1;
-
-    if (MPI_File_close(&fh))
-        return 1;
-
-    MPI_Barrier(master->commxy);
-
-    for (int j=0; j<jmax; j++)
-#pragma ivdep
-        for (int i=0; i<imax; i++)
-        {
-            // take the modulus of jslice and jmax to have the right offset within proc
-            const int ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
-            const int ijkb = i + j*jjb;
-            data[ijk] = tmp[ijkb];
-        }
-
-    return 0;
-}
+// template<typename TF>
+// int Grid<TF>::save_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
+// {
+//     // save the data in transposed order to have large chunks of contiguous disk space
+//     // MPI-IO is not stable on Juqueen and supermuc otherwise
+// 
+//     // extract the data from the 3d field without the ghost cells
+//     const int jj  = icells;
+//     const int kk  = icells*jcells;
+//     const int jjb = imax;
+//     const int kkb = imax*jmax;
+// 
+//     int count = imax*jmax*kmax;
+// 
+//     for (int k=0; k<kmax; k++)
+//         for (int j=0; j<jmax; j++)
+// #pragma ivdep
+//             for (int i=0; i<imax; i++)
+//             {
+//                 const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+//                 const int ijkb = i + j*jjb + k*kkb;
+//                 tmp1[ijkb] = data[ijk] + offset;
+//             }
+// 
+//     transpose_zx(tmp2, tmp1);
+// 
+//     MPI_File fh;
+//     if (MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+//         return 1;
+// 
+//     // select noncontiguous part of 3d array to store the selected data
+//     MPI_Offset fileoff = 0; // the offset within the file (header size)
+//     char name[] = "native";
+// 
+//     if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL))
+//         return 1;
+// 
+//     if (MPI_File_write_all(fh, tmp2, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//         return 1;
+// 
+//     if (MPI_File_close(&fh))
+//         return 1;
+// 
+//     return 0;
+// }
+// 
+// template<typename TF>
+// int Grid<TF>::load_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
+// {
+//     // save the data in transposed order to have large chunks of contiguous disk space
+//     // MPI-IO is not stable on Juqueen and supermuc otherwise
+// 
+//     // read the file
+//     MPI_File fh;
+//     if (MPI_File_open(master->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+//         return 1;
+// 
+//     // select noncontiguous part of 3d array to store the selected data
+//     MPI_Offset fileoff = 0; // the offset within the file (header size)
+//     char name[] = "native";
+//     MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subarray, name, MPI_INFO_NULL);
+// 
+//     // extract the data from the 3d field without the ghost cells
+//     int count = imax*jmax*kmax;
+// 
+//     if (MPI_File_read_all(fh, tmp1, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//         return 1;
+// 
+//     if (MPI_File_close(&fh))
+//         return 1;
+// 
+//     // transpose the data back
+//     transpose_xz(tmp2, tmp1);
+// 
+//     const int jj  = icells;
+//     const int kk  = icells*jcells;
+//     const int jjb = imax;
+//     const int kkb = imax*jmax;
+// 
+//     for (int k=0; k<kmax; k++)
+//         for (int j=0; j<jmax; j++)
+// #pragma ivdep
+//             for (int i=0; i<imax; i++)
+//             {
+//                 const int ijk  = i+igc + (j+jgc)*jj + (k+kgc)*kk;
+//                 const int ijkb = i + j*jjb + k*kkb;
+//                 data[ijk] = tmp2[ijkb] - offset;
+//             }
+// 
+//     return 0;
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::fft_forward(double* restrict data,   double* restrict tmp1,
+//                        double* restrict fftini, double* restrict fftouti,
+//                        double* restrict fftinj, double* restrict fftoutj)
+// {
+//     // transpose the pressure field
+//     transpose_zx(tmp1,data);
+// 
+//     int kk = itot*jmax;
+// 
+//     // process the fourier transforms slice by slice
+//     for (int k=0; k<kblock; k++)
+//     {
+// #pragma ivdep
+//         for (int n=0; n<itot*jmax; n++)
+//         {
+//             const int ij  = n;
+//             const int ijk = n + k*kk;
+//             fftini[ij] = tmp1[ijk];
+//         }
+// 
+//         fftw_execute(iplanf);
+// 
+// #pragma ivdep
+//         for (int n=0; n<itot*jmax; n++)
+//         {
+//             const int ij  = n;
+//             const int ijk = n + k*kk;
+//             tmp1[ijk] = fftouti[ij];
+//         }
+//     }
+// 
+//     // transpose again
+//     transpose_xy(data,tmp1);
+// 
+//     kk = iblock*jtot;
+// 
+//     // do the second fourier transform
+//     for (int k=0; k<kblock; k++)
+//     {
+// #pragma ivdep
+//         for (int n=0; n<iblock*jtot; n++)
+//         {
+//             const int ij  = n;
+//             const int ijk = n + k*kk;
+//             fftinj[ij] = data[ijk];
+//         }
+// 
+//         fftw_execute(jplanf);
+// 
+// #pragma ivdep
+//         for (int n=0; n<iblock*jtot; n++)
+//         {
+//             const int ij  = n;
+//             const int ijk = n + k*kk;
+//             // shift to use p in pressure solver
+//             tmp1[ijk] = fftoutj[ij];
+//         }
+//     }
+// 
+//     // transpose back to original orientation
+//     transpose_yz(data,tmp1);
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::fft_backward(double* restrict data,   double* restrict tmp1,
+//                         double* restrict fftini, double* restrict fftouti,
+//                         double* restrict fftinj, double* restrict fftoutj)
+// {
+//     // transpose back to y
+//     transpose_zy(tmp1, data);
+// 
+//     int kk = iblock*jtot;
+// 
+//     // transform the second transform back
+//     for (int k=0; k<kblock; k++)
+//     {
+// #pragma ivdep
+//         for (int n=0; n<iblock*jtot; n++)
+//         {
+//             const int ij  = n;
+//             const int ijk = n + k*kk;
+//             fftinj[ij] = tmp1[ijk];
+//         }
+// 
+//         fftw_execute(jplanb);
+// 
+// #pragma ivdep
+//         for (int n=0; n<iblock*jtot; n++)
+//         {
+//             const int ij  = n;
+//             const int ijk = n + k*kk;
+//             data[ijk] = fftoutj[ij] / jtot;
+//         }
+//     }
+// 
+//     // transpose back to x
+//     transpose_yx(tmp1, data);
+// 
+//     kk = itot*jmax;
+// 
+//     // transform the first transform back
+//     for (int k=0; k<kblock; k++)
+//     {
+// #pragma ivdep
+//         for (int n=0; n<itot*jmax; n++)
+//         {
+//             const int ij  = n;
+//             const int ijk = n + k*kk;
+//             fftini[ij] = tmp1[ijk];
+//         }
+// 
+//         fftw_execute(iplanb);
+// 
+// #pragma ivdep
+//         for (int n=0; n<itot*jmax; n++)
+//         {
+//             const int ij  = n;
+//             const int ijk = n + k*kk;
+//             // swap array here to avoid unnecessary 3d loop
+//             data[ijk] = fftouti[ij] / itot;
+//         }
+//     }
+// 
+//     // and transpose back...
+//     transpose_xz(tmp1, data);
+// }
+// 
+// template<typename TF>
+// int Grid<TF>::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
+// {
+//     // extract the data from the 3d field without the ghost cells
+//     int nerror=0;
+// 
+//     const int jj  = icells;
+//     const int kk  = icells*jcells;
+//     const int kkb = imax;
+// 
+//     int count = imax*kmax;
+// 
+//     for (int k=0; k<kmax; k++)
+// #pragma ivdep
+//         for (int i=0; i<imax; i++)
+//         {
+//             // take the modulus of jslice and jmax to have the right offset within proc
+//             const int ijk  = i+igc + ((jslice%jmax)+jgc)*jj + (k+kgc)*kk;
+//             const int ijkb = i + k*kkb;
+//             tmp[ijkb] = data[ijk];
+//         }
+// 
+//     if (master->mpicoordy == jslice/jmax)
+//     {
+//         MPI_File fh;
+//         if (MPI_File_open(master->commx, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+//             ++nerror;
+// 
+//         // select noncontiguous part of 3d array to store the selected data
+//         MPI_Offset fileoff = 0; // the offset within the file (header size)
+//         char name[] = "native";
+// 
+//         if (!nerror)
+//             if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxzslice, name, MPI_INFO_NULL))
+//                 ++nerror;
+// 
+//         // only write at the procs that contain the slice
+//         if (!nerror)
+//             if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//                 ++nerror;
+// 
+//         if (!nerror)
+//             MPI_File_sync(fh);
+// 
+//         if (!nerror)
+//             if (MPI_File_close(&fh))
+//                 ++nerror;
+//     }
+// 
+//     // Gather errors from other processes
+//     master->sum(&nerror,1);
+// 
+//     MPI_Barrier(master->commxy);
+// 
+//     return nerror;
+// }
+// 
+// template<typename TF>
+// int Grid<TF>::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
+// {
+//     // extract the data from the 3d field without the ghost cells
+//     int nerror=0;
+// 
+//     const int jj = icells;
+//     const int kk = ijcells;
+// 
+//     const int kkb = jmax;
+// 
+//     int count = jmax*kmax;
+// 
+//     // Strip off the ghost cells
+//     for (int k=0; k<kmax; k++)
+//         #pragma ivdep
+//         for (int j=0; j<jmax; j++)
+//         {
+//             // take the modulus of jslice and jmax to have the right offset within proc
+//             const int ijk  = (islice%imax)+igc + (j+jgc)*jj + (k+kgc)*kk;
+//             const int ijkb = j + k*kkb;
+//             tmp[ijkb] = data[ijk];
+//         }
+// 
+//     if (master->mpicoordx == islice/imax)
+//     {
+//         MPI_File fh;
+//         if (MPI_File_open(master->commy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+//             ++nerror;
+// 
+//         // select noncontiguous part of 3d array to store the selected data
+//         MPI_Offset fileoff = 0; // the offset within the file (header size)
+//         char name[] = "native";
+// 
+//         if (!nerror)
+//             if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subyzslice, name, MPI_INFO_NULL))
+//                 ++nerror;
+// 
+//         // only write at the procs that contain the slice
+//         if (!nerror)
+//             if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//                 ++nerror;
+// 
+//         if (!nerror)
+//             MPI_File_sync(fh);
+// 
+//         if (!nerror)
+//             if (MPI_File_close(&fh))
+//                 ++nerror;
+//     }
+// 
+//     // Gather errors from other processes
+//     master->sum(&nerror,1);
+// 
+//     MPI_Barrier(master->commxy);
+// 
+//     return nerror;
+// }
+// 
+// template<typename TF>
+// int Grid<TF>::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
+// {
+//     // extract the data from the 3d field without the ghost cells
+//     const int jj  = icells;
+//     const int kk  = icells*jcells;
+//     const int jjb = imax;
+// 
+//     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
+//     if (kslice == -1)
+//         kslice = -kgc;
+// 
+//     int count = imax*jmax;
+// 
+//     for (int j=0; j<jmax; j++)
+// #pragma ivdep
+//         for (int i=0; i<imax; i++)
+//         {
+//             // take the modulus of jslice and jmax to have the right offset within proc
+//             const int ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
+//             const int ijkb = i + j*jjb;
+//             tmp[ijkb] = data[ijk];
+//         }
+// 
+//     MPI_File fh;
+//     if (MPI_File_open(master->commxy, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY | MPI_MODE_EXCL, MPI_INFO_NULL, &fh))
+//         return 1;
+// 
+//     // select noncontiguous part of 3d array to store the selected data
+//     MPI_Offset fileoff = 0; // the offset within the file (header size)
+//     char name[] = "native";
+// 
+//     if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+//         return 1;
+// 
+//     // only write at the procs that contain the slice
+//     if (MPI_File_write_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//         return 1;
+// 
+//     MPI_File_sync(fh);
+// 
+//     if (MPI_File_close(&fh))
+//         return 1;
+// 
+//     MPI_Barrier(master->commxy);
+// 
+//     return 0;
+// }
+// 
+// template<typename TF>
+// int Grid<TF>::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
+// {
+//     // extract the data from the 3d field without the ghost cells
+//     const int jj  = icells;
+//     const int kk  = icells*jcells;
+//     const int jjb = imax;
+// 
+//     // Subtract the ghost cells in case of a pure 2d plane that does not have ghost cells.
+//     if (kslice == -1)
+//         kslice = -kgc;
+// 
+//     int count = imax*jmax;
+// 
+//     MPI_File fh;
+//     if (MPI_File_open(master->commxy, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh))
+//         return 1;
+// 
+//     // select noncontiguous part of 3d array to store the selected data
+//     MPI_Offset fileoff = 0; // the offset within the file (header size)
+//     char name[] = "native";
+// 
+//     if (MPI_File_set_view(fh, fileoff, MPI_DOUBLE, subxyslice, name, MPI_INFO_NULL))
+//         return 1;
+// 
+//     // only write at the procs that contain the slice
+//     if (MPI_File_read_all(fh, tmp, count, MPI_DOUBLE, MPI_STATUS_IGNORE))
+//         return 1;
+// 
+//     if (MPI_File_close(&fh))
+//         return 1;
+// 
+//     MPI_Barrier(master->commxy);
+// 
+//     for (int j=0; j<jmax; j++)
+// #pragma ivdep
+//         for (int i=0; i<imax; i++)
+//         {
+//             // take the modulus of jslice and jmax to have the right offset within proc
+//             const int ijk  = i+igc + (j+jgc)*jj + (kslice+kgc)*kk;
+//             const int ijkb = i + j*jjb;
+//             data[ijk] = tmp[ijkb];
+//         }
+// 
+//     return 0;
+// }
+
+template class Grid<double>;
 #endif
