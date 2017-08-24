@@ -31,16 +31,14 @@
 #include "finite_difference.h"
 #include "model.h"
 
-#include <iostream> // REMOVE ME BvS
-
 /**
  * This function constructs the grid class.
  * @param modelin Pointer to the model class.
  * @param inputin Pointer to the input class.
  */
-Grid::Grid(Model *modelin, Input *inputin)
+Grid::Grid(Master* masterin, Input *inputin)
 {
-    master = modelin->master;
+    master = masterin;
 
     mpitypes  = false;
     fftwplan  = false;

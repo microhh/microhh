@@ -28,19 +28,6 @@
 class Master;
 class Input;
 class Grid;
-class Fields;
-class Boundary;
-class Timeloop;
-class Advec;
-class Diff;
-class Pres;
-class Force;
-class Thermo;
-class Buffer;
-class Stats;
-class Cross;
-class Dump;
-class Budget;
 
 class Model
 {
@@ -53,35 +40,12 @@ class Model
         void save();
         void exec();
 
-        // Make the pointers public for use in other classes.
-        // TODO maybe it is safer to create get functions
+    private:
         Master* master;
         Input*  input;
         Grid*   grid;
-        Fields* fields;
-
-        // Model operators.
-        Boundary* boundary;
-        Timeloop* timeloop;
-        Advec*    advec;
-        Diff*     diff;
-        Pres*     pres;  
-        Force*    force;   
-        Thermo*   thermo;
-        Buffer*   buffer;
-
-        // Postprocessing and output modules.
-        Stats*  stats;
-        Cross*  cross;
-        Dump*   dump;
-        Budget* budget;
-
-    private:
-        // list of masks for statistics
-        std::vector<std::string> masklist;
 
         void delete_objects();
-
         void print_status();
         void calc_stats(std::string);
         void set_time_step();

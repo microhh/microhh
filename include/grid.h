@@ -27,10 +27,10 @@
 #include <mpi.h>
 #endif
 #include <fftw3.h>
-#include "input.h"
+#include <string>
 
-class Model;
 class Master;
+class Input;
 
 enum Edge {East_west_edge, North_south_edge, Both_edges};
 
@@ -44,8 +44,8 @@ enum Edge {East_west_edge, North_south_edge, Both_edges};
 class Grid
 {
     public:
-        Grid(Model*, Input*); ///< Constructor of the grid class.
-        ~Grid();              ///< Destructor of the grid class.
+        Grid(Master*, Input*); ///< Constructor of the grid class.
+        ~Grid();               ///< Destructor of the grid class.
 
         void init();         ///< Initialization of the grid arrays.
         void create(Input*); ///< Creation of the grid data.
