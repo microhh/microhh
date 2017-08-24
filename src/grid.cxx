@@ -59,15 +59,6 @@ Grid<TF>::Grid(Master* masterin, Input *inputin)
     dzi4  = 0;
     dzhi4 = 0;
 
-    z_g     = 0;
-    zh_g    = 0;
-    dz_g    = 0;
-    dzh_g   = 0;
-    dzi_g   = 0;
-    dzhi_g  = 0;
-    dzi4_g  = 0;
-    dzhi4_g = 0;
-
     fftini  = 0;
     fftouti = 0;
     fftinj  = 0;
@@ -452,91 +443,91 @@ void Grid<TF>::set_minimum_ghost_cells(const int igcin, const int jgcin, const i
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-template<typename TF>
-void Grid<TF>::interpolate_2nd(double* const restrict out, const double* const restrict in, const int locin[3], const int locout[3])
-{
-    const int ii = 1;
-    const int jj = icells;
-    const int kk = ijcells;
-
-    const int iih = (locin[0]-locout[0])*ii;
-    const int jjh = (locin[1]-locout[1])*jj;
-
-    // interpolate the field
-    // \TODO add the vertical component
-    for (int k=0; k<kcells; ++k)
-        for (int j=jstart; j<jend; ++j)
-#pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
-                         + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
-            }
-}
-
-/**
- * This function does a fourth order horizontal interpolation in the x-direction
- * to the selected location on the grid.
- * @param out Pointer to the output field.
- * @param in Pointer to the input field.
- * @param locx Integer containing the location of the input field,
- * where a value of 1 refers to the flux level.
- */
-template<typename TF>
-void Grid<TF>::interpolate_4th(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
-{
-    using namespace Finite_difference::O4;
-
-    // interpolation function, locx = 1 indicates that the reference is at the half level
-    const int ii = 1;
-    const int jj = icells;
-    const int kk = ijcells;
-
-    // a shift to the left gives minus 1 a shift to the right +1
-    const int iih1 = 1*(locin[0]-locout[0])*ii;
-    const int iih2 = 2*(locin[0]-locout[0])*ii;
-    const int jjh1 = 1*(locin[1]-locout[1])*jj;
-    const int jjh2 = 2*(locin[1]-locout[1])*jj;
-
-    // \TODO add the vertical component
-    for (int k=0; k<kcells; ++k)
-        for (int j=jstart; j<jend; ++j)
-#pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ijk = i + j*jj + k*kk;
-                out[ijk] = ci0*(ci0*in[ijk-iih1-jjh1] + ci1*in[ijk-jjh1] + ci2*in[ijk+iih1-jjh1] + ci3*in[ijk+iih2-jjh1])
-                         + ci1*(ci0*in[ijk-iih1     ] + ci1*in[ijk     ] + ci2*in[ijk+iih1     ] + ci3*in[ijk+iih2     ])
-                         + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
-                         + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
-            }
-}
-
-template<typename TF>
-void Grid<TF>::calc_mean(double* restrict prof, const double* restrict data, const int krange)
-{
-    const int jj = icells;
-    const int kk = ijcells;
-
-    for (int k=0; k<krange; ++k)
-    {
-        prof[k] = 0.;
-        for (int j=jstart; j<jend; ++j)
-#pragma ivdep
-            for (int i=istart; i<iend; ++i)
-            {
-                const int ijk  = i + j*jj + k*kk;
-                prof[k] += data[ijk];
-            }
-    }
-
-    master->sum(prof, krange);
-
-    const double n = itot*jtot;
-
-    for (int k=0; k<krange; ++k)
-        prof[k] /= n;
-}
+// template<typename TF>
+// void Grid<TF>::interpolate_2nd(double* const restrict out, const double* const restrict in, const int locin[3], const int locout[3])
+// {
+//     const int ii = 1;
+//     const int jj = icells;
+//     const int kk = ijcells;
+// 
+//     const int iih = (locin[0]-locout[0])*ii;
+//     const int jjh = (locin[1]-locout[1])*jj;
+// 
+//     // interpolate the field
+//     // \TODO add the vertical component
+//     for (int k=0; k<kcells; ++k)
+//         for (int j=jstart; j<jend; ++j)
+// #pragma ivdep
+//             for (int i=istart; i<iend; ++i)
+//             {
+//                 const int ijk = i + j*jj + k*kk;
+//                 out[ijk] = 0.5*(0.5*in[ijk    ] + 0.5*in[ijk+iih    ])
+//                          + 0.5*(0.5*in[ijk+jjh] + 0.5*in[ijk+iih+jjh]);
+//             }
+// }
+// 
+// /**
+//  * This function does a fourth order horizontal interpolation in the x-direction
+//  * to the selected location on the grid.
+//  * @param out Pointer to the output field.
+//  * @param in Pointer to the input field.
+//  * @param locx Integer containing the location of the input field,
+//  * where a value of 1 refers to the flux level.
+//  */
+// template<typename TF>
+// void Grid<TF>::interpolate_4th(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
+// {
+//     using namespace Finite_difference::O4;
+// 
+//     // interpolation function, locx = 1 indicates that the reference is at the half level
+//     const int ii = 1;
+//     const int jj = icells;
+//     const int kk = ijcells;
+// 
+//     // a shift to the left gives minus 1 a shift to the right +1
+//     const int iih1 = 1*(locin[0]-locout[0])*ii;
+//     const int iih2 = 2*(locin[0]-locout[0])*ii;
+//     const int jjh1 = 1*(locin[1]-locout[1])*jj;
+//     const int jjh2 = 2*(locin[1]-locout[1])*jj;
+// 
+//     // \TODO add the vertical component
+//     for (int k=0; k<kcells; ++k)
+//         for (int j=jstart; j<jend; ++j)
+// #pragma ivdep
+//             for (int i=istart; i<iend; ++i)
+//             {
+//                 const int ijk = i + j*jj + k*kk;
+//                 out[ijk] = ci0*(ci0*in[ijk-iih1-jjh1] + ci1*in[ijk-jjh1] + ci2*in[ijk+iih1-jjh1] + ci3*in[ijk+iih2-jjh1])
+//                          + ci1*(ci0*in[ijk-iih1     ] + ci1*in[ijk     ] + ci2*in[ijk+iih1     ] + ci3*in[ijk+iih2     ])
+//                          + ci2*(ci0*in[ijk-iih1+jjh1] + ci1*in[ijk+jjh1] + ci2*in[ijk+iih1+jjh1] + ci3*in[ijk+iih2+jjh1])
+//                          + ci3*(ci0*in[ijk-iih1+jjh2] + ci1*in[ijk+jjh2] + ci2*in[ijk+iih1+jjh2] + ci3*in[ijk+iih2+jjh2]);
+//             }
+// }
+// 
+// template<typename TF>
+// void Grid<TF>::calc_mean(double* restrict prof, const double* restrict data, const int krange)
+// {
+//     const int jj = icells;
+//     const int kk = ijcells;
+// 
+//     for (int k=0; k<krange; ++k)
+//     {
+//         prof[k] = 0.;
+//         for (int j=jstart; j<jend; ++j)
+// #pragma ivdep
+//             for (int i=istart; i<iend; ++i)
+//             {
+//                 const int ijk  = i + j*jj + k*kk;
+//                 prof[k] += data[ijk];
+//             }
+//     }
+// 
+//     master->sum(prof, krange);
+// 
+//     const double n = itot*jtot;
+// 
+//     for (int k=0; k<krange; ++k)
+//         prof[k] /= n;
+// }
 
 template class Grid<double>;

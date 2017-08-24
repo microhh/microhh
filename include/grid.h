@@ -118,29 +118,30 @@ class Grid
         // MPI functions
         void init_mpi(); ///< Creates the MPI data types used in grid operations.
         void exit_mpi(); ///< Destructs the MPI data types used in grid operations.
-        void boundary_cyclic   (double*, Edge=Both_edges); ///< Fills the ghost cells in the periodic directions.
-        void boundary_cyclic_2d(double*); ///< Fills the ghost cells of one slice in the periodic direction.
-        void transpose_zx(double*, double*); ///< Changes the transpose orientation from z to x.
-        void transpose_xz(double*, double*); ///< Changes the transpose orientation from x to z.
-        void transpose_xy(double*, double*); ///< changes the transpose orientation from x to y.
-        void transpose_yx(double*, double*); ///< Changes the transpose orientation from y to x.
-        void transpose_yz(double*, double*); ///< Changes the transpose orientation from y to z.
-        void transpose_zy(double*, double*); ///< Changes the transpose orientation from z to y.
 
-        void get_max (double*);      ///< Gets the maximum of a number over all processes.
-        void get_max (int*);         ///< Gets the maximum of a number over all processes.
-        void get_sum (double*);      ///< Gets the sum of a number over all processes.
-        void get_prof(double*, int); ///< Averages a vertical profile over all processes.
-        void calc_mean(double*, const double*, int);
+        // void boundary_cyclic   (double*, Edge=Both_edges); ///< Fills the ghost cells in the periodic directions.
+        // void boundary_cyclic_2d(double*); ///< Fills the ghost cells of one slice in the periodic direction.
+        // void transpose_zx(double*, double*); ///< Changes the transpose orientation from z to x.
+        // void transpose_xz(double*, double*); ///< Changes the transpose orientation from x to z.
+        // void transpose_xy(double*, double*); ///< changes the transpose orientation from x to y.
+        // void transpose_yx(double*, double*); ///< Changes the transpose orientation from y to x.
+        // void transpose_yz(double*, double*); ///< Changes the transpose orientation from y to z.
+        // void transpose_zy(double*, double*); ///< Changes the transpose orientation from z to y.
+
+        // void get_max (double*);      ///< Gets the maximum of a number over all processes.
+        // void get_max (int*);         ///< Gets the maximum of a number over all processes.
+        // void get_sum (double*);      ///< Gets the sum of a number over all processes.
+        // void get_prof(double*, int); ///< Averages a vertical profile over all processes.
+        // void calc_mean(double*, const double*, int);
 
         // IO functions
-        int save_field3d(double*, double*, double*, char*, double); ///< Saves a full 3d field.
-        int load_field3d(double*, double*, double*, char*, double); ///< Loads a full 3d field.
+        // int save_field3d(double*, double*, double*, char*, double); ///< Saves a full 3d field.
+        // int load_field3d(double*, double*, double*, char*, double); ///< Loads a full 3d field.
 
-        int save_xz_slice(double*, double*, char*, int);           ///< Saves a xz-slice from a 3d field.
-        int save_yz_slice(double*, double*, char*, int);           ///< Saves a yz-slice from a 3d field.
-        int save_xy_slice(double*, double*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
-        int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
+        // int save_xz_slice(double*, double*, char*, int);           ///< Saves a xz-slice from a 3d field.
+        // int save_yz_slice(double*, double*, char*, int);           ///< Saves a yz-slice from a 3d field.
+        // int save_xy_slice(double*, double*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
+        // int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
 
         // Fourier tranforms
         double*fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
@@ -148,39 +149,14 @@ class Grid
         fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
         fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
+        /*
         void fft_forward (double*, double*, double*, double*, double*, double*); ///< Forward fast-fourier transform.
         void fft_backward(double*, double*, double*, double*, double*, double*); ///< Backward fast-fourier transform.
 
         // interpolation functions
         void interpolate_2nd(double*, const double*, const int[3], const int[3]); ///< Second order interpolation
         void interpolate_4th(double*, double*, const int[3], const int[3]); ///< Fourth order interpolation
-
-        // GPU functions and variables
-        int ithread_block; ///< Number of grid cells in the x-direction for GPU thread block.
-        int jthread_block; ///< Number of grid cells in the y-direction for GPU thread block.
-
-        double* z_g;
-        double* zh_g;
-        double* dz_g;
-        double* dzh_g;
-        double* dzi_g;
-        double* dzhi_g;
-        double* dzi4_g;
-        double* dzhi4_g;
-
-        void prepare_device();                          ///< Load the arrays onto the GPU
-        void clear_device();                            ///< Deallocate the arrays onto the GPU
-        void boundary_cyclic_g(double*);               ///< Fills the ghost cells in the periodic directions.
-        void boundary_cyclic2d_g(double*);             ///< Fills the ghost cells of one slice in the periodic directions.
-        double get_max_g(double*, double*);           ///< Get maximum value from field at GPU
-        double get_sum_g(double*, double*);           ///< Get summed value from field at GPU
-        void calc_mean_g(double*, double*, double*); ///< Get mean profile from field at GPU
-
-        // Extra variables for aligning global memory on GPU
-        int memoffset;
-        int icellsp;
-        int ijcellsp;
-        int ncellsp;
+        */
 
     private:
         Master* master; ///< Pointer to master class.
@@ -190,7 +166,7 @@ class Grid
         void calculate(); ///< Computation of dimensions, faces and ghost cells.
         void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
 
-#ifdef USEMPI
+        #ifdef USEMPI
         // MPI Datatypes
         MPI_Datatype eastwestedge;     ///< MPI datatype containing the ghostcells at the east-west sides.
         MPI_Datatype northsouthedge;   ///< MPI datatype containing the ghostcells at the north-south sides.
@@ -210,8 +186,6 @@ class Grid
         MPI_Datatype subxzslice; ///< MPI datatype containing only one xz-slice.
         MPI_Datatype subyzslice; ///< MPI datatype containing only one yz-slice.
         MPI_Datatype subxyslice; ///< MPI datatype containing only one xy-slice.
-
-        // TF* profl; ///< Help array used in profile writing.
-#endif
+        #endif
 };
 #endif
