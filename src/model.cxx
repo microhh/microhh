@@ -32,7 +32,8 @@
 #endif
 
 // In the constructor all classes are initialized and their input is read.
-Model::Model(Master *masterin, Input *inputin)
+template<typename TF>
+Model<TF>::Model(Master *masterin, Input *inputin)
 {
     master = masterin;
     input  = inputin;
@@ -45,7 +46,7 @@ Model::Model(Master *masterin, Input *inputin)
         int nerror = 0;
 
         // Create an instance of the Grid class.
-        grid = new Grid(master, input);
+        grid = new Grid<double>(master, input);
 
         // if one or more arguments fails, then crash
         if (nerror > 0)
@@ -60,33 +61,38 @@ Model::Model(Master *masterin, Input *inputin)
 }
 
 // In this function all instances of objects are deleted and the memory is freed.
-void Model::delete_objects()
+template<typename TF>
+void Model<TF>::delete_objects()
 {
     // Delete the components in reversed order.
     delete grid;
 }
 
 // In the destructor the deletion of all class instances is triggered.
-Model::~Model()
+template<typename TF>
+Model<TF>::~Model()
 {
     delete_objects();
 }
 
 // In the init stage all class individual settings are known and the dynamic arrays are allocated.
-void Model::init()
+template<typename TF>
+void Model<TF>::init()
 {
     grid->init();
 }
 
 // In these functions data necessary to start the model is loaded from disk.
-void Model::load()
+template<typename TF>
+void Model<TF>::load()
 {
     // First load the grid and time to make their information available.
     grid->load();
 }
 
 // In these functions data necessary to start the model is saved to disk.
-void Model::save()
+template<typename TF>
+void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
     grid->create(input);
@@ -95,21 +101,27 @@ void Model::save()
     grid->save();
 }
 
-void Model::exec()
+template<typename TF>
+void Model<TF>::exec()
 {
     master->print_message("Starting time integration\n");
 }
 
-void Model::set_time_step()
+template<typename TF>
+void Model<TF>::set_time_step()
 {
 }
 
 // Calculate the statistics for all classes that have a statistics function.
-void Model::calc_stats(std::string maskname)
+template<typename TF>
+void Model<TF>::calc_stats(std::string maskname)
 {
 }
 
 // Print the status information to the .out file.
-void Model::print_status()
+template<typename TF>
+void Model<TF>::print_status()
 {
 }
+
+template class Model<double>;

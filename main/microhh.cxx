@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
         Input input(&master);
 
         // Initialize the model class.
-        Model model(&master, &input);
+        Model<double> model(&master, &input);
 
         // Initialize the master class.
         master.init(&input);

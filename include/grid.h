@@ -41,6 +41,7 @@ enum Edge {East_west_edge, North_south_edge, Both_edges};
  * in order to interpolate, transpose and save data. The MPI operations that work over multiple
  * processes on the entire grid are contained in this class.
  */
+template<typename TF>
 class Grid
 {
     public:
@@ -82,33 +83,33 @@ class Grid
         int jend;    ///< Index of the last gridpoint+1 in the y-direction.
         int kend;    ///< Index of the last gridpoint+1 in the z-direction.
 
-        double xsize; ///< Size of the domain in the x-direction.
-        double ysize; ///< Size of the domain in the y-direction.
-        double zsize; ///< Size of the domain in the z-direction.
+        TF xsize; ///< Size of the domain in the x-direction.
+        TF ysize; ///< Size of the domain in the y-direction.
+        TF zsize; ///< Size of the domain in the z-direction.
 
-        double dx;     ///< Distance between the center of two grid cell in the x-direction.
-        double dy;     ///< Distance between the center of two grid cell in the y-direction.
-        double dxi;    ///< Reciprocal of dx.
-        double dyi;    ///< Reciprocal of dy.
-        double* dz;    ///< Distance between the center of two grid cell in the z-direction.
-        double* dzh;   ///< Distance between the two grid cell faces in the z-direction.
-        double* dzi;   ///< Reciprocal of dz.
-        double* dzhi;  ///< Reciprocal of dzh.
-        double* dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
-        double* dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
+        TF dx;     ///< Distance between the center of two grid cell in the x-direction.
+        TF dy;     ///< Distance between the center of two grid cell in the y-direction.
+        TF dxi;    ///< Reciprocal of dx.
+        TF dyi;    ///< Reciprocal of dy.
+        TF* dz;    ///< Distance between the center of two grid cell in the z-direction.
+        TF* dzh;   ///< Distance between the two grid cell faces in the z-direction.
+        TF* dzi;   ///< Reciprocal of dz.
+        TF* dzhi;  ///< Reciprocal of dzh.
+        TF* dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
+        TF* dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
 
-        double dzhi4bot;
-        double dzhi4top;
+        TF dzhi4bot;
+        TF dzhi4top;
 
-        double* x;  ///< Grid coordinate of cell center in x-direction.
-        double* y;  ///< Grid coordinate of cell center in y-direction.
-        double* z;  ///< Grid coordinate of cell center in z-direction.
-        double* xh; ///< Grid coordinate of cell faces in x-direction.
-        double* yh; ///< Grid coordinate of cell faces in x-direction.
-        double* zh; ///< Grid coordinate of cell faces in x-direction.
+        TF* x;  ///< Grid coordinate of cell center in x-direction.
+        TF* y;  ///< Grid coordinate of cell center in y-direction.
+        TF* z;  ///< Grid coordinate of cell center in z-direction.
+        TF* xh; ///< Grid coordinate of cell faces in x-direction.
+        TF* yh; ///< Grid coordinate of cell faces in x-direction.
+        TF* zh; ///< Grid coordinate of cell faces in x-direction.
 
-        double utrans; ///< Galilean transformation velocity in x-direction.
-        double vtrans; ///< Galilean transformation velocity in y-direction.
+        TF utrans; ///< Galilean transformation velocity in x-direction.
+        TF vtrans; ///< Galilean transformation velocity in y-direction.
 
         std::string swspatialorder; ///< Default spatial order of the operators to be used on this grid.
 
@@ -210,7 +211,7 @@ class Grid
         MPI_Datatype subyzslice; ///< MPI datatype containing only one yz-slice.
         MPI_Datatype subxyslice; ///< MPI datatype containing only one xy-slice.
 
-        double* profl; ///< Help array used in profile writing.
+        // TF* profl; ///< Help array used in profile writing.
 #endif
 };
 #endif

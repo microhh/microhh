@@ -36,7 +36,8 @@
  * @param modelin Pointer to the model class.
  * @param inputin Pointer to the input class.
  */
-Grid::Grid(Master* masterin, Input *inputin)
+template<typename TF>
+Grid<TF>::Grid(Master* masterin, Input *inputin)
 {
     master = masterin;
 
@@ -113,7 +114,8 @@ Grid::Grid(Master* masterin, Input *inputin)
 /**
  * This function destructs the grid class.
  */
-Grid::~Grid()
+template<typename TF>
+Grid<TF>::~Grid()
 {
     if (fftwplan)
     {
@@ -154,7 +156,8 @@ Grid::~Grid()
  * This function allocates the dynamic arrays in the field class
  * variables and calculates the derived grid indices and dimensions.
  */
-void Grid::init()
+template<typename TF>
+void Grid<TF>::init()
 {
     // Check whether the grid fits the processor configuration.
     if (itot % master->npx != 0)
@@ -245,7 +248,8 @@ void Grid::init()
  * on the profiles in the input file.
  * @param inputin Pointer to the input class.
  */
-void Grid::create(Input *inputin)
+template<typename TF>
+void Grid<TF>::create(Input *inputin)
 {
     // get the grid coordinates from the input
     if (inputin->get_prof(&z[kstart], "z", kmax))
@@ -265,7 +269,8 @@ void Grid::create(Input *inputin)
  * This function calculates the scalars and arrays that contain the information
  * on the grid spacing.
  */
-void Grid::calculate()
+template<typename TF>
+void Grid<TF>::calculate()
 {
     int i,j,k;
 
@@ -401,7 +406,8 @@ void Grid::calculate()
 /**
  * This function checks whether the number of ghost cells does not exceed the slice thickness.
  */
-void Grid::check_ghost_cells()
+template<typename TF>
+void Grid<TF>::check_ghost_cells()
 {
     // Check whether the size per patch is larger than number of ghost cells for 3D runs.
     if (imax < igc)
@@ -426,7 +432,8 @@ void Grid::check_ghost_cells()
  * @param jgc Ghost cells in the y-direction.
  * @param kgc Ghost cells in the z-direction.
  */
-void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int kgcin)
+template<typename TF>
+void Grid<TF>::set_minimum_ghost_cells(const int igcin, const int jgcin, const int kgcin)
 {
     igc = std::max(igc, igcin);
     jgc = std::max(jgc, jgcin);
@@ -445,7 +452,8 @@ void Grid::set_minimum_ghost_cells(const int igcin, const int jgcin, const int k
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate_2nd(double* const restrict out, const double* const restrict in, const int locin[3], const int locout[3])
+template<typename TF>
+void Grid<TF>::interpolate_2nd(double* const restrict out, const double* const restrict in, const int locin[3], const int locout[3])
 {
     const int ii = 1;
     const int jj = icells;
@@ -475,7 +483,8 @@ void Grid::interpolate_2nd(double* const restrict out, const double* const restr
  * @param locx Integer containing the location of the input field,
  * where a value of 1 refers to the flux level.
  */
-void Grid::interpolate_4th(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
+template<typename TF>
+void Grid<TF>::interpolate_4th(double* restrict out, double* restrict in, const int locin[3], const int locout[3])
 {
     using namespace Finite_difference::O4;
 
@@ -504,7 +513,8 @@ void Grid::interpolate_4th(double* restrict out, double* restrict in, const int 
             }
 }
 
-void Grid::calc_mean(double* restrict prof, const double* restrict data, const int krange)
+template<typename TF>
+void Grid<TF>::calc_mean(double* restrict prof, const double* restrict data, const int krange)
 {
     const int jj = icells;
     const int kk = ijcells;
@@ -528,3 +538,5 @@ void Grid::calc_mean(double* restrict prof, const double* restrict data, const i
     for (int k=0; k<krange; ++k)
         prof[k] /= n;
 }
+
+template class Grid<double>;

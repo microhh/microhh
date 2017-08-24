@@ -28,16 +28,19 @@
 #include "defines.h"
 
 // MPI functions
-void Grid::init_mpi()
+template<typename TF>
+void Grid<TF>::init_mpi()
 {
     mpitypes = true;
 } 
 
-void Grid::exit_mpi()
+template<typename TF>
+void Grid<TF>::exit_mpi()
 {
 }
 
-void Grid::boundary_cyclic(double* restrict data, Edge edge)
+template<typename TF>
+void Grid<TF>::boundary_cyclic(double* restrict data, Edge edge)
 {
     const int jj = icells;
     const int kk = icells*jcells;
@@ -110,7 +113,8 @@ void Grid::boundary_cyclic(double* restrict data, Edge edge)
     }
 }
 
-void Grid::boundary_cyclic_2d(double* restrict data)
+template<typename TF>
+void Grid<TF>::boundary_cyclic_2d(double* restrict data)
 {
     const int jj = icells;
 
@@ -171,7 +175,8 @@ void Grid::boundary_cyclic_2d(double* restrict data)
     }
 }
 
-void Grid::transpose_zx(double* restrict ar, double* restrict as)
+template<typename TF>
+void Grid<TF>::transpose_zx(double* restrict ar, double* restrict as)
 {
     const int jj = imax;
     const int kk = imax*jmax;
@@ -186,7 +191,8 @@ void Grid::transpose_zx(double* restrict ar, double* restrict as)
             }
 }
 
-void Grid::transpose_xz(double* restrict ar, double* restrict as)
+template<typename TF>
+void Grid<TF>::transpose_xz(double* restrict ar, double* restrict as)
 {
     const int jj = imax;
     const int kk = imax*jmax;
@@ -201,7 +207,8 @@ void Grid::transpose_xz(double* restrict ar, double* restrict as)
             }
 }
 
-void Grid::transpose_xy(double* restrict ar, double* restrict as)
+template<typename TF>
+void Grid<TF>::transpose_xy(double* restrict ar, double* restrict as)
 {
     const int jj = imax;
     const int kk = imax*jmax;
@@ -216,7 +223,8 @@ void Grid::transpose_xy(double* restrict ar, double* restrict as)
             }
 }
 
-void Grid::transpose_yx(double* restrict ar, double* restrict as)
+template<typename TF>
+void Grid<TF>::transpose_yx(double* restrict ar, double* restrict as)
 {
     const int jj = imax;
     const int kk = imax*jmax;
@@ -231,7 +239,8 @@ void Grid::transpose_yx(double* restrict ar, double* restrict as)
             }
 }
 
-void Grid::transpose_yz(double* restrict ar, double* restrict as)
+template<typename TF>
+void Grid<TF>::transpose_yz(double* restrict ar, double* restrict as)
 {
     const int jj = imax;
     const int kk = imax*jmax;
@@ -246,7 +255,8 @@ void Grid::transpose_yz(double* restrict ar, double* restrict as)
             }
 }
 
-void Grid::transpose_zy(double* restrict ar, double* restrict as)
+template<typename TF>
+void Grid<TF>::transpose_zy(double* restrict ar, double* restrict as)
 {
     const int jj = imax;
     const int kk = imax*jmax;
@@ -261,24 +271,29 @@ void Grid::transpose_zy(double* restrict ar, double* restrict as)
             }
 }
 
-void Grid::get_max(double *var)
+template<typename TF>
+void Grid<TF>::get_max(double *var)
 {
 }
 
-void Grid::get_max(int *var)
+template<typename TF>
+void Grid<TF>::get_max(int *var)
 {
 }
 
-void Grid::get_sum(double *var)
+template<typename TF>
+void Grid<TF>::get_sum(double *var)
 {
 }
 
-void Grid::get_prof(double *prof, int kcellsin)
+template<typename TF>
+void Grid<TF>::get_prof(double *prof, int kcellsin)
 {
 }
 
 // IO functions
-void Grid::save()
+template<typename TF>
+void Grid<TF>::save()
 {
     // SAVE THE GRID
     FILE *pFile;
@@ -343,7 +358,8 @@ void Grid::save()
     }
 }
 
-void Grid::load()
+template<typename TF>
+void Grid<TF>::load()
 {
     // LOAD THE GRID
     FILE *pFile;
@@ -409,7 +425,8 @@ void Grid::load()
     fftw_forget_wisdom();
 }
 
-int Grid::save_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
+template<typename TF>
+int Grid<TF>::save_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
 {
     FILE *pFile;
     pFile = fopen(filename, "wbx");
@@ -442,7 +459,8 @@ int Grid::save_field3d(double* restrict data, double* restrict tmp1, double* res
     return 0;
 }
 
-int Grid::load_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
+template<typename TF>
+int Grid<TF>::load_field3d(double* restrict data, double* restrict tmp1, double* restrict tmp2, char* filename, double offset)
 {
     FILE *pFile;
     pFile = fopen(filename, "rb");
@@ -475,7 +493,8 @@ int Grid::load_field3d(double* restrict data, double* restrict tmp1, double* res
     return 0;
 }
 
-void Grid::fft_forward(double* restrict data,   double* restrict tmp1,
+template<typename TF>
+void Grid<TF>::fft_forward(double* restrict data,   double* restrict tmp1,
                        double* restrict fftini, double* restrict fftouti,
                        double* restrict fftinj, double* restrict fftoutj)
 {
@@ -529,9 +548,10 @@ void Grid::fft_forward(double* restrict data,   double* restrict tmp1,
     }
 }
 
-void Grid::fft_backward(double* restrict data,   double* restrict tmp1,
-                        double* restrict fftini, double* restrict fftouti,
-                        double* restrict fftinj, double* restrict fftoutj)
+template<typename TF>
+void Grid<TF>::fft_backward(double* restrict data,   double* restrict tmp1,
+                            double* restrict fftini, double* restrict fftouti,
+                            double* restrict fftinj, double* restrict fftoutj)
 {
     int kk = iblock*jtot;
 
@@ -583,7 +603,8 @@ void Grid::fft_backward(double* restrict data,   double* restrict tmp1,
     }
 }
 
-int Grid::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
+template<typename TF>
+int Grid<TF>::save_xz_slice(double* restrict data, double* restrict tmp, char* filename, int jslice)
 {
     // extract the data from the 3d field without the ghost cells
     const int jj  = icells;
@@ -613,7 +634,8 @@ int Grid::save_xz_slice(double* restrict data, double* restrict tmp, char* filen
     return 0;
 }
 
-int Grid::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
+template<typename TF>
+int Grid<TF>::save_yz_slice(double* restrict data, double* restrict tmp, char* filename, int islice)
 {
     // Extract the data from the 3d field without the ghost cells
     const int jj = icells;
@@ -645,7 +667,8 @@ int Grid::save_yz_slice(double* restrict data, double* restrict tmp, char* filen
     return 0;
 }
 
-int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
+template<typename TF>
+int Grid<TF>::save_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 {
     // extract the data from the 3d field without the ghost cells
     const int jj  = icells;
@@ -679,7 +702,8 @@ int Grid::save_xy_slice(double* restrict data, double* restrict tmp, char* filen
     return 0;
 }
 
-int Grid::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
+template<typename TF>
+int Grid<TF>::load_xy_slice(double* restrict data, double* restrict tmp, char* filename, int kslice)
 {
     const int count = imax*jmax;
 
@@ -711,4 +735,6 @@ int Grid::load_xy_slice(double* restrict data, double* restrict tmp, char* filen
 
     return 0;
 }
+
+template class Grid<double>;
 #endif

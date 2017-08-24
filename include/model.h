@@ -27,8 +27,10 @@
 
 class Master;
 class Input;
-class Grid;
 
+template<typename TF> class Grid;
+
+template<typename TF>
 class Model
 {
     public:
@@ -43,7 +45,7 @@ class Model
     private:
         Master* master;
         Input*  input;
-        Grid*   grid;
+        Grid<TF>* grid;
 
         void delete_objects();
         void print_status();
