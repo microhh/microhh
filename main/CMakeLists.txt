@@ -37,10 +37,20 @@ message(STATUS "Git hash " ${GITHASH})
 # send a precompiler statement replacing the git hash
 add_definitions(-DGITHASH="${GITHASH}")
 
+# double precision version
 if(USECUDA)
   cuda_add_executable(microhh microhh.cxx)
   target_link_libraries(microhh microhhc ${LIBS} m)
 else()
   add_executable(microhh microhh.cxx)
   target_link_libraries(microhh microhhc ${LIBS} m)
+endif()
+
+# single precision version
+if(USECUDA)
+  cuda_add_executable(microhh_single microhh_single.cxx)
+  target_link_libraries(microhh_single microhhc ${LIBS} m)
+else()
+  add_executable(microhh_single microhh_single.cxx)
+  target_link_libraries(microhh_single microhhc ${LIBS} m)
 endif()
