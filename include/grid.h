@@ -145,12 +145,6 @@ class Grid
         // int save_xy_slice(double*, double*, char*, int kslice=-1); ///< Saves a xy-slice from a 3d field.
         // int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
 
-        // Fourier tranforms
-        double *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
-        double *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
-        fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
-        fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
-
         /*
         void fft_forward (double*, double*, double*, double*, double*, double*); ///< Forward fast-fourier transform.
         void fft_backward(double*, double*, double*, double*, double*, double*); ///< Backward fast-fourier transform.
@@ -169,6 +163,12 @@ class Grid
         void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
         void save_grid(); ///< Save the grid properties.
         void save_fftw(); ///< Save the FFTW plan for bitwise identical results.
+
+        // Fourier tranforms
+        double *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
+        double *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
+        fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
+        fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
         #ifdef USEMPI
         // MPI Datatypes

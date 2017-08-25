@@ -323,7 +323,7 @@ template<typename TF>
 void Grid<TF>::save_fftw()
 {
     // SAVE THE FFTW PLAN IN ORDER TO ENSURE BITWISE IDENTICAL RESTARTS
-    // use the FFTW3 many interface in order to reduce function call overhead
+    // Use the FFTW3 many interface in order to reduce function call overhead.
     int rank = 1;
     int ni[] = {itot};
     int nj[] = {jtot};
