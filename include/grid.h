@@ -165,8 +165,12 @@ class Grid
 
         void calculate(); ///< Computation of dimensions, faces and ghost cells.
         void check_ghost_cells(); ///< Check whether slice thickness is at least equal to number of ghost cells.
+
         void save_grid(); ///< Save the grid properties.
         void save_fftw(); ///< Save the FFTW plan for bitwise identical results.
+
+        void load_grid(); ///< Load the grid properties.
+        void load_fftw(); ///< Load the FFTW plan for bitwise identical results.
 
         Grid_data<TF> gd;
 

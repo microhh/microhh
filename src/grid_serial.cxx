@@ -370,7 +370,7 @@ void Grid<TF>::save()
 }
 
 template<typename TF>
-void Grid<TF>::load()
+void Grid<TF>::load_grid()
 {
     // LOAD THE GRID
     FILE *pFile;
@@ -397,8 +397,13 @@ void Grid<TF>::load()
 
     // calculate the missing coordinates
     calculate();
+}
 
+template<typename TF>
+void Grid<TF>::load_fftw()
+{
     // LOAD THE FFTW PLAN
+    char filename[256];
     std::sprintf(filename, "%s.%07d", "fftwplan", 0);
 
     master->print_message("Loading \"%s\" ... ", filename);
@@ -434,6 +439,13 @@ void Grid<TF>::load()
     fftwplan = true;
 
     fftw_forget_wisdom();
+}
+
+template<typename TF>
+void Grid<TF>::load()
+{
+    load_grid();
+    load_fftw();
 }
 
 // template<typename TF>
