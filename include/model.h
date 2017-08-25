@@ -27,6 +27,7 @@
 
 class Master;
 class Input;
+class Data_block;
 
 template<typename> class Grid;
 
@@ -45,6 +46,8 @@ class Model
     private:
         Master* master;
         Input*  input;
+        Data_block* profs;
+
         Grid<TF>* grid;
 
         std::string simmode;

@@ -26,6 +26,7 @@
 #include "master.h"
 #include "grid.h"
 #include "input.h"
+#include "Data_block.h"
 #include "defines.h"
 #include "constants.h"
 #include "finite_difference.h"
@@ -44,24 +45,10 @@ Grid<TF>::Grid(Master* masterin, Input *inputin)
     fftwplan  = false;
 
     // Initialize the pointers to zero.
-    x  = 0;
-    xh = 0;
-    y  = 0;
-    yh = 0;
-    z  = 0;
-    zh = 0;
-
-    dz    = 0;
-    dzh   = 0;
-    dzi   = 0;
-    dzhi  = 0;
-    dzi4  = 0;
-    dzhi4 = 0;
-
-    fftini  = 0;
-    fftouti = 0;
-    fftinj  = 0;
-    fftoutj = 0;
+    fftini  = nullptr;
+    fftouti = nullptr;
+    fftinj  = nullptr;
+    fftoutj = nullptr;
 
     xsize = inputin->get_item<TF>("grid", "xsize", "");
     ysize = inputin->get_item<TF>("grid", "ysize", "");
@@ -110,19 +97,6 @@ Grid<TF>::~Grid()
         fftw_destroy_plan(jplanf);
         fftw_destroy_plan(jplanb);
     }
-
-    delete[] x;
-    delete[] xh;
-    delete[] y;
-    delete[] yh;
-    delete[] z;
-    delete[] zh;
-    delete[] dz;
-    delete[] dzh;
-    delete[] dzi;
-    delete[] dzhi;
-    delete[] dzi4;
-    delete[] dzhi4;
 
     fftw_free(fftini);
     fftw_free(fftouti);
@@ -206,18 +180,18 @@ void Grid<TF>::init()
     check_ghost_cells();
 
     // allocate all arrays
-    x     = new double[imax+2*igc];
-    xh    = new double[imax+2*igc];
-    y     = new double[jmax+2*jgc];
-    yh    = new double[jmax+2*jgc];
-    z     = new double[kmax+2*kgc];
-    zh    = new double[kmax+2*kgc];
-    dz    = new double[kmax+2*kgc];
-    dzh   = new double[kmax+2*kgc];
-    dzi   = new double[kmax+2*kgc];
-    dzhi  = new double[kmax+2*kgc];
-    dzi4  = new double[kmax+2*kgc];
-    dzhi4 = new double[kmax+2*kgc];
+    x     .resize(imax+2*igc);
+    xh    .resize(imax+2*igc);
+    y     .resize(jmax+2*jgc);
+    yh    .resize(jmax+2*jgc);
+    z     .resize(kmax+2*kgc);
+    zh    .resize(kmax+2*kgc);
+    dz    .resize(kmax+2*kgc);
+    dzh   .resize(kmax+2*kgc);
+    dzi   .resize(kmax+2*kgc);
+    dzhi  .resize(kmax+2*kgc);
+    dzi4  .resize(kmax+2*kgc);
+    dzhi4 .resize(kmax+2*kgc);
 
     // allocate the data for the fourier transforms
     fftini  = fftw_alloc_real(itot*jmax);
@@ -235,11 +209,10 @@ void Grid<TF>::init()
  * @param inputin Pointer to the input class.
  */
 template<typename TF>
-void Grid<TF>::create(Input *inputin)
+void Grid<TF>::create(Data_block* profs)
 {
-    // get the grid coordinates from the input
-    // if (inputin->get_prof(&z[kstart], "z", kmax))
-    //     throw 1;
+    // Get the grid coordinates from the input.
+    profs->get_vector(z, "z", kmax, 0, kstart);
 
     if (z[kend-1] > zsize)
     {

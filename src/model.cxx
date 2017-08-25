@@ -25,6 +25,8 @@
 #include <algorithm>
 #include "master.h"
 #include "grid.h"
+#include "input.h"
+#include "Data_block.h"
 #include "model.h"
 
 #ifdef USECUDA
@@ -73,6 +75,7 @@ Model<TF>::Model(Master *masterin, int argc, char *argv[])
     process_command_line_options(simmode, simname, argc, argv, *master);
 
     input = new Input(simname + ".ini");
+    profs = new Data_block(simname + ".prof");
 
     // Initialize the pointers as nullptr.
     grid = nullptr;
@@ -132,7 +135,7 @@ template<typename TF>
 void Model<TF>::save()
 {
     // Initialize the grid and the fields from the input data.
-    grid->create(input);
+    grid->create(profs);
 
     // Save the initialized data to disk for the run mode.
     grid->save();

@@ -28,9 +28,11 @@
 #endif
 #include <fftw3.h>
 #include <string>
+#include <vector>
 
 class Master;
 class Input;
+class Data_block;
 
 enum Edge {East_west_edge, North_south_edge, Both_edges};
 
@@ -48,10 +50,10 @@ class Grid
         Grid(Master*, Input*); ///< Constructor of the grid class.
         ~Grid();               ///< Destructor of the grid class.
 
-        void init();         ///< Initialization of the grid arrays.
-        void create(Input*); ///< Creation of the grid data.
-        void save();         ///< Saves grid data to file.
-        void load();         ///< Loads grid data to file.
+        void init();              ///< Initialization of the grid arrays.
+        void create(Data_block*); ///< Creation of the grid data.
+        void save();              ///< Saves grid data to file.
+        void load();              ///< Loads grid data to file.
 
         int itot; ///< Total number of grid cells in the x-direction.
         int jtot; ///< Total number of grid cells in the y-direction.
@@ -91,22 +93,22 @@ class Grid
         TF dy;     ///< Distance between the center of two grid cell in the y-direction.
         TF dxi;    ///< Reciprocal of dx.
         TF dyi;    ///< Reciprocal of dy.
-        TF* dz;    ///< Distance between the center of two grid cell in the z-direction.
-        TF* dzh;   ///< Distance between the two grid cell faces in the z-direction.
-        TF* dzi;   ///< Reciprocal of dz.
-        TF* dzhi;  ///< Reciprocal of dzh.
-        TF* dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
-        TF* dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
+        std::vector<TF> dz;    ///< Distance between the center of two grid cell in the z-direction.
+        std::vector<TF> dzh;   ///< Distance between the two grid cell faces in the z-direction.
+        std::vector<TF> dzi;   ///< Reciprocal of dz.
+        std::vector<TF> dzhi;  ///< Reciprocal of dzh.
+        std::vector<TF> dzi4;  ///< Fourth order gradient of the distance between cell centers to be used in 4th-order schemes.
+        std::vector<TF> dzhi4; ///< Fourth order gradient of the distance between cell faces to be used in 4th-order schemes.
 
         TF dzhi4bot;
         TF dzhi4top;
 
-        TF* x;  ///< Grid coordinate of cell center in x-direction.
-        TF* y;  ///< Grid coordinate of cell center in y-direction.
-        TF* z;  ///< Grid coordinate of cell center in z-direction.
-        TF* xh; ///< Grid coordinate of cell faces in x-direction.
-        TF* yh; ///< Grid coordinate of cell faces in x-direction.
-        TF* zh; ///< Grid coordinate of cell faces in x-direction.
+        std::vector<TF> x;  ///< Grid coordinate of cell center in x-direction.
+        std::vector<TF> y;  ///< Grid coordinate of cell center in y-direction.
+        std::vector<TF> z;  ///< Grid coordinate of cell center in z-direction.
+        std::vector<TF> xh; ///< Grid coordinate of cell faces in x-direction.
+        std::vector<TF> yh; ///< Grid coordinate of cell faces in x-direction.
+        std::vector<TF> zh; ///< Grid coordinate of cell faces in x-direction.
 
         TF utrans; ///< Galilean transformation velocity in x-direction.
         TF vtrans; ///< Galilean transformation velocity in y-direction.
@@ -144,8 +146,8 @@ class Grid
         // int load_xy_slice(double*, double*, char*, int kslice=-1); ///< Loads a xy-slice.
 
         // Fourier tranforms
-        double*fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
-        double*fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
+        double *fftini, *fftouti; ///< Help arrays for fast-fourier transforms in x-direction.
+        double *fftinj, *fftoutj; ///< Help arrays for fast-fourier transforms in y-direction.
         fftw_plan iplanf, iplanb; ///< FFTW3 plans for forward and backward transforms in x-direction.
         fftw_plan jplanf, jplanb; ///< FFTW3 plans for forward and backward transforms in y-direction.
 
